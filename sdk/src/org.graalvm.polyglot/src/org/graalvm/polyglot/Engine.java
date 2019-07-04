@@ -639,8 +639,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public UnmodifiableEconomicSet<String> getAccessibleLanguages(PolyglotAccess access, String language) {
-            return access.getAccessibleLanguages(language);
+        public UnmodifiableEconomicSet<String> getEvalAccess(PolyglotAccess access, String language) {
+            return access.getEvalAccess(language);
+        }
+
+        @Override
+        public UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access) {
+            return access.getBindingsAccess();
         }
 
         @Override

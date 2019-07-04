@@ -385,6 +385,10 @@ public abstract class TruffleLanguage<C> {
          * Therefore by default non-internal languages are disposed and finalized before internal
          * languages.
          * <p>
+         * Dependent languages should be parsed with {@link Env#parseInternal(Source, String...)} as
+         * the embedder might choose to disable access to it for
+         * {@link Env#parsePublic(Source, String...)}.
+         * <p>
          * Dependent languages references are optional. If a dependent language is not installed and
          * the language needs to fail in such a case then the language should fail on
          * {@link TruffleLanguage#initializeContext(Object) context initialization}. Cycles in
@@ -1457,11 +1461,11 @@ public abstract class TruffleLanguage<C> {
          * identifiers are removable, modifiable, readable and any new identifiers are insertable.
          *
          * @throws SecurityException if polyglot access is not enabled
-         * @see #isPolyglotAccessAllowed()
+         * @see #isPolyglotBindingsAccessAllowed()
          * @since 0.32
          */
         public Object getPolyglotBindings() {
-            if (!isPolyglotAccessAllowed()) {
+            if (!isPolyglotBindingsAccessAllowed()) {
                 throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
             return LanguageAccessor.engineAccess().getPolyglotBindingsForLanguage(vmObject);
@@ -1477,8 +1481,8 @@ public abstract class TruffleLanguage<C> {
          * {@link String} or one of the Java primitive wrappers ( {@link Integer}, {@link Double},
          * {@link Byte}, {@link Boolean}, etc.).
          * <p>
-         * Polyglot symbols can only be imported if the {@link #isPolyglotAccessAllowed() polyglot
-         * access} is allowed.
+         * Polyglot symbols can only be imported if the {@link #isPolyglotBindingsAccessAllowed()
+         * polyglot bindings access} is allowed.
          *
          * @param symbolName the name of the symbol to search for
          * @return object representing the symbol or <code>null</code> if it does not exist
@@ -1487,7 +1491,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Object importSymbol(String symbolName) {
-            if (!isPolyglotAccessAllowed()) {
+            if (!isPolyglotBindingsAccessAllowed()) {
                 throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
             return LanguageAccessor.engineAccess().importSymbol(vmObject, this, symbolName);
@@ -1504,8 +1508,8 @@ public abstract class TruffleLanguage<C> {
          * {@link String} or one of the Java primitive wrappers ( {@link Integer}, {@link Double},
          * {@link Byte}, {@link Boolean}, etc.).
          * <p>
-         * Polyglot symbols can only be export if the {@link #isPolyglotAccessAllowed() polyglot
-         * access} is allowed.
+         * Polyglot symbols can only be export if the {@link #isPolyglotBindingsAccessAllowed()
+         * polyglot bindings access} is allowed.
          *
          * @param symbolName the name with which the symbol should be exported into the polyglot
          *            scope
@@ -1515,7 +1519,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public void exportSymbol(String symbolName, Object value) {
-            if (!isPolyglotAccessAllowed()) {
+            if (!isPolyglotBindingsAccessAllowed()) {
                 throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
             }
             LanguageAccessor.engineAccess().exportSymbol(vmObject, symbolName, value);
@@ -1735,18 +1739,44 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns <code>true</code> if polyglot access is allowed, else <code>false</code>. Guest
-         * languages should hide or disable all polyglot builtins if this flag is set to
-         * <code>false</code>. Note that if polyglot access is disabled, then the
-         * {@link #getLanguages() available languages list} only shows the current language,
+         * @since 19.0
+         * @deprecated use either {@link #isPolyglotEvalAllowed()} or
+         *             {@link #isPolyglotBindingsAccessAllowed()} instead
+         */
+        @Deprecated
+        public boolean isPolyglotAccessAllowed() {
+            return isPolyglotEvalAllowed() || isPolyglotBindingsAccessAllowed();
+        }
+
+        /**
+         * Returns <code>true</code> if polyglot evaluation is allowed, else <code>false</code>.
+         * Guest languages should hide or disable all polyglot evaluation builtins if this flag is
+         * set to <code>false</code>. Note that if polyglot evaluation access is disabled, then the
+         * {@link #getInternalLanguages() available languages list} only shows the current language,
          * {@link Registration#dependentLanguages() dependent languages} and
          * {@link Registration#internal() internal languages}.
          *
          * @see org.graalvm.polyglot.Context.Builder#allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
-         * @since 19.0
+         * @since 19.2
          */
-        public boolean isPolyglotAccessAllowed() {
-            return LanguageAccessor.engineAccess().isPolyglotAccessAllowed(vmObject);
+        @TruffleBoundary
+        public boolean isPolyglotEvalAllowed() {
+            return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(vmObject);
+        }
+
+        /**
+         * Returns <code>true</code> if polyglot bindings access is allowed, else <code>false</code>
+         * . Guest languages should hide or disable all polyglot bindings builtins if this flag is
+         * set to <code>false</code>. If polyglot bindings accss is disabled then
+         * {@link #getPolyglotBindings()}, {@link #importSymbol(String)} or
+         * {@link #exportSymbol(String, Object)} fails with a SecurityException.
+         *
+         * @see org.graalvm.polyglot.Context.Builder#allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
+         * @since 19.2
+         */
+        @TruffleBoundary
+        public boolean isPolyglotBindingsAccessAllowed() {
+            return LanguageAccessor.engineAccess().isPolyglotBindingsAccessAllowed(vmObject);
         }
 
         /**
@@ -1788,14 +1818,12 @@ public abstract class TruffleLanguage<C> {
          * {@link CallTarget#call(java.lang.Object...)}.
          * <p>
          * Compared to {@link #parsePublic(Source, String...)} this method provides also access to
-         * {@link TruffleLanguage.Registration#internal() internal} languages in addition to public
-         * languages. The provided source must be {@link Source#isInternal() internal}, as internal
-         * languages naturally can only take internal sources, otherwise an
-         * {@link IllegalArgumentException} is thrown. For example, in JavaScript, a call to the
-         * eval builtin should forward to {@link #parsePublic(Source, String...)} as it contains
-         * code provided by the guest language user. Parsing regular expressions with the internal
-         * regular expression engine should call {@link #parseInternal(Source, String...)} instead,
-         * as this is considered an implementation detail of the language.
+         * {@link TruffleLanguage.Registration#internal() internal} and dependent languages in
+         * addition to public languages. For example, in JavaScript, a call to the eval builtin
+         * should forward to {@link #parsePublic(Source, String...)} as it contains code provided by
+         * the guest language user. Parsing regular expressions with the internal regular expression
+         * engine should call {@link #parseInternal(Source, String...)} instead, as this is
+         * considered an implementation detail of the language.
          * <p>
          * It is recommended that the language uses {@link Env#parsePublic(Source, String...)} or
          * {@link Env#parseInternal(Source, String...)} instead of directly passing the Source to
@@ -1813,9 +1841,6 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parseInternal(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            if (!source.isInternal()) {
-                throw new IllegalArgumentException("Provided source must return true for isInternal() but returns false.");
-            }
             return AccessAPI.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
         }
 
@@ -1829,12 +1854,13 @@ public abstract class TruffleLanguage<C> {
          * {@link CallTarget#call(java.lang.Object...)}.
          * <p>
          * Compared to {@link #parseInternal(Source, String...)} this method does only provide
-         * access to non internal or public languages. The provided source can be either
-         * {@link Source#isInternal() internal} or non-internal. For example, in JavaScript, a call
-         * to the eval builtin should forward to {@link #parsePublic(Source, String...)} as it
-         * contains code provided by the guest language user. Parsing regular expressions with the
-         * internal regular expression engine should call {@link #parseInternal(Source, String...)}
-         * instead, as this is considered an implementation detail of the language.
+         * access to non internal, non dependent, public languages. Public languages are configured
+         * by the embedder to be accessible to the guest language program. For example, in
+         * JavaScript, a call to the eval builtin should forward to
+         * {@link #parsePublic(Source, String...)} as it contains code provided by the guest
+         * language user. Parsing regular expressions with the internal regular expression engine
+         * should call {@link #parseInternal(Source, String...)} instead, as this is considered an
+         * implementation detail of the language.
          * <p>
          * It is recommended that the language uses {@link Env#parsePublic(Source, String...)} or
          * {@link Env#parseInternal(Source, String...)} instead of directly passing the Source to
@@ -1963,15 +1989,44 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns a map mime-type to language instance of all languages that are installed in the
-         * environment. Using the language instance additional services can be
-         * {@link #lookup(LanguageInfo, Class) looked up} .
-         *
          * @since 0.26
+         * @deprecated
          */
+        @Deprecated
         @TruffleBoundary
         public Map<String, LanguageInfo> getLanguages() {
-            return LanguageAccessor.engineAccess().getLanguages(vmObject);
+            returnLanguageAccessor.engineAccess().getInternalLanguages(vmObject);
+        }
+
+        /**
+         * Returns all languages that are installed and internally accessible in the environment.
+         * Using the language instance additional services can be
+         * {@link #lookup(LanguageInfo, Class) looked up}. {@link #parseInternal(Source, String...)}
+         * is allowed for all languages returned by this method. This list of languages should not
+         * be exposed to guest language programs, as it lists internal languages.
+         *
+         * @see #lookup(LanguageInfo, Class)
+         * @see #parseInternal(Source, String...)
+         * @since 19.2
+         */
+        @TruffleBoundary
+        public Map<String, LanguageInfo> getInternalLanguages() {
+            return LanguageAccessor.engineAccess().getInternalLanguages(vmObject);
+        }
+
+        /**
+         * Returns all languages that are installed and publicly accessible in the environment.
+         * Using the language instance additional services can be
+         * {@link #lookup(LanguageInfo, Class) looked up}. {@link #parsePublic(Source, String...)}
+         * is allowed for all languages returned by this method. This list of languages may be
+         * exposed ot the guest language program.
+         *
+         * @see #parsePublic(Source, String...)
+         * @since 19.2
+         */
+        @TruffleBoundary
+        public Map<String, LanguageInfo> getPublicLanguages() {
+            return LanguageAccessor.engineAccess().getPublicLanguages(vmObject);
         }
 
         /**
@@ -1992,7 +2047,7 @@ public abstract class TruffleLanguage<C> {
          * be returned.
          *
          * @see ZoneId#systemDefault()
-         * @since 20.0.0 beta 2.
+         * @since 19.2
          */
         public ZoneId getTimeZone() {
             checkDisposed();

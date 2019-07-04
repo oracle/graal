@@ -1732,7 +1732,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public void testAccessInstrumentFromLanguage() {
         context.initialize(InstrumentationTestLanguage.ID);
         TruffleLanguage.Env env = InstrumentationTestLanguage.currentEnv();
-        LanguageInfo langInfo = env.getLanguages().get(InstrumentationTestLanguage.ID);
+        LanguageInfo langInfo = env.getInternalLanguages().get(InstrumentationTestLanguage.ID);
         assertNotNull(langInfo);
         assertEquals(InstrumentationTestLanguage.ID, langInfo.getId());
         assertEquals("2.0", langInfo.getVersion());

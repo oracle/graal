@@ -180,7 +180,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
 
-        public abstract UnmodifiableEconomicSet<String> getAccessibleLanguages(PolyglotAccess access, String language);
+        public abstract UnmodifiableEconomicSet<String> getEvalAccess(PolyglotAccess access, String language);
+
+        public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
         public abstract void validatePolyglotAccess(PolyglotAccess access, EconomicSet<String> language);
 

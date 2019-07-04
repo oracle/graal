@@ -56,7 +56,6 @@ import java.util.logging.LogRecord;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
@@ -161,8 +160,15 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isPolyglotAccessAllowed(Object vmObject) {
-            return ((PolyglotLanguageContext) vmObject).context.config.polyglotAccess == PolyglotAccess.ALL;
+        public boolean isPolyglotEvalAllowed(Object polyglotLanguageContext) {
+            PolyglotLanguageContext languageContext = ((PolyglotLanguageContext) polyglotLanguageContext);
+            return languageContext.isPolyglotEvalAllowed(null);
+        }
+
+        @Override
+        public boolean isPolyglotBindingsAccessAllowed(Object polyglotLanguageContext) {
+            PolyglotLanguageContext languageContext = ((PolyglotLanguageContext) polyglotLanguageContext);
+            return languageContext.isPolyglotBindingsAccessAllowed();
         }
 
         @Override
@@ -271,12 +277,17 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Map<String, LanguageInfo> getLanguages(Object vmObject) {
+        public Map<String, LanguageInfo> getInternalLanguages(Object vmObject) {
             if (vmObject instanceof PolyglotLanguageContext) {
-                return ((PolyglotLanguageContext) vmObject).getAccessibleLanguages();
+                return ((PolyglotLanguageContext) vmObject).getAccessibleLanguages(true);
             } else {
                 return getEngine(vmObject).idToInternalLanguageInfo;
             }
+        }
+
+        @Override
+        public Map<String, LanguageInfo> getPublicLanguages(Object vmObject) {
+            return ((PolyglotLanguageContext) vmObject).getAccessibleLanguages(false);
         }
 
         @Override

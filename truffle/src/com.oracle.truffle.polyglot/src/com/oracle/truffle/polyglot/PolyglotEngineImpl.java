@@ -445,14 +445,14 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return this;
     }
 
-    PolyglotLanguage findLanguage(PolyglotLanguageContext accessingLanguage, String languageId, String mimeType, boolean failIfNotFound, boolean allowInternal) {
+    PolyglotLanguage findLanguage(PolyglotLanguageContext accessingLanguage, String languageId, String mimeType, boolean failIfNotFound, boolean allowInternalAndDependent) {
         assert languageId != null || mimeType != null : Objects.toString(languageId) + ", " + Objects.toString(mimeType);
 
         Map<String, LanguageInfo> languages;
         if (accessingLanguage != null) {
-            languages = accessingLanguage.getAccessibleLanguages();
+            languages = accessingLanguage.getAccessibleLanguages(allowInternalAndDependent);
         } else {
-            assert allowInternal : "non internal access is not yet supported for instrument lookups";
+            assert allowInternalAndDependent : "non internal access is not yet supported for instrument lookups";
             languages = this.idToInternalLanguageInfo;
         }
 
@@ -473,7 +473,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         }
 
-        if (foundLanguage != null && (allowInternal || !foundLanguage.isInternal())) {
+        assert allowInternalAndDependent || foundLanguage == null || (!foundLanguage.isInternal() && accessingLanguage.isPolyglotEvalAllowed(languageId));
+
+        if (foundLanguage != null) {
             return (PolyglotLanguage) EngineAccessor.NODES.getEngineObject(foundLanguage);
         }
 

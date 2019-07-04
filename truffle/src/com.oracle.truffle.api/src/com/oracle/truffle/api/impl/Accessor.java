@@ -231,7 +231,9 @@ public abstract class Accessor {
 
         public abstract boolean isDisposed(Object vmInstance);
 
-        public abstract Map<String, LanguageInfo> getLanguages(Object vmInstance);
+        public abstract Map<String, LanguageInfo> getInternalLanguages(Object vmInstance);
+
+        public abstract Map<String, LanguageInfo> getPublicLanguages(Object vmInstance);
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object vmInstance);
 
@@ -361,7 +363,9 @@ public abstract class Accessor {
 
         public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object contextVMObject);
 
-        public abstract boolean isPolyglotAccessAllowed(Object vmObject);
+        public abstract boolean isPolyglotEvalAllowed(Object vmObject);
+
+        public abstract boolean isPolyglotBindingsAccessAllowed(Object vmObject);
 
         public abstract TruffleFile getTruffleFile(String path);
 

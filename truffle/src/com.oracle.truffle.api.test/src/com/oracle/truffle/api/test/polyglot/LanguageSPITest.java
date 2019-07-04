@@ -1829,7 +1829,7 @@ public class LanguageSPITest {
 
     private static boolean lookupLanguage(Class<?> serviceClass) {
         Env env = ProxyLanguage.getCurrentContext().env;
-        LanguageInfo languageInfo = env.getLanguages().get(SERVICE_LANGUAGE);
+        LanguageInfo languageInfo = env.getInternalLanguages().get(SERVICE_LANGUAGE);
         return env.lookup(languageInfo, serviceClass) != null;
     }
 

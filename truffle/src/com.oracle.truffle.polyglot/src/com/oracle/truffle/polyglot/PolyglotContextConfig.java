@@ -159,7 +159,7 @@ final class PolyglotContextConfig {
                 if (from == to) {
                     return true;
                 }
-                UnmodifiableEconomicSet<String> configuredAccess = from.engine.getAPIAccess().getAccessibleLanguages(polyglotAccess, from.getId());
+                UnmodifiableEconomicSet<String> configuredAccess = from.engine.getAPIAccess().getEvalAccess(polyglotAccess, from.getId());
                 if (configuredAccess != null && configuredAccess.contains(to.getId())) {
                     return true;
                 }

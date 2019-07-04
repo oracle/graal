@@ -42,7 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
@@ -55,9 +54,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 
-
-import org.graalvm.collections.UnmodifiableEconomicSet;
-import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
@@ -76,7 +72,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 /*
  * This class is exported to the GraalVM SDK. Keep that in mind when changing its class or package name.
@@ -440,5 +435,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public final Throwable fillInStackTrace() {
             return this;
         }
+
     }
 }

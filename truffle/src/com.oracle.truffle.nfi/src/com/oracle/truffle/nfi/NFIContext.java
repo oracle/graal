@@ -89,7 +89,7 @@ final class NFIContext {
                 return ret;
             }
 
-            for (LanguageInfo language : env.getLanguages().values()) {
+            for (LanguageInfo language : env.getInternalLanguages().values()) {
                 if ("nfi".equals(language.getId())) {
                     continue;
                 }
