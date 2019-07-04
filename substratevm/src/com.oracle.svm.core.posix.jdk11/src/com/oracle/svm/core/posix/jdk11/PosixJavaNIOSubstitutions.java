@@ -46,16 +46,15 @@ public class PosixJavaNIOSubstitutions {
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_IOUtil {
         // ported from {jdk11}/src/java.base/unix/native/libnio/ch/IOUtil.c
-        //   107  JNIEXPORT jint JNICALL
-        //   108  Java_sun_nio_ch_IOUtil_write1(JNIEnv *env, jclass cl, jint fd, jbyte b)
+        // 107 JNIEXPORT jint JNICALL
+        // 108 Java_sun_nio_ch_IOUtil_write1(JNIEnv *env, jclass cl, jint fd, jbyte b)
         @Substitute
         static int write1(int fd, byte b) throws IOException {
-            //   110      char c = (char)b;
+            // 110 char c = (char)b;
             CCharPointer c = StackValue.get(CCharPointer.class);
             c.write(b);
-            //   111      return convertReturnVal(env, write(fd, &c, 1), JNI_FALSE);
+            // 111 return convertReturnVal(env, write(fd, &c, 1), JNI_FALSE);
             return convertReturnVal(write(fd, c, WordFactory.unsigned(1)), false);
         }
     }
 }
-
