@@ -411,8 +411,9 @@ def svm_gate_body(args, tasks):
                 javac_command = ' '.join(javac_image_command(svmbuild_dir()))
                 helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
-                cinterfacetutorial([])
                 clinittest([])
+                cinterfacetutorial([])
+
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
