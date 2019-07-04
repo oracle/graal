@@ -98,6 +98,7 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
         return gen.getCallArguments(args, callType, targetMethod);
     }
 
+    @Override
     protected LLVMValueRef emitCondition(LogicNode condition) {
         if (condition instanceof SafepointCheckNode) {
             LLVMValueRef threadData = getGenerator().getSpecialRegister(LLVMFeature.THREAD_POINTER_INDEX);

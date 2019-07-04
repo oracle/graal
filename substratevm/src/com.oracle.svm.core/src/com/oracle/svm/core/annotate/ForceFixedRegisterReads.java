@@ -30,8 +30,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Used to force reads of register values to be implemented using a {@link ReadRegisterFixedNode}
- * instead of a {@link ReadRegisterFloatingNode} to prevent instances where a register read would be
+ * Used to force reads of register values to be implemented using a {@code ReadRegisterFixedNode}
+ * instead of a {@code ReadRegisterFloatingNode} to prevent instances where a register read would be
  * hoisted above the point where the register is written to.
  */
 @Retention(RetentionPolicy.RUNTIME)

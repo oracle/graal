@@ -434,6 +434,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
         }
     }
 
+    @SuppressWarnings("unused")
     protected LLVMValueRef emitCall(Invoke i, LoweredCallTargetNode callTarget, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
         LLVMValueRef call;
         if (i instanceof InvokeWithExceptionNode) {
@@ -449,6 +450,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
         return call;
     }
 
+    @SuppressWarnings("unused")
     protected LLVMValueRef[] getCallArguments(NodeInputList<ValueNode> arguments, CallingConvention.Type callType, ResolvedJavaMethod targetMethod) {
         return arguments.stream().map(this::llvmOperand).toArray(LLVMValueRef[]::new);
     }

@@ -157,6 +157,7 @@ public class LLVMIRBuilder {
      * which the return address can be accessed. The parameters to this wrapper are the anchor, the
      * native callee, and the arguments to the callee.
      */
+    @SuppressWarnings("unused")
     public LLVMValueRef createJNIWrapper(LLVMValueRef callee, long statepointId, int numArgs, int anchorIPOffset, LLVMBasicBlockRef currentBlock) {
         LLVM.LLVMTypeRef calleeType = LLVMIRBuilder.getElementType(typeOf(callee));
         LLVM.LLVMTypeRef wrapperType = prependArguments(calleeType, rawPointerType(), typeOf(callee));
