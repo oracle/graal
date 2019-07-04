@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.meta.SharedMethod;
 
@@ -77,6 +78,15 @@ public final class InstalledCodeObserverSupport {
         for (InstalledCodeObserverHandle handle : observerHandles) {
             if (handle != null) {
                 handle.release();
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static void removeObserversOnTearDown(InstalledCodeObserverHandle[] observerHandles) {
+        for (InstalledCodeObserverHandle handle : observerHandles) {
+            if (handle != null) {
+                handle.releaseOnTearDown();
             }
         }
     }

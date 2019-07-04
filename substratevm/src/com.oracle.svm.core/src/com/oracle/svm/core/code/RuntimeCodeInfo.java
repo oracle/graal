@@ -232,7 +232,7 @@ public class RuntimeCodeInfo {
         numMethods--;
         NonmovableArrays.setWord(methodInfos, numMethods, WordFactory.nullPointer());
 
-        RuntimeMethodInfoAccess.releaseInstalledCodeAndTether(info);
+        RuntimeMethodInfoAccess.partialReleaseAfterInvalidate(info);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();

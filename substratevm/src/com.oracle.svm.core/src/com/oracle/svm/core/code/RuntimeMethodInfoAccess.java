@@ -55,6 +55,7 @@ public final class RuntimeMethodInfoAccess {
         return CodeInfoAccess.<WeakReference<SubstrateInstalledCode>> getObjectField(info, CodeInfo.INSTALLEDCODE_OBJFIELD).get();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static InstalledCodeObserverHandle[] getCodeObserverHandles(CodeInfo info) {
         return CodeInfoAccess.getObjectField(info, CodeInfo.OBSERVERS_OBJFIELD);
     }
@@ -134,11 +135,13 @@ public final class RuntimeMethodInfoAccess {
         }
     }
 
-    static void releaseInstalledCodeAndTether(CodeInfo info) {
+    static void partialReleaseAfterInvalidate(CodeInfo info) {
         assert NonmovableArrays.getObject(info.getObjectFields(), CodeInfo.TETHER_OBJFIELD) != null : "already released";
 
         info.setCodeConstantsLive(false);
         releaseInstalledCode(info);
+
+        NonmovableArrays.setObject(info.getObjectFields(), CodeInfo.OBSERVERS_OBJFIELD, null);
 
         /*
          * Set our reference to the tether object to null so that the Cleaner object can free our
@@ -153,6 +156,10 @@ public final class RuntimeMethodInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     static void releaseMethodInfoOnTearDown(CodeInfo info) {
+        InstalledCodeObserverHandle[] handles = getCodeObserverHandles(info);
+        if (handles != null) {
+            InstalledCodeObserverSupport.removeObserversOnTearDown(handles);
+        }
         releaseMethodInfoMemory(info);
     }
 
