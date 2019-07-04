@@ -413,12 +413,15 @@ public interface SwitchFoldable extends NodeInterface {
         // Sort the keys
         keyData.sort();
 
-        // The total probability might be different than 1 if there was a duplicate key which was
-        // erased by another branch whose probability was different (/ex: in the case where a method
-        // constituted of only a switch is inlined after a guard for a particular value of that
-        // switch). In that case, we need to re-normalize the probabilities.
-        // A more "correct" way would be to re-normalize the probabilities of the switch after the
-        // guard, but this cannot be done without an additional overhead.
+        /*
+         * The total probability might be different than 1 if there was a duplicate key which was
+         * erased by another branch whose probability was different (/ex: in the case where a method
+         * constituted of only a switch is inlined after a guard for a particular value of that
+         * switch). In that case, we need to re-normalize the probabilities. A more "correct" way
+         * would be to only re-normalize the probabilities of the switch after the guard, but this
+         * cannot be done without an additional overhead.
+         */
+        totalProbability[0] += cumulative[0];
         assert totalProbability[0] > 0.0d;
         double normalizationFactor = 1 / totalProbability[0];
 
@@ -428,17 +431,17 @@ public interface SwitchFoldable extends NodeInterface {
         double[] keyProbabilities = new double[newKeyCount + 1];
         int[] keySuccessors = new int[newKeyCount + 1];
         int nonDeoptSuccessorCount = countNonDeoptSuccessors(keyData) + (cumulative[0] > 0.0d ? 1 : 0);
-        double uniform = normalizationFactor * (uninitializedProfiles && nonDeoptSuccessorCount > 0 ? 1 / (double) nonDeoptSuccessorCount : 1.0d);
+        double uniform = (uninitializedProfiles && nonDeoptSuccessorCount > 0 ? 1 / (double) nonDeoptSuccessorCount : 1.0d);
 
         // Add default
-        keyProbabilities[newKeyCount] = uninitializedProfiles && cumulative[0] > 0.0d ? uniform : cumulative[0];
+        keyProbabilities[newKeyCount] = uninitializedProfiles && cumulative[0] > 0.0d ? uniform : normalizationFactor * cumulative[0];
         keySuccessors[newKeyCount] = lowestSwitchNode.addDefault(successors);
 
         // Add branches.
         for (int i = 0; i < newKeyCount; i++) {
             SwitchFoldable.KeyData data = keyData.get(i);
             keys[i] = data.key;
-            keyProbabilities[i] = normalizationFactor * (uninitializedProfiles && data.keyProbability > 0.0d ? uniform : data.keyProbability);
+            keyProbabilities[i] = uninitializedProfiles && data.keyProbability > 0.0d ? uniform : normalizationFactor * data.keyProbability;
             keySuccessors[i] = data.keySuccessor != KeyData.KEY_UNKNOWN ? data.keySuccessor : keySuccessors[newKeyCount];
         }
 
