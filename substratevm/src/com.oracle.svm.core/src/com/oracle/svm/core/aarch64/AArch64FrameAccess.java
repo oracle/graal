@@ -60,7 +60,7 @@ public class AArch64FrameAccess extends FrameAccess {
     @Fold
     @Override
     public int savedBasePointerSize() {
-        if (SubstrateOptions.UseStackBasePointer.getValue()) {
+        if (SubstrateOptions.PreserveFramePointer.getValue()) {
             return wordSize();
         } else {
             return 0;
