@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
@@ -104,6 +105,12 @@ public class ImageCodeInfo {
 
     public HostedImageCodeInfo getHostedImageCodeInfo() {
         return hostedImageCodeInfo;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void tearDown(CodeInfo imageCodeInfo) {
+        NonmovableArrays.releaseUnmanagedArray(imageCodeInfo.getObjectFields());
+        imageCodeInfo.setObjectFields(WordFactory.nullPointer());
     }
 
     /**

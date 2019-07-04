@@ -124,7 +124,7 @@ public interface CommittedMemoryProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void tearDownUnmanagedMemoryConsumers() {
-        CodeInfoTable.getRuntimeCodeCache().tearDown();
+        CodeInfoTable.tearDown();
         UnmanagedReferenceWalkers.singleton().tearDown();
 
         NonmovableArrays.tearDown();
