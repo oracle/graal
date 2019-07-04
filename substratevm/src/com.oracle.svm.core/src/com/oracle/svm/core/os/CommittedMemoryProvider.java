@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -125,5 +126,7 @@ public interface CommittedMemoryProvider {
     static void tearDownUnmanagedMemoryConsumers() {
         CodeInfoTable.getRuntimeCodeCache().tearDown();
         UnmanagedReferenceWalkers.singleton().tearDown();
+
+        NonmovableArrays.tearDown();
     }
 }

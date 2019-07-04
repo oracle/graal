@@ -94,6 +94,56 @@ public class UninterruptibleUtils {
         }
     }
 
+    public static class AtomicLong {
+
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final long VALUE_OFFSET;
+
+        static {
+            try {
+                VALUE_OFFSET = UNSAFE.objectFieldOffset(AtomicLong.class.getDeclaredField("value"));
+            } catch (Throwable ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        }
+
+        private volatile long value;
+
+        public AtomicLong(long value) {
+            this.value = value;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long get() {
+            return value;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void set(long newValue) {
+            value = newValue;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long incrementAndGet() {
+            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, 1) + 1;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long getAndDecrement() {
+            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, -1);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long decrementAndGet() {
+            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, -1) - 1;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean compareAndSet(long expected, long update) {
+            return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected, update);
+        }
+    }
+
     public static class AtomicPointer<T extends PointerBase> {
 
         private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();

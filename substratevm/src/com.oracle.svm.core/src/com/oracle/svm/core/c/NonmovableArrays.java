@@ -53,6 +53,7 @@ import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -75,6 +76,8 @@ import com.oracle.svm.core.util.VMError;
 public final class NonmovableArrays {
     private static final HostedNonmovableArray<?> HOSTED_NULL_VALUE = new HostedNonmovableObjectArray<>(null);
 
+    private static final UninterruptibleUtils.AtomicLong runtimeArraysInExistence = new UninterruptibleUtils.AtomicLong(0);
+
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T extends NonmovableArray<?>> T createArray(int length, Class<?> arrayType) {
@@ -91,6 +94,7 @@ public final class NonmovableArrays {
         ObjectHeader.initializeHeaderOfNewObject(array, header);
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()
+        assert runtimeArraysInExistence.incrementAndGet() > 0 : "overflow";
         return (T) array;
     }
 
@@ -225,6 +229,7 @@ public final class NonmovableArrays {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseUnmanagedArray(NonmovableArray<?> array) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array);
+        assert array.isNull() || runtimeArraysInExistence.getAndDecrement() > 0;
     }
 
     /** Returns a {@link NonmovableArray} for an array of primitives in the image heap. */
@@ -369,6 +374,11 @@ public final class NonmovableArrays {
                 p = p.add(refSize);
             }
         }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void tearDown() {
+        assert runtimeArraysInExistence.get() == 0 : "All runtime-allocated NonmovableArrays must have been freed";
     }
 
     private NonmovableArrays() {
