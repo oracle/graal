@@ -294,13 +294,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMInteropType.Function functionType) {
             assert arguments.length == type.getArgumentTypes().length;
             Object[] args = new Object[dataEscapeNodes.length];
-            if (functionType == null) {
-                for (int i = 0; i < args.length; i++) {
-                    args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
-                }
-            } else {
+            int i = 0;
+            if (functionType != null) {
                 assert arguments.length == functionType.getParameterLength() + LLVMCallNode.USER_ARGUMENT_OFFSET;
-                for (int i = 0; i < args.length; i++) {
+                for (; i < functionType.getParameterLength(); i++) {
                     LLVMInteropType argType = functionType.getParameter(i);
                     if (argType instanceof LLVMInteropType.Value) {
                         LLVMInteropType.Structured baseType = ((LLVMInteropType.Value) argType).getBaseType();
@@ -310,6 +307,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                         throw new LLVMPolyglotException(this, "Can not call polyglot function with structured argument type.");
                     }
                 }
+            }
+
+            // handle remaining arguments (varargs or functionType == null)
+            for (; i < args.length; i++) {
+                args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
             }
             return args;
         }
