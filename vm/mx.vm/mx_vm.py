@@ -373,7 +373,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _jdk_jre_bin = '<jre_base>/bin/'
 
             for _license in _component.license_files + _component.third_party_license_files:
-                if mx.is_windows():
+                if mx.is_windows() or isinstance(self, mx.AbstractJARDistribution):
                     if _component_base == '<jdk_base>/':
                         pass  # already in place from the support dist
                     elif len(_component.support_distributions) == 1:
