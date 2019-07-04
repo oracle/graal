@@ -407,16 +407,29 @@ def svm_gate_body(args, tasks):
     with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
-                javac_image(['--output-path', svmbuild_dir()])
-                javac_command = ' '.join(javac_image_command(svmbuild_dir()))
-                helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
+                if svm_java8():
+                    javac_image(['--output-path', svmbuild_dir()])
+                    javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
+                else:
+                    # Building javac image currently only supported for Java 8
+                    javac_command = []
+                helloworld(['--output-path', svmbuild_dir()] + javac_command)
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
                 cinterfacetutorial([])
                 clinittest([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                native_unittest(['--build-args', '--initialize-at-build-time'])
+                with tempfile.NamedTemporaryFile() as blacklist:
+                    if svm_java8():
+                        blacklist_args = []
+                    else:
+                        # Currently not working on Java > 8
+                        blacklist.write('com.oracle.svm.test.ServiceLoaderTest')
+                        blacklist.flush()
+                        blacklist_args = ['--blacklist', blacklist.name]
+
+                    native_unittest(['--build-args', '--initialize-at-build-time'] + blacklist_args)
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
