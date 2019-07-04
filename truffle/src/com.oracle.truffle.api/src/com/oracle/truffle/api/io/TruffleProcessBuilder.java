@@ -81,11 +81,11 @@ public final class TruffleProcessBuilder {
     private Redirect outputRedirect;
     private Redirect errorRedirect;
 
-    TruffleProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command) {
-        Objects.requireNonNull(polylgotLanguageContext, "PolylgotLanguageContext must be non null.");
+    TruffleProcessBuilder(Object polyglotLanguageContext, FileSystem fileSystem, List<String> command) {
+        Objects.requireNonNull(polyglotLanguageContext, "PolylgotLanguageContext must be non null.");
         Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
         Objects.requireNonNull(command, "Command must be non null.");
-        this.polyglotLanguageContext = polylgotLanguageContext;
+        this.polyglotLanguageContext = polyglotLanguageContext;
         this.fileSystem = fileSystem;
         this.cmd = command;
         this.inputRedirect = Redirect.PIPE;
