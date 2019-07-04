@@ -26,65 +26,14 @@ package com.oracle.svm.core.jdk;
 
 import java.util.SplittableRandom;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.core.util.VMError;
 
 public final class IdentityHashCodeSupport {
 
     private static final FastThreadLocalObject<SplittableRandom> hashCodeGeneratorTL = FastThreadLocalFactory.createObject(SplittableRandom.class);
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static int getExisting(Object obj) {
-        if (obj == null) {
-            return 0;
-        }
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
-        int hashCodeOffset = hub.getHashCodeOffset();
-        if (hashCodeOffset == 0) {
-            throw VMError.shouldNotReachHere("Identity hash code requested for illegal object");
-        }
-        UnsignedWord hashCodeOffsetWord = WordFactory.unsigned(hashCodeOffset);
-        int hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord);
-        VMError.guarantee(hashCode != 0, "Missing identity hash code");
-        return hashCode;
-    }
-
-    static int getOrCompute(Object obj) {
-        if (obj == null) {
-            return 0;
-        }
-        DynamicHub hub = KnownIntrinsics.readHub(obj);
-        int hashCodeOffset = hub.getHashCodeOffset();
-        if (hashCodeOffset == 0) {
-            throw VMError.shouldNotReachHere("Identity hash code requested for illegal object");
-        }
-        UnsignedWord hashCodeOffsetWord = WordFactory.unsigned(hashCodeOffset);
-        int hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord);
-        if (hashCode != 0) {
-            return hashCode;
-        }
-
-        /* On the first invocation for an object create a new hash code. */
-        hashCode = generateHashCode();
-
-        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, hashCodeOffset, 0, hashCode)) {
-            /* We lost the race, so there now must be a hash code installed from another thread. */
-            hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord);
-        }
-        VMError.guarantee(hashCode != 0, "Missing identity hash code");
-        return hashCode;
-    }
-
-    static int generateHashCode() {
+    protected static int generateHashCode() {
         SplittableRandom hashCodeGenerator = hashCodeGeneratorTL.get();
         if (hashCodeGenerator == null) {
             /*

@@ -75,10 +75,10 @@ public class RuntimeCodeInfo {
     /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void tearDown() {
-        for (int i = 0; i < numMethods; i++) {
-            RuntimeMethodInfoAccess.releaseMethodInfoOnTearDown(NonmovableArrays.getWord(methodInfos, i));
-        }
         NonmovableArrays.releaseUnmanagedArray(methodInfos);
+        methodInfos = NonmovableArrays.nullArray();
+
+        RuntimeMethodInfoMemory.singleton().tearDown(); // releases all CodeInfos from our table too
     }
 
     /**

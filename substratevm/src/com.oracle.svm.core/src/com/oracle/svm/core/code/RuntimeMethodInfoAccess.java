@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -40,8 +39,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
-import com.oracle.svm.core.c.UnmanagedReferenceWalkers;
-import com.oracle.svm.core.c.UnmanagedReferenceWalkers.UnmanagedObjectReferenceWalker;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
@@ -51,9 +48,6 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 public final class RuntimeMethodInfoAccess {
-    /** Reference walker. A constant field so we always use the exact same object, do not inline! */
-    private static final UnmanagedObjectReferenceWalker REFERENCE_WALKER = RuntimeMethodInfoAccess::walkReferences;
-
     private RuntimeMethodInfoAccess() {
     }
 
@@ -98,8 +92,7 @@ public final class RuntimeMethodInfoAccess {
         info.setTier(tier);
     }
 
-    private static void walkReferences(ComparableWord tag, ObjectReferenceVisitor visitor) {
-        CodeInfo info = (CodeInfo) tag;
+    static void walkReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
         NonmovableArrays.walkUnmanagedObjectArray(info.getObjectFields(), visitor);
         if (info.getCodeConstantsLive()) {
             CodeReferenceMapDecoder.walkOffsetsFromPointer(info.getCodeStart(), info.getObjectsReferenceMapEncoding(), info.getObjectsReferenceMapIndex(), visitor);
@@ -113,7 +106,7 @@ public final class RuntimeMethodInfoAccess {
 
     public static CodeInfo allocateMethodInfo() {
         CodeInfo info = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(WordFactory.unsigned(SizeOf.get(CodeInfo.class)));
-        UnmanagedReferenceWalkers.singleton().register(REFERENCE_WALKER, info);
+        RuntimeMethodInfoMemory.singleton().add(info);
         NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(CodeInfo.OBJFIELDS_COUNT);
         Object obj = CodeInfoAccess.haveAssertions() ? new UninterruptibleUtils.AtomicInteger(0) : new Object();
         NonmovableArrays.setObject(objectFields, CodeInfo.TETHER_OBJFIELD, obj);
@@ -135,8 +128,8 @@ public final class RuntimeMethodInfoAccess {
 
         @Override
         public void run() {
-            boolean unregistered = UnmanagedReferenceWalkers.singleton().unregister(REFERENCE_WALKER, codeInfo);
-            assert unregistered : "must have been present";
+            boolean removed = RuntimeMethodInfoMemory.singleton().remove(codeInfo);
+            assert removed : "must have been present";
             releaseMethodInfoMemory(codeInfo);
         }
     }
@@ -160,7 +153,6 @@ public final class RuntimeMethodInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     static void releaseMethodInfoOnTearDown(CodeInfo info) {
-        // Don't bother with the reference walker on tear-down, this is handled elsewhere
         releaseMethodInfoMemory(info);
     }
 

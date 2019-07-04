@@ -48,7 +48,9 @@ import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -58,6 +60,8 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -291,7 +295,29 @@ final class Target_java_lang_System {
 
     @Substitute
     private static int identityHashCode(Object obj) {
-        return IdentityHashCodeSupport.getOrCompute(obj);
+        if (obj == null) {
+            return 0;
+        }
+        DynamicHub hub = KnownIntrinsics.readHub(obj);
+        int hashCodeOffset = hub.getHashCodeOffset();
+        if (hashCodeOffset == 0) {
+            throw VMError.shouldNotReachHere("identityHashCode called on illegal object");
+        }
+        UnsignedWord hashCodeOffsetWord = WordFactory.unsigned(hashCodeOffset);
+        int hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord);
+        if (hashCode != 0) {
+            return hashCode;
+        }
+
+        /* On the first invocation for an object create a new hash code. */
+        hashCode = IdentityHashCodeSupport.generateHashCode();
+
+        if (!GraalUnsafeAccess.getUnsafe().compareAndSwapInt(obj, hashCodeOffset, 0, hashCode)) {
+            /* We lost the race, so there now must be a hash code installed from another thread. */
+            hashCode = ObjectAccess.readInt(obj, hashCodeOffsetWord);
+        }
+        VMError.guarantee(hashCode != 0, "Missing identity hash code");
+        return hashCode;
     }
 
     /* Ensure that we do not leak the full set of properties from the image generator. */

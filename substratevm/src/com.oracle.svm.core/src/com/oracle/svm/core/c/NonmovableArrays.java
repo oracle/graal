@@ -360,7 +360,6 @@ public final class NonmovableArrays {
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      *
      * @see ObjectReferenceWalker
-     * @see UnmanagedReferenceWalkers
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public static void walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
