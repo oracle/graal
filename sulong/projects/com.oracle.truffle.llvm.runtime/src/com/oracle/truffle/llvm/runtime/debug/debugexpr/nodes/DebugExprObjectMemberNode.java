@@ -67,6 +67,7 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
 
         if (library.isMemberExisting(baseMember, fieldName)) {
             try {
+
                 member = library.readMember(baseMember, fieldName);
                 LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
                 Object metaObj = ldv.getMetaObject();
@@ -79,7 +80,6 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
                 throw DebugExprException.symbolNotFound(this, e1.getUnknownIdentifier(), member);
             }
         } else {
-            System.out.println(baseMember + " has no existing field of " + fieldName);
             type = DebugExprType.getVoidType();
             member = null;
         }
@@ -88,7 +88,7 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         if (member != null)
-            type.parseString(member.toString());
+            return type.parseString(member.toString());
         throw DebugExprException.symbolNotFound(this, fieldName, baseMember);
     }
 }

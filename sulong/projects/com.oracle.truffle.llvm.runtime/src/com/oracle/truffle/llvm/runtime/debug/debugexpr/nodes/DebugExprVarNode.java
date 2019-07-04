@@ -34,6 +34,7 @@ import java.util.List;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -69,9 +70,17 @@ public class DebugExprVarNode extends LLVMExpressionNode {
             library.hasMembers(vars);
             try {
                 final Object memberKeys = library.getMembers(vars);
-                library.hasArrayElements(memberKeys);
+
                 if (library.isMemberReadable(vars, name)) {
                     member = library.readMember(vars, name);
+                    LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
+                    metaObj = ldv.getMetaObject();
+                    type = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
+                    return;
+                }
+                if (library.hasArrayElements(memberKeys) && library.isMemberReadable(memberKeys, name)) {
+                    member = library.readMember(memberKeys, name);
+                    System.out.println("Read memberkey " + name + "|" + member.toString());
                     LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
                     metaObj = ldv.getMetaObject();
                     type = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
@@ -82,13 +91,13 @@ public class DebugExprVarNode extends LLVMExpressionNode {
                 // TODO
                 // member has no value, e.g. if the compiler has eliminated unused symbols
                 // OR metaObj is no primitive type
+                e.printStackTrace();
             } catch (UnsupportedMessageException e) {
                 // should only happen if hasMembers == false
             } catch (UnknownIdentifierException e) {
-                // should not happen
+                throw DebugExprException.symbolNotFound(this, e.getUnknownIdentifier(), member);
             }
         }
-        System.out.println(name + " not found");
         type = DebugExprType.getVoidType();
         value = null;
     }

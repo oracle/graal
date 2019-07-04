@@ -4,6 +4,8 @@ import java.util.HashMap;
 
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
@@ -226,7 +228,14 @@ public class DebugExprType {
             LLVMSourceArrayLikeType arrayType = (LLVMSourceArrayLikeType) metaObj;
             DebugExprType innerType = getTypeFromSymbolTableMetaObject(arrayType.getElementType(0));
             return new DebugExprType(Kind.ARRAY, innerType);
+        } else if (metaObj instanceof LLVMSourceDecoratorType) {
+            LLVMSourceDecoratorType arrayType = (LLVMSourceDecoratorType) metaObj;
+            return new DebugExprType(Kind.STRUCT, null);
+        } else if (metaObj instanceof LLVMSourcePointerType) {
+            LLVMSourcePointerType pointerType = (LLVMSourcePointerType) metaObj;
+            return new DebugExprType(Kind.POINTER, null);
         } else {
+            System.out.println(metaObj + " is type of " + metaObj.getClass().getName());
             return DebugExprType.getVoidType();
         }
     }
@@ -253,6 +262,10 @@ public class DebugExprType {
             case DOUBLE:
             case LONG_DOUBLE:
                 return Double.parseDouble(s);
+            case STRUCT:
+            case ARRAY:
+            case POINTER:
+                return s;
             default:
                 return null;
         }
