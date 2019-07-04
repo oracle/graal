@@ -55,7 +55,7 @@ final class SourceAccessor extends Accessor {
 
     static final SourceAccessor ACCESSOR = new SourceAccessor();
 
-    protected SourceAccessor() {
+    private SourceAccessor() {
     }
 
     @Override

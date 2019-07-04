@@ -57,7 +57,6 @@ import org.graalvm.polyglot.io.ProcessHandler.Redirect;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.impl.Accessor;
 
 /**
  * A builder used to create an external subprocess. The {@code TruffleProcessBuilder} instance
@@ -277,7 +276,7 @@ public final class TruffleProcessBuilder {
      * @since 19.2.0
      */
     public Redirect createRedirectToStream(OutputStream stream) {
-        return AccessIO.engineAccess().createRedirectToOutputStream(polyglotLanguageContext, stream);
+        return IOAccessor.engineAccess().createRedirectToOutputStream(polyglotLanguageContext, stream);
     }
 
     /**
@@ -315,7 +314,7 @@ public final class TruffleProcessBuilder {
         if (clearEnvironment) {
             useEnv = env == null ? Collections.emptyMap() : Collections.unmodifiableMap(env);
         } else {
-            useEnv = AccessIO.engineAccess().getProcessEnvironment(polyglotLanguageContext);
+            useEnv = IOAccessor.engineAccess().getProcessEnvironment(polyglotLanguageContext);
             if (env != null) {
                 useEnv = new HashMap<>(useEnv);
                 useEnv.putAll(env);
@@ -329,7 +328,7 @@ public final class TruffleProcessBuilder {
             useCwd = fileSystem.toAbsolutePath(fileSystem.parsePath("")).toString();
         }
         try {
-            return AccessIO.engineAccess().createSubProcess(
+            return IOAccessor.engineAccess().createSubProcess(
                             polyglotLanguageContext,
                             useCmd,
                             useCwd,
@@ -344,7 +343,7 @@ public final class TruffleProcessBuilder {
             if (se instanceof TruffleException) {
                 throw se;
             } else {
-                throw AccessIO.languageAccess().throwSecurityException(se.getMessage());
+                throw IOAccessor.languageAccess().throwSecurityException(se.getMessage());
             }
         } catch (Throwable t) {
             throw wrapHostException(t);
@@ -352,10 +351,10 @@ public final class TruffleProcessBuilder {
     }
 
     private <T extends Throwable> RuntimeException wrapHostException(T t) {
-        if (AccessIO.engineAccess().hasDefaultProcessHandler(polyglotLanguageContext)) {
+        if (IOAccessor.engineAccess().hasDefaultProcessHandler(polyglotLanguageContext)) {
             throw sthrow(t);
         }
-        throw AccessIO.engineAccess().wrapHostException(null, polyglotLanguageContext, t);
+        throw IOAccessor.engineAccess().wrapHostException(null, polyglotLanguageContext, t);
     }
 
     @SuppressWarnings("unchecked")
@@ -363,28 +362,4 @@ public final class TruffleProcessBuilder {
         throw (T) t;
     }
 
-    static final AccessIO IO = new AccessIO();
-
-    static final class AccessIO extends Accessor {
-
-        @Override
-        protected Accessor.IOSupport ioSupport() {
-            return new IOSupportImpl();
-        }
-
-        static Accessor.EngineSupport engineAccess() {
-            return IO.engineSupport();
-        }
-
-        static Accessor.LanguageSupport languageAccess() {
-            return IO.languageSupport();
-        }
-    }
-
-    static final class IOSupportImpl extends Accessor.IOSupport {
-        @Override
-        public TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command) {
-            return new TruffleProcessBuilder(polylgotLanguageContext, fileSystem, command);
-        }
-    }
 }

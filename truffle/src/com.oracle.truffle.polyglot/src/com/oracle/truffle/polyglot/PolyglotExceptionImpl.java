@@ -565,7 +565,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         }
 
         static boolean isGuestCall(StackTraceElement element) {
-            return isLazyStackTraceElement(element) || VMAccessor.SPI.isGuestCallStackElement(element);
+            return isLazyStackTraceElement(element) || VMAccessor.ACCESSOR.isGuestCallStackElement(element);
         }
 
         static boolean isHostToGuest(StackTraceElement element) {

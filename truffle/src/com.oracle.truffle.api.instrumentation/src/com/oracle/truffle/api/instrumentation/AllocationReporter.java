@@ -338,7 +338,7 @@ public final class AllocationReporter {
             return;
         }
         // TruffleObject is O.K.
-        boolean isTO = InstrumentationHandler.ACCESSOR.isTruffleObject(value);
+        boolean isTO = InstrumentAccessor.ACCESSOR.isTruffleObject(value);
         assert isTO : "Wrong value class, TruffleObject is required. Was: " + value.getClass().getName();
     }
 

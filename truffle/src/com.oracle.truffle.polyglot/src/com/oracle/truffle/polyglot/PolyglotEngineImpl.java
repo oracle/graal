@@ -192,7 +192,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         this.contextClassLoader = contextClassLoader;
         this.boundEngine = boundEngine;
         this.logHandler = logHandler;
-        this.castUnsafe = VMAccessor.SPI.getCastUnsafe();
+        this.castUnsafe = VMAccessor.ACCESSOR.getCastUnsafe();
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -217,7 +217,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
 
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
-        OptionDescriptors compilerOptionDescriptors = VMAccessor.SPI.getCompilerOptions();
+        OptionDescriptors compilerOptionDescriptors = VMAccessor.ACCESSOR.getCompilerOptions();
         this.engineOptions = OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
         this.engineOptionValues = new OptionValuesImpl(this, engineOptions);
 

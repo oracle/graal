@@ -85,7 +85,7 @@ public final class Scope {
     }
 
     private static boolean assertTruffleObject(Object obj) {
-        assert TruffleLanguage.AccessAPI.interopAccess().isTruffleObject(obj) : Objects.toString(obj);
+        assert LanguageAccessor.interopAccess().isTruffleObject(obj) : Objects.toString(obj);
         return true;
     }
 
@@ -95,7 +95,7 @@ public final class Scope {
 
     private static void assertNullOrInteropType(Object obj) {
         if (obj != null) {
-            TruffleLanguage.AccessAPI.interopAccess().checkInteropType(obj);
+            LanguageAccessor.interopAccess().checkInteropType(obj);
         }
     }
 
