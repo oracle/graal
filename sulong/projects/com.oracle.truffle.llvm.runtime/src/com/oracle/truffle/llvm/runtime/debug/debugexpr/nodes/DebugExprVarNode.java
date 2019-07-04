@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -110,8 +111,9 @@ public class DebugExprVarNode extends LLVMExpressionNode {
     public Object executeGeneric(VirtualFrame frame) {
         findValue();
         if (value == null)
-            return DebugExprNodeFactory.noObjNode.executeGeneric(frame);
-        return value;
+            throw DebugExprException.symbolNotFound(this, name, null);
+        else
+            return value;
     }
 
     public DebugExprFunctionCallNode createFunctionCall(List<DebugExpressionPair> arguments, Iterable<Scope> globalScopes) {

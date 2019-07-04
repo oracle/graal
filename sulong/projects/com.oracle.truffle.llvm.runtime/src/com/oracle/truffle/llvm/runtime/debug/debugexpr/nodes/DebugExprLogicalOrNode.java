@@ -27,40 +27,26 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
+package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class DebugExprParser {
-    private final Parser parser;
-    private final Scanner scanner;
-    private final CocoInputStream cis;
+@NodeInfo(shortName = "||")
+public class DebugExprLogicalOrNode extends DebugExprShortCircuitEvaluationNode {
 
-    public DebugExprParser(InlineParsingRequest request, ContextReference<LLVMContext> contextReference, Iterable<Scope> globalScopes) {
-        cis = new CocoInputStream(request.getSource().getCharacters());
-        scanner = new Scanner(cis);
-        parser = new Parser(scanner);
-
-        final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), contextReference.get());
-        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(contextReference, scopes, globalScopes);
-        parser.setNodeFactory(nodeFactory);
+    public DebugExprLogicalOrNode(LLVMExpressionNode leftNode, LLVMExpressionNode rightNode) {
+        super(leftNode, rightNode);
     }
 
-    public LLVMExpressionNode parse() throws DebugExprException {
-
-        parser.Parse();
-        LLVMExpressionNode root = parser.GetASTRoot();
-        if (parser.errors.count == 0) { // parsed correctly
-            return root;
-        } else {
-            throw DebugExprException.create(root, parser.ParseErrors());
-        }
-
+    @Override
+    protected boolean isEvaluateRight(boolean leftValue) {
+        return !leftValue;
     }
+
+    @Override
+    protected boolean execute(boolean leftValue, boolean rightValue) {
+        return leftValue || rightValue;
+    }
+
 }

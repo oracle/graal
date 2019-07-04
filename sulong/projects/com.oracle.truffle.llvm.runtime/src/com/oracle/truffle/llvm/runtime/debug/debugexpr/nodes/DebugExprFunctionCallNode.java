@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -46,12 +48,12 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
     private final String functionName;
     private DebugExprType type;
     private Object member;
-    private List<DebugExpressionPair> arguments;
+    @Children private List<LLVMExpressionNode> arguments;
     private Iterable<Scope> scopes;
 
     public DebugExprFunctionCallNode(String functionName, List<DebugExpressionPair> arguments, Iterable<Scope> scopes) {
         this.functionName = functionName;
-        this.arguments = arguments;
+        this.arguments = arguments.stream().map(dp -> dp.getNode()).collect(Collectors.toList());
         this.scopes = scopes;
         this.type = null;
     }
@@ -79,7 +81,7 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
                 member = library.readMember(vars, functionName);
                 if (library.isExecutable(member)) {
                     try {
-                        Object[] argumentArr = arguments.stream().map(dp -> dp.getNode().executeGeneric(frame)).toArray();
+                        Object[] argumentArr = arguments.stream().map(n -> n.executeGeneric(frame)).toArray();
                         return library.execute(member, argumentArr);
                     } catch (UnsupportedTypeException e) {
                         // TODO Auto-generated catch block
@@ -89,17 +91,16 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
                         e.printStackTrace();
                     }
                 } else {
-                    System.out.println("Member " + member + "is not invocable");
+                    throw DebugExprException.create(this, functionName + " is not invocable");
                 }
             } catch (UnsupportedMessageException e1) {
                 // TODO Auto-generated catch block
                 e1.printStackTrace();
             } catch (UnknownIdentifierException e1) {
-                // TODO Auto-generated catch block
-                e1.printStackTrace();
+                throw DebugExprException.symbolNotFound(this, e1.getUnknownIdentifier(), member);
             }
 
         }
-        return DebugExprNodeFactory.noObjNode.executeGeneric(frame);
+        throw DebugExprException.symbolNotFound(this, functionName, null);
     }
 }

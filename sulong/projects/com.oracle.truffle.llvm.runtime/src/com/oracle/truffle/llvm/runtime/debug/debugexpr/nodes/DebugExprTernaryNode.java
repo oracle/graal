@@ -29,20 +29,41 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(value = "condition", type = LLVMExpressionNode.class)
-@NodeChild(value = "leftNode", type = LLVMExpressionNode.class)
-@NodeChild(value = "rightNode", type = LLVMExpressionNode.class)
-public abstract class DebugExprTernaryNode extends LLVMExpressionNode {
-    public abstract Object executeWithTarget(Object cond, Object left, Object right);
+public class DebugExprTernaryNode extends LLVMExpressionNode {
 
-    public abstract static class DebugExprConditionalNode extends DebugExprTernaryNode {
-        @Specialization
-        protected Object and(boolean condition, Object left, Object right) {
-            return condition ? left : right;
+    @Child private LLVMExpressionNode condition;
+    @Child private LLVMExpressionNode thenNode;
+    @Child private LLVMExpressionNode elseNode;
+
+    private final ConditionProfile conditionProfile;
+
+    public DebugExprTernaryNode(LLVMExpressionNode condition, LLVMExpressionNode thenNode, LLVMExpressionNode elseNode) {
+        this.condition = condition;
+        this.thenNode = thenNode;
+        this.elseNode = elseNode;
+        this.conditionProfile = ConditionProfile.createCountingProfile();
+    }
+
+    private boolean evaluateCondition(VirtualFrame frame) {
+        try {
+            return condition.executeI1(frame);
+        } catch (UnexpectedResultException e) {
+            throw DebugExprException.typeError(this, e.getResult());
+        }
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        if (conditionProfile.profile(evaluateCondition(frame))) {
+            return thenNode.executeGeneric(frame);
+        } else {
+            return elseNode.executeGeneric(frame);
         }
     }
 

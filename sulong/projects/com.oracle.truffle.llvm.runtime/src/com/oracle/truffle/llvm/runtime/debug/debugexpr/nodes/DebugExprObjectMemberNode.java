@@ -33,10 +33,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@NodeInfo(shortName = ".")
 public class DebugExprObjectMemberNode extends LLVMExpressionNode {
 
     private final String fieldName;
@@ -73,18 +76,19 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
                 // TODO Auto-generated catch block
                 e1.printStackTrace();
             } catch (UnknownIdentifierException e1) {
-                // TODO Auto-generated catch block
-                e1.printStackTrace();
+                throw DebugExprException.symbolNotFound(this, e1.getUnknownIdentifier(), member);
             }
         } else {
             System.out.println(baseMember + " has no existing field of " + fieldName);
-            type = DebugExprNodeFactory.noObjPair.getType();
+            type = DebugExprType.getVoidType();
             member = null;
         }
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        return member == null ? "field " + fieldName + " not found" : type.parseString(member.toString());
+        if (member != null)
+            type.parseString(member.toString());
+        throw DebugExprException.symbolNotFound(this, fieldName, baseMember);
     }
 }

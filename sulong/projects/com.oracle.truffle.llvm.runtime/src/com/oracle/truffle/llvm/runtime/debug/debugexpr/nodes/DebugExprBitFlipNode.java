@@ -1,13 +1,17 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(value = "child", type = LLVMExpressionNode.class)
 public abstract class DebugExprBitFlipNode extends LLVMExpressionNode {
     public abstract Object executeWithTarget(Object child);
 
+    @NodeInfo(shortName = "~")
     public abstract static class BitFlipNode extends DebugExprBitFlipNode {
         @Specialization
         protected boolean flip(boolean child) {
@@ -38,6 +42,12 @@ public abstract class DebugExprBitFlipNode extends LLVMExpressionNode {
         protected long flip(long child) {
             return ~child;
         }
+
+        @Fallback
+        protected Object typeError(Object child) {
+            throw DebugExprException.typeError(this, child);
+        }
+
     }
 
 }

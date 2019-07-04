@@ -29,26 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-/**
- * DebugExprErrorNode is used if the DebugExprParser parses the given expression with errors.
- */
-public class DebugExprErrorNode extends LLVMExpressionNode {
-    private final Object errorObject;
+@NodeInfo(shortName = "&&")
+public class DebugExprLogicalAndNode extends DebugExprShortCircuitEvaluationNode {
 
-    private DebugExprErrorNode(Object errorObj) {
-        this.errorObject = errorObj;
-    }
-
-    public static DebugExprErrorNode create(Object errorObj) {
-        return new DebugExprErrorNode(errorObj);
+    public DebugExprLogicalAndNode(LLVMExpressionNode leftNode, LLVMExpressionNode rightNode) {
+        super(leftNode, rightNode);
     }
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return errorObject;
+    protected boolean isEvaluateRight(boolean leftValue) {
+        return leftValue;
+    }
+
+    @Override
+    protected boolean execute(boolean leftValue, boolean rightValue) {
+        return leftValue && rightValue;
     }
 
 }

@@ -94,7 +94,7 @@ DebugExpr											(. DebugExpressionPair p=null; .)
 Expr<out p> 										(. if(errors.count==0) astRoot =p.getNode(); .)
 .
 
-PrimExpr<out DebugExpressionPair p>					(. p=NF.errorObjPair; .)
+PrimExpr<out DebugExpressionPair p>					(. p=null; .)
 =
 ident 												(. p = NF.createVarNode(t.val);.)
 |
@@ -119,7 +119,7 @@ PrimExpr<out p>
 	|
 	 "." ident										(. p = NF.createObjectMember(p, t.val); .)
 	|
-	 "->" ident										(. p = NF.errorObjPair; .)
+	 "->" ident										(. SemErr("pointer access not available yet"); .)
 }
 .
 

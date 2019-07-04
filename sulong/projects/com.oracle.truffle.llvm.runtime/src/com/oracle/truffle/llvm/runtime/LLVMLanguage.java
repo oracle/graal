@@ -152,15 +152,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     try {
                         // try to execute node
                         return String.valueOf(root.executeGeneric(frame));
-                    } catch (UnsupportedSpecializationException use) {
-                        // return error string node
-                        return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
-                    } catch (DebugExprException dee) {
+                    } catch (DebugExprException e) {
                         // use existing exception if available
-                        if (dee.exceptionNode == null)
-                            return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
-                        else
-                            return dee.exceptionNode.executeGeneric(frame);
+                        return e.getMessage();
                     }
                 }
             };

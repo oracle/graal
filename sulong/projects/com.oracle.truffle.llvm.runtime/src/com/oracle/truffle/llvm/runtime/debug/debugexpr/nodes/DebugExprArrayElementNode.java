@@ -34,13 +34,16 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@NodeInfo(shortName = "[]")
 public class DebugExprArrayElementNode extends LLVMExpressionNode {
 
-    private LLVMExpressionNode indexNode;
+    @Child private LLVMExpressionNode indexNode;
     private DebugExprType type;
     private Object member;
     private Object baseMember;
@@ -70,7 +73,7 @@ public class DebugExprArrayElementNode extends LLVMExpressionNode {
                 // index (=e.getResult()) is no Integer but a LLVMDebugObject$Primitive instead
                 idx = Integer.parseInt(e.getResult().toString());
             } catch (NumberFormatException e1) {
-                return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
+                throw DebugExprException.typeError(this, e.getResult());
             }
         }
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
@@ -88,13 +91,11 @@ public class DebugExprArrayElementNode extends LLVMExpressionNode {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             } catch (InvalidArrayIndexException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                throw DebugExprException.create(this, "Invalid array index: " + e.getInvalidIndex());
             } catch (UnknownIdentifierException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                throw DebugExprException.symbolNotFound(this, e.getUnknownIdentifier(), member);
             }
         }
-        return DebugExprNodeFactory.errorObjNode.executeGeneric(frame);
+        throw DebugExprException.create(this, "cannot evaluate expression");
     }
 }

@@ -205,7 +205,7 @@ public class Parser {
 
     DebugExpressionPair PrimExpr() {
         DebugExpressionPair p;
-        p = NF.errorObjPair;
+        p = null;
         switch (la.kind) {
             case 1: {
                 Get();
@@ -264,7 +264,7 @@ public class Parser {
             } else {
                 Get();
                 Expect(1);
-                p = NF.errorObjPair;
+                SemErr("pointer access not available yet");
             }
         }
         return p;
