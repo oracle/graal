@@ -68,7 +68,7 @@ public final class SulongSuite extends BaseSuiteHarness {
         return f -> {
             boolean isBC = f.getFileName().toString().endsWith(".bc");
             boolean isOut = f.getFileName().toString().endsWith(".out");
-            return isBC || (isOut && !IS_MAC);
+            return isBC || isOut;
         };
     }
 

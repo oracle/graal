@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import java.nio.file.Path;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
+import com.oracle.truffle.api.CompilerDirectives;
 
-    @Specialization
-    protected Object doIntrinsic(Object value,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached("createReadString()") LLVMReadStringNode readId) {
-        String name = readId.executeWithTarget(value);
-        context.addExternalLibrary(name, true, "<truffle_load_library>");
-        return null;
+/**
+ * Encapsulates logic for locating libraries.
+ */
+public abstract class LibraryLocator {
+
+    @CompilerDirectives.TruffleBoundary
+    public Path locate(LLVMContext context, String lib, Object reason) {
+        context.traceLoader("\n");
+        context.traceLoaderFind(lib, reason);
+        return locateLibrary(context, lib, reason);
     }
+
+    protected abstract Path locateLibrary(LLVMContext context, String lib, Object reason);
+
 }

@@ -32,7 +32,10 @@ package com.oracle.truffle.llvm.parser.elf;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ElfDynamicSection {
@@ -114,8 +117,8 @@ public final class ElfDynamicSection {
         return getEntry(DT_NEEDED);
     }
 
-    public List<String> getDTRunPath() {
-        return getEntry(DT_RUNPATH);
+    public Stream<String> getDTRunPathStream() {
+        return getEntryStream(DT_RUNPATH);
     }
 
     public List<String> getDTRPath() {
@@ -132,7 +135,11 @@ public final class ElfDynamicSection {
     }
 
     private List<String> getEntry(int tag) {
-        return Arrays.stream(entries).filter(e -> e.getTag() == tag).map(e -> getString(e.getValue())).collect(Collectors.toList());
+        return getEntryStream(tag).collect(Collectors.toList());
+    }
+
+    private Stream<String> getEntryStream(int tag) {
+        return Arrays.stream(entries).filter(e -> e.getTag() == tag).map(e -> getString(e.getValue()));
     }
 
     private String getString(long offset) {

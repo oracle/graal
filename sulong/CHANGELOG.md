@@ -7,6 +7,7 @@ New features:
 
 Improvements:
 
+* Support locating dynamic libraries relatively using (`rpath`).
 * Improved display of pointers to foreign objects in the LLVM debugger.
   When inspecting pointer values that point somewhere inside a foreign object,
   the debugger now allows inspecting the original foreign object, not just the

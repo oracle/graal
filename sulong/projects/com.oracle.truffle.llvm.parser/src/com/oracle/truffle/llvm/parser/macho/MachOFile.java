@@ -29,8 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.macho.MachOSegmentCommand.MachOSection;
@@ -74,14 +77,29 @@ public final class MachOFile {
         return header;
     }
 
-    public List<String> getDyLibs() {
-        List<String> dylibs = new ArrayList<>();
-        for (MachOLoadCommand lc : loadCommandTable.getLoadCommands()) {
-            if (lc instanceof MachODylibCommand) {
-                dylibs.add(((MachODylibCommand) lc).getName());
-            }
+    private Stream<MachOLoadCommand> getLoadCommand(int cmdId) {
+        return Arrays.stream(loadCommandTable.getLoadCommands()).filter(cmd -> cmd.getCmd() == cmdId);
+    }
+
+    public List<String> getDyLibs(String origin) {
+        return getLoadCommand(MachOLoadCommand.LC_LOAD_DYLIB).map(MachODylibCommand.class::cast).map(e -> fixupRPath(origin, e.getName())).collect(Collectors.toList());
+    }
+
+    public List<String> getRPaths(String origin) {
+        return getLoadCommand(MachOLoadCommand.LC_RPATH).map(MachORPathCommand.class::cast).map(e -> fixupRPath(origin, e.getName())).collect(Collectors.toList());
+    }
+
+    private static final Pattern RPATH_PATTERN = Pattern.compile("@loader_path");
+
+    /**
+     * Replaces special rpath tokens. Currently, only {@code @loader_path} is supported and will be
+     * replace by the directory containing executable or shared object.
+     */
+    private static String fixupRPath(String origin, String path) {
+        if (origin == null) {
+            return path;
         }
-        return dylibs;
+        return RPATH_PATTERN.matcher(path).replaceAll(origin);
     }
 
     public ByteSequence extractBitcode() {
