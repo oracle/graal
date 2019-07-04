@@ -185,7 +185,7 @@ public final class Safepoint {
 
         if (Master.singleton().getRequestingThread() == myself) {
             /* the safepoint master thread must not stop at a safepoint nor trigger a callback */
-            assert ThreadingSupportImpl.isRecurringCallbackPaused();
+            assert !ThreadingSupportImpl.isRecurringCallbackRegistered(myself) || ThreadingSupportImpl.isRecurringCallbackPaused();
         } else {
             do {
                 if (Master.singleton().getRequestingThread().isNonNull()) {
