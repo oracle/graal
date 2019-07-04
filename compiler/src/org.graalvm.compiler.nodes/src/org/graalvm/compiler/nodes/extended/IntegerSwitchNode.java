@@ -177,16 +177,41 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         return value == switchValue;
     }
 
+    private List<AbstractBeginNode> untargettedSuccessors() {
+        // This switch may be malformed. Find all successors that no key map to, and attach them to
+        // this before killing it after switch folding.
+        boolean[] checker = new boolean[successors.size()];
+        for (int successorIndex : keySuccessors) {
+            checker[successorIndex] = true;
+        }
+        // default successor is always reachable
+        checker[defaultSuccessorIndex()] = true;
+        List<AbstractBeginNode> result = new ArrayList<>();
+        for (int index = 0; index < checker.length; index++) {
+            if (!checker[index]) {
+                result.add(successors.get(index));
+            }
+        }
+        return result;
+    }
+
     @Override
     public void cutOffCascadeNode() {
-        AbstractBeginNode defaultNode = defaultSuccessor();
+        List<AbstractBeginNode> toKill = untargettedSuccessors();
+        toKill.add(defaultSuccessor());
         clearSuccessors();
-        addSuccessorForDeletion(defaultNode);
+        for (AbstractBeginNode begin : toKill) {
+            addSuccessorForDeletion(begin);
+        }
     }
 
     @Override
     public void cutOffLowestCascadeNode() {
+        List<AbstractBeginNode> toKill = untargettedSuccessors();
         clearSuccessors();
+        for (AbstractBeginNode begin : toKill) {
+            addSuccessorForDeletion(begin);
+        }
     }
 
     @Override

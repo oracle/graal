@@ -317,7 +317,7 @@ public interface SwitchFoldable extends NodeInterface {
                 data = keyData.fromKey(key);
                 if (data.keySuccessor != KeyData.KEY_UNKNOWN) {
                     // Unreachable key: kill it manually at the end
-                    if (!newSuccessors.contains(keySuccessor) && !duplicates.contains(keySuccessor)) {
+                    if (!newSuccessors.contains(keySuccessor) && !duplicates.contains(keySuccessor) && keySuccessor.isAlive()) {
                         // This might be a false alert, if one of the next keys points to it.
                         duplicates.add(keySuccessor);
                     }
@@ -488,6 +488,7 @@ public interface SwitchFoldable extends NodeInterface {
         for (AbstractBeginNode duplicate : potentiallyUnreachable.list) {
             if (duplicate.predecessor() == null) {
                 // Make sure the duplicate is not reachable.
+                assert duplicate.isAlive();
                 GraphUtil.killCFG(duplicate);
             }
         }
