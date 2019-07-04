@@ -461,10 +461,10 @@ def svm_gate_body(args, tasks):
                 finally:
                     remove_tree(junit_tmp_dir)
 
-    build_native_image_image(config=_graalvm_js_config)
-    with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config) as native_image:
-        with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
-            if t:
+    with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
+        if t:
+            build_native_image_image(config=_graalvm_js_config)
+            with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config) as native_image:
                 js = build_js(native_image)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
