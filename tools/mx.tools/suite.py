@@ -101,21 +101,15 @@ suite = {
     "libraries": {
        "NanoHTTPD" : {
           "path" : "lib/nanohttpd-2.3.1.jar",
-          "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/nanohttpd/nanohttpd/2.3.1/nanohttpd-2.3.1.jar",
-          ],
           "sha1" : "a8d54d1ca554a77f377eff6bf9e16ca8383c8f6c",
           "maven" : {
             "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd-webserver",
+            "artifactId" : "nanohttpd",
             "version" : "2.3.1",
           }
         },
        "NanoHTTPD-WebSocket" : {
           "path" : "lib/nanohttpd-websocket-2.3.1.jar",
-          "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/nanohttpd/nanohttpd-websocket/2.3.1/nanohttpd-websocket-2.3.1.jar",
-          ],
           "sha1" : "f2cfb09cee12469ff64f0d698b13de19903bb4f7",
           "maven" : {
             "groupId" : "org.nanohttpd",
@@ -131,9 +125,6 @@ suite = {
         },
         "Java-WebSocket" : {
             "path" : "lib/Java-WebSocket-1.3.9.jar",
-            "urls" : [
-                "https://search.maven.org/remotecontent?filepath=org/java-websocket/Java-WebSocket/1.3.9/Java-WebSocket-1.3.9.jar",
-            ],
             "sha1" : "e6e60889b7211a80b21052a249bd7e0f88f79fee",
             "maven" : {
                 "groupId" : "org.java-websocket",
