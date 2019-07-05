@@ -77,11 +77,26 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         this.keys = keys;
         assert value.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger();
         assert assertSorted();
+        assert assertNoUntargettedSuccessor();
     }
 
     private boolean assertSorted() {
         for (int i = 1; i < keys.length; i++) {
             assert keys[i - 1] < keys[i];
+        }
+        return true;
+    }
+
+    private boolean assertNoUntargettedSuccessor() {
+        boolean[] checker = new boolean[successors.size()];
+        for (int successorIndex : keySuccessors) {
+            checker[successorIndex] = true;
+        }
+        checker[defaultSuccessorIndex()] = true;
+        for (boolean b : checker) {
+            if (!b) {
+                return false;
+            }
         }
         return true;
     }
@@ -177,41 +192,16 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         return value == switchValue;
     }
 
-    private List<AbstractBeginNode> untargettedSuccessors() {
-        // This switch may be malformed. Find all successors that no key map to, and attach them to
-        // this before killing it after switch folding.
-        boolean[] checker = new boolean[successors.size()];
-        for (int successorIndex : keySuccessors) {
-            checker[successorIndex] = true;
-        }
-        // default successor is always reachable
-        checker[defaultSuccessorIndex()] = true;
-        List<AbstractBeginNode> result = new ArrayList<>();
-        for (int index = 0; index < checker.length; index++) {
-            if (!checker[index]) {
-                result.add(successors.get(index));
-            }
-        }
-        return result;
-    }
-
     @Override
     public void cutOffCascadeNode() {
-        List<AbstractBeginNode> toKill = untargettedSuccessors();
-        toKill.add(defaultSuccessor());
+        AbstractBeginNode toKill = defaultSuccessor();
         clearSuccessors();
-        for (AbstractBeginNode begin : toKill) {
-            addSuccessorForDeletion(begin);
-        }
+        addSuccessorForDeletion(toKill);
     }
 
     @Override
     public void cutOffLowestCascadeNode() {
-        List<AbstractBeginNode> toKill = untargettedSuccessors();
         clearSuccessors();
-        for (AbstractBeginNode begin : toKill) {
-            addSuccessorForDeletion(begin);
-        }
     }
 
     @Override

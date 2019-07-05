@@ -336,6 +336,7 @@ public interface SwitchFoldable extends NodeInterface {
             }
             if (keySuccessor.isUnregistered()) {
                 // Shortcut map check if uninitialized node.
+                data.keySuccessor = newSuccessors.size();
                 newSuccessors.addUnique(keySuccessor);
             } else {
                 int pos = duplicateIndex(keySuccessor, newSuccessors);
@@ -448,8 +449,7 @@ public interface SwitchFoldable extends NodeInterface {
         // Spin an adapter if the value is narrower than an int
         ValueNode adapter = null;
         if (((IntegerStamp) switchStamp).getBits() < 32) {
-            adapter = new SignExtendNode(switchValue, 32);
-            graph.addOrUnique(adapter);
+            adapter = graph.addOrUnique(new SignExtendNode(switchValue, 32));
         } else {
             adapter = switchValue;
         }
