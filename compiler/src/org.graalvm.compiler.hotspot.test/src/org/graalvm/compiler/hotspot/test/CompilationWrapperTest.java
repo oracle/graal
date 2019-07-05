@@ -29,6 +29,11 @@ import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -209,10 +214,9 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             System.out.println(proc);
         }
 
-        List<Probe> probes = new ArrayList<>(initialProbes);
-        Probe diagnosticProbe = null;
-        if (!extraVmArgs.contains("-Dgraal.TruffleCompilationExceptionsAreFatal=true")) {
-            diagnosticProbe = new Probe("Graal diagnostic output saved in ", 1);
+        try {
+            List<Probe> probes = new ArrayList<>(initialProbes);
+            Probe diagnosticProbe = new Probe("Graal diagnostic output saved in ", 1);
             probes.add(diagnosticProbe);
             probes.add(new Probe("Forced crash after compiling", Integer.MAX_VALUE) {
                 @Override
@@ -220,22 +224,20 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     return actualOccurrences > 0 ? null : "expected at least 1 occurrence";
                 }
             });
-        }
 
-        for (String line : proc.output) {
-            for (Probe probe : probes) {
-                if (probe.matches(line)) {
-                    break;
+            for (String line : proc.output) {
+                for (Probe probe : probes) {
+                    if (probe.matches(line)) {
+                        break;
+                    }
                 }
             }
-        }
-        for (Probe probe : probes) {
-            String error = probe.test();
-            if (error != null) {
-                Assert.fail(String.format("Did not find expected occurences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
+            for (Probe probe : probes) {
+                String error = probe.test();
+                if (error != null) {
+                    Assert.fail(String.format("Did not find expected occurences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
+                }
             }
-        }
-        if (diagnosticProbe != null) {
             String line = diagnosticProbe.lastMatchingLine;
             int substringStart = line.indexOf(diagnosticProbe.substring);
             int substringLength = diagnosticProbe.substring.length();
@@ -263,8 +265,22 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                 }
             } finally {
                 zip.delete();
-                dumpPath.delete();
             }
+        } finally {
+            Path directory = dumpPath.toPath();
+            Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         }
     }
 }
