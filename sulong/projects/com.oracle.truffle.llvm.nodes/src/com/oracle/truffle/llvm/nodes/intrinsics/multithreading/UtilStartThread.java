@@ -33,7 +33,12 @@ public class UtilStartThread {
             }
             // pthread_exit throws a control flow exception to stop the thread
             try {
-                ctxRef.get().pthreadCallTarget.call(startRoutine, arg);
+                Object retVal = ctxRef.get().pthreadCallTarget.call(startRoutine, arg);
+                // no null values in concurrent hash map allowed
+                if (retVal == null) {
+                    retVal = 0;
+                }
+                ctxRef.get().retValStorage.put(Thread.currentThread().getId(), retVal);
             } catch (PThreadExitException e) {
 
             }
@@ -99,8 +104,7 @@ public class UtilStartThread {
             frame.setObject(argSlot, arg);
             frame.setObject(spSlot, sp);
             // execute it
-            callNode.executeGeneric(frame);
-            return null;
+            return callNode.executeGeneric(frame);
         }
     }
 }

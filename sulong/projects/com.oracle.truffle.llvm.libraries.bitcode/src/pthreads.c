@@ -45,9 +45,6 @@ int __sulong_getEbusy() {
 int __sulong_getEinval() {
 	return EINVAL;
 }
-int __sulong_test() {
-	return 15;
-}
 long __sulong_getNanoSeconds(struct timespec *time) {
 	return time->tv_nsec;
 }

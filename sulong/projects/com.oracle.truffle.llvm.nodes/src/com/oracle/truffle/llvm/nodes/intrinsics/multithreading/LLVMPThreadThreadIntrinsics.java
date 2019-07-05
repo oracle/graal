@@ -31,10 +31,10 @@ public class LLVMPThreadThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "startRoutine")
     @NodeChild(type = LLVMExpressionNode.class, value = "arg")
     public abstract static class LLVMPThreadCreate extends LLVMBuiltin {
-        // TODO: pass store in constructor
         @Child
         LLVMStoreNode store = null;
 
+        // no relevant error code handling here
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object thread, Object attr, Object startRoutine, Object arg, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             // create store node
@@ -50,11 +50,11 @@ public class LLVMPThreadThreadIntrinsics {
             UtilAccess.putLongThread(ctxRef.get().threadStorage, t.getId(), t);
             // start thread
             t.start();
-            // TODO: error handling
             return 0;
         }
     }
 
+    // no error codes defined here
     @NodeChild(type = LLVMExpressionNode.class, value = "retval")
     public abstract static class LLVMPThreadExit extends LLVMBuiltin {
         @Specialization
