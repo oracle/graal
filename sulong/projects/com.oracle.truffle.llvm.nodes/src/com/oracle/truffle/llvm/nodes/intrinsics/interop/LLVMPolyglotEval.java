@@ -114,11 +114,9 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
                         @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
             LLVMContext ctx = ctxRef.get();
             Env env = ctx.getEnv();
-            LanguageInfo lang = env.getLanguages().get(id);
+            LanguageInfo lang = env.getPublicLanguages().get(id);
             if (lang == null) {
                 throw new LLVMPolyglotException(this, "Language '%s' not found.", id);
-            } else if (lang.isInternal()) {
-                throw new LLVMPolyglotException(this, "Access to internal language '%s' is not allowed.", id);
             }
             Source sourceObject = Source.newBuilder(id, code, "<eval>").build();
             return ctx.getEnv().parsePublic(sourceObject);
