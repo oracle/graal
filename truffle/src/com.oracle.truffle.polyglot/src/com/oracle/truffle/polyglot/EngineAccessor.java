@@ -808,7 +808,8 @@ final class EngineAccessor extends Accessor {
         @SuppressWarnings("unchecked")
         @Override
         @CompilerDirectives.TruffleBoundary
-        public <T extends TruffleLanguage<C>, C> TruffleLanguage.ContextReference<C> lookupContextReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+        public <T extends TruffleLanguage<C>, C> TruffleLanguage.ContextReference<C> lookupContextReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI,
+                        Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() != targetLanguageClass;
             PolyglotLanguageInstance instance = ((PolyglotEngineImpl) polyglotEngineImpl).getCurrentLanguageInstance(targetLanguageClass);
             return (TruffleLanguage.ContextReference<C>) instance.lookupContextSupplier(resolveLanguage(sourceLanguageSPI));
@@ -823,7 +824,8 @@ final class EngineAccessor extends Accessor {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T extends TruffleLanguage<?>> TruffleLanguage.LanguageReference<T> getDirectLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+        public <T extends TruffleLanguage<?>> TruffleLanguage.LanguageReference<T> getDirectLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI,
+                        Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() == targetLanguageClass;
             return (TruffleLanguage.LanguageReference<T>) resolveLanguage(sourceLanguageSPI).getDirectLanguageReference();
         }
@@ -831,7 +833,8 @@ final class EngineAccessor extends Accessor {
         @SuppressWarnings("unchecked")
         @Override
         @CompilerDirectives.TruffleBoundary
-        public <T extends TruffleLanguage<?>> TruffleLanguage.LanguageReference<T> lookupLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI, Class<T> targetLanguageClass) {
+        public <T extends TruffleLanguage<?>> TruffleLanguage.LanguageReference<T> lookupLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI,
+                        Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() != targetLanguageClass;
             PolyglotLanguageInstance instance = ((PolyglotEngineImpl) polyglotEngineImpl).getCurrentLanguageInstance(targetLanguageClass);
             return (TruffleLanguage.LanguageReference<T>) instance.lookupLanguageSupplier(resolveLanguage(sourceLanguageSPI));
@@ -863,7 +866,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Process createSubProcess(Object polyglotLanguageContext, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
-                                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) throws IOException {
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) throws IOException {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
             OutputStream stdOut = languageContext.getImpl().getIO().getOutputStream(outputRedirect);
             OutputStream stdErr = languageContext.getImpl().getIO().getOutputStream(errorRedirect);

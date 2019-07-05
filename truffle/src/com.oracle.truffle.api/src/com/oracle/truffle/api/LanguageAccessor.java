@@ -40,20 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.nodes.ExecutableNode;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.io.FileSystem;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -68,6 +54,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.logging.Level;
+
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.io.FileSystem;
+
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.nodes.ExecutableNode;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 final class LanguageAccessor extends Accessor {
 
@@ -163,8 +164,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleLanguage.Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                                             String[] applicationArguments, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
+        public TruffleLanguage.Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config,
+                        OptionValues options, String[] applicationArguments, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
             TruffleLanguage.Env env = new TruffleLanguage.Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments, fileSystem, fileTypeDetectors);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             LanguageInfo info = language.languageInfo;
@@ -341,8 +342,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleLanguage.Env patchEnvContext(TruffleLanguage.Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                                                   FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
+        public TruffleLanguage.Env patchEnvContext(TruffleLanguage.Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
+                        String[] applicationArguments, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
             assert env.spi != null;
             final TruffleLanguage.Env newEnv = createEnv(
                             env.vmObject,

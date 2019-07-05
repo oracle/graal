@@ -95,10 +95,11 @@ import org.graalvm.polyglot.io.ProcessHandler;
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
  * <p>
- * All subclasses should be named "...Accessor" and should be top-level classes.
- * They should have a private constructor and a singleton instance in a static field named ACCESSOR, under the "...Accessor" class.
- * The implementation class "...Impl" extending "Accessor.<...>Support" should be a static class nested under the "...Accessor" class.
- * This is important to avoid cycles during classloading and be able to initialize this class reliably.
+ * All subclasses should be named "...Accessor" and should be top-level classes. They should have a
+ * private constructor and a singleton instance in a static field named ACCESSOR, under the
+ * "...Accessor" class. The implementation class "...Impl" extending "Accessor.<...>Support" should
+ * be a static class nested under the "...Accessor" class. This is important to avoid cycles during
+ * classloading and be able to initialize this class reliably.
  */
 @SuppressWarnings("deprecation")
 public abstract class Accessor {
