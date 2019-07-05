@@ -349,8 +349,8 @@ public final class Debugger {
     static final class AccessorDebug extends Accessor {
 
         @Override
-        protected Nodes nodes() {
-            return super.nodes();
+        protected NodeSupport nodeSupport() {
+            return super.nodeSupport();
         }
 
         @Override

@@ -293,8 +293,8 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             return ACCESSOR.engineSupport();
         }
 
-        static Accessor.Nodes nodesAccess() {
-            return ACCESSOR.nodes();
+        static NodeSupport nodesAccess() {
+            return ACCESSOR.nodeSupport();
         }
 
         static Accessor.InstrumentSupport instrumentAccess() {

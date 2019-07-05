@@ -120,7 +120,7 @@ public abstract class Accessor {
         return SUPPORT.createUncachedIndirectCall();
     }
 
-    public abstract static class Nodes {
+    public abstract static class NodeSupport {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
@@ -580,7 +580,7 @@ public abstract class Accessor {
 
     }
 
-    public abstract static class Frames {
+    public abstract static class FrameSupport {
         protected abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
         protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
@@ -595,19 +595,19 @@ public abstract class Accessor {
     private static class Constants {
 
         private static final Accessor.LanguageSupport LANGUAGE;
-        private static final Accessor.Nodes NODES;
+        private static final Accessor.NodeSupport NODES;
         private static final Accessor.InstrumentSupport INSTRUMENT;
         private static final Accessor.SourceSupport SOURCE;
         private static final Accessor.InteropSupport INTEROP;
         private static final Accessor.IOSupport IO;
-        private static final Accessor.Frames FRAMES;
+        private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
         private static final Accessor.DumpSupport DUMP;
 
         static {
             // Eager load all accessors so the above fields are all set and all methods are usable
             LANGUAGE = loadAccessor("com.oracle.truffle.api.LanguageAccessor").languageSupport();
-            NODES = loadAccessor("com.oracle.truffle.api.nodes.NodeAccessor").nodes();
+            NODES = loadAccessor("com.oracle.truffle.api.nodes.NodeAccessor").nodeSupport();
             INSTRUMENT = loadAccessor("com.oracle.truffle.api.instrumentation.InstrumentAccessor").instrumentSupport();
             SOURCE = loadAccessor("com.oracle.truffle.api.source.SourceAccessor").sourceSupport();
             INTEROP = loadAccessor("com.oracle.truffle.api.interop.InteropAccessor").interopSupport();
@@ -658,7 +658,7 @@ public abstract class Accessor {
         }
     }
 
-    protected Accessor.Nodes nodes() {
+    protected NodeSupport nodeSupport() {
         return Constants.NODES;
     }
 
@@ -698,15 +698,15 @@ public abstract class Accessor {
         return Constants.ENGINE;
     }
 
-    static Accessor.Nodes nodesAccess() {
+    static NodeSupport nodesAccess() {
         return Constants.NODES;
     }
 
-    protected Accessor.Frames framesSupport() {
+    protected FrameSupport framesSupport() {
         return Constants.FRAMES;
     }
 
-    static Accessor.Frames framesAccess() {
+    static FrameSupport framesAccess() {
         return Constants.FRAMES;
     }
 

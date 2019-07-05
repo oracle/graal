@@ -64,8 +64,8 @@ final class InstrumentAccessor extends Accessor {
     private InstrumentAccessor() {
     }
 
-    static Nodes nodesAccess() {
-        return ACCESSOR.nodes();
+    static NodeSupport nodesAccess() {
+        return ACCESSOR.nodeSupport();
     }
 
     static LanguageSupport langAccess() {

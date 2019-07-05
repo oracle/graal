@@ -88,7 +88,7 @@ class VMAccessor extends Accessor {
 
     static final VMAccessor ACCESSOR = new VMAccessor();
 
-    static final Nodes NODES = ACCESSOR.nodes();
+    static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();

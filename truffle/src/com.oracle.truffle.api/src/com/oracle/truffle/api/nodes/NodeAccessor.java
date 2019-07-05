@@ -77,7 +77,7 @@ final class NodeAccessor extends Accessor {
     }
 
     @Override
-    protected Nodes nodes() {
+    protected NodeSupport nodeSupport() {
         return new AccessNodes();
     }
 
@@ -97,11 +97,11 @@ final class NodeAccessor extends Accessor {
     }
 
     @Override
-    protected Frames framesSupport() {
+    protected FrameSupport framesSupport() {
         return super.framesSupport();
     }
 
-    static final class AccessNodes extends Nodes {
+    static final class AccessNodes extends NodeSupport {
 
         @Override
         public boolean isInstrumentable(RootNode rootNode) {

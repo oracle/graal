@@ -84,8 +84,8 @@ final class LanguageAccessor extends Accessor {
         return ACCESSOR.instrumentSupport();
     }
 
-    static Nodes nodesAccess() {
-        return ACCESSOR.nodes();
+    static NodeSupport nodesAccess() {
+        return ACCESSOR.nodeSupport();
     }
 
     static InteropSupport interopAccess() {
@@ -102,8 +102,8 @@ final class LanguageAccessor extends Accessor {
     }
 
     @Override
-    protected Nodes nodes() {
-        return super.nodes();
+    protected NodeSupport nodeSupport() {
+        return super.nodeSupport();
     }
 
     static final class LanguageImpl extends LanguageSupport {
@@ -173,7 +173,7 @@ final class LanguageAccessor extends Accessor {
             TruffleLanguage.Env env = new TruffleLanguage.Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments, fileSystem, fileTypeDetectors);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             LanguageInfo info = language.languageInfo;
-            instrumentAccess().collectEnvServices(collectedServices, ACCESSOR.nodes().getEngineObject(info), language);
+            instrumentAccess().collectEnvServices(collectedServices, ACCESSOR.nodeSupport().getEngineObject(info), language);
             env.services = new ArrayList<>(collectedServices);
             return env;
         }
@@ -257,7 +257,7 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public Object evalInContext(Source source, Node node, final MaterializedFrame mFrame) {
-            CallTarget target = ACCESSOR.nodes().getLanguage(node.getRootNode()).parse(source);
+            CallTarget target = ACCESSOR.nodeSupport().getLanguage(node.getRootNode()).parse(source);
             try {
                 if (target instanceof RootCallTarget) {
                     RootNode exec = ((RootCallTarget) target).getRootNode();

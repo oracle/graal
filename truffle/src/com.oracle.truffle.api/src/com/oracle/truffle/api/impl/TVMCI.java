@@ -288,7 +288,7 @@ public abstract class TVMCI {
 
     protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
         Objects.requireNonNull(constructor);
-        final Accessor.Nodes nodesAccess = Accessor.nodesAccess();
+        final Accessor.NodeSupport nodesAccess = Accessor.nodesAccess();
         final EngineSupport engineAccess = Accessor.engineAccess();
         if (rootNode != null && nodesAccess != null && engineAccess != null) {
             final Object sourceVM = nodesAccess.getSourceVM(rootNode);
