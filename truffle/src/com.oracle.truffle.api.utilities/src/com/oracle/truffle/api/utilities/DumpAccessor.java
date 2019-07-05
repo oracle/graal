@@ -67,7 +67,7 @@ final class DumpAccessor extends Accessor {
     };
 
     @Override
-    protected DumpSupport dumpSupport() {
+    public DumpSupport dumpSupport() {
         return DUMP_SUPPORT;
     }
 }

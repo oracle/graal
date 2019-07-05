@@ -53,7 +53,7 @@ final class IOAccessor extends Accessor {
     }
 
     @Override
-    protected IOSupport ioSupport() {
+    public IOSupport ioSupport() {
         return new IOSupportImpl();
     }
 

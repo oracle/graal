@@ -48,7 +48,7 @@ final class FrameAccessor extends Accessor {
     static final FrameAccessor ACCESSOR = new FrameAccessor();
 
     @Override
-    protected FrameSupport framesSupport() {
+    public FrameSupport framesSupport() {
         return new FramesImpl();
     }
 

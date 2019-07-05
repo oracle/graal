@@ -81,7 +81,7 @@ final class InstrumentAccessor extends Accessor {
     }
 
     @Override
-    protected InstrumentSupport instrumentSupport() {
+    public InstrumentSupport instrumentSupport() {
         return new InstrumentImpl();
     }
 

@@ -644,39 +644,39 @@ public abstract class Accessor {
         }
     }
 
-    protected NodeSupport nodeSupport() {
+    public NodeSupport nodeSupport() {
         return Constants.NODES;
     }
 
-    protected LanguageSupport languageSupport() {
+    public LanguageSupport languageSupport() {
         return Constants.LANGUAGE;
     }
 
-    protected DumpSupport dumpSupport() {
+    public DumpSupport dumpSupport() {
         return Constants.DUMP;
     }
 
-    protected EngineSupport engineSupport() {
+    public EngineSupport engineSupport() {
         return Constants.ENGINE;
     }
 
-    protected InstrumentSupport instrumentSupport() {
+    public InstrumentSupport instrumentSupport() {
         return Constants.INSTRUMENT;
     }
 
-    protected InteropSupport interopSupport() {
+    public InteropSupport interopSupport() {
         return Constants.INTEROP;
     }
 
-    protected SourceSupport sourceSupport() {
+    public SourceSupport sourceSupport() {
         return Constants.SOURCE;
     }
 
-    protected FrameSupport framesSupport() {
+    public FrameSupport framesSupport() {
         return Constants.FRAMES;
     }
 
-    protected Accessor.IOSupport ioSupport() {
+    public Accessor.IOSupport ioSupport() {
         return Constants.IO;
     }
 

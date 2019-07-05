@@ -115,7 +115,7 @@ final class EngineAccessor extends Accessor {
     }
 
     @Override
-    protected EngineSupport engineSupport() {
+    public EngineSupport engineSupport() {
         return new EngineImpl();
     }
 

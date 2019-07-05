@@ -72,33 +72,8 @@ final class NodeAccessor extends Accessor {
     }
 
     @Override
-    protected EngineSupport engineSupport() {
-        return super.engineSupport();
-    }
-
-    @Override
-    protected NodeSupport nodeSupport() {
+    public NodeSupport nodeSupport() {
         return new AccessNodes();
-    }
-
-    @Override
-    protected LanguageSupport languageSupport() {
-        return super.languageSupport();
-    }
-
-    @Override
-    protected DumpSupport dumpSupport() {
-        return super.dumpSupport();
-    }
-
-    @Override
-    protected InstrumentSupport instrumentSupport() {
-        return super.instrumentSupport();
-    }
-
-    @Override
-    protected FrameSupport framesSupport() {
-        return super.framesSupport();
     }
 
     static final class AccessNodes extends NodeSupport {

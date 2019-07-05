@@ -97,13 +97,8 @@ final class LanguageAccessor extends Accessor {
     }
 
     @Override
-    protected LanguageSupport languageSupport() {
+    public LanguageSupport languageSupport() {
         return new LanguageImpl();
-    }
-
-    @Override
-    protected NodeSupport nodeSupport() {
-        return super.nodeSupport();
     }
 
     static final class LanguageImpl extends LanguageSupport {
