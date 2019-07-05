@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -115,7 +115,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
     protected final PolyglotLanguageContext languageContext;
 
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
-    static final CallProfiled CALL_PROFILED = VMAccessor.ACCESSOR.getCallProfiled();
+    static final CallProfiled CALL_PROFILED = EngineAccessor.ACCESSOR.getCallProfiled();
 
     PolyglotValue(PolyglotLanguageContext languageContext) {
         super(languageContext.getEngine().impl);
@@ -413,7 +413,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } else if (target instanceof PolyglotBindings) {
             return "Polyglot Bindings";
         } else {
-            final PolyglotLanguage resolvedLanguage = VMAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, target);
+            final PolyglotLanguage resolvedLanguage = EngineAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, target);
             if (resolvedLanguage == null) {
                 return null;
             }
@@ -468,7 +468,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         PolyglotLanguageContext displayContext = languageContext;
         if (!(receiver instanceof Number || receiver instanceof String || receiver instanceof Character || receiver instanceof Boolean)) {
             try {
-                PolyglotLanguage resolvedDisplayLanguage = VMAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
+                PolyglotLanguage resolvedDisplayLanguage = EngineAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
                 if (resolvedDisplayLanguage != null) {
                     displayLanguage = resolvedDisplayLanguage;
                 }
@@ -665,7 +665,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                 return "Polyglot Bindings";
             } else {
                 PolyglotLanguageContext displayLanguageContext = languageContext;
-                final PolyglotLanguage resolvedLanguage = VMAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
+                final PolyglotLanguage resolvedLanguage = EngineAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
                 if (resolvedLanguage != null) {
                     displayLanguageContext = languageContext.context.getContext(resolvedLanguage);
                 }
@@ -685,13 +685,13 @@ abstract class PolyglotValue extends AbstractValueImpl {
             if (languageContext == null) {
                 return null;
             }
-            final PolyglotLanguage resolvedLanguage = VMAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
+            final PolyglotLanguage resolvedLanguage = EngineAccessor.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
             if (resolvedLanguage == null) {
                 return null;
             }
             final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.getContext(resolvedLanguage);
             com.oracle.truffle.api.source.SourceSection result = LANGUAGE.findSourceLocation(resolvedLanguageContext.env, receiver);
-            return result != null ? VMAccessor.engine().createSourceSection(resolvedLanguageContext, null, result) : null;
+            return result != null ? EngineAccessor.engine().createSourceSection(resolvedLanguageContext, null, result) : null;
         } catch (final Throwable t) {
             throw PolyglotImpl.wrapGuestException(languageContext, t);
         } finally {
@@ -703,7 +703,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         CallTarget target = Truffle.getRuntime().createCallTarget(root);
         Class<?>[] types = root.getArgumentTypes();
         if (types != null) {
-            VMAccessor.ACCESSOR.initializeProfile(target, types);
+            EngineAccessor.ACCESSOR.initializeProfile(target, types);
         }
         return target;
     }

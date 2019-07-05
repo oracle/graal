@@ -40,74 +40,38 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.INSTRUMENT;
-import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
-import static com.oracle.truffle.polyglot.VMAccessor.NODES;
+import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URI;
 import java.nio.file.Path;
-import java.time.ZoneId;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
 
-import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
-import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.Scope;
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.HomeFinder;
 import com.oracle.truffle.api.impl.TruffleLocator;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
-import java.io.IOException;
 
 /*
  * This class is exported to the GraalVM SDK. Keep that in mind when changing its class or package name.
@@ -194,7 +158,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                     Object logHandlerOrStream,
                     HostAccess conf) {
         if (TruffleOptions.AOT) {
-            VMAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
+            EngineAccessor.ACCESSOR.initializeNativeImageTruffleLocator();
         }
         OutputStream resolvedOut = out == null ? System.out : out;
         OutputStream resolvedErr = err == null ? System.err : err;
@@ -326,10 +290,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     org.graalvm.polyglot.Source getPolyglotSource(Source source) {
-        org.graalvm.polyglot.Source polyglotSource = VMAccessor.SOURCE.getPolyglotSource(source);
+        org.graalvm.polyglot.Source polyglotSource = EngineAccessor.SOURCE.getPolyglotSource(source);
         if (polyglotSource == null) {
             polyglotSource = getAPIAccess().newSource(source.getLanguage(), source);
-            VMAccessor.SOURCE.setPolyglotSource(source, polyglotSource);
+            EngineAccessor.SOURCE.setPolyglotSource(source, polyglotSource);
         }
         return polyglotSource;
     }

@@ -84,9 +84,9 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
-class VMAccessor extends Accessor {
+final class EngineAccessor extends Accessor {
 
-    static final VMAccessor ACCESSOR = new VMAccessor();
+    static final EngineAccessor ACCESSOR = new EngineAccessor();
 
     static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
@@ -101,7 +101,7 @@ class VMAccessor extends Accessor {
         return TruffleOptions.AOT ? Collections.emptyList() : ACCESSOR.loaders();
     }
 
-    private VMAccessor() {
+    private EngineAccessor() {
     }
 
     @Override
@@ -214,7 +214,7 @@ class VMAccessor extends Accessor {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
             FileSystem fileSystem = context.config.fileSystem;
             Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = context.engine.getFileTypeDetectorsSupplier();
-            return VMAccessor.LANGUAGE.getTruffleFile(path, fileSystem, fileTypeDetectorsSupplier);
+            return EngineAccessor.LANGUAGE.getTruffleFile(path, fileSystem, fileTypeDetectorsSupplier);
         }
 
         @Override
@@ -222,7 +222,7 @@ class VMAccessor extends Accessor {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
             FileSystem fileSystem = context.config.fileSystem;
             Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier = context.engine.getFileTypeDetectorsSupplier();
-            return VMAccessor.LANGUAGE.getTruffleFile(uri, fileSystem, fileTypeDetectorsSupplier);
+            return EngineAccessor.LANGUAGE.getTruffleFile(uri, fileSystem, fileTypeDetectorsSupplier);
         }
 
         @Override
@@ -271,7 +271,7 @@ class VMAccessor extends Accessor {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("Current context is not yet initialized or already disposed.");
             }
-            return (T) VMAccessor.LANGUAGE.getLanguage(env);
+            return (T) EngineAccessor.LANGUAGE.getLanguage(env);
         }
 
         @Override
@@ -308,15 +308,15 @@ class VMAccessor extends Accessor {
             // Check it separately:
             if (currentlanguageContext != null && isPrimitive(value)) {
                 return currentlanguageContext.language;
-            } else if (VMAccessor.LANGUAGE.isObjectOfLanguage(hostLanguageContext.env, value)) {
+            } else if (EngineAccessor.LANGUAGE.isObjectOfLanguage(hostLanguageContext.env, value)) {
                 foundLanguage = hostLanguageContext.language;
-            } else if (currentlanguageContext != null && VMAccessor.LANGUAGE.isObjectOfLanguage(currentlanguageContext.env, value)) {
+            } else if (currentlanguageContext != null && EngineAccessor.LANGUAGE.isObjectOfLanguage(currentlanguageContext.env, value)) {
                 foundLanguage = currentlanguageContext.language;
             } else {
                 for (PolyglotLanguageContext searchContext : context.contexts) {
                     if (searchContext.isInitialized() && searchContext != currentlanguageContext) {
                         final TruffleLanguage.Env searchEnv = searchContext.env;
-                        if (VMAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
+                        if (EngineAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
                             foundLanguage = searchContext.language;
                             break;
                         }
@@ -616,15 +616,15 @@ class VMAccessor extends Accessor {
 
             TruffleLanguage.Env foundLanguage = null;
             TruffleLanguage.Env hostLanguage = languageContext.context.getHostContext().env;
-            if (VMAccessor.LANGUAGE.isObjectOfLanguage(hostLanguage, value)) {
+            if (EngineAccessor.LANGUAGE.isObjectOfLanguage(hostLanguage, value)) {
                 foundLanguage = hostLanguage;
-            } else if (VMAccessor.LANGUAGE.isObjectOfLanguage(currentLanguage, value)) {
+            } else if (EngineAccessor.LANGUAGE.isObjectOfLanguage(currentLanguage, value)) {
                 foundLanguage = currentLanguage;
             } else {
                 for (PolyglotLanguageContext searchContext : languageContext.context.contexts) {
                     if (searchContext.isInitialized() && searchContext != languageContext) {
                         TruffleLanguage.Env searchEnv = searchContext.env;
-                        if (VMAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
+                        if (EngineAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
                             foundLanguage = searchEnv;
                             break;
                         }
@@ -632,7 +632,7 @@ class VMAccessor extends Accessor {
                 }
             }
             if (foundLanguage != null) {
-                return VMAccessor.LANGUAGE.findMetaObject(foundLanguage, value);
+                return EngineAccessor.LANGUAGE.findMetaObject(foundLanguage, value);
             } else {
                 return null;
             }
@@ -838,7 +838,7 @@ class VMAccessor extends Accessor {
         }
 
         private static PolyglotLanguageInstance resolveLanguage(TruffleLanguage<?> sourceLanguageSPI) {
-            return (PolyglotLanguageInstance) VMAccessor.LANGUAGE.getLanguageInstance(sourceLanguageSPI);
+            return (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getLanguageInstance(sourceLanguageSPI);
         }
 
         @Override

@@ -598,7 +598,7 @@ public abstract class Accessor {
             INTEROP = loadAccessor("com.oracle.truffle.api.interop.InteropAccessor").interopSupport();
             IO = loadAccessor("com.oracle.truffle.api.io.IOAccessor").ioSupport();
             FRAMES = loadAccessor("com.oracle.truffle.api.frame.FrameAccessor").framesSupport();
-            ENGINE = loadAccessor("com.oracle.truffle.polyglot.VMAccessor").engineSupport();
+            ENGINE = loadAccessor("com.oracle.truffle.polyglot.EngineAccessor").engineSupport();
             if (TruffleOptions.TraceASTJSON) {
                 DUMP = loadAccessor("com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor").dumpSupport();
             } else {
@@ -628,7 +628,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.interop.InteropAccessor":
             case "com.oracle.truffle.api.io.IOAccessor":
             case "com.oracle.truffle.api.frame.FrameAccessor":
-            case "com.oracle.truffle.polyglot.VMAccessor":
+            case "com.oracle.truffle.polyglot.EngineAccessor":
             case "com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor":
                 // OK, classes initializing accessors
                 break;
