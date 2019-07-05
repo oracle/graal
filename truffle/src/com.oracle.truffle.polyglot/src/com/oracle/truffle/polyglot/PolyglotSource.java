@@ -273,7 +273,10 @@ class PolyglotSource extends AbstractSourceImpl {
         } else {
             throw new AssertionError();
         }
-        EngineAccessor.SOURCE.setFileSystemContext(builder, getDefaultFileSystemContext());
+
+        if (origin instanceof File || origin instanceof URL) {
+            EngineAccessor.SOURCE.setFileSystemContext(builder, getDefaultFileSystemContext());
+        }
 
         if (content instanceof CharSequence) {
             builder.content((CharSequence) content);
