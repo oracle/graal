@@ -129,7 +129,7 @@ public class MonitorSupport {
         }
 
         ReentrantLock lockObject = null;
-        try (PauseRecurringCallback prc = new PauseRecurringCallback()) {
+        try (PauseRecurringCallback prc = new PauseRecurringCallback("No exception must flow out of the monitor code.")) {
             try {
                 lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
                 lockObject.lock();
@@ -178,7 +178,7 @@ public class MonitorSupport {
         }
 
         ReentrantLock lockObject = null;
-        try (PauseRecurringCallback prc = new PauseRecurringCallback()) {
+        try (PauseRecurringCallback prc = new PauseRecurringCallback("No exception must flow out of the monitor code.")) {
             try {
                 lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
                 lockObject.unlock();

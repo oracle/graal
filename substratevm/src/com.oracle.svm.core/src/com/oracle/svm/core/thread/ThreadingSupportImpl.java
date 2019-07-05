@@ -64,8 +64,8 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     public static class PauseRecurringCallback implements AutoCloseable {
         private boolean closed = false;
 
-        public PauseRecurringCallback() {
-            pauseRecurringCallback();
+        public PauseRecurringCallback(String reason) {
+            pauseRecurringCallback(reason);
         }
 
         @Override
@@ -292,7 +292,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     }
 
     @Uninterruptible(reason = "Must not contain safepoint checks.")
-    public static void pauseRecurringCallback() {
+    public static void pauseRecurringCallback(@SuppressWarnings("unused") String reason) {
         if (!MultiThreaded.getValue()) {
             return;
         }

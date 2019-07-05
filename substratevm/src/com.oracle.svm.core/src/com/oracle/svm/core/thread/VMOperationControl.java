@@ -41,10 +41,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
@@ -114,22 +117,35 @@ public final class VMOperationControl {
 
     public static void stopVMOperationThread() {
         assert UseDedicatedVMOperationThread.getValue();
-        // Fetch the Java thread before stopping the VM operation execution.
-        Thread javaThread = JavaThreads.fromVMThread(dedicatedVMOperationThread.isolateThread);
-        assert javaThread != null;
-
-        // Stop the VM operation execution in a VM operation.
         JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMOperationThread", () -> {
             dedicatedVMOperationThread.stop();
         });
-
-        // Wait until the VM operation thread exited (the heap must not be torn down too early).
-        try {
-            javaThread.join();
-        } catch (InterruptedException e) {
-            VMError.shouldNotReachHere("Can't be interrupted during shutdown", e);
-        }
         assert get().mainQueues.isEmpty();
+    }
+
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
+    public static void waitUntilVMOperationThreadExited() {
+        CFunctionPrologueNode.cFunctionPrologue();
+        waitUntilVMOperationThreadExitedInNative();
+        CFunctionEpilogueNode.cFunctionEpilogue();
+    }
+
+    /**
+     * Wait until the VM operation thread reached a point where it does not access the heap anymore.
+     * Otherwise, we might tear down the heap although it is still being accessed.
+     */
+    @Uninterruptible(reason = "Must not stop while in native.")
+    @NeverInline("Provide a return address for the Java frame anchor.")
+    private static void waitUntilVMOperationThreadExitedInNative() {
+        // this method may only access data in the image heap
+        VMThreads.THREAD_MUTEX.lockNoTransition();
+        try {
+            while (VMThreads.nextThread(VMThreads.firstThread()).isNonNull()) {
+                VMThreads.THREAD_LIST_CONDITION.blockNoTransition();
+            }
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
     }
 
     public static boolean isDedicatedVMOperationThread() {
@@ -274,23 +290,24 @@ public final class VMOperationControl {
      */
     private static class VMOperationThread implements Runnable {
         private volatile IsolateThread isolateThread;
-        private boolean stopped;
+        private boolean running;
 
         VMOperationThread() {
             this.isolateThread = WordFactory.nullPointer();
-            this.stopped = false;
+            this.running = false;
         }
 
         @Override
         public void run() {
             this.isolateThread = CurrentIsolate.getCurrentThread();
+            this.running = true;
 
             VMOperationControl control = VMOperationControl.get();
             WorkQueues queues = control.mainQueues;
 
             queues.mutex.lock();
             try {
-                while (!stopped) {
+                while (running) {
                     try {
                         queues.waitForWorkAndExecute();
                     } catch (Throwable e) {
@@ -302,7 +319,13 @@ public final class VMOperationControl {
                 queues.mutex.unlock();
             }
 
-            this.isolateThread = WordFactory.nullPointer();
+            running = false;
+
+            /*
+             * When this method returns, some more code is executed before the execution really
+             * finishes and the thread exits. Therefore, we don't null out the isolateThread because
+             * it is possible that the current thread still needs to execute a VM operation.
+             */
         }
 
         public void waitUntilStarted() {
@@ -317,12 +340,12 @@ public final class VMOperationControl {
         }
 
         public boolean isRunning() {
-            return isolateThread.isNonNull();
+            return running;
         }
 
         void stop() {
             VMOperation.guaranteeInProgress("must only be called from a VM operation");
-            this.stopped = true;
+            this.running = false;
         }
     }
 
@@ -371,7 +394,7 @@ public final class VMOperationControl {
 
         void enqueueAndWait(VMOperation operation, NativeVMOperationData data) {
             assert UseDedicatedVMOperationThread.getValue();
-            ThreadingSupportImpl.pauseRecurringCallback();
+            ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks must not interrupt this code (via an exception) as we guarantee that queued VM operations are executed.");
             try {
                 lock();
                 try {
@@ -389,7 +412,7 @@ public final class VMOperationControl {
         }
 
         void enqueueAndExecute(VMOperation operation, NativeVMOperationData data) {
-            ThreadingSupportImpl.pauseRecurringCallback();
+            ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks must not be triggered while executing a VM operation.");
             try {
                 lock();
                 try {

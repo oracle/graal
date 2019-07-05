@@ -112,7 +112,7 @@ final class Target_java_lang_Thread {
     static int threadInitNumber;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
-    int threadStatus;
+    volatile int threadStatus;
 
     @Alias//
     /* private */ /* final */ Object blockerLock;

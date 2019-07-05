@@ -51,12 +51,11 @@ public class GCCause {
     @Platforms(Platform.HOSTED_ONLY.class)
     protected GCCause(String name) {
         /* Checkstyle: allow synchronization. */
-        synchronized (HostedGCCauseList) {
+        synchronized (HostedGCCauseList) { /* Checkstyle: disallow synchronization. */
             this.id = HostedGCCauseList.size();
             this.name = name;
             HostedGCCauseList.add(this);
         }
-        /* Checkstyle: disallow synchronization. */
     }
 
     public String getName() {

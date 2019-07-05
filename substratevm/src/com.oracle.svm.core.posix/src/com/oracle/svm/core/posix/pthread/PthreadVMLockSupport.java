@@ -245,7 +245,7 @@ final class PthreadVMCondition extends VMCondition {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransition() {
         mutex.clearCurrentThreadOwner();
         PthreadVMLockSupport.checkResult(Pthread.pthread_cond_wait_no_transition(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer()), "pthread_cond_wait");
@@ -270,7 +270,7 @@ final class PthreadVMCondition extends VMCondition {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public long blockNoTransition(long waitNanos) {
         Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
         PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;
@@ -40,6 +39,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 

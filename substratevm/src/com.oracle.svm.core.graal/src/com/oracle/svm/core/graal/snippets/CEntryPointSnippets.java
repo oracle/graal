@@ -89,6 +89,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
@@ -308,9 +309,21 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             if (!JavaThreads.singleton().tearDownVM()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
+
             if (UseDedicatedVMOperationThread.getValue()) {
                 VMOperationControl.stopVMOperationThread();
             }
+
+            /*
+             * After stopping the VM operation thread, VM operations won't be processed anymore. So,
+             * we must ensure that the current thread does not cause any VM operations. To simplify
+             * testing, we enforce those restrictions regardless of the VM operation execution mode.
+             */
+            ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited.");
+            if (UseDedicatedVMOperationThread.getValue()) {
+                VMOperationControl.waitUntilVMOperationThreadExited();
+            }
+
             return Isolates.tearDownCurrent();
         } catch (Throwable t) {
             logException(t);
@@ -391,6 +404,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         return CEntryPointErrors.NO_ERROR;
+
     }
 
     @Fold

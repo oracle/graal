@@ -240,7 +240,7 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransition() {
         WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
@@ -270,7 +270,7 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public long blockNoTransition(long waitNanos) {
         assert waitNanos >= 0;
         long startTimeInNanos = System.nanoTime();

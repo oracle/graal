@@ -25,7 +25,6 @@
 package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -39,6 +38,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -54,10 +54,10 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
+import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_attr_t;
