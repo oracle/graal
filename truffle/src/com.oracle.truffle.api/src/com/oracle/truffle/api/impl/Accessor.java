@@ -651,6 +651,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor":
             case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
             case "com.oracle.truffle.api.test.polyglot.VirtualizedFileSystemTest$TestAPIAccessor":
+            case "com.oracle.truffle.api.impl.TVMCIAccessor":
                 // OK, classes allowed to use accessors
                 break;
             default:
@@ -686,27 +687,7 @@ public abstract class Accessor {
         return Constants.SOURCE;
     }
 
-    static InstrumentSupport instrumentAccess() {
-        return Constants.INSTRUMENT;
-    }
-
-    static LanguageSupport languageAccess() {
-        return Constants.LANGUAGE;
-    }
-
-    static EngineSupport engineAccess() {
-        return Constants.ENGINE;
-    }
-
-    static NodeSupport nodesAccess() {
-        return Constants.NODES;
-    }
-
     protected FrameSupport framesSupport() {
-        return Constants.FRAMES;
-    }
-
-    static FrameSupport framesAccess() {
         return Constants.FRAMES;
     }
 
