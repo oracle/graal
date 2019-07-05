@@ -81,11 +81,6 @@ final class InstrumentAccessor extends Accessor {
         return ACCESSOR.interopSupport();
     }
 
-    @Override
-    public InstrumentSupport instrumentSupport() {
-        return new InstrumentImpl();
-    }
-
     protected boolean isTruffleObject(Object value) {
         return interopSupport().isTruffleObject(value);
     }

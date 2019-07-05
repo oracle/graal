@@ -51,11 +51,6 @@ final class InteropAccessor extends Accessor {
     private InteropAccessor() {
     }
 
-    @Override
-    public InteropSupport interopSupport() {
-        return new InteropImpl();
-    }
-
     private static class InteropImpl extends InteropSupport {
 
         @Override

@@ -52,11 +52,6 @@ final class IOAccessor extends Accessor {
     private IOAccessor() {
     }
 
-    @Override
-    public IOSupport ioSupport() {
-        return new IOSupportImpl();
-    }
-
     static EngineSupport engineAccess() {
         return ACCESSOR.engineSupport();
     }

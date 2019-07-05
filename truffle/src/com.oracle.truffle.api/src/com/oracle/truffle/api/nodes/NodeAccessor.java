@@ -71,11 +71,6 @@ final class NodeAccessor extends Accessor {
         return callNode;
     }
 
-    @Override
-    public NodeSupport nodeSupport() {
-        return new AccessNodes();
-    }
-
     static final class AccessNodes extends NodeSupport {
 
         @Override
