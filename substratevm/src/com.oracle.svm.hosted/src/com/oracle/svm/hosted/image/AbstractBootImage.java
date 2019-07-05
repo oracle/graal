@@ -72,17 +72,16 @@ public abstract class AbstractBootImage {
         EXECUTABLE(true),
         STATIC_EXECUTABLE(true);
 
-        public final boolean executable;
+        public final boolean isExecutable;
+        public final String mainEntryPointName;
 
         NativeImageKind(boolean executable) {
-            this.executable = executable;
+            isExecutable = executable;
+            mainEntryPointName = executable ? "main" : "run_main";
         }
 
         public String getFilenameSuffix() {
-            if (executable) {
-                return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
-            }
-            return "";
+            return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
         }
 
         public String getFilenamePrefix() {
