@@ -691,7 +691,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             }
             final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.getContext(resolvedLanguage);
             com.oracle.truffle.api.source.SourceSection result = LANGUAGE.findSourceLocation(resolvedLanguageContext.env, receiver);
-            return result != null ? EngineAccessor.engine().createSourceSection(resolvedLanguageContext, null, result) : null;
+            return result != null ? EngineAccessor.EngineImpl.createSourceSectionStatic(resolvedLanguageContext, null, result) : null;
         } catch (final Throwable t) {
             throw PolyglotImpl.wrapGuestException(languageContext, t);
         } finally {

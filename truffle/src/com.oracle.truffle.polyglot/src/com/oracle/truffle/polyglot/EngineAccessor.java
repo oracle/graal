@@ -93,10 +93,6 @@ final class EngineAccessor extends Accessor {
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
 
-    static EngineSupport engine() {
-        return ACCESSOR.engineSupport();
-    }
-
     static Collection<ClassLoader> allLoaders() {
         return TruffleOptions.AOT ? Collections.emptyList() : ACCESSOR.loaders();
     }
@@ -201,6 +197,10 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public org.graalvm.polyglot.SourceSection createSourceSection(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
+            return createSourceSectionStatic(vmObject, source, sectionImpl);
+        }
+
+        static org.graalvm.polyglot.SourceSection createSourceSectionStatic(Object vmObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
             org.graalvm.polyglot.Source polyglotSource = source;
             if (polyglotSource == null) {
                 Source sourceImpl = sectionImpl.getSource();
