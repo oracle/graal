@@ -55,7 +55,6 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -163,9 +162,6 @@ final class ManagementFactoryFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class)
-                        .rerunInitialization(access.findClassByName("com.sun.jmx.mbeanserver.MXBeanLookup"),
-                                        "ensure com.sun.jmx.mbeanserver.MXBeanLookup#mbscToLookup clean state");
         access.registerObjectReplacer(ManagementFactoryFeature::replace);
     }
 
