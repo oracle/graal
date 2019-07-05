@@ -1623,6 +1623,7 @@ _renaissanceConfig = {
     "philosophers"     : 30,
     "reactors"         : 10,
     "rx-scrabble"      : 80,
+    "scala-doku"       : 20,
     "scala-kmeans"     : 50,
     "scala-stm-bench7" : 60,
     "scrabble"         : 50
