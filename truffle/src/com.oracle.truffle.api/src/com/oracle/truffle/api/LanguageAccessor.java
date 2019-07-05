@@ -289,11 +289,6 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object languageGlobal(TruffleLanguage.Env env) {
-            return env.getLanguageGlobal();
-        }
-
-        @Override
         public void dispose(TruffleLanguage.Env env) {
             env.dispose();
         }

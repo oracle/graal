@@ -301,13 +301,6 @@ class VMAccessor extends Accessor {
             return PolyglotContextImpl.requireContext().getContextInitialized(language, null).env;
         }
 
-        @Override
-        public TruffleLanguage.Env getExistingEnvForInstrument(LanguageInfo info) {
-            PolyglotLanguage language = (PolyglotLanguage) NODES.getEngineObject(info);
-            PolyglotLanguageContext languageContext = PolyglotContextImpl.requireContext().contexts[language.index];
-            return languageContext.isInitialized() ? languageContext.env : null;
-        }
-
         static PolyglotLanguage findObjectLanguage(PolyglotContextImpl context, PolyglotLanguageContext currentlanguageContext, Object value) {
             PolyglotLanguage foundLanguage = null;
             final PolyglotLanguageContext hostLanguageContext = context.getHostContext();
@@ -395,16 +388,6 @@ class VMAccessor extends Accessor {
         }
 
         @Override
-        @SuppressWarnings("rawtypes")
-        public TruffleLanguage.Env findEnv(Object vmObject, Class<? extends TruffleLanguage> languageClass) {
-            PolyglotLanguageContext findLanguageContext = PolyglotContextImpl.requireContext().findLanguageContext(languageClass);
-            if (findLanguageContext != null) {
-                return findLanguageContext.env;
-            }
-            return null;
-        }
-
-        @Override
         public Object getInstrumentationHandler(Object vmObject) {
             return getEngine(vmObject).instrumentationHandler;
         }
@@ -480,11 +463,6 @@ class VMAccessor extends Accessor {
         public Map<String, ? extends Object> getExportedSymbols(Object vmObject) {
             PolyglotContextImpl currentContext = PolyglotContextImpl.current();
             return currentContext.polyglotHostBindings.as(Map.class);
-        }
-
-        @Override
-        public void registerDebugger(Object vm, Object debugger) {
-            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -675,16 +653,6 @@ class VMAccessor extends Accessor {
         @Override
         public Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language) {
             return ((PolyglotLanguage) NODES.getEngineObject(language)).cache.getLanguageClass();
-        }
-
-        @Override
-        public Object legacyTckEnter(Object vm) {
-            throw new AssertionError("Should not reach here.");
-        }
-
-        @Override
-        public void legacyTckLeave(Object vm, Object prev) {
-            throw new AssertionError("Should not reach here.");
         }
 
         @SuppressWarnings("unchecked")

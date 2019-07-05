@@ -191,11 +191,6 @@ public abstract class Accessor {
     }
 
     public abstract static class EngineSupport {
-        public static final int EXECUTION_EVENT = 1;
-        public static final int SUSPENDED_EVENT = 2;
-
-        @SuppressWarnings("rawtypes")
-        public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass);
 
         public abstract Object getInstrumentationHandler(Object languageShared);
 
@@ -206,8 +201,6 @@ public abstract class Accessor {
         public abstract Object importSymbol(Object vmObject, Env env, String symbolName);
 
         public abstract boolean isMimeTypeSupported(Object languageShared, String mimeType);
-
-        public abstract void registerDebugger(Object vm, Object debugger);
 
         public abstract boolean isEvalRoot(RootNode target);
 
@@ -230,8 +223,6 @@ public abstract class Accessor {
         public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
-
-        public abstract Env getExistingEnvForInstrument(LanguageInfo language);
 
         public abstract LanguageInfo getObjectLanguage(Object obj, Object vmObject);
 
@@ -312,10 +303,6 @@ public abstract class Accessor {
         public abstract Object getCurrentHostContext();
 
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
-
-        public abstract Object legacyTckEnter(Object vm);
-
-        public abstract void legacyTckLeave(Object vm, Object prev);
 
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
 
@@ -413,8 +400,6 @@ public abstract class Accessor {
         public abstract Object evalInContext(Source source, Node node, MaterializedFrame frame);
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
-
-        public abstract Object languageGlobal(TruffleLanguage.Env env);
 
         public abstract void dispose(Env env);
 
