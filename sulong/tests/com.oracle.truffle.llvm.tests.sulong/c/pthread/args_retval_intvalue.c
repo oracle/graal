@@ -1,5 +1,6 @@
+// this testcase tests passing arguments to threads and getting return values
 // passing the values directly
-// long because casting int to void-pointer gave warnings
+// tests pthread_create, pthread_exit, pthread_join
 
 #include <stdio.h>
 #include <stdlib.h>

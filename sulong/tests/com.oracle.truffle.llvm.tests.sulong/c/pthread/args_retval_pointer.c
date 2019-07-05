@@ -1,4 +1,7 @@
 // code from https://w3.cs.jmu.edu/kirkpams/OpenCSF/Books/cs361/html/POSIXArgs.html
+// this testcase tests passing arguments to threads and getting return values
+// passing pointers
+// tests pthread_create, pthread_exit, pthread_join
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,4 +1,5 @@
 // joining a thread that increments an int and sleeps 5 seconds
+// tests pthread_create, pthread_join
 
 #include <stdio.h>
 #include <stdlib.h>
