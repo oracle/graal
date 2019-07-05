@@ -123,14 +123,12 @@ class AbstractNativeImageConfig(object):
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, links=None, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, is_polyglot=False, custom_bash_launcher=None,
-                 add_graalvm_jars=True, dir_jars=False):
+                 dir_jars=False):
         """
         :param custom_bash_launcher: Uses custom bash launcher, unless compiled as native image
-        :param add_graalvm_jars: Do not include jar distributions in jre/lib/graalvm; default True = do include.
         :type main_class: str
         :type default_symlinks: bool
         :type custom_bash_launcher: str
-        :type graalvm_jre_launcher: bool
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, links, is_polyglot, dir_jars)
         self.main_class = main_class
@@ -138,15 +136,14 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_bash_launcher = custom_bash_launcher
-        self.add_graalvm_jars = add_graalvm_jars
 
 
 class LanguageLauncherConfig(LauncherConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, language, links=None, is_main_launcher=True,
-                 default_symlinks=True, is_sdk_launcher=True, custom_bash_launcher=None, add_graalvm_jars=True, dir_jars=False):
+                 default_symlinks=True, is_sdk_launcher=True, custom_bash_launcher=None, dir_jars=False):
         super(LanguageLauncherConfig, self).__init__(destination, jar_distributions, main_class, build_args, links,
                                                      is_main_launcher, default_symlinks, is_sdk_launcher, False,
-                                                     custom_bash_launcher, add_graalvm_jars, dir_jars)
+                                                     custom_bash_launcher, dir_jars)
         self.language = language
 
 

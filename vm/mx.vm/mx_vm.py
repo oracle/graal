@@ -402,8 +402,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             _jre_bin_names = []
 
             for _launcher_config in _get_launcher_configs(_component):
-                if _launcher_config.add_graalvm_jars:
-                    _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
+                _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
                 _launcher_dest = _component_base + GraalVmLauncher.get_launcher_destination(_launcher_config, stage1)
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
