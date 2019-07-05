@@ -136,15 +136,15 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
         private RootCallTarget generateTarget(FunctionType type) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            RootCallTarget newTarget = provider.generateIntrinsicTarget(intrinsicName, type.getArgumentTypes().length);
+            RootCallTarget newTarget = provider.generateIntrinsicTarget(intrinsicName, type.getArgumentTypes());
             assert newTarget != null;
             overloadingMap.put(type, newTarget);
             return newTarget;
         }
 
-        public LLVMExpressionNode generateNode(LLVMExpressionNode[] arguments) {
+        public LLVMExpressionNode generateNode(FunctionType type, LLVMExpressionNode[] arguments) {
             CompilerAsserts.neverPartOfCompilation();
-            LLVMExpressionNode node = provider.generateIntrinsicNode(intrinsicName, arguments);
+            LLVMExpressionNode node = provider.generateIntrinsicNode(intrinsicName, arguments, type.getArgumentTypes());
             assert node != null;
             return node;
         }
