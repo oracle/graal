@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,72 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.api.frame;
 
-import java.util.Collection;
-import java.util.Collections;
-
-import org.graalvm.options.OptionDescriptors;
-
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
 
-class VMAccessor extends Accessor {
+final class FrameAccessor extends Accessor {
 
-    static final VMAccessor SPI = new VMAccessor();
+    @SuppressWarnings("unused") static final FrameAccessor ACCESSOR = new FrameAccessor();
 
-    static final Nodes NODES = SPI.nodes();
-    static final SourceSupport SOURCE = SPI.sourceSupport();
-    static final InstrumentSupport INSTRUMENT = SPI.instrumentSupport();
-    static final LanguageSupport LANGUAGE = SPI.languageSupport();
+    static final class FramesImpl extends FrameSupport {
+        @Override
+        protected void markMaterializeCalled(FrameDescriptor descriptor) {
+            descriptor.materializeCalled = true;
+        }
 
-    static EngineSupport engine() {
-        return SPI.engineSupport();
+        @Override
+        protected boolean getMaterializeCalled(FrameDescriptor descriptor) {
+            return descriptor.materializeCalled;
+        }
     }
-
-    static Collection<ClassLoader> allLoaders() {
-        return TruffleOptions.AOT ? Collections.emptyList() : SPI.loaders();
-    }
-
-    @Override
-    protected void initializeNativeImageTruffleLocator() {
-        super.initializeNativeImageTruffleLocator();
-    }
-
-    @Override
-    protected OptionDescriptors getCompilerOptions() {
-        return super.getCompilerOptions();
-    }
-
-    @Override
-    protected EngineSupport engineSupport() {
-        return new PolyglotImpl.EngineImpl();
-    }
-
-    @Override
-    protected void initializeProfile(CallTarget target, Class<?>[] argmentTypes) {
-        super.initializeProfile(target, argmentTypes);
-    }
-
-    @Override
-    protected CallInlined getCallInlined() {
-        return super.getCallInlined();
-    }
-
-    @Override
-    protected CastUnsafe getCastUnsafe() {
-        return super.getCastUnsafe();
-    }
-
-    @Override
-    protected CallProfiled getCallProfiled() {
-        return super.getCallProfiled();
-    }
-
-    @Override
-    protected boolean isGuestCallStackElement(StackTraceElement element) {
-        return super.isGuestCallStackElement(element);
-    }
-
 }

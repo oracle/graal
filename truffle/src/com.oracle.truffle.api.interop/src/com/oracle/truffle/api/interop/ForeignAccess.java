@@ -969,6 +969,4 @@ public final class ForeignAccess {
             return (RootNode) rootNode.deepCopy();
         }
     }
-
-    @SuppressWarnings("unused") private static final InteropAccessor ACCESSOR = new InteropAccessor();
 }

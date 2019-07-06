@@ -149,11 +149,11 @@ public final class SourceSectionFilter {
         if (root == null) {
             return Collections.emptySet();
         }
-        Object sourceVM = InstrumentationHandler.AccessorInstrumentHandler.nodesAccess().getSourceVM(root);
+        Object sourceVM = InstrumentAccessor.nodesAccess().getSourceVM(root);
         if (sourceVM == null) {
             return Collections.emptySet();
         }
-        InstrumentationHandler handler = (InstrumentationHandler) InstrumentationHandler.AccessorInstrumentHandler.engineAccess().getInstrumentationHandler(sourceVM);
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(sourceVM);
         return handler.getProvidedTags(node);
     }
 

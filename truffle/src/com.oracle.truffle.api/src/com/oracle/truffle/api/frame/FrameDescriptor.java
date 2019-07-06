@@ -57,7 +57,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TVMCI;
 
 /**
@@ -583,34 +582,5 @@ public final class FrameDescriptor implements Cloneable {
             sb.append("}");
             return sb.toString();
         }
-    }
-
-    /** @since 0.14 */
-    static final class AccessorFrames extends Accessor {
-        @Override
-        protected Frames framesSupport() {
-            return new FramesImpl();
-        }
-
-        static final class FramesImpl extends Frames {
-            @Override
-            protected void markMaterializeCalled(FrameDescriptor descriptor) {
-                descriptor.materializeCalled = true;
-            }
-
-            @Override
-            protected boolean getMaterializeCalled(FrameDescriptor descriptor) {
-                return descriptor.materializeCalled;
-            }
-        }
-    }
-
-    private static AccessorFrames initialize() {
-        return new AccessorFrames();
-    }
-
-    static {
-        // registers into Accessor.FRAMES
-        initialize();
     }
 }

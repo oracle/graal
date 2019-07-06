@@ -725,7 +725,7 @@ public final class TruffleLogger {
         if (level.intValue() < value || value == OFF_VALUE) {
             return false;
         }
-        Object currentContext = TruffleLanguage.AccessAPI.engineAccess().getCurrentOuterContext();
+        Object currentContext = LanguageAccessor.engineAccess().getCurrentOuterContext();
         if (currentContext == null) {
             currentContext = loggerCache.getOwner();
         }
@@ -768,7 +768,7 @@ public final class TruffleLogger {
                     final String className,
                     final String methodName,
                     final Object[] params) {
-        final LogRecord logRecord = TruffleLanguage.AccessAPI.engineAccess().createLogRecord(
+        final LogRecord logRecord = LanguageAccessor.engineAccess().createLogRecord(
                         level,
                         getName(),
                         message,
@@ -786,7 +786,7 @@ public final class TruffleLogger {
                     final String className,
                     final String methodName,
                     final Throwable thrown) {
-        final LogRecord logRecord = TruffleLanguage.AccessAPI.engineAccess().createLogRecord(
+        final LogRecord logRecord = LanguageAccessor.engineAccess().createLogRecord(
                         level,
                         getName(),
                         message,
@@ -1020,7 +1020,7 @@ public final class TruffleLogger {
                 // Logger's effective level may changed
                 return getLogger(loggerName).isLoggable(level);
             }
-            final Map<String, Level> current = TruffleLanguage.AccessAPI.engineAccess().getLogLevels(currentContext);
+            final Map<String, Level> current = LanguageAccessor.engineAccess().getLogLevels(currentContext);
             if (current.isEmpty()) {
                 final int currentLevel = DEFAULT_VALUE;
                 return level.intValue() >= currentLevel && currentLevel != OFF_VALUE;
@@ -1119,7 +1119,7 @@ public final class TruffleLogger {
             for (Iterator<ContextWeakReference> it = activeContexts.iterator(); it.hasNext();) {
                 final Object active = it.next().get();
                 if (vmObject.equals(active)) {
-                    toRemove.addAll(TruffleLanguage.AccessAPI.engineAccess().getLogLevels(vmObject).keySet());
+                    toRemove.addAll(LanguageAccessor.engineAccess().getLogLevels(vmObject).keySet());
                     it.remove();
                     break;
                 }
@@ -1256,7 +1256,7 @@ public final class TruffleLogger {
             Level min = null;
             for (Reference<Object> contextRef : contexts) {
                 final Object context = contextRef.get();
-                final Level level = context == null ? null : TruffleLanguage.AccessAPI.engineAccess().getLogLevels(context).get(loggerName);
+                final Level level = context == null ? null : LanguageAccessor.engineAccess().getLogLevels(context).get(loggerName);
                 if (level == null) {
                     continue;
                 }
@@ -1369,7 +1369,7 @@ public final class TruffleLogger {
                 synchronized (this) {
                     result = cachedHander;
                     if (result == null) {
-                        result = TruffleLanguage.AccessAPI.engineAccess().getLogHandler(loggerCache.getOwner());
+                        result = LanguageAccessor.engineAccess().getLogHandler(loggerCache.getOwner());
                         cachedHander = result;
                     }
                 }

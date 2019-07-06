@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -101,7 +101,7 @@ final class PolyglotLanguageInstance implements VMObject {
         if (firstOptionValues == null) {
             return true;
         } else {
-            return VMAccessor.LANGUAGE.areOptionsCompatible(spi, firstOptions, newOptionValues);
+            return EngineAccessor.LANGUAGE.areOptionsCompatible(spi, firstOptions, newOptionValues);
         }
     }
 

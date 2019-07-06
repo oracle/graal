@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,66 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.instrumentation;
+package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.nodes.RootNode;
+final class TVMCIAccessor extends Accessor {
 
-final class RootNodeBits {
+    static final TVMCIAccessor ACCESSOR = new TVMCIAccessor();
 
-    private static final int INITIALIZED = 1;
-    private static final int SAME_SOURCE = 1 << 1;
-    private static final int NO_SOURCE_SECTION = 1 << 2;
-    private static final int SOURCE_SECTION_HIERARCHICAL = 1 << 3;
-    private static final int ALL = INITIALIZED | SAME_SOURCE | NO_SOURCE_SECTION | SOURCE_SECTION_HIERARCHICAL;
-
-    /**
-     * Returns true if source the source sections of the root node are all contained within the
-     * bounds of the root source section.
-     *
-     */
-    static boolean isSourceSectionsHierachical(int bits) {
-        return (bits & SOURCE_SECTION_HIERARCHICAL) > 0;
+    private TVMCIAccessor() {
     }
 
-    /**
-     * Returns true if the same source is used for the whole root node.
-     */
-    static boolean isSameSource(int bits) {
-        return (bits & SAME_SOURCE) > 0;
+    static InstrumentSupport instrumentAccess() {
+        return ACCESSOR.instrumentSupport();
     }
 
-    /**
-     * Returns true if there is no source section available in the whole RootNode.
-     */
-    static boolean isNoSourceSection(int bits) {
-        return (bits & NO_SOURCE_SECTION) > 0;
+    static LanguageSupport languageAccess() {
+        return ACCESSOR.languageSupport();
     }
 
-    static int setSourceSectionsUnstructured(int bits) {
-        return bits & ~SOURCE_SECTION_HIERARCHICAL;
+    static EngineSupport engineAccess() {
+        return ACCESSOR.engineSupport();
     }
 
-    static int setHasDifferentSource(int bits) {
-        return bits & ~NO_SOURCE_SECTION;
+    static NodeSupport nodesAccess() {
+        return ACCESSOR.nodeSupport();
     }
 
-    static int setHasSourceSection(int bits) {
-        return bits & ~NO_SOURCE_SECTION;
-    }
-
-    static int get(RootNode root) {
-        return InstrumentAccessor.nodesAccess().getRootNodeBits(root);
-    }
-
-    static void set(RootNode root, int bits) {
-        InstrumentAccessor.nodesAccess().setRootNodeBits(root, bits);
-    }
-
-    static boolean isUninitialized(int bits) {
-        return bits == 0;
-    }
-
-    static int getAll() {
-        return ALL;
+    static FrameSupport framesAccess() {
+        return ACCESSOR.framesSupport();
     }
 }

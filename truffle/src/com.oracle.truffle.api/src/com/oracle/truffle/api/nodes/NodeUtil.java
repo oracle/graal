@@ -68,7 +68,7 @@ public final class NodeUtil {
     private NodeUtil() {
     }
 
-    static final ThreadLocal<Object> CURRENT_ENCAPSULATING_NODE = Node.ACCESSOR.createFastThreadLocal();
+    static final ThreadLocal<Object> CURRENT_ENCAPSULATING_NODE = NodeAccessor.ACCESSOR.createFastThreadLocal();
 
     static Iterator<Node> makeIterator(Node node) {
         return node.getNodeClass().makeIterator(node);

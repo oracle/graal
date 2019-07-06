@@ -348,16 +348,6 @@ public final class Debugger {
 
     static final class AccessorDebug extends Accessor {
 
-        @Override
-        protected Nodes nodes() {
-            return super.nodes();
-        }
-
-        @Override
-        protected EngineSupport engineSupport() {
-            return super.engineSupport();
-        }
-
         /*
          * TODO get rid of this access and replace it with an API in {@link TruffleInstrument.Env}.
          * I don't think {@link CallTarget} is the right return type here as we want to make it

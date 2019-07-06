@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
-import static com.oracle.truffle.polyglot.VMAccessor.NODES;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
+import static com.oracle.truffle.polyglot.EngineAccessor.NODES;
 
 import java.util.Iterator;
 import java.util.LinkedList;

@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -283,7 +283,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             finalized = true;
             LANGUAGE.finalizeContext(env);
             if (eventsEnabled) {
-                VMAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.truffleContext, language.info);
+                EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.truffleContext, language.info);
             }
             return true;
         }
@@ -313,7 +313,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     void notifyDisposed() {
         if (eventsEnabled) {
-            VMAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
+            EngineAccessor.INSTRUMENT.notifyLanguageContextDisposed(context.engine, context.truffleContext, language.info);
         }
         language.freeInstance(lazy.languageInstance);
     }
@@ -346,7 +346,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             context.leave(prev);
             seenThreads.remove(thread);
         }
-        VMAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.truffleContext, thread);
+        EngineAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.truffleContext, thread);
     }
 
     boolean isCreated() {
@@ -383,7 +383,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         creating = true;
                         PolyglotLanguageContext.this.env = localEnv;
                         PolyglotLanguageContext.this.lazy = localLazy;
-                        assert VMAccessor.LANGUAGE.getLanguage(env) != null;
+                        assert EngineAccessor.LANGUAGE.getLanguage(env) != null;
 
                         try {
                             List<Object> languageServicesCollector = new ArrayList<>();
@@ -398,7 +398,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             this.languageServices = languageServicesCollector;
                             lang.language.profile.notifyContextCreate(this, localEnv);
                             if (eventsEnabled) {
-                                VMAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.truffleContext, language.info);
+                                EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(context.engine, context.truffleContext, language.info);
                             }
                             context.weakReference.freeInstances.add(lang);
                             lang = null; // commit language use
@@ -489,7 +489,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
         }
         if (wasInitialized && eventsEnabled) {
-            VMAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.truffleContext, language.info);
+            EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.truffleContext, language.info);
         }
         return wasInitialized;
     }
