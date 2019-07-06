@@ -64,6 +64,12 @@ public class Assert {
         }
     }
 
+    public static void assertNotNull(Object object, String message) throws BinaryReaderException {
+        if (object == null) {
+            fail(format("%s: expected a non-null value", message));
+        }
+    }
+
     public static void fail(String message) throws BinaryReaderException {
         throw new BinaryReaderException(message);
     }
