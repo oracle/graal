@@ -1,0 +1,53 @@
+# Profiling Truffle Interpreters
+
+There is no shortage of tools for profiling interpreters written using
+Truffle. When running in JVM mode, we can use standard JVM tooling, such as
+VisualVM and Java Flight Recorder. When run as a Native Image we can use
+callgrind from the Valgrind tool suite and other system tools, such as strace.
+As a GraalVM language we can also use other GraalVM tools. For a broad enough
+definition of profiling, we can also use the Ideal Graph Visualizer (IGV) and
+C1 Visualizer to inspect Graal's output.
+
+This document is less about how to use each tool and more about suggestions for extracting
+the most useful information from the tools, assuming basic knowledge of their usage.
+
+### Creating a Flame Graph
+
+The histogram output from the Truffle profiler can be quite large, making it difficult to
+analyze. Additionally, as a flat format it isn't possible to analyze a call graph as that
+information simply isn't encoded in the output. A flame graph shows the entire call graph
+and its structure makes it considerably simpler to see where the application time is being
+spent.
+
+Creating the flame graph is a multi-stage process. First, we need to profile the application
+with the JSON formatter:
+
+```bash
+$ my-language --cpusampler --cpusampler.SampleInternal --cpusampler.Mode=roots --cpusampler.Output=json -e 'p :hello' > simple-app.json
+```
+
+Since we want to profile your language runtime itself, we use the
+`--cpusampler.SampleInternal=true` option. The `--cpusampler.Mode=roots` option will
+sample roots, including inlined functions, which can often give a better idea of what
+is contributing to the overall method execution time.
+
+The JSON profiler formatter encodes call graph information that isn't available in the
+histogram format. To make a flame graph out of this output, however, we need to transform
+it into a format that folds the call stack samples into single lines. This can be done
+using [stackcollapse-graalvm.rb](https://github.com/eregon/FlameGraph/blob/graalvm/stackcollapse-graalvm.rb)
+from Benoit's fork of FlameGraph.
+
+If you haven't yet, you should clone Benoit's [fork of FlameGraph](https://github.com/eregon/FlameGraph/tree/graalvm)
+into the parent directory. Now you can run the script to transform the output and
+pipe it into the script that will generate the SVG data:
+
+```bash
+$ ../FlameGraph/stackcollapse-graalvm.rb simple-app.json | ../FlameGraph/flamegraph.pl > simple-app.svg
+```
+
+At this point, you should open the SVG file in a Chromium-based web browser. Your system
+might have a different image manipulation application configured as the default application
+for SVG files. While loading the file in such an application make render a graph, it likely
+will not handle the interactive components of the flame graph. Firefox may work as well,
+but Chromium-based browsers seem to have better support and performance for the flame graph
+files as of this writing (Dec. 2018).
