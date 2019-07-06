@@ -119,12 +119,29 @@ RPAREN
 fragment SYMBOL_START
    : ('a' .. 'z')
    | ('A' .. 'Z')
+   | '_'
+   | '.'
    | '+'
    | '-'
    | '*'
    | '/'
-   | '.'
-   | '_'
+   | '\\'
+   | '^'
+   | '~'
+   | '='
+   | '<'
+   | '>'
+   | '!'
+   | '?'
+   | '@'
+   | '#'
+   | '$'
+   | '%'
+   | '&'
+   | '|'
+   | ':'
+   | '\''
+   | '`'
    ;
 
 fragment SIGN
@@ -142,13 +159,21 @@ fragment HEXDIGIT
    ;
 
 fragment NUMBER
-   : DIGIT+
-   | DIGIT+ ('_') DIGIT+
+   : DIGIT+ NUMBER_
+   ;
+
+fragment NUMBER_
+   : /* epsilon */
+   | ('_')? NUMBER
    ;
 
 fragment HEXNUMBER
-   : HEXDIGIT+
-   | HEXDIGIT+ ('_') HEXDIGIT+
+   : HEXDIGIT+ HEXNUMBER_
+   ;
+
+fragment HEXNUMBER_
+   : /* epsilon */
+   | ('_')? HEXNUMBER
    ;
 
 fragment FRAC
