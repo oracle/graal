@@ -727,6 +727,9 @@ meth public void onAnalysisExit(org.graalvm.nativeimage.hosted.Feature$OnAnalysi
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$AfterAnalysisAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
+meth public abstract boolean isReachable(java.lang.Class<?>)
+meth public abstract boolean isReachable(java.lang.reflect.Field)
+meth public abstract boolean isReachable(java.lang.reflect.Executable)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$AfterCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -752,6 +755,10 @@ meth public abstract void registerAsAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsInHeap(java.lang.Class<?>)
 meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
+meth public abstract void registerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
+meth public abstract void registerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.reflect.Field)
+meth public abstract void registerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.reflect.Executable)
+meth public abstract void registerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Object[])
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -771,6 +778,7 @@ meth public abstract void registerAsImmutable(java.lang.Object,java.util.functio
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$BeforeAnalysisAccess
+intf org.graalvm.nativeimage.hosted.Feature$AfterAnalysisAccess
 meth public abstract void requireAnalysisIteration()
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$DuringSetupAccess
