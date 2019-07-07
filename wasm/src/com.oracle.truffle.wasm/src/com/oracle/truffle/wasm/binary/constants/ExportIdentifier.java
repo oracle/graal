@@ -27,20 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.wasm.binary.constants;
 
-package com.oracle.truffle.wasm.binary;
-
-public class Sections {
-    public static final int CUSTOM = 0x00;
-    public static final int TYPE = 0x01;
-    public static final int IMPORT = 0x02;
-    public static final int FUNCTION = 0x03;
-    public static final int TABLE = 0x04;
-    public static final int MEMORY = 0x05;
-    public static final int GLOBAL = 0x06;
-    public static final int EXPORT = 0x07;
-    public static final int START = 0x08;
-    public static final int ELEMENT = 0x09;
-    public static final int CODE = 0x0A;
-    public static final int DATA = 0x0B;
+public final class ExportIdentifier {
+    public static final int FUNCTION = 0x00;
+    public static final int TABLE = 0x01;
+    public static final int MEMORY = 0x02;
+    public static final int GLOBAL = 0x03;
 }

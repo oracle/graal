@@ -46,7 +46,7 @@ public class WasmModule implements TruffleObject {
 
     public WasmModule(String name) {
         this.name = name;
-        this.symbolTable = new SymbolTable();
+        this.symbolTable = new SymbolTable(this);
     }
 
     public SymbolTable symbolTable() {
@@ -64,9 +64,8 @@ public class WasmModule implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object readMember(String member) {
-        int functionIndex = Integer.valueOf(member);
-        return symbolTable.function(functionIndex);
+    Object readMember(String exportName) {
+        return exportName.equals("__START__") ? symbolTable.startFunction() : symbolTable.function(exportName);
     }
 
     @ExportMessage
@@ -115,7 +114,7 @@ public class WasmModule implements TruffleObject {
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(index)) {
-                CompilerDirectives.transferToInterpreter();
+                transferToInterpreter();
                 throw InvalidArrayIndexException.create(index);
             }
             // TODO: Check whether long fits into an int, throw otherwise.

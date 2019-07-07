@@ -29,10 +29,15 @@
  */
 package com.oracle.truffle.wasm.binary;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class SymbolTable {
     private static final int INITIAL_DATA_SIZE = 512;
     private static final int INITIAL_OFFSET_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
+
+    private WasmModule module;
 
     private int[] typeData;
     private int[] offsets;
@@ -42,22 +47,28 @@ public class SymbolTable {
     private WasmFunction[] functionTypes;
     private int numFunctions;
 
-    public SymbolTable() {
+    private Map<String, WasmFunction> exportedFunctions;
+    private int startFunctionIndex;
+
+    public SymbolTable(WasmModule module) {
+        this.module = module;
         this.typeData = new int[INITIAL_DATA_SIZE];
         this.offsets = new int[INITIAL_OFFSET_SIZE];
         this.typeDataSize = 0;
         this.offsetsSize = 0;
         this.functionTypes = new WasmFunction[INITIAL_FUNCTION_TYPES_SIZE];
         this.numFunctions = 0;
+        this.exportedFunctions = new HashMap<>();
+        this.startFunctionIndex = -1;
     }
 
-    private int[] reallocate(int[] array, int currentSize, int newLength) {
+    private static int[] reallocate(int[] array, int currentSize, int newLength) {
         int[] newArray = new int[newLength];
         System.arraycopy(array, 0, newArray, 0, currentSize);
         return newArray;
     }
 
-    private WasmFunction[] reallocate(WasmFunction[] array, int currentSize, int newLength) {
+    private static WasmFunction[] reallocate(WasmFunction[] array, int currentSize, int newLength) {
         WasmFunction[] newArray = new WasmFunction[newLength];
         System.arraycopy(array, 0, newArray, 0, currentSize);
         return newArray;
@@ -114,6 +125,14 @@ public class SymbolTable {
         ++numFunctions;
     }
 
+    public void markFunctionAsExported(String exportName, int functionIndex) {
+        exportedFunctions.put(exportName, functionTypes[functionIndex]);
+    }
+
+    public void setStartFunction(int functionIndex) {
+        this.startFunctionIndex = functionIndex;
+    }
+
     public int numFunctions() {
         return numFunctions;
     }
@@ -123,10 +142,32 @@ public class SymbolTable {
         return functionTypes[funcIndex];
     }
 
+    public WasmFunction function(String exportName) {
+        WasmFunction function = exportedFunctions.get(exportName);
+        Assert.assertNotNull(function, Assert.format("lookup for exported function \"%s\"", exportName));
+        return function;
+    }
+
     public byte getFunctionReturnType(int typeIndex) {
         int typeOffset = offsets[typeIndex];
         int numArgTypes = typeData[typeOffset + 0];
         int numReturnTypes = typeData[typeOffset + 1];
-        return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[2 + numArgTypes];
+        return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[typeOffset + 2 + numArgTypes];
+    }
+
+    public int getFunctionReturnTypeLength(int typeIndex) {
+        int typeOffset = offsets[typeIndex];
+        return typeData[typeOffset + 1];
+    }
+
+    public WasmFunction startFunction() {
+        if (startFunctionIndex == -1) {
+            return null;
+        }
+        return functionTypes[startFunctionIndex];
+    }
+
+    WasmModule module() {
+        return module;
     }
 }
