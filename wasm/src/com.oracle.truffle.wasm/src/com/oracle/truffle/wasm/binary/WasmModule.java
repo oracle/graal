@@ -29,9 +29,10 @@
  */
 package com.oracle.truffle.wasm.binary;
 
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -40,8 +41,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmModule implements TruffleObject {
-    private String name;
-    private SymbolTable symbolTable;
+    @CompilationFinal private final String name;
+    @CompilationFinal private final SymbolTable symbolTable;
 
     public WasmModule(String name) {
         this.name = name;
