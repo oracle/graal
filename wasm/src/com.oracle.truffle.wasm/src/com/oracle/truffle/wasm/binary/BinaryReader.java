@@ -352,7 +352,7 @@ public class BinaryReader extends BinaryStreamReader {
         int startOffset = offset();
         int startByteConstantOffset = state.byteConstantOffset();
         int startIntConstantOffset = state.intConstantOffset();
-        WasmBlockNode currentBlock = new WasmBlockNode(codeEntry, startOffset, returnTypeId, startStackSize, startByteConstantOffset, startIntConstantOffset);
+        WasmBlockNode currentBlock = new WasmBlockNode(wasmModule, codeEntry, startOffset, returnTypeId, startStackSize, startByteConstantOffset, startIntConstantOffset);
         int opcode;
         do {
             opcode = read1() & 0xFF;
@@ -653,10 +653,10 @@ public class BinaryReader extends BinaryStreamReader {
             if (blockTypeId != VOID_TYPE) {
                 Assert.fail("An if statement without an else branch block cannot return values.");
             }
-            falseBranch = new WasmEmptyNode(codeEntry, 0);
+            falseBranch = new WasmEmptyNode(wasmModule, codeEntry, 0);
         }
 
-        return new WasmIfNode(codeEntry, trueBranchBlock, falseBranch, offset() - startOffset, blockTypeId, initialStackPointer, state.byteConstantOffset() - initialByteConstantOffset);
+        return new WasmIfNode(wasmModule, codeEntry, trueBranchBlock, falseBranch, offset() - startOffset, blockTypeId, initialStackPointer, state.byteConstantOffset() - initialByteConstantOffset);
     }
 
     private void readElementSection() {

@@ -35,6 +35,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class WasmNode extends Node implements WasmNodeInterface {
+    @CompilationFinal private WasmModule wasmModule;
     @CompilationFinal private WasmCodeEntry codeEntry;
 
     /**
@@ -53,7 +54,8 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      */
     @CompilationFinal private int intConstantLength;
 
-    public WasmNode(WasmCodeEntry codeEntry, int byteLength, int byteConstantLength) {
+    public WasmNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength, int byteConstantLength) {
+        this.wasmModule = wasmModule;
         this.codeEntry = codeEntry;
         this.byteLength = byteLength;
         this.byteConstantLength = byteConstantLength;
@@ -84,6 +86,9 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
     @Override
     public WasmCodeEntry codeEntry() {
         return codeEntry;
+    }
+    public WasmModule wasmModule() {
+        return wasmModule;
     }
 
     public int byteLength() {

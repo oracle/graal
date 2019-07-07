@@ -39,8 +39,8 @@ public class WasmIfNode extends WasmNode {
     @Child WasmNode trueBranch;
     @Child WasmNode falseBranch;
 
-    public WasmIfNode(WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer, int byteConstantLength) {
-        super(codeEntry, byteLength, byteConstantLength);
+    public WasmIfNode(WasmModule wasmModule, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer, int byteConstantLength) {
+        super(wasmModule, codeEntry, byteLength, byteConstantLength);
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;
         this.trueBranch = trueBranch;

@@ -160,8 +160,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialIntConstantOffset;
     @CompilationFinal(dimensions = 1) WasmNode[] nestedControlTable;
 
-    public WasmBlockNode(WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int initialIntConstantOffset) {
-        super(codeEntry, -1, -1);
+    public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int initialIntConstantOffset) {
+        super(wasmModule, codeEntry, -1, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
         this.initialStackPointer = initialStackPointer;
