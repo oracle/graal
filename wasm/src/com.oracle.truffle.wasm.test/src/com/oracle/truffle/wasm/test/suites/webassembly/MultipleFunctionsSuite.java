@@ -29,18 +29,19 @@
  */
 package com.oracle.truffle.wasm.test.suites.webassembly;
 
-import com.oracle.truffle.wasm.test.WasmSuiteBase;
-import com.oracle.truffle.wasm.test.options.WasmTestOptions;
-import org.junit.Test;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import org.junit.Test;
+
+import com.oracle.truffle.wasm.test.WasmSuiteBase;
+import com.oracle.truffle.wasm.test.options.WasmTestOptions;
+
 public class MultipleFunctionsSuite extends WasmSuiteBase {
     @Override
     protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "MultipleFunctions");
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "multiple-functions");
     }
 
     @Test
