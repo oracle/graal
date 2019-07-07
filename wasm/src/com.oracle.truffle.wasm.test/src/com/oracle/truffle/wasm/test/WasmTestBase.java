@@ -30,6 +30,8 @@
 package com.oracle.truffle.wasm.test;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Predicate;
 
@@ -38,8 +40,13 @@ import org.junit.Test;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 
 public abstract class WasmTestBase {
+    protected static final Predicate<? super Path> isWastFile = f -> f.getFileName().toString().endsWith(".wast");
     protected static final Predicate<? super Path> isWatFile = f -> f.getFileName().toString().endsWith(".wat");
     protected static final Predicate<? super Path> isResultFile = f -> f.getFileName().toString().endsWith(".result");
+
+    enum WasmTestStatus {
+        OK, SKIPPED;
+    }
 
     protected static Predicate<String> filterTestName() {
         if (WasmTestOptions.TEST_FILTER != null && !WasmTestOptions.TEST_FILTER.isEmpty()) {
@@ -47,6 +54,11 @@ public abstract class WasmTestBase {
         } else {
             return name -> true;
         }
+    }
+
+    public static String readFileToString(Path path, Charset charset) throws IOException {
+        byte[] rawBytes = Files.readAllBytes(path);
+        return new String(rawBytes, charset);
     }
 
     @Test

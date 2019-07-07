@@ -54,10 +54,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 
 public abstract class WasmSuiteBase extends WasmTestBase {
-    enum WasmTestStatus {
-        OK, SKIPPED;
-    }
-
     private static WasmTestStatus runTestCase(WasmTestCase testCase) {
         if (!filterTestName().test(testCase.name)) {
             return WasmTestStatus.SKIPPED;
@@ -67,9 +63,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Context context = Context.create();
             Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);
-            Value function = context.getBindings("wasm").getMember("0");
+            Value function = context.getBindings("wasm").getMember("main");
             if (WasmTestOptions.TRIGGER_GRAAL) {
-                for (int i = 0; i !=  1_000_000; ++i) {
+                for (int i = 0; i !=  10_000_000; ++i) {
                     function.execute();
                 }
             }
@@ -105,7 +101,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     public void test() throws IOException {
         Collection<? extends WasmTestCase> testCases = collectTestCases();
         Map<WasmTestCase, Throwable> errors = new LinkedHashMap<>();
-        System.out.println("");
+        System.out.println();
         System.out.println("--------------------------------------------------------------------------------");
         System.out.println(String.format("Running: %s (%d %s)", suiteName(), testCases.size(), testCases.size() == 1 ? "test" : "tests"));
         System.out.println("--------------------------------------------------------------------------------");
@@ -124,7 +120,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 errors.put(testCase, e);
             }
         }
-        System.out.println("");
+        System.out.println();
         System.out.println("Finished running: " + suiteName());
         if (!errors.isEmpty()) {
             for (Map.Entry<WasmTestCase, Throwable> entry : errors.entrySet()) {
