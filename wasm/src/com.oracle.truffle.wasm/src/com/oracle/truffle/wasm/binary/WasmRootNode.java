@@ -50,9 +50,12 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         body.execute(context, frame);
         long returnValue = pop(frame, 0);
         switch (body.returnTypeId()) {
+            case 0x00:
+            case ValueTypes.VOID_TYPE:
+                return WasmVoidResult.getInstance();
             case ValueTypes.I32_TYPE:
                 Assert.assertEquals(returnValue >>> 32, 0, "Expected i32 value, popped value was larger than 32 bits.");
-                return (int) (returnValue & 0xffffffff);
+                return (int) returnValue;
             case ValueTypes.I64_TYPE:
                 return returnValue;
             case ValueTypes.F32_TYPE:
