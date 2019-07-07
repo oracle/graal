@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.wasm.test;
 
-import com.oracle.truffle.wasm.test.suites.control.LoopBlockSuite;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -40,7 +39,9 @@ import com.oracle.truffle.wasm.test.suites.arithmetic.Integer32Suite;
 import com.oracle.truffle.wasm.test.suites.arithmetic.Integer64Suite;
 import com.oracle.truffle.wasm.test.suites.control.BlockWithLocalsSuite;
 import com.oracle.truffle.wasm.test.suites.control.BranchBlockSuite;
+import com.oracle.truffle.wasm.test.suites.control.LoopBlockSuite;
 import com.oracle.truffle.wasm.test.suites.control.SimpleBlockSuite;
+import com.oracle.truffle.wasm.test.suites.webassembly.SpecSuite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -52,6 +53,7 @@ import com.oracle.truffle.wasm.test.suites.control.SimpleBlockSuite;
         BlockWithLocalsSuite.class,
         BranchBlockSuite.class,
         LoopBlockSuite.class,
+        SpecSuite.class,
 })
 public class WasmTestSuite {
     @Test

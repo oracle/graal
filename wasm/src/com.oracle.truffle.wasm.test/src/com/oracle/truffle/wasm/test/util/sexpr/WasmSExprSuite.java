@@ -46,7 +46,7 @@ import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 import com.oracle.truffle.wasm.test.util.sexpr.nodes.SExprNode;
 import com.oracle.truffle.wasm.test.util.sexpr.parser.SExprParser;
 
-public class WasmSExprSuite extends WasmTestBase {
+public abstract class WasmSExprSuite extends WasmTestBase {
     protected Path testDirectory() {
         return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "spec");
     }
@@ -62,12 +62,16 @@ public class WasmSExprSuite extends WasmTestBase {
         Collection<Path> testCases = collectTestCases(testDirectory());
         for (Path testCasePath : testCases) {
             String script = readFileToString(testCasePath, StandardCharsets.UTF_8);
-            List<SExprNode> exprs = SExprParser.parseSexpressions(script);
-            System.out.println(exprs.size());
-            for (SExprNode node : exprs) {
-                // TODO: Interpret S-expression node.
-                System.out.println(node);
+            List<SExprNode> sExprNodes = SExprParser.parseSexpressions(script);
+            for (SExprNode sExprNode : sExprNodes) {
+                try {
+                    interpretSExprNode(sExprNode);
+                } catch (IOException | InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
+
+    public abstract void interpretSExprNode(SExprNode sExprNode) throws IOException, InterruptedException;
 }
