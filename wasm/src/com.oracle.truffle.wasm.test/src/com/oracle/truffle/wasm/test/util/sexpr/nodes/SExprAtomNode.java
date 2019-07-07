@@ -36,7 +36,7 @@ public class SExprAtomNode extends SExprNode {
         this.value = value;
     }
 
-    SExprLiteralNode value() {
+    public SExprLiteralNode value() {
         return value;
     }
 
