@@ -32,6 +32,8 @@ package com.oracle.truffle.wasm.test.util.sexpr.nodes;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.wasm.binary.Assert;
+
 public class SExprListNode extends SExprNode {
     private List<SExprNode> nodes;
 
@@ -45,6 +47,11 @@ public class SExprListNode extends SExprNode {
 
     public List<SExprNode> nodes() {
         return nodes;
+    }
+
+    public SExprNode nodeAt(int index) {
+        Assert.assertInRange(index, 0, nodes.size() - 1, "SExprListNode: requested nodeAt out-of-bounds");
+        return nodes.get(index);
     }
 
     @Override
