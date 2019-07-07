@@ -40,6 +40,14 @@ public class SExprLiteralNode extends SExprNode {
         this.type = type;
     }
 
+    public String value() {
+        return value;
+    }
+
+    public LiteralType type() {
+        return type;
+    }
+
     @Override
     public String toString() {
         return value;
