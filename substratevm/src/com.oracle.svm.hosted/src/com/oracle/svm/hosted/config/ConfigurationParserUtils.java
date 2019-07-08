@@ -26,14 +26,21 @@ package com.oracle.svm.hosted.config;
 
 import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
 
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Enumeration;
+import java.util.Spliterator;
+import java.util.Spliterators.AbstractSpliterator;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
@@ -64,27 +71,42 @@ public final class ConfigurationParserUtils {
     public static void parseAndRegisterConfigurations(ConfigurationParser parser, ImageClassLoader classLoader, String featureName,
                     HostedOptionKey<String[]> configFilesOption, HostedOptionKey<String[]> configResourcesOption, String directoryFileName) {
 
-        Stream<String> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream(),
+        Stream<Path> files = Stream.concat(OptionUtils.flatten(",", configFilesOption.getValue()).stream().map(Paths::get),
                         ConfigurationFiles.findConfigurationFiles(directoryFileName).stream());
-        files.forEach(path -> {
-            File file = new File(path).getAbsoluteFile();
-            if (!file.exists()) {
-                throw UserError.abort("The " + featureName + " configuration file \"" + file + "\" does not exist.");
+        files.map(Path::toAbsolutePath).forEach(path -> {
+            if (!Files.exists(path)) {
+                throw UserError.abort("The " + featureName + " configuration file \"" + path + "\" does not exist.");
             }
-            try (Reader reader = new FileReader(file)) {
-                doParseAndRegister(parser, reader, featureName, file, configFilesOption);
+            try (Reader reader = new FileReader(path.toFile())) {
+                doParseAndRegister(parser, reader, featureName, path, configFilesOption);
             } catch (IOException e) {
-                throw UserError.abort("Could not open " + file + ": " + e.getMessage());
+                throw UserError.abort("Could not open " + path + ": " + e.getMessage());
             }
         });
 
-        Stream<String> resources = Stream.concat(OptionUtils.flatten(",", configResourcesOption.getValue()).stream(),
-                        ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
-        resources.forEach(resource -> {
-            URL url = classLoader.findResourceByName(resource);
-            if (url == null) {
-                throw UserError.abort("Could not find " + featureName + " configuration resource \"" + resource + "\".");
+        Stream<URL> configResourcesFromOption = OptionUtils.flatten(",", configResourcesOption.getValue()).stream().flatMap(s -> {
+            Enumeration<URL> urls;
+            try {
+                urls = classLoader.findResourcesByName(s);
+            } catch (IOException e) {
+                throw UserError.abort("Error while looking for " + s + " in " + classLoader, e);
             }
+            if (!urls.hasMoreElements()) {
+                throw UserError.abort("Could not find " + featureName + " configuration resource \"" + s + "\".");
+            }
+            return StreamSupport.stream(new AbstractSpliterator<URL>(Long.MAX_VALUE, Spliterator.ORDERED) {
+                @Override
+                public boolean tryAdvance(Consumer<? super URL> action) {
+                    if (!urls.hasMoreElements()) {
+                        return false;
+                    }
+                    action.accept(urls.nextElement());
+                    return true;
+                }
+            }, false);
+        });
+        Stream<URL> resources = Stream.concat(configResourcesFromOption, ConfigurationFiles.findConfigurationResources(directoryFileName, classLoader.getClassLoader()).stream());
+        resources.forEach(url -> {
             try {
                 URLConnection urlConnection = url.openConnection();
                 urlConnection.setUseCaches(false);

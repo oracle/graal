@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.configure;
 
+import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -37,6 +40,7 @@ import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.UserError;
 
 /**
  * Gathers configuration files from specified directories without having to provide each
@@ -82,19 +86,19 @@ public final class ConfigurationFiles {
         public static final HostedOptionKey<String[]> SubstitutionFiles = new HostedOptionKey<>(null);
     }
 
-    public static List<String> findConfigurationFiles(String fileName) {
-        List<String> files = new ArrayList<>();
+    public static List<Path> findConfigurationFiles(String fileName) {
+        List<Path> files = new ArrayList<>();
         for (String directory : OptionUtils.flatten(",", Options.ConfigurationFileDirectories.getValue())) {
             Path path = Paths.get(directory, fileName);
             if (Files.exists(path)) {
-                files.add(path.toString());
+                files.add(path);
             }
         }
         return files;
     }
 
-    public static List<String> findConfigurationResources(String fileName, ClassLoader classLoader) {
-        List<String> resources = new ArrayList<>();
+    public static List<URL> findConfigurationResources(String fileName, ClassLoader classLoader) {
+        List<URL> resources = new ArrayList<>();
         for (String root : OptionUtils.flatten(",", Options.ConfigurationResourceRoots.getValue())) {
             /*
              * Resource path handling is cumbersome: we want users to be able to pass "/" or "." for
@@ -105,8 +109,12 @@ public final class ConfigurationFiles {
             final String separator = "/"; // always for resources (not platform-dependent)
             String relativeRoot = Stream.of(root.split(separator)).filter(part -> !part.isEmpty() && !part.equals(".")).collect(Collectors.joining(separator));
             String relativePath = relativeRoot.isEmpty() ? fileName : (relativeRoot + '/' + fileName);
-            if (classLoader.getResource(relativePath) != null) {
-                resources.add(relativePath);
+            try {
+                for (Enumeration<URL> e = classLoader.getResources(relativePath); e.hasMoreElements();) {
+                    resources.add(e.nextElement());
+                }
+            } catch (IOException e) {
+                throw UserError.abort("Error while looking for " + fileName + " in " + root, e);
             }
         }
         return resources;
