@@ -66,6 +66,7 @@ import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMVariable;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
@@ -717,7 +718,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, boolean directPointers) {
         LLVMTypeRef elemType = builder.getLLVMType(kind);
 
         LLVMValueRef inArray1;
@@ -736,7 +737,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
             inArray2 = builder.buildGEP(inArray2, builder.constantInt(arrayBaseOffset));
             inArray2 = builder.buildBitcast(inArray2, builder.pointerType(elemType, false));
         }
-
+        int constantLength = LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1;
         if (constantLength == 0) {
             return new LLVMVariable(builder.constantBoolean(true));
         }
