@@ -347,13 +347,18 @@ public abstract class LoopFragment {
                 workList.pop();
                 boolean isLoopNode = currentEntry.isLoopNode;
                 Node current = currentEntry.n;
-                if (!isLoopNode && current instanceof GuardNode) {
-                    /*
-                     * (gd) this is only OK if we are not going to make loop transforms based on
-                     * this
-                     */
-                    assert !((GuardNode) current).graph().hasValueProxies();
-                    isLoopNode = true;
+                if (!isLoopNode && current instanceof GuardNode && !current.hasUsages()) {
+                    GuardNode guard = (GuardNode) current;
+                    if (isLoopNode(guard.getCondition(), loopNodes, nonLoopNodes) != TriState.FALSE &&
+                                    isLoopNode(guard.getAnchor().asNode(), loopNodes, nonLoopNodes) != TriState.FALSE) {
+                        /*
+                         * (gd) this is wrong in general, it's completely avoidable while we are
+                         * doing loop transforms using ValueProxies. If it happens after it could
+                         * still cause problem.
+                         */
+                        assert !((GuardNode) current).graph().hasValueProxies();
+                        isLoopNode = true;
+                    }
                 }
                 if (isLoopNode) {
                     loopNodes.mark(current);
