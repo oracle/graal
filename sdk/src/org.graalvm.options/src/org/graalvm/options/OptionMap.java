@@ -102,11 +102,17 @@ public final class OptionMap<T> {
         return readonlyMap.entrySet();
     }
 
+    /**
+     * @since 19.2
+     */
     @Override
     public int hashCode() {
         return readonlyMap.hashCode();
     }
 
+    /**
+     * @since 19.2
+     */
     @SuppressWarnings("unchecked")
     @Override
     public boolean equals(Object obj) {
