@@ -72,6 +72,10 @@ public final class PolyglotCompilerOptions {
 
     // Compilation
 
+    @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
+
     @Option(help = "Enable or disable Truffle compilation.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> Compilation = new OptionKey<>(true);
 
@@ -117,10 +121,6 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold.getDefaultValue());
-
-    @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.",
-                    category = OptionCategory.EXPERT)
-    public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
 
     // Faild compilation behavior
 
