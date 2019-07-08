@@ -32,10 +32,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Properties;
@@ -78,7 +79,6 @@ import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 import com.oracle.svm.util.ReflectionUtil;
-import com.sun.jmx.mbeanserver.MXBeanLookup;
 
 /**
  * A server for SVM image building that keeps the classpath and JIT compiler code caches warm over
@@ -435,29 +435,22 @@ public final class NativeImageBuildServer {
         }
     }
 
-    private static void withUnlockedFinal(Field f, FieldAction action) {
-        try {
-            Field modifiersField = Field.class.getDeclaredField("modifiers");
-            modifiersField.setAccessible(true);
-            VMError.guarantee((f.getModifiers() & Modifier.FINAL) != 0, "Only use withUnlockedFinal if needed");
-            modifiersField.setInt(f, f.getModifiers() & ~Modifier.FINAL);
-            action.perform(f);
-            modifiersField.setInt(f, f.getModifiers() | Modifier.FINAL);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
     private static void resetGlobalStateMXBeanLookup() {
         withGlobalStaticField("com.sun.jmx.mbeanserver.MXBeanLookup", "currentLookup", f -> {
-            withUnlockedFinal(f, unlocked -> unlocked.set(null, new ThreadLocal<MXBeanLookup>()));
+            ThreadLocal<?> currentLookup = (ThreadLocal<?>) f.get(null);
+            currentLookup.remove();
         });
         withGlobalStaticField("com.sun.jmx.mbeanserver.MXBeanLookup", "mbscToLookup", f -> {
             try {
-                Method resetValueComputer = ReflectionUtil.lookupMethod(Class.forName("com.sun.jmx.mbeanserver.WeakIdentityHashMap"), "make");
-                Object resetValue = resetValueComputer.invoke(null);
-                withUnlockedFinal(f, unlocked -> unlocked.set(null, resetValue));
-            } catch (ClassNotFoundException | InvocationTargetException e) {
+                Object mbscToLookup = f.get(null);
+                Map<?, ?> map = ReflectionUtil.readField(Class.forName("com.sun.jmx.mbeanserver.WeakIdentityHashMap"), "map", mbscToLookup);
+                map.clear();
+                ReferenceQueue<?> refQueue = ReflectionUtil.readField(Class.forName("com.sun.jmx.mbeanserver.WeakIdentityHashMap"), "refQueue", mbscToLookup);
+                Reference<?> ref;
+                do {
+                    ref = refQueue.poll();
+                } while (ref != null);
+            } catch (ClassNotFoundException e) {
                 throw VMError.shouldNotReachHere(e);
             }
         });
