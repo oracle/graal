@@ -1805,7 +1805,7 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parse(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return AccessAPI.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
+            return LanguageAccessor.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
         }
 
         /**
@@ -1841,7 +1841,7 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parseInternal(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return AccessAPI.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
+            return LanguageAccessor.engineAccess().parseForLanguage(vmObject, source, argumentNames, true);
         }
 
         /**
@@ -1878,7 +1878,7 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parsePublic(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return LanguageAccessor.engineAccess().parseForLanguage(vmObject, source, argumentNames);
+            return LanguageAccessor.engineAccess().parseForLanguage(vmObject, source, argumentNames, false);
         }
 
         /**
@@ -1995,7 +1995,7 @@ public abstract class TruffleLanguage<C> {
         @Deprecated
         @TruffleBoundary
         public Map<String, LanguageInfo> getLanguages() {
-            returnLanguageAccessor.engineAccess().getInternalLanguages(vmObject);
+            return LanguageAccessor.engineAccess().getInternalLanguages(vmObject);
         }
 
         /**

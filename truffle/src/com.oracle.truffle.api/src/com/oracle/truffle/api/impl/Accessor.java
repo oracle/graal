@@ -101,7 +101,7 @@ import org.graalvm.polyglot.io.ProcessHandler;
  * be a static class nested under the "...Accessor" class. This is important to avoid cycles during
  * classloading and be able to initialize this class reliably.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "static-method"})
 public abstract class Accessor {
 
     @SuppressWarnings("all")
