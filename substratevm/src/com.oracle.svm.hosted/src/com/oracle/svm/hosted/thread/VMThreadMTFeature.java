@@ -199,9 +199,8 @@ public class VMThreadMTFeature implements GraalFeature {
          * should be emitted in those cases so that the register read doesn't get hoisted above
          * where the thread pointer gets stored in the stack slot.
          */
-        boolean isLLVM = SubstrateOptions.CompilerBackend.getValue().equals("llvm");
         boolean forceFixedReads = GuardedAnnotationAccess.isAnnotationPresent(b.getMethod(), ForceFixedRegisterReads.class);
-        if (isDeoptTarget || usedForAddress || (isLLVM && forceFixedReads)) {
+        if (isDeoptTarget || usedForAddress || forceFixedReads) {
             return b.add(ReadRegisterFixedNode.forIsolateThread());
         } else {
             return b.add(ReadRegisterFloatingNode.forIsolateThread());
