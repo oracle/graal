@@ -1185,15 +1185,19 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
         getAPIAccess().validatePolyglotAccess(polyglotAccess, allowedLanguages);
         final FileSystem fs;
+        final FileSystem internalFs;
         if (!ALLOW_IO) {
             if (fileSystem == null) {
                 throw new IllegalArgumentException("A FileSystem must be provided when the allowIO() privilege is removed at image build time");
             }
             fs = fileSystem;
+            internalFs = fileSystem;
         } else if (allowHostIO) {
             fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
+            internalFs = fs;
         } else {
             fs = FileSystems.newNoIOFileSystem();
+            internalFs = FileSystems.newLanguageHomeFileSystem();
         }
         final OutputStream useOut;
         if (configOut == null || configOut == INSTRUMENT.getOut(this.out)) {
@@ -1233,7 +1237,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
                         allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
-                        allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, useHandler, allowCreateProcess, useProcessHandler,
+                        allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, internalFs, useHandler, allowCreateProcess, useProcessHandler,
                         environmentAccess, environment, zone);
 
         PolyglotContextImpl context = loadPreinitializedContext(config);
@@ -1261,6 +1265,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             FileSystem oldFileSystem = config.fileSystem;
             config.fileSystem = preInitFs;
 
+            preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.internalFileSystem;
+            preInitFs.onLoadPreinitializedContext(config.internalFileSystem);
+            FileSystem oldInternalFileSystem = config.internalFileSystem;
+            config.internalFileSystem = preInitFs;
+
             boolean patchResult = false;
             try {
                 patchResult = context.patch(config);
@@ -1270,6 +1279,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     context = null;
                     PolyglotContextImpl.disposeStaticContext(context);
                     config.fileSystem = oldFileSystem;
+                    config.internalFileSystem = oldInternalFileSystem;
                 }
             }
         }

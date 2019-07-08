@@ -166,7 +166,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             if (!internalContext.context.config.hostClassLoadingAllowed) {
                 throw new HostLanguageException(String.format("Host class loading is not allowed."));
             }
-            if (FileSystems.isNoIOFileSystem(internalContext.context.config.fileSystem)) {
+            if (FileSystems.hasNoIOFileSystem(classpathEntry)) {
                 throw new HostLanguageException("Host class loading is disabled without IO permissions.");
             }
             getClassloader().addClasspathRoot(classpathEntry);

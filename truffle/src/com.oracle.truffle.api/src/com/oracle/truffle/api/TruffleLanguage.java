@@ -66,6 +66,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Value;
@@ -1289,6 +1290,7 @@ public abstract class TruffleLanguage<C> {
         private final OptionValues options;
         private final String[] applicationArguments;
         private final TruffleFile.FileSystemContext fileSystemContext;
+        private final TruffleFile.FileSystemContext internalFileSystemContext;
 
         @CompilationFinal volatile List<Object> services;
 
@@ -1301,7 +1303,7 @@ public abstract class TruffleLanguage<C> {
 
         @SuppressWarnings("unchecked")
         Env(Object vmObject, TruffleLanguage<?> language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
+                        FileSystem fileSystem, FileSystem internalFileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
             this.vmObject = vmObject;
             this.spi = (TruffleLanguage<Object>) language;
             this.in = in;
@@ -1312,6 +1314,7 @@ public abstract class TruffleLanguage<C> {
             this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
             this.valid = true;
             this.fileSystemContext = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectors);
+            this.internalFileSystemContext = new TruffleFile.FileSystemContext(internalFileSystem, fileTypeDetectors);
         }
 
         Object getVMObject() {
@@ -2132,6 +2135,48 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns an internal {@link TruffleFile} for given path. The internal file is a file
+         * located in the languages home directories. The internal files are readable even when
+         * {@link Builder#allowIO(boolean) IO is not allowed} by the Context.
+         *
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.3.0
+         */
+        @TruffleBoundary
+        public TruffleFile getInternalTruffleFile(String path) {
+            checkDisposed();
+            try {
+                return new TruffleFile(internalFileSystemContext, internalFileSystemContext.fileSystem.parsePath(path));
+            } catch (UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, internalFileSystemContext.fileSystem);
+            }
+        }
+
+        /**
+         * Returns an internal {@link TruffleFile} for given {@link URI}. The internal file is a
+         * file located in the languages home directories. The internal files are readable even when
+         * {@link Builder#allowIO(boolean) IO is not allowed} by the Context.
+         *
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.3.0
+         */
+        @TruffleBoundary
+        public TruffleFile getInternalTruffleFile(URI uri) {
+            checkDisposed();
+            try {
+                return new TruffleFile(internalFileSystemContext, internalFileSystemContext.fileSystem.parsePath(uri));
+            } catch (UnsupportedOperationException e) {
+                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, internalFileSystemContext.fileSystem);
+            }
+        }
+
+        /**
          * Gets the current working directory. The current working directory is used to resolve non
          * absolute paths in {@link TruffleFile} methods.
          *
@@ -2169,6 +2214,9 @@ public abstract class TruffleLanguage<C> {
             }
             try {
                 fileSystemContext.fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+                if (fileSystemContext.fileSystem != internalFileSystemContext.fileSystem) {
+                    internalFileSystemContext.fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+                }
             } catch (UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {

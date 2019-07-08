@@ -321,13 +321,13 @@ public final class TruffleProcessBuilder {
                 useEnv = Collections.unmodifiableMap(useEnv);
             }
         }
-        String useCwd;
-        if (cwd != null) {
-            useCwd = cwd.getPath();
-        } else {
-            useCwd = fileSystem.toAbsolutePath(fileSystem.parsePath("")).toString();
-        }
         try {
+            String useCwd;
+            if (cwd != null) {
+                useCwd = cwd.getPath();
+            } else {
+                useCwd = fileSystem.toAbsolutePath(fileSystem.parsePath("")).toString();
+            }
             return IOAccessor.engineAccess().createSubProcess(
                             polyglotLanguageContext,
                             useCmd,
