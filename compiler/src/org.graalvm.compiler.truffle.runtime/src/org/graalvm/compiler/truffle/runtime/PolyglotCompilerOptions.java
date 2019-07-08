@@ -114,6 +114,20 @@ public final class PolyglotCompilerOptions {
                     category = OptionCategory.EXPERT)
     public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
 
+    // Faild compilation behavior
+
+    @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(true);
+
+    @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationExceptionsAreThrown = new OptionKey<>(false);
+
+    @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompilationExceptionsAreFatal = new OptionKey<>(false);
+
+    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> PerformanceWarningsAreFatal = new OptionKey<>(false);
+
     // Tracing
 
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
@@ -209,6 +223,11 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(MultiTier, SharedTruffleRuntimeOptions.TruffleMultiTier);
         POLYGLOT_TO_TRUFFLE.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
         POLYGLOT_TO_TRUFFLE.put(FirstTierMinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold);
+
+        POLYGLOT_TO_TRUFFLE.put(CompilationExceptionsArePrinted, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted);
+        POLYGLOT_TO_TRUFFLE.put(CompilationExceptionsAreThrown, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown);
+        POLYGLOT_TO_TRUFFLE.put(CompilationExceptionsAreFatal, SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal);
+        POLYGLOT_TO_TRUFFLE.put(PerformanceWarningsAreFatal, SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal);
 
         POLYGLOT_TO_TRUFFLE.put(TraceCompilation, SharedTruffleRuntimeOptions.TraceTruffleCompilation);
         POLYGLOT_TO_TRUFFLE.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);

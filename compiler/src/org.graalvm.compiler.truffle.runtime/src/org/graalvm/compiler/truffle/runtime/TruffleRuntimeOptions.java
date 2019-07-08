@@ -161,14 +161,24 @@ public final class TruffleRuntimeOptions {
     /**
      * Determines whether an exception during a Truffle compilation should result in calling
      * {@link System#exit(int)}.
+     * @param target
      */
-    public static boolean areTruffleCompilationExceptionsFatal() {
+    public static boolean areTruffleCompilationExceptionsFatal(OptimizedCallTarget target) {
         /*
          * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled but
          * respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
          */
-        boolean truffleCompilationExceptionsAreFatal = getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal);
-        assert SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal.hasBeenSet(TruffleRuntimeOptions.getOptions()) || (truffleCompilationExceptionsAreFatal = true) == true;
-        return truffleCompilationExceptionsAreFatal || TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal);
+        boolean compilationExceptionsAreFatal = target.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal);
+        boolean performanceWarningsAreFatal = target.getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal);
+
+        if (!target.getOptionValues().hasBeenSet(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
+            boolean assertOn = false;
+            assert assertOn = true;
+            if (assertOn) {
+                return true;
+            }
+        }
+
+        return compilationExceptionsAreFatal || performanceWarningsAreFatal;
     }
 }
