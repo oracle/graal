@@ -216,7 +216,7 @@ public final class OptimizedCompilationProfile {
         if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
-            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation)) {
+            if (PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ReturnTypeSpeculation)) {
                 profiledReturnType = classOf(result);
                 profiledReturnTypeAssumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
             }
@@ -336,7 +336,7 @@ public final class OptimizedCompilationProfile {
 
     private void initializeProfiledArgumentTypes(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
-        if (args.length <= MAX_PROFILED_ARGUMENTS && TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation)) {
+        if (args.length <= MAX_PROFILED_ARGUMENTS && PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ArgumentTypeSpeculation)) {
             Class<?>[] result = new Class<?>[args.length];
             for (int i = 0; i < args.length; i++) {
                 result[i] = classOf(args[i]);

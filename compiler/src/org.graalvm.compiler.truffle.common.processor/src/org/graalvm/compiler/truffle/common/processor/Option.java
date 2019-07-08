@@ -220,12 +220,14 @@ public class Option {
         option("TruffleReturnTypeSpeculation")
             .type("Boolean")
             .category("INTERNAL")
-            .def("true"),
+            .def("true")
+            .deprecatedBy("ReturnTypeSpeculation"),
 
         option("TruffleArgumentTypeSpeculation")
             .type("Boolean")
             .category("INTERNAL")
-            .def("true"),
+            .def("true")
+            .deprecatedBy("ArgumentTypeSpeculation"),
 
         option("TraceTruffleCompilation")
             .type("Boolean")

@@ -100,6 +100,14 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Delay compilation after a node replacement", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> ReplaceReprofileCount = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount.getDefaultValue());
 
+    @Option(help = "Speculate on arguments types at call sites", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> ArgumentTypeSpeculation = new OptionKey<>(true);
+
+    @Option(help = "Speculate on return types at call sites", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> ReturnTypeSpeculation = new OptionKey<>(true);
+
+    // MultiTier
+
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
 
@@ -219,6 +227,8 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(MinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold);
         POLYGLOT_TO_TRUFFLE.put(InvalidationReprofileCount, SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
         POLYGLOT_TO_TRUFFLE.put(ReplaceReprofileCount, SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
+        POLYGLOT_TO_TRUFFLE.put(ArgumentTypeSpeculation, SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation);
+        POLYGLOT_TO_TRUFFLE.put(ReturnTypeSpeculation, SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation);
 
         POLYGLOT_TO_TRUFFLE.put(MultiTier, SharedTruffleRuntimeOptions.TruffleMultiTier);
         POLYGLOT_TO_TRUFFLE.put(FirstTierCompilationThreshold, SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold);
