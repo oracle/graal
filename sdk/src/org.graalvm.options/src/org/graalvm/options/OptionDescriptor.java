@@ -99,7 +99,7 @@ public final class OptionDescriptor {
      * Returns <code>true</code> if this option is an option map. Options maps allow to collect
      * key=value pairs whose keys are unknown beforehand e.g. user defined properties.
      *
-     * @since 20.0
+     * @since 19.2
      */
     public boolean isOptionMap() {
         return optionMap;
@@ -263,10 +263,10 @@ public final class OptionDescriptor {
         }
 
         /**
-         * Defines if this option is an {@link OptionMap option map}. The default value is
+         * Specifies if this option is an {@link OptionMap option map}. The default value is
          * <code>false</code>. See {@link OptionKey#mapOf(Class)}.
          *
-         * @since 20.0
+         * @since 19.2
          */
         public Builder optionMap(@SuppressWarnings("hiding") boolean optionMap) {
             this.optionMap = optionMap;

@@ -117,7 +117,7 @@ public final class OptionKey<T> {
      * Throws {@link IllegalArgumentException} if no default {@link OptionType} could be
      * {@link OptionType#defaultType(Object) resolved} for the value type.
      * 
-     * @since 20.0
+     * @since 19.2
      */
     public static <V> OptionKey<OptionMap<V>> mapOf(Class<V> valueClass) {
         OptionType<OptionMap<V>> type = OptionType.mapOf(valueClass);

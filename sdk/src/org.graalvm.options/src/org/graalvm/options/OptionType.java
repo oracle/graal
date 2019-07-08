@@ -164,7 +164,7 @@ public final class OptionType<T> {
      * @param nameSuffix the key for prefix options.
      * @param previousValue the previous value holded by option.
      * @throws IllegalArgumentException if the value is invalid or cannot be converted.
-     * @since 19.0
+     * @since 19.2
      */
     @SuppressWarnings("unchecked")
     public T convert(Object previousValue, String nameSuffix, String value) {

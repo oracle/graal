@@ -46,12 +46,12 @@ import java.util.Set;
 
 /**
  * Represents a mapping between {@link String} keys and values. Allows to create {@link OptionKey
- * options} to group/accumulate {@code key=value} pairs, with a common prefix, whose keys are not
+ * options} to group/accumulate {@code key=value} pairs, with a common prefix; whose keys are not
  * known beforehand e.g. user defined properties.
  *
  * @param <T> the class of the map values
  *
- * @since 20.0
+ * @since 19.2
  */
 public final class OptionMap<T> {
 
@@ -61,8 +61,8 @@ public final class OptionMap<T> {
     final Map<String, T> readonlyMap;
 
     OptionMap(Map<String, T> map) {
-        this.readonlyMap = Collections.unmodifiableMap(map);
         this.backingMap = map;
+        this.readonlyMap = Collections.unmodifiableMap(map);
     }
 
     /**
@@ -70,7 +70,7 @@ public final class OptionMap<T> {
      * 
      * @param <T> the class of the map values
      * @return an empty option map
-     * @since 20.0
+     * @since 19.2
      */
     @SuppressWarnings("unchecked")
     public static <T> OptionMap<T> empty() {
@@ -85,7 +85,7 @@ public final class OptionMap<T> {
      * @return the value to which the specified key is mapped, or {@code null} if this map contains
      *         no mapping for the key
      *
-     * @since 20.0
+     * @since 19.2
      */
     public T get(String key) {
         return readonlyMap.get(key);
@@ -96,7 +96,7 @@ public final class OptionMap<T> {
      *
      * @return a set view of the mappings contained in this map
      *
-     * @since 20.0
+     * @since 19.2
      */
     public Set<Map.Entry<String, T>> entrySet() {
         return readonlyMap.entrySet();
