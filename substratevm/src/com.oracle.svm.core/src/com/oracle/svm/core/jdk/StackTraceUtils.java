@@ -123,7 +123,6 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 }
 
 class GetCallerClassVisitor extends JavaStackFrameVisitor {
-    private boolean foundCallee;
     Class<?> result;
 
     @Override
@@ -133,14 +132,6 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
              * Always ignore the frame. It is an internal frame of the VM or a frame related to
              * reflection.
              */
-            return true;
-
-        } else if (!foundCallee) {
-            /*
-             * Skip the frame that contained the invocation of getCallerFrame() and continue the
-             * stack walk.
-             */
-            foundCallee = true;
             return true;
 
         } else {
