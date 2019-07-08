@@ -207,13 +207,15 @@ public class Option {
             .type("Boolean")
             .category("EXPERT")
             .def("true")
-            .help("Enable asynchronous truffle compilation in background thread"),
+            .help("Enable asynchronous truffle compilation in background thread")
+            .deprecatedBy("BackgroundCompilation"),
 
         option("TruffleCompilerThreads")
             .type("Integer")
             .category("EXPERT")
             .def("0")
-            .help("Manually set the number of compiler threads"),
+            .help("Manually set the number of compiler threads")
+            .deprecatedBy("CompilerThreads"),
 
         option("TruffleReturnTypeSpeculation")
             .type("Boolean")

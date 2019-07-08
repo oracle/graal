@@ -81,6 +81,12 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Compile immediately to test Truffle compilation", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompileImmediately = new OptionKey<>(false);
 
+    @Option(help = "Enable asynchronous truffle compilation in background threads", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> BackgroundCompilation = new OptionKey<>(true);
+
+    @Option(help = "Manually set the number of compiler threads", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleCompilerThreads.getDefaultValue());
+
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleCompilationThreshold.getDefaultValue());
@@ -193,6 +199,8 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(Compilation, SharedTruffleRuntimeOptions.TruffleCompilation);
         POLYGLOT_TO_TRUFFLE.put(CompileOnly, SharedTruffleRuntimeOptions.TruffleCompileOnly);
         POLYGLOT_TO_TRUFFLE.put(CompileImmediately, SharedTruffleRuntimeOptions.TruffleCompileImmediately);
+        POLYGLOT_TO_TRUFFLE.put(BackgroundCompilation, SharedTruffleRuntimeOptions.TruffleBackgroundCompilation);
+        POLYGLOT_TO_TRUFFLE.put(CompilerThreads, SharedTruffleRuntimeOptions.TruffleCompilerThreads);
         POLYGLOT_TO_TRUFFLE.put(CompilationThreshold, SharedTruffleRuntimeOptions.TruffleCompilationThreshold);
         POLYGLOT_TO_TRUFFLE.put(MinInvokeThreshold, SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold);
         POLYGLOT_TO_TRUFFLE.put(InvalidationReprofileCount, SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
