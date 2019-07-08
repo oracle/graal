@@ -52,6 +52,12 @@ public class Assert {
         }
     }
 
+    public static void assertInRange(long value, long start, long end, String message) {
+        if (value < start || value > end) {
+            fail(format("%s: value %d should be in range [%d, %d]", message, value, start, end));
+        }
+    }
+
     public static void assertLarger(int n1, int n2, String message) throws BinaryReaderException {
         if (n1 <= n2) {
             fail(format("%s: should be larger: %d <= %d", message, n1, n2));
