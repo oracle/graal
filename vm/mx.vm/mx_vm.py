@@ -962,6 +962,9 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if any((' ' in arg for arg in build_args)):
                 mx.abort("Unsupported space in launcher build argument: {} in config for {}".format(image_config.build_args, image_config.destination))
 
+            if any(('UseStackBasePointer' in arg for arg in build_args)):
+                mx.warn('UseStackBasePointer has been deprecated, please use PreserveFramePointer instead')
+
             self._contents = u""
 
             def _write_ln(s):
