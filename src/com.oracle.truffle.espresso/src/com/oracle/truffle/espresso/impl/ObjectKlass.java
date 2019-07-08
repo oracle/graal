@@ -449,7 +449,7 @@ public final class ObjectKlass extends Klass {
             }
             return -1;
         } else {
-            return Arrays.binarySearch(iKlassTable, interfKlass, comparator);
+            return Arrays.binarySearch(iKlassTable, interfKlass, COMPARATOR);
         }
     }
 

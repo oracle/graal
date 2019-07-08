@@ -64,7 +64,7 @@ import com.oracle.truffle.object.DebugCounter;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess {
 
-    public static final Comparator<Klass> comparator = new Comparator<Klass>() {
+    static final Comparator<Klass> COMPARATOR = new Comparator<Klass>() {
         @Override
         public int compare(Klass o1, Klass o2) {
             return Integer.compare(o1.ID, o2.ID);
@@ -286,7 +286,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             }
             return false;
         } else {
-            return Arrays.binarySearch(interfaces, this, comparator) >= 0;
+            return Arrays.binarySearch(interfaces, this, COMPARATOR) >= 0;
         }
     }
 
