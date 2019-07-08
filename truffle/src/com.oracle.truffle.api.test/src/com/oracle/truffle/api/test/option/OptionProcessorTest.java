@@ -315,13 +315,9 @@ public class OptionProcessorTest {
         @Option(help = "A", name = "Duplicate", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<String> Error8 = new OptionKey<>("defaultValue");
 
-        @ExpectError("Options cannot contain a '.' in the name") //
+        @ExpectError("Option (maps) cannot contain a '.' in the name") //
         @Option(help = "A", name = "Category.SubCategory", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<OptionMap<String>> Error9 = OptionKey.mapOf(String.class);
-
-        @ExpectError("Options cannot contain a '.' in the name") //
-        @Option(help = "A", name = "Property.SubProperty", deprecated = true, category = OptionCategory.USER) //
-        static final OptionKey<String> Error10 = new OptionKey<>("defaultValue");
 
         @Option(help = "A", name = "", deprecated = true, category = OptionCategory.USER) //
         static final OptionKey<String> EmptyNameAllowed = new OptionKey<>("defaultValue");

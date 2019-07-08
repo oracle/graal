@@ -282,8 +282,10 @@ public class OptionProcessor extends AbstractProcessor {
             optionName = annotation.name();
         }
 
-        if (optionName.contains(".")) {
-            error(element, elementAnnotation, "Options cannot contain a '.' in the name");
+        // Applying this restriction to all options requires changes in some language
+        // implementations.
+        if (optionMap && optionName.contains(".")) {
+            error(element, elementAnnotation, "Option (maps) cannot contain a '.' in the name");
             return false;
         }
 
