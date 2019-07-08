@@ -32,6 +32,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
@@ -50,6 +52,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Properties;
@@ -418,6 +421,7 @@ public final class NativeImageBuildServer {
             System.setOut(previousOut);
             System.setErr(previousErr);
             resetGlobalStateInLoggers();
+            resetGlobalStateMXBeanLookup();
             resetResourceBundle();
             resetGlobalStateInGraal();
             withGlobalStaticField("java.lang.ApplicationShutdownHooks", "hooks", f -> {
@@ -429,6 +433,27 @@ public final class NativeImageBuildServer {
                 });
             });
         }
+    }
+
+    private static void resetGlobalStateMXBeanLookup() {
+        withGlobalStaticField("com.sun.jmx.mbeanserver.MXBeanLookup", "currentLookup", f -> {
+            ThreadLocal<?> currentLookup = (ThreadLocal<?>) f.get(null);
+            currentLookup.remove();
+        });
+        withGlobalStaticField("com.sun.jmx.mbeanserver.MXBeanLookup", "mbscToLookup", f -> {
+            try {
+                Object mbscToLookup = f.get(null);
+                Map<?, ?> map = ReflectionUtil.readField(Class.forName("com.sun.jmx.mbeanserver.WeakIdentityHashMap"), "map", mbscToLookup);
+                map.clear();
+                ReferenceQueue<?> refQueue = ReflectionUtil.readField(Class.forName("com.sun.jmx.mbeanserver.WeakIdentityHashMap"), "refQueue", mbscToLookup);
+                Reference<?> ref;
+                do {
+                    ref = refQueue.poll();
+                } while (ref != null);
+            } catch (ClassNotFoundException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        });
     }
 
     private static void resetGlobalStateInLoggers() {
