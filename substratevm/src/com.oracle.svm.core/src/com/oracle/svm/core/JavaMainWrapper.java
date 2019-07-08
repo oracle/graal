@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -114,9 +115,12 @@ public class JavaMainWrapper {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterCreateIsolatePrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    public static int run(int paramArgc, CCharPointerPointer paramArgv) throws Exception {
+    /**
+     * Used by JavaMainWrapper and any user supplied main entry point (from
+     * {@link org.graalvm.nativeimage.hosted.Feature.AfterRegistrationAccess}).
+     */
+    @AlwaysInline(value = "Single callee from the main entry point.")
+    public static int runCore(int paramArgc, CCharPointerPointer paramArgv) {
         JavaMainWrapper.argc = paramArgc;
         JavaMainWrapper.argv = paramArgv;
 
@@ -174,6 +178,12 @@ public class JavaMainWrapper {
             Counter.logValues();
         }
         return exitCode;
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(prologue = EnterCreateIsolatePrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    public static int run(int paramArgc, CCharPointerPointer paramArgv) {
+        return runCore(paramArgc, paramArgv);
     }
 
     /**
