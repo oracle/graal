@@ -1,5 +1,5 @@
 (module
-    (func (result f32)
+    (func (export "main") (result f32)
         block $B0 (result f32)
             f32.const 3.99
             block $B1 (result f32)

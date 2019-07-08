@@ -1,5 +1,5 @@
 (module
-    (func (result i32) (local $l0 i32) (local $l1 i32)
+    (func (export "main") (result i32) (local $l0 i32) (local $l1 i32)
         i32.const 0
         local.set $l0
         i32.const 10

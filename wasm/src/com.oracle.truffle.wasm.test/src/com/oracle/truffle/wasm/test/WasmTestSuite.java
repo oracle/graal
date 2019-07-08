@@ -41,7 +41,6 @@ import com.oracle.truffle.wasm.test.suites.control.BlockWithLocalsSuite;
 import com.oracle.truffle.wasm.test.suites.control.BranchBlockSuite;
 import com.oracle.truffle.wasm.test.suites.control.LoopBlockSuite;
 import com.oracle.truffle.wasm.test.suites.control.SimpleBlockSuite;
-import com.oracle.truffle.wasm.test.suites.webassembly.SpecSuite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -53,7 +52,6 @@ import com.oracle.truffle.wasm.test.suites.webassembly.SpecSuite;
         BlockWithLocalsSuite.class,
         BranchBlockSuite.class,
         LoopBlockSuite.class,
-        SpecSuite.class,
 })
 public class WasmTestSuite {
     @Test
