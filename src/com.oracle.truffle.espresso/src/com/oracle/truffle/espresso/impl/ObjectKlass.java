@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -432,12 +433,24 @@ public final class ObjectKlass extends Klass {
 
     public final Method itableLookup(Klass interfKlass, int index) {
         assert (index >= 0) : "Undeclared interface method";
-        for (int i = 0; i < itableLength; i++) {
-            if (iKlassTable[i] == interfKlass) {
-                return itable[i][index];
-            }
+        try {
+            return itable[findITableIndex(interfKlass)][index];
+        } catch (IndexOutOfBoundsException e) {
+            throw getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Class " + getName() + " does not implement interface " + interfKlass.getName());
         }
-        throw getMeta().throwExWithMessage(IncompatibleClassChangeError.class, "Class " + getName() + " does not implement " + interfKlass.getName());
+    }
+
+    private int findITableIndex(Klass interfKlass) {
+        if (itableLength < 5) {
+            for (int i = 0; i < itableLength; i++) {
+                if (iKlassTable[i] == interfKlass) {
+                    return i;
+                }
+            }
+            return -1;
+        } else {
+            return Arrays.binarySearch(iKlassTable, interfKlass, COMPARATOR);
+        }
     }
 
     final Method[][] getItable() {
@@ -448,13 +461,30 @@ public final class ObjectKlass extends Klass {
         return iKlassTable;
     }
 
-    final Method lookupVirtualMethodOverride(Symbol<Name> name, Symbol<Signature> signature) {
+    final Method lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, String subclassPackage) {
         for (Method m : vtable) {
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
-                return m;
+                if (m.isProtected() || m.isPublic()) {
+                    return m;
+                } else if (subclassPackage.equals(getRuntimePackage())) {
+                    return m;
+                }
             }
         }
         return null;
+    }
+
+    final List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, String subclassPackage, List<Method> result) {
+        for (Method m : vtable) {
+            if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
+                if (m.isProtected() || m.isPublic()) {
+                    result.add(m);
+                } else if (subclassPackage.equals(getRuntimePackage())) {
+                    result.add(m);
+                }
+            }
+        }
+        return result;
     }
 
     public final Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {

@@ -32,6 +32,8 @@ import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySig
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
@@ -62,6 +64,13 @@ import com.oracle.truffle.object.DebugCounter;
 
 public abstract class Klass implements ModifiersProvider, ContextAccess {
 
+    static final Comparator<Klass> COMPARATOR = new Comparator<Klass>() {
+        @Override
+        public int compare(Klass o1, Klass o2) {
+            return Integer.compare(o1.ID, o2.ID);
+        }
+    };
+
     public static final Klass[] EMPTY_ARRAY = new Klass[0];
 
     static final DebugCounter methodLookupCount = DebugCounter.create("methodLookupCount");
@@ -74,6 +83,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private final JavaKind kind;
     private final EspressoContext context;
     private final ObjectKlass superKlass;
+
+    private final int ID;
 
     @CompilationFinal(dimensions = 1) //
     private final ObjectKlass[] superInterfaces;
@@ -100,6 +111,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
         this.isArray = Types.isArray(type);
+        this.ID = context.getNewId();
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -253,15 +265,29 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             return this.getComponentType().isAssignableFrom(other.getComponentType());
         }
         if (isInterface()) {
-            for (Klass k : other.getTransitiveInterfacesList()) {
+            return checkInterfaceSubclassing(other);
+
+        }
+        int depth = getHierarchyDepth();
+        return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
+    }
+
+    public final int getID() {
+        return ID;
+    }
+
+    private boolean checkInterfaceSubclassing(Klass other) {
+        Klass[] interfaces = other.getTransitiveInterfacesList();
+        if (interfaces.length < 5) {
+            for (Klass k : interfaces) {
                 if (k == this) {
                     return true;
                 }
             }
             return false;
+        } else {
+            return Arrays.binarySearch(interfaces, this, COMPARATOR) >= 0;
         }
-        int depth = getHierarchyDepth();
-        return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
     }
 
     public final Klass findLeastCommonAncestor(Klass other) {
