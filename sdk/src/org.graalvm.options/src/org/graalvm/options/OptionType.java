@@ -61,6 +61,7 @@ public final class OptionType<T> {
     private final String name;
     private final Converter<T> converter;
     private final Consumer<T> validator;
+    private final boolean isOptionMap;
 
     /**
      * Constructs a new option type with name and function that allows to convert a string to the
@@ -80,16 +81,17 @@ public final class OptionType<T> {
             public T convert(T previousValue, String key, String value) {
                 return stringConverter.apply(value);
             }
-        }, validator);
+        }, validator, false);
     }
 
-    private OptionType(String name, Converter<T> converter, Consumer<T> validator) {
+    private OptionType(String name, Converter<T> converter, Consumer<T> validator, boolean isOptionMap) {
         Objects.requireNonNull(name);
         Objects.requireNonNull(converter);
         Objects.requireNonNull(validator);
         this.name = name;
         this.converter = converter;
         this.validator = validator;
+        this.isOptionMap = isOptionMap;
     }
 
     /**
@@ -288,7 +290,7 @@ public final class OptionType<T> {
                 map.backingMap.put(key, valueType.convert(map.get(key), key, value));
                 return map;
             }
-        }, (Consumer<OptionMap<V>>) EMPTY_VALIDATOR);
+        }, (Consumer<OptionMap<V>>) EMPTY_VALIDATOR, true);
     }
 
     /**
@@ -300,6 +302,10 @@ public final class OptionType<T> {
     @SuppressWarnings("unchecked")
     public static <T> OptionType<T> defaultType(Class<T> clazz) {
         return (OptionType<T>) DEFAULTTYPES.get(clazz);
+    }
+
+    boolean isOptionMap() {
+        return isOptionMap;
     }
 
     @FunctionalInterface
