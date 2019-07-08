@@ -38,6 +38,8 @@ import java.util.Map;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.wasm.binary.memory.UnsafeWasmMemory;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 
 public class WasmContext {
     private static final long DEFAULT_MEMORY_SIZE = 1 << 25;

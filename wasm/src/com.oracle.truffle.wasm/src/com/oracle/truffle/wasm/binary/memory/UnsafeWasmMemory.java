@@ -27,13 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary;
-
-import sun.misc.Unsafe;
+package com.oracle.truffle.wasm.binary.memory;
 
 import java.lang.reflect.Field;
 
-public class UnsafeWasmMemory extends WasmMemory {
+import sun.misc.Unsafe;
+
+public class UnsafeWasmMemory implements WasmMemory {
     private final Unsafe unsafe;
     private final long start;
     private final long memorySize;

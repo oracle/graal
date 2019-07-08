@@ -27,52 +27,52 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary;
+package com.oracle.truffle.wasm.binary.memory;
 
-public abstract class WasmMemory {
-    public abstract int load_i32(long address);
+public interface WasmMemory {
+    int load_i32(long address);
 
-    public abstract long load_i64(long address);
+    long load_i64(long address);
 
-    public abstract float load_f32(long address);
+    float load_f32(long address);
 
-    public abstract double load_f64(long address);
+    double load_f64(long address);
 
-    public abstract int load_i32_8s(long address);
+    int load_i32_8s(long address);
 
-    public abstract int load_i32_8u(long address);
+    int load_i32_8u(long address);
 
-    public abstract int load_i32_16s(long address);
+    int load_i32_16s(long address);
 
-    public abstract int load_i32_16u(long address);
+    int load_i32_16u(long address);
 
-    public abstract long load_i64_8s(long address);
+    long load_i64_8s(long address);
 
-    public abstract long load_i64_8u(long address);
+    long load_i64_8u(long address);
 
-    public abstract long load_i64_16s(long address);
+    long load_i64_16s(long address);
 
-    public abstract long load_i64_16u(long address);
+    long load_i64_16u(long address);
 
-    public abstract long load_i64_32s(long address);
+    long load_i64_32s(long address);
 
-    public abstract long load_i64_32u(long address);
+    long load_i64_32u(long address);
 
-    public abstract void store_i32(long address, int value);
+    void store_i32(long address, int value);
 
-    public abstract void store_i64(long address, long value);
+    void store_i64(long address, long value);
 
-    public abstract void store_f32(long address, float value);
+    void store_f32(long address, float value);
 
-    public abstract void store_f64(long address, double value);
+    void store_f64(long address, double value);
 
-    public abstract void store_i32_8(long address, int value);
+    void store_i32_8(long address, int value);
 
-    public abstract void store_i32_16(long address, int value);
+    void store_i32_16(long address, int value);
 
-    public abstract void store_i64_8(long address, long value);
+    void store_i64_8(long address, long value);
 
-    public abstract void store_i64_16(long address, long value);
+    void store_i64_16(long address, long value);
 
-    public abstract void store_i64_32(long address, long value);
+    void store_i64_32(long address, long value);
 }
