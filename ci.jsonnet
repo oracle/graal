@@ -1,7 +1,7 @@
 {
   local oraclejdk8 = {
     name: 'oraclejdk',
-    version: '8u212-jvmci-20-b03',
+    version: '8u212-jvmci-19.2-b01',
     platformspecific: true,
   },
 
