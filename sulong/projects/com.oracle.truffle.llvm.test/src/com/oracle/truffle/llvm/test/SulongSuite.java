@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.test.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class SulongSuite extends BaseSuiteHarness {
 
+    @SuppressWarnings("unused")
     private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().indexOf("mac") >= 0;
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public String testName;
