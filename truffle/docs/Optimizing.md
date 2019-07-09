@@ -51,6 +51,8 @@ To make best use of the former options, limit what is compiled to the methods th
 
 `--vm.Dgraal.TruffleOSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
 
+`--vm.Dgraal.TruffleCompilation=false` turns off Truffle compilation all together.
+
 ## HotSpot options
 
 See https://chriswhocodes.com/graal_options_graal_ce_19.html and https://chriswhocodes.com/hotspot_options_jdk8.html.
