@@ -38,6 +38,7 @@ public final class MachORPathCommand extends MachOLoadCommand {
         this.name = name;
     }
 
+    @Override
     public String toString() {
         return getClass().getSimpleName() + "<" + name + ">";
     }

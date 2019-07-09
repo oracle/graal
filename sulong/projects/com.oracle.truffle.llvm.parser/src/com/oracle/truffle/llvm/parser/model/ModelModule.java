@@ -58,8 +58,6 @@ public final class ModelModule {
     private final ArrayList<FunctionDeclaration> declares = new ArrayList<>();
     private final ArrayList<FunctionDefinition> defines = new ArrayList<>();
     private final ArrayList<TargetInformation> targetInfo = new ArrayList<>();
-    private final ArrayList<String> libraries = new ArrayList<>();
-    private final ArrayList<String> paths = new ArrayList<>();
     private final HashMap<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
     private final HashMap<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
     private final HashMap<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
