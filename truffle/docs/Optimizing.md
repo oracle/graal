@@ -104,12 +104,22 @@ See [`profiling.md`](Profiling.md).
 
 ## Strategy
 
-1. Simplify the code as much as possible where it still shows the performance problem.
+1. Run with a profiler to sample the application and identify responsible compilation units. Use a sampling delay (`--cpusampler.Delay=MILLISECONDS`) to only profile after warmup.
 
-2. Understand what is being compiled and look for deoptimizations.
+2. Understand what is being compiled and look for deoptimizations. Methods that are listed to run mostly in the interpreter likely have a problem with deoptimization.
 
-3. Use the option for showing performance warnings and listing boundary calls.
+3. Simplify the code as much as possible where it still shows the performance problem.
 
-3. Look at the Truffle AST after inlining and check all the nodes are specialized as expected.
+4. Enable performance warnings and list boundary calls.
 
-4. Look at the Graal graph after partial escape and check it is what you'd expect. If there are nodes there you don't want to be there, think about how to guard against including them. If there are more complex nodes there than you want, think about how to add specialisations that generate simpler code. If there are nodes you think should be there in a benchmark that aren't, think about how to make values dynamic so they aren't optimized away.
+4. Dump the Graal graph of the responsible compilation unit and look at the phase `After TruffleTier`.
+4. Look at the Graal graphs at the phases `After TruffleTier` and `After PartialEscape` and check it is what you'd expect.
+   If there are nodes there you don't want to be there, think about how to guard against including them.
+   If there are more complex nodes there than you want, think about how to add specialisations that generate simpler code.
+   If there are nodes you think should be there in a benchmark that aren't, think about how to make values dynamic so they aren't optimized away.
+
+5. Search for Invoke nodes in the Graal IR. Invoke nodes that are not representing guest language calls should be specialized way. This may not be always possible, e.g., if the method does I/O.
+
+6. Search for control flow splits (red lines) and investigate whether they result from control flow caused by the guest application or are just artefacts from the language implementation. The latter should be avoided if possible.
+
+7. Search for indirections in linear code (`Load` and `LoadIndexed`) and try to minimise the code. The less code that is on the hot-path the better.
