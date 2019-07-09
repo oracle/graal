@@ -53,4 +53,4 @@ linker/ref.out: linker/main.c linker/Makefile
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
 
 %.bc: %.out
-	cp %< %@
+	cp $< $@

@@ -52,4 +52,4 @@ rpath/main-override/ref.out: rpath/main.c rpath/Makefile rpath/libFoo$(SO_EXT) r
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN)/.. -Lrpath -lFoo -lBar -o $@ $<
 
 %.bc: %.out
-	cp %< %@
+	cp $< $@
