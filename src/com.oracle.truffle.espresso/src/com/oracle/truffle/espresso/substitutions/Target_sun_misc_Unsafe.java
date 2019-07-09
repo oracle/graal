@@ -621,6 +621,34 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
+    public static void putFloatVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, float value) {
+        if (holder.isArray()) {
+            U.putFloatVolatile((holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        assert f.getKind().isSubWord();
+        holder.setFloatFieldVolatile(f, value);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void putDoubleVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, double value) {
+        if (holder.isArray()) {
+            U.putDoubleVolatile((holder).unwrap(), offset, value);
+            return;
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        assert f.getKind().isSubWord();
+        holder.setDoubleFieldVolatile(f, value);
+    }
+
+    @Substitution(hasReceiver = true)
     public static void putByteVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, byte value) {
         if (holder.isArray()) {
             U.putByteVolatile((holder).unwrap(), offset, value);
