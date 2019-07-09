@@ -494,7 +494,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             outer: // labelled outer loop so that hasNext check is performed for left
             for (Iterator<Node> leftInputIt = s1.inputs().iterator(); leftInputIt.hasNext();) {
-                for (Iterator<Node> rightInputIt = s2.inputs().iterator(); rightInputIt.hasNext();) {
+                for (Iterator<Node> rightInputIt = s2.inputs().iterator(); leftInputIt.hasNext() && rightInputIt.hasNext();) {
                     final Node leftInput = leftInputIt.next();
                     final Node rightInput = rightInputIt.next();
 
