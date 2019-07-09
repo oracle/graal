@@ -27,54 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary.memory;
+package com.oracle.truffle.wasm.test.suites.memory;
 
-public interface WasmMemory {
-    boolean validateAddress(long address, int size);
+import com.oracle.truffle.wasm.test.WasmSuiteBase;
+import com.oracle.truffle.wasm.test.options.WasmTestOptions;
+import org.junit.Test;
 
-    int load_i32(long address);
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-    long load_i64(long address);
+public class MemorySuite extends WasmSuiteBase {
+    @Override
+    protected Path testDirectory() {
+        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "memory");
+    }
 
-    float load_f32(long address);
-
-    double load_f64(long address);
-
-    int load_i32_8s(long address);
-
-    int load_i32_8u(long address);
-
-    int load_i32_16s(long address);
-
-    int load_i32_16u(long address);
-
-    long load_i64_8s(long address);
-
-    long load_i64_8u(long address);
-
-    long load_i64_16s(long address);
-
-    long load_i64_16u(long address);
-
-    long load_i64_32s(long address);
-
-    long load_i64_32u(long address);
-
-    void store_i32(long address, int value);
-
-    void store_i64(long address, long value);
-
-    void store_f32(long address, float value);
-
-    void store_f64(long address, double value);
-
-    void store_i32_8(long address, int value);
-
-    void store_i32_16(long address, int value);
-
-    void store_i64_8(long address, long value);
-
-    void store_i64_16(long address, long value);
-
-    void store_i64_32(long address, long value);
+    @Test
+    public void test() throws IOException {
+        // This is here just to make mx aware of the test suite class.
+        super.test();
+    }
 }

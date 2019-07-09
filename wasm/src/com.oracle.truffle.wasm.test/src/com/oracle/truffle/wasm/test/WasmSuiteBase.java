@@ -132,7 +132,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         } else {
             System.out.println(String.format("\uD83C\uDF40\u001B[32m %d/%d Wasm tests passed.\u001B[0m", testCases.size() - errors.size(), testCases.size()));
         }
-        System.out.println("");
+        System.out.println();
     }
 
     protected Path testDirectory() {

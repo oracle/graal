@@ -48,6 +48,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_FLOOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_GE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_GT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_LE;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_LOAD;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_LT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_MAX;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_MIN;
@@ -56,6 +57,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NEAREST;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NEG;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_SQRT;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_STORE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_TRUNC;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_ABS;
@@ -69,6 +71,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_FLOOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_GE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_GT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_LE;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_LOAD;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_LT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_MAX;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_MIN;
@@ -77,6 +80,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NEAREST;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NEG;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_SQRT;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_STORE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_TRUNC;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.GLOBAL_GET;
@@ -96,6 +100,11 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_GT_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_GT_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LE_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LE_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD16_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD16_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD8_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD8_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LT_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LT_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_MUL;
@@ -109,6 +118,8 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_ROTR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SHL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SHR_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SHR_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_STORE;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_STORE_16;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_ADD;
@@ -126,6 +137,13 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_GT_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_GT_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LE_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LE_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD16_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD16_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD32_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD32_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD8_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD8_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LT_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LT_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_MUL;
@@ -139,6 +157,10 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_ROTR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SHL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SHR_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SHR_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_16;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_32;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_8;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_XOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.IF;
@@ -146,6 +168,8 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_GET;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_SET;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_TEE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOOP;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.MEMORY_GROW;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.MEMORY_SIZE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 import static com.oracle.truffle.wasm.binary.constants.Sections.CODE;
@@ -277,6 +301,23 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readMemorySection() {
+        int numMemories = readVectorLength();
+        for (int i = 0; i != numMemories; ++i) {
+            byte limitsPrefix = read1();
+            switch (limitsPrefix) {
+                case 0x00: {
+                    readUnsignedInt32();  // initialSize (in Wasm pages)
+                    break;
+                }
+                case 0x01: {
+                    readUnsignedInt32();  // initial size (in Wasm pages)
+                    readUnsignedInt32();  // max size (in Wasm pages)
+                    break;
+                }
+                default:
+                    Assert.fail(String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+            }
+        }
     }
 
     private void readDataSection() {
@@ -477,6 +518,52 @@ public class BinaryReader extends BinaryStreamReader {
                     // Assert there is a value on the top of the stack.
                     Assert.assertLarger(state.stackSize(), 0, "global.set requires at least one element in the stack");
                     state.pop();
+                    break;
+                }
+                case I32_LOAD:
+                case I64_LOAD:
+                case F32_LOAD:
+                case F64_LOAD:
+                case I32_LOAD8_S:
+                case I32_LOAD8_U:
+                case I32_LOAD16_S:
+                case I32_LOAD16_U:
+                case I64_LOAD8_S:
+                case I64_LOAD8_U:
+                case I64_LOAD16_S:
+                case I64_LOAD16_U:
+                case I64_LOAD32_S:
+                case I64_LOAD32_U:
+                    readUnsignedInt32(bytesConsumed);  // align
+                    state.useByteConstant(bytesConsumed[0]);
+                    readUnsignedInt32(bytesConsumed);  // offset
+                    state.useByteConstant(bytesConsumed[0]);
+                    Assert.assertLarger(state.stackSize(), 0, String.format("load instruction 0x%02X requires at least one element in the stack", opcode));
+                    state.pop();   // base address
+                    state.push();  // loaded value
+                    break;
+                case I32_STORE:
+                case I64_STORE:
+                case F32_STORE:
+                case F64_STORE:
+                case I32_STORE_16:
+                case I64_STORE_8:
+                case I64_STORE_16:
+                case I64_STORE_32:
+                    readUnsignedInt32(bytesConsumed);  // align
+                    state.useByteConstant(bytesConsumed[0]);
+                    readUnsignedInt32(bytesConsumed);  // offset
+                    state.useByteConstant(bytesConsumed[0]);
+                    Assert.assertLarger(state.stackSize(), 1, String.format("store instruction 0x%02X requires at least two elements in the stack", opcode));
+                    state.pop();  // value to store
+                    state.pop();  // base address
+                    break;
+                case MEMORY_SIZE: {
+                    read1();  // 0x00
+                    break;
+                }
+                case MEMORY_GROW: {
+                    read1();  // 0x00
                     break;
                 }
                 case I32_CONST:

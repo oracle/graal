@@ -49,6 +49,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_FLOOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_GE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_GT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_LE;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_LOAD;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_LT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_MAX;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_MIN;
@@ -57,6 +58,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NEAREST;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NEG;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_SQRT;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_STORE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_TRUNC;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_ABS;
@@ -70,6 +72,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_FLOOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_GE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_GT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_LE;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_LOAD;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_LT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_MAX;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_MIN;
@@ -78,6 +81,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NEAREST;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NEG;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_SQRT;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_STORE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_TRUNC;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_ADD;
@@ -95,6 +99,11 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_GT_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_GT_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LE_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LE_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD16_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD16_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD8_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LOAD8_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LT_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_LT_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_MUL;
@@ -108,6 +117,9 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_ROTR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SHL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SHR_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SHR_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_STORE;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_STORE_16;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_STORE_8;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_ADD;
@@ -125,6 +137,13 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_GT_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_GT_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LE_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LE_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD16_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD16_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD32_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD32_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD8_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LOAD8_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LT_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_LT_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_MUL;
@@ -138,6 +157,10 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_ROTR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SHL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SHR_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SHR_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_16;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_32;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_8;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_XOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.IF;
@@ -447,6 +470,283 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             break;
                         }
                     }
+                    break;
+                }
+                case I32_LOAD:
+                case I64_LOAD:
+                case F32_LOAD:
+                case F64_LOAD:
+                case I32_LOAD8_S:
+                case I32_LOAD8_U:
+                case I32_LOAD16_S:
+                case I32_LOAD16_U:
+                case I64_LOAD8_S:
+                case I64_LOAD8_U:
+                case I64_LOAD16_S:
+                case I64_LOAD16_U:
+                case I64_LOAD32_S:
+                case I64_LOAD32_U: {
+                    int memAlign = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+                    byte memAlignConstantLength = codeEntry().byteConstant(byteConstantOffset);
+                    byteConstantOffset++;
+                    offset += memAlignConstantLength;
+
+                    int memOffset = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+                    byte memOffsetConstantLength = codeEntry().byteConstant(byteConstantOffset);
+                    byteConstantOffset++;
+                    offset += memOffsetConstantLength;
+
+                    stackPointer--;
+                    int baseAddress = popInt(frame, stackPointer);
+                    int address = baseAddress + memOffset;
+
+                    switch (opcode) {
+                        case I32_LOAD: {
+                            if (!context.memory().validateAddress(address, 32)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            int value = context.memory().load_i32(address);
+                            pushInt(frame, stackPointer, value);
+                            break;
+                        }
+                        case I64_LOAD: {
+                            if (!context.memory().validateAddress(address, 64)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            long value = context.memory().load_i64(address);
+                            push(frame, stackPointer, value);
+                            break;
+                        }
+                        case F32_LOAD: {
+                            if (!context.memory().validateAddress(address, 32)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            float value = context.memory().load_f32(address);
+                            pushFloat(frame, stackPointer, value);
+                            break;
+                        }
+                        case F64_LOAD: {
+                            if (!context.memory().validateAddress(address, 64)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            double value = context.memory().load_f64(address);
+                            pushDouble(frame, stackPointer, value);
+                            break;
+                        }
+                        case I32_LOAD8_S: {
+                            if (!context.memory().validateAddress(address, 8)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            int value = context.memory().load_i32_8s(address);
+                            pushInt(frame, stackPointer, value);
+                            break;
+                        }
+                        case I32_LOAD8_U: {
+                            if (!context.memory().validateAddress(address, 8)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            int value = context.memory().load_i32_8u(address);
+                            pushInt(frame, stackPointer, value);
+                            break;
+                        }
+                        case I32_LOAD16_S: {
+                            if (!context.memory().validateAddress(address, 16)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            int value = context.memory().load_i32_16s(address);
+                            pushInt(frame, stackPointer, value);
+                            break;
+                        }
+                        case I32_LOAD16_U: {
+                            if (!context.memory().validateAddress(address, 16)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            int value = context.memory().load_i32_16u(address);
+                            pushInt(frame, stackPointer, value);
+                            break;
+                        }
+                        case I64_LOAD8_S: {
+                            if (!context.memory().validateAddress(address, 8)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            long value = context.memory().load_i64_8s(address);
+                            push(frame, stackPointer, value);
+                            break;
+                        }
+                        case I64_LOAD8_U: {
+                            if (!context.memory().validateAddress(address, 8)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            long value = context.memory().load_i64_8u(address);
+                            push(frame, stackPointer, value);
+                            break;
+                        }
+                        case I64_LOAD16_S: {
+                            if (!context.memory().validateAddress(address, 16)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            long value = context.memory().load_i64_16s(address);
+                            push(frame, stackPointer, value);
+                            break;
+                        }
+                        case I64_LOAD16_U: {
+                            if (!context.memory().validateAddress(address, 16)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            long value = context.memory().load_i64_16u(address);
+                            push(frame, stackPointer, value);
+                            break;
+                        }
+                        case I64_LOAD32_S: {
+                            if (!context.memory().validateAddress(address, 32)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            long value = context.memory().load_i64_32s(address);
+                            push(frame, stackPointer, value);
+                            break;
+                        }
+                        case I64_LOAD32_U: {
+                            if (!context.memory().validateAddress(address, 32)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            long value = context.memory().load_i64_32u(address);
+                            push(frame, stackPointer, value);
+                            break;
+                        }
+                    }
+                    stackPointer++;
+                    break;
+                }
+                case I32_STORE:
+                case I64_STORE:
+                case F32_STORE:
+                case F64_STORE:
+                case I32_STORE_8:
+                case I32_STORE_16:
+                case I64_STORE_8:
+                case I64_STORE_16:
+                case I64_STORE_32: {
+                    int memAlign = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+                    byte memAlignConstantLength = codeEntry().byteConstant(byteConstantOffset);
+                    byteConstantOffset++;
+                    offset += memAlignConstantLength;
+
+                    int memOffset = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
+                    byte memOffsetConstantLength = codeEntry().byteConstant(byteConstantOffset);
+                    byteConstantOffset++;
+                    offset += memOffsetConstantLength;
+
+                    switch (opcode) {
+                        case I32_STORE: {
+                            stackPointer--;
+                            int value = popInt(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 32)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_i32(address, value);
+                            break;
+                        }
+                        case I64_STORE: {
+                            stackPointer--;
+                            long value = pop(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 64)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_i64(address, value);
+                            break;
+                        }
+                        case F32_STORE: {
+                            stackPointer--;
+                            float value = popAsFloat(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 32)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_f32(address, value);
+                            break;
+                        }
+                        case F64_STORE: {
+                            stackPointer--;
+                            double value = popAsDouble(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 64)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_f64(address, value);
+                            break;
+                        }
+                        case I32_STORE_8: {
+                            stackPointer--;
+                            int value = popInt(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 8)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_i32_8(address, value);
+                            break;
+                        }
+                        case I32_STORE_16: {
+                            stackPointer--;
+                            int value = popInt(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 16)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_i32_16(address, value);
+                            break;
+                        }
+                        case I64_STORE_8: {
+                            stackPointer--;
+                            long value = pop(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 8)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_i64_8(address, value);
+                            break;
+                        }
+                        case I64_STORE_16: {
+                            stackPointer--;
+                            long value = pop(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 16)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_i64_16(address, value);
+                            break;
+                        }
+                        case I64_STORE_32: {
+                            stackPointer--;
+                            long value = pop(frame, stackPointer);
+                            stackPointer--;
+                            int baseAddress = popInt(frame, stackPointer);
+                            int address = baseAddress + memOffset;
+                            if (!context.memory().validateAddress(address, 32)) {
+                                throw new WasmTrap("address out of bounds", this);
+                            }
+                            context.memory().store_i64_32(address, value);
+                            break;
+                        }
+                    }
+
                     break;
                 }
                 case I32_CONST: {

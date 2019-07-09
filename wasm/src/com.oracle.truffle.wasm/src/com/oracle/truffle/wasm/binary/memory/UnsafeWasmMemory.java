@@ -31,6 +31,7 @@ package com.oracle.truffle.wasm.binary.memory;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.wasm.binary.Assert;
 import sun.misc.Unsafe;
 
 public class UnsafeWasmMemory implements WasmMemory {
@@ -51,117 +52,124 @@ public class UnsafeWasmMemory implements WasmMemory {
     }
 
     @Override
+    public boolean validateAddress(long address, int size) {
+        return !(address + size > memorySize);
+    }
+
+    @Override
     public int load_i32(long address) {
-        return 0;
+        return unsafe.getInt(start + address);
     }
 
     @Override
     public long load_i64(long address) {
-        return 0;
+        return unsafe.getLong(start + address);
     }
 
     @Override
     public float load_f32(long address) {
-        return 0;
+        return unsafe.getFloat(start + address);
     }
 
     @Override
     public double load_f64(long address) {
-        return 0;
+        return unsafe.getDouble(start + address);
     }
 
     @Override
     public int load_i32_8s(long address) {
-        return 0;
+        return unsafe.getByte(start + address);
     }
 
     @Override
     public int load_i32_8u(long address) {
-        return 0;
+        return 0x0000_00ff & unsafe.getByte(start + address);
     }
 
     @Override
     public int load_i32_16s(long address) {
-        return 0;
+        return unsafe.getShort(start + address);
     }
 
     @Override
     public int load_i32_16u(long address) {
-        return 0;
+        return 0x0000_ffff & unsafe.getShort(start + address);
     }
 
     @Override
     public long load_i64_8s(long address) {
-        return 0;
+        return unsafe.getByte(start + address);
     }
 
     @Override
     public long load_i64_8u(long address) {
-        return 0;
+        return 0x0000_00ffL & unsafe.getByte(start + address);
     }
 
     @Override
     public long load_i64_16s(long address) {
-        return 0;
+        return unsafe.getShort(start + address);
     }
 
     @Override
     public long load_i64_16u(long address) {
-        return 0;
+        return 0x0000_ffffL & unsafe.getShort(start + address);
     }
 
     @Override
     public long load_i64_32s(long address) {
-        return 0;
+        return unsafe.getInt(start + address);
     }
 
     @Override
     public long load_i64_32u(long address) {
-        return 0;
+        return 0x0000_0000_ffff_ffffL & unsafe.getInt(start + address);
     }
 
     @Override
     public void store_i32(long address, int value) {
-
+        unsafe.putInt(start + address, value);
     }
 
     @Override
     public void store_i64(long address, long value) {
+        unsafe.putLong(start + address, value);
 
     }
 
     @Override
     public void store_f32(long address, float value) {
+        unsafe.putFloat(start + address, value);
 
     }
 
     @Override
     public void store_f64(long address, double value) {
-
+        unsafe.putDouble(start + address, value);
     }
 
     @Override
     public void store_i32_8(long address, int value) {
-
+        unsafe.putByte(start + address, (byte) value);
     }
 
     @Override
     public void store_i32_16(long address, int value) {
-
+        unsafe.putShort(start + address, (short) value);
     }
 
     @Override
     public void store_i64_8(long address, long value) {
-
+        unsafe.putByte(start + address, (byte) value);
     }
 
     @Override
     public void store_i64_16(long address, long value) {
-
+        unsafe.putShort(start + address, (short) value);
     }
 
     @Override
     public void store_i64_32(long address, long value) {
-
+        unsafe.putInt(start + address, (int) value);
     }
 }
