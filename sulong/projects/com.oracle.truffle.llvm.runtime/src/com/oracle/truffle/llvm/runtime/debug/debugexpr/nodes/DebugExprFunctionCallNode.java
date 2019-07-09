@@ -48,7 +48,7 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
     private final String functionName;
     private DebugExprType type;
     private Object member;
-    @Children private List<LLVMExpressionNode> arguments;
+    private List<LLVMExpressionNode> arguments;
     private Iterable<Scope> scopes;
 
     public DebugExprFunctionCallNode(String functionName, List<DebugExpressionPair> arguments, Iterable<Scope> scopes) {
