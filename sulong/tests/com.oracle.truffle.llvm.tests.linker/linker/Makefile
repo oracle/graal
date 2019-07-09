@@ -33,7 +33,7 @@ CC_LIBS=-lA -lB
 D_LIBS=-lB -lCC -lE
 LINKER_MAIN_LIBS=-lCC -lD -lHiddenA -lFileLocalA -lF -lG -lH
 
-default: linker/ref.out
+default: linker/ref.bc
 
 linker/lib/lib%$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS)
 linker/lib/lib%$(SO_EXT): linker/%.c linker/Makefile
@@ -52,4 +52,5 @@ linker/ref.out: linker/main.c linker/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
 
-
+%.bc: %.out
+	cp %< %@

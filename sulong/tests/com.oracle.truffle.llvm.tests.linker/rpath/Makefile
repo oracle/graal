@@ -29,7 +29,7 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-default: rpath/not-inherited/ref.out rpath/main-override/ref.out
+default: rpath/not-inherited/ref.bc rpath/main-override/ref.bc
 
 rpath/libFoo$(SO_EXT): rpath/FooA.c rpath/Makefile rpath/lib/libBar$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
@@ -50,3 +50,6 @@ rpath/not-inherited/ref.out: rpath/main.c rpath/Makefile rpath/libFoo$(SO_EXT)
 rpath/main-override/ref.out: rpath/main.c rpath/Makefile rpath/libFoo$(SO_EXT) rpath/libBar$(SO_EXT)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN)/.. -Lrpath -lFoo -lBar -o $@ $<
+
+%.bc: %.out
+	cp %< %@
