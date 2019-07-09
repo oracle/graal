@@ -33,6 +33,10 @@ Also see https://github.com/oracle/graal/blob/master/compiler/docs/Truffle.md an
 
 `--vm.Dgraal.TruffleInstrumentBoundaries=true` prints at the end of the process information about runtime calls (`@TruffleBoundary`) made from compiled code. These cause objects to escape, are black-boxes to further optimization, and should generally be minimised.
 
+`--vm.XX:+TraceDeoptimization` prints deoptimization events, whether code compiled by Truffle or conventional compilers.
+
+`--vm.XX:+TraceDeoptimizationDetails` prints more information (only available for native images).
+
 #### Controlling what is compiled
 
 To make best use of the former options, limit what is compiled to the methods that you are interested in.
@@ -49,11 +53,7 @@ To make best use of the former options, limit what is compiled to the methods th
 
 ## HotSpot options
 
-Also see https://chriswhocodes.com/graal_options_graal_ce_19.html and https://chriswhocodes.com/hotspot_options_jdk8.html.
-
-`--vm.XX:+TraceDeoptimization` prints deoptimization events, whether code compiled by Truffle or conventional compilers.
-
-`--vm.XX:+TraceDeoptimizationDetails` prints more information.
+See https://chriswhocodes.com/graal_options_graal_ce_19.html and https://chriswhocodes.com/hotspot_options_jdk8.html.
 
 ## IGV
 
