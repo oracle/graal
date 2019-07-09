@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,8 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 
 abstract class LLVMDebugValue {
+
+    public static final String UNAVAILABLE = "<unavailable>";
 
     private static String getActualType(DebugValue value) {
         final DebugValue typeValue = value.getMetaObject();
@@ -99,6 +101,23 @@ abstract class LLVMDebugValue {
 
         @Override
         void checkValue(DebugValue value) {
+        }
+    }
+
+    static final class Unavailable extends LLVMDebugValue {
+
+        Unavailable(String expectedType, boolean isBuggy) {
+            super(Trace.KEYWORD_KIND_ANY, expectedType, isBuggy);
+        }
+
+        @Override
+        String getExpectedDisplayValue() {
+            return UNAVAILABLE;
+        }
+
+        @Override
+        void checkValue(DebugValue value) {
+            assertEquals(UNAVAILABLE, value.as(String.class));
         }
     }
 
