@@ -30,6 +30,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.util.ArrayList;
 
+import com.oracle.svm.core.heap.PhysicalMemory;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -676,6 +677,10 @@ public class PathExhibitor {
         }
 
         public static PathElement findPathToObject(final PathExhibitor exhibitor, final Object obj) {
+            if (!PhysicalMemory.hasSize()) {
+                /* Ensure PhysicalMemory.size is set up before using findPathToObject */
+                PhysicalMemory.size();
+            }
             return exhibitor.findPathToObject(obj);
         }
     }
