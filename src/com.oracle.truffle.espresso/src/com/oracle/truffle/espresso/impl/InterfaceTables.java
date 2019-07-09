@@ -56,7 +56,6 @@ class InterfaceTables {
     static private final Method[][] EMPTY_METHOD_DUAL_ARRAY = new Method[0][];
 
     private final ObjectKlass thisKlass;
-    private final String thisRuntimePackage;
     private final ObjectKlass superKlass;
     private final ObjectKlass[] superInterfaces;
     private final ArrayList<Entry[]> tmpTables = new ArrayList<>();
@@ -114,7 +113,6 @@ class InterfaceTables {
         this.thisKlass = thisKlass;
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
-        this.thisRuntimePackage = thisKlass.getRuntimePackage();
     }
 
     /**
@@ -295,7 +293,7 @@ class InterfaceTables {
     private Entry lookupLocation(Method im, Symbol<Name> mname, Symbol<Signature> sig) {
         Method m = null;
         if (superKlass != null) {
-            m = superKlass.lookupVirtualMethod(mname, sig, thisRuntimePackage);
+            m = superKlass.lookupVirtualMethod(mname, sig, thisKlass);
         }
         if (m != null) {
             return new Entry(Location.SUPERVTABLE, m.getVTableIndex());
