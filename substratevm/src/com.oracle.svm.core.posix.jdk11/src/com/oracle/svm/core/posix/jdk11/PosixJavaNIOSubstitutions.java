@@ -27,8 +27,13 @@ package com.oracle.svm.core.posix.jdk11;
 import static com.oracle.svm.core.posix.PosixJavaNIOSubstitutions.convertReturnVal;
 import static com.oracle.svm.core.posix.headers.Unistd.write;
 
+import java.io.FileDescriptor;
 import java.io.IOException;
 
+import com.oracle.svm.core.os.IsDefined;
+import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.Statvfs;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -56,5 +61,102 @@ public class PosixJavaNIOSubstitutions {
             // 111 return convertReturnVal(env, write(fd, &c, 1), JNI_FALSE);
             return convertReturnVal(write(fd, c, WordFactory.unsigned(1)), false);
         }
+    }
+
+    @TargetClass(className = "sun.nio.ch.FileDispatcherImpl", onlyWith = JDK11OrLater.class)
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    static final class FileDispatcherImpl {
+
+        /* Do not re-format commented out C code. @formatter:off */
+        // ported from {jdk11}/src/java.base/unix/native/libnio/ch/FileDispatcherImpl.c
+        //   320  JNIEXPORT jint JNICALL
+        //   321  Java_sun_nio_ch_FileDispatcherImpl_setDirect0(JNIEnv *env, jclass clazz,
+        //   322                                             jobject fdo)
+        @Substitute
+        static int setDirect0(FileDescriptor fdo) throws IOException {
+            //   324      jint fd = fdval(env, fdo);
+            int fd = PosixUtils.getFD(fdo);
+            //   325      jint result;
+            int result;
+
+            Statvfs.statvfs file_stat = StackValue.get(Statvfs.statvfs.class);
+
+            if (IsDefined.MACOSX()) {
+                //   326  #ifdef MACOSX
+                //   327      struct statvfs file_stat;
+                //   328  #else
+            } else {
+                //   329      struct statvfs64 file_stat;
+                //   330  #endif
+            }
+            //   332  #if defined(O_DIRECT) || defined(F_NOCACHE) || defined(DIRECTIO_ON)
+            if (IsDefined.LINUX() || IsDefined.MACOSX()) {
+                //   333  #ifdef O_DIRECT
+                if (IsDefined.LINUX()) {
+                    //   334      jint orig_flag;
+                    int orig_flag;
+                    //   335      orig_flag = fcntl(fd, F_GETFL);
+                    orig_flag = Fcntl.fcntl(fd, Fcntl.F_GETFL());
+                    //   336      if (orig_flag == -1) {
+                    if (orig_flag == -1) {
+                        //   337          JNU_ThrowIOExceptionWithLastError(env, "DirectIO setup failed");
+                        //   338          return -1;
+                        throw new IOException(PosixUtils.lastErrorString("DirectIO setup failed"));
+                    }
+                    //   340      result = fcntl(fd, F_SETFL, orig_flag | O_DIRECT);
+                    result = Fcntl.fcntl(fd, Fcntl.F_SETFD(), orig_flag | Fcntl.O_DIRECT());
+                    //   341      if (result == -1) {
+                    if (result == -1) {
+                        //   342          JNU_ThrowIOExceptionWithLastError(env, "DirectIO setup failed");
+                        //   343          return result;
+                        throw new IOException(PosixUtils.lastErrorString("DirectIO setup failed"));
+                    }
+                } else if (IsDefined.MACOSX()) {
+                    //   345  #elif F_NOCACHE
+                    //   346      result = fcntl(fd, F_NOCACHE, 1);
+                    result = Fcntl.fcntl(fd, Fcntl.F_NOCACHE(), 1);
+                    //   347      if (result == -1) {
+                    if (result == -1) {
+                        //   348          JNU_ThrowIOExceptionWithLastError(env, "DirectIO setup failed");
+                        //   349          return result;
+                        throw new IOException(PosixUtils.lastErrorString("DirectIO setup failed"));
+                    }
+                }
+                // ** Ignored section **
+                //   351  #elif DIRECTIO_ON
+                //   352      result = directio(fd, DIRECTIO_ON);
+                //   353      if (result == -1) {
+                //   354          JNU_ThrowIOExceptionWithLastError(env, "DirectIO setup failed");
+                //   355          return result;
+                //   356      }
+                //   357  #endif
+
+                //   358  #ifdef MACOSX
+                //   359      result = fstatvfs(fd, &file_stat);
+                //   360  #else
+                //   361      result = fstatvfs64(fd, &file_stat);
+                //   362  #endif
+                result = Statvfs.fstatvfs(fd, file_stat);
+
+                //   363      if(result == -1) {
+                if (result == -1) {
+                    //   364          JNU_ThrowIOExceptionWithLastError(env, "DirectIO setup failed");
+                    //   365          return result;
+                    throw new IOException(PosixUtils.lastErrorString("DirectIO setup failed"));
+                    //   366      } else {
+                } else {
+                    //   367          result = (int)file_stat.f_frsize;
+                    result = (int) file_stat.f_frsize();
+                }
+            } else {
+                //   369  #else
+                //   370      result == -1;
+                result = -1;
+                //   371  #endif
+            }
+            //   372      return result;
+            return result;
+        }
+        /* @formatter:on */
     }
 }
