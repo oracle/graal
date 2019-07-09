@@ -461,12 +461,12 @@ public final class ObjectKlass extends Klass {
         return iKlassTable;
     }
 
-    final Method lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, String subclassPackage) {
+    final Method lookupVirtualMethod(Symbol<Name> name, Symbol<Signature> signature, Klass subClass) {
         for (Method m : vtable) {
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     return m;
-                } else if (subclassPackage.equals(getRuntimePackage())) {
+                } else if (sameRuntimePackage(subClass)) {
                     return m;
                 }
             }
@@ -474,12 +474,12 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
-    final List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, String subclassPackage, List<Method> result) {
+    final List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
         for (Method m : vtable) {
             if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     result.add(m);
-                } else if (subclassPackage.equals(getRuntimePackage())) {
+                } else if (this.sameRuntimePackage(subKlass)) {
                     result.add(m);
                 }
             }
