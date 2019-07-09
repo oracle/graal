@@ -437,5 +437,4 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
     }
-
 }

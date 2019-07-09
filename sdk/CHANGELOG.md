@@ -9,6 +9,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 	* Added `ProxyDate`, `ProxyTime`, `ProxyTimeZone`, `ProxyInstant` and `ProxyDuration` to proxy date time and duration related guest values.
 * Added `Context.Builder.timeZone(ZoneId)` to configure the default timezone of polyglot contexts.
 * Added [OptionKey.mapOf](https://www.graalvm.org/truffle/javadoc/org/graalvm/options/OptionKey.html#mapOf) to group/accumulate key=value pairs for options whose keys are not known beforehand e.g. user-defined properties.
+* Added ability to configure custom polyglot access configuration with `PolyglotAccess.newBuilder()`. It allows to configure fine-grained access control for polyglot bindings and between polyglot languages.
 
 ## Version 19.1.0
 * Restricting guest languages from sub-process creation by [Context.Builder.allowCreateProcess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowCreateProcess-boolean-). Use `Context.newBuilder().allowCreateProcess(true)` to allow guest languages to create a new sub-process.

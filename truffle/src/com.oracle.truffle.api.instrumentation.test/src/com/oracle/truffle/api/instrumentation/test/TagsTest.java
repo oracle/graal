@@ -104,10 +104,10 @@ public class TagsTest {
 
         @Override
         protected Env createContext(Env env) {
-            assertSame(ExpressionTag.class, Tag.findProvidedTag(env.getLanguages().get("tagLanguage"), "EXPRESSION"));
-            assertSame(StatementTag.class, Tag.findProvidedTag(env.getLanguages().get("tagLanguage"), "STATEMENT"));
-            assertFails(() -> Tag.findProvidedTag(env.getLanguages().get("tagLanguage"), null), NullPointerException.class);
-            assertNull(Tag.findProvidedTag(env.getLanguages().get("tagLanguage"), "UNKNOWN_TAG"));
+            assertSame(ExpressionTag.class, Tag.findProvidedTag(env.getInternalLanguages().get("tagLanguage"), "EXPRESSION"));
+            assertSame(StatementTag.class, Tag.findProvidedTag(env.getInternalLanguages().get("tagLanguage"), "STATEMENT"));
+            assertFails(() -> Tag.findProvidedTag(env.getInternalLanguages().get("tagLanguage"), null), NullPointerException.class);
+            assertNull(Tag.findProvidedTag(env.getInternalLanguages().get("tagLanguage"), "UNKNOWN_TAG"));
             return env;
         }
 

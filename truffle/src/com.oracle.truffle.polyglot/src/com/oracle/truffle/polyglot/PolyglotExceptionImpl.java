@@ -126,7 +126,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
                 String language = truffleSource.getLanguage();
                 if (language == null) {
-                    PolyglotLanguage foundLanguage = languageContext.getEngine().findLanguage(language, truffleSource.getMimeType(), false);
+                    PolyglotLanguage foundLanguage = languageContext.getEngine().findLanguage(null, language, truffleSource.getMimeType(), false, true);
                     if (foundLanguage != null) {
                         language = foundLanguage.getId();
                     }

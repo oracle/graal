@@ -1531,7 +1531,7 @@ public abstract class Source {
          * {@link Language#getDefaultMimeType() default MIME type} of the language will be used to
          * interpret the source. If set explicitly then the language needs to
          * {@link Language#getMimeTypes() support} the MIME type in order to
-         * {@link com.oracle.truffle.api.TruffleLanguage.Env#parse(Source, String...) parse} a
+         * {@link com.oracle.truffle.api.TruffleLanguage.Env#parsePublic(Source, String...) parse} a
          * source. If not <code>null</code> then the MIME type will be verified containing no spaces
          * and a '/' between group and sub-group. An example for a valid MIME type is:
          * <code>text/javascript</code>.

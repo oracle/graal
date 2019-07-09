@@ -41,8 +41,8 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -61,10 +61,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -93,8 +92,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE2).allowPolyglotAccess(PolyglotAccess.NONE).build());
         context.initialize(LANGUAGE2);
         Env env2 = Language2.getContext(Language2.class);
-        assertTrue(env2.getLanguages().containsKey(LANGUAGE2));
-        assertFalse(env2.getLanguages().containsKey(NOT_EXISTING_LANGUAGE));
+        assertTrue(env2.getInternalLanguages().containsKey(LANGUAGE2));
+        assertFalse(env2.getInternalLanguages().containsKey(NOT_EXISTING_LANGUAGE));
     }
 
     @Test
@@ -108,12 +107,12 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertTrue(e.getMessage(), e.getMessage().startsWith("A language with id '" + NOT_EXISTING_LANGUAGE + "' is not installed."));
         }
         Env env1 = Language1.getContext(Language1.class);
-        assertTrue(env1.getLanguages().containsKey(LANGUAGE1));
-        assertFalse(env1.getLanguages().containsKey(NOT_EXISTING_LANGUAGE));
+        assertTrue(env1.getInternalLanguages().containsKey(LANGUAGE1));
+        assertFalse(env1.getInternalLanguages().containsKey(NOT_EXISTING_LANGUAGE));
     }
 
     @Test
-    public void testAllAccess() throws UnsupportedMessageException, UnknownIdentifierException {
+    public void testAllAccess() {
         setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(PolyglotAccess.ALL).build());
         context.initialize(LANGUAGE1);
         context.initialize(LANGUAGE2);
@@ -124,34 +123,46 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         } catch (IllegalArgumentException e) {
             assertEquals("Access to language '" + DEPENDENT + "' is not permitted. ", e.getMessage());
         }
-        Env env1 = Language1.getContext(Language1.class);
-        Env env2 = Language2.getContext(Language2.class);
-        assertTrue(env1.getLanguages().containsKey(INTERNAL));
-        assertTrue(env2.getLanguages().containsKey(INTERNAL));
-        assertLanguages(env1.getLanguages(), ProxyLanguage.ID, LANGUAGE1, LANGUAGE2, DEPENDENT);
-        assertLanguages(env2.getLanguages(), ProxyLanguage.ID, LANGUAGE1, LANGUAGE2);
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
 
-        assertNotNull(env1.parse(Source.newBuilder(LANGUAGE1, "", "").build()));
-        assertNotNull(env1.parse(Source.newBuilder(LANGUAGE2, "", "").build()));
-        assertNotNull(env1.parse(Source.newBuilder(DEPENDENT, "", "").build()));
-        assertNotNull(env1.parse(Source.newBuilder(INTERNAL, "", "").build()));
-        assertAccessNotPermitted(env1, LANGUAGE3);
-        assertNotNull(env2.parse(Source.newBuilder(LANGUAGE1, "", "").build()));
-        assertNotNull(env2.parse(Source.newBuilder(LANGUAGE2, "", "").build()));
-        assertNotNull(env2.parse(Source.newBuilder(INTERNAL, "", "").build()));
-        assertAccessNotPermitted(env2, DEPENDENT);
-        assertAccessNotPermitted(env2, LANGUAGE3);
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalAllowed(language1, LANGUAGE2);
 
-        env1.exportSymbol("symbol1", "value");
-        assertEquals("value", env1.importSymbol("symbol1"));
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalAllowed(language1, LANGUAGE2);
 
-        env2.exportSymbol("symbol2", "value");
-        assertEquals("value", env2.importSymbol("symbol2"));
-        assertEquals("value", env1.importSymbol("symbol2"));
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalAllowed(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
 
-        assertEquals("value", InteropLibrary.getFactory().getUncached().readMember(env1.getPolyglotBindings(), "symbol1"));
-        assertEquals("value", InteropLibrary.getFactory().getUncached().readMember(env2.getPolyglotBindings(), "symbol2"));
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalAllowed(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
 
+        testPolyglotAccess(language1, language2);
+    }
+
+    private static void testPolyglotAccess(Env env1, Env env2) {
+        try {
+            env1.exportSymbol("symbol1", "value");
+            assertEquals("value", env1.importSymbol("symbol1"));
+
+            env2.exportSymbol("symbol2", "value");
+            assertEquals("value", env2.importSymbol("symbol2"));
+            assertEquals("value", env1.importSymbol("symbol2"));
+
+            assertEquals("value", InteropLibrary.getFactory().getUncached().readMember(env1.getPolyglotBindings(), "symbol1"));
+            assertEquals("value", InteropLibrary.getFactory().getUncached().readMember(env2.getPolyglotBindings(), "symbol2"));
+        } catch (InteropException e) {
+            throw new AssertionError(e);
+        }
     }
 
     private static void assertBindingsNotAccessible(Env env1) {
@@ -159,15 +170,6 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             env1.getPolyglotBindings();
             fail();
         } catch (SecurityException e) {
-        }
-    }
-
-    private static void assertAccessNotPermitted(Env from, String to) {
-        try {
-            from.parse(Source.newBuilder(to, "", "").build());
-            fail();
-        } catch (IllegalArgumentException e) {
-            assertEquals("Access to language '" + to + "' is not permitted. ", e.getMessage());
         }
     }
 
@@ -198,32 +200,37 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     private void testNoAccessImpl() {
         context.initialize(LANGUAGE1);
         context.initialize(LANGUAGE2);
-        Env env1 = Language1.getContext(Language1.class);
-        Env env2 = Language2.getContext(Language2.class);
-        assertTrue(env1.getLanguages().containsKey(INTERNAL));
-        assertTrue(env2.getLanguages().containsKey(INTERNAL));
-        assertLanguages(env1.getLanguages(), LANGUAGE1, DEPENDENT);
-        assertLanguages(env2.getLanguages(), LANGUAGE2);
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+        assertTrue(language1.getInternalLanguages().containsKey(INTERNAL));
+        assertTrue(language2.getInternalLanguages().containsKey(INTERNAL));
+        assertLanguages(language1.getInternalLanguages(), LANGUAGE1, DEPENDENT);
+        assertLanguages(language2.getInternalLanguages(), LANGUAGE2);
 
-        assertNotNull(env1.parse(Source.newBuilder(LANGUAGE1, "", "").build()));
-        assertNotNull(env1.parse(Source.newBuilder(INTERNAL, "", "").build()));
-        assertNotNull(env1.parse(Source.newBuilder(DEPENDENT, "", "").build()));
-        assertAccessNotPermitted(env1, LANGUAGE2);
-        assertAccessNotPermitted(env1, LANGUAGE3);
-        assertNotNull(env2.parse(Source.newBuilder(LANGUAGE2, "", "").build()));
-        assertNotNull(env2.parse(Source.newBuilder(INTERNAL, "", "").build()));
-        assertAccessNotPermitted(env2, DEPENDENT);
-        assertAccessNotPermitted(env2, LANGUAGE1);
-        assertAccessNotPermitted(env2, LANGUAGE3);
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalDenied(language1, LANGUAGE2);
 
-        assertExportNotAcccessible(env1);
-        assertImportNotAcccessible(env1);
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalDenied(language1, LANGUAGE2);
 
-        assertExportNotAcccessible(env2);
-        assertImportNotAcccessible(env2);
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalDenied(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
 
-        assertBindingsNotAccessible(env1);
-        assertBindingsNotAccessible(env2);
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalDenied(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+
+        assertBindingsDenied(language1);
+        assertBindingsDenied(language2);
+        assertNoEvalAccess(language1);
+        assertNoEvalAccess(language2);
     }
 
     private static void assertImportNotAcccessible(Env env1) {
@@ -306,6 +313,472 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         });
     }
 
+    @Test
+    public void testCustomPolyglotEvalDirect() {
+        PolyglotAccess access = PolyglotAccess.newBuilder().allowEval(LANGUAGE1, LANGUAGE2).build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalAllowed(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalAllowed(language1, LANGUAGE2);
+
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalDenied(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
+
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalDenied(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+
+        assertNoEvalAccess(language2);
+    }
+
+    @Test
+    public void testCustomPolyglotEvalDirectSame() {
+        PolyglotAccess access = PolyglotAccess.newBuilder().allowEval(LANGUAGE1, LANGUAGE1).build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalDenied(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalDenied(language1, LANGUAGE2);
+
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalDenied(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
+
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalDenied(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+
+        assertNoEvalAccess(language1);
+        assertNoEvalAccess(language2);
+    }
+
+    @Test
+    public void testCustomPolyglotEvalBetween() {
+        PolyglotAccess access = PolyglotAccess.newBuilder().allowEvalBetween(LANGUAGE1, LANGUAGE2).build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalAllowed(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalAllowed(language1, LANGUAGE2);
+
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalAllowed(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
+
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalAllowed(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+    }
+
+    @Test
+    public void testCustomPolyglotEvalBetweenSame() {
+        PolyglotAccess access = PolyglotAccess.newBuilder().allowEvalBetween(LANGUAGE1, LANGUAGE1).build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalDenied(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalDenied(language1, LANGUAGE2);
+
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalDenied(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
+
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalDenied(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+
+        assertNoEvalAccess(language1);
+        assertNoEvalAccess(language2);
+    }
+
+    @Test
+    public void testCustomPolyglotEvalBetweenThree() {
+        PolyglotAccess access = PolyglotAccess.newBuilder().allowEvalBetween(LANGUAGE1, LANGUAGE2, LANGUAGE3).build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2, LANGUAGE3).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+        context.initialize(LANGUAGE3);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+        Env language3 = Language2.getContext(Language3.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalAllowed(language1, LANGUAGE2);
+        assertPublicEvalAllowed(language1, LANGUAGE3);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalAllowed(language1, LANGUAGE2);
+        assertInternalEvalAllowed(language1, LANGUAGE3);
+
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalAllowed(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
+        assertPublicEvalAllowed(language2, LANGUAGE3);
+
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalAllowed(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+        assertInternalEvalAllowed(language2, LANGUAGE3);
+
+        assertPublicEvalDenied(language3, INTERNAL);
+        assertPublicEvalDenied(language3, DEPENDENT);
+        assertPublicEvalAllowed(language3, LANGUAGE1);
+        assertPublicEvalAllowed(language3, LANGUAGE2);
+        assertPublicEvalAllowed(language3, LANGUAGE3);
+
+        assertInternalEvalAllowed(language3, INTERNAL);
+        assertInternalEvalDenied(language3, DEPENDENT);
+        assertInternalEvalAllowed(language3, LANGUAGE1);
+        assertInternalEvalAllowed(language3, LANGUAGE2);
+        assertInternalEvalAllowed(language3, LANGUAGE3);
+    }
+
+    @Test
+    public void testCustomPolyglotEvalBetweenThree2() {
+        PolyglotAccess access = PolyglotAccess.newBuilder().//
+                        allowEvalBetween(LANGUAGE1, LANGUAGE2, LANGUAGE3).//
+                        denyEvalBetween(LANGUAGE1, LANGUAGE2).//
+                        build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2, LANGUAGE3).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+        context.initialize(LANGUAGE3);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+        Env language3 = Language2.getContext(Language3.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalDenied(language1, LANGUAGE2);
+        assertPublicEvalAllowed(language1, LANGUAGE3);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalDenied(language1, LANGUAGE2);
+        assertInternalEvalAllowed(language1, LANGUAGE3);
+
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalDenied(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
+        assertPublicEvalAllowed(language2, LANGUAGE3);
+
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalDenied(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+        assertInternalEvalAllowed(language2, LANGUAGE3);
+
+        assertPublicEvalDenied(language3, INTERNAL);
+        assertPublicEvalDenied(language3, DEPENDENT);
+        assertPublicEvalAllowed(language3, LANGUAGE1);
+        assertPublicEvalAllowed(language3, LANGUAGE2);
+        assertPublicEvalAllowed(language3, LANGUAGE3);
+
+        assertInternalEvalAllowed(language3, INTERNAL);
+        assertInternalEvalDenied(language3, DEPENDENT);
+        assertInternalEvalAllowed(language3, LANGUAGE1);
+        assertInternalEvalAllowed(language3, LANGUAGE2);
+        assertInternalEvalAllowed(language3, LANGUAGE3);
+    }
+
+    @Test
+    public void testCustomPolyglotEvalSingleDeny() {
+        PolyglotAccess access = PolyglotAccess.newBuilder().//
+                        allowEvalBetween(LANGUAGE1, LANGUAGE2).//
+                        denyEval(LANGUAGE1, LANGUAGE2).//
+                        build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalDenied(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalDenied(language1, LANGUAGE2);
+
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalAllowed(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
+
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalAllowed(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+
+        assertNoEvalAccess(language1);
+    }
+
+    @Test
+    public void testCustomPolyglotEvalErrors() {
+        PolyglotAccess.Builder builder = PolyglotAccess.newBuilder();
+
+        ValueAssert.assertFails(() -> builder.allowEval(null, ""), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.allowEval("", null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.denyEval(null, ""), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.denyEval("", null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.allowEvalBetween((String[]) null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.denyEvalBetween((String[]) null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.allowEvalBetween((String) null), NullPointerException.class);
+        ValueAssert.assertFails(() -> builder.denyEvalBetween((String) null), NullPointerException.class);
+
+        PolyglotAccess access = PolyglotAccess.newBuilder().allowEval(NOT_EXISTING_LANGUAGE, LANGUAGE1).build();
+        Context.Builder cBuilder = Context.newBuilder().allowPolyglotAccess(access);
+        ValueAssert.assertFails(() -> cBuilder.build(), IllegalArgumentException.class);
+
+        access = PolyglotAccess.newBuilder().allowEval(LANGUAGE1, LANGUAGE2).build();
+        Context.Builder cBuilder2 = Context.newBuilder(LANGUAGE2).allowPolyglotAccess(access);
+        ValueAssert.assertFails(() -> cBuilder2.build(), IllegalArgumentException.class,
+                        (e) -> assertEquals("Language '" + LANGUAGE1 + "' configured in polyglot evaluation rule " + LANGUAGE1 + " -> " + LANGUAGE2 + " is not installed or available.",
+                                        e.getMessage()));
+    }
+
+    @Test
+    public void testCustomPolyglotBindingsErrors() {
+        PolyglotAccess.Builder builder = PolyglotAccess.newBuilder();
+
+        ValueAssert.assertFails(() -> builder.allowBindingsAccess(null), NullPointerException.class);
+
+        PolyglotAccess access = PolyglotAccess.newBuilder().allowBindingsAccess(NOT_EXISTING_LANGUAGE).build();
+        Context.Builder cBuilder = Context.newBuilder().allowPolyglotAccess(access);
+        ValueAssert.assertFails(() -> cBuilder.build(), IllegalArgumentException.class,
+                        (e) -> assertEquals("Language '" + NOT_EXISTING_LANGUAGE + "' configured in polyglot bindings access rule is not installed or available.", e.getMessage()));
+    }
+
+    @Test
+    public void testCustomBindingsAccess() {
+        PolyglotAccess access = PolyglotAccess.newBuilder().//
+                        allowBindingsAccess(LANGUAGE1).//
+                        build();
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+
+        assertBindingsAllowed(language1);
+        assertBindingsNotAccessible(language2);
+    }
+
+    @Test
+    public void testAllBindingsAccess() {
+        PolyglotAccess access = PolyglotAccess.ALL;
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+
+        assertBindingsAllowed(language1);
+        assertBindingsAllowed(language2);
+    }
+
+    @Test
+    public void testNoBindingsAccess() {
+        PolyglotAccess access = PolyglotAccess.NONE;
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, LANGUAGE2).allowPolyglotAccess(access).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language2.getContext(Language2.class);
+
+        assertBindingsNotAccessible(language1);
+        assertBindingsNotAccessible(language2);
+    }
+
+    @Test
+    public void testParsePublic1() {
+        setupEnv();
+        context.initialize(LANGUAGE1);
+
+        Env language1 = Language1.getContext(Language1.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalAllowed(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalAllowed(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalAllowed(language1, LANGUAGE2);
+    }
+
+    @Test
+    public void testParsePublic2() {
+        setupEnv(Context.newBuilder().allowPolyglotAccess(PolyglotAccess.NONE).build());
+        context.initialize(LANGUAGE1);
+
+        Env language1 = Language1.getContext(Language1.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalDenied(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalDenied(language1, LANGUAGE2);
+    }
+
+    @Test
+    public void testParsePublic3() {
+        setupEnv(Context.newBuilder().allowPolyglotAccess(PolyglotAccess.newBuilder().allowEval(LANGUAGE1, LANGUAGE2).build()).build());
+        context.initialize(LANGUAGE1);
+        context.initialize(LANGUAGE2);
+
+        Env language1 = Language1.getContext(Language1.class);
+        Env language2 = Language1.getContext(Language2.class);
+
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalDenied(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalAllowed(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalAllowed(language1, LANGUAGE2);
+
+        assertPublicEvalDenied(language2, INTERNAL);
+        assertPublicEvalDenied(language2, DEPENDENT);
+        assertPublicEvalDenied(language2, LANGUAGE1);
+        assertPublicEvalAllowed(language2, LANGUAGE2);
+
+        assertInternalEvalAllowed(language2, INTERNAL);
+        assertInternalEvalDenied(language2, DEPENDENT);
+        assertInternalEvalDenied(language2, LANGUAGE1);
+        assertInternalEvalAllowed(language2, LANGUAGE2);
+    }
+
+    private static void assertNoEvalAccess(Env env) {
+        assertFalse(env.isPolyglotEvalAllowed());
+    }
+
+    private static void assertBindingsDenied(Env env) {
+        assertFalse(env.isPolyglotBindingsAccessAllowed());
+        assertExportNotAcccessible(env);
+        assertImportNotAcccessible(env);
+        assertBindingsNotAccessible(env);
+    }
+
+    private static void assertBindingsAllowed(Env env) {
+        assertTrue(env.isPolyglotBindingsAccessAllowed());
+        testPolyglotAccess(env, env);
+    }
+
+    private static void assertInternalEvalDenied(Env env, String targetId) {
+        assertFalse(env.getInternalLanguages().containsKey(targetId));
+        try {
+            env.parseInternal(Source.newBuilder(targetId, "", "").internal(true).build());
+            fail();
+        } catch (IllegalStateException e) {
+            String languages = env.getInternalLanguages().keySet().toString();
+            assertEquals("No language for id " + targetId + " found. Supported languages are: " + languages, e.getMessage());
+        }
+    }
+
+    private static void assertInternalEvalAllowed(Env env, String targetId) {
+        assertTrue(env.getInternalLanguages().containsKey(targetId));
+        assertNotNull(env.parseInternal(Source.newBuilder(targetId, "", "").build()));
+    }
+
+    private static void assertPublicEvalDenied(Env env, String targetId) {
+        assertFalse(env.getPublicLanguages().containsKey(targetId));
+        try {
+            env.parsePublic(Source.newBuilder(targetId, "", "").build());
+            fail();
+        } catch (IllegalStateException e) {
+            String languages = env.getPublicLanguages().keySet().toString();
+            assertEquals("No language for id " + targetId + " found. Supported languages are: " + languages, e.getMessage());
+        }
+    }
+
+    private static void assertPublicEvalAllowed(Env env, String targetId) {
+        assertTrue(env.getPublicLanguages().containsKey(targetId));
+        assertNotNull(env.parsePublic(Source.newBuilder(targetId, "", "").build()));
+        if (env.getPublicLanguages().size() > 1) {
+            assertTrue(env.isPolyglotEvalAllowed());
+        }
+    }
+
     @Registration(id = LANGUAGE1, name = LANGUAGE1, dependentLanguages = DEPENDENT)
     public static class Language1 extends TruffleLanguage<Env> {
 
@@ -331,7 +804,6 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
         public static <T extends TruffleLanguage<?>> T getLanguage(Class<T> language) {
             return getCurrentLanguage(language);
         }
-
     }
 
     @Registration(id = LANGUAGE2, name = LANGUAGE2, dependentLanguages = NOT_EXISTING_LANGUAGE)

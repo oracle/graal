@@ -222,9 +222,9 @@ public final class NFIContextExtension implements ContextExtension {
         } else {
             loadExpression = String.format("load(%s) \"%s\"", flags, libName);
         }
-        final Source source = Source.newBuilder("nfi", loadExpression, "(load " + libName + ")").build();
+        final Source source = Source.newBuilder("nfi", loadExpression, "(load " + libName + ")").internal(true).build();
         try {
-            return (TruffleObject) env.parse(source).call();
+            return (TruffleObject) env.parseInternal(source).call();
         } catch (UnsatisfiedLinkError ex) {
             if (optional) {
                 return null;
@@ -236,9 +236,9 @@ public final class NFIContextExtension implements ContextExtension {
 
     private TruffleObject loadDefaultLibrary() {
         CompilerAsserts.neverPartOfCompilation();
-        final Source source = Source.newBuilder("nfi", "default", "default").build();
+        final Source source = Source.newBuilder("nfi", "default", "default").internal(true).build();
         try {
-            return (TruffleObject) env.parse(source).call();
+            return (TruffleObject) env.parseInternal(source).call();
         } catch (Exception ex) {
             throw new IllegalArgumentException(ex);
         }

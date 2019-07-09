@@ -73,6 +73,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -92,8 +93,8 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
+import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -104,7 +105,6 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
-import org.graalvm.polyglot.EnvironmentAccess;
 
 final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -445,37 +445,51 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return this;
     }
 
-    PolyglotLanguage findLanguage(String languageId, String mimeType, boolean failIfNotFound) {
+    PolyglotLanguage findLanguage(PolyglotLanguageContext accessingLanguage, String languageId, String mimeType, boolean failIfNotFound, boolean allowInternalAndDependent) {
         assert languageId != null || mimeType != null : Objects.toString(languageId) + ", " + Objects.toString(mimeType);
-        if (languageId != null) {
-            PolyglotLanguage language = idToLanguage.get(languageId);
-            if (language != null) {
-                return language;
-            }
+
+        Map<String, LanguageInfo> languages;
+        if (accessingLanguage != null) {
+            languages = accessingLanguage.getAccessibleLanguages(allowInternalAndDependent);
+        } else {
+            assert allowInternalAndDependent : "non internal access is not yet supported for instrument lookups";
+            languages = this.idToInternalLanguageInfo;
         }
-        if (mimeType != null) {
+
+        LanguageInfo foundLanguage = null;
+        if (languageId != null) {
+            foundLanguage = languages.get(languageId);
+        }
+        if (mimeType != null && foundLanguage == null) {
             // we need to interpret mime types for compatibility.
-            PolyglotLanguage language = idToLanguage.get(mimeType);
-            if (language != null) {
-                return language;
-            }
-            for (PolyglotLanguage searchLanguage : idToLanguage.values()) {
-                if (searchLanguage.cache.getMimeTypes().contains(mimeType)) {
-                    return searchLanguage;
+            foundLanguage = languages.get(mimeType);
+            if (foundLanguage == null) {
+                for (LanguageInfo searchLanguage : languages.values()) {
+                    if (searchLanguage.getMimeTypes().contains(mimeType)) {
+                        foundLanguage = searchLanguage;
+                        break;
+                    }
                 }
             }
         }
+
+        assert allowInternalAndDependent || foundLanguage == null || (!foundLanguage.isInternal() && accessingLanguage.isPolyglotEvalAllowed(languageId));
+
+        if (foundLanguage != null) {
+            return (PolyglotLanguage) EngineAccessor.NODES.getEngineObject(foundLanguage);
+        }
+
         if (failIfNotFound) {
             if (languageId != null) {
                 Set<String> ids = new LinkedHashSet<>();
-                for (PolyglotLanguage language : idToLanguage.values()) {
-                    ids.add(language.cache.getId());
+                for (LanguageInfo language : languages.values()) {
+                    ids.add(language.getId());
                 }
                 throw new IllegalStateException("No language for id " + languageId + " found. Supported languages are: " + ids);
             } else {
                 Set<String> mimeTypes = new LinkedHashSet<>();
-                for (PolyglotLanguage language : idToLanguage.values()) {
-                    mimeTypes.addAll(language.cache.getMimeTypes());
+                for (LanguageInfo language : languages.values()) {
+                    mimeTypes.addAll(language.getMimeTypes());
                 }
                 throw new IllegalStateException("No language for MIME type " + mimeType + " found. Supported languages are: " + mimeTypes);
             }
@@ -1163,12 +1177,13 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         initializeHostAccess(hostAccess);
 
-        Set<String> allowedLanguages;
+        EconomicSet<String> allowedLanguages = EconomicSet.create();
         if (onlyLanguages.length == 0) {
-            allowedLanguages = getLanguages().keySet();
+            allowedLanguages.addAll(getLanguages().keySet());
         } else {
-            allowedLanguages = new HashSet<>(Arrays.asList(onlyLanguages));
+            allowedLanguages.addAll(Arrays.asList(onlyLanguages));
         }
+        getAPIAccess().validatePolyglotAccess(polyglotAccess, allowedLanguages);
         final FileSystem fs;
         if (!ALLOW_IO) {
             if (fileSystem == null) {

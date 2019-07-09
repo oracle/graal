@@ -55,9 +55,9 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
  * contexts for isolated execution of guest language code.
  * <p>
  * A {@link TruffleContext context} consists of a {@link TruffleLanguage#createContext(Env) language
- * context} instance for each {@link Env#getLanguages() installed language}. The current language
- * context is {@link TruffleLanguage#createContext(Env) created} eagerly and can be accessed using a
- * {@link ContextReference context reference} or statically with
+ * context} instance for each {@link Env#getInternalLanguages() installed language}. The current
+ * language context is {@link TruffleLanguage#createContext(Env) created} eagerly and can be
+ * accessed using a {@link ContextReference context reference} or statically with
  * {@link TruffleLanguage#getCurrentContext(Class)} after the context was
  * {@link TruffleContext#enter() entered}.
  * <p>

@@ -60,6 +60,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
@@ -1226,6 +1227,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     static PolyglotContextImpl preInitialize(final PolyglotEngineImpl engine) {
         final FileSystems.PreInitializeContextFileSystem fs = new FileSystems.PreInitializeContextFileSystem();
+        EconomicSet<String> allowedLanguages = EconomicSet.create();
+        allowedLanguages.addAll(engine.getLanguages().keySet());
         final PolyglotContextConfig config = new PolyglotContextConfig(engine,
                         engine.out,
                         engine.err,
@@ -1238,7 +1241,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         false,
                         null,
                         Collections.emptyMap(),
-                        engine.getLanguages().keySet(),
+                        allowedLanguages,
                         Collections.emptyMap(),
                         fs, engine.logHandler, false, null,
                         EnvironmentAccess.INHERIT, null, null);
@@ -1262,7 +1265,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     try {
                         for (String languageId : engine.getLanguages().keySet()) {
                             if (languagesToPreinitialize.contains(languageId)) {
-                                PolyglotLanguage language = engine.findLanguage(languageId, null, false);
+                                PolyglotLanguage language = engine.findLanguage(null, languageId, null, false, true);
                                 if (language != null) {
                                     final PolyglotLanguageContext languageContext = context.getContextInitialized(language, null);
                                     languageContext.preInitialize();

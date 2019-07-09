@@ -1198,8 +1198,8 @@ public class ContextPreInitializationTest {
         }
 
         protected void useLanguage(CountingContext context, String id) {
-            com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(id, "", "").build();
-            context.environment().parse(source);
+            com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(id, "", "").internal(true).build();
+            context.environment().parseInternal(source);
         }
 
         @CompilerDirectives.TruffleBoundary
