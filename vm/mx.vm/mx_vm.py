@@ -170,7 +170,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  with_polyglot_launcher=False,
                  with_lib_polyglot=False,
                  stage1=False,
-                 **kw_args):
+                 **kw_args): # pylint: disable=super-init-not-called
         self.components = components
         base_dir = base_dir or '.'
         _src_jdk = _get_jdk()
@@ -1107,7 +1107,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
 
 class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
-    def __init__(self, component, name, deps, native_image_config, **kw_args):
+    def __init__(self, component, name, deps, native_image_config, **kw_args): # pylint: disable=super-init-not-called
         """
         :type component: mx_sdk.GraalVmComponent | None
         :type native_image_config: mx_sdk.AbstractNativeImageConfig
@@ -1171,7 +1171,7 @@ class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
 
 
 class GraalVmLauncher(_with_metaclass(ABCMeta, GraalVmNativeImage)):
-    def __init__(self, component, name, deps, native_image_config, stage1=False, **kw_args):
+    def __init__(self, component, name, deps, native_image_config, stage1=False, **kw_args): # pylint: disable=super-init-not-called
         """
         :type native_image_config: mx_sdk.LauncherConfig
         """

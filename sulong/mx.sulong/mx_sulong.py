@@ -53,8 +53,6 @@ from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
 from mx_testsuites import GlobNativeProject #pylint: disable=unused-import
 
-import sys
-
 if sys.version_info[0] < 3:
     def _decode(x):
         return x
