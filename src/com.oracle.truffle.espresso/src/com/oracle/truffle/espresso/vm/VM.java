@@ -898,7 +898,10 @@ public final class VM extends NativeEnv implements ContextAccess {
                     RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
                     RootNode rootNode = callTarget.getRootNode();
                     if (rootNode instanceof EspressoRootNode) {
-                        return ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().getDefiningClassLoader();
+                        StaticObject loader = ((EspressoRootNode) rootNode).getMethod().getDeclaringKlass().getDefiningClassLoader();
+                        if (StaticObject.notNull(loader) && !Type.sun_misc_Launcher_ExtClassLoader.equals(loader.getKlass().getType())) {
+                            return loader;
+                        }
                     }
                 }
                 return null;
