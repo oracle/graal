@@ -27,88 +27,44 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 typedef struct {
-	int a;
-	struct List* next;
-} List;
+	int x;
+	int y;
+} Point;
 
-List* createNode(int a) {
-	List* l = (List*) malloc(sizeof(List*));
-	l->a=a;
-	return l;
+typedef struct {
+	Point start;
+	Point end;
+} Line;
+
+void printPoint(Point* p) {
+	printf("Point: x=%i, y=%i",p->x,p->y);
 }
 
-void freeList(List* l) {
-	if(l->next!=NULL) freeList(l->next);
-	free(l);
+double getLineLength(Line* l) {
+	int difX = l->end.x - l->start.x;
+	int difY = l->end.y - l->start.y;
+	return sqrt(difX*difX+difY*difY);
 }
 
-void push(List** list, int a) {
-	List* newList = createNode(a);
-	newList->next = *list;
-	*list = newList;
-}
-
-int pop(List** list) {
-	if((*list)!=NULL) {
-		int r = (*list)->a;
-		*list = (*list)->next;
-		return r;
-	}
+__attribute__((constructor)) int main() {
+	Point p;
+	p.x = 3;
+	p.y = 4;
+	Line line;
+	line.start = p;
+	line.end.x = 6;
+	line.end.y = 0;
+	line.start.x = p.x;
+	double len = getLineLength(&line);
+	__builtin_debugtrap();
+	printPoint(&p);
+	printf("Length of line: %f", len);
 	return 0;
-}
-
-int isEmpty(List* list) {
-	return list==NULL;
-}
-
-void printList(List* list) {
-	while(list!=NULL) {
-		int s=list->a;
-		printf("%c",s);
-		list=list->next;
-	}
-}
-
-void reverseList(List** list) {
-	List* oldList = *list;
-	if(isEmpty(oldList)) return;
-	List* newList = oldList;
-	oldList = oldList->next;
-	newList->next = NULL;
-	while(oldList!=NULL) {
-		List* cur = oldList;
-		oldList = oldList->next;
-		cur->next = newList;
-		newList = cur;	
-	}
-	*list = newList;
-}
-
-int main(int argc, char* argv[]) {
-	char* str = "testStringReverse";
-	int a=0x20;
-	int idx=0;
-	List* list = createNode(a);
-	while(a>0) {
-		push(&list, a);
-		a=*(((char*)str)+idx);
-		idx++;
-	}
-	reverseList(&list);
-	printList(list);
-	reverseList(&list);
-	printList(list);
-	freeList(list);
-	return 0;
-}
-
-__attribute__((constructor)) int test() {
-	return main(1, NULL);
 }
 
 

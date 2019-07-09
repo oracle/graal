@@ -29,29 +29,29 @@
 #
 
 BREAK 50 CONTINUE "main"
-	"3+" "<cannot evaluate expression>"
-	"4->3" "<cannot evaluate expression>"
-	"r-<w" "<cannot evaluate expression>"
-	"-" "<cannot evaluate expression>"
-	"/a" "<cannot evaluate expression>"
-	"a->>3" "<cannot evaluate expression>"
-	"a.3" "<cannot evaluate expression>"
-	"e->4" "<cannot evaluate expression>"
-	"test->int" "<cannot evaluate expression>" //type name
-	"a>>>b" "<cannot evaluate expression>"
-	"(ew[a])3" "<cannot evaluate expression>"
+	"3+" "EXCEPTION DebugExprException"
+	"4->3" "EXCEPTION DebugExprException"
+	"r-<w" "EXCEPTION DebugExprException"
+	"-" "EXCEPTION DebugExprException"
+	"/a" "EXCEPTION DebugExprException"
+	"a->>3" "EXCEPTION DebugExprException"
+	"a.3" "EXCEPTION DebugExprException"
+	"e->4" "EXCEPTION DebugExprException"
+	"test->int" "EXCEPTION DebugExprException" //type name
+	"a>>>b" "EXCEPTION DebugExprException"
+	"(ew[a])3" "EXCEPTION DebugExprException"
 	END
 
 BREAK 55 CONTINUE "main"
-	"3+" "<cannot evaluate expression>"
-	"4->3" "<cannot evaluate expression>"
-	"r-<w" "<cannot evaluate expression>"
-	"-" "<cannot evaluate expression>"
-	"/a" "<cannot evaluate expression>"
-	"a->>3" "<cannot evaluate expression>"
-	"a.3" "<cannot evaluate expression>"
-	"e->4" "<cannot evaluate expression>"
-	"test->int" "<cannot evaluate expression>" //type name
-	"a>>>b" "<cannot evaluate expression>"
-	"(ew[a])3" "<cannot evaluate expression>"
+	"3+" "EXCEPTION DebugExprException"
+	"4->3" "EXCEPTION DebugExprException"
+	"r-<w" "EXCEPTION DebugExprException"
+	"-" "EXCEPTION DebugExprException"
+	"/a" "EXCEPTION DebugExprException"
+	"a->>3" "EXCEPTION DebugExprException"
+	"a.3" "EXCEPTION DebugExprException"
+	"e->4" "EXCEPTION DebugExprException"
+	"test->int" "EXCEPTION DebugExprException" //type name
+	"a>>>b" "EXCEPTION DebugExprException"
+	"(ew[a])3" "EXCEPTION DebugExprException"
 	END

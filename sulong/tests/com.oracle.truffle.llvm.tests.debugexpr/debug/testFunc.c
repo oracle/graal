@@ -29,31 +29,37 @@
  */
 #include <stdio.h>
 
-void capitalize(int* ch) {
-	int c = *ch;
-	int idx = 0;
-	if(c>=(int)'A' && c<=(int)'Z') {
-		*ch = (int)(c-'A'+'a');
-	} else if(c>='a' && c<='z') {
-		*ch = (int)(c-'a'+'A');
-	}	
+int myMax(int a, int b, int c) {
+	if(a>b && a>c) return a;
+	return b>c?b:c;
 }
 
-int main(int argc, char* argv[]) {
-	char* str = "TeSt_CapiTaliZeReVErse";
-	int a=65;
-	int idx=0;
-	while(a>0) {
-		capitalize(&a);
-		printf("%c|",a);
-		a=*(((char*)str)+idx);
-	idx++;
-	}
+int gcd(int a, int b) {
+	if(a<0) a=-a;
+	if(b<0) b=-b;
+	if(a==0) return b;
+	if(b==0) return a;
+	return gcd(b, a%b);
+}
+
+int fib(int n) {
+	if(n<2) return myMax(n, 0, -1);
+	return fib(n-1)+fib(n-2);
+}
+
+char toUpper(char c) {
+	if(c>='a' && c<='z') c = (char)(c-'a'+'A');
+	return c;
+}
+
+__attribute__((constructor)) int main() {
+	int a=54;
+	int b=2016;
+	int sum = a + b;
+	int prod = a * b;
+	int rem = a % b;
+	int g = gcd(a, b);
+	__builtin_debugtrap();
+	printf("%i\n",g);
 	return 0;
 }
-
-__attribute__((constructor)) int test() {
-	return main(1, NULL);
-}
-
-

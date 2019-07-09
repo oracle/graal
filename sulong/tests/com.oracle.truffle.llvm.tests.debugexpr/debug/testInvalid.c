@@ -44,7 +44,7 @@ int gcd(int a, int b) {
 	return gcd(b, a%b);
 }
 
-int main(int argc, char* argv[]) {
+__attribute__((constructor)) int main() {
 	int a=54;
 	int b=2016;
 	__builtin_debugtrap();
@@ -55,8 +55,4 @@ int main(int argc, char* argv[]) {
 	__builtin_debugtrap();
 	printf("%i\n",g);
 	return 0;
-}
-
-__attribute__((constructor)) int test() {
-return main(1, NULL);
 }

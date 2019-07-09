@@ -30,7 +30,7 @@
 #include <stdio.h>
 
 
-int main() {
+__attribute__((constructor)) int main() {
 	float a=2;
 	float b=4.5;
 	float c=4e4;
@@ -39,8 +39,4 @@ int main() {
 	float sum=a+b+c+d;
 	printf("%f",sum);
 	return 0;
-}
-
-__attribute__((constructor)) int test() {
-return main();
 }

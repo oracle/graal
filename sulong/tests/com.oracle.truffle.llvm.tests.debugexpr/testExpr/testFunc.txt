@@ -28,8 +28,11 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 36 CONTINUE "main"
-	"ul" "8"
-	"si" "4"
+BREAK 62 CONTINUE "main"
+	"myMax(0,1,2)" "2"
+	"myMax(5,3,2)" "5"
+	"gcd(0,a)" "54"
+	"gcd(a,b)" "18"
+	"gcd(fib(5),10)" "5"
+	"fib(gcd(20,50))" "55"
 	END
-
