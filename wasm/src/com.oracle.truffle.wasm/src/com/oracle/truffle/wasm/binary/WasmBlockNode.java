@@ -1337,8 +1337,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        WasmContext context = null; // TODO: Read the context from a thread-local.
-        return execute(context, frame) != -1;
+        return execute(WasmContext.getCurrent(), frame) != -1;
     }
 
     @Override

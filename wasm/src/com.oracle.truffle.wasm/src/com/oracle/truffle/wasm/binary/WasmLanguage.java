@@ -58,4 +58,9 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     protected Iterable<Scope> findTopScopes(WasmContext context) {
         return context.getTopScopes();
     }
+
+    public static WasmContext getCurrentContext() {
+        return getCurrentContext(WasmLanguage.class);
+    }
+
 }

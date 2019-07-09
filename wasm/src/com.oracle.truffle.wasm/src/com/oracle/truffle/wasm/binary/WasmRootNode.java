@@ -57,9 +57,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
          */
         argumentsToLocals(frame);
 
-        WasmContext context = null; // TODO: Read from the thread-local that holds the context.
-        body.execute(context, frame);
-
+        body.execute(WasmContext.getCurrent(), frame);
         long returnValue = pop(frame, 0);
         switch (body.returnTypeId()) {
             case 0x00:
