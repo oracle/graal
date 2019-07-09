@@ -59,7 +59,7 @@ import org.graalvm.collections.UnmodifiableEconomicSet;
  * The following access rights may be granted:
  * <ul>
  * <li>The ability to evaluate code {@link Builder#allowEvalBetween(String...) between} two or just
- * for {@link Builder#allowEval(String, String) one} langauge. If a language has access to at least
+ * for {@link Builder#allowEval(String, String) one} language. If a language has access to at least
  * one other language then the polyglot eval builtin will be available, otherwise access to that
  * builtin might be restricted. The concrete name of the polyglot eval builtin is language specific.
  * In JavaScript it is called <code>Polyglot.eval</code>.
@@ -100,7 +100,7 @@ public final class PolyglotAccess {
         return newMap;
     }
 
-    void validate(EconomicSet<String> availableLanguages) {
+    void validate(UnmodifiableEconomicSet<String> availableLanguages) {
         if (evalAccess != null) {
             MapCursor<String, EconomicSet<String>> entries = evalAccess.getEntries();
             while (entries.advance()) {
@@ -275,8 +275,8 @@ public final class PolyglotAccess {
          * Allows evaluation of code by one language of another. This method only allows one-way
          * evaluation access. Every language always has implicitly access to itself. If a language
          * has access to one ore more different languages then the guest application will have
-         * access to polyglot evaluation builtins. If a language has no granted access to another
-         * language then access to polyglot evaluation builtins are denied.
+         * access to polyglot evaluation builtins. If a language has no access granted to another
+         * language then access to polyglot evaluation builtins is denied.
          *
          * @see #allowEvalBetween(String...)
          * @since 19.2
@@ -350,7 +350,7 @@ public final class PolyglotAccess {
 
         /**
          * Creates an instance of the custom polyglot access configuration. This method may be
-         * called multiple times to create more than once.
+         * called multiple times to create more than one independent instances.
          *
          * @since 19.2
          */

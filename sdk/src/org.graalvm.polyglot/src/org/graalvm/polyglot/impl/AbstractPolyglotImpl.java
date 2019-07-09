@@ -68,7 +68,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -184,7 +183,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
-        public abstract void validatePolyglotAccess(PolyglotAccess access, EconomicSet<String> language);
+        public abstract void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
 
     }
 

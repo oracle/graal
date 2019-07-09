@@ -1767,7 +1767,7 @@ public abstract class TruffleLanguage<C> {
         /**
          * Returns <code>true</code> if polyglot bindings access is allowed, else <code>false</code>
          * . Guest languages should hide or disable all polyglot bindings builtins if this flag is
-         * set to <code>false</code>. If polyglot bindings accss is disabled then
+         * set to <code>false</code>. If polyglot bindings access is disabled then
          * {@link #getPolyglotBindings()}, {@link #importSymbol(String)} or
          * {@link #exportSymbol(String, Object)} fails with a SecurityException.
          *
