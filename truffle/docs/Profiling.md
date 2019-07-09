@@ -11,9 +11,27 @@ C1 Visualizer to inspect Graal's output.
 This document is less about how to use each tool and more about suggestions for extracting
 the most useful information from the tools, assuming basic knowledge of their usage.
 
-### Creating a Flame Graph
+### Profiling with CPUSampler
 
-The histogram output from the Truffle profiler can be quite large, making it difficult to
+The simplest way to profile the application level, for example to find in which
+guest-language function(s) most of the time is spent is to use the CPUSampler,
+which is part of the `/tools` suite and part of GraalVM. Simply pass `--cpusampler`
+to your language launcher:
+
+```bash
+$ my-language --cpusampler --cpusampler.Delay=MILLISECONDS -e 'p :hello'
+```
+
+You probably want to use a sampling delay with `--cpusampler.Delay=MILLISECONDS`
+to only start profiling after warmup. That way, you can easily identify which
+functions get compiled and which do not and yet take a significant amount of
+time to execute.
+
+See `my-language --help:tools` for more `--cpusampler` options.
+
+### Creating a Flame Graph from CPUSampler
+
+The histogram output from the CPUSampler can be quite large, making it difficult to
 analyze. Additionally, as a flat format it isn't possible to analyze a call graph as that
 information simply isn't encoded in the output. A flame graph shows the entire call graph
 and its structure makes it considerably simpler to see where the application time is being
