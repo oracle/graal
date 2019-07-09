@@ -1,6 +1,7 @@
 package com.oracle.truffle.llvm.test.debug;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +25,7 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
@@ -191,9 +193,17 @@ public final class LLVMDebugExprParserTest {
             }
 
             for (Entry<String, String> kv : textExpressionMap.entrySet()) {
-                String actual = frame.eval(kv.getKey()).as(String.class);
-                System.out.println("\"" + kv.getValue() + "\" vs. \"" + actual + "\"");
-                assertEquals("Evaluation of expression \"" + kv.getKey() + "\" produced unexpected result: ", kv.getValue(), actual);
+                if (kv.getValue().startsWith("EXCEPTION ")) {
+                    try {
+                        String actual = frame.eval(kv.getKey()).as(String.class);
+                        assertTrue("Evaluation of expression \"" + kv.getKey() + "\" did evaluate to " + actual + " and did not throw expected " + kv.getValue(), false);
+                    } catch (DebugException e) {
+                        // OK since expected exception has been thrown
+                    }
+                } else {
+                    String actual = frame.eval(kv.getKey()).as(String.class);
+                    assertEquals("Evaluation of expression \"" + kv.getKey() + "\" produced unexpected result: ", kv.getValue(), actual);
+                }
             }
         }
 

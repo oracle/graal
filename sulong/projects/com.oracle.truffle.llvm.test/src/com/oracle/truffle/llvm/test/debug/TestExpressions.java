@@ -106,7 +106,8 @@ public class TestExpressions implements Iterable<StopRequest> {
                             error();
                         if (lines[2].length() <= 0)
                             error();
-                        System.out.printf("\"%s\" must evaluate to \"%s\"\n", lines[0], lines[2]);
+                        // System.out.printf("\"%s\" must evaluate to \"%s\"\n", lines[0],
+                        // lines[2]);
                         map.put(lines[0], lines[2]);
                         buffer.clear();
                     } catch (ArrayIndexOutOfBoundsException ae) {
