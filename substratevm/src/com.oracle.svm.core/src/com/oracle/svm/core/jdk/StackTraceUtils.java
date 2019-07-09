@@ -37,16 +37,25 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 
 public class StackTraceUtils {
 
+    private static final Class<?>[] NO_CLASSES = new Class<?>[0];
+    private static final StackTraceElement[] NO_ELEMENTS = new StackTraceElement[0];
+
     public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP, CodePointer startIP) {
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions);
         JavaStackWalker.walkCurrentThread(startSP, startIP, visitor);
-        return visitor.trace.toArray(new StackTraceElement[0]);
+        return visitor.trace.toArray(NO_ELEMENTS);
     }
 
     public static StackTraceElement[] getStackTrace(boolean filterExceptions, IsolateThread thread) {
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions);
         JavaStackWalker.walkThread(thread, visitor);
-        return visitor.trace.toArray(new StackTraceElement[0]);
+        return visitor.trace.toArray(NO_ELEMENTS);
+    }
+
+    public static Class<?>[] getClassContext(int skip, Pointer startSP, CodePointer startIP) {
+        GetClassContextVisitor visitor = new GetClassContextVisitor(skip);
+        JavaStackWalker.walkCurrentThread(startSP, startIP, visitor);
+        return visitor.trace.toArray(NO_CLASSES);
     }
 
     /**
@@ -153,5 +162,24 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
             result = frameInfo.getSourceClass();
             return false;
         }
+    }
+}
+
+class GetClassContextVisitor extends JavaStackFrameVisitor {
+    private int skip;
+    final ArrayList<Class<?>> trace;
+
+    GetClassContextVisitor(final int skip) {
+        trace = new ArrayList<>();
+        this.skip = skip;
+    }
+
+    public boolean visitFrame(final FrameInfoQueryResult frameInfo) {
+        if (skip > 0) {
+            skip--;
+        } else if (StackTraceUtils.shouldShowFrame(frameInfo, false, false)) {
+            trace.add(frameInfo.getSourceClass());
+        }
+        return true;
     }
 }
