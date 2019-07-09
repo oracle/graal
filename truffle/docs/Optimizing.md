@@ -63,10 +63,12 @@ IGV, the *Ideal Graph Visualizer*, is a tool to understand Truffle ASTs and
 Graal graphs. It's available from
 https://www.oracle.com/technetwork/graalvm/downloads/index.html.
 
-Typical usage is to run with `--vm.Dgraal.Dump=TruffleTree,PartialEscape:2`,
+Typical usage is to run with `--vm.Dgraal.Dump=Truffle:1`,
 which will show you Truffle ASTs, guest-language call graphs, and the Graal
 graphs as they leave the Truffle phase. Files are put into a `graal_dumps`
 directory which you should then open in IGV.
+
+Use `--vm.Dgraal.Dump=Truffle:2` to dump Graal graphs between each compiler phase.
 
 ## C1 Visualizer
 
