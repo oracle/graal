@@ -5,7 +5,14 @@ for peak temporal performance.
 
 ## Truffle compiler options
 
-Also see https://github.com/oracle/graal/blob/master/compiler/docs/Truffle.md and https://chriswhocodes.com/graal_options_graal_ce_19.html.
+See https://chriswhocodes.com/graal_options_graal_ce_19.html for a list of Truffle and Graal compiler options.
+You can also list them from the command line with any language launcher:
+```
+$ js --jvm --vm.XX:+JVMCIPrintProperties
+```
+
+Also see https://github.com/oracle/graal/blob/master/compiler/docs/Truffle.md
+for more details about instrumenting branches and boundaries.
 
 #### Observing what is being compiled
 
