@@ -57,6 +57,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
@@ -67,11 +68,11 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
     @Child private InteropLibrary foreignNewInstance;
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
-    public LLVMPolyglotNewInstance(LLVMExpressionNode[] args) {
+    public LLVMPolyglotNewInstance(LLVMExpressionNode[] args, Type[] argTypes) {
         this.args = args;
         this.prepareValuesForEscape = new LLVMDataEscapeNode[args.length];
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
-            prepareValuesForEscape[i] = LLVMDataEscapeNode.create();
+            prepareValuesForEscape[i] = LLVMDataEscapeNode.create(argTypes[i]);
         }
         this.foreignNewInstance = InteropLibrary.getFactory().createDispatched(5);
     }

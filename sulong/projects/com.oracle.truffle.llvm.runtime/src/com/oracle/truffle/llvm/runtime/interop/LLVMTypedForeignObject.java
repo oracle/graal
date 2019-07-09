@@ -30,7 +30,9 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -39,6 +41,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObjectFactory.ForeignGetTypeNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObjectFactory.ForeignWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
@@ -82,7 +85,7 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
 
     @Override
     public LLVMObjectWriteNode createWriteNode() {
-        return new ForeignWriteNode();
+        return ForeignWriteNodeGen.create();
     }
 
     @Override
@@ -141,17 +144,28 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         }
     }
 
-    static class ForeignWriteNode extends LLVMNode implements LLVMObjectWriteNode {
+    abstract static class ForeignWriteNode extends LLVMNode implements LLVMObjectWriteNode {
 
         @Child LLVMInteropWriteNode write = LLVMInteropWriteNode.create();
-        @Child LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
         @Child ForeignGetTypeNode getType = ForeignGetTypeNodeGen.create();
 
-        @Override
-        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) {
+        private void doWrite(Object obj, long offset, Object value) {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
-            Object escapedValue = dataEscape.executeWithTarget(value);
-            write.execute(getType.execute(object), object.getForeign(), offset, escapedValue);
+            write.execute(getType.execute(object), object.getForeign(), offset, value);
+        }
+
+        @Specialization(limit = "3", guards = "type == cachedType")
+        @SuppressWarnings("unused")
+        void doCachedType(Object obj, long offset, Object value, ForeignToLLVMType type,
+                        @Cached("type") ForeignToLLVMType cachedType,
+                        @Cached(parameters = "cachedType") LLVMDataEscapeNode dataEscape) {
+            doWrite(obj, offset, dataEscape.executeWithTarget(value));
+        }
+
+        @Specialization(replaces = "doCachedType")
+        @TruffleBoundary
+        void doUncached(Object obj, long offset, Object value, ForeignToLLVMType type) {
+            doWrite(obj, offset, LLVMDataEscapeNode.getUncached(type).executeWithTarget(value));
         }
 
         @Override
