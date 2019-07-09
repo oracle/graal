@@ -44,10 +44,14 @@ with the JSON formatter:
 $ my-language --cpusampler --cpusampler.SampleInternal --cpusampler.Mode=roots --cpusampler.Output=json -e 'p :hello' > simple-app.json
 ```
 
-Since we want to profile your language runtime itself, we use the
-`--cpusampler.SampleInternal=true` option. The `--cpusampler.Mode=roots` option will
-sample roots, including inlined functions, which can often give a better idea of what
-is contributing to the overall method execution time.
+Use the `--cpusampler.SampleInternal=true` option if you want to profile internal sources, such as standard library functions.
+
+Using `--cpusampler.Mode=roots` option will sample each function, including
+inlined functions, which is more intuitive when looking at a Flame Graph and can
+often give a better idea of what is contributing to the overall method execution
+time. However, `--cpusampler.Mode=roots` adds extra overhead, so you might want
+to try without too. The default is to not include inlined functions in order to
+minimize overhead.
 
 The JSON profiler formatter encodes call graph information that isn't available in the
 histogram format. To make a flame graph out of this output, however, we need to transform
