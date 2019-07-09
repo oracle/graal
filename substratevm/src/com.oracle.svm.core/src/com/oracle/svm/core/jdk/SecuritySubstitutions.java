@@ -132,7 +132,7 @@ final class Target_java_security_AccessControlContext {
 }
 
 @TargetClass(SecurityManager.class)
-@SuppressWarnings({"unused"})
+@SuppressWarnings({"static-method", "unused"})
 final class Target_java_lang_SecurityManager {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
