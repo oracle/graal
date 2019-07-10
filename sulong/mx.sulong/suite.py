@@ -654,6 +654,7 @@ suite = {
       ],
       "results" : [
         "linker/ref.out",
+        "linker/ref.bc",
         "linker/lib/<libsuffix:*>",
         "rpath/lib/<libsuffix:*>",
         "rpath/<libsuffix:*>",
