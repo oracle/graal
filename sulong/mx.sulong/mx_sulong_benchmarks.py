@@ -33,6 +33,8 @@ import shutil
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
 from os.path import join, exists
+
+import mx_subst
 from mx_benchmark import VmRegistry, java_vm_registry, Vm, GuestVm, VmBenchmarkSuite
 
 
@@ -250,6 +252,9 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def config_name(self):
         return "default"
 
+    def toolchain_name(self):
+        return "native"
+
     def name(self):
         return "sulong"
 
@@ -278,28 +283,17 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         return result
 
     def prepare_env(self, env):
-        env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
-        env['LLVM_COMPILER'] = mx_buildtools.ClangCompiler.CLANG
-        env['CLANG'] = mx_buildtools.ClangCompiler.CLANG
-        env['OPT_FLAGS'] = ' '.join(self.opt_phases())
+        if hasattr(self.host_vm(), 'run_launcher'):
+            mx.abort('graalvm llvm toolchain is not yet available in graalvm')
+        else:
+            env['CC'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CC>'.format(self.toolchain_name()))
         return env
 
     def out_file(self):
-        return 'bench.opt.bc'
+        return 'bench'
 
     def opt_phases(self):
-        return [
-            '-mem2reg',
-            '-globalopt',
-            '-simplifycfg',
-            '-constprop',
-            '-instcombine',
-            '-dse',
-            '-loop-simplify',
-            '-reassociate',
-            '-licm',
-            '-gvn',
-        ]
+        return []
 
     def launcher_vm_args(self):
         return mx_sulong.getClasspathOptions()
@@ -308,11 +302,12 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         launcher_args = [
             '--vm.Dgraal.TruffleInliningMaxCallerSize=10000',
             '--vm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
-            '--llvm.libraries=libgmp.so.10'] + args
+        ]
         return launcher_args
 
     def hosting_registry(self):
         return java_vm_registry
+
 
 _suite = mx.suite("sulong")
 

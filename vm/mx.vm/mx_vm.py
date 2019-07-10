@@ -930,11 +930,12 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
             graalvm_image_destination = graalvm_dist.find_single_source_location(source_type + ':' + project_name_f(image_config))
 
-            if isinstance(image_config, mx_sdk.LauncherConfig) and image_config.is_sdk_launcher:
-                build_args += [
-                    '-H:-ParseRuntimeOptions',
-                    '-Dorg.graalvm.launcher.classpath=' + ':'.join(graalvm_home_relative_classpath(image_config.jar_distributions, graalvm_home).split(os.pathsep)),
-                ]
+            if isinstance(image_config, mx_sdk.LauncherConfig):
+                if image_config.is_sdk_launcher:
+                    build_args += [
+                        '-H:-ParseRuntimeOptions',
+                        '-Dorg.graalvm.launcher.classpath=' + ':'.join(graalvm_home_relative_classpath(image_config.jar_distributions, graalvm_home).split(os.pathsep)),
+                    ]
                 if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
                     build_args += ['-Dorg.graalvm.launcher.relative.language.home=' + image_config.destination.replace('/', os.path.sep)]
                 else:
