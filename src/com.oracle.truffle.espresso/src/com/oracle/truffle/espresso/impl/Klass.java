@@ -99,6 +99,24 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     @CompilationFinal private int hierarchyDepth = -1;
 
+    /**
+     * A class or interface C is accessible to a class or interface D if and only if either of
+     * the following is true:
+     * <ul>
+     * <li>C is public.
+     * <li>C and D are members of the same run-time package (§5.3).
+     * </ul>
+     */
+    public static boolean checkAccess(Klass klass, Klass accessingKlass) {
+        if (accessingKlass == null) {
+            return true;
+        }
+        if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
+            return true;
+        }
+        return (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass));
+    }
+
     public final ObjectKlass[] getSuperInterfaces() {
         return superInterfaces;
     }
