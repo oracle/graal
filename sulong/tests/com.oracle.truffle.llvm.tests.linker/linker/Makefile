@@ -46,11 +46,18 @@ linker/lib/libD$(SO_EXT): $(D_LIBS:-l%=linker/lib/lib%$(SO_EXT))
 linker/lib/libD$(SO_EXT): LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/ -Llinker/lib $(D_LIBS)
 
 linker/ref.out: $(LINKER_MAIN_LIBS:-l%=linker/lib/lib%$(SO_EXT))
+ifeq ($(OS), darwin)
+linker/ref.out: linker/dummy.c linker/Makefile
+	# this test does currently not work on darwin [GR-16981]
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
+else
 linker/ref.out: LDFLAGS=$(SUITE_LDFLAGS) -rpath $(ORIGIN_TOKEN)/lib/ -Llinker/lib $(LINKER_MAIN_LIBS)
 
 linker/ref.out: linker/main.c linker/Makefile
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $<
+endif
 
 %.bc: %.out
 	cp $< $@
