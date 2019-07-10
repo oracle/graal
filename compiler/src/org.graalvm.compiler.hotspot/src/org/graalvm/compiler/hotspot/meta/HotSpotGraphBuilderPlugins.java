@@ -466,6 +466,12 @@ public class HotSpotGraphBuilderPlugins {
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
                             int.class);
+
+            // JDK-8226855
+            r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "implEncrypt", cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+            r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "implDecrypt", cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
+                            int.class);
+
             r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", bytecodeProvider);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, byte[].class, int.class);
