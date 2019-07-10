@@ -98,17 +98,17 @@ public final class ElfLibraryLocator extends LibraryLocator {
 
         if (localPaths != null) {
             // search file local paths
-            context.traceLoaderSearchPath(localPaths, reason);
+            traceSearchPath(context, localPaths, reason);
             for (String p : localPaths) {
                 Path absPath = Paths.get(p, lib);
-                context.traceLoaderTry(absPath);
+                traceTry(context, absPath);
                 if (absPath.toFile().exists()) {
                     return absPath;
                 }
             }
         }
 
-        context.traceLoaderTry(libPath);
+        traceTry(context, libPath);
         return libPath;
     }
 }

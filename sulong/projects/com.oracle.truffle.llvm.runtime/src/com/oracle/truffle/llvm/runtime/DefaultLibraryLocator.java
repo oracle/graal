@@ -56,17 +56,17 @@ public final class DefaultLibraryLocator extends LibraryLocator {
             return absPath;
         }
 
-        context.traceLoaderTry(libPath);
+        traceTry(context, libPath);
         return libPath;
     }
 
     public static Path locateGlobal(LLVMContext context, String lib) {
         // search global paths
         List<Path> libraryPaths = context.getLibraryPaths();
-        context.traceLoaderSearchPath(libraryPaths);
+        traceSearchPath(context, libraryPaths);
         for (Path p : libraryPaths) {
             Path absPath = Paths.get(p.toString(), lib);
-            context.traceLoaderTry(absPath);
+            traceTry(context, absPath);
             if (absPath.toFile().exists()) {
                 return absPath;
             }
@@ -76,7 +76,7 @@ public final class DefaultLibraryLocator extends LibraryLocator {
 
     public static Path locateAbsolute(LLVMContext context, String lib, Path libPath) {
         assert libPath.isAbsolute();
-        context.traceLoaderTry(libPath);
+        traceTry(context, libPath);
         if (libPath.toFile().exists()) {
             return libPath;
         } else {

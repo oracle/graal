@@ -29,7 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.PrintStream;
 import java.nio.file.Path;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 
@@ -40,11 +42,73 @@ public abstract class LibraryLocator {
 
     @CompilerDirectives.TruffleBoundary
     public Path locate(LLVMContext context, String lib, Object reason) {
-        context.traceLoader("\n");
-        context.traceLoaderFind(lib, reason);
+        if (context.ldDebugEnabled()) {
+            LibraryLocator.traceLoader(context, "\n");
+        }
+        traceFind(context, lib, reason);
         return locateLibrary(context, lib, reason);
     }
 
     protected abstract Path locateLibrary(LLVMContext context, String lib, Object reason);
 
+    public static void traceFind(LLVMContext context, Object lib, Object reason) {
+        if (context.ldDebugEnabled()) {
+            traceLoader(context, "find external library=%s; needed by %s\n", lib, reason);
+        }
+    }
+
+    public static void traceTry(LLVMContext context, Object file) {
+        if (context.ldDebugEnabled()) {
+            traceLoader(context, "  trying file=%s\n", file);
+        }
+    }
+
+    public static void traceSearchPath(LLVMContext context, List<?> paths) {
+        if (context.ldDebugEnabled()) {
+            traceLoader(context, " search path=%s\n", paths);
+        }
+    }
+
+    public static void traceSearchPath(LLVMContext context, List<?> paths, Object reason) {
+        if (context.ldDebugEnabled()) {
+            traceLoader(context, " search path=%s (local path from %s)\n", paths, reason);
+        }
+    }
+
+    public static void traceParseBitcode(LLVMContext context, Object path) {
+        if (context.ldDebugEnabled()) {
+            traceLoader(context, "parse bitcode=%s\n", path);
+        }
+    }
+
+    public static void traceAlreadyLoaded(LLVMContext context, Object path) {
+        if (context.ldDebugEnabled()) {
+            traceLoader(context, "library already located: %s\n", path);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void traceLoader(LLVMContext context, String str) {
+        PrintStream stream = context.ldDebugStream();
+        printPrefix(stream, context);
+        stream.print(str);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void traceLoader(LLVMContext context, String format, Object arg0) {
+        PrintStream stream = context.ldDebugStream();
+        printPrefix(stream, context);
+        stream.printf(format, arg0);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static void traceLoader(LLVMContext context, String format, Object arg0, Object arg1) {
+        PrintStream stream = context.ldDebugStream();
+        printPrefix(stream, context);
+        stream.printf(format, arg0, arg1);
+    }
+
+    private static void printPrefix(PrintStream stream, LLVMContext context) {
+        stream.printf("lli(%x): ", System.identityHashCode(context));
+    }
 }

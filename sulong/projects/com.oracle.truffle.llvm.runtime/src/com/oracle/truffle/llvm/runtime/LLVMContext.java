@@ -468,7 +468,7 @@ public final class LLVMContext {
         if (existingLib == newLib) {
             return newLib;
         }
-        traceLoader("library already located: %s\n", existingLib.path);
+        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
         return null;
     }
 
@@ -901,38 +901,14 @@ public final class LLVMContext {
         }
     }
 
-    private boolean ldDebugEnabled() {
+    boolean ldDebugEnabled() {
         cacheTrace();
         return traceLoaderEnabled;
     }
 
-    private PrintStream ldDebugStream() {
+    PrintStream ldDebugStream() {
         cacheTrace();
         return traceLoaderStream;
-    }
-
-    public void traceLoaderFind(Object lib, Object reason) {
-        traceLoader("find external library=%s; needed by %s\n", lib, reason);
-    }
-
-    public void traceLoaderTry(Object file) {
-        traceLoader("  trying file=%s\n", file);
-    }
-
-    public void traceLoaderSearchPath(List<?> paths) {
-        traceLoader(" search path=%s\n", paths);
-    }
-
-    public void traceLoaderSearchPath(List<?> paths, Object reason) {
-        traceLoader(" search path=%s (local path from %s)\n", paths, reason);
-    }
-
-    @TruffleBoundary
-    public void traceLoader(String format, Object... args) {
-        if (ldDebugEnabled()) {
-            ldDebugStream().printf("lli(%x): ", System.identityHashCode(this));
-            ldDebugStream().printf(format, args);
-        }
     }
 
 }

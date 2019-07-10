@@ -69,17 +69,17 @@ public final class MachOLibraryLocator extends LibraryLocator {
         if (!rPaths.isEmpty() && lib.startsWith(RPATH_PATTERN)) {
             String subLib = lib.substring(RPATH_PATTERN.length());
             // search file local paths
-            context.traceLoaderSearchPath(rPaths, reason);
+            traceSearchPath(context, rPaths, reason);
             for (String p : rPaths) {
                 Path absPath = Paths.get(p, subLib);
-                context.traceLoaderTry(absPath);
+                traceTry(context, absPath);
                 if (absPath.toFile().exists()) {
                     return absPath;
                 }
             }
         }
 
-        context.traceLoaderTry(libPath);
+        traceTry(context, libPath);
         return libPath;
     }
 

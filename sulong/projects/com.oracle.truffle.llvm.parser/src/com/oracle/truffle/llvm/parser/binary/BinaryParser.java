@@ -111,7 +111,7 @@ public final class BinaryParser {
             // unsupported file
             return null;
         }
-        context.traceLoader("parse bitcode=%s\n", bcSource.getPath());
+        LibraryLocator.traceParseBitcode(context, bcSource.getPath());
         return new BinaryParserResult(libraries, paths, bitcode, locator);
     }
 
