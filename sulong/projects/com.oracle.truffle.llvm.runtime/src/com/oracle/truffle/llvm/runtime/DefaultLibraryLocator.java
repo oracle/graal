@@ -67,7 +67,7 @@ public final class DefaultLibraryLocator extends LibraryLocator {
         for (Path p : libraryPaths) {
             Path absPath = Paths.get(p.toString(), lib);
             traceTry(context, absPath);
-            if (absPath.toFile().exists()) {
+            if (context.getEnv().getTruffleFile(absPath.toUri()).exists()) {
                 return absPath;
             }
         }
@@ -77,7 +77,7 @@ public final class DefaultLibraryLocator extends LibraryLocator {
     public static Path locateAbsolute(LLVMContext context, String lib, Path libPath) {
         assert libPath.isAbsolute();
         traceTry(context, libPath);
-        if (libPath.toFile().exists()) {
+        if (context.getEnv().getTruffleFile(libPath.toUri()).exists()) {
             return libPath;
         } else {
             throw new LLVMLinkerException(String.format("Library \"%s\" does not exist.", lib));

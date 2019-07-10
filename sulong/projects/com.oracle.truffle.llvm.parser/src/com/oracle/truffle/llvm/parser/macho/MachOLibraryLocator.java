@@ -73,7 +73,7 @@ public final class MachOLibraryLocator extends LibraryLocator {
             for (String p : rPaths) {
                 Path absPath = Paths.get(p, subLib);
                 traceTry(context, absPath);
-                if (absPath.toFile().exists()) {
+                if (context.getEnv().getTruffleFile(absPath.toUri()).exists()) {
                     return absPath;
                 }
             }
