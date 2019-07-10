@@ -42,6 +42,7 @@ package com.oracle.truffle.api.test.source;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -545,6 +546,112 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertEquals(resource.toURI(), s.getURI());
         assertEquals("File.html", s.getName());
         assertEquals("/test/File.html", s.getPath());
+        assertEquals("Empty", s.getCharacters());
+    }
+
+    @Test
+    public void testBuiltFromSourceLiteral() {
+        final String code = "test code";
+        final String description = "test description";
+        for (int cached = 0; cached <= 1; cached++) {
+            for (int interactive = 0; interactive <= 1; interactive++) {
+                for (int internal = 0; internal <= 1; internal++) {
+                    final Source literal1 = Source.newBuilder("lang", code, description).cached(cached != 0).interactive(interactive != 0).internal(internal != 0).mimeType("text/test").build();
+                    final Source literal2 = Source.newBuilder(literal1).build();
+                    assertSameProperties(literal1, literal2);
+                }
+            }
+        }
+        assertNewSourceChanged(Source.newBuilder("lang", code, description).build());
+    }
+
+    @Test
+    public void testBuiltFromBinarySource() {
+        setupEnv();
+        ByteSequence bytes = ByteSequence.create(new byte[]{1, 2, 3, 4, 5, 6, 7, 8});
+        Source source1 = Source.newBuilder("Lang", bytes, "testName").build();
+        Source source2 = Source.newBuilder(source1).build();
+        assertSameProperties(source1, source2);
+        assertNewSourceChanged(source1);
+    }
+
+    @Test
+    public void testBuiltFromSourceReader() throws IOException {
+        setupEnv();
+        StringReader reader = new StringReader("test\ncode");
+        Source source1 = Source.newBuilder("Lang", reader, "testName").build();
+        Source source2 = Source.newBuilder(source1).build();
+        assertSameProperties(source1, source2);
+        assertNewSourceChanged(source1);
+    }
+
+    @Test
+    public void testBuiltFromSourceFile() {
+        setupEnv();
+        File file = new File("some.tjs");
+        final TruffleFile truffleFile = languageEnv.getTruffleFile(file.getAbsolutePath());
+        Source source1 = Source.newBuilder("Lang", truffleFile).content("Empty").build();
+        Source source2 = Source.newBuilder(source1).build();
+        assertSameProperties(source1, source2);
+        assertNewSourceChanged(source1);
+    }
+
+    @Test
+    public void testBuiltFromSourceURL() throws IOException {
+        setupEnv();
+        URL resource = new URL("http://example.org/test/File.html");
+        Source source1 = Source.newBuilder("Lang", resource).content("Empty").build();
+        Source source2 = Source.newBuilder(source1).build();
+        assertSameProperties(source1, source2);
+        assertNewSourceChanged(source1);
+    }
+
+    @Test
+    public void testBuiltFromNoContentSource() {
+        setupEnv();
+        // Relative file
+        TruffleFile truffleFile = languageEnv.getTruffleFile("some/path");
+        Source source1 = Source.newBuilder("Lang", truffleFile).content(Source.CONTENT_NONE).build();
+        Source source2 = Source.newBuilder(source1).build();
+        assertSameProperties(source1, source2);
+        assertNewSourceChanged(source1);
+    }
+
+    private static void assertSameProperties(Source s1, Source s2) {
+        assertEquals(s1.hasBytes(), s2.hasBytes());
+        assertEquals(s1.hasCharacters(), s2.hasCharacters());
+        if (s1.hasCharacters()) {
+            assertEquals(s1.getCharacters(), s2.getCharacters());
+            assertEquals(s1.getLength(), s2.getLength());
+        }
+        if (s1.hasBytes()) {
+            assertArrayEquals(s1.getBytes().toByteArray(), s2.getBytes().toByteArray());
+            assertEquals(s1.getLength(), s2.getLength());
+        }
+        assertEquals(s1.getLanguage(), s2.getLanguage());
+        assertEquals(s1.getMimeType(), s2.getMimeType());
+        assertEquals(s1.getName(), s2.getName());
+        assertEquals(s1.getPath(), s2.getPath());
+        assertEquals(s1.getURI(), s2.getURI());
+        assertEquals(s1.getURL(), s2.getURL());
+        assertEquals(s1.isInteractive(), s2.isInteractive());
+        assertEquals(s1.isInternal(), s2.isInternal());
+    }
+
+    private static void assertNewSourceChanged(Source s1) {
+        // Change name
+        Source s2 = Source.newBuilder(s1).name("New Test Name").build();
+        assertNotEquals(s1.getName(), s2.getName());
+        if ("truffle".equals(s1.getURI().getScheme())) {
+            assertNotEquals(s1.getURI(), s2.getURI());
+        }
+        // Change content
+        s2 = Source.newBuilder(s1).content("New Content").build();
+        assertTrue(s2.hasCharacters());
+        assertEquals("New Content", s2.getCharacters());
+        if ("truffle".equals(s1.getURI().getScheme())) {
+            assertNotEquals(s1.getURI(), s2.getURI());
+        }
     }
 
     @Test
