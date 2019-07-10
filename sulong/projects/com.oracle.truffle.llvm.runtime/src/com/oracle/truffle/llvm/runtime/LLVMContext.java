@@ -525,44 +525,6 @@ public final class LLVMContext {
         return libraryPaths;
     }
 
-    @TruffleBoundary
-    private Path locateExternalLibrary(String lib, Object reason, List<String> localPaths) {
-        traceLoader("\n");
-        traceLoaderFind(lib, reason);
-        Path libPath = Paths.get(lib);
-        if (libPath.isAbsolute()) {
-            traceLoaderTry(libPath);
-            if (libPath.toFile().exists()) {
-                return libPath;
-            } else {
-                throw new LLVMLinkerException(String.format("Library \"%s\" does not exist.", lib));
-            }
-        }
-
-        // search global paths
-        traceLoaderSearchPath(libraryPaths);
-        for (Path p : libraryPaths) {
-            Path absPath = Paths.get(p.toString(), lib);
-            traceLoaderTry(absPath);
-            if (absPath.toFile().exists()) {
-                return absPath;
-            }
-        }
-        if (localPaths != null) {
-            // search file local paths
-            traceLoaderSearchPath(localPaths, reason);
-            for (String p : localPaths) {
-                Path absPath = Paths.get(p, lib);
-                traceLoaderTry(absPath);
-                if (absPath.toFile().exists()) {
-                    return absPath;
-                }
-            }
-        }
-        traceLoaderTry(libPath);
-        return libPath;
-    }
-
     public LLVMLanguage getLanguage() {
         return language;
     }
