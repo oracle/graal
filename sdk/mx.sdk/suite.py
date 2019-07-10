@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -60,12 +60,12 @@ suite = {
   "repositories" : {
     "lafo-snapshots" : {
       "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "NCSA"]
     },
     "lafo" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"]
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
@@ -204,8 +204,13 @@ suite = {
     "UPL" : {
       "name" : "Universal Permissive License, Version 1.0",
       "url" : "http://opensource.org/licenses/UPL",
-    }
+    },
+    "NCSA" : {
+      "name" : "University of Illinois/NCSA Open Source License",
+      "url" : "https://releases.llvm.org/8.0.0/LICENSE.TXT"
+    },
   },
+
   # ------------- Distributions -------------
   "distributions" : {
     "GRAAL_SDK" : {
