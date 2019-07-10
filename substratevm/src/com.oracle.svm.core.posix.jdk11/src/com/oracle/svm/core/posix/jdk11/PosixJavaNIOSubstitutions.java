@@ -30,10 +30,6 @@ import static com.oracle.svm.core.posix.headers.Unistd.write;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
-import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.Statvfs;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -43,6 +39,10 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.os.IsDefined;
+import com.oracle.svm.core.posix.PosixUtils;
+import com.oracle.svm.core.posix.headers.Fcntl;
+import com.oracle.svm.core.posix.headers.Statvfs;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public class PosixJavaNIOSubstitutions {
@@ -65,7 +65,7 @@ public class PosixJavaNIOSubstitutions {
 
     @TargetClass(className = "sun.nio.ch.FileDispatcherImpl", onlyWith = JDK11OrLater.class)
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-    static final class FileDispatcherImpl {
+    static final class Target_sun_nio_ch_FileDispatcherImpl {
 
         /* Do not re-format commented out C code. @formatter:off */
         // ported from {jdk11}/src/java.base/unix/native/libnio/ch/FileDispatcherImpl.c
@@ -74,21 +74,21 @@ public class PosixJavaNIOSubstitutions {
         //   322                                             jobject fdo)
         @Substitute
         static int setDirect0(FileDescriptor fdo) throws IOException {
+            /* ( Allow names with underscores: Checkstyle: stop */
+
             //   324      jint fd = fdval(env, fdo);
             int fd = PosixUtils.getFD(fdo);
             //   325      jint result;
             int result;
+            
+            //   326  #ifdef MACOSX
+            //   327      struct statvfs file_stat;
+            //   328  #else
+            //   329      struct statvfs64 file_stat;
+            //   330  #endif
 
             Statvfs.statvfs file_stat = StackValue.get(Statvfs.statvfs.class);
 
-            if (IsDefined.MACOSX()) {
-                //   326  #ifdef MACOSX
-                //   327      struct statvfs file_stat;
-                //   328  #else
-            } else {
-                //   329      struct statvfs64 file_stat;
-                //   330  #endif
-            }
             //   332  #if defined(O_DIRECT) || defined(F_NOCACHE) || defined(DIRECTIO_ON)
             if (IsDefined.LINUX() || IsDefined.MACOSX()) {
                 //   333  #ifdef O_DIRECT
@@ -156,6 +156,8 @@ public class PosixJavaNIOSubstitutions {
             }
             //   372      return result;
             return result;
+
+            /* } Allow names with underscores: Checkstyle: resume */
         }
         /* @formatter:on */
     }
