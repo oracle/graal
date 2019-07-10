@@ -46,11 +46,10 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -88,6 +87,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
+import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
@@ -1111,5 +1111,24 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public static long JVM_FreeMemory() {
         return Runtime.getRuntime().freeMemory();
+    }
+
+    /**
+     * Espresso only supports basic -ea and -esa options. Complex per-class/package filters are
+     * unsupported.
+     */
+    @VmImpl
+    @JniImpl
+    public @Host(typeName = "Ljava/lang/AssertionStatusDirectives;") StaticObject JVM_AssertionStatusDirectives(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused) {
+        Meta meta = getMeta();
+        StaticObject instance = meta.AssertionStatusDirectives.allocateInstance();
+        meta.AssertionStatusDirectives.lookupMethod(Name.INIT, Signature._void).invokeDirect(instance);
+        meta.AssertionStatusDirectives_classes.set(instance, meta.String.allocateArray(0));
+        meta.AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocateArray(0));
+        meta.AssertionStatusDirectives_packages.set(instance, meta.String.allocateArray(0));
+        meta.AssertionStatusDirectives_packageEnabled.set(instance, meta._boolean.allocateArray(0));
+        boolean ea = getContext().getEnv().getOptions().get(EspressoOptions.EnableAssertions);
+        meta.AssertionStatusDirectives_deflt.set(instance, ea);
+        return instance;
     }
 }

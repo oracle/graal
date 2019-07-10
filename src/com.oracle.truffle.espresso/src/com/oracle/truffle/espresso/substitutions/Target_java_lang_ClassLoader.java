@@ -28,11 +28,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @EspressoSubstitutions
 public final class Target_java_lang_ClassLoader {
     @Substitution
-    public static void registerNatives() {
-        /* nop */
-    }
-
-    @Substitution
     public static @Host(String.class) StaticObject findBuiltinLib(@SuppressWarnings("unused") @Host(String.class) StaticObject name) {
         /**
          * The native implementation assumes builtin libraries are loaded in the default namespace,

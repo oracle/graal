@@ -751,8 +751,8 @@ jboolean JVM_DesiredAssertionStatus(JNIEnv *env, jclass unused, jclass cls) {
 }
 
 jobject JVM_AssertionStatusDirectives(JNIEnv *env, jclass unused) {
-  UNIMPLEMENTED(JVM_AssertionStatusDirectives);
-  return NULL;
+  IMPLEMENTED(JVM_AssertionStatusDirectives);
+  return (*getEnv())->JVM_AssertionStatusDirectives(env, unused);
 }
 
 jboolean JVM_SupportsCX8(void) {
