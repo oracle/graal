@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.aesDecryptName;
+import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.aesEncryptName;
+import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.cbcDecryptName;
+import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.cbcEncryptName;
+
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -501,36 +506,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
 
-        String cbcEncryptName;
-        String cbcDecryptName;
-        String aesEncryptName;
-        String aesDecryptName;
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            String cbcEncrypt = "encrypt";
-            String cbcDecrypt = "decrypt";
-            try {
-                // JDK-8226855
-                for (Method method : Class.forName("com.sun.crypto.provider.CipherBlockChaining").getDeclaredMethods()) {
-                    if (method.getName().equals("implEncrypt")) {
-                        cbcEncrypt = method.getName();
-                    } else if (method.getName().equals("implDecrypt")) {
-                        cbcDecrypt = method.getName();
-                    }
-                }
-            } catch (ClassNotFoundException e) {
-                // ignore
-            }
-            cbcEncryptName = cbcEncrypt;
-            cbcDecryptName = cbcDecrypt;
-            aesEncryptName = "encryptBlock";
-            aesDecryptName = "decryptBlock";
-        } else {
-            cbcEncryptName = "implEncrypt";
-            cbcDecryptName = "implDecrypt";
-            aesEncryptName = "implEncryptBlock";
-            aesDecryptName = "implDecryptBlock";
-        }
-
         // AES intrinsics
         if (!config.useAESIntrinsics) {
             add(ignore,
@@ -538,6 +513,12 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "com/sun/crypto/provider/AESCrypt." + aesEncryptName + "([BI[BI)V",
                             "com/sun/crypto/provider/CipherBlockChaining." + cbcDecryptName + "([BII[BI)I",
                             "com/sun/crypto/provider/CipherBlockChaining." + cbcEncryptName + "([BII[BI)I");
+        } else {
+            if (!isJDK9OrHigher()) {
+                // JDK-8226855
+                checkIntrinsicMatchesMethod(cbcEncryptName, "com/sun/crypto/provider/CipherBlockChaining", "encrypt", "implEncrypt");
+                checkIntrinsicMatchesMethod(cbcDecryptName, "com/sun/crypto/provider/CipherBlockChaining", "decrypt", "implDecrypt");
+            }
         }
 
         // BigInteger intrinsics
@@ -607,6 +588,21 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     public interface Refiner {
         void refine(CheckGraalIntrinsics checker);
+    }
+
+    private void checkIntrinsicMatchesMethod(String expected, String declaringClass, String... names) {
+        for (VMIntrinsicMethod intrinsic : config.getStore().getIntrinsics()) {
+            if (intrinsic.declaringClass.equals(declaringClass)) {
+                for (String name : names) {
+                    if (intrinsic.name.equals(name)) {
+                        if (!name.equals(expected)) {
+                            add(ignore, declaringClass + "." + name + intrinsic.descriptor);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     @Test
