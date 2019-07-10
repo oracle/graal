@@ -904,7 +904,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if graalvm_dist.vm_config_name:
                 build_args += ['-Dorg.graalvm.config={}'.format(graalvm_dist.vm_config_name.upper())]
             if _debug_images():
-                build_args += ['-ea', '-H:-AOTInline', '-H:+UseStackBasePointer']
+                build_args += ['-ea', '-H:-AOTInline', '-H:+PreserveFramePointer']
             if _get_svm_support().is_debug_supported():
                 build_args += ['-g']
 
