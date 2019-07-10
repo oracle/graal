@@ -2,12 +2,12 @@
 
 New features:
 
+* Support locating dynamic libraries relatively using (`rpath`).
 * Preliminary support for compiling to bitcode using the LLVM toolchain.
   See [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) for more details.
 
 Improvements:
 
-* Support locating dynamic libraries relatively using (`rpath`).
 * Improved display of pointers to foreign objects in the LLVM debugger.
   When inspecting pointer values that point somewhere inside a foreign object,
   the debugger now allows inspecting the original foreign object, not just the
