@@ -898,6 +898,7 @@ public final class LLVMContext {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             traceLoaderStream = SulongEngineOption.getStream(getEnv().getOptions().get(SulongEngineOption.LD_DEBUG));
             traceLoaderEnabled = SulongEngineOption.isTrue(getEnv().getOptions().get(SulongEngineOption.LD_DEBUG));
+            assert traceLoaderStream != null;
         }
     }
 
