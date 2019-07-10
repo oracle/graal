@@ -72,6 +72,7 @@ public class TagsTest {
         assertEquals("EXPRESSION", Tag.getIdentifier(StandardTags.ExpressionTag.class));
         assertEquals("STATEMENT", Tag.getIdentifier(StandardTags.StatementTag.class));
         assertEquals("CALL", Tag.getIdentifier(StandardTags.CallTag.class));
+        assertEquals("ROOT_BODY", Tag.getIdentifier(StandardTags.RootBodyTag.class));
         assertEquals("ROOT", Tag.getIdentifier(StandardTags.RootTag.class));
         assertNull(Tag.getIdentifier(MyTag.class));
         assertEquals("MyTagWithIdentifier", Tag.getIdentifier(MyTagWithIdentifier.class));
