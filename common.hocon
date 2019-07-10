@@ -17,7 +17,7 @@ jdks: {
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "HEAD"
+    mx: "c01eef6e31cd5655b1f0682c445f4ed50aa5c05e" # fix issue with obfuscated `TYPE` fields
   }
 }
 
