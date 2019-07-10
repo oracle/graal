@@ -52,12 +52,16 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VectorSupport.VectorExtractNode;
 import org.graalvm.compiler.nodes.VectorSupport.VectorPackNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.FloatDivNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
+import org.graalvm.compiler.nodes.calc.NegateNode;
+import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
@@ -90,6 +94,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     AddNode.class,
                     SubNode.class,
                     MulNode.class,
+                    AndNode.class,
+                    OrNode.class,
+                    XorNode.class,
+                    NegateNode.class,
                     FloatDivNode.class).collect(Collectors.toSet()));
 
     // Class to encapsulate state used by functions in the algorithm

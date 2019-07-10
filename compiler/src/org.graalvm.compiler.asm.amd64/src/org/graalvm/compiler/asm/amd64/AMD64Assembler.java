@@ -1314,6 +1314,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VADDSUBPS = new VexRVMOp("VADDSUBPS", P_F2, M_0F,   WIG, 0xD0);
         public static final VexRVMOp VADDSUBPD = new VexRVMOp("VADDSUBPD", P_66, M_0F,   WIG, 0xD0);
         public static final VexRVMOp VPAND     = new VexRVMOp("VPAND",     P_66, M_0F,   WIG, 0xDB, VEXOpAssertion.AVX1_2);
+        public static final VexRVMOp VPANDN    = new VexRVMOp("VPANDN",    P_66, M_0F,   WIG, 0xDF, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPOR      = new VexRVMOp("VPOR",      P_66, M_0F,   WIG, 0xEB, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPXOR     = new VexRVMOp("VPXOR",     P_66, M_0F,   WIG, 0xEF, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPADDB    = new VexRVMOp("VPADDB",    P_66, M_0F,   WIG, 0xFC, VEXOpAssertion.AVX1_2);

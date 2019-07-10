@@ -34,7 +34,22 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public final class VectorIntegerStamp extends VectorPrimitiveStamp {
 
     public static final ArithmeticOpTable OPS = new ArithmeticOpTable(
-                    null,
+                    new ArithmeticOpTable.UnaryOp.Neg() {
+                        @Override
+                        public Constant foldConstant(Constant a) {
+                            return null;
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+
+                            // Can only be unrestricted so return a
+                            return a;
+                        }
+                    },
                     new BinaryOp.Add(true, true) {
                         @Override
                         public Constant foldConstant(Constant a, Constant b) {
@@ -100,9 +115,66 @@ public final class VectorIntegerStamp extends VectorPrimitiveStamp {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    null,
+                    new BinaryOp.And(true, true) {
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            return null;
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+
+                            // Can only be unrestricted so return a
+                            return a;
+                        }
+                    },
+                    new BinaryOp.Or(true, true) {
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            return null;
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+
+                            // Can only be unrestricted so return a
+                            return a;
+                        }
+                    },
+                    new BinaryOp.Xor(true, true) {
+                        @Override
+                        public Constant foldConstant(Constant a, Constant b) {
+                            return null;
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp a, Stamp b) {
+                            if (a.isEmpty()) {
+                                return a;
+                            }
+
+                            if (b.isEmpty()) {
+                                return b;
+                            }
+
+                            // Can only be unrestricted so return a
+                            return a;
+                        }
+                    },
                     null,
                     null,
                     null,
