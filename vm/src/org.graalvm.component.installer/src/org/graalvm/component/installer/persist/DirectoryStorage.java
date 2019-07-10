@@ -333,6 +333,10 @@ public class DirectoryStorage implements ManagementStorage {
         Version v = getGraalVMVersion();
         ComponentInfo ci = new ComponentInfo(BundleConstants.GRAAL_COMPONENT_ID, feedback.l10n("NAME_GraalCoreComponent"),
                         v.originalString());
+        Path cmpFile = registryPath.resolve(SystemUtils.fileName(BundleConstants.GRAAL_COMPONENT_ID + NATIVE_COMPONENT_FILE_SUFFIX));
+        if (Files.exists(cmpFile)) {
+            ci.setNativeComponent(true);
+        }
         graalCore = ci;
         return graalCore;
     }
