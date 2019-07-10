@@ -116,13 +116,9 @@ public abstract class ClassRegistry implements ContextAccess {
                         ? (ObjectKlass) loadKlass(superKlassType, (instigator == null) ? type : instigator)
                         : null;
 
-
-
         assert superKlass == null || !superKlass.isInterface();
 
         final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
-
-
 
         LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
                         ? LinkedKlass.EMPTY_ARRAY
@@ -145,7 +141,7 @@ public abstract class ClassRegistry implements ContextAccess {
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
 
         if (superKlass != null && !Klass.checkAccess(superKlass, klass)) {
-            throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type  + " cannot access its superclass " + superKlassType));
+            throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superclass " + superKlassType));
         }
 
         for (ObjectKlass interf : superInterfaces) {

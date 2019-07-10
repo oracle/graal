@@ -176,7 +176,7 @@ public interface ClassConstant extends PoolConstant {
             try {
                 EspressoContext context = pool.getContext();
                 Klass klass = context.getRegistries().loadKlass(
-                        context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
+                                context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
 
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
