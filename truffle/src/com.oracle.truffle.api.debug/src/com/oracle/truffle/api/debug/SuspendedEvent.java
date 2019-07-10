@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,10 @@ import com.oracle.truffle.api.debug.DebuggerNode.InputValuesProvider;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -677,13 +680,17 @@ public final class SuspendedEvent {
             if (otherFrames == null) {
                 final List<DebugStackFrame> frameInstances = new ArrayList<>();
                 Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-                    private int depth = -context.getStackDepth() - 1;
+                    private int depth = -context.getStackDepth() - 1 + getTopFrameIndex();
 
                     @Override
                     public FrameInstance visitFrame(FrameInstance frameInstance) {
                         if (isEvalRootStackFrame(session, frameInstance)) {
                             // we stop at eval root stack frames
                             return frameInstance;
+                        }
+                        Node callNode = frameInstance.getCallNode();
+                        if (callNode != null && !hasRootTag(callNode)) {
+                            return null;
                         }
                         if (++depth <= 0) {
                             return null;
@@ -697,10 +704,32 @@ public final class SuspendedEvent {
             return otherFrames;
         }
 
+        private boolean hasRootTag(Node callNode) {
+            Node node = callNode;
+            do {
+                if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(RootTag.class)) {
+                    return true;
+                }
+                node = node.getParent();
+            } while (node != null);
+            return false;
+        }
+
+        private int getTopFrameIndex() {
+            if (context.getStackDepth() == 0) {
+                return 0;
+            }
+            if (hasRootTag(context.getInstrumentedNode())) {
+                return 0;
+            } else {
+                return 1; // Skip synthetic frame
+            }
+        }
+
         public Iterator<DebugStackFrame> iterator() {
             return new Iterator<DebugStackFrame>() {
 
-                private int index;
+                private int index = getTopFrameIndex();
                 private Iterator<DebugStackFrame> otherIterator;
 
                 public boolean hasNext() {
