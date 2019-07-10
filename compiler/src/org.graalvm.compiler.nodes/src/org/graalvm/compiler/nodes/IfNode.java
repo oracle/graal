@@ -42,6 +42,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
@@ -73,6 +74,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -604,6 +606,50 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                             ifNode2.safeDelete();
                             return true;
                         }
+                    }
+                }
+            } else if (y instanceof PrimitiveConstant && ((PrimitiveConstant) y).asLong() < 0 && falseSuccessor().next() instanceof IfNode) {
+                IfNode ifNode2 = (IfNode) falseSuccessor().next();
+                AbstractBeginNode falseSucc = ifNode2.falseSuccessor();
+                AbstractBeginNode trueSucc = ifNode2.trueSuccessor();
+                IntegerBelowNode below = null;
+                if (ifNode2.condition() instanceof IntegerLessThanNode) {
+                    ValueNode x = lessThan.getX();
+                    IntegerLessThanNode lessThan2 = (IntegerLessThanNode) ifNode2.condition();
+                    /*
+                     * Convert x >= -C1 && x < C2, represented as !(x < -C1) && x < C2, into an
+                     * unsigned compare. This condition is equivalent to x + C1 |<| C1 + C2 if C1 +
+                     * C2 does not overflow.
+                     */
+                    Constant c2 = lessThan2.getY().stamp(view).asConstant();
+                    if (lessThan2.getX() == x && c2 instanceof PrimitiveConstant && ((PrimitiveConstant) c2).asLong() > 0 &&
+                                    x.stamp(view).isCompatible(lessThan.getY().stamp(view)) &&
+                                    x.stamp(view).isCompatible(lessThan2.getY().stamp(view)) &&
+                                    sameDestination(trueSuccessor(), ifNode2.falseSuccessor)) {
+                        long newLimitValue = -((PrimitiveConstant) y).asLong() + ((PrimitiveConstant) c2).asLong();
+                        // Make sure the limit fits into the target type without overflow.
+                        if (newLimitValue > 0 && newLimitValue <= CodeUtil.maxValue(PrimitiveStamp.getBits(x.stamp(view)))) {
+                            ConstantNode newLimit = ConstantNode.forIntegerStamp(x.stamp(view), newLimitValue, graph());
+                            ConstantNode c1 = ConstantNode.forIntegerStamp(x.stamp(view), -((PrimitiveConstant) y).asLong(), graph());
+                            ValueNode addNode = graph().addOrUniqueWithInputs(AddNode.create(x, c1, view));
+                            below = graph().unique(new IntegerBelowNode(addNode, newLimit));
+                        }
+                    }
+                }
+                if (below != null) {
+                    try (DebugCloseable position = ifNode2.withNodeSourcePosition()) {
+                        ifNode2.setTrueSuccessor(null);
+                        ifNode2.setFalseSuccessor(null);
+
+                        IfNode newIfNode = graph().add(new IfNode(below, trueSucc, falseSucc, trueSuccessorProbability));
+                        // Remove the < -C1 test.
+                        tool.deleteBranch(trueSuccessor);
+                        graph().removeSplit(this, falseSuccessor);
+
+                        // Replace the second test with the new one.
+                        ifNode2.predecessor().replaceFirstSuccessor(ifNode2, newIfNode);
+                        ifNode2.safeDelete();
+                        return true;
                     }
                 }
             }
