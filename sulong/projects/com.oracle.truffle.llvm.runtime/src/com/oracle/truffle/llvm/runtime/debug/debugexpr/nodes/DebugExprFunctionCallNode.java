@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import java.util.List;
-import java.util.stream.Collectors;
-
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -48,14 +46,17 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
     private final String functionName;
     private DebugExprType type;
     private Object member;
-    private List<LLVMExpressionNode> arguments;
+    @Children private final LLVMExpressionNode[] arguments;
     private Iterable<Scope> scopes;
 
     public DebugExprFunctionCallNode(String functionName, List<DebugExpressionPair> arguments, Iterable<Scope> scopes) {
         this.functionName = functionName;
-        this.arguments = arguments.stream().map(dp -> dp.getNode()).collect(Collectors.toList());
         this.scopes = scopes;
         this.type = null;
+        this.arguments = new LLVMExpressionNode[arguments.size()];
+        for (int i = 0; i < this.arguments.length; i++) {
+            this.arguments[i] = arguments.get(i).getNode();
+        }
     }
 
     public DebugExprType getType() {
@@ -81,14 +82,16 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
                 member = library.readMember(vars, functionName);
                 if (library.isExecutable(member)) {
                     try {
-                        Object[] argumentArr = arguments.stream().map(n -> n.executeGeneric(frame)).toArray();
+                        Object[] argumentArr = new Object[arguments.length];
+                        for (int i = 0; i < arguments.length; i++) {
+                            argumentArr[i] = arguments[i].executeGeneric(frame);
+                        }
                         return library.execute(member, argumentArr);
                     } catch (UnsupportedTypeException e) {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     } catch (ArityException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
+                        throw DebugExprException.create(this, functionName + " requires " + e.getExpectedArity() + " argument(s) but got " + e.getActualArity());
                     }
                 } else {
                     throw DebugExprException.create(this, functionName + " is not invocable");

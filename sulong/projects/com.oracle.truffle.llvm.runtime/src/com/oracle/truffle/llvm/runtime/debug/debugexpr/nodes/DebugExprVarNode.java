@@ -107,13 +107,19 @@ public class DebugExprVarNode extends LLVMExpressionNode {
     }
 
     private void findValue() {
-        if (type != null) {
+        if (type != null && member != null) {
             value = type.parseString(member.toString());
         }
     }
 
     public Object getMember() {
+        if (member == null)
+            throw DebugExprException.symbolNotFound(this, name, null);
         return member;
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override

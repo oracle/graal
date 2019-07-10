@@ -46,15 +46,20 @@ public class DebugExprException extends RuntimeException {
 
     public static final DebugExprException typeError(LLVMExpressionNode operation, Object... members) {
         StringBuilder sb = new StringBuilder();
-        sb.append("unexpected type at ");
-        sb.append(members[0].toString());
-        for (int i = 1; i < members.length; i++) {
-            sb.append(", ");
-            sb.append(members[i].toString());
+        sb.append("unexpected type ");
+        if (members != null && members.length > 0 && members[0] != null) {
+            sb.append("of \"");
+            sb.append(members[0].toString());
+            sb.append("\"");
+            for (int i = 1; i < members.length; i++) {
+                sb.append(", \"");
+                sb.append(members[i].toString());
+                sb.append("\"");
+            }
         }
         if (operation != null) {
             sb.append("at ");
-            sb.append(operation.getClass().getName());
+            sb.append(operation.getClass().getSimpleName());
         }
         return new DebugExprException(operation, sb.toString());
     }

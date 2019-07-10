@@ -695,16 +695,11 @@ public class Parser {
 class Errors {
     public int count = 0;                                    // number of errors detected
     public java.io.PrintStream errorStream = System.out;     // error messages go to this stream
-    public String errMsgFormat = "-- line {0} col {1}: {2}"; // 0=line, 1=column, 2=text
+    public String errMsgFormat = "col {1}: {2}"; // 0=line, 1=column, 2=text
 
     protected void printMsg(int line, int column, String msg) {
         StringBuffer b = new StringBuffer(errMsgFormat);
-        int pos = b.indexOf("{0}");
-        if (pos >= 0) {
-            b.delete(pos, pos + 3);
-            b.insert(pos, line);
-        }
-        pos = b.indexOf("{1}");
+        int pos = b.indexOf("{1}");
         if (pos >= 0) {
             b.delete(pos, pos + 3);
             b.insert(pos, column);

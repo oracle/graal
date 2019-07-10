@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
@@ -53,13 +57,20 @@ public class DebugExprParser {
     }
 
     public LLVMExpressionNode parse() throws DebugExprException {
-
+        final StringBuilder sb = new StringBuilder();
+        OutputStream errorStream = new OutputStream() {
+            @Override
+            public void write(int b) throws IOException {
+                sb.append((char) b);
+            }
+        };
+        parser.errors.errorStream = new PrintStream(errorStream);
         parser.Parse();
         LLVMExpressionNode root = parser.GetASTRoot();
         if (parser.errors.count == 0) { // parsed correctly
             return root;
         } else {
-            throw DebugExprException.create(root, parser.ParseErrors());
+            throw DebugExprException.create(root, sb.toString()/* .split("\n")[0] */);
         }
 
     }

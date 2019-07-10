@@ -62,12 +62,15 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
         return member;
     }
 
+    public String getFieldName() {
+        return fieldName;
+    }
+
     private void findMemberAndType() {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
 
         if (library.isMemberExisting(baseMember, fieldName)) {
             try {
-
                 member = library.readMember(baseMember, fieldName);
                 LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
                 Object metaObj = ldv.getMetaObject();
@@ -82,6 +85,7 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
         } else {
             type = DebugExprType.getVoidType();
             member = null;
+            throw DebugExprException.symbolNotFound(this, fieldName, baseMember);
         }
     }
 

@@ -36,7 +36,6 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -47,7 +46,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
-import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
@@ -141,10 +139,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+        Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
+        final DebugExprParser d = new DebugExprParser(request, getContextReference(), globalScopes);
         try {
-            Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
-            final DebugExprParser d = new DebugExprParser(request, getContextReference(), globalScopes);
             LLVMExpressionNode root = d.parse();
+            // no error found during parsing
             return new ExecutableNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -153,12 +152,21 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                         // try to execute node
                         return String.valueOf(root.executeGeneric(frame));
                     } catch (DebugExprException e) {
-                        // use existing exception if available
+                        // return message of exception that occurred during AST execution
                         return e.getMessage();
                     }
                 }
             };
+        } catch (DebugExprException e) {
+            // error found during parsing
+            return new ExecutableNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return e.getMessage();
+                }
+            };
         } catch (Exception e) {
+            e.printStackTrace();
             throw e;
         }
     }

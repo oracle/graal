@@ -197,16 +197,19 @@ public final class DebugExprNodeFactory {
     @SuppressWarnings("static-method")
     public DebugExpressionPair createObjectMember(DebugExpressionPair receiver, String fieldName) {
         Object baseMember = null;
+        String memberName = null;
         if (receiver.getNode() instanceof DebugExprVarNode) {
             baseMember = ((DebugExprVarNode) (receiver.getNode())).getMember();
+            memberName = ((DebugExprVarNode) (receiver.getNode())).getName();
         } else if (receiver.getNode() instanceof DebugExprObjectMemberNode) {
             baseMember = ((DebugExprObjectMemberNode) (receiver.getNode())).getMember();
+            memberName = ((DebugExprObjectMemberNode) (receiver.getNode())).getFieldName();
         }
         if (baseMember != null) {
             DebugExprObjectMemberNode node = new DebugExprObjectMemberNode(fieldName, baseMember);
             return DebugExpressionPair.create(node, node.getType());
         }
-        throw DebugExprException.typeError(receiver.getNode(), baseMember);
+        throw DebugExprException.symbolNotFound(receiver.getNode(), memberName, null);
     }
 
     public DebugExpressionPair createFunctionCall(DebugExpressionPair functionPair, List<DebugExpressionPair> arguments) {
