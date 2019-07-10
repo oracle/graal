@@ -35,6 +35,7 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
 import java.lang.reflect.Array;
+import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.zip.CRC32;
 
@@ -438,8 +439,22 @@ public class HotSpotGraphBuilderPlugins {
 
     static {
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            cbcEncryptName = "encrypt";
-            cbcDecryptName = "decrypt";
+            String cbcEncrypt = "encrypt";
+            String cbcDecrypt = "decrypt";
+            try {
+                // JDK-8226855
+                for (Method method : Class.forName("com.sun.crypto.provider.CipherBlockChaining").getDeclaredMethods()) {
+                    if (method.getName().equals("implEncrypt")) {
+                        cbcEncrypt = method.getName();
+                    } else if (method.getName().equals("implDecrypt")) {
+                        cbcDecrypt = method.getName();
+                    }
+                }
+            } catch (ClassNotFoundException e) {
+                // ignore
+            }
+            cbcEncryptName = cbcEncrypt;
+            cbcDecryptName = cbcDecrypt;
             aesEncryptName = "encryptBlock";
             aesDecryptName = "decryptBlock";
             reflectionClass = "sun.reflect.Reflection";
@@ -465,11 +480,6 @@ public class HotSpotGraphBuilderPlugins {
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", bytecodeProvider);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
-                            int.class);
-
-            // JDK-8226855
-            r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "implEncrypt", cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
-            r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, "implDecrypt", cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
                             int.class);
 
             r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", bytecodeProvider);

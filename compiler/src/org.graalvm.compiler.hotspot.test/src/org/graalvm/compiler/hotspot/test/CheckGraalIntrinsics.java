@@ -516,6 +516,15 @@ public class CheckGraalIntrinsics extends GraalTest {
                                 "com/sun/crypto/provider/CipherBlockChaining.decrypt([BII[BI)I",
                                 "com/sun/crypto/provider/CipherBlockChaining.encrypt([BII[BI)I");
             }
+        } else {
+            if (!isJDK9OrHigher()) {
+                // JDK-8226855
+                add(ignore,
+                                "com/sun/crypto/provider/CipherBlockChaining.decrypt([BII[BI)I",
+                                "com/sun/crypto/provider/CipherBlockChaining.encrypt([BII[BI)I",
+                                "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
+                                "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
+            }
         }
 
         // BigInteger intrinsics
