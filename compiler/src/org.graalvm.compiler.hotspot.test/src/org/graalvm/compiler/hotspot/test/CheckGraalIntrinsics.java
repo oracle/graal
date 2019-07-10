@@ -26,8 +26,6 @@ package org.graalvm.compiler.hotspot.test;
 
 import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.aesDecryptName;
 import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.aesEncryptName;
-import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.cbcDecryptName;
-import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.cbcEncryptName;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -46,6 +44,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -506,6 +505,10 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
 
+        boolean implNames = HotSpotGraphBuilderPlugins.cbcUsesImplNames(config);
+        String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
+        String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
+
         // AES intrinsics
         if (!config.useAESIntrinsics) {
             add(ignore,
@@ -513,12 +516,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "com/sun/crypto/provider/AESCrypt." + aesEncryptName + "([BI[BI)V",
                             "com/sun/crypto/provider/CipherBlockChaining." + cbcDecryptName + "([BII[BI)I",
                             "com/sun/crypto/provider/CipherBlockChaining." + cbcEncryptName + "([BII[BI)I");
-        } else {
-            if (!isJDK9OrHigher()) {
-                // JDK-8226855
-                checkIntrinsicMatchesMethod(cbcEncryptName, "com/sun/crypto/provider/CipherBlockChaining", "encrypt", "implEncrypt");
-                checkIntrinsicMatchesMethod(cbcDecryptName, "com/sun/crypto/provider/CipherBlockChaining", "decrypt", "implDecrypt");
-            }
         }
 
         // BigInteger intrinsics
@@ -588,21 +585,6 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     public interface Refiner {
         void refine(CheckGraalIntrinsics checker);
-    }
-
-    private void checkIntrinsicMatchesMethod(String expected, String declaringClass, String... names) {
-        for (VMIntrinsicMethod intrinsic : config.getStore().getIntrinsics()) {
-            if (intrinsic.declaringClass.equals(declaringClass)) {
-                for (String name : names) {
-                    if (intrinsic.name.equals(name)) {
-                        if (!name.equals(expected)) {
-                            add(ignore, declaringClass + "." + name + intrinsic.descriptor);
-                            return;
-                        }
-                    }
-                }
-            }
-        }
     }
 
     @Test

@@ -35,7 +35,6 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
 import java.lang.reflect.Array;
-import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.util.zip.CRC32;
 
@@ -45,6 +44,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
@@ -107,6 +107,7 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaKind;
@@ -429,8 +430,6 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(ThreadSubstitutions.class, "isInterrupted", Receiver.class, boolean.class);
     }
 
-    public static final String cbcEncryptName;
-    public static final String cbcDecryptName;
     public static final String aesEncryptName;
     public static final String aesDecryptName;
 
@@ -439,34 +438,29 @@ public class HotSpotGraphBuilderPlugins {
 
     static {
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            String cbcEncrypt = "encrypt";
-            String cbcDecrypt = "decrypt";
-            try {
-                // JDK-8226855
-                for (Method method : Class.forName("com.sun.crypto.provider.CipherBlockChaining").getDeclaredMethods()) {
-                    if (method.getName().equals("implEncrypt")) {
-                        cbcEncrypt = method.getName();
-                    } else if (method.getName().equals("implDecrypt")) {
-                        cbcDecrypt = method.getName();
-                    }
-                }
-            } catch (ClassNotFoundException e) {
-                // ignore
-            }
-            cbcEncryptName = cbcEncrypt;
-            cbcDecryptName = cbcDecrypt;
             aesEncryptName = "encryptBlock";
             aesDecryptName = "decryptBlock";
             reflectionClass = "sun.reflect.Reflection";
             constantPoolClass = "sun.reflect.ConstantPool";
         } else {
-            cbcEncryptName = "implEncrypt";
-            cbcDecryptName = "implDecrypt";
             aesEncryptName = "implEncryptBlock";
             aesDecryptName = "implDecryptBlock";
             reflectionClass = "jdk.internal.reflect.Reflection";
             constantPoolClass = "jdk.internal.reflect.ConstantPool";
         }
+    }
+
+    public static boolean cbcUsesImplNames(GraalHotSpotVMConfig config) {
+        for (VMIntrinsicMethod intrinsic : config.getStore().getIntrinsics()) {
+            if ("com/sun/crypto/provider/CipherBlockChaining".equals(intrinsic.declaringClass)) {
+                if ("encrypt".equals(intrinsic.name)) {
+                    return false;
+                } else if ("implEncrypt".equals(intrinsic.name)) {
+                    return true;
+                }
+            }
+        }
+        throw GraalError.shouldNotReachHere();
     }
 
     private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
@@ -478,6 +472,11 @@ public class HotSpotGraphBuilderPlugins {
             String arch = config.osArch;
             String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", bytecodeProvider);
+
+            boolean implNames = cbcUsesImplNames(config);
+            String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
+            String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
+
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
                             int.class);
