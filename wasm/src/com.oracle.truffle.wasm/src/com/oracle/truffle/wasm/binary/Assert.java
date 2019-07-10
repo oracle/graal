@@ -64,7 +64,19 @@ public class Assert {
         }
     }
 
+    public static void assertLarger(long n1, long n2, String message) throws BinaryReaderException {
+        if (n1 <= n2) {
+            fail(format("%s: should be larger: %d <= %d", message, n1, n2));
+        }
+    }
+
     public static void assertLess(int n1, int n2, String message) throws BinaryReaderException {
+        if (n1 > n2) {
+            fail(format("%s: should be less: %d > %d", message, n1, n2));
+        }
+    }
+
+    public static void assertLess(long n1, long n2, String message) throws BinaryReaderException {
         if (n1 > n2) {
             fail(format("%s: should be less: %d > %d", message, n1, n2));
         }
