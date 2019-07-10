@@ -501,30 +501,43 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
 
+        String cbcEncryptName;
+        String cbcDecryptName;
+        String aesEncryptName;
+        String aesDecryptName;
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            String cbcEncrypt = "encrypt";
+            String cbcDecrypt = "decrypt";
+            try {
+                // JDK-8226855
+                for (Method method : Class.forName("com.sun.crypto.provider.CipherBlockChaining").getDeclaredMethods()) {
+                    if (method.getName().equals("implEncrypt")) {
+                        cbcEncrypt = method.getName();
+                    } else if (method.getName().equals("implDecrypt")) {
+                        cbcDecrypt = method.getName();
+                    }
+                }
+            } catch (ClassNotFoundException e) {
+                // ignore
+            }
+            cbcEncryptName = cbcEncrypt;
+            cbcDecryptName = cbcDecrypt;
+            aesEncryptName = "encryptBlock";
+            aesDecryptName = "decryptBlock";
+        } else {
+            cbcEncryptName = "implEncrypt";
+            cbcDecryptName = "implDecrypt";
+            aesEncryptName = "implEncryptBlock";
+            aesDecryptName = "implDecryptBlock";
+        }
+
         // AES intrinsics
         if (!config.useAESIntrinsics) {
-            if (isJDK9OrHigher()) {
-                add(ignore,
-                                "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
-                                "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
-                                "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
-                                "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
-            } else {
-                add(ignore,
-                                "com/sun/crypto/provider/AESCrypt.decryptBlock([BI[BI)V",
-                                "com/sun/crypto/provider/AESCrypt.encryptBlock([BI[BI)V",
-                                "com/sun/crypto/provider/CipherBlockChaining.decrypt([BII[BI)I",
-                                "com/sun/crypto/provider/CipherBlockChaining.encrypt([BII[BI)I");
-            }
-        } else {
-            if (!isJDK9OrHigher()) {
-                // JDK-8226855
-                add(ignore,
-                                "com/sun/crypto/provider/CipherBlockChaining.decrypt([BII[BI)I",
-                                "com/sun/crypto/provider/CipherBlockChaining.encrypt([BII[BI)I",
-                                "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
-                                "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
-            }
+            add(ignore,
+                            "com/sun/crypto/provider/AESCrypt." + aesDecryptName + "([BI[BI)V",
+                            "com/sun/crypto/provider/AESCrypt." + aesEncryptName + "([BI[BI)V",
+                            "com/sun/crypto/provider/CipherBlockChaining." + cbcDecryptName + "([BII[BI)I",
+                            "com/sun/crypto/provider/CipherBlockChaining." + cbcEncryptName + "([BII[BI)I");
         }
 
         // BigInteger intrinsics
