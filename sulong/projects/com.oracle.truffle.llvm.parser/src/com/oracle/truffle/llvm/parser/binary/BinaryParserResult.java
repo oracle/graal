@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.binary;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -41,12 +42,12 @@ import org.graalvm.polyglot.io.ByteSequence;
  */
 public final class BinaryParserResult {
 
-    private final List<String> libraries;
-    private final List<String> paths;
+    private final ArrayList<String> libraries;
+    private final ArrayList<String> paths;
     private final ByteSequence bitcode;
     private final LibraryLocator locator;
 
-    BinaryParserResult(List<String> libraries, List<String> paths, ByteSequence bitcode, LibraryLocator locator) {
+    BinaryParserResult(ArrayList<String> libraries, ArrayList<String> paths, ByteSequence bitcode, LibraryLocator locator) {
         this.libraries = libraries;
         this.paths = paths;
         this.bitcode = bitcode;

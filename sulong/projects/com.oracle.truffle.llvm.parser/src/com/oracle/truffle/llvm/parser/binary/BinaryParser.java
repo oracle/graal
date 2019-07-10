@@ -95,8 +95,8 @@ public final class BinaryParser {
         }
     }
 
-    private List<String> libraries = new ArrayList<>();
-    private List<String> paths = new ArrayList<>();
+    private ArrayList<String> libraries = new ArrayList<>();
+    private ArrayList<String> paths = new ArrayList<>();
     private LibraryLocator locator = DefaultLibraryLocator.INSTANCE;
 
     public static BinaryParserResult parse(ByteSequence bytes, Source bcSource, LLVMContext context) {
