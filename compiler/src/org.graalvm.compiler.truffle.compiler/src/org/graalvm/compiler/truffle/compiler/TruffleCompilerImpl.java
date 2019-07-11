@@ -487,14 +487,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         }
     }
 
-    static void notifyListenerOfFailure(final CompilableTruffleAST compilable, TruffleCompilerListener listener, Throwable t) {
-        if (listener != null) {
-            BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
-            boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-            listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout);
-        }
-    }
-
     /**
      * Compiles a graph produced by {@link PartialEvaluator#createGraph partial evaluation}.
      *
