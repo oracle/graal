@@ -44,7 +44,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.meta.MetaUtil;
 
 import sun.misc.Unsafe;
 
@@ -221,40 +220,16 @@ public final class StaticObject implements TruffleObject {
         if (isStatic) {
             for (Field f : thisKlass.getStaticFieldTable()) {
                 assert f.isStatic();
-                switch (f.getKind()) {
-                    // @formatter:off
-                    // Checkstyle: stop
-                    case Float  : setFloatField(f, MetaUtil.defaultFloatValue(f.getKind()));   break;
-                    case Long   : setLongField(f, MetaUtil.defaultLongValue(f.getKind()));     break;
-                    case Double : setDoubleField(f, MetaUtil.defaultDoubleValue(f.getKind())); break;
-                    default:
-                        if (f.getKind().isSubWord()) {
-                            setWordField(f, MetaUtil.defaultWordFieldValue(f.getKind()));
-                        } else {
-                            setUnsafeField(f.getFieldIndex(), MetaUtil.defaultFieldValue(f.getKind()));
-                        }
-                    // Checkstyle: resume
-                    // @formatter:on
+                if (f.getKind() == JavaKind.Object) {
+                    setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
                 }
             }
         } else {
             for (Field f : thisKlass.getFieldTable()) {
                 assert !f.isStatic();
                 if (!f.isHidden()) {
-                    switch (f.getKind()) {
-                        // @formatter:off
-                        // Checkstyle: stop
-                        case Float  : setFloatField(f, MetaUtil.defaultFloatValue(f.getKind()));   break;
-                        case Long   : setLongField(f, MetaUtil.defaultLongValue(f.getKind()));     break;
-                        case Double : setDoubleField(f, MetaUtil.defaultDoubleValue(f.getKind())); break;
-                        default:
-                            if (f.getKind().isSubWord()) {
-                                setWordField(f, MetaUtil.defaultWordFieldValue(f.getKind()));
-                            } else {
-                                setUnsafeField(f.getFieldIndex(), MetaUtil.defaultFieldValue(f.getKind()));
-                            }
-                        // Checkstyle: resume
-                        // @formatter:on
+                    if (f.getKind() == JavaKind.Object) {
+                        setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
                     }
                 }
             }
@@ -533,17 +508,6 @@ public final class StaticObject implements TruffleObject {
         return U.compareAndSwapInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), before, after);
     }
 
-    // This multi-kind setter sticks around for object initialization.
-    private void setWordField(Field field, int value) {
-        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        assert field.getKind().isSubWord();
-        if (field.isVolatile()) {
-            setWordFieldVolatile(field, value);
-        } else {
-            applySetWordField(field, value);
-        }
-    }
-
     public void setWordFieldVolatile(Field field, int value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         switch (field.getKind()) {
@@ -560,28 +524,6 @@ public final class StaticObject implements TruffleObject {
             case Int:
             case Float:
                 setIntFieldVolatile(field, value);
-                break;
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
-
-    private void applySetWordField(Field field, int value) {
-        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        switch (field.getKind()) {
-            case Boolean:
-            case Byte:
-                U.putByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), (byte) value);
-                break;
-            case Char:
-                U.putChar(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), (char) value);
-                break;
-            case Short:
-                U.putShort(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), (short) value);
-                break;
-            case Int:
-            case Float:
-                U.putInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
                 break;
             default:
                 throw EspressoError.shouldNotReachHere();
@@ -842,10 +784,6 @@ public final class StaticObject implements TruffleObject {
 
     public boolean isArray() {
         return getKlass().isArray();
-    }
-
-    public boolean isStaticObjectArray() {
-        return isArray() && (fields instanceof StaticObject[]);
     }
 
     public static long getArrayByteOffset(int index) {
