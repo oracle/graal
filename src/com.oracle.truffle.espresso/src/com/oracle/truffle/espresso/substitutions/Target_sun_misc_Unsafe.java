@@ -893,11 +893,14 @@ public final class Target_sun_misc_Unsafe {
 
     // endregion put*(Object holder, long offset, * value)
 
+    /**
+     * Allocate an instance but do not run any constructor. Initializes the class if it has not yet
+     * been.
+     */
     @Substitution(hasReceiver = true)
     public static @Host(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) { // throws
         // InstantiationException;
-        assert !(clazz).getMirrorKlass().isAbstract();
-        return InterpreterToVM.newObject((clazz).getMirrorKlass());
+        return InterpreterToVM.newObject(clazz.getMirrorKlass());
     }
 
     /**
