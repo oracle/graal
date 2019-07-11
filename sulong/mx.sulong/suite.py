@@ -1039,6 +1039,7 @@ suite = {
         ],
       },
       "maven": False,
+      "license" : "NCSA",
     },
   }
 }
