@@ -228,7 +228,7 @@ public abstract class PartialEvaluator {
                     AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, SpeculationLog log, Cancellable cancellable) {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install()) {
             String name = compilable.toString();
-            OptionValues options = TruffleCompilerOptions.getOptions();
+            OptionValues options = debug.getOptions();
             ResolvedJavaMethod rootMethod = rootForCallTarget(compilable);
             // @formatter:off
             StructuredGraph.Builder builder = new StructuredGraph.Builder(options, debug, allowAssumptions).
