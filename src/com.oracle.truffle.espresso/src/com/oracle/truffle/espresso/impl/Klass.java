@@ -505,7 +505,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         for (int i = 0; i < array.length; ++i) {
             array[i] = generator.apply(i);
         }
-        return new StaticObject(getArrayClass(), array);
+        return StaticObject.createArray(getArrayClass(), array);
     }
 
     // region Lookup
@@ -581,7 +581,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
                 public EspressoBaseNode apply(Method method) {
                     // TODO(garcia) true access checks
                     ObjectKlass callerKlass = getMeta().Object;
-                    StaticObject appendixBox = new StaticObject(getMeta().Object_array, new Object[1]);
+                    StaticObject appendixBox = StaticObject.createArray(getMeta().Object_array, new Object[1]);
                     StaticObject memberName = (StaticObject) getMeta().linkMethod.invokeDirect(
                                     null,
                                     callerKlass.mirror(), (int) REF_invokeVirtual,

@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -56,6 +57,8 @@ public final class ObjectKlass extends Klass {
 
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
 
+    public static final JavaKind FIELD_REPRESENTATION = JavaKind.Byte;
+
     private final EnclosingMethodAttribute enclosingMethod;
 
     private final RuntimeConstantPool pool;
@@ -68,10 +71,12 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal(dimensions = 1) //
     private Field[] declaredFields;
 
+    @CompilationFinal(dimensions = 2) private final int[][] leftoverHoles;
     @CompilationFinal(dimensions = 1) private final Field[] fieldTable;
 
-    private final int wordFields;
-    private final int staticWordFields;
+    private final int primitiveFieldTotalByteCount;
+    private final int primitiveStaticFieldTotalByteCount;
+
     private final int objectFields;
     private final int staticObjectFields;
 
@@ -132,10 +137,12 @@ public final class ObjectKlass extends Klass {
         this.staticFieldTable = fieldCR.staticFieldTable;
         this.declaredFields = fieldCR.declaredFields;
 
-        this.wordFields = fieldCR.wordFields;
-        this.staticWordFields = fieldCR.staticWordFields;
+        this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
+        this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
         this.objectFields = fieldCR.objectFields;
         this.staticObjectFields = fieldCR.staticObjectFields;
+
+        this.leftoverHoles = fieldCR.leftoverHoles;
 
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
@@ -381,16 +388,16 @@ public final class ObjectKlass extends Klass {
         return objectFields;
     }
 
-    public int getWordFieldsCount() {
-        return wordFields;
+    public int getPrimitiveFieldTotalByteCount() {
+        return primitiveFieldTotalByteCount;
     }
 
     public int getStaticObjectFieldsCount() {
         return staticObjectFields;
     }
 
-    public int getStaticWordFieldsCount() {
-        return staticWordFields;
+    public int getPrimitiveStaticFieldTotalByteCount() {
+        return primitiveStaticFieldTotalByteCount;
     }
 
     @Override
@@ -565,5 +572,9 @@ public final class ObjectKlass extends Klass {
 
     private void setErroneous() {
         initState = ERRONEOUS;
+    }
+
+    public int[][] getLeftoverHoles() {
+        return leftoverHoles;
     }
 }

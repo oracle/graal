@@ -1416,14 +1416,14 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         Symbol<Symbol.Signature> invokeSignature = specifier.getSignature(pool);
         Symbol<Type>[] parsedInvokeSignature = getSignatures().parsed(invokeSignature);
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, declaringKlass, getMeta());
-        StaticObject appendix = new StaticObject(meta.Object_array, new StaticObject[1]);
+        StaticObject appendix = StaticObject.createArray(meta.Object_array, new StaticObject[1]);
 
         StaticObject memberName = (StaticObject) meta.linkCallSite.invokeDirect(
                         null,
                         declaringKlass.mirror(),
                         bootstrapmethodMethodHandle,
                         name, methodType,
-                        new StaticObject(meta.Object_array, args),
+                        StaticObject.createArray(meta.Object_array, args),
                         appendix);
 
         StaticObject unboxedAppendix = appendix.get(0);
@@ -1462,7 +1462,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         }
         return (StaticObject) meta.findMethodHandleType.invokeDirect(
                         null,
-                        rtype, new StaticObject(meta.Class_Array, ptypes));
+                        rtype, StaticObject.createArray(meta.Class_Array, ptypes));
     }
     // endregion Bytecode quickening
 
