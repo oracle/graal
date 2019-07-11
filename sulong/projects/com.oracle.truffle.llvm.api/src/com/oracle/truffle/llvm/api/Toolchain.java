@@ -31,11 +31,15 @@
 package com.oracle.truffle.llvm.api;
 
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 
 /**
  * A toolchain provides access to a set of tools which are used to translate an input file into a
  * source format that can be executed. Its purpose is to support build systems that are executed by
  * users, for example to compile and install additional libraries.
+ *
+ * <h4>Example:</h4> {@codesnippet toolchain-example}
  */
 public interface Toolchain {
 
@@ -62,4 +66,28 @@ public interface Toolchain {
      * {@code \}.
      */
     String getIdentifier();
+}
+
+abstract class ToolchainExampleSnippet {
+
+    private ToolchainExampleSnippet() {
+    }
+
+    /**
+     * Example for using the {@link Toolchain} to run {@code make} via a {@link ProcessBuilder}.
+     */
+    int runMake(TruffleLanguage.Env env) throws Exception {
+        // BEGIN: toolchain-example
+        LanguageInfo llvmInfo = env.getInternalLanguages().get("llvm");
+        Toolchain toolchain = env.lookup(llvmInfo, Toolchain.class);
+        String id = toolchain.getIdentifier();
+        TruffleFile cc = toolchain.getToolPath("CC");
+        TruffleFile cxx = toolchain.getToolPath("CXX");
+
+        String[] args = {"make", "CC=" + cc, "CXX=" + cxx, "OUTPUT_DIR=" + id};
+        Process p = new ProcessBuilder(args).start();
+        p.waitFor();
+        // END: toolchain-example
+        return p.exitValue();
+    }
 }

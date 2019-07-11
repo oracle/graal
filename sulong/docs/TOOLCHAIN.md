@@ -69,7 +69,7 @@ The LLVM runtime will always provide a toolchain that matches its current mode.
 The service can be looked-up via the `Env`:
 
 ```Java
-LanguageInfo llvmInfo = env.getPublicLanguages().get("llvm");
+LanguageInfo llvmInfo = env.getInternalLanguages().get("llvm");
 Toolchain toolchain = env.lookup(llvmInfo, Toolchain.class);
 TruffleFile toolPath = toolchain.getToolPath("CC");
 String toolchainId = toolchain.getIdentifier();
