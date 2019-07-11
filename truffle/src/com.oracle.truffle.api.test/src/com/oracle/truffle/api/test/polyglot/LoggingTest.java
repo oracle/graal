@@ -936,7 +936,7 @@ public class LoggingTest {
         final String output = new String(stream.toByteArray());
         final Pattern p = Pattern.compile("\\[(.*)\\]\\sWARNING:\\s(.*)");
         for (String line : output.split("\n")) {
-            final Matcher m = p.matcher(line);
+            final Matcher m = p.matcher(line.trim());
             Assert.assertTrue(m.matches());
             final String loggerName = m.group(1);
             final String message = m.group(2);

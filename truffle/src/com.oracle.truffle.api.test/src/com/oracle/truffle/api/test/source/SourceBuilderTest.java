@@ -87,9 +87,11 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.LiteralBuilder;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.MemoryFileSystem;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import org.junit.Assume;
 
 public class SourceBuilderTest extends AbstractPolyglotTest {
 
@@ -203,7 +205,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         Source source = Source.newBuilder("", truffleFile).content(Source.CONTENT_NONE).build();
         assertFalse(source.hasBytes());
         assertFalse(source.hasCharacters());
-        assertEquals("some/path", source.getPath());
+        assertEquals(String.join(languageEnv.getFileNameSeparator(), "some", "path"), source.getPath());
         assertEquals("path", source.getName());
         assertEquals(uri, source.getURI());
         assertFalse(source.getURI().isAbsolute());
@@ -975,6 +977,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
 
     @Test
     public void testNonResolvableURLAllowedIO() throws IOException {
+        Assume.assumeFalse("Query parameters are not supported by file URLConnection on Windows", OSUtils.isWindows());
         setupEnv();
         File file = File.createTempFile("Test", ".java");
         file.deleteOnExit();
