@@ -81,6 +81,8 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
                 e1.printStackTrace();
             } catch (UnknownIdentifierException e1) {
                 throw DebugExprException.symbolNotFound(this, e1.getUnknownIdentifier(), member);
+            } catch (ClassCastException e1) {
+                throw DebugExprException.symbolNotFound(this, fieldName, member);
             }
         } else {
             type = DebugExprType.getVoidType();

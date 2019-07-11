@@ -70,7 +70,7 @@ public class DebugExprParser {
         if (parser.errors.count == 0) { // parsed correctly
             return root;
         } else {
-            throw DebugExprException.create(root, sb.toString()/* .split("\n")[0] */);
+            throw DebugExprException.create(root, sb.toString().replace("\n", "").replace("\r", ""));
         }
 
     }

@@ -28,28 +28,10 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 50 CONTINUE "main"
-	"3+" "member at ADD is not available"
-	"4->3" "col 4: ident expected"
-	"r-<w" "member at SUB is not available"
-	"-" "member at - is not available"
-	"/a" "member at / is not available"
-	"a->>3" "col 4: ident expected"
-	"e->4" "col 4: ident expected"
-	"test->int" "col 7: ident expected" //type name
-	"a>>>b" "member at >> is not available"
-	"(ew[a])3" "ew not found"
-	END
-
-BREAK 55 CONTINUE "main"
-	"3+" "member at ADD is not available"
-	"4->3" "col 4: ident expected"
-	"r-<w" "member at SUB is not available"
-	"-" "member at - is not available"
-	"/a" "member at / is not available"
-	"a->>3" "col 4: ident expected"
-	"e->4" "col 4: ident expected"
-	"test->int" "col 7: ident expected" //type name
-	"a>>>b" "member at >> is not available"
-	"(ew[a])3" "ew not found"
+BREAK 42 CONTINUE "main"
+	"a[0]" "0"
+	"a[1]" "1"
+	"a[3+2]" "25"
+	"a[a[3]]" "81"
+	"a[3*4-8]" "16"
 	END

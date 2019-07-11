@@ -224,10 +224,12 @@ public class Parser {
             }
             case 4: {
                 Get();
+                SemErr("characters not available yet");
                 break;
             }
             case 5: {
                 Get();
+                SemErr("strings not available yet");
                 break;
             }
             case 6: {
