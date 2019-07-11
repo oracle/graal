@@ -222,13 +222,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     @Override
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
         try (TruffleOptionsOverrideScope s = withOptions(options)) {
-            DebugContext debugContext;
+            final DebugContext debugContext;
+            // The OptionValues from the options Map above
+            final OptionValues optionValues = TruffleCompilerOptions.getOptions();
             if (compilation == null) {
-                debugContext = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+                debugContext = DebugContext.create(optionValues, DebugHandlersFactory.LOADER);
             } else {
                 TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
                 CompilableTruffleAST compilable = ident.getCompilable();
-                debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
+                debugContext = createDebugContext(optionValues, ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
             }
             return new TruffleDebugContextImpl(debugContext);
         }
@@ -260,28 +262,51 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     TruffleCompilationTask task,
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
+
         try (TruffleOptionsOverrideScope optionsScope = withOptions(optionsMap)) {
             TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
             CompilableTruffleAST compilable = compilationId.getCompilable();
+            // The OptionValues from optionsMap above
             final OptionValues optionValues = TruffleCompilerOptions.getOptions();
+
             boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
-            final DebugContext graalDebug = usingCallersDebug ? ((TruffleDebugContextImpl) truffleDebug).debugContext
-                            : createDebugContext(optionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
-            try (DebugContext debugToClose = usingCallersDebug ? null : graalDebug;
-                            DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
-                final TruffleCompilerListener listener = inListener == null ? null : new TruffleCompilerListenerPair(new TraceCompilationFailureListener(), inListener);
-                new TruffleCompilationWrapper(
-                                getDebugOutputDirectory(),
-                                getCompilationProblemsPerAction(),
-                                compilable,
-                                task == null ? null : new CancellableTruffleCompilationTask(task),
-                                inliningPlan,
-                                compilationId,
-                                listener).run(graalDebug);
-            } catch (Throwable e) {
-                notifyCompilableOfFailure(compilable, e);
+            if (usingCallersDebug) {
+                final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
+
+                try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
+                    actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, callerDebug);
+                } catch (Throwable e) {
+                    notifyCompilableOfFailure(compilable, e);
+                }
+            } else {
+                try (DebugContext graalDebug = createDebugContext(optionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
+                                DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
+                    actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, graalDebug);
+                } catch (Throwable e) {
+                    notifyCompilableOfFailure(compilable, e);
+                }
             }
+
         }
+    }
+
+    private void actuallyCompile(TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener inListener, TruffleCompilationIdentifier compilationId,
+                    CompilableTruffleAST compilable, DebugContext graalDebug) {
+        final TruffleCompilerListener listener;
+        if (inListener == null) {
+            listener = null;
+        } else {
+            listener = new TruffleCompilerListenerPair(new TraceCompilationFailureListener(), inListener);
+        }
+        final TruffleCompilationWrapper truffleCompilationWrapper = new TruffleCompilationWrapper(
+                        getDebugOutputDirectory(),
+                        getCompilationProblemsPerAction(),
+                        compilable,
+                        task == null ? null : new CancellableTruffleCompilationTask(task),
+                        inliningPlan,
+                        compilationId,
+                        listener);
+        truffleCompilationWrapper.run(graalDebug);
     }
 
     /**
