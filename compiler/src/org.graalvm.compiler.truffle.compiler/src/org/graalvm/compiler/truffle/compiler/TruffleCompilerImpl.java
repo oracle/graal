@@ -37,6 +37,7 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.Truff
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getValue;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.overrideOptions;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -221,10 +222,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     @SuppressWarnings("try")
     @Override
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
-        try (TruffleOptionsOverrideScope s = withOptions(options)) {
+        try (TruffleOptionsOverrideScope optionsScope = overrideOptions(options)) {
             final DebugContext debugContext;
-            // The OptionValues from the options Map above
-            final OptionValues optionValues = TruffleCompilerOptions.getOptions();
+            final OptionValues optionValues = optionsScope.getOptions();
             if (compilation == null) {
                 debugContext = DebugContext.create(optionValues, DebugHandlersFactory.LOADER);
             } else {
@@ -244,15 +244,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         }
     }
 
-    /**
-     * Opens a scope that overrides the default Truffle compiler options with values from
-     * {@code optionsMap} if it is not empty. Otherwise no scope is opened and {@code null} is
-     * returned.
-     */
-    private static TruffleOptionsOverrideScope withOptions(final Map<String, Object> optionsMap) {
-        return optionsMap.isEmpty() ? null : TruffleCompilerOptions.overrideOptions(optionsMap);
-    }
-
     @Override
     @SuppressWarnings("try")
     public final void doCompile(TruffleDebugContext truffleDebug,
@@ -263,11 +254,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
 
-        try (TruffleOptionsOverrideScope optionsScope = withOptions(optionsMap)) {
+        try (TruffleOptionsOverrideScope optionsScope = overrideOptions(optionsMap)) {
             TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
             CompilableTruffleAST compilable = compilationId.getCompilable();
-            // The OptionValues from optionsMap above
-            final OptionValues optionValues = TruffleCompilerOptions.getOptions();
+            final OptionValues optionValues = optionsScope.getOptions();
 
             boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
             if (usingCallersDebug) {
