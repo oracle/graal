@@ -1507,7 +1507,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     }
 
     private static StaticObject allocateInstance(Klass klass) {
-        // klass.safeInitialize();
+        if (klass.isAbstract() || klass.isInterface()) {
+            throw klass.getMeta().throwEx(InstantiationError.class);
+        }
         return InterpreterToVM.newObject(klass);
     }
 
