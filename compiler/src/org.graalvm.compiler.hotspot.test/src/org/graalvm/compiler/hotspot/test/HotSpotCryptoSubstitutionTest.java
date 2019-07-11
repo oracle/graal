@@ -35,13 +35,11 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
