@@ -271,7 +271,8 @@ public final class ComponentInstaller {
                 RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
                                 env,
                                 env,
-                                getCatalogURL(env));
+                                getCatalogURL());
+                downloader.setDefaultCatalog(env.l10n("Installer_BuiltingCatalogURL")); // NOI18N
                 ComponentCollection col = new CatalogContents(env, downloader.getStorage(), env.getLocalRegistry());
                 env.setComponentRegistry(() -> col);
                 env.setFileIterable(new CatalogIterable(env, env, col, downloader));
@@ -412,8 +413,8 @@ public final class ComponentInstaller {
         }
     }
 
-    private String getCatalogURL(Feedback f) {
-        String def;
+    private String getCatalogURL() {
+        String def = null;
         if (catalogURL != null) {
             def = catalogURL;
         } else {
@@ -422,9 +423,7 @@ public final class ComponentInstaller {
                 def = envVar;
             } else {
                 String releaseCatalog = env.getLocalRegistry().getGraalCapabilities().get(CommonConstants.RELEASE_CATALOG_KEY);
-                if (releaseCatalog == null) {
-                    def = f.l10n("Installer_BuiltingCatalogURL"); // NOI18N
-                } else {
+                if (releaseCatalog != null) {
                     def = releaseCatalog;
                 }
             }
