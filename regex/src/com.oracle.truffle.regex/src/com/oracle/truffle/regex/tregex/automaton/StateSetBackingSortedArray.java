@@ -145,6 +145,16 @@ public class StateSetBackingSortedArray implements StateSetBackingSet {
     }
 
     @Override
+    public boolean contains(StateSetBackingSet other) {
+        for (int i : other) {
+            if (!contains((short) i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
     public PrimitiveIterator.OfInt iterator() {
         return new PrimitiveIterator.OfInt() {
 

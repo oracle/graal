@@ -147,7 +147,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     public boolean isLiteralString() {
         Group r = getRoot();
         RegexProperties p = getProperties();
-        return !((p.hasAlternations() || p.hasCharClasses() || p.hasLookAroundAssertions() || r.hasLoops()) || ((r.startsWithCaret() || r.endsWithDollar()) && getFlags().isMultiline()));
+        return !((p.hasAlternations() || p.hasLookAroundAssertions() || r.hasLoops()) || ((r.startsWithCaret() || r.endsWithDollar()) && getFlags().isMultiline())) &&
+                        (!p.hasCharClasses() || p.charClassesCanBeMatchedWithMask());
     }
 
     @Override
@@ -270,6 +271,9 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     public CharacterClass register(CharacterClass characterClass) {
         nodeCount.inc();
         if (!characterClass.getMatcherBuilder().matchesSingleChar()) {
+            if (!characterClass.getMatcherBuilder().matches2CharsWith1BitDifference()) {
+                properties.unsetCharClassesCanBeMatchedWithMask();
+            }
             properties.setCharClasses();
         }
         return characterClass;

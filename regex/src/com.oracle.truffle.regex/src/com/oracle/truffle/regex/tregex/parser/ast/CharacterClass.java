@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -63,6 +64,9 @@ public class CharacterClass extends Term {
      */
     CharacterClass(CharSet matcherBuilder) {
         this.matcherBuilder = matcherBuilder;
+        if (matcherBuilder.matchesNothing()) {
+            markAsDead();
+        }
     }
 
     private CharacterClass(CharacterClass copy) {
@@ -113,6 +117,34 @@ public class CharacterClass extends Term {
             return Collections.emptySet();
         }
         return lookBehindEntries;
+    }
+
+    public void extractSingleChar(CharArrayBuffer literal, CharArrayBuffer mask) {
+        CharSet c = matcherBuilder;
+        char c1 = (char) c.getLo(0);
+        if (c.matches2CharsWith1BitDifference()) {
+            int c2 = c.size() == 1 ? c.getHi(0) : c.getLo(1);
+            literal.add((char) (c1 | c2));
+            mask.add((char) (c1 ^ c2));
+        } else {
+            assert c.matchesSingleChar();
+            literal.add(c1);
+            mask.add((char) 0);
+        }
+    }
+
+    public void extractSingleChar(char[] literal, char[] mask, int i) {
+        CharSet c = matcherBuilder;
+        char c1 = (char) c.getLo(0);
+        if (c.matches2CharsWith1BitDifference()) {
+            int c2 = c.size() == 1 ? c.getHi(0) : c.getLo(1);
+            literal[i] = (char) (c1 | c2);
+            mask[i] = (char) (c1 ^ c2);
+        } else {
+            assert c.matchesSingleChar();
+            literal[i] = c1;
+            mask[i] = (char) 0;
+        }
     }
 
     @Override

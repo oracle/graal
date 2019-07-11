@@ -177,7 +177,7 @@ public final class RegexParser {
         int maxPath = 0;
         for (int i = 0; i < terms.size(); i++) {
             Term t = terms.get(i);
-            if (t instanceof CharacterClass && ((CharacterClass) t).getMatcherBuilder().matchesSingleChar()) {
+            if (t instanceof CharacterClass && (((CharacterClass) t).getMatcherBuilder().matchesSingleChar() || ((CharacterClass) t).getMatcherBuilder().matches2CharsWith1BitDifference())) {
                 if (literalStart < 0) {
                     literalStart = i;
                 }
@@ -192,11 +192,7 @@ public final class RegexParser {
             }
         }
         if (literalStart >= 0 && (literalStart > 0 || literalEnd - literalStart > 1)) {
-            StringBuilder sb = new StringBuilder(literalEnd - literalStart);
-            for (int i = literalStart; i < literalEnd; i++) {
-                sb.append(((CharacterClass) terms.get(i)).getMatcherBuilder().getLo(0));
-            }
-            properties.setInnerLiteral(sb.toString());
+            properties.setInnerLiteral(literalStart, literalEnd);
         }
     }
 
@@ -636,7 +632,6 @@ public final class RegexParser {
             deleteVisitor.run(curSequence.getLastTerm());
             curSequence.removeLastTerm();
             addTerm(createCharClass(CharSet.getEmpty(), null));
-            curSequence.markAsDead();
             return;
         }
         if (quantifier.getMin() == 0) {

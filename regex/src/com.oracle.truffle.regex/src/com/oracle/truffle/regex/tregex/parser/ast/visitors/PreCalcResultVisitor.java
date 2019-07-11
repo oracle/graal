@@ -40,30 +40,46 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     private final boolean extractLiteral;
 
     private int index = 0;
-    private final StringBuilder literal = new StringBuilder();
+    private final char[] literal;
+    private final char[] mask;
     private final PreCalculatedResultFactory result;
 
-    private PreCalcResultVisitor(int numberOfCaptureGroups, boolean extractLiteral) {
-        result = new PreCalculatedResultFactory(numberOfCaptureGroups);
+    private PreCalcResultVisitor(RegexAST ast, boolean extractLiteral) {
+        result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
         this.extractLiteral = extractLiteral;
+        if (extractLiteral) {
+            literal = new char[ast.getRoot().getMinPath()];
+            mask = ast.getProperties().hasCharClasses() ? new char[ast.getRoot().getMinPath()] : null;
+        } else {
+            literal = null;
+            mask = null;
+        }
     }
 
     public static PreCalcResultVisitor run(RegexAST ast, boolean extractLiteral) {
-        PreCalcResultVisitor visitor = new PreCalcResultVisitor(ast.getNumberOfCaptureGroups(), extractLiteral);
+        PreCalcResultVisitor visitor = new PreCalcResultVisitor(ast, extractLiteral);
         visitor.run(ast.getRoot());
         visitor.result.setLength(visitor.index);
         return visitor;
     }
 
     public static PreCalculatedResultFactory createResultFactory(RegexAST ast) {
-        PreCalcResultVisitor visitor = new PreCalcResultVisitor(ast.getNumberOfCaptureGroups(), false);
+        PreCalcResultVisitor visitor = new PreCalcResultVisitor(ast, false);
         visitor.run(ast.getRoot());
         visitor.result.setLength(visitor.index);
         return visitor.result;
     }
 
     public String getLiteral() {
-        return literal.toString();
+        return new String(literal);
+    }
+
+    public boolean hasMask() {
+        return mask != null;
+    }
+
+    public String getMask() {
+        return mask == null ? null : new String(mask);
     }
 
     public PreCalculatedResultFactory getResultFactory() {
@@ -110,7 +126,11 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     @Override
     protected void visit(CharacterClass characterClass) {
         if (extractLiteral) {
-            literal.append((char) characterClass.getMatcherBuilder().getLo(0));
+            if (mask == null) {
+                literal[index] = (char) characterClass.getMatcherBuilder().getLo(0);
+            } else {
+                characterClass.extractSingleChar(literal, mask, index);
+            }
         }
         index++;
     }

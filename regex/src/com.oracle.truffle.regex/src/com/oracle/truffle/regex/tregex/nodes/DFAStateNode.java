@@ -74,7 +74,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
     private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
 
-    private final short id;
     private final byte flags;
     @Child LoopOptimizationNode loopOptimizationNode;
     @Children protected final CharMatcher[] matchers;
@@ -88,9 +87,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     public DFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers, AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher) {
-        super(successors);
+        super(id, successors);
         assert id > 0;
-        this.id = id;
         this.flags = flags;
         this.loopOptimizationNode = loopOptimizationNode;
         this.matchers = matchers;
@@ -118,11 +116,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
     @Override
     public DFAStateNode createNodeSplitCopy(short copyID) {
         return new DFAStateNode(this, copyID);
-    }
-
-    @Override
-    public short getId() {
-        return id;
     }
 
     public final CharMatcher[] getMatchers() {
@@ -329,7 +322,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        DebugUtil.appendNodeId(sb, id).append(": ");
+        DebugUtil.appendNodeId(sb, getId()).append(": ");
         if (!treeTransitionMatching()) {
             sb.append(matchers.length).append(" successors");
         }
@@ -360,7 +353,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
                 transitions.append(Json.obj(Json.prop("matcher", matchers[i].toString()), Json.prop("target", successors[i])));
             }
         }
-        return Json.obj(Json.prop("id", id),
+        return Json.obj(Json.prop("id", getId()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
                         Json.prop("finalState", isFinalState()),
                         Json.prop("loopToSelf", hasLoopToSelf()),

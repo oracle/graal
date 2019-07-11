@@ -70,7 +70,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
  * designed to be single-threaded, but multiple {@link TRegexCompilationRequest}s can be compiled in
  * parallel.
  */
-final class TRegexCompilationRequest {
+public final class TRegexCompilationRequest {
 
     private final DebugUtil.Timer timer = shouldLogPhases() ? new DebugUtil.Timer() : null;
 
@@ -122,6 +122,9 @@ final class TRegexCompilationRequest {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
         createNFA();
+        if (nfa.isDead()) {
+            return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
+        }
         if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
             try {
                 phaseStart("TraceFinder NFA");
@@ -219,24 +222,23 @@ final class TRegexCompilationRequest {
         debugNFA();
     }
 
-    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        DFAGenerator dfa = new DFAGenerator(nfaArg, createExecutorProperties(nfaArg, forward, searching, trackCaptureGroups), compilationBuffer, tRegexCompiler.getOptions());
-        phaseStart(dfa.getDebugDumpName() + " DFA");
-        dfa.calcDFA();
-        TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
-        phaseEnd(dfa.getDebugDumpName() + " DFA");
-        debugDFA(dfa);
-        return executorNode;
+    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
+        return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, trackCaptureGroups,
+                        tRegexCompiler.getOptions().isRegressionTestMode(), nfaArg.getAst().getNumberOfCaptureGroups(), nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
-    private TRegexDFAExecutorProperties createExecutorProperties(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        return new TRegexDFAExecutorProperties(
-                        forward,
-                        searching,
-                        trackCaptureGroups,
-                        tRegexCompiler.getOptions().isRegressionTestMode(),
-                        nfaArg.getAst().getNumberOfCaptureGroups(),
-                        nfaArg.getAst().getRoot().getMinPath());
+    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props) {
+        return createDFAExecutor(nfaArg, props, null);
+    }
+
+    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {
+        DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer, tRegexCompiler.getOptions());
+        phaseStart(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        dfa.calcDFA();
+        TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
+        phaseEnd(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        debugDFA(dfa, debugDumpName);
+        return executorNode;
     }
 
     private void debugAST() {
@@ -273,12 +275,12 @@ final class TRegexCompilationRequest {
         }
     }
 
-    private void debugDFA(DFAGenerator dfa) {
+    private void debugDFA(DFAGenerator dfa, String debugDumpName) {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName() + ".gv");
+            TruffleFile file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".gv");
             DFAExport.exportDot(dfa, file, false);
-            file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName() + ".json");
+            file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".json");
             Json.obj(Json.prop("dfa", dfa.toJson())).dump(file);
         }
     }

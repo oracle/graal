@@ -77,6 +77,12 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
 
     @TruffleBoundary
     @Override
+    public String toString() {
+        return source + " -" + getMatcherBuilder() + "-> " + target;
+    }
+
+    @TruffleBoundary
+    @Override
     public JsonValue toJson() {
         JsonArray nfaTransitions = Json.array(getTransitionSet().stream().map(t -> Json.val(t.getId())));
         if (target.getAnchoredFinalStateTransition() != null) {
