@@ -396,7 +396,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean and(boolean left, boolean right) {
-            return left & right;
+            return left && right;
         }
 
         @Specialization
@@ -426,14 +426,20 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMOrNode extends LLVMArithmeticNode {
-        @Specialization
-        protected short or(short left, short right) {
-            return (short) (left | right);
-        }
 
         @Specialization
         protected boolean or(boolean left, boolean right) {
-            return left | right;
+            return left || right;
+        }
+
+        @Specialization
+        protected byte or(byte left, byte right) {
+            return (byte) (left | right);
+        }
+
+        @Specialization
+        protected short or(short left, short right) {
+            return (short) (left | right);
         }
 
         @Specialization
@@ -444,11 +450,6 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         protected long or(long left, long right) {
             return left | right;
-        }
-
-        @Specialization
-        protected byte or(byte left, byte right) {
-            return (byte) (left | right);
         }
 
         @Specialization
