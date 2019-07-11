@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,46 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.binary;
+package com.oracle.truffle.llvm.parser.macho;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+public final class MachORPathCommand extends MachOLoadCommand {
 
-import com.oracle.truffle.llvm.runtime.LibraryLocator;
-import org.graalvm.polyglot.io.ByteSequence;
+    private final String name;
 
-/**
- * Encapsulates a bitcode {@link ByteSequence} as well as meta information such as dependencies and
- * search paths.
- */
-public final class BinaryParserResult {
-
-    private final ArrayList<String> libraries;
-    private final ArrayList<String> paths;
-    private final ByteSequence bitcode;
-    private final LibraryLocator locator;
-
-    BinaryParserResult(ArrayList<String> libraries, ArrayList<String> paths, ByteSequence bitcode, LibraryLocator locator) {
-        this.libraries = libraries;
-        this.paths = paths;
-        this.bitcode = bitcode;
-        this.locator = locator;
+    private MachORPathCommand(int cmd, int cmdSize, String name) {
+        super(cmd, cmdSize);
+        this.name = name;
     }
 
-    public List<String> getLibraries() {
-        return Collections.unmodifiableList(libraries);
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "<" + name + ">";
     }
 
-    public List<String> getLibraryPaths() {
-        return Collections.unmodifiableList(paths);
+    public String getName() {
+        return name;
     }
 
-    public ByteSequence getBitcode() {
-        return bitcode;
+    public static MachORPathCommand create(MachOReader buffer) {
+        int pos = buffer.getPosition();
+        int cmd = buffer.getInt();
+        assert cmd == MachOLoadCommand.LC_RPATH;
+        int cmdSize = buffer.getInt();
+        int offset = buffer.getInt();
+
+        buffer.setPosition(pos + offset);
+        String path = getString(buffer, cmdSize - offset);
+        buffer.setPosition(pos + cmdSize);
+
+        return new MachORPathCommand(cmd, cmdSize, path);
     }
 
-    public LibraryLocator getLocator() {
-        return locator;
-    }
 }

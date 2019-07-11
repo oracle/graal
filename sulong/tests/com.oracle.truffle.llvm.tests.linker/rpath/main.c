@@ -27,46 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.binary;
+#include <stdlib.h>
+#include <stdio.h>
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+int foo(int a, int b);
 
-import com.oracle.truffle.llvm.runtime.LibraryLocator;
-import org.graalvm.polyglot.io.ByteSequence;
-
-/**
- * Encapsulates a bitcode {@link ByteSequence} as well as meta information such as dependencies and
- * search paths.
- */
-public final class BinaryParserResult {
-
-    private final ArrayList<String> libraries;
-    private final ArrayList<String> paths;
-    private final ByteSequence bitcode;
-    private final LibraryLocator locator;
-
-    BinaryParserResult(ArrayList<String> libraries, ArrayList<String> paths, ByteSequence bitcode, LibraryLocator locator) {
-        this.libraries = libraries;
-        this.paths = paths;
-        this.bitcode = bitcode;
-        this.locator = locator;
-    }
-
-    public List<String> getLibraries() {
-        return Collections.unmodifiableList(libraries);
-    }
-
-    public List<String> getLibraryPaths() {
-        return Collections.unmodifiableList(paths);
-    }
-
-    public ByteSequence getBitcode() {
-        return bitcode;
-    }
-
-    public LibraryLocator getLocator() {
-        return locator;
-    }
+int main() {
+  int result;
+  printf("Main\n");
+  result = foo(5, 7);
+  printf("Result: %d\n", result);
+  return 0;
 }

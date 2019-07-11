@@ -175,8 +175,8 @@ public final class NFIContextExtension implements ContextExtension {
             throw new IllegalArgumentException("Filename path of " + lib.getPath() + " is null");
         }
         String fileName = fileNamePath.toString().trim();
-        if (fileName.startsWith("libc.")) {
-            // nothing to do, since libsulong.so already links against libc.so
+        if (fileName.startsWith("libc.") || fileName.startsWith("libSystem.")) {
+            // nothing to do, since libsulong.so already links against libc.so/libSystem.B.dylib
             return true;
         } else if (fileName.startsWith("libsulong++.") || fileName.startsWith("libc++.")) {
             /*

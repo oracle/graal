@@ -27,46 +27,21 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.binary;
+#include <stdlib.h>
+#include <stdio.h>
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+__attribute__((visibility("hidden")))
+int globalD = 11;
 
-import com.oracle.truffle.llvm.runtime.LibraryLocator;
-import org.graalvm.polyglot.io.ByteSequence;
+int globalH = 12;
 
-/**
- * Encapsulates a bitcode {@link ByteSequence} as well as meta information such as dependencies and
- * search paths.
- */
-public final class BinaryParserResult {
+__attribute__((visibility("hidden")))
+int methodD(int a, int b) {
+  printf("HiddenD used by H\n");
+  return a - b;
+}
 
-    private final ArrayList<String> libraries;
-    private final ArrayList<String> paths;
-    private final ByteSequence bitcode;
-    private final LibraryLocator locator;
-
-    BinaryParserResult(ArrayList<String> libraries, ArrayList<String> paths, ByteSequence bitcode, LibraryLocator locator) {
-        this.libraries = libraries;
-        this.paths = paths;
-        this.bitcode = bitcode;
-        this.locator = locator;
-    }
-
-    public List<String> getLibraries() {
-        return Collections.unmodifiableList(libraries);
-    }
-
-    public List<String> getLibraryPaths() {
-        return Collections.unmodifiableList(paths);
-    }
-
-    public ByteSequence getBitcode() {
-        return bitcode;
-    }
-
-    public LibraryLocator getLocator() {
-        return locator;
-    }
+int methodH(int a, int b) {
+  printf("H\n");
+  return methodD(a, b) + (a << b) + globalD + globalH;
 }

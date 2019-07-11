@@ -51,6 +51,7 @@ import mx_testsuites
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
+from mx_testsuites import GlobNativeProject #pylint: disable=unused-import
 
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong")
