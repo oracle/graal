@@ -49,6 +49,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -60,14 +61,15 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
+import com.oracle.truffle.api.TruffleJDKServices;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
-import java.util.WeakHashMap;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import java.security.CodeSource;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -490,6 +492,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
             synchronized (this) {
                 if (languageClass == null) {
                     try {
+                        // In JDK 9+, the Truffle API packages must be dynamically exported to
+                        // a Truffle language since the Truffle API module descriptor only
+                        // exports the packages to modules known at build time (such as the
+                        // Graal module).
+                        TruffleJDKServices.exportTo(loader, null);
+
                         Class<?> loadedClass = Class.forName(className, true, loader);
                         Registration reg = loadedClass.getAnnotation(Registration.class);
                         if (reg == null) {

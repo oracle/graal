@@ -42,7 +42,7 @@ public final class GraalServices {
     }
 
     private static InternalError shouldNotReachHere() {
-        throw new InternalError("JDK specific overlay missing");
+        throw new InternalError("JDK specific overlay for " + GraalServices.class.getName() + " missing");
     }
 
     /**

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.test.SubprocessUtil.getPackageOpeningOptions;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
@@ -49,6 +50,13 @@ import org.junit.Test;
  * Tests support for dumping graphs and other info useful for debugging a compiler crash.
  */
 public class CompilationWrapperTest extends GraalCompilerTest {
+
+    private static List<String> join(List<String> l1, List<String> l2) {
+        ArrayList<String> result = new ArrayList<String>(l1.size() + l2.size());
+        result.addAll(l1);
+        result.addAll(l2);
+        return result;
+    }
 
     /**
      * Tests compilation requested by the VM.
@@ -152,10 +160,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     public void testTruffleCompilation1() throws IOException, InterruptedException {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(),
-                        Arrays.asList(
-                                        "-Dgraal.CompilationFailureAction=ExitVM",
-                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
-                                        "-Dgraal.CrashAt=root test1"),
+                        join(getPackageOpeningOptions(),
+                                        Arrays.asList(
+                                                        "-Dgraal.CompilationFailureAction=ExitVM",
+                                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                                        "-Dgraal.CrashAt=root test1")),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
@@ -168,10 +177,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         new Probe("Exiting VM due to TruffleCompilationExceptionsAreFatal=true", 1),
         };
         testHelper(Arrays.asList(probes),
-                        Arrays.asList(
-                                        "-Dgraal.CompilationFailureAction=Silent",
-                                        "-Dgraal.TruffleCompilationExceptionsAreFatal=true",
-                                        "-Dgraal.CrashAt=root test1"),
+                        join(getPackageOpeningOptions(),
+                                        Arrays.asList(
+                                                        "-Dgraal.CompilationFailureAction=Silent",
+                                                        "-Dgraal.TruffleCompilationExceptionsAreFatal=true",
+                                                        "-Dgraal.CrashAt=root test1")),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
@@ -185,10 +195,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         new Probe("Exiting VM due to TrufflePerformanceWarningsAreFatal=true", 1),
         };
         testHelper(Arrays.asList(probes),
-                        Arrays.asList(
-                                        "-Dgraal.CompilationFailureAction=Silent",
-                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
-                                        "-Dgraal.CrashAt=root test1:PermanentBailout"),
+                        join(getPackageOpeningOptions(),
+                                        Arrays.asList(
+                                                        "-Dgraal.CompilationFailureAction=Silent",
+                                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                                        "-Dgraal.CrashAt=root test1:PermanentBailout")),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 

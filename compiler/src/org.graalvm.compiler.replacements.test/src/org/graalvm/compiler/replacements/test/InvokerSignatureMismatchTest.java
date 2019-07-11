@@ -53,6 +53,7 @@ public class InvokerSignatureMismatchTest {
         args.add("-XX:-TieredCompilation");
         args.add("-XX:+EnableJVMCI");
         args.add("-XX:+UseJVMCICompiler");
+        args.addAll(SubprocessUtil.getPackageOpeningOptions());
 
         args.add(TestISMBL.class.getName());
         Subprocess proc = SubprocessUtil.java(args);

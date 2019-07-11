@@ -52,6 +52,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.common.InitTimer;
+import jdk.vm.ci.services.Services;
 
 /**
  * A factory that creates the {@link CompilerConfiguration} the compiler will use. Each factory must
@@ -247,7 +248,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     }
 
     private static void printConfigInfo(CompilerConfigurationFactory factory) {
-        URL location = factory.getClass().getResource(factory.getClass().getSimpleName() + ".class");
+        Object location = Services.IS_IN_NATIVE_IMAGE ? "JVMCI native library" : factory.getClass().getResource(factory.getClass().getSimpleName() + ".class");
         TTY.printf("Using compiler configuration '%s' provided by %s loaded from %s%n", factory.name, factory.getClass().getName(), location);
     }
 

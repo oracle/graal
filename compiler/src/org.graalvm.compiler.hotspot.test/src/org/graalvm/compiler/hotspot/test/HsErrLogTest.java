@@ -57,6 +57,8 @@ public class HsErrLogTest extends GraalCompilerTest {
         List<String> args = new ArrayList<>();
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             args.add("-XX:-UseJVMCIClassLoader");
+        } else {
+            args.add("--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.api.directives=ALL-UNNAMED");
         }
         args.add("-XX:+UseJVMCICompiler");
         args.add("-XX:CompileOnly=" + Crasher.class.getName() + "::tryCrash");

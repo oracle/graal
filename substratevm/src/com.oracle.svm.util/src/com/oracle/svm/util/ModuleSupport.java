@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,10 +35,10 @@ public final class ModuleSupport {
     }
 
     /**
-     * Provide a list of all resources in the JVMCI module.
+     * Gets all resources in the modules named by {@code modules} from the Java runtime image.
      */
     @SuppressWarnings("unused")
-    public static List<String> getJVMCIModuleResources() {
+    public static List<String> getModuleResources(Collection<String> names) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
         return Collections.emptyList();
@@ -63,5 +64,14 @@ public final class ModuleSupport {
 
     public static ClassLoader getPlatformClassLoader() {
         return ClassLoader.getSystemClassLoader();
+    }
+
+    /**
+     * Exports and opens all packages in the module named {@code name} to all unnamed modules.
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenAllPackagesToUnnamed(String name) {
+        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
     }
 }

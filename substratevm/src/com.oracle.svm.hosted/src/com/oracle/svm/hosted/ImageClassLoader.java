@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -138,7 +139,21 @@ public final class ImageClassLoader {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            for (String moduleResource : ModuleSupport.getJVMCIModuleResources()) {
+            Set<String> modules = new HashSet<>();
+            modules.add("jdk.internal.vm.ci");
+            Path javaHome = Paths.get(System.getProperty("java.home"));
+            if (!Files.exists(javaHome)) {
+                throw new AssertionError("Java home is not reachable.");
+            }
+            Path list = javaHome.resolve(Paths.get("lib", "jvmci", "native-image-modules.list"));
+            if (Files.exists(list)) {
+                try {
+                    Files.readAllLines(list).stream().map(s -> s.trim()).filter(s -> !s.isEmpty() && !s.startsWith("#")).forEach(modules::add);
+                } catch (IOException e) {
+                    throw shouldNotReachHere(e);
+                }
+            }
+            for (String moduleResource : ModuleSupport.getModuleResources(modules)) {
                 if (moduleResource.endsWith(CLASS_EXTENSION)) {
                     executor.execute(() -> handleClassFileName(moduleResource, '/'));
                 }

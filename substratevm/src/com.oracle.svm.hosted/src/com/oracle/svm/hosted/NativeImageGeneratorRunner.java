@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
@@ -69,6 +70,7 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -451,6 +453,22 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         final NativeImageGenerator generatorInstance = generator;
         if (generatorInstance != null) {
             generatorInstance.interruptBuild();
+        }
+    }
+
+    /**
+     * Command line entry point when running on JDK9+. This is required to dynamically export Graal
+     * to SVM and it requires {@code --add-exports=java.base/jdk.internal.module=ALL-UNNAMED} to be
+     * on the VM command line.
+     *
+     * Note: This is a workaround until GR-16855 is resolved.
+     */
+    public static class JDK9Plus {
+
+        public static void main(String[] args) {
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle");
+            NativeImageGeneratorRunner.main(args);
         }
     }
 }

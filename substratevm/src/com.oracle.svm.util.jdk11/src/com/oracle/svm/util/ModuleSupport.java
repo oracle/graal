@@ -28,26 +28,33 @@ import java.io.IOException;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.internal.module.Modules;
-import jdk.vm.ci.services.Services;
 
 public final class ModuleSupport {
     private ModuleSupport() {
     }
 
-    public static List<String> getJVMCIModuleResources() {
-        Module jvmciModule = Services.class.getModule();
-        Optional<ModuleReference> moduleReference = ModuleFinder.ofSystem().find(jvmciModule.getName());
-        assert moduleReference.isPresent() : "Unable access ModuleReference of JVMCI module";
-        try (ModuleReader moduleReader = moduleReference.get().open()) {
-            return moduleReader.list().collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new RuntimeException("Unable get list of resources in JVMCI module", e);
+    public static List<String> getModuleResources(Collection<String> names) {
+        List<String> result = new ArrayList<>();
+        for (String name : names) {
+            Optional<ModuleReference> moduleReference = ModuleFinder.ofSystem().find(name);
+            if (!moduleReference.isPresent()) {
+                throw new RuntimeException("Unable find ModuleReference for module " + name);
+            }
+            try (ModuleReader moduleReader = moduleReference.get().open()) {
+                result.addAll(moduleReader.list().collect(Collectors.toList()));
+            } catch (IOException e) {
+                throw new RuntimeException("Unable get list of resources in module" + name, e);
+            }
         }
+        return result;
     }
 
     static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
@@ -63,4 +70,16 @@ public final class ModuleSupport {
         return ClassLoader.getPlatformClassLoader();
     }
 
+    /**
+     * Exports and opens all packages in the module named {@code name} to all unnamed modules.
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenAllPackagesToUnnamed(String name) {
+        Module module = ModuleLayer.boot().findModule(name).orElseThrow();
+        Set<String> packages = module.getPackages();
+        for (String pkg : packages) {
+            Modules.addExportsToAllUnnamed(module, pkg);
+            Modules.addOpensToAllUnnamed(module, pkg);
+        }
+    }
 }

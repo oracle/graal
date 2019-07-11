@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.223.0",
+  "mxversion" : "5.226.3",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -284,10 +284,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
-      "uses" : [
-        "org.graalvm.compiler.serviceprovider.JMXService",
-        "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
-      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
@@ -300,10 +296,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
-      "uses" : [
-        "org.graalvm.compiler.serviceprovider.JMXService",
-        "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
-      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "13+",
       "checkPackagePrefix" : "false",
@@ -338,7 +330,6 @@ suite = {
         "sdk:GRAAL_SDK"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "uses" : ["org.graalvm.compiler.options.OptionDescriptors"],
       "javaCompliance" : "8+",
       "workingSets" : "Graal",
     },
@@ -368,10 +359,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "uses" : [
-        "org.graalvm.compiler.debug.DebugHandlersFactory",
-        "org.graalvm.compiler.debug.TTYStreamProvider",
-      ],
       "dependencies" : [
         "JVMCI_API",
         "org.graalvm.compiler.serviceprovider",
@@ -559,9 +546,6 @@ suite = {
         "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.printer",
         "org.graalvm.compiler.runtime",
-      ],
-      "uses" : [
-        "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
       ],
 
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1344,10 +1328,6 @@ suite = {
         "org.graalvm.compiler.virtual",
         "org.graalvm.compiler.loop.phases",
       ],
-      "uses" : [
-        "org.graalvm.compiler.core.match.MatchStatementSet",
-        "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
-      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "annotationProcessors" : [
@@ -1520,7 +1500,6 @@ suite = {
         "org.graalvm.compiler.core",
         "org.graalvm.compiler.java",
       ],
-      "uses" : ["org.graalvm.compiler.code.DisassemblerProvider"],
       "annotationProcessors" : [
         "GRAAL_OPTIONS_PROCESSOR",
         "GRAAL_SERVICEPROVIDER_PROCESSOR"
@@ -1556,7 +1535,6 @@ suite = {
         "JAVA_ALLOCATION_INSTRUMENTER",
         "ASM_TREE5",
       ],
-      "uses" : ["org.graalvm.compiler.options.OptionDescriptors"],
       "annotationProcessors" : ["GRAAL_NODEINFO_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1669,9 +1647,6 @@ suite = {
         "org.graalvm.compiler.core",
         "org.graalvm.compiler.replacements",
       ],
-      "uses" : [
-        "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
-      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "TRUFFLE_COMMON_PROCESSOR",
@@ -1691,9 +1666,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.replacements.amd64",
         "org.graalvm.compiler.truffle.compiler",
-      ],
-      "uses" : [
-        "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1751,12 +1723,6 @@ suite = {
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
         "truffle:TRUFFLE_API",
       ],
-      "uses" : [
-        "com.oracle.truffle.api.impl.TruffleLocator",
-        "com.oracle.truffle.api.object.LayoutFactory",
-        "org.graalvm.compiler.truffle.runtime.TruffleTypes",
-        "org.graalvm.compiler.truffle.runtime.LoopNodeFactory",
-      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "TRUFFLE_COMMON_PROCESSOR",
@@ -1777,9 +1743,6 @@ suite = {
         "org.graalvm.compiler.core.test",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_INSTRUMENT_TEST",
-      ],
-      "uses": [
-        "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
@@ -1823,11 +1786,6 @@ suite = {
         "org.graalvm.compiler.truffle.compiler",
         "org.graalvm.compiler.truffle.common.hotspot",
         "org.graalvm.compiler.hotspot",
-      ],
-      "uses" : [
-        "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
-        "org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory",
-        "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1876,11 +1834,6 @@ suite = {
         "org.graalvm.libgraal",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
-      ],
-      "uses" : [
-        "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
-        "org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory",
-        "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,13+",
@@ -2277,11 +2230,7 @@ suite = {
       ],
 
       "distDependencies" : [
-        "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
-        "GRAAL_RUNTIME",
-        "GRAAL_HOTSPOT",
-        "GRAAL_TRUFFLE_COMPILER",
-        "GRAAL_TRUFFLE_COMMON_HOTSPOT_LIBGRAAL",
+        "GRAAL",
       ],
       "maven": False,
       "javaCompliance" : "8+",
@@ -2345,7 +2294,32 @@ suite = {
 
     "GRAAL" : {
       # This distribution defines a module.
-      "moduleName" : "jdk.internal.vm.compiler",
+      "moduleInfo" : {
+        "name" : "jdk.internal.vm.compiler",
+        "exports" : [
+          "* to com.oracle.graal.graal_enterprise,jdk.internal.vm.compiler.management",
+        ],
+        "uses" : [
+          "com.oracle.truffle.api.impl.TruffleLocator",
+          "com.oracle.truffle.api.object.LayoutFactory",
+          "org.graalvm.compiler.code.DisassemblerProvider",
+          "org.graalvm.compiler.core.match.MatchStatementSet",
+          "org.graalvm.compiler.debug.DebugHandlersFactory",
+          "org.graalvm.compiler.debug.TTYStreamProvider",
+          "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
+          "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
+          "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
+          "org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory",
+          "org.graalvm.compiler.options.OptionDescriptors",
+          "org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider",
+          "org.graalvm.compiler.serviceprovider.JMXService",
+          "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory",
+          "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
+          "org.graalvm.compiler.truffle.runtime.LoopNodeFactory",
+          "org.graalvm.compiler.truffle.runtime.TruffleTypes",
+          "com.oracle.truffle.api.impl.HomeFinder",
+        ],
+      },
       "subDir" : "src",
       "overlaps" : [
         "GRAAL_GRAPHIO",
@@ -2416,7 +2390,9 @@ suite = {
 
     "GRAAL_MANAGEMENT" : {
       # This distribution defines a module.
-      "moduleName" : "jdk.internal.vm.compiler.management",
+      "moduleInfo" : {
+        "name":"jdk.internal.vm.compiler.management",
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.compiler.hotspot.management",
@@ -2434,7 +2410,9 @@ suite = {
 
     "JAOTC" : {
       # This distribution defines a module.
-      "moduleName" : "jdk.aot",
+      "moduleInfo" : {
+        "name":"jdk.aot",
+      },
       "subDir" : "src",
       "dependencies" : [
         "jdk.tools.jaotc",

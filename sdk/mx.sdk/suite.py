@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.223.0",
+  "mxversion" : "5.226.3",
   "name" : "sdk",
   "version" : "19.3.0",
   "release" : False,
@@ -87,10 +87,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
-      "uses" : [],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
@@ -101,13 +97,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.options",
         "org.graalvm.collections",
-      ],
-      "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.polyglot.impl to org.graalvm.truffle", # exported to truffle
-        "org.graalvm.polyglot",
-        "org.graalvm.polyglot.proxy",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
@@ -122,10 +111,6 @@ suite = {
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,SDK",
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.word.impl to jdk.internal.vm.compiler",
-      ],
     },
 
     "org.graalvm.nativeimage" : {
@@ -134,10 +119,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.word",
         "org.graalvm.options",
-      ],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.nativeimage.impl.clinit",  # class initialization instrumentation
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
@@ -183,9 +164,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
       ],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK,Test",
@@ -193,9 +171,6 @@ suite = {
     "org.graalvm.collections" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
@@ -227,7 +202,6 @@ suite = {
   "distributions" : {
     "GRAAL_SDK" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.sdk",
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.nativeimage",
@@ -235,6 +209,31 @@ suite = {
       ],
       "distDependencies" : [],
       "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "org.graalvm.sdk",
+        "exports" : [
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage.hosted",
+          "org.graalvm.nativeimage.c.function",
+          "org.graalvm.nativeimage.c.struct",
+          "org.graalvm.nativeimage.c.type",
+          "org.graalvm.nativeimage.c.constant",
+          "org.graalvm.nativeimage.c",
+          "org.graalvm.nativeimage",
+          "org.graalvm.nativeimage.impl.clinit", # class initialization instrumentation
+          "org.graalvm.polyglot.proxy",
+          "org.graalvm.polyglot.io",
+          "org.graalvm.polyglot.management",
+          "org.graalvm.polyglot",
+          "org.graalvm.options",
+          "org.graalvm.word",
+          "org.graalvm.polyglot.impl to org.graalvm.truffle",
+          "org.graalvm.word.impl to jdk.internal.vm.compiler",
+        ],
+        "uses" : [
+          "org.graalvm.polyglot.impl.AbstractPolyglotImpl"
+        ],
+      },
       "description" : "GraalVM is an ecosystem for compiling and running applications written in multiple languages.\nGraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.",
     },
     "SDK_TEST" : {
@@ -252,7 +251,12 @@ suite = {
     },
     "WORD_API" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.word",
+      "moduleInfo" : {
+        "name" : "org.graalvm.word",
+        "exports" : [
+          "org.graalvm.word"
+        ],
+      },
       "dependencies" : [
         "org.graalvm.word",
       ],
@@ -265,7 +269,9 @@ suite = {
     },
     "LAUNCHER_COMMON" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.launcher",
+      "moduleInfo" : {
+        "name" : "org.graalvm.launcher",
+      },
       "dependencies" : [
         "org.graalvm.launcher",
       ],
@@ -277,7 +283,12 @@ suite = {
     },
     "POLYGLOT_TCK" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.polyglot_tck",
+      "moduleInfo" : {
+        "name" : "org.graalvm.polyglot_tck",
+        "exports" : [
+          "org.graalvm.polyglot.tck"
+        ],
+      },
       "dependencies" : [
         "org.graalvm.polyglot.tck",
       ],

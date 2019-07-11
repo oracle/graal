@@ -85,4 +85,9 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
     // JDK-8229258
     String markWordClassName = "markOopDesc";
     String markWordFieldType = "markOop";
+
+    // JDK-8186777
+    int classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
+    boolean classMirrorIsHandle = true;
+
 }

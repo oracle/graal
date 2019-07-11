@@ -803,8 +803,9 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         mx_sdk.LauncherConfig(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
-            main_class="com.oracle.svm.driver.NativeImage",
+            main_class="com.oracle.svm.driver.NativeImage" + ("" if svm_java8() else "$JDK9Plus"),
             build_args=[],
+            extra_jvm_args=[] if svm_java8() else ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'],
         ),
         mx_sdk.LauncherConfig(
             destination="bin/<exe:native-image-configure>",

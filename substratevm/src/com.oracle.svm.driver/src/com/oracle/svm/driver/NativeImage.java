@@ -85,6 +85,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
 
@@ -681,7 +682,9 @@ public class NativeImage {
             String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
-            addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
+            if (!upgradeModulePath.isEmpty()) {
+                addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
+            }
         } else {
             config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
             if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
@@ -1112,7 +1115,11 @@ public class NativeImage {
         }
 
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
-        command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
+        if (System.getProperty("java.specification.version").compareTo("1.8") <= 0) {
+            command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
+        } else {
+            command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner$JDK9Plus");
+        }
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
@@ -1604,6 +1611,21 @@ public class NativeImage {
                 showMessage("Could not recursively delete path: " + toDelete);
                 e.printStackTrace();
             }
+        }
+    }
+
+    /**
+     * Command line entry point when running on JDK9+. This is required to dynamically export Graal
+     * to SVM and it requires {@code --add-exports=java.base/jdk.internal.module=ALL-UNNAMED} to be
+     * on the VM command line.
+     *
+     * Note: This is a workaround until GR-16855 is resolved.
+     */
+    public static class JDK9Plus {
+
+        public static void main(String[] args) {
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
+            NativeImage.main(args);
         }
     }
 }

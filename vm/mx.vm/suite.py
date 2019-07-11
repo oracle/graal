@@ -101,7 +101,7 @@ suite = {
                 "truffle:TRUFFLE_API",
             ],
             "checkstyleVersion" : "8.8",
-            "javaCompliance": "1.8",
+            "javaCompliance" : "1.8+",
             "license": "GPLv2-CPE",
         },
         "org.graalvm.component.installer" : {
@@ -127,6 +127,12 @@ suite = {
     "distributions": {
         "LOCATOR": {
             "subDir": "src",
+            "moduleInfo" : {
+                "name" : "org.graalvm.locator",
+                "exports" : [
+                    "com.oracle.graalvm.locator to jdk.internal.vm.compiler.management",
+                ],
+            },
             "dependencies": ["com.oracle.graalvm.locator"],
             "distDependencies": [
                 "truffle:TRUFFLE_API",

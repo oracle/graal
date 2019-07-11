@@ -90,7 +90,12 @@ public class LazyInitializationTest {
         List<String> vmCommandLine = getVMCommandLine();
         Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:+UseJVMCINativeLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));
         List<String> vmArgs = withoutDebuggerArguments(vmCommandLine);
-        vmArgs.add(JavaVersionUtil.JAVA_SPEC <= 8 ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            vmArgs.add("-XX:+TraceClassLoading");
+        } else {
+            vmArgs.add("-Xlog:class+init=info");
+            vmArgs.addAll(SubprocessUtil.getPackageOpeningOptions());
+        }
         vmArgs.add("-dsa");
         vmArgs.add("-da");
         vmArgs.add("-XX:-UseJVMCICompiler");

@@ -68,7 +68,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     final LanguageCache cache;
     final LanguageInfo info;
 
-    Language api; // effectivley final
+    Language api; // effectively final
     final int index;
     private final boolean host;
     final RuntimeException initError;
@@ -146,6 +146,8 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                 if (!initialized) {
                     try {
                         this.initLanguage = ensureInitialized(new PolyglotLanguageInstance(this));
+                    } catch (IllegalAccessError e) {
+                        throw e;
                     } catch (Throwable e) {
                         // failing to initialize the language for getting the option descriptors
                         // should not be a fatal error. this typically happens when an invalid

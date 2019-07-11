@@ -36,7 +36,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @TargetClass(className = "java.io.UnixFileSystem", onlyWith = JDK11OrLater.class)
-final class Target_java_io_UnixFileSystem_JDK11OrLater {
+final class Target_java_io_UnixFileSystem {
 
     /* { Do not re-format commented out C code. @formatter:off */
     //   514  JNIEXPORT jlong JNICALL
@@ -44,7 +44,7 @@ final class Target_java_io_UnixFileSystem_JDK11OrLater {
     //   516                                          jstring pathname)
     //   517  {
     @Substitute //
-    @SuppressWarnings({"unused"})
+    @SuppressWarnings({"unused", "static-method"})
     /* native */ long getNameMax0(String pathName) {
         //   518      jlong length = -1;
         final long length;
