@@ -105,7 +105,7 @@ public interface ClassConstant extends PoolConstant {
                 Klass klass = context.getRegistries().loadKlass(
                                 type, accessingKlass.getDefiningClassLoader());
 
-                if (!checkAccess(klass.getElementalType(), accessingKlass)) {
+                if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     System.err.println(EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
                     throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(klassName));
@@ -127,24 +127,6 @@ public interface ClassConstant extends PoolConstant {
                 // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
                 throw e;
             }
-        }
-
-        /**
-         * A class or interface C is accessible to a class or interface D if and only if either of
-         * the following is true:
-         * <ul>
-         * <li>C is public.
-         * <li>C and D are members of the same run-time package (§5.3).
-         * </ul>
-         */
-        private static boolean checkAccess(Klass klass, Klass accessingKlass) {
-            if (accessingKlass == null) {
-                return true;
-            }
-            if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
-                return true;
-            }
-            return (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass));
         }
 
         @Override
@@ -196,7 +178,7 @@ public interface ClassConstant extends PoolConstant {
                 Klass klass = context.getRegistries().loadKlass(
                                 context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
 
-                if (!checkAccess(klass.getElementalType(), accessingKlass)) {
+                if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     System.err.println(EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
                     throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(klassName));
@@ -212,24 +194,6 @@ public interface ClassConstant extends PoolConstant {
                 // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
                 throw e;
             }
-        }
-
-        /**
-         * A class or interface C is accessible to a class or interface D if and only if either of
-         * the following is true:
-         * <ul>
-         * <li>C is public.
-         * <li>C and D are members of the same run-time package (§5.3).
-         * </ul>
-         */
-        private static boolean checkAccess(Klass klass, Klass accessingKlass) {
-            if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
-                return true;
-            }
-            if (klass.getMeta().MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
-                return true;
-            }
-            return false;
         }
     }
 
