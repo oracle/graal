@@ -260,7 +260,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
         try {
             // Single threaded compilation does not require cancellation.
-            doCompile(TruffleRuntimeOptions.getOptions(), optimizedCallTarget, null);
+            doCompile(optimizedCallTarget, null);
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
             if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));

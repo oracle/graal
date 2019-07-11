@@ -64,7 +64,6 @@ import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationPolymorphismLi
 import org.graalvm.compiler.truffle.runtime.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.Assumption;
@@ -695,10 +694,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
+    protected void doCompile(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         TruffleCompiler compiler = getTruffleCompiler();
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
-            final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
+            final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler();
             try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
                 doCompile(debug, compilation, optionsMap, callTarget, task);
             } catch (RuntimeException | Error e) {
