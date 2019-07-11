@@ -845,7 +845,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                         case INVOKESTATIC: // fall through
                         case INVOKEINTERFACE: top += quickenInvoke(frame, top, curBCI, curOpcode); break;
 
-                        case NEW: putObject(frame, top, allocateInstance(resolveType(curOpcode, bs.readCPI(curBCI)))); break;
+                        case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)))); break;
                         case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1))); break;
                         case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
                         case ARRAYLENGTH: putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekObject(frame, top - 1)))); break;
@@ -1504,11 +1504,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         }
         putObject(frame, top - allocatedDimensions, getInterpreterToVM().newMultiArray(klass.getComponentType(), dimensions));
         return -allocatedDimensions; // Does not include the created (pushed) array.
-    }
-
-    private static StaticObject allocateInstance(Klass klass) {
-        // klass.safeInitialize();
-        return InterpreterToVM.newObject(klass);
     }
 
     // endregion Instance/array allocation
