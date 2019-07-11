@@ -64,9 +64,9 @@ public final class Target_java_lang_Class {
         return EspressoLanguage.getCurrentContext().getRegistries().loadKlassWithBootClassLoader(JavaKind.fromTypeString(hostName).getType()).mirror();
     }
 
-    @Substitution(hasReceiver = true)
-    public static boolean desiredAssertionStatus(@Host(Class.class) StaticObject self) {
-        if (StaticObject.isNull(self.getMirrorKlass().getDefiningClassLoader())) {
+    @Substitution
+    public static boolean desiredAssertionStatus0(@Host(Class.class) StaticObject clazz) {
+        if (StaticObject.isNull(clazz.getMirrorKlass().getDefiningClassLoader())) {
             return EspressoOptions.EnableSystemAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
         }
         return EspressoOptions.EnableAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());

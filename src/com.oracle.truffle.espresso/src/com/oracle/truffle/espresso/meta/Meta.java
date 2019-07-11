@@ -281,6 +281,13 @@ public final class Meta implements ContextAccess {
         linkCallSite = MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite, Signature.linkCallSite_signature);
         linkMethodHandleConstant = MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant, Signature.linkMethodHandleConstant_signature);
         findMethodHandleType = MethodHandleNatives.lookupDeclaredMethod(Name.findMethodHandleType, Signature.MethodType_cons);
+
+        AssertionStatusDirectives = knownKlass(Type.AssertionStatusDirectives);
+        AssertionStatusDirectives_classes = AssertionStatusDirectives.lookupField(Name.classes, Type.String_array);
+        AssertionStatusDirectives_classEnabled = AssertionStatusDirectives.lookupField(Name.classEnabled, Type._boolean_array);
+        AssertionStatusDirectives_packages = AssertionStatusDirectives.lookupField(Name.packages, Type.String_array);
+        AssertionStatusDirectives_packageEnabled = AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
+        AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
     }
 
     public final ObjectKlass Object;
@@ -353,6 +360,13 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass ClassLoader;
     public final Method ClassLoader_findNative;
     public final Method ClassLoader_getSystemClassLoader;
+
+    public final ObjectKlass AssertionStatusDirectives;
+    public final Field AssertionStatusDirectives_classes;
+    public final Field AssertionStatusDirectives_classEnabled;
+    public final Field AssertionStatusDirectives_packages;
+    public final Field AssertionStatusDirectives_packageEnabled;
+    public final Field AssertionStatusDirectives_deflt;
 
     public final ObjectKlass Executable;
 

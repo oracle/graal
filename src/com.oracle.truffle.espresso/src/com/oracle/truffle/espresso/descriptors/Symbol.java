@@ -187,6 +187,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> signature = StaticSymbols.putName("signature");
         public static final Symbol<Name> getParameterTypes = StaticSymbols.putName("getParameterTypes");
 
+        public static final Symbol<Name> classes = StaticSymbols.putName("classes");
+        public static final Symbol<Name> classEnabled = StaticSymbols.putName("classEnabled");
+        public static final Symbol<Name> packages = StaticSymbols.putName("packages");
+        public static final Symbol<Name> packageEnabled = StaticSymbols.putName("packageEnabled");
+        public static final Symbol<Name> deflt = StaticSymbols.putName("deflt");
+
         // Polymorphic signature method names
         public static final Symbol<Name> invoke = StaticSymbols.putName("invoke");
         public static final Symbol<Name> invokeExact = StaticSymbols.putName("invokeExact");
@@ -343,6 +349,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> VerifyError = StaticSymbols.putType(VerifyError.class);
 
         public static final Symbol<Type> MethodType = StaticSymbols.putType(java.lang.invoke.MethodType.class);
+
+        public static final Symbol<Type> AssertionStatusDirectives = StaticSymbols.putType("Ljava/lang/AssertionStatusDirectives;");
 
         public static final Symbol<Type> MethodHandles = StaticSymbols.putType(java.lang.invoke.MethodHandles.class);
         public static final Symbol<Type> Lookup = StaticSymbols.putType(java.lang.invoke.MethodHandles.Lookup.class);
