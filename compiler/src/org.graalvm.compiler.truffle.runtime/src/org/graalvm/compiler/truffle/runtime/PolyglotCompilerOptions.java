@@ -37,7 +37,6 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance.

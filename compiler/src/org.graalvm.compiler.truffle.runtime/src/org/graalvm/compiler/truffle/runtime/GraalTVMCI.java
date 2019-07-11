@@ -24,10 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.util.function.Function;
-
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
