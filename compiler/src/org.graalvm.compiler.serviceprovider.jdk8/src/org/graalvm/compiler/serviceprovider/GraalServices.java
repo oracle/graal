@@ -28,8 +28,10 @@ import static java.lang.Thread.currentThread;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.RuntimeMXBean;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceConfigurationError;
@@ -290,7 +292,10 @@ public final class GraalServices {
      */
     public static String getExecutionID() {
         try {
-            String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            if (Lazy.runtimeMXBean == null) {
+                return String.valueOf(getGlobalTimeStamp());
+            }
+            String runtimeName = Lazy.runtimeMXBean.getName();
             try {
                 int index = runtimeName.indexOf('@');
                 if (index != -1) {
@@ -322,7 +327,22 @@ public final class GraalServices {
      * Lazy initialization of Java Management Extensions (JMX).
      */
     static class Lazy {
-        static final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
+        static final com.sun.management.ThreadMXBean threadMXBean;
+        static final RuntimeMXBean runtimeMXBean;
+        static {
+            com.sun.management.ThreadMXBean resultThread;
+            RuntimeMXBean resultRuntime;
+            try {
+                /* Trigger loading of the management library using the bootstrap class loader. */
+                resultThread = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
+                resultRuntime = java.lang.management.ManagementFactory.getRuntimeMXBean();
+            } catch (UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
+                resultThread = null;
+                resultRuntime = null;
+            }
+            threadMXBean = resultThread;
+            runtimeMXBean = resultRuntime;
+        }
     }
 
     /**
@@ -350,6 +370,9 @@ public final class GraalServices {
      *             measurement.
      */
     public static long getThreadAllocatedBytes(long id) {
+        if (Lazy.threadMXBean == null) {
+            throw new UnsupportedOperationException();
+        }
         return Lazy.threadMXBean.getThreadAllocatedBytes(id);
     }
 
@@ -358,7 +381,7 @@ public final class GraalServices {
      * current thread.
      */
     public static long getCurrentThreadAllocatedBytes() {
-        return Lazy.threadMXBean.getThreadAllocatedBytes(currentThread().getId());
+        return getThreadAllocatedBytes(currentThread().getId());
     }
 
     /**
@@ -375,6 +398,9 @@ public final class GraalServices {
      *             the current thread
      */
     public static long getCurrentThreadCpuTime() {
+        if (Lazy.threadMXBean == null) {
+            throw new UnsupportedOperationException();
+        }
         return Lazy.threadMXBean.getCurrentThreadCpuTime();
     }
 
@@ -383,6 +409,9 @@ public final class GraalServices {
      * measurement.
      */
     public static boolean isThreadAllocatedMemorySupported() {
+        if (Lazy.threadMXBean == null) {
+            return false;
+        }
         return Lazy.threadMXBean.isThreadAllocatedMemorySupported();
     }
 
@@ -390,6 +419,9 @@ public final class GraalServices {
      * Determines if the Java virtual machine supports CPU time measurement for the current thread.
      */
     public static boolean isCurrentThreadCpuTimeSupported() {
+        if (Lazy.threadMXBean == null) {
+            return false;
+        }
         return Lazy.threadMXBean.isCurrentThreadCpuTimeSupported();
     }
 
@@ -408,7 +440,10 @@ public final class GraalServices {
      * @return the input arguments to the JVM or {@code null} if they are unavailable
      */
     public static List<String> getInputArguments() {
-        return java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments();
+        if (Lazy.runtimeMXBean == null) {
+            return null;
+        }
+        return Lazy.runtimeMXBean.getInputArguments();
     }
 
     /**
