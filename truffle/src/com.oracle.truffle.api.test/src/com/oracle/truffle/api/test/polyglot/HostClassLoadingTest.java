@@ -95,7 +95,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().build());
         try {
             // should fail loading the truffle file
-            TruffleFile file = languageEnv.getTruffleFile(tempDir.toString());
+            TruffleFile file = languageEnv.getPublicTruffleFile(tempDir.toString());
             assertFalse(file.isReadable());
             fail();
         } catch (SecurityException e) {
@@ -103,7 +103,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
         // test with only io rights
         setupEnv(Context.newBuilder().allowIO(true).build());
-        TruffleFile file = languageEnv.getTruffleFile(tempDir.toString());
+        TruffleFile file = languageEnv.getPublicTruffleFile(tempDir.toString());
         try {
             languageEnv.addToHostClassPath(file);
             fail();
@@ -114,7 +114,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
         // test with only host access rights
         setupEnv(Context.newBuilder().allowIO(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
-        file = languageEnv.getTruffleFile(tempDir.toString());
+        file = languageEnv.getPublicTruffleFile(tempDir.toString());
         try {
             languageEnv.addToHostClassPath(file);
             fail();
@@ -125,7 +125,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
         // test with only class path add rights
         setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).build());
-        file = languageEnv.getTruffleFile(tempDir.toString());
+        file = languageEnv.getPublicTruffleFile(tempDir.toString());
         try {
             // we should fail early
             languageEnv.addToHostClassPath(file);
@@ -144,7 +144,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
 
         setupEnv(Context.newBuilder().allowIO(true).allowHostClassLoading(true).allowHostAccess(HostAccess.ALL).allowHostClassLookup((String s) -> true).build());
-        file = languageEnv.getTruffleFile(tempDir.toString());
+        file = languageEnv.getPublicTruffleFile(tempDir.toString());
         // we should fail early
         languageEnv.addToHostClassPath(file);
 
@@ -163,7 +163,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             return true;
         }).allowAllAccess(true).build());
 
-        languageEnv.addToHostClassPath(languageEnv.getTruffleFile(tempDir.toString()));
+        languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(tempDir.toString()));
 
         assertNotNull(languageEnv.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME));
         // called once by the class loader and once by looking up the host symbol
@@ -178,7 +178,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
             return false;
         }).allowAllAccess(true).build());
 
-        languageEnv.addToHostClassPath(languageEnv.getTruffleFile(tempDir.toString()));
+        languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(tempDir.toString()));
         try {
             languageEnv.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME);
             fail();
@@ -203,7 +203,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         final Class<?> hostClass = HostClassLoadingTestClass1.class;
         Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
         Path jar = createJar(tempDir);
-        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getTruffleFile(jar.toString()));
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getPublicTruffleFile(jar.toString()));
         Files.deleteIfExists(jar);
         deleteDir(tempDir);
     }
@@ -213,7 +213,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         setupEnv();
         final Class<?> hostClass = HostClassLoadingTestClass1.class;
         Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
-        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getTruffleFile(tempDir.toString()));
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getPublicTruffleFile(tempDir.toString()));
         deleteDir(tempDir);
     }
 
@@ -241,8 +241,8 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         Path tempDir2 = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME_2);
         Path jar1 = createJar(tempDir1);
         Path jar2 = createJar(tempDir2);
-        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getTruffleFile(jar1.toString()));
-        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME_2, languageEnv.getTruffleFile(jar2.toString()));
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME, languageEnv.getPublicTruffleFile(jar1.toString()));
+        assertHostClassPath(languageEnv, hostClass, TEST_REPLACE_CLASS_NAME_2, languageEnv.getPublicTruffleFile(jar2.toString()));
         Files.deleteIfExists(jar1);
         Files.deleteIfExists(jar2);
         deleteDir(tempDir1);
@@ -258,8 +258,8 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         Path tempDir2 = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
         Path jar1 = createJar(tempDir1);
         Path jar2 = createJar(tempDir2);
-        languageEnv.addToHostClassPath(languageEnv.getTruffleFile(jar1.toString()));
-        languageEnv.addToHostClassPath(languageEnv.getTruffleFile(jar2.toString()));
+        languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar1.toString()));
+        languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar2.toString()));
         Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
         assertEquals(1, read(newSymbol, "staticField"));
         Files.deleteIfExists(jar1);
@@ -440,7 +440,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
     private static TruffleFile createClassFolderOnPolyglotFileSystem(Env env, Class<?> testClass, String newClassName) throws IOException {
         Path tempDir = renameHostClass(testClass, newClassName);
         try {
-            TruffleFile root = env.getTruffleFile("/");
+            TruffleFile root = env.getPublicTruffleFile("/");
             assertNotNull(root);
             TruffleFile bin = root.resolve("bin");
             bin.createDirectory();
@@ -456,7 +456,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         try {
             Path jarFile = createJar(tempDir);
             try {
-                TruffleFile root = env.getTruffleFile("/");
+                TruffleFile root = env.getPublicTruffleFile("/");
                 assertNotNull(root);
                 copyToPolyglotFileSystem(jarFile, root);
                 return root.resolve(jarFile.getFileName().toString());

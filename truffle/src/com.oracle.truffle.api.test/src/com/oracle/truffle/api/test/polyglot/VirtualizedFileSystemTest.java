@@ -1680,7 +1680,7 @@ public class VirtualizedFileSystemTest {
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, userDir, fileSystem, isDefaultFileSystem, readable, writable, allowsUserDir, allowsUserDir, (env, p) -> env.getTruffleFile(p));
+            this(name, context, path, userDir, fileSystem, isDefaultFileSystem, readable, writable, allowsUserDir, allowsUserDir, (env, p) -> env.getPublicTruffleFile(p));
         }
 
         Configuration(

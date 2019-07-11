@@ -193,7 +193,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         MockProcessHandler testHandler = new MockProcessHandler();
         setupEnv(Context.newBuilder().allowIO(true).allowCreateProcess(true).allowIO(true).processHandler(testHandler).build());
         String workdirPath = Paths.get("/workdir").toString();
-        TruffleFile workDir = languageEnv.getTruffleFile(workdirPath);
+        TruffleFile workDir = languageEnv.getPublicTruffleFile(workdirPath);
         languageEnv.newProcessBuilder("process").directory(workDir).start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);

@@ -2102,9 +2102,47 @@ public abstract class TruffleLanguage<C> {
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.0
+         * @deprecated use {@link #getInternalTruffleFile(java.lang.String) getInternalTruffleFile}
+         *             for language standard library files or
+         *             {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} for user
+         *             files.
          */
         @TruffleBoundary
+        @Deprecated
         public TruffleFile getTruffleFile(String path) {
+            return getInternalTruffleFile(path);
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI}.
+         *
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.0
+         * @deprecated use {@link #getInternalTruffleFile(java.lang.String) getInternalTruffleFile}
+         *             for language standard library files or
+         *             {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} for user
+         *             files.
+         */
+        @TruffleBoundary
+        @Deprecated
+        public TruffleFile getTruffleFile(URI uri) {
+            return getInternalTruffleFile(uri);
+        }
+
+        /**
+         * Returns a public {@link TruffleFile} for given path. The access to public files depends
+         * on {@link Builder#allowIO(boolean) Context's IO policy}. When IO is not enabled by the
+         * {@code Context} the {@link TruffleFile} operations throw {@link SecurityException}. The
+         * {@code getPublicTruffleFile} method should be used to access user files or to implement
+         * language IO builtins.
+         *
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.3.0
+         */
+        @TruffleBoundary
+        public TruffleFile getPublicTruffleFile(String path) {
             checkDisposed();
             try {
                 return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.parsePath(path));
@@ -2116,14 +2154,18 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns a {@link TruffleFile} for given {@link URI}.
+         * Returns a public {@link TruffleFile} for given {@link URI}. The access to public files
+         * depends on {@link Builder#allowIO(boolean) Context's IO policy}. When IO is not enabled
+         * by the {@code Context} the {@link TruffleFile} operations throw {@link SecurityException}
+         * . The {@code getPublicTruffleFile} method should be used to access user files or to
+         * implement language IO builtins.
          *
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
-         * @since 19.0
+         * @since 19.3.0
          */
         @TruffleBoundary
-        public TruffleFile getTruffleFile(URI uri) {
+        public TruffleFile getPublicTruffleFile(URI uri) {
             checkDisposed();
             try {
                 return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.parsePath(uri));
@@ -2135,13 +2177,19 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns an internal {@link TruffleFile} for given path. The internal file is a file
-         * located in the languages home directories. The internal files are readable even when
-         * {@link Builder#allowIO(boolean) IO is not allowed} by the Context.
+         * Returns a public or internal {@link TruffleFile} for given path. Unlike
+         * {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} the
+         * {@link TruffleFile} returned by this method for a file in a language home is readable
+         * even when IO is not enabled by the {@code Context}. The {@code getInternalTruffleFile}
+         * method should be used to read language standard libraries in a language home. For
+         * security reasons the language should check that the file is a language source file in
+         * language standard libraries folder before using this method for a file in a language
+         * home.
          *
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.3.0
+         * @see #getPublicTruffleFile(java.lang.String)
          */
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(String path) {
@@ -2156,13 +2204,19 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns an internal {@link TruffleFile} for given {@link URI}. The internal file is a
-         * file located in the languages home directories. The internal files are readable even when
-         * {@link Builder#allowIO(boolean) IO is not allowed} by the Context.
+         * Returns a public or internal {@link TruffleFile} for given {@link URI}. Unlike
+         * {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} the
+         * {@link TruffleFile} returned by this method for a file in a language home is readable
+         * even when IO is not enabled by the {@code Context}. The {@code getInternalTruffleFile}
+         * method should be used to read language standard libraries in a language home. For
+         * security reasons the language should check that the file is a language source file in
+         * language standard libraries folder before using this method for a file in a language
+         * home.
          *
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.3.0
+         * @see #getPublicTruffleFile(java.net.URI)
          */
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(URI uri) {
@@ -2187,7 +2241,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public TruffleFile getCurrentWorkingDirectory() {
-            return getTruffleFile("").getAbsoluteFile();
+            return getPublicTruffleFile("").getAbsoluteFile();
         }
 
         /**

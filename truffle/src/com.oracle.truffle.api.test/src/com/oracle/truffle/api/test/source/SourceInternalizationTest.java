@@ -118,8 +118,8 @@ public class SourceInternalizationTest extends AbstractPolyglotTest {
         assertSame(Source.newBuilder("", "", "").uri(new URI("s:///333")).build(),
                         Source.newBuilder("", "", "").uri(new URI("s:///333")).build());
 
-        TruffleFile file1 = languageEnv.getTruffleFile(createTempFile("1").getPath());
-        TruffleFile file2 = languageEnv.getTruffleFile(createTempFile("2").getPath());
+        TruffleFile file1 = languageEnv.getPublicTruffleFile(createTempFile("1").getPath());
+        TruffleFile file2 = languageEnv.getPublicTruffleFile(createTempFile("2").getPath());
 
         assertNotSame(Source.newBuilder("", file1).build(),
                         Source.newBuilder("", file2).build());

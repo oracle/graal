@@ -90,9 +90,9 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
     @SuppressWarnings("deprecation")
     public void testFindMimeTypeNoIO() throws IOException {
         setupEnv(Context.create());
-        TruffleFile truffleFile1 = languageEnv.getTruffleFile(testFile1.getAbsolutePath());
-        TruffleFile truffleFile2 = languageEnv.getTruffleFile(testFile2.getAbsolutePath());
-        TruffleFile truffleFile3 = languageEnv.getTruffleFile(testFile3.getAbsolutePath());
+        TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(testFile1.getAbsolutePath());
+        TruffleFile truffleFile2 = languageEnv.getPublicTruffleFile(testFile2.getAbsolutePath());
+        TruffleFile truffleFile3 = languageEnv.getPublicTruffleFile(testFile3.getAbsolutePath());
 
         String mimeType = org.graalvm.polyglot.Source.findMimeType(testFile1);
         Assert.assertEquals("application/test-js", mimeType);
@@ -135,9 +135,9 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
     @SuppressWarnings("deprecation")
     public void testFindMimeTypeFullIO() throws IOException {
         setupEnv(Context.newBuilder().allowIO(true).build());
-        TruffleFile truffleFile1 = languageEnv.getTruffleFile(testFile1.getAbsolutePath());
-        TruffleFile truffleFile2 = languageEnv.getTruffleFile(testFile2.getAbsolutePath());
-        TruffleFile truffleFile3 = languageEnv.getTruffleFile(testFile3.getAbsolutePath());
+        TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(testFile1.getAbsolutePath());
+        TruffleFile truffleFile2 = languageEnv.getPublicTruffleFile(testFile2.getAbsolutePath());
+        TruffleFile truffleFile3 = languageEnv.getPublicTruffleFile(testFile3.getAbsolutePath());
 
         String mimeType = org.graalvm.polyglot.Source.findMimeType(testFile1);
         Assert.assertEquals("application/test-js", mimeType);
@@ -172,8 +172,8 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
     @SuppressWarnings("deprecation")
     public void testSourceBulderNoIO() throws IOException {
         setupEnv(Context.create());
-        TruffleFile truffleFile1 = languageEnv.getTruffleFile(testFile1.getAbsolutePath());
-        TruffleFile truffleFile3 = languageEnv.getTruffleFile(testFile3.getAbsolutePath());
+        TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(testFile1.getAbsolutePath());
+        TruffleFile truffleFile3 = languageEnv.getPublicTruffleFile(testFile3.getAbsolutePath());
 
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("TestJS", testFile1).build();
         Assert.assertEquals("application/test-js", source.getMimeType());
@@ -227,8 +227,8 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
     @SuppressWarnings("deprecation")
     public void testSourceBulderFullIO() throws IOException {
         setupEnv(Context.newBuilder().allowIO(true).build());
-        TruffleFile truffleFile1 = languageEnv.getTruffleFile(testFile1.getAbsolutePath());
-        TruffleFile truffleFile3 = languageEnv.getTruffleFile(testFile3.getAbsolutePath());
+        TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(testFile1.getAbsolutePath());
+        TruffleFile truffleFile3 = languageEnv.getPublicTruffleFile(testFile3.getAbsolutePath());
 
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("TestJS", testFile1).build();
         Assert.assertEquals("application/test-js", source.getMimeType());
@@ -261,23 +261,23 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
 
         FirstFileTypeDetector.events.clear();
         SecondFileTypeDetector.events.clear();
-        com.oracle.truffle.api.source.Source.newBuilder(FirstLanguage.LANG_ID, languageEnv.getTruffleFile(firsta.getAbsolutePath())).build();
+        com.oracle.truffle.api.source.Source.newBuilder(FirstLanguage.LANG_ID, languageEnv.getPublicTruffleFile(firsta.getAbsolutePath())).build();
         Assert.assertEquals(1, FirstFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
         Assert.assertEquals(0, FirstFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());
         Assert.assertTrue(SecondFileTypeDetector.events.isEmpty());
         FirstFileTypeDetector.events.clear();
-        com.oracle.truffle.api.source.Source.newBuilder(FirstLanguage.LANG_ID, languageEnv.getTruffleFile(firstb.getAbsolutePath())).build();
+        com.oracle.truffle.api.source.Source.newBuilder(FirstLanguage.LANG_ID, languageEnv.getPublicTruffleFile(firstb.getAbsolutePath())).build();
         Assert.assertEquals(1, FirstFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
         Assert.assertEquals(1, FirstFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());
         Assert.assertTrue(SecondFileTypeDetector.events.isEmpty());
         FirstFileTypeDetector.events.clear();
 
-        com.oracle.truffle.api.source.Source.newBuilder(SecondLanguage.LANG_ID, languageEnv.getTruffleFile(seconda.getAbsolutePath())).build();
+        com.oracle.truffle.api.source.Source.newBuilder(SecondLanguage.LANG_ID, languageEnv.getPublicTruffleFile(seconda.getAbsolutePath())).build();
         Assert.assertTrue(FirstFileTypeDetector.events.isEmpty());
         Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
         Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());
         SecondFileTypeDetector.events.clear();
-        com.oracle.truffle.api.source.Source.newBuilder(SecondLanguage.LANG_ID, languageEnv.getTruffleFile(secondb.getAbsolutePath())).build();
+        com.oracle.truffle.api.source.Source.newBuilder(SecondLanguage.LANG_ID, languageEnv.getPublicTruffleFile(secondb.getAbsolutePath())).build();
         Assert.assertTrue(FirstFileTypeDetector.events.isEmpty());
         Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
         Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());

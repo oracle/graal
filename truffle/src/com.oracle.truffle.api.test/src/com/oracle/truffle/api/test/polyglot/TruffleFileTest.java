@@ -64,7 +64,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testToAbsolutePath() {
-        TruffleFile file = languageEnv.getTruffleFile(OSUtils.isUnix() ? "/a/b" : "C:/a/b");
+        TruffleFile file = languageEnv.getPublicTruffleFile(OSUtils.isUnix() ? "/a/b" : "C:/a/b");
         Assert.assertTrue(file.isAbsolute());
         Assert.assertEquals(file, file.getAbsoluteFile());
         testToAbsolutePathImpl("");
@@ -78,7 +78,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         testToAbsolutePathImpl("a/../b");
         testToAbsolutePathImpl("a/../../");
 
-        languageEnv.setCurrentWorkingDirectory(languageEnv.getTruffleFile(OSUtils.isUnix() ? "/" : "C:/"));
+        languageEnv.setCurrentWorkingDirectory(languageEnv.getPublicTruffleFile(OSUtils.isUnix() ? "/" : "C:/"));
         testToAbsolutePathImpl("");
         testToAbsolutePathImpl("a");
         testToAbsolutePathImpl("a/b");
@@ -92,7 +92,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     }
 
     private void testToAbsolutePathImpl(String path) {
-        TruffleFile relativeFile = languageEnv.getTruffleFile(path);
+        TruffleFile relativeFile = languageEnv.getPublicTruffleFile(path);
         Assert.assertFalse(relativeFile.isAbsolute());
         TruffleFile absoluteFile = relativeFile.getAbsoluteFile();
         TruffleFile cwd = languageEnv.getCurrentWorkingDirectory();
@@ -103,23 +103,23 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testGetName() {
-        TruffleFile file = languageEnv.getTruffleFile("/folder/filename");
+        TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename");
         Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getTruffleFile("/filename");
+        file = languageEnv.getPublicTruffleFile("/filename");
         Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getTruffleFile("folder/filename");
+        file = languageEnv.getPublicTruffleFile("folder/filename");
         Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getTruffleFile("filename");
+        file = languageEnv.getPublicTruffleFile("filename");
         Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getTruffleFile("");
+        file = languageEnv.getPublicTruffleFile("");
         Assert.assertEquals("", file.getName());
-        file = languageEnv.getTruffleFile("/");
+        file = languageEnv.getPublicTruffleFile("/");
         Assert.assertNull(file.getName());
     }
 
     @Test
     public void testGetMimeType() throws IOException {
-        TruffleFile file = languageEnv.getTruffleFile("/folder/filename.duplicate");
+        TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename.duplicate");
         String result = file.getMimeType();
         assertNull(result);
         assertEquals(1, BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).resetFindMimeTypeCalled());
