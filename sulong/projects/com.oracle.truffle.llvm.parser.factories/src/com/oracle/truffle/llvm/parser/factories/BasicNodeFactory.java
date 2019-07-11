@@ -1517,7 +1517,7 @@ public class BasicNodeFactory implements NodeFactory {
         if (elementSize == 0) {
             throw new AssertionError(elementType + " has size of 0!");
         }
-        if (elementType instanceof PrimitiveType || elementType instanceof PointerType || elementType instanceof FunctionType) {
+        if (elementType instanceof PrimitiveType || elementType instanceof PointerType || elementType instanceof FunctionType || elementType instanceof VariableBitWidthType) {
             return LLVMArrayLiteralNodeGen.create(arrayValues, elementSize, createMemoryStore(elementType), arrayGetStackSpace);
         } else if (elementType instanceof ArrayType || elementType instanceof StructureType) {
             return LLVMStructArrayLiteralNodeGen.create(arrayValues, createMemMove(), elementSize, arrayGetStackSpace);
@@ -1676,6 +1676,8 @@ public class BasicNodeFactory implements NodeFactory {
             }
         } else if (resolvedType instanceof PointerType || resolvedType instanceof FunctionType) {
             return LLVMPointerStoreNodeGen.create(null, null);
+        } else if (resolvedType instanceof VariableBitWidthType) {
+            return LLVMIVarBitStoreNodeGen.create(null, null);
         }
         throw new AssertionError(resolvedType);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
+import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.TypeCast;
 import com.oracle.truffle.api.dsl.TypeCheck;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBitLarge;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBitSmall;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -82,5 +85,18 @@ public class LLVMTypes {
     @TypeCast(LLVMManagedPointer.class)
     public static LLVMManagedPointer asManagedPointer(Object object) {
         return LLVMManagedPointer.cast(object);
+    }
+
+    // Automatic type profiling for LLVMIVarBitSmall vs. LLVMIVarBitLarge:
+    // The type never changes (it depends on the bit width), so this is always a perfect profile.
+
+    @ImplicitCast
+    public static LLVMIVarBit asIVarBit(LLVMIVarBitSmall small) {
+        return small;
+    }
+
+    @ImplicitCast
+    public static LLVMIVarBit asIVarBit(LLVMIVarBitLarge large) {
+        return large;
     }
 }
