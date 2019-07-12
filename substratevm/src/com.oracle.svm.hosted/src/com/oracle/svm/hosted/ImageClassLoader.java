@@ -311,6 +311,9 @@ public final class ImageClassLoader {
         boolean isHostedOnly = false;
 
         AnnotatedElement cur = clazz.getPackage();
+        if (cur == null) {
+            cur = clazz;
+        }
         do {
             Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
             if (containsHostedOnly(platformsAnnotation)) {
