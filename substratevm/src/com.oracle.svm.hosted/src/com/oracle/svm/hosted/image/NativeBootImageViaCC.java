@@ -58,12 +58,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NativeBootImageViaCC extends NativeBootImage {
 
-    protected final HostedMethod mainEntryPoint;
-
     public NativeBootImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader imageClassLoader) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, imageClassLoader);
-        this.mainEntryPoint = mainEntryPoint;
+                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, null, imageClassLoader);
     }
 
     public NativeImageKind getOutputKind() {
@@ -275,15 +272,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addInputFile(staticLibraryPath.toString());
         }
 
-        addMainEntryPoint(inv);
-
         return inv;
-    }
-
-    protected void addMainEntryPoint(CCLinkerInvocation inv) {
-        if (mainEntryPoint != null) {
-            inv.addSymbolAlias(mainEntryPoint, "main");
-        }
     }
 
     @Override
