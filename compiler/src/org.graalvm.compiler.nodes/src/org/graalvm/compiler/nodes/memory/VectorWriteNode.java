@@ -40,9 +40,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
-import java.util.List;
-
-@NodeInfo(nameTemplate = "VectorWrite#{p#locations/s}", shortName = "VectorWrite", allowedUsageTypes = {InputType.Memory, InputType.Guard})
+@NodeInfo(nameTemplate = "VectorWrite", shortName = "VectorWrite", allowedUsageTypes = {InputType.Memory, InputType.Guard})
 public class VectorWriteNode extends VectorFixedAccessNode implements LIRLowerable, MemoryAccess {
 
     public static final NodeClass<VectorWriteNode> TYPE = NodeClass.create(VectorWriteNode.class);

@@ -35,9 +35,7 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
-import java.util.List;
-
-@NodeInfo(nameTemplate = "VectorRead#{p#locations/s}", shortName = "VectorRead")
+@NodeInfo(nameTemplate = "VectorRead", shortName = "VectorRead")
 public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerable {
 
     public static final NodeClass<VectorReadNode> TYPE = NodeClass.create(VectorReadNode.class);
