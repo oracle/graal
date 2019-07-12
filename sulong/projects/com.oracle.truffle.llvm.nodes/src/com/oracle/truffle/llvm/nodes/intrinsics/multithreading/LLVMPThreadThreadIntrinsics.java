@@ -88,8 +88,7 @@ public class LLVMPThreadThreadIntrinsics {
                 // get return value
                 Object retVal = UtilAccess.getLongObj(ctxRef.get().retValStorage, th);
                 // store return value at ptr
-                // TODO: checkstyle says cast to managed or native pointer
-                LLVMPointer thReturnPtr = (LLVMPointer) threadReturn;
+                LLVMPointer thReturnPtr = LLVMPointer.cast(threadReturn);
                 if (!thReturnPtr.isNull() && retVal != null) {
                     storeNode.executeWithTarget(threadReturn, retVal);
                 }

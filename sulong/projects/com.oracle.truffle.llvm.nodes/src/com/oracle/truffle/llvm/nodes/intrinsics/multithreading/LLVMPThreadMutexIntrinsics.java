@@ -48,6 +48,7 @@ public class LLVMPThreadMutexIntrinsics {
                 if (this.type == MutexType.DEFAULT_NORMAL) {
                     // deadlock according to spec
                     // does this make sense?
+                    // TODO: user warning?
                     while (true) {
                         try {
                             Thread.sleep(Long.MAX_VALUE);
@@ -105,7 +106,7 @@ public class LLVMPThreadMutexIntrinsics {
             }
             // store type in attr var
             if (type == null) {
-                type = new Integer(0);
+                type = 0;
             }
             store.executeWithTarget(attr, type);
             // TODO: return with error if type not in {0, 1, 2}
@@ -129,6 +130,7 @@ public class LLVMPThreadMutexIntrinsics {
         @Child
         LLVMLoadNode read = null;
 
+        // TODO: use pointer instead of object in input params (everywhere)
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object mutex, Object attr, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             if (read == null) {
@@ -140,7 +142,7 @@ public class LLVMPThreadMutexIntrinsics {
             // so the address may never change
             Object mutObj = UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutex);
             int attrValue = 0;
-            if (!((LLVMPointer) attr).isNull()) {
+            if (!(LLVMPointer.cast(attr)).isNull()) {
                 attrValue = (int) read.executeWithTarget(attr);
             }
             Mutex.MutexType mutexType = Mutex.MutexType.DEFAULT_NORMAL;

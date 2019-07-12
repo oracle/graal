@@ -9,7 +9,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 import java.util.concurrent.locks.Condition;
 
@@ -77,6 +76,7 @@ public class LLVMPThreadCondIntrinsics {
             // we can use the address of the native pointer here, bc a cond
             // must only work when using the original variable, not a copy
             // so the address may never change
+            // cond is pointer, where equal works on address
             Object condObj = UtilAccess.getObjObj(ctxRef.get().condStorage, cond);
             if (condObj == null) {
                 UtilAccess.putObjObj(ctxRef.get().condStorage, cond, new Cond());
@@ -88,7 +88,6 @@ public class LLVMPThreadCondIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "cond")
     public abstract static class LLVMPThreadCondBroadcast extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object cond, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             Cond condObj = (Cond) UtilAccess.getObjObj(ctxRef.get().condStorage, cond);
             if (condObj == null) {
@@ -103,7 +102,6 @@ public class LLVMPThreadCondIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "cond")
     public abstract static class LLVMPThreadCondSignal extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object cond, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             Cond condObj = (Cond) UtilAccess.getObjObj(ctxRef.get().condStorage, cond);
             if (condObj == null) {
@@ -119,7 +117,6 @@ public class LLVMPThreadCondIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "mutex")
     public abstract static class LLVMPThreadCondWait extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object cond, Object mutex, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             Cond condObj = (Cond) UtilAccess.getObjObj(ctxRef.get().condStorage, cond);
             LLVMPThreadMutexIntrinsics.Mutex mutexObj = (LLVMPThreadMutexIntrinsics.Mutex) UtilAccess.getObjObj(ctxRef.get().mutexStorage, mutex);

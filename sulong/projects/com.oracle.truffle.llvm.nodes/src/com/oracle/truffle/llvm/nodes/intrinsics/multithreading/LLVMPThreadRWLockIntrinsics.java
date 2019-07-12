@@ -1,6 +1,5 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -10,7 +9,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -62,7 +60,6 @@ public class LLVMPThreadRWLockIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "rwlock")
     public abstract static class LLVMPThreadRWLockDestroy extends LLVMBuiltin {
         @Specialization
-        //+++ @CompilerDirectives.TruffleBoundary
         protected int doIntrinsic(VirtualFrame frame, Object rwlock, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             UtilAccess.removeObjObj(ctxRef.get().rwlockStorage, rwlock);
             return 0;
