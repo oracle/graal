@@ -22,7 +22,7 @@ suite = {
       "packedResource" : True,
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/test-suite-3.2.src.tar.gz",
-        "http://llvm.org/releases/3.2/test-suite-3.2.src.tar.gz",
+        "https://llvm.org/releases/3.2/test-suite-3.2.src.tar.gz",
       ],
       "sha1" : "e370255ca2540bcd66f316fe5b96f459382f3e8a",
     },
@@ -55,9 +55,7 @@ suite = {
       "packedResource" : True,
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz",
-        "http://gd.tuwien.ac.at/gnu/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
-        "ftp://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
-        "http://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
+        "https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
       ],
       "sha1" : "713211883406b3839bdba4a22e7111a0cff5d09b",
     },
