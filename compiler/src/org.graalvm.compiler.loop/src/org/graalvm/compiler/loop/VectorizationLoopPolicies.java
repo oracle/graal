@@ -29,14 +29,20 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.core.common.VectorDescription;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
 import org.graalvm.compiler.nodes.memory.Access;
 import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -53,6 +59,46 @@ public class VectorizationLoopPolicies implements LoopPolicies {
 
     @Override
     public boolean shouldPartiallyUnroll(LoopEx loop, VectorDescription vectorDescription) {
+        // Ensure that we don't unroll invalid loops
+        final LoopBeginNode loopBegin = loop.loopBegin();
+        if (!loop.isCounted()) {
+            loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s isn't counted", loopBegin);
+            return false;
+        }
+
+        // Set original frequency if first call and ensure that frequency high enough
+        final OptionValues options = loop.entryPoint().getOptions();
+        final int unrollFactor = loopBegin.getUnrollFactor();
+        if (unrollFactor == 1) {
+            final double loopFrequency = loopBegin.loopFrequency();
+            if (loopBegin.isSimpleLoop() && loopFrequency < 5.0) {
+                loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s frequency too low %s ", loopBegin, loopFrequency);
+                return false;
+            }
+            loopBegin.setLoopOrigFrequency(loopFrequency);
+        }
+
+        final int maxUnroll = DefaultLoopPolicies.Options.UnrollMaxIterations.getValue(options);
+        if ((maxUnroll != 1 || !loopBegin.isSimpleLoop()) && unrollFactor >= maxUnroll) {
+            loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s unrolled loop is too large %s ", loopBegin, Math.max(1, loop.size() - 1 - loop.loopBegin().phis().count()) * 2);
+            return false;
+        }
+
+        // Will the next unroll fit?
+        if ((int) loopBegin.loopOrigFrequency() < (unrollFactor * 2)) {
+          return false;
+        }
+        // Check whether we're allowed to unroll this loop
+        for (Node node : loop.inside().nodes()) {
+          if (node instanceof ControlFlowAnchorNode) {
+              return false;
+          }
+          if (node instanceof InvokeNode) {
+              return false;
+          }
+        }
+
+        // Unroll by vector length
         final int minWidth = StreamSupport.stream(loop.whole().nodes().
                 filter(NodePredicates.isA(ValueNode.class)).spliterator(), false).
                 filter(x -> x instanceof Access).
@@ -66,7 +112,7 @@ public class VectorizationLoopPolicies implements LoopPolicies {
                 filter(x -> x instanceof PrimitiveStamp).
                 mapToInt(vectorDescription::maxVectorWidth).min().orElse(0);
 
-        return loop.loopBegin().getUnrollFactor() < minWidth;
+        return loopBegin.getUnrollFactor() < minWidth;
     }
 
     @Override
