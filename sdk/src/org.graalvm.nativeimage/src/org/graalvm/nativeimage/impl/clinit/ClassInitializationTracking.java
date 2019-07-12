@@ -89,4 +89,16 @@ public class ClassInitializationTracking {
         }
     }
 
+    /**
+     * This method is called from the instrumented class initialization methods.
+     */
+    @SuppressWarnings({"unused"})
+    public static void reportObjectInstantiated(Object o) {
+        if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(RuntimeClassInitializationSupport.class)) {
+            RuntimeClassInitializationSupport runtimeClassInitialization = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+            runtimeClassInitialization.reportObjectInstantiated(o, trace);
+        }
+    }
+
 }

@@ -82,4 +82,6 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
     List<ClassOrPackageConfig> getClassInitializationConfiguration();
 
     void setConfigurationSealed(boolean sealed);
+
+    String objectInstantiationTraceMessage(Object obj);
 }

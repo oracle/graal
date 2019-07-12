@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.agent;
 
+import static org.graalvm.compiler.bytecode.Bytecodes.ALOAD;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ASM6;
 import static org.objectweb.asm.Opcodes.GETSTATIC;
@@ -80,8 +81,14 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
         MethodVisitor methodVisitor = super.visitMethod(access, name, desc, signature, exceptions);
         boolean isClinitMethod = "<clinit>".equals(name);
         hasClinit = hasClinit || isClinitMethod;
-        if (isClinitMethod && instrumentationSupported()) {
-            return new ClassInitializerMethod(methodVisitor);
+        if (instrumentationSupported()) {
+            if (isClinitMethod) {
+                return new ClassInitializerMethod(methodVisitor);
+            } else if ("<init>".equals(name) && !className.startsWith("com/oracle/svm")) {
+                return new ClassConstructorMethod(methodVisitor);
+            } else {
+                return methodVisitor;
+            }
         } else {
             return methodVisitor;
         }
@@ -116,6 +123,16 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
         return stringBuilder.toString();
     }
 
+    private static void guardedTrackingCall(MethodVisitor mv, String methodName, Runnable pushOperands, String descriptor) {
+        String trackingClass = "org/graalvm/nativeimage/impl/clinit/ClassInitializationTracking";
+        mv.visitFieldInsn(GETSTATIC, trackingClass, "IS_IMAGE_BUILD_TIME", "Z");
+        Label l1 = new Label();
+        mv.visitJumpInsn(IFEQ, l1);
+        pushOperands.run();
+        mv.visitMethodInsn(INVOKESTATIC, trackingClass, methodName, descriptor, false);
+        mv.visitLabel(l1);
+    }
+
     public class ClassInitializerMethod extends MethodVisitor {
         ClassInitializerMethod(MethodVisitor methodVisitor) {
             super(ASM6, methodVisitor);
@@ -123,18 +140,28 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
 
         @Override
         public void visitCode() {
-            String trackingClass = "org/graalvm/nativeimage/impl/clinit/ClassInitializationTracking";
-            mv.visitFieldInsn(GETSTATIC, trackingClass, "IS_IMAGE_BUILD_TIME", "Z");
-            Label l1 = new Label();
-            mv.visitJumpInsn(IFEQ, l1);
-            mv.visitLdcInsn(Type.getType(toInternalName(className)));
-            mv.visitMethodInsn(INVOKESTATIC,
-                            trackingClass,
-                            "reportClassInitialized",
-                            "(Ljava/lang/Class;)V",
-                            false);
-            mv.visitLabel(l1);
+            guardedTrackingCall(mv, "reportClassInitialized", () -> mv.visitLdcInsn(Type.getType(toInternalName(className))), "(Ljava/lang/Class;)V");
             mv.visitCode();
+        }
+
+        @Override
+        public void visitMaxs(int maxStack, int maxLocals) {
+            super.visitMaxs(maxStack == 0 ? 1 : maxStack, maxLocals);
+        }
+    }
+
+    public class ClassConstructorMethod extends MethodVisitor {
+        ClassConstructorMethod(MethodVisitor methodVisitor) {
+            super(ASM6, methodVisitor);
+        }
+
+        @Override
+        public void visitInsn(int opcode) {
+            assert opcode != Opcodes.ARETURN && opcode != Opcodes.IRETURN && opcode != Opcodes.FRETURN && opcode != Opcodes.LRETURN && opcode != Opcodes.DRETURN : "Constructor can only return void";
+            if (opcode == Opcodes.RETURN) {
+                guardedTrackingCall(mv, "reportObjectInstantiated", () -> mv.visitVarInsn(ALOAD, 0), "(Ljava/lang/Object;)V");
+            }
+            super.visitInsn(opcode);
         }
 
         @Override

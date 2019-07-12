@@ -165,10 +165,19 @@ public class ClassInitializationFeature implements Feature {
          * that the user cannot later manually register it as RERUN or RUN_TIME.
          */
         if (obj != null && classInitializationSupport.shouldInitializeAtRuntime(obj.getClass())) {
-            // TODO track all instantiations and write the trace where the object was created.
-            throw new UnsupportedFeatureException("No instances are allowed in the image heap for a class that is initialized at image runtime: " + obj.getClass().getTypeName() +
-                            ". Try marking this class for build-time initialization with " +
-                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") + ".\n");
+            String msg = "No instances of " + obj.getClass().getTypeName() + " are allowed in the image heap as this class should be initialized at image runtime.";
+            if (SubstrateOptions.TraceClassInitialization.getValue()) {
+                msg += classInitializationSupport.objectInstantiationTraceMessage(obj);
+            } else {
+                msg += " To see how this object got instantiated use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+") + ".";
+            }
+
+            msg += "Either mark this class for build-time initialization with " +
+                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
+                            " or use the the information above and " +
+                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-run-time") +
+                            " to prevent its instantiation.\n";
+            throw new UnsupportedFeatureException(msg);
         }
         return obj;
     }

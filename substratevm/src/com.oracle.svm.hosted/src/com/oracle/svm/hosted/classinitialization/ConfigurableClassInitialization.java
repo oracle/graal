@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.classinitialization;
 import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
 
 import java.lang.reflect.Proxy;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -72,6 +74,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      * ground truth about what got initialized during image building.
      */
     private final Map<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
+
+    private static final Map<Object, StackTraceElement[]> instantiatedObjects = Collections.synchronizedMap(new WeakIdentityHashMap<>());
 
     private boolean configurationSealed;
 
@@ -220,7 +224,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     public void initializeAtRunTime(Class<?> clazz, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
         classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RUN_TIME, reason);
-        setKindForSubclasses(clazz, InitKind.RUN_TIME);
+        setSubclassesAsRunTime(clazz);
         checkEagerInitialization(clazz);
 
         if (!UNSAFE.shouldBeInitialized(clazz)) {
@@ -241,7 +245,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
     }
 
-    public String classInitializationTraceMessage(Class<?> clazz) {
+    private String classInitializationTraceMessage(Class<?> clazz) {
         if (ClassInitializationTracking.initializedClasses.containsKey(clazz)) {
             String culprit = null;
             StackTraceElement[] trace = ClassInitializationTracking.initializedClasses.get(clazz);
@@ -263,8 +267,34 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
     }
 
-    public static String classInitializationTrace(Class<?> clazz) {
-        StackTraceElement[] trace = ClassInitializationTracking.initializedClasses.get(clazz);
+    @Override
+    public String objectInstantiationTraceMessage(Object obj) {
+        if (instantiatedObjects.containsKey(obj)) {
+            String culprit = null;
+            StackTraceElement[] trace = instantiatedObjects.get(obj);
+            for (StackTraceElement stackTraceElement : trace) {
+                if (stackTraceElement.getMethodName().equals("<clinit>")) {
+                    culprit = stackTraceElement.getClassName();
+                }
+            }
+            if (culprit != null) {
+                boolean intentional = classInitializationConfiguration.lookupKind(culprit) != InitKind.BUILD_TIME;
+                String action = intentional ? culprit + " initialization was intentionally requested for " + classInitializationConfiguration.lookupReason(culprit)
+                                : culprit + " was unintentionally initialized.";
+                return "Object has been initialized by the " + culprit + " class initializer. " + action;
+            } else {
+                return "Object has been initialized through the following trace:\n" + getTraceString(instantiatedObjects.get(obj));
+            }
+        } else {
+            return "Object has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked.";
+        }
+    }
+
+    private static String classInitializationTrace(Class<?> clazz) {
+        return getTraceString(ClassInitializationTracking.initializedClasses.get(clazz));
+    }
+
+    private static String getTraceString(StackTraceElement[] trace) {
         StringBuilder b = new StringBuilder();
 
         for (int i = ClassInitializationTracking.START_OF_THE_TRACE; i < trace.length; i++) {
@@ -312,11 +342,11 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         forceInitializeHosted(aClass, reason, false);
     }
 
-    private void setKindForSubclasses(Class<?> clazz, InitKind kind) {
+    private void setSubclassesAsRunTime(Class<?> clazz) {
         loader.findSubclasses(clazz, false).stream()
                         .filter(c -> !c.equals(clazz))
                         .filter(c -> !(c.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(c))))
-                        .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), kind, "subtype of " + clazz.getTypeName()));
+                        .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), InitKind.RUN_TIME, "subtype of " + clazz.getTypeName()));
     }
 
     @Override
@@ -329,6 +359,11 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             UserError.guarantee(!shouldInitializeAtRuntime(clazz),
                             "Class " + clazz.getTypeName() + " got initiailized although it should be initialized at run-time.");
         }
+    }
+
+    @Override
+    public void reportObjectInstantiated(Object o, StackTraceElement[] trace) {
+        instantiatedObjects.putIfAbsent(o, trace);
     }
 
     @Override

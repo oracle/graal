@@ -55,4 +55,6 @@ public interface RuntimeClassInitializationSupport {
     void initializeAtBuildTime(Class<?> aClass, String reason);
 
     void reportClassInitialized(Class<?> aClass);
+
+    void reportObjectInstantiated(Object o, StackTraceElement[] trace);
 }
