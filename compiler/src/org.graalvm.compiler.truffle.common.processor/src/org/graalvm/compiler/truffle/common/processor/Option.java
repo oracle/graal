@@ -310,13 +310,15 @@ public class Option {
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print stack trace on assumption invalidation"),
+            .help("Print stack trace on assumption invalidation")
+            .deprecatedBy("TraceAssumptions"),
 
         option("TraceTruffleStackTraceLimit")
             .type("Integer")
             .category("INTERNAL")
             .def("20")
-            .help("Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions"), // COMPILER
+            .help("Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions")
+            .deprecatedBy("TraceStackTraceLimit"), // COMPILER
 
         option("TruffleCompilationStatistics")
             .type("Boolean")

@@ -158,6 +158,12 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print information for splitting decisions.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
 
+    @Option(help = "Print stack trace on assumption invalidation", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceAssumptions = new OptionKey<>(false);
+
+    @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit.getDefaultValue());
+
     // Inlining
 
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
@@ -252,6 +258,8 @@ public final class PolyglotCompilerOptions {
         POLYGLOT_TO_TRUFFLE.put(TraceCompilationPolymorphism, SharedTruffleRuntimeOptions.TraceTruffleCompilationPolymorphism);
         POLYGLOT_TO_TRUFFLE.put(TraceCompilationAST, SharedTruffleRuntimeOptions.TraceTruffleCompilationAST);
         POLYGLOT_TO_TRUFFLE.put(TraceCompilationCallTree, SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree);
+        POLYGLOT_TO_TRUFFLE.put(TraceAssumptions, SharedTruffleRuntimeOptions.TraceTruffleAssumptions);
+        POLYGLOT_TO_TRUFFLE.put(TraceStackTraceLimit, SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit);
 
         POLYGLOT_TO_TRUFFLE.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
         POLYGLOT_TO_TRUFFLE.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
