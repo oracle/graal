@@ -40,10 +40,7 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -79,7 +76,6 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.util.Pack;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.meta.JavaKind;
 
