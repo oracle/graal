@@ -247,7 +247,7 @@ public abstract class PartialEvaluator {
                 CoreProviders baseContext = providers;
                 HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
-                fastPartialEvaluation(compilable, inliningPlan, graph, baseContext, tierContext);
+                fastPartialEvaluation(compilable, inliningPlan, graph, baseContext, tierContext, handler);
 
                 if (cancellable != null && cancellable.isCancelled()) {
                     return null;
@@ -532,7 +532,7 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings({"try", "unused"})
-    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext) {
+    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext, PerformanceInformationHandler handler) {
         DebugContext debug = graph.getDebug();
         doGraphPE(compilable, graph, tierContext, inliningDecision);
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After Partial Evaluation");
@@ -571,7 +571,7 @@ public abstract class PartialEvaluator {
 
         graph.maybeCompress();
 
-        PerformanceInformationHandler.reportPerformanceWarnings(compilable, graph);
+        handler.reportPerformanceWarnings(compilable, graph);
     }
 
     protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {
@@ -717,7 +717,7 @@ public abstract class PartialEvaluator {
         }
 
         @SuppressWarnings("try")
-        static void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
+        void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
             if (!isEnabled()) {
                 return;
             }
@@ -762,7 +762,7 @@ public abstract class PartialEvaluator {
                 }
             }
 
-            if (instance.get().hasWarnings() && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) {
+            if (hasWarnings() && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) {
                 throw new AssertionError("Performance warning detected and is fatal.");
             }
         }
