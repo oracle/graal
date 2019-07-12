@@ -214,7 +214,7 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
         return [retCode, myStdOut.data]
 
     def prepare_env(self, env):
-        env['CFLAGS'] = ' '.join(self.options + _env_flags + ['-lm', '-lgmp'])
+        env['CFLAGS'] = ' '.join(self.options + _env_flags)
         env['CC'] = self.c_compiler_exe()
         return env
 
