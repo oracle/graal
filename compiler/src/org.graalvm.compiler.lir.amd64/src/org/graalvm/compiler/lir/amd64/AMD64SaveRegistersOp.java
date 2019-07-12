@@ -52,14 +52,13 @@ public class AMD64SaveRegistersOp extends SaveRegistersOp {
      * @param savedRegisters the registers saved by this operation which may be subject to
      *            {@linkplain #remove(EconomicSet) pruning}
      * @param savedRegisterLocations the slots to which the registers are saved
-     * @param supportsRemove determines if registers can be {@linkplain #remove(EconomicSet) pruned}
      */
-    public AMD64SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
-        super(TYPE, savedRegisters, savedRegisterLocations, supportsRemove);
+    public AMD64SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations) {
+        super(TYPE, savedRegisters, savedRegisterLocations);
     }
 
-    protected AMD64SaveRegistersOp(LIRInstructionClass<AMD64VectorMove.SaveRegistersOp> type, Register[] savedRegisters, AllocatableValue[] slots, boolean supportsRemove) {
-        super(type, savedRegisters, slots, supportsRemove);
+    protected AMD64SaveRegistersOp(LIRInstructionClass<AMD64VectorMove.SaveRegistersOp> type, Register[] savedRegisters, AllocatableValue[] slots) {
+        super(type, savedRegisters, slots);
     }
 
     protected void saveRegister(CompilationResultBuilder crb, AMD64MacroAssembler masm, StackSlot result, Register input) {

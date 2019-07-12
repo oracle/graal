@@ -492,14 +492,11 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     protected abstract EconomicSet<Register> translateToCallerRegisters(EconomicSet<Register> calleeRegisters);
 
     /**
-     * Updates a given stub with respect to the registers it destroys.
-     * <p>
-     * Any entry in {@code calleeSaveInfo} that {@linkplain SaveRegistersOp#supportsRemove()
-     * supports} pruning will have the
-     * {@link #gatherDestroyedCallerRegisters(HotSpotLIRGenerationResult) computed destroyed
-     * registers} {@linkplain SaveRegistersOp#remove(EconomicSet) removed} as these registers are
-     * declared as temporaries in the stub's {@linkplain ForeignCallLinkage linkage} (and thus will
-     * be saved by the stub's caller).
+     * Updates a given stub with respect to the registers it destroys by
+     * {@link #gatherDestroyedCallerRegisters(HotSpotLIRGenerationResult) computing the destroyed
+     * registers} and removing those registers from the {@linkplain SaveRegistersOp SaveRegistersOp}
+     * as these registers are declared as temporaries in the stub's {@linkplain ForeignCallLinkage
+     * linkage} (and thus will be saved by the stub's caller).
      *
      * @param stub the stub to update
      * @param gen the HotSpotLIRGenerationResult being emitted
@@ -513,9 +510,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         MapCursor<LIRFrameState, SaveRegistersOp> cursor = calleeSaveInfo.getEntries();
         while (cursor.advance()) {
             SaveRegistersOp save = cursor.getValue();
-            if (save.supportsRemove()) {
-                save.remove(destroyedRegisters);
-            }
+            save.remove(destroyedRegisters);
             if (cursor.getKey() != LIRFrameState.NO_STATE) {
                 cursor.getKey().debugInfo().setCalleeSaveInfo(save.getMap(frameMap));
             }

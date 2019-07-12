@@ -318,31 +318,16 @@ public class StandardOp {
         @Def(STACK) protected final AllocatableValue[] slots;
 
         /**
-         * Specifies if {@link #remove(EconomicSet)} should have an effect.
-         */
-        protected final boolean supportsRemove;
-
-        /**
          *
          * @param savedRegisters the registers saved by this operation which may be subject to
          *            {@linkplain #remove(EconomicSet) pruning}
          * @param savedRegisterLocations the slots to which the registers are saved
-         * @param supportsRemove determines if registers can be {@linkplain #remove(EconomicSet)
-         *            pruned}
          */
-        protected SaveRegistersOp(LIRInstructionClass<? extends SaveRegistersOp> c, Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
+        protected SaveRegistersOp(LIRInstructionClass<? extends SaveRegistersOp> c, Register[] savedRegisters, AllocatableValue[] savedRegisterLocations) {
             super(c);
             assert Arrays.asList(savedRegisterLocations).stream().allMatch(LIRValueUtil::isVirtualStackSlot);
             this.savedRegisters = savedRegisters;
             this.slots = savedRegisterLocations;
-            this.supportsRemove = supportsRemove;
-        }
-
-        /**
-         * Determines if the {@link #remove(EconomicSet)} operation is supported for this object.
-         */
-        public boolean supportsRemove() {
-            return supportsRemove;
         }
 
         /**
@@ -350,13 +335,8 @@ public class StandardOp {
          *
          * @param doNotSave registers that should not be saved by this operation
          * @return the number of registers pruned
-         * @throws UnsupportedOperationException if removal is not {@linkplain #supportsRemove()
-         *             supported}
          */
         public int remove(EconomicSet<Register> doNotSave) {
-            if (!supportsRemove) {
-                throw new UnsupportedOperationException();
-            }
             return prune(doNotSave, savedRegisters);
         }
 

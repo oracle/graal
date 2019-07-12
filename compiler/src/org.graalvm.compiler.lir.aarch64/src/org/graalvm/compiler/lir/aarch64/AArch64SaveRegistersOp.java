@@ -50,10 +50,9 @@ public class AArch64SaveRegistersOp extends SaveRegistersOp {
      * @param savedRegisters the registers saved by this operation which may be subject to
      *            {@linkplain #remove(EconomicSet) pruning}
      * @param savedRegisterLocations the slots to which the registers are saved
-     * @param supportsRemove determines if registers can be {@linkplain #remove(EconomicSet) pruned}
      */
-    public AArch64SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations, boolean supportsRemove) {
-        super(TYPE, savedRegisters, savedRegisterLocations, supportsRemove);
+    public AArch64SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] savedRegisterLocations) {
+        super(TYPE, savedRegisters, savedRegisterLocations);
     }
 
     protected void saveRegister(CompilationResultBuilder crb, AArch64MacroAssembler masm, StackSlot result, Register input) {
