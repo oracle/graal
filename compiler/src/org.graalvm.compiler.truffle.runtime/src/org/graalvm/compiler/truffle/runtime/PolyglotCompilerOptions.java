@@ -121,7 +121,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold.getDefaultValue());
 
-    // Faild compilation behavior
+    // Failed compilation behavior
 
     @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(true);
@@ -142,6 +142,15 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Print information for compilation queuing.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceCompilationDetails = new OptionKey<>(false);
+
+    @Option(help = "Print all polymorphic and generic nodes after each compilation", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceCompilationPolymorphism = new OptionKey<>(false);
+
+    @Option(help = "Print the entire AST after each compilation", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceCompilationAST = new OptionKey<>(false);
+
+    @Option(help = "Print the inlined call tree for each compiled method", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraceCompilationCallTree = new OptionKey<>(false);
 
     @Option(help = "Print information for inlining decisions.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
@@ -240,6 +249,10 @@ public final class PolyglotCompilerOptions {
 
         POLYGLOT_TO_TRUFFLE.put(TraceCompilation, SharedTruffleRuntimeOptions.TraceTruffleCompilation);
         POLYGLOT_TO_TRUFFLE.put(TraceCompilationDetails, SharedTruffleRuntimeOptions.TraceTruffleCompilationDetails);
+        POLYGLOT_TO_TRUFFLE.put(TraceCompilationPolymorphism, SharedTruffleRuntimeOptions.TraceTruffleCompilationPolymorphism);
+        POLYGLOT_TO_TRUFFLE.put(TraceCompilationAST, SharedTruffleRuntimeOptions.TraceTruffleCompilationAST);
+        POLYGLOT_TO_TRUFFLE.put(TraceCompilationCallTree, SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree);
+
         POLYGLOT_TO_TRUFFLE.put(TraceInlining, SharedTruffleRuntimeOptions.TraceTruffleInlining);
         POLYGLOT_TO_TRUFFLE.put(TraceSplitting, SharedTruffleRuntimeOptions.TraceTruffleSplitting);
 

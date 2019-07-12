@@ -247,19 +247,22 @@ public class Option {
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print all polymorphic and generic nodes after each compilation"),
+            .help("Print all polymorphic and generic nodes after each compilation")
+            .deprecatedBy("TraceCompilationPolymorphism"),
 
         option("TraceTruffleCompilationAST")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print the entire AST after each compilation"),
+            .help("Print the entire AST after each compilation")
+            .deprecatedBy("TraceCompilationAST"),
 
         option("TraceTruffleCompilationCallTree")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print the inlined call tree for each compiled method"),
+            .help("Print the inlined call tree for each compiled method")
+            .deprecatedBy("TraceCompilationCallTree"),
 
         option("TruffleCompilationExceptionsAreFatal")
             .type("Boolean")
