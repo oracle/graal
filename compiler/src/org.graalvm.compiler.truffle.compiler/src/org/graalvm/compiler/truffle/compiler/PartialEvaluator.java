@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.compiler;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit;
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleFunctionInlining;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
@@ -327,24 +326,22 @@ public abstract class PartialEvaluator {
             }
             assert !builder.parsingIntrinsic();
 
-            if (TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
-                if (original.equals(callDirectMethod)) {
-                    ValueNode arg0 = arguments[1];
-                    if (!arg0.isConstant()) {
-                        GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
-                    }
-                    if (!graphTooBigReported && graph.getNodeCount() > inliningNodeLimit) {
-                        graphTooBigReported = true;
-                        PerformanceInformationHandler.reportGraphIsTooBig(graph, inliningNodeLimit);
-                        return DO_NOT_INLINE_WITH_EXCEPTION;
-                    }
-                    TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), (JavaConstant) arg0.asConstant());
-                    if (decision != null && decision.shouldInline()) {
-                        inlining.push(decision);
-                        JavaConstant assumption = decision.getNodeRewritingAssumption();
-                        builder.getAssumptions().record(new TruffleAssumption(assumption));
-                        return createStandardInlineInfo(callInlinedMethod);
-                    }
+            if (original.equals(callDirectMethod)) {
+                ValueNode arg0 = arguments[1];
+                if (!arg0.isConstant()) {
+                    GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                }
+                if (!graphTooBigReported && graph.getNodeCount() > inliningNodeLimit) {
+                    graphTooBigReported = true;
+                    PerformanceInformationHandler.reportGraphIsTooBig(graph, inliningNodeLimit);
+                    return DO_NOT_INLINE_WITH_EXCEPTION;
+                }
+                TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), (JavaConstant) arg0.asConstant());
+                if (decision != null && decision.shouldInline()) {
+                    inlining.push(decision);
+                    JavaConstant assumption = decision.getNodeRewritingAssumption();
+                    builder.getAssumptions().record(new TruffleAssumption(assumption));
+                    return createStandardInlineInfo(callInlinedMethod);
                 }
             }
 

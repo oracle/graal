@@ -205,8 +205,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public TruffleInlining createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
-        TruffleInliningPolicy policy = task != null && task.isLastTier() ? TruffleInliningPolicy.getInliningPolicy() : TruffleInliningPolicy.getNoInliningPolicy();
-        return new TruffleInlining((OptimizedCallTarget) compilable, policy);
+        final OptimizedCallTarget sourceTarget = (OptimizedCallTarget) compilable;
+        final TruffleInliningPolicy policy;
+        if (task != null && task.isLastTier() && sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining)) {
+            policy = TruffleInliningPolicy.getInliningPolicy();
+        } else {
+            policy = TruffleInliningPolicy.getNoInliningPolicy();
+        }
+        return new TruffleInlining(sourceTarget, policy);
     }
 
     @Override
