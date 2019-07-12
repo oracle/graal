@@ -25,6 +25,10 @@
 
 package org.graalvm.compiler.core.amd64;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
@@ -117,34 +121,32 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPAND;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPMULLD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPOR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSUBD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSUBQ;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPMULLD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPAND;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPOR;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
@@ -160,10 +162,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
