@@ -82,4 +82,8 @@ public final class ModuleSupport {
             Modules.addOpensToAllUnnamed(module, pkg);
         }
     }
+
+    public static String getModuleName(Class<?> clazz) {
+        return clazz.getModule().getName();
+    }
 }

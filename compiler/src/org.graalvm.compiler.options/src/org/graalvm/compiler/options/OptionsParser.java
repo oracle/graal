@@ -70,9 +70,9 @@ public class OptionsParser {
         return ServiceLoader.load(OptionDescriptors.class, loader);
     }
 
-    public static void setCachedOptionDescriptors(List<OptionDescriptors> cachedOptionDescriptors) {
+    public static void setCachedOptionDescriptors(List<OptionDescriptors> list) {
         assert IS_BUILDING_NATIVE_IMAGE : "Used to pre-initialize the option descriptors during native image generation";
-        OptionsParser.cachedOptionDescriptors = cachedOptionDescriptors;
+        OptionsParser.cachedOptionDescriptors = list;
     }
 
     /**

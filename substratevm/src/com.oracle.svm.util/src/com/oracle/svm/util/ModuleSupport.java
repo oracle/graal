@@ -74,4 +74,13 @@ public final class ModuleSupport {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
     }
+
+    /**
+     * Gets the name of the module containing {@code clazz}.
+     */
+    @SuppressWarnings("unused")
+    public static String getModuleName(Class<?> clazz) {
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        return null;
+    }
 }
