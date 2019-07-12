@@ -298,7 +298,7 @@ public final class StaticObject implements TruffleObject {
     // when kind is known beforehand.
 
     private static long getPrimitiveFieldIndex(int index) {
-        return Unsafe.ARRAY_LONG_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
     }
 
     public final boolean getBooleanField(Field field) {
