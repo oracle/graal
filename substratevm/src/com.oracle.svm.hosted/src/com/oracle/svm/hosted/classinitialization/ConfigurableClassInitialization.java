@@ -41,6 +41,7 @@ import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
@@ -246,6 +247,10 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     private String classInitializationTraceMessage(Class<?> clazz) {
+        if (!TraceClassInitialization.getValue()) {
+            return "To see why this class got initialized enable use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+");
+        }
+
         if (ClassInitializationTracking.initializedClasses.containsKey(clazz)) {
             String culprit = null;
             StackTraceElement[] trace = ClassInitializationTracking.initializedClasses.get(clazz);
@@ -265,10 +270,14 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         } else {
             return clazz.getTypeName() + " has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked.";
         }
+
     }
 
     @Override
     public String objectInstantiationTraceMessage(Object obj) {
+        if (!TraceClassInitialization.getValue()) {
+            return " To see how this object got instantiated use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+") + ".";
+        }
         if (instantiatedObjects.containsKey(obj)) {
             String culprit = null;
             StackTraceElement[] trace = instantiatedObjects.get(obj);

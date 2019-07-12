@@ -166,12 +166,7 @@ public class ClassInitializationFeature implements Feature {
          */
         if (obj != null && classInitializationSupport.shouldInitializeAtRuntime(obj.getClass())) {
             String msg = "No instances of " + obj.getClass().getTypeName() + " are allowed in the image heap as this class should be initialized at image runtime.";
-            if (SubstrateOptions.TraceClassInitialization.getValue()) {
-                msg += classInitializationSupport.objectInstantiationTraceMessage(obj);
-            } else {
-                msg += " To see how this object got instantiated use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+") + ".";
-            }
-
+            msg += classInitializationSupport.objectInstantiationTraceMessage(obj);
             msg += "Either mark this class for build-time initialization with " +
                             SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
                             " or use the the information above and " +
