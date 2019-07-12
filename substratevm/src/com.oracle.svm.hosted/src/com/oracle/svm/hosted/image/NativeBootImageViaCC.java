@@ -60,7 +60,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     public NativeBootImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, null, imageClassLoader);
+        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
     }
 
     public NativeImageKind getOutputKind() {
