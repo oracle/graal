@@ -40,6 +40,10 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -75,6 +79,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.util.Pack;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -141,21 +146,26 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         private int dataSize(ValueNode node) {
-            return node.stamp(view).getStackKind().getByteCount();
+            return dataSize(node.stamp(view));
         }
 
         private int dataSize(LIRLowerableAccess node) {
-            return node.getAccessStamp().getStackKind().getByteCount();
+            return dataSize(node.getAccessStamp());
+        }
+
+        private int dataSize(Stamp stamp) {
+            return stamp.javaType(context.getMetaAccess()).getJavaKind().getByteCount();
         }
 
         /**
          * Get the alignment of a vector memory reference.
          */
         private <T extends FixedAccessNode & LIRLowerableAccess> int memoryAlignment(T access, int ivAdjust) {
-            final JavaKind accessJavaKind = access.getAccessStamp().getStackKind();
-            final int byteCount = accessJavaKind.getByteCount();
+            final Stamp stamp = access.getAccessStamp();
+            final JavaKind accessJavaKind = stamp.javaType(context.getMetaAccess()).getJavaKind();
+            final int byteCount = dataSize(stamp);
             // TODO: velt may be different to type at address
-            final int vectorWidthInBytes = byteCount * context.getTargetProvider().getVectorDescription().maxVectorWidth(access.getAccessStamp());
+            final int vectorWidthInBytes = byteCount * context.getTargetProvider().getVectorDescription().maxVectorWidth(stamp);
 
             // If each vector element is less than 2 bytes, no need to vectorize
             if (vectorWidthInBytes < 2) {
@@ -307,6 +317,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return hasNoPath(shallow, deep);
         }
 
+        private Stamp getStamp(ValueNode node) {
+            return (node instanceof WriteNode ? ((WriteNode) node).value() : node).stamp(view);
+        }
+
         /**
          * Ensure that there is no data path between left and right. This version operates on Nodes,
          * avoiding the need to check for FAN at the callsite. Pre: left and right are isomorphic
@@ -329,10 +343,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @return Boolean indicating whether s1 is immediately before s2 in memory
          */
         private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2) {
-            final JavaKind s1k = s1 instanceof WriteNode ? ((WriteNode) s1).value().getStackKind() : s1.getStackKind();
-            final JavaKind s2k = s2 instanceof WriteNode ? ((WriteNode) s2).value().getStackKind() : s2.getStackKind();
-
-            return adjacent(s1, s2, s1k, s2k);
+            return adjacent(s1, s2, getStamp(s1), getStamp(s2));
         }
 
         /**
@@ -342,13 +353,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          *
          * @param s1 First FixedAccessNode to check
          * @param s2 Second FixedAccessNode to check
-         * @param s1k JavaKind of the first FixedAccessNode
-         * @param s2k JavaKind of the second FixedAccessNode
+         * @param s1s Stamp of the first FixedAccessNode
+         * @param s2s Stamp of the second FixedAccessNode
          * @return Boolean indicating whether s1 is immediately before s2 in memory
          */
-        private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2, JavaKind s1k, JavaKind s2k) {
+        private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2, Stamp s1s, Stamp s2s) {
             final AddressNode s1a = s1.getAddress();
             final AddressNode s2a = s2.getAddress();
+
+            final JavaKind s1k = s1s.javaType(context.getMetaAccess()).getJavaKind();
+            final JavaKind s2k = s2s.javaType(context.getMetaAccess()).getJavaKind();
 
             // Only use superword on primitives
             if (!s1k.isPrimitive() || !s2k.isPrimitive()) {
@@ -569,7 +583,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     StreamSupport.stream(currentBlock.getNodes().spliterator(), false).
                             filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess).
                             map(x -> (FixedAccessNode & LIRLowerableAccess) x).
-                            filter(x -> x.getAccessStamp().getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).
+                            // using stack kind here as this works with MetaspacePointerStamp and others
+                            filter(x -> getStamp(x).getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).
                             collect(Collectors.toList());
 
             // TODO: Align relative to best reference rather than setting alignment for all
