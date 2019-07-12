@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import java.util.List;
+
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
