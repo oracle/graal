@@ -654,7 +654,7 @@ public abstract class PartialEvaluator {
         }
 
         public static boolean isEnabled() {
-            return TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
+            return TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal); // TODO
         }
 
         public static void logPerformanceWarning(String callTargetName, List<? extends Node> locations, String details, Map<String, Object> properties) {
@@ -677,7 +677,7 @@ public abstract class PartialEvaluator {
             if (locations == null || locations.isEmpty()) {
                 return;
             }
-            int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit);
+            int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit); // TODO
             if (limit <= 0) {
                 return;
             }
@@ -762,7 +762,7 @@ public abstract class PartialEvaluator {
                 }
             }
 
-            if (hasWarnings() && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) {
+            if (hasWarnings() && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) { // TODO
                 throw new AssertionError("Performance warning detected and is fatal.");
             }
         }
