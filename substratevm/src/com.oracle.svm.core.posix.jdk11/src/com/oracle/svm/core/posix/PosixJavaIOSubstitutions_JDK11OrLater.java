@@ -34,9 +34,13 @@ import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.posix.headers.Limits;
 import com.oracle.svm.core.posix.headers.Unistd;
 
+/** Dummy class to have a class with the file's name. */
+public final class PosixJavaIOSubstitutions_JDK11OrLater {
+}
+
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @TargetClass(className = "java.io.UnixFileSystem", onlyWith = JDK11OrLater.class)
-final class Target_java_io_UnixFileSystem {
+final class Target_java_io_UnixFileSystem_JDK11OrLater {
 
     /* { Do not re-format commented out C code. @formatter:off */
     //   514  JNIEXPORT jlong JNICALL
