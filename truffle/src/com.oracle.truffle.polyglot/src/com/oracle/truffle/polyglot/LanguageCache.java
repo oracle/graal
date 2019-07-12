@@ -67,6 +67,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
 import java.util.WeakHashMap;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
+import java.security.CodeSource;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
@@ -250,9 +251,37 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
         Map<String, LanguageCache> cacheToId = new HashMap<>();
         for (LanguageCache languageCache : caches) {
-            cacheToId.put(languageCache.getId(), languageCache);
+            LanguageCache prev = cacheToId.put(languageCache.getId(), languageCache);
+            if (prev != null && (!prev.getClassName().equals(languageCache.getClassName()) || loadUninitialized(prev) != loadUninitialized(languageCache))) {
+                String message = String.format("Duplicate language id %s. First language [%s]. Second language [%s].",
+                                languageCache.getId(),
+                                formatLanguageLocation(prev),
+                                formatLanguageLocation(languageCache));
+                throw new IllegalStateException(message);
+            }
         }
         return cacheToId;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Class<? extends TruffleLanguage<?>> loadUninitialized(LanguageCache cache) {
+        try {
+            return (Class<? extends TruffleLanguage<?>>) Class.forName(cache.getClassName(), false, cache.loader);
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("Cannot load language " + cache.getName() + ". Language implementation class " + cache.getClassName() + " failed to load.", e);
+        }
+    }
+
+    private static String formatLanguageLocation(LanguageCache languageCache) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Name ").append(languageCache.getName()).append(", ");
+        sb.append("Version ").append(languageCache.getVersion()).append(", ");
+        sb.append("Language class ").append(languageCache.getClassName());
+        CodeSource source = languageCache.getLanguageClass().getProtectionDomain().getCodeSource();
+        if (source != null) {
+            sb.append(", Loaded from " + source.getLocation());
+        }
+        return sb.toString();
     }
 
     private static void collectLanguages(ClassLoader loader, List<LanguageCache> list) {
