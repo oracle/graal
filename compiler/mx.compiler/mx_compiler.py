@@ -1137,6 +1137,37 @@ def create_archive(srcdir, arcpath, prefix):
             add(arc, f, arcname)
     arc.close()
 
+def jlink_graaljdk(jdk, dst_jdk, module_dists):
+    """
+    Uses jlink from `jdk` to create a new JDK image in `dst_jdk` with the Graal modules and
+    their dependencies add to the JDK jimage, replacing any existing modules of the same name.
+    """
+    jimage = join(jdk.home, 'lib', 'modules')
+    if not os.path.isfile(jimage):
+        mx.abort('Cannot make a Graal JDK based on ' + jdk.home + ' since ' + jimage + ' is missing')
+
+    out = mx.LinesOutputCapture()
+    mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=len)
+    jvmci_enabled_default = any('EnableJVMCI' in line and 'true' in line for line in out.lines)
+
+    modules = [as_java_module(dist, jdk) for dist in module_dists]
+
+    jlink = [mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))]
+    if jvmci_enabled_default:
+        jlink.append('-J-XX:-EnableJVMCI')
+    all_modules = set(list(jdk.get_modules()) + modules)
+    jlink.append('--add-modules=' + ','.join(sorted([m.name for m in all_modules])))
+    jlink.append('--module-path=' + os.pathsep.join((m.jarpath for m in modules)))
+    jlink.append('--output=' + dst_jdk)
+    mx.run(jlink)
+
+    jvmci_dir = mx.ensure_dir_exists(join(dst_jdk, 'lib', 'jvmci'))
+    with open(join(jvmci_dir, 'native-image-modules.list'), 'w') as fp:
+        print('# The modules in the JDK whose resources native-image needs to process', file=fp)
+        for m in modules:
+            print(m.name, file=fp)
+    return jvmci_enabled_default
+
 def makegraaljdk(args):
     """make a JDK with Graal as the default top level JIT"""
     parser = ArgumentParser(prog='mx makegraaljdk')
@@ -1155,11 +1186,8 @@ def makegraaljdk(args):
         else:
             mx.abort('Use --force to overwrite existing directory ' + dstJdk)
 
-    out = mx.LinesOutputCapture()
-    err = mx.LinesOutputCapture()
-    mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=err)
-
     if isJDK8:
+        jvmci_enabled_default = True
         javaHomeDir = join(dstJdk, 'jre')
         if not args.overlay:
             srcJdk = jdk.home
@@ -1174,47 +1202,10 @@ def makegraaljdk(args):
         javaHomeDir = dstJdk
         if args.overlay:
             mx.abort('The --overlay option is only supported on JDK 8')
-
-        explodedModules = join(jdk.home, 'modules')
-        if os.path.isdir(explodedModules):
-            mx.abort('Cannot make a Graal JDK based on ' + jdk.home + ' since it appears to be a developer build with exploded modules')
-
-        jimage = join(jdk.home, 'lib', 'modules')
-        if not os.path.isfile(jimage):
-            mx.abort('Cannot make a Graal JDK based on ' + jdk.home + ' since ' + jimage + ' is missing')
-
-        jvmciEnabledByDefault = any('EnableJVMCI' in line and 'true' in line for line in out.lines)
-        if not jvmciEnabledByDefault:
-            mx.abort('Cannot make a Graal JDK based on ' + jdk.home + ' since -XX:+EnableJVMCI is not the default')
-
-        deployedDists = [entry.dist() for entry in _jvmci_classpath] + \
+        module_dists = [entry.dist() for entry in _jvmci_classpath] + \
                         [e for e in _bootclasspath_appends if e.isJARDistribution()]
-        _check_using_latest_jars(deployedDists)
-        deployedModules = [as_java_module(dist, jdk) for dist in deployedDists]
-
-        # Set or update module path to include Graal and its dependencies as modules
-        jdkModuleNames = frozenset([m.name for m in jdk.get_modules()])
-        graalModulepath = []
-        graalUpgrademodulepath = []
-
-        def _addToModulepath(modules):
-            for m in modules:
-                if m.jarpath:
-                    modulepath = graalModulepath if m.name not in jdkModuleNames else graalUpgrademodulepath
-                    if m not in modulepath:
-                        modulepath.append(m)
-
-        for deployedModule in deployedModules:
-            _addToModulepath(deployedModule.modulepath)
-            _addToModulepath([deployedModule])
-
-        jlink = [mx.exe_suffix(join(jdk.home, 'bin', 'jlink')), '-J-XX:-EnableJVMCI']
-        jlink.append('--add-modules=' + ','.join(list(jdkModuleNames) + [m.name for m in graalModulepath + graalUpgrademodulepath]))
-        jlink.append('--module-path=' + os.pathsep.join([m.jarpath for m in graalModulepath + graalUpgrademodulepath]))
-        jlink.append('--output=' + dstJdk)
-
-        mx.log('Creating {} from {} with jlink'.format(dstJdk, jdk.home))
-        mx.run(jlink)
+        _check_using_latest_jars(module_dists)
+        jvmci_enabled_default = jlink_graaljdk(jdk, dstJdk, module_dists)
 
     bootDir = mx.ensure_dir_exists(join(javaHomeDir, 'lib', 'boot'))
     truffleDir = mx.ensure_dir_exists(join(javaHomeDir, 'lib', 'truffle'))
@@ -1272,9 +1263,11 @@ def makegraaljdk(args):
             if exists(candidate):
                 mapFiles.add(candidate)
 
+    out = mx.LinesOutputCapture()
+    mx.run([jdk.java, '-version'], err=out)
     line = None
     pattern = re.compile(r'(.* )(?:Server|Graal) VM \(build.*')
-    for line in err.lines:
+    for line in out.lines:
         m = pattern.match(line)
         if m:
             with open(join(libjvmDir, 'vm.properties'), 'wb') as fp:
@@ -1286,19 +1279,20 @@ def makegraaljdk(args):
             line = True
             break
     if line is not True:
-        mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(err.lines)))
+        mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
     exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
     if args.license:
         shutil.copy(args.license, join(dstJdk, 'LICENSE'))
     if args.bootstrap:
         with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
-            mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
+            select_graal = [] if jvmci_enabled_default else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
+            mx.run([exe] + select_graal + ['-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
     if args.archive:
         mx.log('Archiving {}'.format(args.archive))
         create_archive(dstJdk, args.archive, basename(args.dest) + '/')
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
+_graalvm_component = mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
     name='GraalVM compiler',
     short_name='cmp',
@@ -1317,8 +1311,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
     ],
+    boot_jars=[
+        'sdk:GRAAL_SDK',
+        'truffle:TRUFFLE_API',
+    ],
     graal_compiler='graal',
-))
+)
+mx_sdk.register_graalvm_component(_graalvm_component)
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
@@ -1341,7 +1340,7 @@ def mx_post_parse_cmd_line(opts):
     mx.add_ide_envvar('JVMCI_VERSION_CHECK')
     for dist in _suite.dists:
         dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
-    add_bootclasspath_append(mx.distribution('sdk:GRAAL_SDK'))
-    add_bootclasspath_append(mx.distribution('truffle:TRUFFLE_API'))
+    for boot_jar in _graalvm_component.boot_jars:
+        add_bootclasspath_append(mx.distribution(boot_jar))
     global _vm_prefix
     _vm_prefix = opts.vm_prefix

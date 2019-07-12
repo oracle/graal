@@ -1167,52 +1167,8 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def build(self):
         jdk = _get_jdk()
-        explodedModules = join(jdk.home, 'modules')
-        if os.path.isdir(explodedModules):
-            mx.abort('Cannot make a GraalVM based on ' + jdk.home + ' since it appears to be a developer build with exploded modules')
-
-        jimage = join(jdk.home, 'lib', 'modules')
-        if not os.path.isfile(jimage):
-            mx.abort('Cannot make a GraalVM based on ' + jdk.home + ' since ' + jimage + ' is missing')
-
-        out = mx.LinesOutputCapture()
-        err = mx.LinesOutputCapture()
-        mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=err)
-        jvmciEnabledByDefault = any('EnableJVMCI' in line and 'true' in line for line in out.lines)
-        if not jvmciEnabledByDefault:
-            mx.abort('Cannot make a GraalVM based on ' + jdk.home + ' since -XX:+EnableJVMCI is not the default')
-
-        deployedDists = self.subject.deps
-        deployedModules = [as_java_module(dist, jdk) for dist in deployedDists]
-
-        jdkModuleNames = frozenset([m.name for m in jdk.get_modules()])
-        graalModulepath = []
-        graalUpgrademodulepath = []
-
-        def _addToModulepath(modules):
-            for m in modules:
-                if m.jarpath:
-                    modulepath = graalModulepath if m.name not in jdkModuleNames else graalUpgrademodulepath
-                    if m not in modulepath:
-                        modulepath.append(m)
-
-        for deployedModule in deployedModules:
-            _addToModulepath(deployedModule.modulepath)
-            _addToModulepath([deployedModule])
-
-        jlink = [mx.exe_suffix(join(jdk.home, 'bin', 'jlink')), '-J-XX:-EnableJVMCI']
-        jlink.append('--add-modules=' + ','.join(list(jdkModuleNames) + [m.name for m in graalModulepath + graalUpgrademodulepath]))
-        jlink.append('--module-path=' + os.pathsep.join([m.jarpath for m in graalModulepath + graalUpgrademodulepath]))
-        jlink.append('--output=' + self.subject.output_directory())
-        mx.run(jlink)
-
-        jvmci_dir = mx.ensure_dir_exists(join(self.subject.output_directory(), 'lib', 'jvmci'))
-        with open(join(jvmci_dir, 'native-image-modules.list'), 'w') as fp:
-            print('# The modules in the jimage that native-image needs to process', file=fp)
-            for m in graalModulepath:
-                print(m.name, file=fp)
-            for m in graalUpgrademodulepath:
-                print(m.name, file=fp)
+        import mx_compiler # If we get here, the compiler suite has been imported
+        mx_compiler.jlink_graaljdk(jdk, self.subject.output_directory(), self.subject.deps)
 
     def needsBuild(self, newestInput):
         sup = super(GraalVmJImageBuildTask, self).needsBuild(newestInput)
@@ -1830,7 +1786,6 @@ _final_graalvm_distribution = 'uninitialized'
 _stage1_graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _polyglot_launcher_project = 'uninitialized'
-_jimage_project = 'uninitialized'
 
 def _platform_classpath(cp):
     if mx.get_os() == 'windows':
