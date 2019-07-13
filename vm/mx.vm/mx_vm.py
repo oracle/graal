@@ -49,12 +49,10 @@ import mx_vm_benchmark
 import sys
 
 if sys.version_info[0] < 3:
-    from StringIO import StringIO
     _unicode = unicode # pylint: disable=undefined-variable
     def _decode(x):
         return x
 else:
-    from io import StringIO
     _unicode = str
     def _decode(x):
         return x.decode()
@@ -244,7 +242,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
         def _patch_darwin_jdk():
             """
-            :rtype: list[str], list[str]
+            :rtype: list[(str, source_dict)], list[str]
             """
             orig_info_plist = join(_jdk_dir, 'Contents', 'Info.plist')
             if exists(orig_info_plist):
@@ -259,11 +257,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         graalvm_bundle_name = '{} {}'.format(self.base_name, self.vm_config_name.upper()) if self.vm_config_name is not None else name.lower()
                         graalvm_bundle_name += ' ' + graalvm_version()
                         el.text = graalvm_bundle_name
-                        sio = StringIO()
-                        root.write(sio)
+                        bio = io.BytesIO()
+                        root.write(bio) # When porting to Python 3, we can use root.write(StringIO(), encoding="unicode")
                         plist_src = {
                             'source_type': 'string',
-                            'value': sio.getvalue(),
+                            'value': _decode(bio.getvalue()),
                             'ignore_value_subst': True
                         }
                         return [(base_dir + '/Contents/Info.plist', plist_src)], [orig_info_plist]
