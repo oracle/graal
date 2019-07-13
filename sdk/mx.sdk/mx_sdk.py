@@ -141,7 +141,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, links=None, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, is_polyglot=False, custom_bash_launcher=None,
-                 dir_jars=False, extra_jvm_args=[]):
+                 dir_jars=False, extra_jvm_args=None):
         """
         :param custom_bash_launcher: Uses custom bash launcher, unless compiled as native image
         :type main_class: str
@@ -154,7 +154,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_bash_launcher = custom_bash_launcher
-        self.extra_jvm_args = extra_jvm_args
+        self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
 
 
 class LanguageLauncherConfig(LauncherConfig):

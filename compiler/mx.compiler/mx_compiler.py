@@ -1209,17 +1209,17 @@ def makegraaljdk(args):
 
     bootDir = mx.ensure_dir_exists(join(javaHomeDir, 'lib', 'boot'))
     truffleDir = mx.ensure_dir_exists(join(javaHomeDir, 'lib', 'truffle'))
-    jvmciDir = join(javaHomeDir, 'lib',  'jvmci')
+    jvmciDir = join(javaHomeDir, 'lib', 'jvmci')
     if args.overlay or not isJDK8:
         mx.ensure_dir_exists(jvmciDir)
     assert exists(jvmciDir), jvmciDir + ' does not exist'
 
     if mx.get_os() == 'darwin':
-        libjvmDir = join(javaHomeDir, 'lib',  'server')
+        libjvmDir = join(javaHomeDir, 'lib', 'server')
     elif mx.get_os() == 'windows':
         libjvmDir = join(javaHomeDir, 'bin', 'server')
     else:
-        libjvmDir = join(javaHomeDir, 'lib',  mx.get_arch(), 'server')
+        libjvmDir = join(javaHomeDir, 'lib', mx.get_arch(), 'server')
     if args.overlay:
         mx.ensure_dir_exists(libjvmDir)
     else:
