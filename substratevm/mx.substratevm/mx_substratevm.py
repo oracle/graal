@@ -429,7 +429,7 @@ def svm_gate_body(args, tasks):
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                with tempfile.NamedTemporaryFile() as blacklist:
+                with tempfile.NamedTemporaryFile(mode='w') as blacklist:
                     if svm_java8():
                         blacklist_args = []
                     else:
