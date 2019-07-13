@@ -109,17 +109,13 @@ public final class SubprocessUtil {
      */
     public static List<String> getPackageOpeningOptions() {
         List<String> result = new ArrayList<>();
-
-        String opens = System.getProperty("com.oracle.mxtool.junit.opens");
-        if (opens != null) {
-            for (String open : opens.split(System.lineSeparator())) {
-                result.add("--add-opens=" + open);
-            }
-        }
-        String exports = System.getProperty("com.oracle.mxtool.junit.exports");
-        if (exports != null) {
-            for (String export : exports.split(System.lineSeparator())) {
-                result.add("--add-exports=" + export);
+        String[] actions = {"opens", "exports"};
+        for (String action : actions) {
+            String opens = System.getProperty("com.oracle.mxtool.junit." + action);
+            if (opens != null && !opens.isEmpty()) {
+                for (String value : opens.split(System.lineSeparator())) {
+                    result.add("--add-" + action + "=" + value);
+                }
             }
         }
         return result;
