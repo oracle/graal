@@ -324,13 +324,28 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
     private static void registerPThreadIntrinsics() {
         add("@pthread_create", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4), null));
+        // error codes: none relevant
+
         add("@pthread_equal", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadEqualNodeGen.create(args.get(1), args.get(2), null));
+        // error codes: no error codes are defined here
+
         add("@pthread_exit", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadExitNodeGen.create(args.get(1), null));
+        // error codes: no error codes are defined here
+
         add("@pthread_join", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1), args.get(2), null));
+        // error codes: none relevant
+
         add("@pthread_self", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadSelfNodeGen.create(null));
+        // error codes: no error codes are defined here
+
         add("@pthread_my_test", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMyTestNodeGen.create(args.get(1), null));
         add("@pthread_mutexattr_init", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexattrInitNodeGen.create(args.get(1), null));
+        // error codes: none relevant
+
         add("@pthread_mutexattr_settype", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexattrSettypeNodeGen.create(args.get(1), args.get(2), null));
+        // error codes: EINVAL if invalid type value
+
+        // TODO: continue lookoing up error codes from here
         add("@pthread_mutex_destroy", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexDestroyNodeGen.create(args.get(1), null));
         add("@pthread_mutex_init", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexInitNodeGen.create(args.get(1), args.get(2), null));
         add("@pthread_mutex_lock", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexLockNodeGen.create(args.get(1), null));
