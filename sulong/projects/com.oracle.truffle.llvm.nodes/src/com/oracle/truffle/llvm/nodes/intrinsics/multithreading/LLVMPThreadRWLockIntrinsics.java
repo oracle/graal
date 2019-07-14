@@ -106,7 +106,7 @@ public class LLVMPThreadRWLockIntrinsics {
                 rwlockObj = new RWLock();
                 UtilAccess.putObjObj(ctxRef.get().rwlockStorage, rwlock, rwlockObj);
             }
-            return rwlockObj.tryReadLock() ? 0 : ErrNo.getEbusy();
+            return rwlockObj.tryReadLock() ? 0 : ErrNo.getEBUSY();
         }
     }
 
@@ -137,8 +137,7 @@ public class LLVMPThreadRWLockIntrinsics {
                 rwlockObj = new RWLock();
                 UtilAccess.putObjObj(ctxRef.get().rwlockStorage, rwlock, rwlockObj);
             }
-            // TODO: error code stuff
-            return rwlockObj.tryWriteLock() ? 0 : 15;
+            return rwlockObj.tryWriteLock() ? 0 : ErrNo.getEBUSY();
         }
     }
 

@@ -339,31 +339,68 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         // error codes: no error codes are defined here
 
         add("@pthread_my_test", (args, context) -> LLVMPThreadIntrinsicsFactory.LLVMPThreadMyTestNodeGen.create(args.get(1), null));
+        // just my test function
+
         add("@pthread_mutexattr_init", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexattrInitNodeGen.create(args.get(1), null));
         // error codes: none relevant
 
         add("@pthread_mutexattr_settype", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexattrSettypeNodeGen.create(args.get(1), args.get(2), null));
         // error codes: EINVAL if invalid type value
 
-        // TODO: continue lookoing up error codes from here
         add("@pthread_mutex_destroy", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexDestroyNodeGen.create(args.get(1), null));
-        add("@pthread_mutex_init", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexInitNodeGen.create(args.get(1), args.get(2), null));
-        add("@pthread_mutex_lock", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexLockNodeGen.create(args.get(1), null));
-        add("@pthread_mutex_trylock", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexTrylockNodeGen.create(args.get(1), null));
-        add("@pthread_mutex_unlock", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexUnlockNodeGen.create(args.get(1), null));
-        add("@pthread_cond_destroy", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondDestroyNodeGen.create(args.get(1), null));
-        add("@pthread_cond_init", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondInitNodeGen.create(args.get(1), args.get(2), null));
-        add("@pthread_cond_broadcast", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondBroadcastNodeGen.create(args.get(1), null));
-        add("@pthread_cond_signal", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondSignalNodeGen.create(args.get(1), null));
-        add("@pthread_cond_wait", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondWaitNodeGen.create(args.get(1), args.get(2), null));
-        add("@pthread_rwlock_destroy", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockDestroyNodeGen.create(args.get(1), null));
-        add("@pthread_rwlock_init", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockInitNodeGen.create(args.get(1), args.get(2), null));
-        add("@pthread_rwlock_rdlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockRdlockNodeGen.create(args.get(1), null));
-        add("@pthread_rwlock_tryrdlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockTryrdlockNodeGen.create(args.get(1), null));
-        add("@pthread_rwlock_wrlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockWrlockNodeGen.create(args.get(1), null));
-        add("@pthread_rwlock_trywrlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockTrywrlockNodeGen.create(args.get(1), null));
-        add("@pthread_rwlock_unlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockUnlockNodeGen.create(args.get(1), null));
+        // error codes: none relevant
 
+        add("@pthread_mutex_init", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexInitNodeGen.create(args.get(1), args.get(2), null));
+        // error codes: none relevant
+
+        add("@pthread_mutex_lock", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexLockNodeGen.create(args.get(1), null));
+        // errors: [EDEADLK] errorcheck mutex relock try
+
+        add("@pthread_mutex_trylock", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexTrylockNodeGen.create(args.get(1), null));
+        // errors: [EBUSY] is already locked
+
+        add("@pthread_mutex_unlock", (args, context) -> LLVMPThreadMutexIntrinsicsFactory.LLVMPThreadMutexUnlockNodeGen.create(args.get(1), null));
+        // errors: [EPERM] if not owner
+
+        add("@pthread_cond_destroy", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondDestroyNodeGen.create(args.get(1), null));
+        // errors no
+
+        add("@pthread_cond_init", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondInitNodeGen.create(args.get(1), args.get(2), null));
+        // errors no
+
+        add("@pthread_cond_broadcast", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondBroadcastNodeGen.create(args.get(1), null));
+        // errors no
+
+        add("@pthread_cond_signal", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondSignalNodeGen.create(args.get(1), null));
+        // errors no
+
+        add("@pthread_cond_wait", (args, context) -> LLVMPThreadCondIntrinsicsFactory.LLVMPThreadCondWaitNodeGen.create(args.get(1), args.get(2), null));
+        // errors: [EPERM] for errorcheck mutex, if not currently owned
+
+        add("@pthread_rwlock_destroy", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockDestroyNodeGen.create(args.get(1), null));
+        // errors none
+
+        add("@pthread_rwlock_init", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockInitNodeGen.create(args.get(1), args.get(2), null));
+        // errors none
+
+        add("@pthread_rwlock_rdlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockRdlockNodeGen.create(args.get(1), null));
+        // [EDEADLK]
+        // "A deadlock condition was detected or the current thread already owns the read-write lock for writing."
+
+        add("@pthread_rwlock_tryrdlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockTryrdlockNodeGen.create(args.get(1), null));
+        // [EBUSY]
+        // "The read-write lock could not be acquired for reading because a writer holds the lock or a writer with the appropriate priority was blocked on it."
+
+        add("@pthread_rwlock_wrlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockWrlockNodeGen.create(args.get(1), null));
+        // [EDEADLK]
+        // "A deadlock condition was detected or the current thread already owns the read-write lock for writing or reading."
+
+        add("@pthread_rwlock_trywrlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockTrywrlockNodeGen.create(args.get(1), null));
+        // [EBUSY]
+        // "The read-write lock could not be acquired for writing because it was already locked for reading or writing."
+
+        add("@pthread_rwlock_unlock", (args, context) -> LLVMPThreadRWLockIntrinsicsFactory.LLVMPThreadRWLockUnlockNodeGen.create(args.get(1), null));
+        // errors none
     }
 
     private static void registerSulongIntrinsics() {

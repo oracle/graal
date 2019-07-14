@@ -39,18 +39,26 @@
 // mutexattr_init, mutexattr_settype
 // cond_init, cond_broadcast, cond_signal, cond_timedwait, cond_wait, cond_destroy
 // rwlock_destroy, rwlock_init, rwlock_rdlock, rwlock_tryrdlock, rwlock_wrlock, rwlock_trywrlock, rwlock_unlock
-int __sulong_getEbusy() {
+int __sulong_getEBUSY() {
 	return EBUSY;
 }
-int __sulong_getEinval() {
+int __sulong_getEINVAL() {
 	return EINVAL;
 }
+int __sulong_getEDEADLK() {
+	return EDEADLK;
+}
+int __sulong_getEPERM() {
+	return EPERM;
+}
+
 long __sulong_getNanoSeconds(struct timespec *time) {
 	return time->tv_nsec;
 }
 long __sulong_getSeconds(struct timespec *time) {
 	return time->tv_sec;
 }
+
 int pthread_attr_destroy(pthread_attr_t *attr) {
   ERR_UNSUPPORTED(pthread_attr_destroy);
 }
