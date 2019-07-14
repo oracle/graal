@@ -26,15 +26,12 @@ import com.oracle.truffle.api.Option;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.*;
 
-import java.io.File;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
@@ -49,7 +46,7 @@ public final class EspressoOptions {
                         @Override
                         public List<Path> apply(String paths) {
                             try {
-                                return Arrays.stream(paths.split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList());
+                                return Collections.unmodifiableList(Utils.parsePaths(paths));
                             } catch (InvalidPathException e) {
                                 throw new IllegalArgumentException(e);
                             }
@@ -92,7 +89,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT) //
     public static final OptionKey<List<Path>> BootClasspathAppend = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
-    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to prepend to the front of the default bootstrap class path.", //
+    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR files, and ZIP archives to prepend to the end of the default bootstrap class path.", //
                     category = OptionCategory.EXPERT) //
     public static final OptionKey<List<Path>> BootClasspathPrepend = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 

@@ -29,8 +29,9 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 public final class Utils {
@@ -69,10 +70,18 @@ public final class Utils {
     }
 
     public static List<Path> parsePaths(String paths) {
-        return Arrays.stream(paths.split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList());
+        List<Path> list = new ArrayList<>();
+        for (String p : paths.split(File.pathSeparator)) {
+            list.add(Paths.get(p));
+        }
+        return list;
     }
 
     public static String stringify(List<Path> paths) {
-        return paths.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
+        StringJoiner joiner = new StringJoiner(File.pathSeparator);
+        for (Path p : paths) {
+            joiner.add(p.toString());
+        }
+        return joiner.toString();
     }
 }

@@ -22,22 +22,15 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Engine;
-
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Engine;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 
 public interface EspressoProperties {
 
@@ -78,13 +71,25 @@ public interface EspressoProperties {
 
         // TODO(peterssen): These paths are Linux-specific. Refactor these hardcoded paths to work
         // on differnt platforms/OSs.
-        private final Path SYS_EXT_DIR = Paths.get("/usr/java/packages");
-        private final Path EXTENSIONS_DIR = Paths.get("/lib/ext");
-        private final List<Path> DEFAULT_LIBPATH = Arrays.asList(
-                        Paths.get("/usr/lib64"),
-                        Paths.get("/lib64"),
-                        Paths.get("/lib"),
-                        Paths.get("/usr/lib"));
+        private static final Path SYS_EXT_DIR = Paths.get("/usr/java/packages");
+        private static final Path EXTENSIONS_DIR = Paths.get("/lib/ext");
+        private static final List<Path> DEFAULT_LIBPATH = Collections.unmodifiableList(
+                        Arrays.asList(
+                                        Paths.get("/usr/lib64"),
+                                        Paths.get("/lib64"),
+                                        Paths.get("/lib"),
+                                        Paths.get("/usr/lib")));
+
+        private static final List<Path> BOOT_CLASSPATH = Collections.unmodifiableList(
+                        Arrays.asList(
+                                        Paths.get("lib", "resources.jar"),
+                                        Paths.get("lib", "rt.jar"),
+                                        Paths.get("lib", "sunrsasign.jar"),
+                                        Paths.get("lib", "jsse.jar"),
+                                        Paths.get("lib", "jce.jar"),
+                                        Paths.get("lib", "charsets.jar"),
+                                        Paths.get("lib", "jfr.jar"),
+                                        Paths.get("classes")));
 
         public Builder javaHome(Path newJavaHome) {
             this.javaHome = newJavaHome;
@@ -103,17 +108,15 @@ public interface EspressoProperties {
         }
 
         public List<Path> bootClasspath() {
-            return bootClasspath != null
-                            ? bootClasspath
-                            : Stream.of(
-                                            Paths.get("lib", "resources.jar"),
-                                            Paths.get("lib", "rt.jar"),
-                                            Paths.get("lib", "sunrsasign.jar"),
-                                            Paths.get("lib", "jsse.jar"),
-                                            Paths.get("lib", "jce.jar"),
-                                            Paths.get("lib", "charsets.jar"),
-                                            Paths.get("lib", "jfr.jar"),
-                                            Paths.get("classes")).map(p -> javaHome().resolve(p)).collect(Collectors.toList());
+            if (bootClasspath != null) {
+
+                return bootClasspath;
+            }
+            List<Path> paths = new ArrayList<>(BOOT_CLASSPATH.size());
+            for (Path p : BOOT_CLASSPATH) {
+                paths.add(javaHome().resolve(p));
+            }
+            return paths;
         }
 
         public Builder classpath(List<Path> newClasspath) {
@@ -217,14 +220,6 @@ public interface EspressoProperties {
 
             if (options.hasBeenSet(EspressoOptions.BootLibraryPath)) {
                 bootLibraryPath(options.get(EspressoOptions.BootLibraryPath));
-            }
-
-            if (options.hasBeenSet(EspressoOptions.EspressoLibraryPath)) {
-                espressoLibraryPath(options.get(EspressoOptions.EspressoLibraryPath));
-            }
-
-            if (options.hasBeenSet(EspressoOptions.EspressoLibraryPath)) {
-                espressoLibraryPath(options.get(EspressoOptions.EspressoLibraryPath));
             }
 
             return this;
