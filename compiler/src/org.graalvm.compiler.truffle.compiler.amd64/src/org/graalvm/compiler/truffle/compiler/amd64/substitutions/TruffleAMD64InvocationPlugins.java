@@ -24,17 +24,18 @@
  */
 package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
+
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @ServiceProvider(TruffleInvocationPluginProvider.class)
 public class TruffleAMD64InvocationPlugins implements TruffleInvocationPluginProvider {
@@ -52,5 +53,8 @@ public class TruffleAMD64InvocationPlugins implements TruffleInvocationPluginPro
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", String.class, int.class, int.class, char[].class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", char[].class, int.class, int.class, char[].class);
         r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runIndexOf", byte[].class, int.class, int.class, byte[].class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", byte[].class, int.class, byte[].class, int.class, int.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", char[].class, int.class, char[].class, int.class, int.class);
+        r.registerMethodSubstitution(AMD64ArrayUtilsSubstitutions.class, "runRegionEquals", String.class, int.class, String.class, int.class, int.class);
     }
 }

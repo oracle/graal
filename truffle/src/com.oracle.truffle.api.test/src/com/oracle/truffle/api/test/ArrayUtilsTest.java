@@ -347,22 +347,22 @@ public class ArrayUtilsTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringWithORMaskCharArrayException1() {
-        ArrayUtils.indexOfWithORMask(strC, -1, strS.length(), "l".toCharArray(), mask(1));
+        ArrayUtils.indexOfWithORMask(strC, -1, strS.length(), "l".toCharArray(), mask(1).toCharArray());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringWithORMaskCharArrayException2() {
-        ArrayUtils.indexOfWithORMask(strC, 0, strS.length() + 1, "l".toCharArray(), mask(1));
+        ArrayUtils.indexOfWithORMask(strC, 0, strS.length() + 1, "l".toCharArray(), mask(1).toCharArray());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringWithORMaskCharArrayException3() {
-        ArrayUtils.indexOfWithORMask(strC, 1, 0, "l".toCharArray(), mask(1));
+        ArrayUtils.indexOfWithORMask(strC, 1, 0, "l".toCharArray(), mask(1).toCharArray());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringWithORMaskCharArrayException4() {
-        ArrayUtils.indexOfWithORMask(strC, 0, 1, "l".toCharArray(), mask(2));
+        ArrayUtils.indexOfWithORMask(strC, 0, 1, "l".toCharArray(), mask(2).toCharArray());
     }
 
     @Test(expected = IllegalArgumentException.class)

@@ -24,13 +24,14 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+
+import java.util.Objects;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
@@ -48,12 +49,13 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-
-import java.util.Objects;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Emits code which compares two arrays of the same length. If the CPU supports any vector
@@ -79,7 +81,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Def({REG}) private Value resultValue;
     @Alive({REG}) private Value array1Value;
     @Alive({REG}) private Value array2Value;
-    @Alive({REG}) private Value lengthValue;
+    @Alive({REG, CONST}) private Value lengthValue;
     @Temp({REG, ILLEGAL}) private Value temp1;
     @Temp({REG, ILLEGAL}) private Value temp2;
     @Temp({REG}) private Value temp3;
@@ -186,7 +188,11 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             masm.leaq(array2, new AMD64Address(asRegister(array2Value), arrayBaseOffset2));
             Register length = asRegister(temp3);
             // Get array length.
-            masm.movl(length, asRegister(lengthValue));
+            if (LIRValueUtil.isJavaConstant(lengthValue)) {
+                masm.movl(length, constantLength());
+            } else {
+                masm.movl(length, asRegister(lengthValue));
+            }
             // copy
             masm.movl(result, length);
             emitArrayCompare(crb, masm, result, array1, array2, length, trueLabel, falseLabel);

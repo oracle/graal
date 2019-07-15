@@ -364,29 +364,30 @@ public final class ArrayUtils {
      * (exclusive).
      *
      * @return the index of the first region of {@code haystack} where for all indices {@code i} of
-     *         {@code needle} {@code (haystack.charAt(index + i) | mask[i]) == needle[i]} holds, and
+     *         {@code needle}
+     *         {@code (haystack.charAt(index + i) | mask.charAt(i)) == needle.charAt(i)} holds, and
      *         {@code fromIndex <= index && index < maxIndex} holds, or {@code -1} if no such region
      *         is found.
      * @since 19.2
      */
-    public static int indexOfWithORMask(String haystack, int fromIndex, int maxIndex, String needle, char[] mask) {
-        checkArgsIndexOf(haystack.length(), fromIndex, maxIndex, needle.length(), mask.length);
+    public static int indexOfWithORMask(String haystack, int fromIndex, int maxIndex, String needle, String mask) {
+        checkArgsIndexOf(haystack.length(), fromIndex, maxIndex, needle.length(), mask.length());
         if (needle.isEmpty()) {
             return fromIndex;
         }
         if (maxIndex - fromIndex - needle.length() < 0) {
             return -1;
         } else if (needle.length() == 1) {
-            return indexOfWithORMask(haystack, fromIndex, maxIndex, needle.charAt(0), mask[0]);
+            return indexOfWithORMask(haystack, fromIndex, maxIndex, needle.charAt(0), mask.charAt(0));
         } else {
             int max = maxIndex - (needle.length() - 2);
             int index = fromIndex;
             while (index < max) {
-                index = indexOf2ConsecutiveWithORMask(haystack, index, max, needle.charAt(0), needle.charAt(1), mask[0], mask[1]);
+                index = indexOf2ConsecutiveWithORMask(haystack, index, max, needle.charAt(0), needle.charAt(1), mask.charAt(0), mask.charAt(1));
                 if (index < 0) {
                     return -1;
                 }
-                if (mask.length == 2 || regionEqualsWithORMask(haystack, index, needle, 0, mask)) {
+                if (mask.length() == 2 || regionEqualsWithORMask(haystack, index, needle, 0, mask)) {
                     return index;
                 }
                 index++;
@@ -538,23 +539,23 @@ public final class ArrayUtils {
     /**
      * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
      * {@code mask.length} (exclusive),
-     * {@code (a1.charAt(fromIndex1 + i) | mask[i]) == a2.charAt(fromIndex2 + i)} holds.
+     * {@code (a1.charAt(fromIndex1 + i) | mask.charAt(i)) == a2.charAt(fromIndex2 + i)} holds.
      *
      * @since 19.2
      */
-    public static boolean regionEqualsWithORMask(String a1, int fromIndex1, String a2, int fromIndex2, char[] mask) {
+    public static boolean regionEqualsWithORMask(String a1, int fromIndex1, String a2, int fromIndex2, String mask) {
         Objects.requireNonNull(a1);
         Objects.requireNonNull(a2);
-        checkArgsRegionEquals(fromIndex1, fromIndex2, mask.length);
-        if (regionEqualsOutOfBounds(a1.length(), fromIndex1, a2.length(), fromIndex2, mask.length)) {
+        checkArgsRegionEquals(fromIndex1, fromIndex2, mask.length());
+        if (regionEqualsOutOfBounds(a1.length(), fromIndex1, a2.length(), fromIndex2, mask.length())) {
             return false;
         }
         return runRegionEqualsWithORMask(a1, fromIndex1, a2, fromIndex2, mask);
     }
 
-    private static boolean runRegionEqualsWithORMask(String a1, int fromIndex1, String a2, int fromIndex2, char[] mask) {
-        for (int i = 0; i < mask.length; i++) {
-            if ((a1.charAt(fromIndex1 + i) | mask[i]) != a2.charAt(fromIndex2 + i)) {
+    private static boolean runRegionEqualsWithORMask(String a1, int fromIndex1, String a2, int fromIndex2, String mask) {
+        for (int i = 0; i < mask.length(); i++) {
+            if ((a1.charAt(fromIndex1 + i) | mask.charAt(i)) != a2.charAt(fromIndex2 + i)) {
                 return false;
             }
         }

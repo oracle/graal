@@ -53,7 +53,7 @@ import com.oracle.truffle.api.ArrayUtils;
 @RunWith(Parameterized.class)
 public class ArrayUtilsRegionEqualsTest {
 
-    @Parameters(name = "{index}: fromIndex1 {1} fromIndex2 {3} length {4} expected {5}")
+    @Parameters(name = "{index}: fromIndex1 {1} fromIndex2 {3} length {4} expected {6}")
     public static Iterable<Object[]> data() {
         return ArrayUtilsRegionEqualsWithMaskTest.data(false);
     }
@@ -65,7 +65,7 @@ public class ArrayUtilsRegionEqualsTest {
     private final int length;
     private final boolean expected;
 
-    public ArrayUtilsRegionEqualsTest(String a1, int fromIndex1, String a2, int fromIndex2, int length, boolean expected) {
+    public ArrayUtilsRegionEqualsTest(String a1, int fromIndex1, String a2, int fromIndex2, int length, @SuppressWarnings("unused") int length2, boolean expected) {
         this.a1 = a1;
         this.fromIndex1 = fromIndex1;
         this.a2 = a2;
