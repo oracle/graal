@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -51,6 +52,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.compiler.nodes.util.VirtualByteArrayHelper;
 
 /**
  * Forwards calls from {@link VirtualizerTool} to the actual {@link PartialEscapeBlockState}.
@@ -131,6 +133,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         ValueNode newValue = closure.getAliasAndResolve(state, value);
         getDebug().log(DebugContext.DETAILED_LEVEL, "Setting entry %d in virtual object %s %s results in %s", index, virtual.getObjectId(), virtual, state.getObjectState(virtual.getObjectId()));
         ValueNode oldValue = getEntry(virtual, index);
+        boolean oldIsIllegal = VirtualByteArrayHelper.isIllegalConstant(oldValue);
         boolean canVirtualize = entryKind == accessKind || (entryKind == accessKind.getStackKind() && virtual instanceof VirtualInstanceNode);
         if (!canVirtualize) {
             assert entryKind != JavaKind.Long || newValue != null;
@@ -154,6 +157,12 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     assert nextIndex == index + 1 : "expected to be sequential";
                     getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for double word stored in two ints", current);
                 }
+            } else if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, index, accessKind)) {
+                int nextIndex = virtual.entryIndexForOffset(getMetaAccess(), offset + accessKind.getByteCount() - 1, JavaKind.Byte);
+                if (nextIndex != -1 && !oldIsIllegal && canStoreOverOldValue((VirtualArrayNode) virtual, oldValue, accessKind, index)) {
+                    canVirtualize = true;
+                    getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for %s word stored in byte array", current, accessKind);
+                }
             }
         }
 
@@ -172,20 +181,45 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     addNode(secondHalf);
                     state.setEntry(virtual.getObjectId(), index + 1, secondHalf);
                 }
+            } else if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, index, accessKind)) {
+                for (int i = index + 1; i < index + accessKind.getByteCount(); i++) {
+                    state.setEntry(virtual.getObjectId(), i, getIllegalConstant());
+                }
             }
-            if (oldValue.isConstant() && oldValue.asConstant().equals(JavaConstant.forIllegal())) {
-                // Storing into second half of double, so replace previous value
-                ValueNode previous = getEntry(virtual, index - 1);
-                getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s producing first half of double word value %s", current, previous);
-                ValueNode firstHalf = UnpackEndianHalfNode.create(previous, true, NodeView.DEFAULT);
-                addNode(firstHalf);
-                state.setEntry(virtual.getObjectId(), index - 1, firstHalf);
+            if (oldIsIllegal) {
+                if (entryKind == JavaKind.Int) {
+                    // Storing into second half of double, so replace previous value
+                    ValueNode previous = getEntry(virtual, index - 1);
+                    getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s producing first half of double word value %s", current, previous);
+                    ValueNode firstHalf = UnpackEndianHalfNode.create(previous, true, NodeView.DEFAULT);
+                    addNode(firstHalf);
+                    state.setEntry(virtual.getObjectId(), index - 1, firstHalf);
+                }
             }
             return true;
         }
         // Should only occur if there are mismatches between the entry and access kind
         assert entryKind != accessKind;
         return false;
+    }
+
+    private boolean canStoreOverOldValue(VirtualArrayNode virtual, ValueNode oldValue, JavaKind accessKind, int index) {
+        if (!oldValue.getStackKind().isPrimitive()) {
+            return false;
+        }
+        if (isEntryDefaults(virtual, accessKind, index)) {
+            return true;
+        }
+        return accessKind.getByteCount() == VirtualByteArrayHelper.entryByteCount(virtual, index, this);
+    }
+
+    private boolean isEntryDefaults(VirtualArrayNode virtual, JavaKind accessKind, int index) {
+        for (int i = index; i < index + accessKind.getByteCount(); i++) {
+            if (!getEntry(virtual, i).isDefaultConstant()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private ValueNode getIllegalConstant() {

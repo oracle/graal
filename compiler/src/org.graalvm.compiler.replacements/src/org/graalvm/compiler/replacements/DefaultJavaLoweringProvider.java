@@ -140,6 +140,7 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.util.VirtualByteArrayHelper;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
@@ -851,7 +852,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 barrierType = arrayInitializationBarrier(entryKind);
                             }
                             if (address != null) {
-                                WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, entryKind, value), barrierType, false);
+                                WriteNode write = new WriteNode(address, LocationIdentity.init(), tryImplicitStoreConvert(graph, entryKind, value, commit, virtual, valuePos), barrierType, false);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
                         }
@@ -1112,6 +1113,20 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             case Char:
                 return new ZeroExtendNode(value, 32);
         }
+        return value;
+    }
+
+    private ValueNode tryImplicitStoreConvert(StructuredGraph graph, JavaKind entryKind, ValueNode value, CommitAllocationNode commit, VirtualObjectNode virtual, int valuePos) {
+        if (!VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, valuePos, entryKind)) {
+            return implicitStoreConvert(graph, entryKind, value);
+        }
+        int entryIndex = valuePos + 1;
+        int bytes = 1;
+        while (entryIndex < virtual.entryCount() && VirtualByteArrayHelper.isIllegalConstant(commit.getValues().get(entryIndex))) {
+            bytes++;
+            entryIndex++;
+        }
+        assert bytes <= value.getStackKind().getByteCount();
         return value;
     }
 
