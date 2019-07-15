@@ -555,7 +555,7 @@ final class NativeImageServer extends NativeImage {
         if (!bootClasspath.isEmpty()) {
             command.add(bootClasspath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
-        command.add("-javaagent:" + config.getAgentJAR());
+
         command.addAll(Arrays.asList("-cp", classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.addAll(javaArgs);
         command.add("com.oracle.svm.hosted.server.NativeImageBuildServer");

@@ -18,13 +18,13 @@ suite = {
     },
 
     "libraries": {
-        "ASM_6.2.1": {
-            "sha1": "c01b6798f81b0fc2c5faa70cbe468c275d4b50c7",
-            "sourceSha1" : "cee28077ac7a63d3de0b205ec314d83944ff6267",
+        "ASM_7.1": {
+            "sha1": "fa29aa438674ff19d5e1386d2c3527a0267f291e",
+            "sourceSha1" : "9d170062d595240da35301362b079e5579c86f49",
             "maven": {
                 "groupId": "org.ow2.asm",
                 "artifactId": "asm",
-                "version": "6.2.1",
+                "version": "7.1",
             },
             "license": "BSD-new",
         },
@@ -302,7 +302,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
-                "ASM_6.2.1",
+                "ASM_7.1",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",

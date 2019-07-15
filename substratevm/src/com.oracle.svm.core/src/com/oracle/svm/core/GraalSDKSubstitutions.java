@@ -24,21 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
-
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
-
-@SuppressWarnings({"unused"})
-@TargetClass(ClassInitializationTracking.class)
-final class Target_org_graalvm_nativeimage_impl_clinit_ClassInitializationTracking {
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
-    private static boolean IS_IMAGE_BUILD_TIME = false;
-    // Checkstyle: start
-}
-
 @SuppressWarnings("unused")
 public class GraalSDKSubstitutions {
 }

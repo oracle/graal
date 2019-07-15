@@ -974,6 +974,11 @@ public class NativeImage {
             replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
         }
 
+        /* Enable class initializaiton tracing agent. */
+        if (imageBuilderArgs.contains("-H:+TraceClassInitialization")) {
+            imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR());
+        }
+
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
 
@@ -1095,9 +1100,6 @@ public class NativeImage {
             command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
 
-        if (config.getAgentJAR() != null && imageArgs.contains("-H:+TraceClassInitialization")) {
-            command.add("-javaagent:" + config.getAgentJAR());
-        }
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
         if (IS_AOT && OS.getCurrent().hasProcFS) {

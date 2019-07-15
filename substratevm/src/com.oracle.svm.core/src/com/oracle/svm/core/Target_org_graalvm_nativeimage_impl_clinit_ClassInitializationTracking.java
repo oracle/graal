@@ -22,9 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package com.oracle.svm.core;
 
-@FunctionalInterface
-public interface TransformerInterface {
-    byte[] apply(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer);
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
+
+@SuppressWarnings({"unused"})
+@TargetClass(ClassInitializationTracking.class)
+final class Target_org_graalvm_nativeimage_impl_clinit_ClassInitializationTracking {
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+    private static boolean IS_IMAGE_BUILD_TIME = false;
+    // Checkstyle: start
 }

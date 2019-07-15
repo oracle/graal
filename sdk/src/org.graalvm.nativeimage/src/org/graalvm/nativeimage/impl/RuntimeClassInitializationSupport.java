@@ -56,5 +56,5 @@ public interface RuntimeClassInitializationSupport {
 
     void reportClassInitialized(Class<?> aClass);
 
-    void reportObjectInstantiated(Object o, StackTraceElement[] trace);
+    void reportObjectInstantiated(Object o);
 }

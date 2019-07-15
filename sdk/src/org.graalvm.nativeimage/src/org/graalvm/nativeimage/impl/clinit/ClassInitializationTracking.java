@@ -40,20 +40,11 @@
  */
 package org.graalvm.nativeimage.impl.clinit;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
-
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 public class ClassInitializationTracking {
-
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    public static final Map<Class<?>, StackTraceElement[]> initializedClasses = Collections.synchronizedMap(new WeakHashMap<>());
 
     /**
      * Field that is true during native image generation (even during system class loading), but
@@ -63,7 +54,6 @@ public class ClassInitializationTracking {
      * generation. At run time, the substituted value is used, setting the field value to false.
      */
     public static final boolean IS_IMAGE_BUILD_TIME;
-    public static final int START_OF_THE_TRACE = 2;
 
     static {
         /*
@@ -78,14 +68,9 @@ public class ClassInitializationTracking {
      */
     @SuppressWarnings({"unused", "ConstantConditions"})
     public static void reportClassInitialized(Class<?> c) {
-        if (initializedClasses != null) {
-            if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(RuntimeClassInitializationSupport.class)) {
-                RuntimeClassInitializationSupport runtimeClassInitialization = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-                runtimeClassInitialization.reportClassInitialized(c);
-            }
-            StackTraceElement[] trace = Thread.currentThread().getStackTrace();
-            /* It can be null as we instrument clinit of this class as well. */
-            initializedClasses.put(c, trace);
+        if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(RuntimeClassInitializationSupport.class)) {
+            RuntimeClassInitializationSupport runtimeClassInitialization = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            runtimeClassInitialization.reportClassInitialized(c);
         }
     }
 
@@ -96,8 +81,7 @@ public class ClassInitializationTracking {
     public static void reportObjectInstantiated(Object o) {
         if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(RuntimeClassInitializationSupport.class)) {
             RuntimeClassInitializationSupport runtimeClassInitialization = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-            StackTraceElement[] trace = Thread.currentThread().getStackTrace();
-            runtimeClassInitialization.reportObjectInstantiated(o, trace);
+            runtimeClassInitialization.reportObjectInstantiated(o);
         }
     }
 
