@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ _suite = mx.suite('espresso')
 class EspressoDefaultTags:
     unittest = 'unittest'
     jackpot = 'jackpot'
+    meta = 'meta'
 
 def _run_espresso(args):
 
@@ -71,6 +72,10 @@ def _espresso_gate_runner(args, tasks):
     with Task('Jackpot', tasks, tags=[EspressoDefaultTags.jackpot]) as t:
         if t:
             jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
+
+    with Task('Meta', tasks, tags=[EspressoDefaultTags.meta]) as t:
+        if t:
+            _run_espresso_meta(args=['-cp', mx.classpath('ESPRESSO_PLAYGROUND'), 'com.oracle.truffle.espresso.playground.HelloWorld'])
 
 
 
