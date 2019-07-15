@@ -51,8 +51,8 @@ public final class ToolchainImpl implements Toolchain {
         TruffleLanguage.Env env = language.getContextReference().get().getEnv();
         String toolchainRoot = toolchainConfig.getToolchainRootOverride();
         TruffleFile root = toolchainRoot != null //
-                        ? env.getTruffleFile(toolchainRoot)
-                        : env.getTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
+                        ? env.getInternalTruffleFile(toolchainRoot)
+                        : env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
         switch (tool) {
             case "CC":
                 return root.resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang");

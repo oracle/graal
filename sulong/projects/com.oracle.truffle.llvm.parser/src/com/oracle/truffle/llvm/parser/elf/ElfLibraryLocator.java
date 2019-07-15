@@ -102,7 +102,7 @@ public final class ElfLibraryLocator extends LibraryLocator {
             for (String p : localPaths) {
                 Path absPath = Paths.get(p, lib);
                 traceTry(context, absPath);
-                if (context.getEnv().getTruffleFile(absPath.toUri()).exists()) {
+                if (context.getEnv().getInternalTruffleFile(absPath.toUri()).exists()) {
                     return absPath;
                 }
             }
