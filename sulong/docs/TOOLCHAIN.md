@@ -1,50 +1,49 @@
 # Toolchain
 
-The *toolchain* is a set of tools and APIs for compiling native projects, such as C, C++,
+The *toolchain* is a set of tools and APIs for compiling native projects, such as C and C++,
 to bitcode that can be executed with the GraalVM LLVM runtime.
-Its aim is to simplify ahead-of-time compilation for users
-and language implementers who want to use the LLVM runtime.
+It is aimed to simplify ahead-of-time compilation for users
+and language implementers who want to use the GraalVM LLVM runtime.
 
 ## Use Cases
 
 1. **Simplify compilation to bitcode**
-  *GraalVM users* who want to run a native project via the GraalVM LLVM runtime
-  need to compile their project to LLVM bitcode.
-  Although it is possible to do this with standard LLVM tools (`clang`, `llvm-link`, etc.),
-  it requires some consideration (for example certain optimizations or manual linking).
-  The toolchain aims to provide out of the box drop in replacements to compile many
-  native projects for the GraalVM LLVM runtime.
+  *GraalVM users* who want to run native projects via the GraalVM LLVM runtime,
+  must first compile their projects to LLVM bitcode.
+  Although it is possible to do this with the standard LLVM tools (`clang`, `llvm-link`, etc.),
+  they are required to address several additional considerations, such as optimizations and manual linking.
+  The toolchain aims to simplify this process, by providing an out of the box drop in replacement for compiling
+  native projects targeting the GraalVM LLVM runtime.
 
 2. **Compilation of native extensions**
-  *GraalVM language implementers* use the LLVM runtime to execute native extensions.
-  Often, these extensions are installed by the user using a package manager.
-  In python, for example, packages are usually added via `pip install`.
-  To enable this, languages need a way of compiling native extensions on demand.
-  The toolchain provides a Java API for languages to access the tools that are
-  (optionally) bundled with GraalVM.
+  *GraalVM language implementers* often use the GraalVM LLVM runtime to execute native extensions, 
+  and these extensions are commonly installed by a package manager. 
+  For example, packages in python are usually added via `pip install`, which means that the python
+  implementation is required to be able to compile these native extensions on demand.
+  The toolchain provides a Java API for languages to access the tools currently (optionally) bundled with GraalVM.
 
 3. **Compiling to bitcode at build time**
   *GraalVM languages* that integrate with the GraalVM LLVM runtime usually need to build
-  bitcode libraries to integrate with native pieces of their implementation.
+  bitcode libraries to integrate with the native pieces of their implementation.
   The toolchain can be used as a build-time dependency to achieve this in a
   standardized and compatible way.
 
 ## File Format
 
-To be compatible with existing build systems, the toolchain will by default
+To be compatible with existing build systems, by default, the toolchain will
 produce native executables with embedded bitcode (ELF files on Linux, Mach-O
 files on MacOS).
 
 ## Toolchain Identifier
 
-The GraalVM LLVM runtime can run in different configurations, which require bitcode to be compiled differently.
-Users of the toolchain do not need to care about this.
-The LLVM runtime knows in which mode it is running and will always provide the right toolchain.
-However, since a language implementation might want to store the result of a
-toolchain compilation for later use, it needs to be able to identify it.
-To do so, a toolchain has an *identifier*.
+The GraalVM LLVM runtime can be ran in different configurations, which can differ how the bitcode is being compiled.
+Generally users of the toolchain does not need to be concerned, as the GraalVM LLVM runtime knows the mode it is running 
+and will always provide the right toolchain.
+However, if a language implementation wants to store the
+bitcode compilation for later use, it will need to be able to identify the toolchain and its configurations used to compile the bitcode.
+To do so, each toolchain has an *identifier*.
 Conventionally, the identifier denotes the compilation output directory.
-The internal LLVM runtime library layout follows the same approach.
+The internal GraalVM LLVM runtime library layout follows the same approach.
 
 ## Java API
 
@@ -77,7 +76,7 @@ String toolchainId = toolchain.getIdentifier();
 ## `mx` integration
 
 On the `mx` side, the toolchain can be accessed via the *substitutions* `toolchainGetToolPath` and `toolchainGetIdentifier`.
-Note that they expect a toolchain name as first argument. See for example the following snippet from a `suite.py` file:
+Note that they expect a toolchain name as the first argument. See for example the following snippet from a `suite.py` file:
 
 ```python
   "buildEnv" : {
