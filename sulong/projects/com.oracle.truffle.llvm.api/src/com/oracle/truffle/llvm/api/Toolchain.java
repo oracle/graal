@@ -85,7 +85,7 @@ abstract class ToolchainExampleSnippet {
         TruffleFile cxx = toolchain.getToolPath("CXX");
 
         String[] args = {"make", "CC=" + cc, "CXX=" + cxx, "OUTPUT_DIR=" + id};
-        Process p = new ProcessBuilder(args).start();
+        Process p = env.newProcessBuilder(args).start();
         p.waitFor();
         // END: toolchain-example
         return p.exitValue();
