@@ -624,13 +624,14 @@ public class VirtualizedFileSystemTest {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
+        final boolean canWrite = cfg.canWrite();
         languageAction = (Env env) -> {
             final TruffleFile root = cfg.resolve(env, path.toString());
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final boolean writable = file.isWritable();
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
-                Assert.assertTrue(cfg.formatErrorMessage("Is writable"), writable);
+                Assert.assertEquals(cfg.formatErrorMessage("Is writable"), canWrite, writable);
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
@@ -2178,6 +2179,9 @@ public class VirtualizedFileSystemTest {
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
             checkRead(path);
+            if (modes.contains(AccessMode.WRITE) && !writePredicate.test(path)) {
+                throw new IOException();
+            }
             super.checkAccess(path, modes, linkOptions);
         }
 

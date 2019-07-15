@@ -812,6 +812,9 @@ final class FileSystems {
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
             Path absolutePath = toAbsolutePathInternal(path);
             if (inLanguageHome(absolutePath)) {
+                if (modes.contains(AccessMode.WRITE)) {
+                    throw new IOException("Read-only file");
+                }
                 fullIO.checkAccess(absolutePath, modes, linkOptions);
                 return;
             }
@@ -859,11 +862,7 @@ final class FileSystems {
 
         @Override
         public Path toAbsolutePath(Path path) {
-            Path absolutePath = toAbsolutePathInternal(path);
-            if (inLanguageHome(absolutePath)) {
-                return absolutePath;
-            }
-            return super.toAbsolutePath(path);
+            return toAbsolutePathInternal(path);
         }
 
         private Path toAbsolutePathInternal(Path path) {
@@ -880,11 +879,7 @@ final class FileSystems {
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            Path absoluetPath = toAbsolutePathInternal(path);
-            if (inLanguageHome(absoluetPath)) {
-                return fullIO.toRealPath(absoluetPath, linkOptions);
-            }
-            return super.toRealPath(path, linkOptions);
+            return fullIO.toRealPath(path, linkOptions);
         }
 
         private boolean inLanguageHome(final Path path) {
