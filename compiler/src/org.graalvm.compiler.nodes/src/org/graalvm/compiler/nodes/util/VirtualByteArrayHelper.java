@@ -43,7 +43,7 @@ public class VirtualByteArrayHelper {
         return virtual instanceof VirtualArrayNode;
     }
 
-    private static boolean isVirtualByteArray(VirtualObjectNode virtual, int index) {
+    public static boolean isVirtualByteArray(VirtualObjectNode virtual, int index) {
         return isVirtualArray(virtual) && virtual.entryKind(index) == JavaKind.Byte;
     }
 

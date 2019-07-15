@@ -837,7 +837,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
                             // Truffle requires some leniency in terms of what can be put where:
                             assert valueKind.getStackKind() == entryKind.getStackKind() ||
-                                            (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode));
+                                            (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode) ||
+                                                            (valueKind == JavaKind.Float && virtual instanceof VirtualArrayNode));
                             AddressNode address = null;
                             BarrierType barrierType = null;
                             if (virtual instanceof VirtualInstanceNode) {
@@ -852,7 +853,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 barrierType = arrayInitializationBarrier(entryKind);
                             }
                             if (address != null) {
-                                WriteNode write = new WriteNode(address, LocationIdentity.init(), tryImplicitStoreConvert(graph, entryKind, value, commit, virtual, valuePos), barrierType, false);
+                                WriteNode write = new WriteNode(address, LocationIdentity.init(), tryImplicitStoreConvert(graph, entryKind, value, commit, virtual, valuePos, i), barrierType, false);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
                         }
@@ -1116,8 +1117,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return value;
     }
 
-    private ValueNode tryImplicitStoreConvert(StructuredGraph graph, JavaKind entryKind, ValueNode value, CommitAllocationNode commit, VirtualObjectNode virtual, int valuePos) {
-        if (!VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, valuePos, entryKind)) {
+    private ValueNode tryImplicitStoreConvert(StructuredGraph graph, JavaKind entryKind, ValueNode value, CommitAllocationNode commit, VirtualObjectNode virtual, int valuePos, int i) {
+        if (!VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, i, entryKind)) {
             return implicitStoreConvert(graph, entryKind, value);
         }
         int entryIndex = valuePos + 1;
