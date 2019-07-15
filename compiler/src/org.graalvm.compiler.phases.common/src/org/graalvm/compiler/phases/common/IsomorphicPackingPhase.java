@@ -43,6 +43,7 @@ import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -209,6 +210,32 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
+         * Determine whether two nodes are accesses to the same array.
+         * @param left Left access node
+         * @param right Right access node
+         * @return Boolean indicating whether same array.
+         *         If nodes are not access nodes, this is false.
+         */
+        private static boolean sameArray(Node left, Node right) {
+            if (!(left instanceof FixedAccessNode) || !(right instanceof FixedAccessNode)) {
+                return false;
+            }
+
+            final AddressNode leftAddress = ((FixedAccessNode) left).getAddress();
+            final AddressNode rightAddress = ((FixedAccessNode) right).getAddress();
+
+            if (leftAddress.getBase() == null  || rightAddress.getBase() == null) {
+                return false;
+            }
+
+            if (!leftAddress.getBase().equals(rightAddress.getBase())) {
+                return false;
+            }
+
+            return true;
+        }
+
+        /**
          * Check whether the left and right node of a potential pack are isomorphic.
          * "Isomorphic statements are those that contain the same operations in the same order."
          *
@@ -239,8 +266,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // Ensure that both fixed access nodes are accessing the same array
-            if (left instanceof FixedAccessNode &&
-                    !((FixedAccessNode) left).getAddress().getBase().equals(((FixedAccessNode) right).getAddress().getBase())) {
+            if (!sameArray(left, right)) {
                 return false;
             }
 
@@ -737,11 +763,12 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         private void schedulePack(Pack<Node> pack, Deque<FixedNode> lastFixed) {
             final Node first = pack.getElements().get(0);
+            final Graph graph = first.graph();
 
             if (first instanceof ReadNode) {
                 final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
                 final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
-                first.graph().add(vectorRead);
+                graph.add(vectorRead);
 
                 for (ReadNode node : nodes) {
                     node.setNext(null);
@@ -755,7 +782,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     }
                     node.replaceAtUsagesAndDelete(extractNode);
 
-                    first.graph().addOrUnique(extractNode);
+                    graph.addOrUnique(extractNode);
                 }
 
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
@@ -783,8 +810,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     node.safeDelete();
                 }
 
-                first.graph().addOrUnique(stv);
-                first.graph().add(vectorWrite);
+                graph.addWithoutUnique(stv);
+                graph.add(vectorWrite);
 
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
                     ((FixedWithNextNode) lastFixed.poll()).setNext(vectorWrite);
@@ -807,12 +834,12 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
                 final VectorPackNode packX = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getX).collect(Collectors.toList()));
                 final VectorPackNode packY = new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList()));
-                first.graph().addOrUnique(packX);
-                first.graph().addOrUnique(packY);
+                graph.addOrUnique(packX);
+                graph.addOrUnique(packY);
 
                 final VectorExtractNode firstBANExtractNode = new VectorExtractNode(firstBAN.stamp(view), firstBAN, 0);
                 first.replaceAtUsages(firstBANExtractNode);
-                first.graph().addOrUnique(firstBANExtractNode);
+                graph.addOrUnique(firstBANExtractNode);
 
                 firstBAN.setX(packX);
                 firstBAN.setY(packY);
@@ -824,7 +851,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(view), firstBAN, i);
                     node.replaceAtUsagesAndDelete(extractNode);
 
-                    first.graph().addOrUnique(extractNode);
+                    graph.addOrUnique(extractNode);
                 }
                 return;
             }
