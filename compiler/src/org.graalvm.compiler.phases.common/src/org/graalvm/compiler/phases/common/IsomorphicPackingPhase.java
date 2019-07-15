@@ -62,6 +62,8 @@ import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.calc.UnaryArithmeticNode;
+import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -818,6 +820,37 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 }
 
                 lastFixed.add(vectorWrite);
+                return;
+            }
+
+            if (first instanceof UnaryArithmeticNode<?>) {
+                final UnaryArithmeticNode<?> firstUAN = (UnaryArithmeticNode<?>) first;
+
+                final List<UnaryArithmeticNode<?>> nodes = pack.getElements().stream().
+                    map(x -> (UnaryArithmeticNode<?>) x).
+                    collect(Collectors.toList());
+
+                // Link up firstUAN
+                final VectorPrimitiveStamp vectorInputStamp = firstUAN.getValue().stamp(view).unrestricted().asVector(nodes.size());
+
+                final VectorPackNode packVal = new VectorPackNode(vectorInputStamp, nodes.stream().map(UnaryNode::getValue).collect(Collectors.toList()));
+                first.graph().addOrUnique(packVal);
+
+                final VectorExtractNode firstUANExtractNode = new VectorExtractNode(firstUAN.stamp(view), firstUAN, 0);
+                first.replaceAtUsages(firstUANExtractNode);
+                first.graph().addOrUnique(firstUANExtractNode);
+
+                firstUAN.setValue(packVal);
+                firstUAN.inferStamp();
+
+                // Link up the rest
+                for (int i = 1; i < nodes.size(); i++) {
+                    final UnaryArithmeticNode<?> node = nodes.get(i);
+                    final VectorExtractNode extractNode = new VectorExtractNode(node.stamp(view), firstUAN, i);
+                    node.replaceAtUsagesAndDelete(extractNode);
+
+                    first.graph().addOrUnique(extractNode);
+                }
                 return;
             }
 
