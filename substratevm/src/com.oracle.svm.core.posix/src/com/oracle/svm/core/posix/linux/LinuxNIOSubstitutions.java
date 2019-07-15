@@ -45,11 +45,11 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.posix.PosixJavaNIOSubstitutions;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.linux.LinuxEPoll;
-import com.oracle.svm.core.util.VMError;
 
 @Platforms({Platform.LINUX.class})
 public final class LinuxNIOSubstitutions {
@@ -113,12 +113,25 @@ public final class LinuxNIOSubstitutions {
         }
         /* } Do not reformat commented-out code: @formatter:on */
 
+        /* { Do not reformat commented-out code: @formatter:off */
+        //    58  JNIEXPORT jint JNICALL
+        //    59  Java_sun_nio_ch_EPoll_create(JNIEnv *env, jclass clazz) {
         @Substitute //
         @TargetElement(onlyWith = JDK11OrLater.class) //
-        @SuppressWarnings({"unused"})
         static int create() throws IOException {
-            throw VMError.unsupportedFeature("LinuxNIOSubstitutions.Target_sun_nio_ch_EPoll.create");
+            //    60      /* size hint not used in modern kernels */
+            //    61      int epfd = epoll_create(256);
+            int epfd = LinuxEPoll.epoll_create(256);
+            //    62      if (epfd < 0) {
+            if (epfd < 0) {
+                //    63          JNU_ThrowIOExceptionWithLastError(env, "epoll_create failed");
+                throw new IOException("epoll_create failed");
+            }
+            //    64      }
+            //    65      return epfd;
+            return epfd;
         }
+        /* } Do not reformat commented-out code: @formatter:on */
 
         /* { Do not reformat commented-out code: @formatter:off */
         // 070 JNIEXPORT jint JNICALL
@@ -147,11 +160,28 @@ public final class LinuxNIOSubstitutions {
         }
         /* } Do not reformat commented-out code: @formatter:on */
 
+        // 68 JNIEXPORT jint JNICALL
+        // 69 Java_sun_nio_ch_EPoll_ctl(JNIEnv *env, jclass clazz, jint epfd,
+        // 70 jint opcode, jint fd, jint events)
+        // 71 {
         @Substitute //
         @TargetElement(onlyWith = JDK11OrLater.class) //
-        @SuppressWarnings({"unused"})
         static int ctl(int epfd, int opcode, int fd, int events) {
-            throw VMError.unsupportedFeature("LinuxNIOSubstitutions.Target_sun_nio_ch_EPoll.ctl");
+            // 72 struct epoll_event event;
+            LinuxEPoll.epoll_event event = StackValue.get(LinuxEPoll.epoll_event.class);
+            // 73 int res;
+            int res;
+            // 74
+            // 75 event.events = events;
+            event.events(events);
+            // 76 event.data.fd = fd;
+            event.addressOfdata().fd(fd);
+            // 77
+            // 78 res = epoll_ctl(epfd, (int)opcode, (int)fd, &event);
+            res = LinuxEPoll.epoll_ctl(epfd, opcode, fd, event);
+            // 79 return (res == 0) ? 0 : errno;
+            return (res == 0) ? 0 : Errno.errno();
+            // 80 }
         }
 
         /* { Do not reformat commented-out code: @formatter:off */
@@ -181,11 +211,37 @@ public final class LinuxNIOSubstitutions {
         }
         /* } Do not reformat commented-out code: @formatter:on */
 
+        // 82 JNIEXPORT jint JNICALL
+        // 83 Java_sun_nio_ch_EPoll_wait(JNIEnv *env, jclass clazz, jint epfd,
+        // 84 jlong address, jint numfds, jint timeout)
+        // 85 {
         @Substitute //
         @TargetElement(onlyWith = JDK11OrLater.class) //
         @SuppressWarnings({"unused"})
         static int wait(int epfd, long address, int numfds, int timeout) throws IOException {
-            throw VMError.unsupportedFeature("LinuxNIOSubstitutions.Target_sun_nio_ch_EPoll.wait");
+            // 86 struct epoll_event *events = jlong_to_ptr(address);
+            LinuxEPoll.epoll_event events = WordFactory.pointer(address);
+            // 87 int res = epoll_wait(epfd, events, numfds, timeout);
+            int res = LinuxEPoll.epoll_wait(epfd, events, numfds, timeout);
+            // 88 if (res < 0) {
+            if (res < 0) {
+                // 89 if (errno == EINTR) {
+                if (Errno.errno() == Errno.EINTR()) {
+                    // 90 return IOS_INTERRUPTED;
+                    return PosixJavaNIOSubstitutions.Target_sun_nio_ch_IOStatus.IOS_INTERRUPTED;
+                    // 91 } else {
+                } else {
+                    // 92 JNU_ThrowIOExceptionWithLastError(env, "epoll_wait failed");
+                    throw new IOException("epoll_wait failed");
+                    // 93 return IOS_THROWN;
+                    // not reached
+                    // 94 }
+                }
+                // 95 }
+            }
+            // 96 return res;
+            return res;
+            // 97 }
         }
 
         /* This method appears in EPoll.c, but is not declared in EPoll.java. */
