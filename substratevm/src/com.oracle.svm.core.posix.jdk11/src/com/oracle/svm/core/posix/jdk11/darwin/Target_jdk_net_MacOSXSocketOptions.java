@@ -29,6 +29,7 @@ import java.net.SocketException;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.posix.PosixJavaNetClose;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Socket;
@@ -46,7 +47,7 @@ import static com.oracle.svm.core.posix.headers.NetinetTcp.TCP_KEEPINTVL;
 import static com.oracle.svm.core.posix.jdk11.darwin.Util_jdk_net_MacOSXSocketOptions.handleError;
 import static com.oracle.svm.core.posix.jdk11.darwin.Util_jdk_net_MacOSXSocketOptions.socketOptionSupported;
 
-@TargetClass(className = "jdk.net.MacOSXSocketOptions")
+@TargetClass(className = "jdk.net.MacOSXSocketOptions", onlyWith = JDK11OrLater.class)
 @Platforms({Platform.DARWIN_AMD64.class})
 public final class Target_jdk_net_MacOSXSocketOptions {
 
