@@ -214,7 +214,7 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
         return [retCode, myStdOut.data]
 
     def prepare_env(self, env):
-        env['CFLAGS'] = ' '.join(self.options + _env_flags + ['-lm', '-lgmp'])
+        env['CFLAGS'] = ' '.join(self.options + _env_flags)
         env['CC'] = self.c_compiler_exe()
         return env
 
@@ -283,10 +283,13 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         return result
 
     def prepare_env(self, env):
-        if hasattr(self.host_vm(), 'run_launcher'):
-            mx.abort('graalvm llvm toolchain is not yet available in graalvm')
-        else:
-            env['CC'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CC>'.format(self.toolchain_name()))
+        # if hasattr(self.host_vm(), 'run_launcher'):
+        #     import mx_vm
+        #     env['CC'] = os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'jre', 'languages', 'llvm', self.toolchain_name(), 'bin', 'graalvm-{}-clang'.format(self.toolchain_name()))
+        # else:
+        # we always use the bootstrap toolchain since the toolchain is not installed by default in a graalvm
+        # change this if we can properly install components into a graalvm deployment
+        env['CC'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CC>'.format(self.toolchain_name()))
         return env
 
     def out_file(self):
