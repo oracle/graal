@@ -52,6 +52,15 @@ from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets  # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
+import sys
+
+if sys.version_info[0] < 3:
+    def _decode(x):
+        return x
+else:
+    def _decode(x):
+        return x.decode()
+
 GRAAL_COMPILER_FLAGS_BASE = [
     '-XX:+UnlockExperimentalVMOptions',
     '-XX:+EnableJVMCI',
@@ -168,7 +177,7 @@ def svm_java8():
 
 # The list of supported Java versions is implicitly defined via GRAAL_COMPILER_FLAGS_MAP:
 # If there are no compiler flags for a Java version, it is also not supported.
-if not str(svm_java_compliance().value) in GRAAL_COMPILER_FLAGS_MAP:
+if str(svm_java_compliance().value) not in GRAAL_COMPILER_FLAGS_MAP:
     mx.abort("Substrate VM does not support this Java version: " + str(svm_java_compliance()))
 GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP[str(svm_java_compliance().value)]
 
@@ -420,7 +429,7 @@ def svm_gate_body(args, tasks):
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                with tempfile.NamedTemporaryFile() as blacklist:
+                with tempfile.NamedTemporaryFile(mode='w') as blacklist:
                     if svm_java8():
                         blacklist_args = []
                     else:
@@ -691,6 +700,7 @@ def _helloworld(native_image, javac_command, path, args):
             os.dup2(stdout, 1)  # restore original stdout
             mx.log("Stdout from calling {} in shared object {}:".format(run_main, so_name))
             mx.log(call_stdout)
+            actual_output = list(map(_decode, actual_output))
         finally:
             del os.environ[envkey]
             os.close(pin)
@@ -738,7 +748,7 @@ def pom_from_template(proj_dir, svmVersion):
     dom = parse(join(proj_dir, 'pom_template.xml'))
     for svmVersionElement in dom.getElementsByTagName('svmVersion'):
         svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
-    with open(join(proj_dir, 'pom.xml'), 'wb') as pom_file:
+    with open(join(proj_dir, 'pom.xml'), 'w') as pom_file:
         dom.writexml(pom_file)
 
 def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
@@ -884,7 +894,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
     support_distributions=['substratevm:NATIVE_IMAGE_JUNIT_SUPPORT'],
 ))
 
-if os.environ.has_key('LIBGRAAL'):
+if 'LIBGRAAL' in os.environ:
     mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         suite=suite,
         name='LibGraal',

@@ -53,6 +53,13 @@ from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
 from mx_testsuites import GlobNativeProject #pylint: disable=unused-import
 
+if sys.version_info[0] < 3:
+    def _decode(x):
+        return x
+else:
+    def _decode(x):
+        return x.decode()
+
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong")
 _root = join(_suite.dir, "projects")
@@ -262,7 +269,7 @@ def checkCFile(targetFile):
     if clangFormat is None:
         exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
     formatCommand = [clangFormat, targetFile]
-    formattedContent = subprocess.check_output(formatCommand).splitlines()
+    formattedContent = _decode(subprocess.check_output(formatCommand)).splitlines()
     with open(targetFile) as f:
         originalContent = f.read().splitlines()
     if not formattedContent == originalContent:
@@ -514,10 +521,10 @@ def getVersion(program):
     """executes --version on the supplied program and returns the version string"""
     assert program is not None
     try:
-        versionString = subprocess.check_output([program, '--version'])
+        versionString = _decode(subprocess.check_output([program, '--version']))
     except subprocess.CalledProcessError as e:
         # on my machine, e.g., opt returns a non-zero opcode even on success
-        versionString = e.output
+        versionString = _decode(e.output)
     return versionString
 
 def getLLVMVersion(llvmProgram):

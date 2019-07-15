@@ -215,14 +215,11 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
 
     def prepare_env(self, env):
         env['CFLAGS'] = ' '.join(self.options + _env_flags)
-        env['CC'] = self.c_compiler_exe()
+        env['CC'] = self.c_compiler_exe() # pylint: disable=assignment-from-no-return
         return env
 
 
 class GccVm(GccLikeVm):
-    def __init__(self, config_name, options):
-        super(GccVm, self).__init__(config_name, options)
-
     def name(self):
         return "gcc"
 
@@ -234,9 +231,6 @@ class GccVm(GccLikeVm):
 
 
 class ClangVm(GccLikeVm):
-    def __init__(self, config_name, options):
-        super(ClangVm, self).__init__(config_name, options)
-
     def name(self):
         return "clang"
 

@@ -38,6 +38,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+from __future__ import print_function
+
 import argparse
 import os
 import os.path
@@ -143,7 +145,7 @@ class _MvnClassPathEntry(_ClassPathEntry):
         process = _MvnClassPathEntry._run_maven(['dependency:copy', '-Dartifact=' + self.groupId + ':' + self.artifactId + ':' + self.version, '-DoutputDirectory=' + folder], self.repository)
         ret_code = process.wait()
         if ret_code != 0:
-            raise Abort('Cannot copy artifact '.format(self))
+            raise Abort('Cannot copy artifact {0}'.format(self))
 
     def __str__(self):
         return '{0}:{1}:{2}'.format(self.groupId, self.artifactId, self.version)
@@ -186,7 +188,7 @@ class _MvnClassPathEntry(_ClassPathEntry):
 
 def _log(level, message, args=None):
     if level != LogLevel.OFF and level >= _log_level:
-        print message.format(args if args else [])
+        print(message.format(args if args else []))
 
 def _is_windows():
     return sys.platform.startswith('win32')
@@ -302,14 +304,14 @@ def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_
     if not vm_args:
         vm_args = []
 
-    if tests_filter and type(tests_filter) is str:
+    if tests_filter and isinstance(tests_filter, str):
         tests_filter = [tests_filter]
 
     return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter,
         [_ClassPathEntry(os.path.abspath(e)) for e in cp],
         [_ClassPathEntry(os.path.abspath(e)) for e in truffle_cp],
         [_ClassPathEntry(os.path.abspath(e)) for e in boot_cp],
-        vm_args if type(vm_args) == list else list(vm_args),
+        vm_args if isinstance(vm_args, list) else list(vm_args),
         debug_port)
 
 def set_log_level(log_level):

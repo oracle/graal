@@ -49,6 +49,26 @@ import datetime
 from mx_gate import Task
 from mx_unittest import unittest
 
+def _with_metaclass(meta, *bases):
+    """Create a base class with a metaclass."""
+
+    # Copyright (c) 2010-2018 Benjamin Peterson
+    # Taken from six, Python compatibility library
+    # MIT license
+
+    # This requires a bit of explanation: the basic idea is to make a dummy
+    # metaclass for one level of class instantiation that replaces itself with
+    # the actual metaclass.
+    class MetaClass(type):
+
+        def __new__(mcs, name, this_bases, d):
+            return meta(name, bases, d)
+
+        @classmethod
+        def __prepare__(mcs, name, this_bases):
+            return meta.__prepare__(name, bases)
+    return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {}) #pylint: disable=unused-variable
+
 _suite = mx.suite('sdk')
 
 graalvm_hostvm_configs = [
@@ -92,10 +112,8 @@ def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority
     graalvm_hostvm_configs.append((name, java_args, launcher_args, priority))
 
 
-class AbstractNativeImageConfig(object):
-    __metaclass__ = ABCMeta
-
-    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False):
+class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
+    def __init__(self, destination, jar_distributions, build_args, links=None, is_polyglot=False, dir_jars=False): # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -376,7 +394,7 @@ def graalvm_components(opt_limit_to_suite=False):
     if opt_limit_to_suite and mx.get_opts().specific_suites:
         return [c for c in _graalvm_components.values() if c.suite.name in mx.get_opts().specific_suites]
     else:
-        return _graalvm_components.values()
+        return list(_graalvm_components.values())
 
 
 mx.update_commands(_suite, {
