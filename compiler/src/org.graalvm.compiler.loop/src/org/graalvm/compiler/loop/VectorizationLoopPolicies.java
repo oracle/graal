@@ -86,31 +86,31 @@ public class VectorizationLoopPolicies implements LoopPolicies {
 
         // Will the next unroll fit?
         if ((int) loopBegin.loopOrigFrequency() < (unrollFactor * 2)) {
-          return false;
+            return false;
         }
         // Check whether we're allowed to unroll this loop
         for (Node node : loop.inside().nodes()) {
-          if (node instanceof ControlFlowAnchorNode) {
-              return false;
-          }
-          if (node instanceof InvokeNode) {
-              return false;
-          }
+            if (node instanceof ControlFlowAnchorNode) {
+                return false;
+            }
+            if (node instanceof InvokeNode) {
+                return false;
+            }
         }
 
         // Unroll by vector length
         final int minWidth = StreamSupport.stream(loop.whole().nodes().
-                filter(NodePredicates.isA(ValueNode.class)).spliterator(), false).
-                filter(x -> x instanceof Access).
-                map(x -> {
-                    if (x instanceof WriteNode) {
-                        return ((WriteNode) x).getAccessStamp();
-                    } else {
-                        return ((ValueNode) x).stamp(NodeView.DEFAULT);
-                    }
-                }).
-                filter(x -> x instanceof PrimitiveStamp).
-                mapToInt(vectorDescription::maxVectorWidth).min().orElse(0);
+            filter(NodePredicates.isA(ValueNode.class)).spliterator(), false).
+            filter(x -> x instanceof Access).
+            map(x -> {
+                if (x instanceof WriteNode) {
+                    return ((WriteNode) x).getAccessStamp();
+                } else {
+                    return ((ValueNode) x).stamp(NodeView.DEFAULT);
+                }
+            }).
+            filter(x -> x instanceof PrimitiveStamp).
+            mapToInt(vectorDescription::maxVectorWidth).min().orElse(0);
 
         return loopBegin.getUnrollFactor() < minWidth;
     }
