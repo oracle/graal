@@ -8,11 +8,11 @@ and language implementers who want to use the GraalVM LLVM runtime.
 ## Use Cases
 
 1. **Simplify compilation to bitcode**
-  *GraalVM users* who want to run native projects via the GraalVM LLVM runtime,
-  must first compile their projects to LLVM bitcode.
+  *GraalVM users* who want to run native projects via the GraalVM LLVM runtime
+  must first compile these projects to LLVM bitcode.
   Although it is possible to do this with the standard LLVM tools (`clang`, `llvm-link`, etc.),
-  they are required to address several additional considerations, such as optimizations and manual linking.
-  The toolchain aims to simplify this process, by providing an out of the box drop in replacement for compiling
+  users need to address several additional considerations, such as optimizations and manual linking.
+  The toolchain aims to simplify this process, by providing an out-of-the-box drop-in replacement for compiling
   native projects targeting the GraalVM LLVM runtime.
 
 2. **Compilation of native extensions**
@@ -36,8 +36,8 @@ files on MacOS).
 
 ## Toolchain Identifier
 
-The GraalVM LLVM runtime can be ran in different configurations, which can differ how the bitcode is being compiled.
-Generally users of the toolchain does not need to be concerned, as the GraalVM LLVM runtime knows the mode it is running 
+The GraalVM LLVM runtime can be ran in different configurations, which can differ in how the bitcode is being compiled.
+Generally, users of the toolchain do not need to be concerned, as the GraalVM LLVM runtime knows the mode it is running
 and will always provide the right toolchain.
 However, if a language implementation wants to store the
 bitcode compilation for later use, it will need to be able to identify the toolchain and its configurations used to compile the bitcode.
