@@ -139,7 +139,7 @@ public class DebugInfoBuilder {
                         } else {
                             assert value.getStackKind() == JavaKind.Illegal;
                             ValueNode previousValue = currentField.values().get(i - 1);
-                            assert (previousValue != null && (previousValue.getStackKind().needsTwoSlots()) || VirtualByteArrayHelper.isVirtualByteArray(vobjNode, i)) : vobjNode + " " + i +
+                            assert (previousValue != null && (previousValue.getStackKind().needsTwoSlots()) || VirtualByteArrayHelper.isVirtualByteArray(vobjNode)) : vobjNode + " " + i +
                                             " " + previousValue + " " + currentField.values().snapshot();
                             if (previousValue == null || !previousValue.getStackKind().needsTwoSlots()) {
                                 // Don't allow the IllegalConstant to leak into the debug info

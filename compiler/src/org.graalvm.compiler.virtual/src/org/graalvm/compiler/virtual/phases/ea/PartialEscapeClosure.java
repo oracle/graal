@@ -881,7 +881,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         valueIndex++;
                     } else {
                         assert entryKind.getStackKind() == otherKind.getStackKind() || (entryKind == JavaKind.Int && otherKind == JavaKind.Illegal) ||
-                                        VirtualByteArrayHelper.isVirtualByteArray(virtual, valueIndex) ||
+                                        VirtualByteArrayHelper.isVirtualByteArray(virtual) ||
                                         entryKind.getBitCount() >= otherKind.getBitCount() : entryKind + " vs " + otherKind;
                     }
                     valueIndex++;

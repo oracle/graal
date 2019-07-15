@@ -130,7 +130,7 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
             int idx = indexValue.isConstant() ? indexValue.asJavaConstant().asInt() : -1;
             if (idx >= 0 && idx < virtual.entryCount()) {
                 ValueNode entry = tool.getEntry(virtual, idx);
-                if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, idx, elementKind())) {
+                if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, elementKind())) {
                     if (VirtualByteArrayHelper.canVirtualizeRead(virtual, entry, idx, elementKind(), tool)) {
                         tool.replaceWith(VirtualByteArrayHelper.virtualizeRead(entry, elementKind(), stamp));
                     }

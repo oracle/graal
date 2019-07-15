@@ -35,7 +35,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
-public class VirtualByteArrayHelper {
+public final class VirtualByteArrayHelper {
     private VirtualByteArrayHelper() {
     }
 
@@ -43,12 +43,12 @@ public class VirtualByteArrayHelper {
         return virtual instanceof VirtualArrayNode;
     }
 
-    public static boolean isVirtualByteArray(VirtualObjectNode virtual, int index) {
-        return isVirtualArray(virtual) && virtual.entryKind(index) == JavaKind.Byte;
+    public static boolean isVirtualByteArray(VirtualObjectNode virtual) {
+        return isVirtualArray(virtual) && virtual.entryCount() > 0 && virtual.entryKind(0) == JavaKind.Byte;
     }
 
-    public static boolean isVirtualByteArrayAccess(VirtualObjectNode virtual, int index, JavaKind accessKind) {
-        return accessKind.isPrimitive() && isVirtualByteArray(virtual, index);
+    public static boolean isVirtualByteArrayAccess(VirtualObjectNode virtual, JavaKind accessKind) {
+        return accessKind.isPrimitive() && isVirtualByteArray(virtual);
     }
 
     public static boolean isIllegalConstant(ValueNode node) {
@@ -64,12 +64,24 @@ public class VirtualByteArrayHelper {
         return entry;
     }
 
+    /**
+     * Checks that a read in a virtual object is a candidate for byte array virtualization.
+     *
+     * Virtualizing reads in byte arrays can happen iff all of these hold true:
+     * <li>The virtualized object is a virtualized byte array
+     * <li>Both the virtualized entry and the access kind are primitives
+     * <li>The number of bytes actually occupied by the entry is equal to the number of bytes of the
+     * access kind
+     */
     public static boolean canVirtualizeRead(VirtualObjectNode virtual, ValueNode entry, int index, JavaKind accessKind, VirtualizerTool tool) {
         return !isIllegalConstant(entry) && entry.getStackKind() == accessKind.getStackKind() &&
-                        isVirtualByteArrayAccess(virtual, index, accessKind) &&
+                        isVirtualByteArrayAccess(virtual, accessKind) &&
                         accessKind.getByteCount() == entryByteCount((VirtualArrayNode) virtual, index, tool);
     }
 
+    /**
+     * Returns the number of bytes that the entry at a given index actually occupies.
+     */
     public static int entryByteCount(VirtualArrayNode virtual, int index, VirtualizerTool tool) {
         int i = index + 1;
         while (i < virtual.entryCount() && VirtualByteArrayHelper.isIllegalConstant(tool.getEntry(virtual, i))) {

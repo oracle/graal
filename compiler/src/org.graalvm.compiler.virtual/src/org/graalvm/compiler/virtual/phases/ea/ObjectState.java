@@ -98,7 +98,7 @@ public class ObjectState {
 
     /**
      * Ensure that if an {@link JavaConstant#forIllegal() illegal value} is seen that the previous
-     * value is a double word value.
+     * value is a double word value, or a primitive in a byte array.
      */
     public static boolean checkIllegalValues(ValueNode[] values) {
         if (values != null) {
@@ -109,10 +109,6 @@ public class ObjectState {
         return true;
     }
 
-    /**
-     * Ensure that if an {@link JavaConstant#forIllegal() illegal value} is seen that the previous
-     * value is a double word value.
-     */
     public static int checkIllegalValue(ValueNode[] values, int v) {
         int res = 1;
         if (v > 0 && VirtualByteArrayHelper.isIllegalConstant(values[v])) {

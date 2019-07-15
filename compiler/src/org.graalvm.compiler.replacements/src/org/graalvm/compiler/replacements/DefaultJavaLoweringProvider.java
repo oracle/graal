@@ -84,6 +84,7 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
@@ -853,7 +854,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 barrierType = arrayInitializationBarrier(entryKind);
                             }
                             if (address != null) {
-                                WriteNode write = new WriteNode(address, LocationIdentity.init(), tryImplicitStoreConvert(graph, entryKind, value, commit, virtual, valuePos, i), barrierType, false);
+                                WriteNode write = new WriteNode(address, LocationIdentity.init(), arrayImplicitStoreConvert(graph, entryKind, value, commit, virtual, valuePos), barrierType, false);
                                 graph.addAfterFixed(newObject, graph.add(write));
                             }
                         }
@@ -1117,18 +1118,34 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return value;
     }
 
-    private ValueNode tryImplicitStoreConvert(StructuredGraph graph, JavaKind entryKind, ValueNode value, CommitAllocationNode commit, VirtualObjectNode virtual, int valuePos, int i) {
-        if (!VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, i, entryKind)) {
+    public ValueNode arrayImplicitStoreConvert(StructuredGraph graph,
+                    JavaKind entryKind,
+                    ValueNode value,
+                    CommitAllocationNode commit,
+                    VirtualObjectNode virtual,
+                    int valuePos) {
+        if (!VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, entryKind)) {
             return implicitStoreConvert(graph, entryKind, value);
         }
+        // A virtual entry in a byte array can span multiple bytes. This shortens the entry to fit
+        // in its declared size.
         int entryIndex = valuePos + 1;
         int bytes = 1;
-        while (entryIndex < virtual.entryCount() && VirtualByteArrayHelper.isIllegalConstant(commit.getValues().get(entryIndex))) {
+        while (entryIndex < commit.getValues().size() && VirtualByteArrayHelper.isIllegalConstant(commit.getValues().get(entryIndex))) {
             bytes++;
             entryIndex++;
         }
         assert bytes <= value.getStackKind().getByteCount();
-        return value;
+        ValueNode entry = value;
+        if (value.getStackKind() == JavaKind.Float) {
+            entry = graph.addOrUnique(ReinterpretNode.create(JavaKind.Int, entry, NodeView.DEFAULT));
+        } else if (value.getStackKind() == JavaKind.Double) {
+            entry = graph.addOrUnique(ReinterpretNode.create(JavaKind.Long, entry, NodeView.DEFAULT));
+        }
+        if (bytes < value.getStackKind().getByteCount()) {
+            entry = graph.unique(new NarrowNode(entry, bytes << 3));
+        }
+        return entry;
     }
 
     public final ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {

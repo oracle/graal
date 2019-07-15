@@ -157,7 +157,14 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     assert nextIndex == index + 1 : "expected to be sequential";
                     getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for double word stored in two ints", current);
                 }
-            } else if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, index, accessKind)) {
+            } else if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, accessKind)) {
+                /*
+                 * Special case: Allow storing any primitive inside a byte array, as long as there
+                 * is enough room left, and all accesses and subsequent writes are on the exact
+                 * position of the first write, and of the same kind.
+                 *
+                 * Any other access results in materialization.
+                 */
                 int nextIndex = virtual.entryIndexForOffset(getMetaAccess(), offset + accessKind.getByteCount() - 1, JavaKind.Byte);
                 if (nextIndex != -1 && !oldIsIllegal && canStoreOverOldValue((VirtualArrayNode) virtual, oldValue, accessKind, index)) {
                     canVirtualize = true;
@@ -181,7 +188,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     addNode(secondHalf);
                     state.setEntry(virtual.getObjectId(), index + 1, secondHalf);
                 }
-            } else if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, index, accessKind)) {
+            } else if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, accessKind)) {
                 for (int i = index + 1; i < index + accessKind.getByteCount(); i++) {
                     state.setEntry(virtual.getObjectId(), i, getIllegalConstant());
                 }
