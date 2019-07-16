@@ -69,10 +69,6 @@ public abstract class Type {
         }
     }
 
-    public static boolean isFunctionOrFunctionPointer(Type type) {
-        return type instanceof FunctionType || (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType);
-    }
-
     public static Type createConstantForType(Type type, Object value) {
         if (type instanceof PrimitiveType) {
             return new PrimitiveType(((PrimitiveType) type).getPrimitiveKind(), value);

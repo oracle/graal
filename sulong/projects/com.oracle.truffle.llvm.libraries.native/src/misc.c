@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,10 +28,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <trufflenfi.h>
-
-void *getNullPointer() {
-    return (void*) 0;
-}
 
 void *identity(void* p) {
     return p;
