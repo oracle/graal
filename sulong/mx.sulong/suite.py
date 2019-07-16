@@ -261,6 +261,19 @@ suite = {
       "jacoco" : "include",
     },
 
+    "com.oracle.truffle.llvm.tools" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.parser",
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.llvm.toolchain.launchers" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
