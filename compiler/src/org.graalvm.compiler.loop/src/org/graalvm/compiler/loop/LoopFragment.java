@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,11 @@
 package org.graalvm.compiler.loop;
 
 import java.util.ArrayDeque;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.Iterator;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
@@ -43,6 +43,7 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.GuardProxyNode;
 import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.PhiNode;
@@ -194,17 +195,7 @@ public abstract class LoopFragment {
         }
     }
 
-    protected static NodeBitMap computeNodes(Graph graph, Iterable<AbstractBeginNode> blocks) {
-        return computeNodes(graph, blocks, Collections.emptyList());
-    }
-
-    protected static NodeBitMap computeNodes(Graph graph, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
-        final NodeBitMap nodes = graph.createNodeBitMap();
-        computeNodes(nodes, graph, blocks, earlyExits);
-        return nodes;
-    }
-
-    protected static void computeNodes(NodeBitMap nodes, Graph graph, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
+    protected static void computeNodes(NodeBitMap nodes, Graph graph, LoopEx loop, Iterable<AbstractBeginNode> blocks, Iterable<AbstractBeginNode> earlyExits) {
         for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
@@ -256,11 +247,11 @@ public abstract class LoopFragment {
             for (Node n : b.getBlockNodes()) {
                 if (n instanceof CommitAllocationNode) {
                     for (VirtualObjectNode obj : ((CommitAllocationNode) n).getVirtualObjects()) {
-                        markFloating(worklist, obj, nodes, nonLoopNodes);
+                        markFloating(worklist, loop, obj, nodes, nonLoopNodes);
                     }
                 }
                 if (n instanceof MonitorEnterNode) {
-                    markFloating(worklist, ((MonitorEnterNode) n).getMonitorId(), nodes, nonLoopNodes);
+                    markFloating(worklist, loop, ((MonitorEnterNode) n).getMonitorId(), nodes, nonLoopNodes);
                 }
                 if (n instanceof AbstractMergeNode) {
                     /*
@@ -269,12 +260,12 @@ public abstract class LoopFragment {
                      */
                     for (PhiNode phi : ((AbstractMergeNode) n).phis()) {
                         for (Node usage : phi.usages()) {
-                            markFloating(worklist, usage, nodes, nonLoopNodes);
+                            markFloating(worklist, loop, usage, nodes, nonLoopNodes);
                         }
                     }
                 }
                 for (Node usage : n.usages()) {
-                    markFloating(worklist, usage, nodes, nonLoopNodes);
+                    markFloating(worklist, loop, usage, nodes, nonLoopNodes);
                 }
             }
         }
@@ -326,10 +317,14 @@ public abstract class LoopFragment {
         workList.push(entry);
     }
 
-    private static void markFloating(Deque<WorkListEntry> workList, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
+    private static void markFloating(Deque<WorkListEntry> workList, LoopEx loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
         if (isLoopNode(start, loopNodes, nonLoopNodes).isKnown()) {
             return;
         }
+
+        LoopBeginNode loopBeginNode = loop.loopBegin();
+        ControlFlowGraph cfg = loop.loopsData().getCFG();
+
         pushWorkList(workList, start, loopNodes);
         while (!workList.isEmpty()) {
             WorkListEntry currentEntry = workList.peek();
@@ -349,15 +344,24 @@ public abstract class LoopFragment {
                 Node current = currentEntry.n;
                 if (!isLoopNode && current instanceof GuardNode && !current.hasUsages()) {
                     GuardNode guard = (GuardNode) current;
-                    if (isLoopNode(guard.getCondition(), loopNodes, nonLoopNodes) != TriState.FALSE &&
-                                    isLoopNode(guard.getAnchor().asNode(), loopNodes, nonLoopNodes) != TriState.FALSE) {
-                        /*
-                         * (gd) this is wrong in general, it's completely avoidable while we are
-                         * doing loop transforms using ValueProxies. If it happens after it could
-                         * still cause problem.
-                         */
-                        assert !((GuardNode) current).graph().hasValueProxies();
-                        isLoopNode = true;
+                    if (isLoopNode(guard.getCondition(), loopNodes, nonLoopNodes) != TriState.FALSE) {
+                        ValueNode anchor = guard.getAnchor().asNode();
+                        TriState isAnchorInLoop = isLoopNode(anchor, loopNodes, nonLoopNodes);
+                        if (isAnchorInLoop != TriState.FALSE) {
+                            if (!(anchor instanceof LoopExitNode && ((LoopExitNode) anchor).loopBegin() == loopBeginNode)) {
+                                /*
+                                 * (gd) this is wrong in general, it's completely avoidable while we
+                                 * are doing loop transforms using ValueProxies. If it happens after
+                                 * it could still cause problem.
+                                 */
+                                assert !((GuardNode) current).graph().hasValueProxies();
+                                isLoopNode = true;
+                            }
+                        } else if (AbstractControlFlowGraph.strictlyDominates(cfg.blockFor(anchor), cfg.blockFor(loopBeginNode))) {
+                            // The anchor is above the loop. The no-usage guard can potentially be
+                            // scheduled inside the loop.
+                            isLoopNode = true;
+                        }
                     }
                 }
                 if (isLoopNode) {
