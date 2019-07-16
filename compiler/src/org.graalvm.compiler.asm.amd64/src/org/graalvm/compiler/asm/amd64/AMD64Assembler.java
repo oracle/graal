@@ -947,10 +947,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                     break;
             }
             if (r != null) {
-                assert r.getRegisterCategory().equals(rCategory) : "register " + r.name + " with category " + r.getRegisterCategory() + " does not match expected category " + rCategory;
+                assert r.getRegisterCategory().equals(rCategory) : "r register " + r.name + " with category " + r.getRegisterCategory() + " does not match expected category " + rCategory;
             }
             if (v != null) {
-                assert v.getRegisterCategory().equals(vCategory) : "register " + v.name + " with category " + v.getRegisterCategory() + " does not match expected category " + vCategory;
+                assert v.getRegisterCategory().equals(vCategory) : "v register " + v.name + " with category " + v.getRegisterCategory() + " does not match expected category " + vCategory;
             }
             if (m != null) {
                 assert m.getRegisterCategory().equals(mCategory);
