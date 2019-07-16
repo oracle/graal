@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,24 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.interop.values;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+void *test_pointer_add(void *a, void *b) {
+  return (long) a + (long) b;
+}
 
-@ExportLibrary(InteropLibrary.class)
-@SuppressWarnings("static-method")
-public final class NullValue implements TruffleObject {
+void *test_pointer_sub(void *a, void *b) {
+  return (long) a - (long) b;
+}
 
-    @ExportMessage
-    boolean isNull() {
-        return true;
-    }
+void *test_pointer_mul(void *a, void *b) {
+  return (long) a * (long) b;
+}
 
-    @Override
-    public String toString() {
-        return "null";
-    }
+void *test_pointer_xor(void *a, void *b) {
+  return (long) a ^ (long) b;
+}
+
+char deref_pointer(char *p) {
+  return *p;
 }

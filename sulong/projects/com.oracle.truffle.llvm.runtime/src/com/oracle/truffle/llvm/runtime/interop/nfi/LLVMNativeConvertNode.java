@@ -70,6 +70,11 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
             return new AddressToNative();
         } else if (argType instanceof VoidType) {
             return new VoidToNative();
+        } else if (argType instanceof PrimitiveType) {
+            if (((PrimitiveType) argType).getPrimitiveKind() == PrimitiveKind.I64) {
+                // an I64 might also be a pointer
+                return new AddressToNative();
+            }
         }
         return IdNodeGen.create();
     }

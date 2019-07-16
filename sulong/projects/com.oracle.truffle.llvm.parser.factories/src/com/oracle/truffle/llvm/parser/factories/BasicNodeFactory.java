@@ -266,19 +266,15 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMStructStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAbstractCompareNode;
 import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNode;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMAddNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMAndNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMAshrNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMDivNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMLshrNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMMulNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMOrNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMRemNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMShlNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMSubNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMUDivNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMURemNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMXorNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNode.LLVMAbstractI64ArithmeticNode;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMDoubleArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMFP80ArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMFloatArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI16ArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI1ArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI32ArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMI8ArithmeticNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMArithmeticNodeFactory.LLVMIVarBitArithmeticNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMEqNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMFalseCmpNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMNeNodeGen;
@@ -1268,35 +1264,31 @@ public class BasicNodeFactory implements NodeFactory {
 
     protected LLVMArithmeticNode createScalarArithmeticOp(ArithmeticOperation op, Type type, LLVMExpressionNode left, LLVMExpressionNode right) {
         assert !(type instanceof VectorType);
-        switch (op) {
-            case ADD:
-                return LLVMAddNodeGen.create(left, right);
-            case SUB:
-                return LLVMSubNodeGen.create(left, right);
-            case MUL:
-                return LLVMMulNodeGen.create(left, right);
-            case DIV:
-                return LLVMDivNodeGen.create(left, right);
-            case UDIV:
-                return LLVMUDivNodeGen.create(left, right);
-            case REM:
-                return LLVMRemNodeGen.create(left, right);
-            case UREM:
-                return LLVMURemNodeGen.create(left, right);
-            case AND:
-                return LLVMAndNodeGen.create(left, right);
-            case OR:
-                return LLVMOrNodeGen.create(left, right);
-            case XOR:
-                return LLVMXorNodeGen.create(left, right);
-            case SHL:
-                return LLVMShlNodeGen.create(left, right);
-            case LSHR:
-                return LLVMLshrNodeGen.create(left, right);
-            case ASHR:
-                return LLVMAshrNodeGen.create(left, right);
-            default:
-                throw new AssertionError(type);
+        if (type instanceof PrimitiveType) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
+                case I1:
+                    return LLVMI1ArithmeticNodeGen.create(op, left, right);
+                case I8:
+                    return LLVMI8ArithmeticNodeGen.create(op, left, right);
+                case I16:
+                    return LLVMI16ArithmeticNodeGen.create(op, left, right);
+                case I32:
+                    return LLVMI32ArithmeticNodeGen.create(op, left, right);
+                case I64:
+                    return LLVMAbstractI64ArithmeticNode.create(op, left, right);
+                case FLOAT:
+                    return LLVMFloatArithmeticNodeGen.create(op, left, right);
+                case DOUBLE:
+                    return LLVMDoubleArithmeticNodeGen.create(op, left, right);
+                case X86_FP80:
+                    return LLVMFP80ArithmeticNodeGen.create(op, left, right);
+                default:
+                    throw new AssertionError(type);
+            }
+        } else if (type instanceof VariableBitWidthType) {
+            return LLVMIVarBitArithmeticNodeGen.create(op, left, right);
+        } else {
+            throw new AssertionError(type);
         }
     }
 
