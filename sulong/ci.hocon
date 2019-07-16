@@ -87,18 +87,6 @@ sulong-ruby-downstream-test: {
     timelimit: "45:00"
 }
 
-sulong-python-downstream-test: {
-    packages: {
-        python: "==3.4.1"
-        gcc: "==4.9.1"
-        llvm: ">=4.0"
-    }
-    run: [
-        [mx, testdownstream, --repo, "https://github.com/graalvm/graalpython.git",
-         --mx-command, "--dynamicimports /sulong gate -B=--force-deprecation-as-warning --tags build,python-cpyext"]
-    ]
-}
-
 sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
   run: [
     ["mx", "create-asm-parser"]
@@ -134,7 +122,6 @@ builds += [
   ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
 
   ${sulong-gateTest80-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
-  ${sulong-gateTest80-linux} ${sulong-python-downstream-test} { name: gate-sulong-python-downstream }
 
   ${sulong-coverage-linux} { name: weekly-sulong-coverage }
 ]
