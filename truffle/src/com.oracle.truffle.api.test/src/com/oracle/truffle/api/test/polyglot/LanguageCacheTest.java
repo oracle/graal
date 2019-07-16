@@ -151,6 +151,7 @@ public class LanguageCacheTest {
             }
         }
 
+        @SuppressWarnings("deprecation")
         private void definePackage(String className) {
             String packageName = getPackageName(className);
             if (getPackage(packageName) == null) {
