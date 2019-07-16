@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,15 +45,16 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         new EspressoLauncher().launch(args);
     }
 
-    private String classpath = null;
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
     private VersionAction versionAction = VersionAction.None;
+    private final Map<String, String> espressoOptions = new HashMap<>();
 
     @Override
-    protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
-        ArrayList<String> unrecognized = new ArrayList<>();
+    protected List<String> preprocessArguments(List<String> arguments, Map<String, String> unused) {
+        String classpath = null;
         String jarFileName = null;
+        ArrayList<String> unrecognized = new ArrayList<>();
         for (int i = 0; i < arguments.size(); i++) {
             String arg = arguments.get(i);
             switch (arg) {
@@ -82,12 +84,12 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
                 case "-ea":
                 case "-enableassertions":
-                    polyglotOptions.put("java.EnableAssertions", "true");
+                    espressoOptions.put("java.EnableAssertions", "true");
                     break;
 
                 case "-esa":
                 case "-enablesystemassertions":
-                    polyglotOptions.put("java.EnableSystemAssertions", "true");
+                    espressoOptions.put("java.EnableSystemAssertions", "true");
                     break;
 
                 case "-?":
@@ -103,16 +105,16 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
                 default:
                     if (arg.startsWith("-Xbootclasspath:")) {
-                        polyglotOptions.remove("java.BootClasspathPrepend");
-                        polyglotOptions.remove("java.BootClasspathAppend");
-                        polyglotOptions.put("java.BootClasspath", arg.substring("-Xbootclasspath:".length()));
+                        espressoOptions.remove("java.BootClasspathPrepend");
+                        espressoOptions.remove("java.BootClasspathAppend");
+                        espressoOptions.put("java.BootClasspath", arg.substring("-Xbootclasspath:".length()));
                     } else if (arg.startsWith("-Xbootclasspath/a:")) {
-                        polyglotOptions.put("java.BootClasspathAppend", appendPath(polyglotOptions.get("java.BootClasspathAppend"), arg.substring("-Xbootclasspath/a:".length())));
+                        espressoOptions.put("java.BootClasspathAppend", appendPath(espressoOptions.get("java.BootClasspathAppend"), arg.substring("-Xbootclasspath/a:".length())));
                     } else if (arg.startsWith("-Xbootclasspath/p:")) {
-                        polyglotOptions.put("java.BootClasspathPrepend", prependPath(arg.substring("-Xbootclasspath/p:".length()), polyglotOptions.get("java.BootClasspathPrepend")));
+                        espressoOptions.put("java.BootClasspathPrepend", prependPath(arg.substring("-Xbootclasspath/p:".length()), espressoOptions.get("java.BootClasspathPrepend")));
                     } else if (arg.startsWith("-Xverify:")) {
                         String mode = arg.substring("-Xverify:".length());
-                        polyglotOptions.put("java.Verify", mode);
+                        espressoOptions.put("java.Verify", mode);
                     } else
                     // -Dsystem.property=value
                     if (arg.startsWith("-D")) {
@@ -126,26 +128,26 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
                         switch (key) {
                             case "espresso.library.path":
-                                polyglotOptions.put("java.EspressoLibraryPath", value);
+                                espressoOptions.put("java.EspressoLibraryPath", value);
                                 break;
                             case "java.library.path":
-                                polyglotOptions.put("java.JavaLibraryPath", value);
+                                espressoOptions.put("java.JavaLibraryPath", value);
                                 break;
                             case "java.class.path":
                                 classpath = value;
                                 break;
                             case "java.ext.dirs":
-                                polyglotOptions.put("java.ExtDirs", value);
+                                espressoOptions.put("java.ExtDirs", value);
                                 break;
                             case "sun.boot.class.path":
-                                polyglotOptions.put("java.BootClasspath", value);
+                                espressoOptions.put("java.BootClasspath", value);
                                 break;
                             case "sun.boot.library.path":
-                                polyglotOptions.put("java.BootLibraryPath", value);
+                                espressoOptions.put("java.BootLibraryPath", value);
                                 break;
                         }
 
-                        polyglotOptions.put("java.Properties." + key, value);
+                        espressoOptions.put("java.Properties." + key, value);
                     } else if (!arg.startsWith("-")) {
                         mainClassName = arg;
                     } else {
@@ -173,7 +175,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         // (1) the -cp/-classpath command line option
         if (classpath == null) {
             // (2) the property java.class.path
-            classpath = polyglotOptions.get("java.Properties.java.class.path");
+            classpath = espressoOptions.get("java.Properties.java.class.path");
             if (classpath == null) {
                 // (3) the environment variable CLASSPATH
                 classpath = System.getenv("CLASSPATH");
@@ -184,7 +186,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             }
         }
 
-        polyglotOptions.put("java.Classpath", classpath);
+        espressoOptions.put("java.Classpath", classpath);
 
         return unrecognized;
     }
@@ -251,8 +253,8 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     protected void launch(Builder contextBuilder) {
         contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[0])).in(System.in).out(System.out).err(System.err);
 
-        if (classpath != null) {
-            contextBuilder.option("java.Classpath", classpath);
+        for (Map.Entry<String, String> entry : espressoOptions.entrySet()) {
+            contextBuilder.option(entry.getKey(), entry.getValue());
         }
 
         contextBuilder.allowCreateThread(true);
