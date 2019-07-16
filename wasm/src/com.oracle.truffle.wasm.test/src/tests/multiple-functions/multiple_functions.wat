@@ -1,12 +1,12 @@
 (module
-    (func $main (export "main") (result i32)
+    (func $main (export "_main") (result i32)
         block $B0 (result i32)
             i32.const 11
         end
         i32.const 21
         i32.add
     )
-    (func $main_ (result i32)
+    (func (result i32)
         block $B0 (result i32)
             i32.const 11
         end

@@ -1,5 +1,5 @@
 (module
-    (func (export "main") (result i32)
+    (func (export "_main") (result i32)
         block $B0 (result i32)
             i32.const 42
             block $B1 (result i32)

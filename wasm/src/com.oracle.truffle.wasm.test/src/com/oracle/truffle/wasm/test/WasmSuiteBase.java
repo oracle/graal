@@ -63,7 +63,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Context context = Context.create();
             Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);
-            Value function = context.getBindings("wasm").getMember("main");
+            Value function = context.getBindings("wasm").getMember("_main");
             if (WasmTestOptions.TRIGGER_GRAAL) {
                 for (int i = 0; i !=  10_000_000; ++i) {
                     function.execute();

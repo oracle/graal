@@ -1,5 +1,5 @@
 (module
-    (func (export "main") (result i64) (local $l0 i32)
+    (func (export "_main") (result i64) (local $l0 i32)
         i32.const 1
         if $l0
             i32.const 42
