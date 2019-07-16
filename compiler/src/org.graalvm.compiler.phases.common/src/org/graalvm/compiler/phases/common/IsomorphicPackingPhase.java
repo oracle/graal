@@ -780,7 +780,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     final VectorExtractNode extractNode = new VectorExtractNode(node.getAccessStamp().unrestricted(), vectorRead, i);
 
                     if (node.predecessor() != null) {
-                        node.predecessor().replaceFirstSuccessor(node, null);
+                        node.predecessor().clearSuccessors();
                     }
                     node.replaceAtUsagesAndDelete(extractNode);
 
@@ -807,7 +807,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 }
                 for (WriteNode node : nodes) {
                     if (node.predecessor() != null) {
-                      node.predecessor().replaceFirstSuccessor(node, null);
+                        node.predecessor().clearSuccessors();
                     }
                     node.safeDelete();
                 }
