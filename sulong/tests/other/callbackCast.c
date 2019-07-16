@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,13 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <trufflenfi.h>
+#include <stdio.h>
+#include <math.h>
 
-void *identity(void* p) {
-    return p;
+int call_typecast(int (*)(void));
+
+int foo(int x) {
+  return 3 * x;
 }
 
-TruffleObject createNativeWrapper(TruffleEnv *env, void *fnPtr) {
-    TruffleObject wrapper = (*env)->getClosureObject(env, fnPtr);
-    return (*env)->releaseAndReturn(env, wrapper);
+int main(void) {
+  printf("%d\n", call_typecast(foo));
+  return 0;
 }

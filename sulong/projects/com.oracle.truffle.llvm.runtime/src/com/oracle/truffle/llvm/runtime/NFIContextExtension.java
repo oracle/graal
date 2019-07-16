@@ -66,12 +66,10 @@ public final class NFIContextExtension implements ContextExtension {
     // we use an EconomicMap because iteration order must match the insertion order
     private final EconomicMap<ExternalLibrary, TruffleObject> libraryHandles = EconomicMap.create();
     private final TruffleLanguage.Env env;
-    private final LLVMNativeFunctions nativeFunctions;
 
     public NFIContextExtension(Env env) {
         this.env = env;
         this.defaultLibrary = ExternalLibrary.external("NativeDefault", true);
-        this.nativeFunctions = new LLVMNativeFunctions(this);
     }
 
     @Override
@@ -112,10 +110,6 @@ public final class NFIContextExtension implements ContextExtension {
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    public LLVMNativeFunctions getNativeSulongFunctions() {
-        return nativeFunctions;
     }
 
     @TruffleBoundary
