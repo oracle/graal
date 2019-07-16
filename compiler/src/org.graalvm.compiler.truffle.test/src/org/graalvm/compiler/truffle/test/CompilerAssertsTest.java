@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
@@ -113,5 +117,36 @@ public class CompilerAssertsTest extends PartialEvaluationTest {
         CompilationConstantTestNode result = new CompilationConstantTestNode(new ConstantTestNode(5));
         RootTestNode rootNode = new RootTestNode(descriptor, "compilationConstant", result);
         compileHelper("compilationConstant", rootNode, new Object[0]);
+    }
+
+    public static int nonBoxedPrimitivePEConstantTest() {
+        boolean bool = true;
+        byte b = 1;
+        short s = 2;
+        char c = 3;
+        int i = 4;
+        long l = 5L;
+        float f = 6.0f;
+        double d = 7.0d;
+
+        CompilerAsserts.partialEvaluationConstant(bool);
+        CompilerAsserts.partialEvaluationConstant(b);
+        CompilerAsserts.partialEvaluationConstant(s);
+        CompilerAsserts.partialEvaluationConstant(c);
+        CompilerAsserts.partialEvaluationConstant(i);
+        CompilerAsserts.partialEvaluationConstant(l);
+        CompilerAsserts.partialEvaluationConstant(f);
+        CompilerAsserts.partialEvaluationConstant(d);
+
+        return 1;
+    }
+
+    @Test
+    public void nonBoxingPEConstantTest() {
+        StructuredGraph graph = parseEager("nonBoxedPrimitivePEConstantTest", StructuredGraph.AllowAssumptions.NO);
+        NodeIterable<Node> nodes = graph.getNodes();
+        for (Node n : nodes) {
+            assertFalse(n instanceof BoxNode);
+        }
     }
 }

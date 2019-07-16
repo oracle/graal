@@ -98,6 +98,46 @@ public final class CompilerAsserts {
     }
 
     /**
+     * Assertion that the corresponding primitive boolean value is reduced to a constant during the
+     * initial partial evaluation phase.
+     *
+     * @param value the value that must be constant during partial evaluation.
+     * @since 19.2
+     */
+    public static <T> void partialEvaluationConstant(boolean value) {
+    }
+
+    /**
+     * Assertion that the corresponding primitive byte value is reduced to a constant during the
+     * initial partial evaluation phase.
+     *
+     * @param value the value that must be constant during partial evaluation.
+     * @since 19.2
+     */
+    public static <T> void partialEvaluationConstant(byte value) {
+    }
+
+    /**
+     * Assertion that the corresponding primitive short value is reduced to a constant during the
+     * initial partial evaluation phase.
+     *
+     * @param value the value that must be constant during partial evaluation.
+     * @since 19.2
+     */
+    public static <T> void partialEvaluationConstant(short value) {
+    }
+
+    /**
+     * Assertion that the corresponding primitive char value is reduced to a constant during the
+     * initial partial evaluation phase.
+     *
+     * @param value the value that must be constant during partial evaluation.
+     * @since 19.2
+     */
+    public static <T> void partialEvaluationConstant(char value) {
+    }
+
+    /**
      * Assertion that the corresponding primitive int value is reduced to a constant during the
      * initial partial evaluation phase.
      *
@@ -105,5 +145,35 @@ public final class CompilerAsserts {
      * @since 19.2
      */
     public static <T> void partialEvaluationConstant(int value) {
+    }
+
+    /**
+     * Assertion that the corresponding primitive float value is reduced to a constant during the
+     * initial partial evaluation phase.
+     *
+     * @param value the value that must be constant during partial evaluation.
+     * @since 19.2
+     */
+    public static <T> void partialEvaluationConstant(float value) {
+    }
+
+    /**
+     * Assertion that the corresponding primitive long value is reduced to a constant during the
+     * initial partial evaluation phase.
+     *
+     * @param value the value that must be constant during partial evaluation.
+     * @since 19.2
+     */
+    public static <T> void partialEvaluationConstant(long value) {
+    }
+
+    /**
+     * Assertion that the corresponding primitive double value is reduced to a constant during the
+     * initial partial evaluation phase.
+     *
+     * @param value the value that must be constant during partial evaluation.
+     * @since 19.2
+     */
+    public static <T> void partialEvaluationConstant(double value) {
     }
 }

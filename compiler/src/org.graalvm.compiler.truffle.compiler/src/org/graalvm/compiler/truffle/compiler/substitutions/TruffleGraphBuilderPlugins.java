@@ -357,6 +357,13 @@ public class TruffleGraphBuilderPlugins {
         PEConstantPlugin peConstantPlugin = new PEConstantPlugin(canDelayIntrinsification);
         r.register1("partialEvaluationConstant", Object.class, peConstantPlugin);
         r.register1("partialEvaluationConstant", int.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", long.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", float.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", double.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", boolean.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", byte.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", char.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", short.class, peConstantPlugin);
         r.register0("neverPartOfCompilation", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -700,7 +707,7 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    private static class PEConstantPlugin implements InvocationPlugin {
+    private static final class PEConstantPlugin implements InvocationPlugin {
         private final boolean canDelayIntrinsification;
 
         private PEConstantPlugin(boolean canDelayIntrinsification) {
