@@ -361,9 +361,6 @@ public class TruffleGraphBuilderPlugins {
         r.register1("partialEvaluationConstant", float.class, peConstantPlugin);
         r.register1("partialEvaluationConstant", double.class, peConstantPlugin);
         r.register1("partialEvaluationConstant", boolean.class, peConstantPlugin);
-        r.register1("partialEvaluationConstant", byte.class, peConstantPlugin);
-        r.register1("partialEvaluationConstant", char.class, peConstantPlugin);
-        r.register1("partialEvaluationConstant", short.class, peConstantPlugin);
         r.register0("neverPartOfCompilation", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
