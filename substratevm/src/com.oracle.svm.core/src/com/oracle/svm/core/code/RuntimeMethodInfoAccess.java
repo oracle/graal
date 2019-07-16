@@ -56,8 +56,8 @@ public final class RuntimeMethodInfoAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static InstalledCodeObserverHandle[] getCodeObserverHandles(CodeInfo info) {
-        return CodeInfoAccess.getObjectField(info, CodeInfo.OBSERVERS_OBJFIELD);
+    static NonmovableArray<InstalledCodeObserverHandle> getCodeObserverHandles(CodeInfo info) {
+        return info.getCodeObserverHandles();
     }
 
     public static void setCodeLocation(CodeInfo info, Pointer start, int size) {
@@ -84,13 +84,13 @@ public final class RuntimeMethodInfoAccess {
         info.setDeoptimizationObjectConstants(objectConstants);
     }
 
-    public static void setData(CodeInfo info, SubstrateInstalledCode installedCode, int tier, InstalledCodeObserverHandle[] codeObserverHandles) {
+    public static void setData(CodeInfo info, SubstrateInstalledCode installedCode, int tier, NonmovableArray<InstalledCodeObserverHandle> codeObserverHandles) {
         assert codeObserverHandles != null;
         NonmovableObjectArray<Object> objectFields = info.getObjectFields();
         NonmovableArrays.setObject(objectFields, CodeInfo.NAME_OBJFIELD, installedCode.getName());
         NonmovableArrays.setObject(objectFields, CodeInfo.INSTALLEDCODE_OBJFIELD, new WeakReference<>(installedCode));
-        NonmovableArrays.setObject(objectFields, CodeInfo.OBSERVERS_OBJFIELD, codeObserverHandles);
         info.setTier(tier);
+        info.setCodeObserverHandles(codeObserverHandles);
     }
 
     static void walkReferences(CodeInfo info, ObjectReferenceVisitor visitor) {
@@ -138,10 +138,12 @@ public final class RuntimeMethodInfoAccess {
     static void partialReleaseAfterInvalidate(CodeInfo info) {
         assert NonmovableArrays.getObject(info.getObjectFields(), CodeInfo.TETHER_OBJFIELD) != null : "already released";
 
+        InstalledCodeObserverSupport.removeObservers(RuntimeMethodInfoAccess.getCodeObserverHandles(info));
+        NonmovableArrays.releaseUnmanagedArray(info.getCodeObserverHandles());
+        info.setCodeObserverHandles(NonmovableArrays.nullArray());
+
         info.setCodeConstantsLive(false);
         releaseInstalledCode(info);
-
-        NonmovableArrays.setObject(info.getObjectFields(), CodeInfo.OBSERVERS_OBJFIELD, null);
 
         /*
          * Set our reference to the tether object to null so that the Cleaner object can free our
@@ -156,10 +158,7 @@ public final class RuntimeMethodInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     static void releaseMethodInfoOnTearDown(CodeInfo info) {
-        InstalledCodeObserverHandle[] handles = getCodeObserverHandles(info);
-        if (handles != null) {
-            InstalledCodeObserverSupport.removeObserversOnTearDown(handles);
-        }
+        InstalledCodeObserverSupport.removeObserversOnTearDown(getCodeObserverHandles(info));
         releaseMethodInfoMemory(info);
     }
 
