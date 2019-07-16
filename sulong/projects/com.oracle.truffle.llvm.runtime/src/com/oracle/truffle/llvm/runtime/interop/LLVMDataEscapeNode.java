@@ -183,6 +183,11 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         static int escapingPrimitive(int escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return escapingValue;
         }
+
+        @Specialization
+        static int escapingPrimitive(float escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return Float.floatToRawIntBits(escapingValue);
+        }
     }
 
     @GenerateUncached
@@ -191,6 +196,11 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         @Specialization
         static long escapingPrimitive(long escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return escapingValue;
+        }
+
+        @Specialization
+        static long escapingPrimitive(double escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return Double.doubleToRawLongBits(escapingValue);
         }
 
         @Specialization(limit = "3", replaces = "escapingPrimitive")
@@ -207,6 +217,11 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         static float escapingPrimitive(float escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return escapingValue;
         }
+
+        @Specialization
+        static float escapingPrimitive(int escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return Float.intBitsToFloat(escapingValue);
+        }
     }
 
     @GenerateUncached
@@ -215,6 +230,17 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         @Specialization
         static double escapingPrimitive(double escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return escapingValue;
+        }
+
+        @Specialization
+        static double escapingLong(long escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return Double.longBitsToDouble(escapingValue);
+        }
+
+        @Specialization(limit = "3", replaces = "escapingLong")
+        static double escapingPointer(Object escapingValue, LLVMInteropType.Structured type,
+                        @CachedLibrary("escapingValue") LLVMNativeLibrary library) {
+            return escapingLong(library.toNativePointer(escapingValue).asNative(), type);
         }
     }
 
@@ -273,6 +299,16 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         @Specialization(guards = {"!isForeign(address)", "type == null"})
         static TruffleObject escapingPointer(LLVMPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return address;
+        }
+
+        @Specialization
+        static LLVMPointer escapingPrimitive(long escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return LLVMNativePointer.create(escapingValue).export(type);
+        }
+
+        @Specialization
+        static LLVMPointer escapingPrimitive(double escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return LLVMNativePointer.create(Double.doubleToRawLongBits(escapingValue)).export(type);
         }
 
         @Specialization

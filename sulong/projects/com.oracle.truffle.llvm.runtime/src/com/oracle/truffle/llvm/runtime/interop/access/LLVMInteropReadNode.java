@@ -101,6 +101,6 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Can not read array element %d.", idx);
             }
         }
-        return toLLVM.executeWithType(ret, location.type, accessType);
+        return toLLVM.executeWithType(ret, location.type != null ? location.type.baseType : null, accessType);
     }
 }
