@@ -65,8 +65,11 @@ class LinuxPhysicalMemory extends PhysicalMemory {
             if (hasSize()) {
                 return getSize();
             }
-            /* The code below uses synchronized and therefore must not run inside a VMOperation. */
-            if (VMOperation.isInProgress() || !JavaThreads.currentJavaThreadInitialized() || !initializeSize.compareAndSet(0, 1)) {
+            /*
+             * The size initialization code below requires synchronized and therefore must not run
+             * inside a VMOperation. Also if we can't allocate we have to prevent it from running.
+             */
+            if (Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !JavaThreads.currentJavaThreadInitialized() || !initializeSize.compareAndSet(0, 1)) {
                 return UnsignedUtils.MAX_VALUE;
             }
             /* Compute and cache the physical memory size. Races are idempotent. */
