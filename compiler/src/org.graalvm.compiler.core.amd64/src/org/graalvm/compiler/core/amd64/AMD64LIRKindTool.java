@@ -55,10 +55,6 @@ public abstract class AMD64LIRKindTool implements LIRKindTool {
         final AMD64Kind scalarKind = getIntegerAMD64Kind(bits);
         switch (scalarKind) {
             case BYTE:
-                if (elementCount <= 2) {
-                    // TODO: Replace with shouldNotReachHere and prevent packing of 2-byte vectors in IPP.
-                    return LIRKind.value(AMD64Kind.V32_BYTE);
-                }
                 if (elementCount <= 4) {
                     return LIRKind.value(AMD64Kind.V32_BYTE);
                 }
