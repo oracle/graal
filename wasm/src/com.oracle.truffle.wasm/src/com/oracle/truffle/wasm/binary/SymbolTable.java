@@ -39,8 +39,30 @@ public class SymbolTable {
 
     private WasmModule module;
 
+    /**
+     * Encodes the arguments and return types of each function type.
+     *
+     * Given a function type index, the {@link #offsets} array indicates where the encoding
+     * for that function type begins in this array.
+     *
+     * For a function type starting at index i, the encoding is the following
+     *
+     *   i     i+1   i+1+1         i+1+na   i+1+na+1         i+1+na+nr
+     * +-----+-----+-------+-----+--------+----------+-----+-----------+
+     * | na  |  nr | arg 1 | ... | arg na | return 1 | ... | return nr |
+     * +-----+-----+-------+-----+--------+----------+-----+-----------+
+     *
+     * where
+     *   na: the number of arguments
+     *   nr: the number of return values
+     */
     private int[] typeData;
+
+    /**
+     * Stores the offset of each function type into the {@link #typeData} array.
+     */
     private int[] offsets;
+
     private int typeDataSize;
     private int offsetsSize;
 
@@ -148,16 +170,23 @@ public class SymbolTable {
         return function;
     }
 
+    public int getFunctionNumArguments(int typeIndex) {
+        int typeOffset = offsets[typeIndex];
+        int numArgs = typeData[typeOffset + 0];
+        return numArgs;
+    }
+
     public byte getFunctionReturnType(int typeIndex) {
         int typeOffset = offsets[typeIndex];
         int numArgTypes = typeData[typeOffset + 0];
         int numReturnTypes = typeData[typeOffset + 1];
-        return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[typeOffset + 2 + numArgTypes];
+        return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[typeOffset + 1 + numArgTypes + 1];
     }
 
     public int getFunctionReturnTypeLength(int typeIndex) {
         int typeOffset = offsets[typeIndex];
-        return typeData[typeOffset + 1];
+        int numReturnTypes = typeData[typeOffset + 1];
+        return numReturnTypes;
     }
 
     public WasmFunction startFunction() {

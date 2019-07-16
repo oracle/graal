@@ -49,6 +49,10 @@ public class WasmFunction implements TruffleObject {
         this.callTarget = null;
     }
 
+    public int numArguments() {
+        return symbolTable.getFunctionNumArguments(typeIndex);
+    }
+
     public byte returnType() {
         return symbolTable.getFunctionReturnType(typeIndex);
     }
