@@ -50,11 +50,15 @@ public class WasmFunction implements TruffleObject {
     }
 
     public int numArguments() {
-        return symbolTable.getFunctionNumArguments(typeIndex);
+        return symbolTable.getFunctionTypeNumArguments(typeIndex);
     }
 
     public byte returnType() {
-        return symbolTable.getFunctionReturnType(typeIndex);
+        return symbolTable.getFunctionTypeReturnType(typeIndex);
+    }
+
+    public int returnTypeLength() {
+        return symbolTable.getFunctionTypeReturnTypeLength(typeIndex);
     }
 
     void setCallTarget(RootCallTarget callTarget) {
@@ -81,5 +85,9 @@ public class WasmFunction implements TruffleObject {
 
     public void setCodeEntry(WasmCodeEntry codeEntry) {
         this.codeEntry = codeEntry;
+    }
+
+    public int typeIndex() {
+        return typeIndex;
     }
 }

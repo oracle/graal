@@ -66,8 +66,8 @@ public class WasmCodeEntry {
     public void initLocalSlots(FrameDescriptor frameDescriptor) {
         localSlots = new FrameSlot[localTypes.length];
         for (int i = 0; i != localTypes.length; ++i) {
-            FrameSlot stackSlot = frameDescriptor.addFrameSlot(i, frameSlotKind(localTypes[i]));
-            localSlots[i] = stackSlot;
+            FrameSlot localSlot = frameDescriptor.addFrameSlot(i, frameSlotKind(localTypes[i]));
+            localSlots[i] = localSlot;
         }
     }
 

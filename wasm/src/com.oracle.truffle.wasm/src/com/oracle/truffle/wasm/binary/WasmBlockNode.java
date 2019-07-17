@@ -282,25 +282,46 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     WasmFunction function = wasmModule().symbolTable().function(functionIndex);
                     byte returnType = function.returnType();
+                    int numArgs = function.numArguments();
+
+                    Object[] args = new Object[numArgs];
+                    for (int i = 0; i != numArgs; ++i) {
+                        stackPointer--;
+                        byte type = wasmModule().symbolTable().getFunctionTypeArgumentTypeAt(function.typeIndex(), i);
+                        switch (type) {
+                            case ValueTypes.I32_TYPE:
+                                args[i] = popInt(frame, stackPointer);
+                                break;
+                            case ValueTypes.I64_TYPE:
+                                args[i] = pop(frame, stackPointer);
+                                break;
+                            case ValueTypes.F32_TYPE:
+                                args[i] = popAsFloat(frame, stackPointer);
+                                break;
+                            case ValueTypes.F64_TYPE:
+                                args[i] = popAsDouble(frame, stackPointer);
+                                break;
+                        }
+                    }
 
                     switch (returnType) {
                         case ValueTypes.I32_TYPE: {
-                            int result = (int) function.getCallTarget().call();
+                            int result = (int) function.execute(args);
                             pushInt(frame, stackPointer, result);
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
-                            long result = (long) function.getCallTarget().call();
+                            long result = (long) function.execute(args);
                             push(frame, stackPointer, result);
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
-                            float result = (float) function.getCallTarget().call();
+                            float result = (float) function.execute(args);
                             pushFloat(frame, stackPointer, result);
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
-                            double result = (double) function.getCallTarget().call();
+                            double result = (double) function.execute(args);
                             pushDouble(frame, stackPointer, result);
                             break;
                         }

@@ -32,6 +32,8 @@ package com.oracle.truffle.wasm.binary;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.wasm.collection.ByteArrayList;
+
 public class SymbolTable {
     private static final int INITIAL_DATA_SIZE = 512;
     private static final int INITIAL_OFFSET_SIZE = 128;
@@ -47,7 +49,7 @@ public class SymbolTable {
      *
      * For a function type starting at index i, the encoding is the following
      *
-     *   i     i+1   i+1+1         i+1+na   i+1+na+1         i+1+na+nr
+     *   i     i+1   i+2+0        i+2+na-1  i+2+na+0        i+2+na+nr-1
      * +-----+-----+-------+-----+--------+----------+-----+-----------+
      * | na  |  nr | arg 1 | ... | arg na | return 1 | ... | return nr |
      * +-----+-----+-------+-----+--------+----------+-----+-----------+
@@ -170,20 +172,20 @@ public class SymbolTable {
         return function;
     }
 
-    public int getFunctionNumArguments(int typeIndex) {
+    public int getFunctionTypeNumArguments(int typeIndex) {
         int typeOffset = offsets[typeIndex];
         int numArgs = typeData[typeOffset + 0];
         return numArgs;
     }
 
-    public byte getFunctionReturnType(int typeIndex) {
+    public byte getFunctionTypeReturnType(int typeIndex) {
         int typeOffset = offsets[typeIndex];
         int numArgTypes = typeData[typeOffset + 0];
         int numReturnTypes = typeData[typeOffset + 1];
-        return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[typeOffset + 1 + numArgTypes + 1];
+        return numReturnTypes == 0 ? (byte) 0x40 : (byte) typeData[typeOffset + 2 + numArgTypes];
     }
 
-    public int getFunctionReturnTypeLength(int typeIndex) {
+    public int getFunctionTypeReturnTypeLength(int typeIndex) {
         int typeOffset = offsets[typeIndex];
         int numReturnTypes = typeData[typeOffset + 1];
         return numReturnTypes;
@@ -198,5 +200,23 @@ public class SymbolTable {
 
     WasmModule module() {
         return module;
+    }
+
+    public int numGlobals() {
+        // TODO: Implement
+        return Integer.MAX_VALUE;
+    }
+
+    public byte getFunctionTypeArgumentTypeAt(int typeIndex, int i) {
+        int typeOffset = offsets[typeIndex];
+        return (byte) typeData[typeOffset + 2 + i];
+    }
+
+    public ByteArrayList getFunctionTypeArgumentTypes(int typeIndex) {
+        ByteArrayList types = new ByteArrayList();
+        for (int i = 0; i != getFunctionTypeNumArguments(typeIndex); ++i) {
+            types.add(getFunctionTypeArgumentTypeAt(typeIndex, i));
+        }
+        return types;
     }
 }

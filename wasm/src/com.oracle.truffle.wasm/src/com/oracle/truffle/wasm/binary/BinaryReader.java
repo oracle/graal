@@ -79,6 +79,8 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NEG;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_SQRT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_SUB;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_TRUNC;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.GLOBAL_GET;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.GLOBAL_SET;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_ADD;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_AND;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_CLZ;
@@ -292,10 +294,12 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readCodeEntry(int funcIndex) {
-        /* Read code entry (function) locals */
+        /* Read code entry (function) locals. */
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
         wasmModule.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
-        readCodeEntryLocals(codeEntry);
+
+        /* Initialise the code entry local variables (which contain the parameters and the locals). */
+        initCodeEntryLocals(funcIndex);
 
         /* Create the necessary objects, read and abstractly interpret the code entry */
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
@@ -314,20 +318,26 @@ public class BinaryReader extends BinaryStreamReader {
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
     }
 
-    private int readCodeEntryLocals(WasmCodeEntry codeEntry) {
+    private ByteArrayList readCodeEntryLocals() {
         int numLocalsGroups = readVectorLength();
-        int numLocals = 0;
-        ByteArrayList locals = new ByteArrayList();
+        ByteArrayList localTypes = new ByteArrayList();
         for (int localGroup = 0; localGroup < numLocalsGroups; localGroup++) {
             int groupLength = readVectorLength();
             byte t = readValueType();
             for (int i = 0; i != groupLength; ++i) {
-                locals.add(t);
+                localTypes.add(t);
             }
-            numLocals += groupLength;
         }
-        codeEntry.setLocalTypes(locals.toArray());
-        return numLocals;
+        return localTypes;
+    }
+
+    private void initCodeEntryLocals(int funcIndex) {
+        WasmCodeEntry codeEntry = wasmModule.symbolTable().function(funcIndex).codeEntry();
+        int typeIndex = wasmModule.symbolTable().function(funcIndex).typeIndex();
+        ByteArrayList argumentTypes = wasmModule.symbolTable().getFunctionTypeArgumentTypes(typeIndex);
+        ByteArrayList localTypes = readCodeEntryLocals();
+        byte[] allLocalTypes = ByteArrayList.concat(argumentTypes, localTypes);
+        codeEntry.setLocalTypes(allLocalTypes);
     }
 
     private void checkValidStateOnBlockExit(byte returnTypeId, ExecutionState state, int initialStackSize) {
@@ -415,7 +425,9 @@ public class BinaryReader extends BinaryStreamReader {
                 case CALL: {
                     int functionIndex = readFunctionIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
-                    int functionReturnTypeLength = wasmModule.symbolTable().getFunctionReturnTypeLength(functionIndex);
+                    int functionNumArguments = wasmModule.symbolTable().function(functionIndex).numArguments();
+                    int functionReturnTypeLength = wasmModule.symbolTable().function(functionIndex).returnTypeLength();
+                    state.pop(functionNumArguments);
                     state.push(functionReturnTypeLength);
                     break;
                 }
@@ -447,6 +459,24 @@ public class BinaryReader extends BinaryStreamReader {
                     Assert.assertLess(localIndex, codeEntry.numLocals(), "Invalid local index for local.tee");
                     // Assert there is a value on the top of the stack.
                     Assert.assertLarger(state.stackSize(), 0, "local.tee requires at least one element in the stack");
+                    break;
+                }
+                case GLOBAL_GET: {
+                    int globalIndex = readLocalIndex(bytesConsumed);
+                    state.useByteConstant(bytesConsumed[0]);
+                    // Assert globalIndex exists.
+                    Assert.assertLess(globalIndex, wasmModule.symbolTable().numGlobals(), "Invalid global index for global.get");
+                    state.push();
+                    break;
+                }
+                case GLOBAL_SET: {
+                    int globalIndex = readLocalIndex(bytesConsumed);
+                    state.useByteConstant(bytesConsumed[0]);
+                    // Assert localIndex exists.
+                    Assert.assertLess(globalIndex, wasmModule.symbolTable().numGlobals(), "Invalid global index for global.set");
+                    // Assert there is a value on the top of the stack.
+                    Assert.assertLarger(state.stackSize(), 0, "global.set requires at least one element in the stack");
+                    state.pop();
                     break;
                 }
                 case I32_CONST:
@@ -707,6 +737,16 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readGlobalSection() {
+        int numGlobals = readVectorLength();
+        for (int i = 0; i != numGlobals; i++) {
+            byte type = readValueType();
+            byte mut = read1();
+            // TODO: Store the global to the symbol table (or elsewhere).
+            byte b;
+            do {
+                b = read1();
+            } while (b != END);
+        }
     }
 
     private void readFunctionType() {

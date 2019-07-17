@@ -61,6 +61,10 @@ public class ExecutionState {
         stackSize--;
     }
 
+    public void pop(int n) {
+        stackSize -= n;
+    }
+
     public void useByteConstant(byte constant) {
         byteConstants.add(constant);
     }
