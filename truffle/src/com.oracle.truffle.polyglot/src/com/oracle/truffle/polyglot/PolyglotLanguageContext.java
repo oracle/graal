@@ -574,11 +574,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     boolean patch(PolyglotContextConfig newConfig) {
         if (isInitialized()) {
             try {
+                final OptionValuesImpl newOptionValues = newConfig.getOptionValues(language);
                 final Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,
-                                Collections.emptyMap(), newConfig.getOptionValues(language), newConfig.getApplicationArguments(language),
+                                Collections.emptyMap(), newOptionValues, newConfig.getApplicationArguments(language),
                                 newConfig.fileSystem, context.engine.getFileTypeDetectorsSupplier());
                 if (newEnv != null) {
                     env = newEnv;
+                    lazy.languageInstance.patchFirstOptions(newOptionValues);
                     LOG.log(Level.FINE, "Successfully patched context of language: {0}", this.language.getId());
                     return true;
                 }
