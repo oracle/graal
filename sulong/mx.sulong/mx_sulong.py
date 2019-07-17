@@ -265,7 +265,7 @@ def checkCFiles(targetDir):
 
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
-    clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
+    clangFormat = findBundledLLVMProgram('clang-format')
     if clangFormat is None:
         exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
     formatCommand = [clangFormat, targetFile]
@@ -646,6 +646,14 @@ def findGCCProgram(gccProgram, optional=False):
         exit('found no supported version ' + str(supportedGCCVersions) + ' of ' + gccProgram)
     else:
         return installedProgram
+
+def findBundledLLVMProgram(llvm_program):
+    llvm_dist = 'SULONG_LLVM_ORG'
+    dep = mx.dependency(llvm_dist, fatalIfMissing=True)
+    path = os.path.join(dep.get_output(), 'bin', llvm_program)
+    if not os.path.exists(path):
+        mx.command_function('build')(['--project', llvm_dist])
+    return path if os.path.exists(path) else None
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
