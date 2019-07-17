@@ -540,16 +540,8 @@ GRAALVM_VERSION={version}""".format(
         return _metadata
 
 
-class LayoutZIPDistribution(mx.LayoutJARDistribution):  # pylint: disable=R0901
-    def remoteExtension(self):
-        return 'zip'
-
-    def localExtension(self):
-        return 'zip'
-
-
 if mx.is_windows():
-    LayoutSuper = LayoutZIPDistribution
+    LayoutSuper = mx.LayoutZIPDistribution
 else:
     LayoutSuper = mx.LayoutTARDistribution
 
