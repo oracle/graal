@@ -33,6 +33,7 @@ import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -49,6 +50,10 @@ public class NodeLimitTest extends PartialEvaluationTest {
     public NodeLimitTest() {
         super();
         runtime = Truffle.getRuntime();
+    }
+
+    public static void before() {
+        Assume.assumeFalse(TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleCompileImmediately));
     }
 
     @Test
