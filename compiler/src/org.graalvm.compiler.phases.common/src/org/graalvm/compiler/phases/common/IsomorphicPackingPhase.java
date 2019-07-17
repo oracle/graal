@@ -162,6 +162,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         private <T extends FixedAccessNode & LIRLowerableAccess> int memoryAlignment(T access, int ivAdjust) {
             final Stamp stamp = access.getAccessStamp();
             final JavaKind accessJavaKind = stamp.javaType(context.getMetaAccess()).getJavaKind();
+            if (!accessJavaKind.isPrimitive()) {
+                return ALIGNMENT_BOTTOM;
+            }
+
             final int byteCount = dataSize(stamp);
             // TODO: velt may be different to type at address
             final int vectorWidthInBytes = byteCount * context.getTargetProvider().getVectorDescription().maxVectorWidth(stamp);
