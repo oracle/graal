@@ -614,6 +614,31 @@ public class AMD64Move {
             case DOUBLE:
                 masm.movsd(dest, input);
                 break;
+            case V32_BYTE:
+            case V32_WORD:
+                masm.movl(dest, input);
+                break;
+            case V64_BYTE:
+            case V64_WORD:
+            case V64_DWORD:
+                masm.movq(dest, input);
+                break;
+            case V128_BYTE:
+            case V128_WORD:
+            case V128_DWORD:
+            case V128_QWORD:
+            case V128_SINGLE:
+            case V128_DOUBLE:
+                masm.movdqu(dest, input);
+                break;
+            case V256_BYTE:
+            case V256_WORD:
+            case V256_DWORD:
+            case V256_QWORD:
+            case V256_SINGLE:
+            case V256_DOUBLE:
+                masm.movdqu(dest, input);
+                break;
             default:
                 throw GraalError.shouldNotReachHere();
         }
@@ -639,6 +664,31 @@ public class AMD64Move {
                 break;
             case DOUBLE:
                 masm.movdbl(result, src);
+                break;
+            case V32_BYTE:
+            case V32_WORD:
+                masm.movl(result, src);
+                break;
+            case V64_BYTE:
+            case V64_WORD:
+            case V64_DWORD:
+                masm.movq(result, src);
+                break;
+            case V128_BYTE:
+            case V128_WORD:
+            case V128_DWORD:
+            case V128_QWORD:
+            case V128_SINGLE:
+            case V128_DOUBLE:
+                masm.movdqu(result, src);
+                break;
+            case V256_BYTE:
+            case V256_WORD:
+            case V256_DWORD:
+            case V256_QWORD:
+            case V256_SINGLE:
+            case V256_DOUBLE:
+                masm.movdqu(result, src);
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
