@@ -1065,6 +1065,7 @@ suite = {
         "./": [
           "extracted-dependency:LLVM_ORG",
           "extracted-dependency:LLVM_ORG_COMPILER_RT_LINUX",
+          "file:3rd_party_license_llvm-toolchain.txt",
         ],
         "./patches/" : [
           "file:patches/*"
