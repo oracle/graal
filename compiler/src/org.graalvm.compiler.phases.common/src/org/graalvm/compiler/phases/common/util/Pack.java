@@ -36,7 +36,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
 
 public final class Pack<T extends Node> implements Iterable<T> {
-   private List<T> elements;
+   private final List<T> elements;
 
    private Pack(List<T> elements) {
        this.elements = elements;
