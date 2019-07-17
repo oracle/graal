@@ -314,7 +314,7 @@ public final class TruffleTreeDumper {
         Node source;
         List<ASTEdge> edges = new ArrayList<>();
         final int id;
-        Map<String, ? super Object> properties = new HashMap<>();
+        Map<String, ? super Object> properties = new LinkedHashMap<>();
         ASTNodeClass nodeClass;
 
         ASTNode(Node source, int id) {
@@ -341,14 +341,25 @@ public final class TruffleTreeDumper {
             if (Introspection.isIntrospectable(source)) {
                 final List<Introspection.SpecializationInfo> specializations = Introspection.getSpecializations(source);
                 for (Introspection.SpecializationInfo specialization : specializations) {
-                    final String methodName = specialization.getMethodName();
-                    properties.put(methodName + ".isActive", specialization.isActive());
-                    properties.put(methodName + ".isExcluded", specialization.isExcluded());
-                    properties.put(methodName + ".instances", specialization.getInstances());
-                    for (int i = 0; i < specialization.getInstances(); i++) {
-                        final List<Object> cachedData = specialization.getCachedData(i);
-                        for (Object o : cachedData) {
-                            properties.put(methodName + "-cachedData[" + i + "]", o);
+                    final String methodName = "specialization." + specialization.getMethodName();
+                    String state;
+                    if (specialization.isActive()) {
+                        state = "active";
+                    } else if (specialization.isExcluded()) {
+                        state = "excluded";
+                    } else {
+                        state = "inactive";
+                    }
+                    properties.put(methodName, state);
+                    if (specialization.getInstances() > 1 || (specialization.getInstances() == 1 && specialization.getCachedData(0).size() > 0)) {
+                        properties.put(methodName + ".instances", specialization.getInstances());
+                        for (int instance = 0; instance < specialization.getInstances(); instance++) {
+                            final List<Object> cachedData = specialization.getCachedData(instance);
+                            int cachedIndex = 0;
+                            for (Object o : cachedData) {
+                                properties.put(methodName + ".instance[" + instance + "].cached[" + cachedIndex + "]", o);
+                                cachedIndex++;
+                            }
                         }
                     }
                 }
