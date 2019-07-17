@@ -405,8 +405,15 @@ suite = {
       "headers" : [
         "include/polyglot.h",
       ],
+      "buildDependencies" : [
+        "SULONG_LLVM_ORG",
+      ],
       "buildEnv" : {
-        "CFLAGS" : "<clangImplicitArgs>",
+        "CFLAGS" : "-Xclang -disable-O0-optnone",
+        "CLANG" : "<llvm-tool:clang>",
+        "CLANGXX" : "<llvm-tool:clang++>",
+        "OPT" : "<llvm-tool:opt>",
+        "LLVM_LINK" : "<llvm-tool:llvm-link>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -422,8 +429,10 @@ suite = {
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
         "com.oracle.truffle.llvm.libraries.bitcode",
+        "SULONG_LLVM_ORG",
       ],
       "buildEnv" : {
+        "CLANG" : "<llvm-tool:clang>",
         "LIBSULONG" : "<lib:sulong>",
         "LIBPOLYGLOT" : "<lib:polyglot-mock>",
         "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",

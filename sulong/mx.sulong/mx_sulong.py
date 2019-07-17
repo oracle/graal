@@ -655,6 +655,8 @@ def findBundledLLVMProgram(llvm_program):
         mx.command_function('build')(['--project', llvm_dist])
     return path if os.path.exists(path) else None
 
+mx_subst.path_substitutions.register_with_arg('llvm-tool', findBundledLLVMProgram)
+
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
     return mx.get_runtime_jvm_args(['SULONG', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
