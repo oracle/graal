@@ -328,7 +328,13 @@ public class Option {
             .type("Integer")
             .category("INTERNAL")
             .def("300000")
-            .help("Stop partial evaluation when the graph exceeded this many nodes.")
+            .help("Stop partial evaluation when the graph exceeded this many nodes."),
+
+        option("TruffleMaximumInlineNodeCount")
+            .type("Integer")
+            .category("INTERNAL")
+            .def("150000")
+            .help("Ignore further truffle inlining decisions when the graph exceeded this many nodes.")
     };
     // @formatter:on
 
