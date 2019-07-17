@@ -62,7 +62,7 @@ B b;
 int foo(int a) {
 
   if (a == 0) {
-    throw & b;
+    throw &b;
   }
   return a;
 }

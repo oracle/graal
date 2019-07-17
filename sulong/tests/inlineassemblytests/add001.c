@@ -41,8 +41,8 @@ void test_add(int a, int b) {
                    "pushf\n"
                    "pop %%rax\n"
                    "popf\n"
-                   : "=a"(out_flags), [b] "=r"(out)
-                   : [a] "r"(a), "1"(b));
+                   : "=a"(out_flags), [ b ] "=r"(out)
+                   : [ a ] "r"(a), "1"(b));
   printf("%08x:%08x:%08x:%x:%x\n", a, b, out, (out_flags & CC_C) ? 1 : 0, (out_flags & CC_O) ? 1 : 0);
 }
 

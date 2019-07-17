@@ -60,7 +60,7 @@ public:
 int main(int argc, char *argv[]) {
   B b;
   try {
-    throw & b;
+    throw &b;
   } catch (const char *msg) {
     return 1;
   } catch (long value) {

@@ -34,6 +34,6 @@ struct test {
 };
 
 int main() {
-  struct test t = {.t = val };
+  struct test t = { .t = val };
   return t.t;
 }
