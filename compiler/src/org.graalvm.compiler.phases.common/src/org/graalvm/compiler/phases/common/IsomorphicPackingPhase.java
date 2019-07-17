@@ -799,20 +799,19 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final List<WriteNode> nodes = pack.getElements().stream().map(x -> (WriteNode) x).collect(Collectors.toList());
 
                 final VectorPrimitiveStamp vectorInputStamp = nodes.get(1).getAccessStamp().unrestricted().asVector(nodes.size());
-                final VectorPackNode stv = new VectorPackNode(vectorInputStamp, nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList()));
-                final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, stv);
 
-                for (WriteNode node : nodes) {
-                    node.setNext(null);
-                }
+                final VectorPackNode vectorPackNode =
+                    graph.addOrUnique(new VectorPackNode(vectorInputStamp, nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList())));
+                final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, vectorPackNode);
+
                 for (WriteNode node : nodes) {
                     if (node.predecessor() != null) {
                         node.predecessor().clearSuccessors();
                     }
+
                     node.safeDelete();
                 }
 
-                graph.addWithoutUnique(stv);
                 graph.add(vectorWrite);
 
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
