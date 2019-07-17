@@ -1066,6 +1066,9 @@ suite = {
           "extracted-dependency:LLVM_ORG",
           "extracted-dependency:LLVM_ORG_COMPILER_RT_LINUX",
         ],
+        "./patches/" : [
+          "file:patches/*"
+        ],
       },
       "maven": False,
       "license" : "NCSA",
