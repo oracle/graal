@@ -329,15 +329,15 @@ public abstract class PartialEvaluator {
             assert !builder.parsingIntrinsic();
 
             if (TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
-                if (!graphTooBigReported && graph.getNodeCount() > inliningNodeLimit) {
-                    graphTooBigReported = true;
-                    PerformanceInformationHandler.reportGraphIsTooBig(graph, inliningNodeLimit);
-                    return DO_NOT_INLINE_WITH_EXCEPTION;
-                }
                 if (original.equals(callDirectMethod)) {
                     ValueNode arg0 = arguments[1];
                     if (!arg0.isConstant()) {
                         GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                    }
+                    if (!graphTooBigReported && graph.getNodeCount() > inliningNodeLimit) {
+                        graphTooBigReported = true;
+                        PerformanceInformationHandler.reportGraphIsTooBig(graph, inliningNodeLimit);
+                        return DO_NOT_INLINE_WITH_EXCEPTION;
                     }
                     TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), (JavaConstant) arg0.asConstant());
                     if (decision != null && decision.shouldInline()) {
