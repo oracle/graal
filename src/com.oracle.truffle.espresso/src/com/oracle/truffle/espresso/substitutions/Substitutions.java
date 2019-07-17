@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorRootNode;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -171,13 +172,26 @@ public final class Substitutions implements ContextAccess {
                 continue;
             }
 
-            final EspressoRootNodeFactory factory;
-            factory = new EspressoRootNodeFactory() {
-                @Override
-                public EspressoRootNode spawnNode(Method espressoMethod) {
-                    return new EspressoRootNode(espressoMethod, new IntrinsicReflectionRootNode(method, espressoMethod));
-                }
-            };
+            EspressoRootNodeFactory factory;
+            int dood = 1;
+
+            try {
+                Class<?> substitutorClass = Class.forName(Substitutor.class.getPackage().getName() + "." + Substitutor.getClassName(clazz.getSimpleName(), method.getName()));
+                Substitutor substitutor = (Substitutor) substitutorClass.getDeclaredMethod(Substitutor.GETTER).invoke(null);
+                factory = new EspressoRootNodeFactory() {
+                    @Override
+                    public EspressoRootNode spawnNode(Method method) {
+                        return new EspressoRootNode(method, new IntrinsicSubstitutorRootNode(substitutor, method));
+                    }
+                };
+            } catch (Throwable e) {
+                factory = new EspressoRootNodeFactory() {
+                    @Override
+                    public EspressoRootNode spawnNode(Method espressoMethod) {
+                        return new EspressoRootNode(espressoMethod, new IntrinsicReflectionRootNode(method, espressoMethod));
+                    }
+                };
+            }
 
             java.lang.reflect.Parameter[] parameters = method.getParameters();
 
@@ -219,6 +233,8 @@ public final class Substitutions implements ContextAccess {
             }
 
             ++registered;
+            String file = SubstitutionProcessor.spawnSubstitutor(clazz.getSimpleName(), methodName, SubstitutionProcessor.getParameterTypes(method), substitution.hasReceiver(),
+                            returnType == Type._void);
             registerStaticSubstitution(classType,
                             StaticSymbols.putName(methodName),
                             StaticSymbols.putSignature(returnType, parameterTypes.toArray(new Symbol[parameterTypes.size()])),
