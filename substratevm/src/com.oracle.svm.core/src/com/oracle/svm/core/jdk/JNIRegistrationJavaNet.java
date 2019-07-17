@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.net.DatagramPacket;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -160,6 +163,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerPlainDatagramSocketImplInit(DuringAnalysisAccess a) {
+        /* See java.net.DatagramSocket.checkOldImpl */
+        RuntimeReflection.register(method(a, "java.net.PlainDatagramSocketImpl", "peekData", DatagramPacket.class));
+
         JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainDatagramSocketImpl", "timeout", "trafficClass", "connected", "connectedAddress", "connectedPort"));
         JNIRuntimeAccess.register(fields(a, "java.net.DatagramSocketImpl", "fd", "localPort"));
 
