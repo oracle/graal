@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import org.junit.Assert;
 import org.junit.Test;
 
-public final class GetPackageTest {
+public class GetPackageTest {
     @Test
     public void testGetPackage() {
         try {
