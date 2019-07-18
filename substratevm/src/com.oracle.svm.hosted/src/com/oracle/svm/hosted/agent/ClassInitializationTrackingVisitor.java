@@ -36,7 +36,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
@@ -105,6 +104,19 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
 
     private static Set<String> trackedJDKClasses = new HashSet<>(Arrays.asList("java.lang.Thread", "java.util.zip.ZipFile", "java.nio.MappedByteBuffer", "java.io.FileDescriptor"));
 
+    private static int getJavaVersion() {
+        String version = System.getProperty("java.version");
+        if (version.startsWith("1.")) {
+            version = version.substring(2, 3);
+        } else {
+            int dot = version.indexOf(".");
+            if (dot != -1) {
+                version = version.substring(0, dot);
+            }
+        }
+        return Integer.parseInt(version);
+    }
+
     private boolean initInstrumentationSupported(String name) {
         if (!"<init>".equals(name)) {
             return false;
@@ -113,7 +125,7 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
         /*
          * JDK 9+ not supported. Our instrumentation is not visible from the JDK modules.
          */
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
+        if (getJavaVersion() > 8) {
             return false;
         }
 
@@ -130,11 +142,11 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
     }
 
     private boolean instrumentationSupported() {
-        if (JavaVersionUtil.JAVA_SPEC == 8) {
+        if (getJavaVersion() == 8) {
             return loader != null && className != null &&
                             /* The class literal throws a NoClassDefFound error. */
                             !className.startsWith("sun/reflect/Generated");
-        } else if (JavaVersionUtil.JAVA_SPEC > 8) {
+        } else if (getJavaVersion() > 8) {
             return !(moduleName == null ||
                             moduleName.startsWith("java.") ||
                             moduleName.startsWith("jdk."));
