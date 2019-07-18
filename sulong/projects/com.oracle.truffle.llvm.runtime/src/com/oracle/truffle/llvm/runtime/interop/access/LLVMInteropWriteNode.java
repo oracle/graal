@@ -108,19 +108,22 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
 
         abstract Object execute(Object value, LLVMInteropType.Value outgoingType, ForeignToLLVMType writeType);
 
-        @Specialization(limit = "3", guards = {"outgoingType != null", "cachedOutgoingType == outgoingType.kind.foreignToLLVMType"})
-        Object doKnownType(Object value, LLVMInteropType.Value outgoingType, ForeignToLLVMType type,
-                        @Cached("outgoingType.kind.foreignToLLVMType") ForeignToLLVMType cachedOutgoingType,
-                        @Cached(parameters = "cachedOutgoingType") LLVMDataEscapeNode dataEscape,
-                        @Cached BranchProfile error) {
-            if (type.getSizeInBytes() != cachedOutgoingType.getSizeInBytes()) {
-                error.enter();
-                throw new LLVMPolyglotException(this, "Can't write a %s to a foreign field of type %s.", type, outgoingType);
-            }
+        @Specialization(limit = "3", guards = {"outgoingType != null", "cachedOutgoingType == outgoingType.kind.foreignToLLVMType", "type.getSizeInBytes() == cachedOutgoingType.getSizeInBytes()"})
+        Object doKnownType(Object value, LLVMInteropType.Value outgoingType, @SuppressWarnings("unused") ForeignToLLVMType type,
+                        @Cached("outgoingType.kind.foreignToLLVMType") @SuppressWarnings("unused") ForeignToLLVMType cachedOutgoingType,
+                        @Cached(parameters = "cachedOutgoingType") LLVMDataEscapeNode dataEscape) {
             return dataEscape.executeWithType(value, outgoingType.baseType);
         }
 
-        @Specialization(limit = "3", guards = {"outgoingType == null", "cachedType == type"})
+        static boolean typeMismatch(LLVMInteropType.Value outgoingType, ForeignToLLVMType writeType) {
+            if (outgoingType == null) {
+                return true;
+            } else {
+                return outgoingType.getSize() != writeType.getSizeInBytes();
+            }
+        }
+
+        @Specialization(limit = "3", guards = {"typeMismatch(outgoingType, cachedType)", "cachedType == type"})
         @SuppressWarnings("unused")
         Object doUnknownType(Object value, LLVMInteropType.Value outgoingType, ForeignToLLVMType type,
                         @Cached("type") ForeignToLLVMType cachedType,
