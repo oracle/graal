@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 
 @TargetClass(className = "java.net.AbstractPlainDatagramSocketImpl", onlyWith = JDK11OrLater.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-final class Target_java_net_AbstractDatagramSocketImpl_JDK11OrLater {
+final class Target_java_net_AbstractPlainDatagramSocketImpl_JDK11OrLater {
     // This class must not hide the "normal" Posix variant, and should be additive
 
     /* Do not re-format commented-out code: @formatter:off */
