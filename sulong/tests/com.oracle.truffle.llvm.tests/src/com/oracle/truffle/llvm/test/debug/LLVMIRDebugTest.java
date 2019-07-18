@@ -49,8 +49,8 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
     private static final String CONFIGURATION = "O0.bc";
 
     private static final Path BC_DIR_PATH = Paths.get(TestOptions.TEST_SUITE_PATH, "irdebug");
-    private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug", "irdebug");
-    private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug", "trace");
+    private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug.native", "irdebug");
+    private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug.native", "trace");
 
     private static final String OPTION_LLDEBUG = "llvm.llDebug";
     private static final String OPTION_LLDEBUG_SOURCES = "llvm.llDebug.sources";
