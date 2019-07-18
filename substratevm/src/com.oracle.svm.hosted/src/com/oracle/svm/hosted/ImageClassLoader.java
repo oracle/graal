@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -150,7 +151,7 @@ public final class ImageClassLoader {
         Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
         if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
             try {
-                return Files.list(entry.getParent()).filter(Files::isRegularFile);
+                return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
             } catch (IOException e) {
                 return Stream.empty();
             }
@@ -310,6 +311,9 @@ public final class ImageClassLoader {
         boolean isHostedOnly = false;
 
         AnnotatedElement cur = clazz.getPackage();
+        if (cur == null) {
+            cur = clazz;
+        }
         do {
             Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
             if (containsHostedOnly(platformsAnnotation)) {
@@ -351,8 +355,8 @@ public final class ImageClassLoader {
         return false;
     }
 
-    public URL findResourceByName(String resource) {
-        return classLoader.getResource(resource);
+    public Enumeration<URL> findResourcesByName(String resource) throws IOException {
+        return classLoader.getResources(resource);
     }
 
     public InputStream findResourceAsStreamByName(String resource) {

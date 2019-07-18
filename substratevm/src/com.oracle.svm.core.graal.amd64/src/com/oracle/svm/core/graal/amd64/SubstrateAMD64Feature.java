@@ -54,8 +54,8 @@ class SubstrateAMD64Feature implements Feature {
 
         ImageSingletons.add(SubstrateRegisterConfigFactory.class, new SubstrateRegisterConfigFactory() {
             @Override
-            public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean useStackBasePointer) {
-                return new SubstrateAMD64RegisterConfig(config, metaAccess, target, useStackBasePointer);
+            public RegisterConfig newRegisterFactory(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, Boolean preserveFramePointer) {
+                return new SubstrateAMD64RegisterConfig(config, metaAccess, target, preserveFramePointer);
             }
         });
 

@@ -391,7 +391,6 @@ import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -624,7 +623,6 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     static class IntrinsicScope extends InliningScope {
-        StateSplit returnStateSplit;
         ArrayList<StateSplit> invalidStateUsers;
 
         IntrinsicScope(BytecodeParser parser) {
@@ -635,6 +633,7 @@ public class BytecodeParser implements GraphBuilderContext {
             super(parser, callee, args);
         }
 
+        @SuppressWarnings("unlikely-arg-type")
         @Override
         public void close() {
             IntrinsicContext intrinsic = parser.intrinsicContext;
@@ -1405,7 +1404,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (profile == null || profile.getNotRecordedProbability() > 0.0) {
             return null;
         } else {
-            return append(new ValueAnchorNode(null));
+            return BeginNode.prevBegin(lastInstr);
         }
     }
 

@@ -46,6 +46,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.test.OSUtils;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -63,7 +64,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testToAbsolutePath() {
-        TruffleFile file = languageEnv.getTruffleFile("/a/b");
+        TruffleFile file = languageEnv.getTruffleFile(OSUtils.isUnix() ? "/a/b" : "C:/a/b");
+        Assert.assertTrue(file.isAbsolute());
         Assert.assertEquals(file, file.getAbsoluteFile());
         testToAbsolutePathImpl("");
         testToAbsolutePathImpl("a");
@@ -76,7 +78,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         testToAbsolutePathImpl("a/../b");
         testToAbsolutePathImpl("a/../../");
 
-        languageEnv.setCurrentWorkingDirectory(languageEnv.getTruffleFile("/"));
+        languageEnv.setCurrentWorkingDirectory(languageEnv.getTruffleFile(OSUtils.isUnix() ? "/" : "C:/"));
         testToAbsolutePathImpl("");
         testToAbsolutePathImpl("a");
         testToAbsolutePathImpl("a/b");

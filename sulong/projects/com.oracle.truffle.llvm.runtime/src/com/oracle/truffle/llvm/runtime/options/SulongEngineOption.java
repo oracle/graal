@@ -77,6 +77,9 @@ public final class SulongEngineOption {
     @Option(name = "llvm.printLifetimeAnalysisStats", category = OptionCategory.USER, help = "Prints the results of the lifetime analysis. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
     public static final OptionKey<String> PRINT_LIFE_TIME_ANALYSIS_STATS = new OptionKey<>(String.valueOf(false));
 
+    @Option(name = "llvm.debugLoader", category = OptionCategory.EXPERT, help = "Turns dynamic loader debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    public static final OptionKey<String> LD_DEBUG = new OptionKey<>(String.valueOf(false));
+
     @Option(name = "llvm.parseOnly", category = OptionCategory.EXPERT, help = "Only parses a bc file; execution is not possible.") //
     public static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
 

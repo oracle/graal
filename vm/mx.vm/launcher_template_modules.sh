@@ -121,6 +121,13 @@ cp="$(IFS=: ; echo "${absolute_cp[*]}")"
 module_path="$(IFS=: ; echo "${absolute_module_path[*]}")"
 upgrade_module_path="$(IFS=: ; echo "${absolute_upgrade_module_path[*]}")"
 
+if [[ -n "${module_path}" ]]; then
+    jvm_args+=(--module-path "${module_path}")
+fi
+if [[ -n "${upgrade_module_path}" ]]; then
+    jvm_args+=(--upgrade-module-path "${upgrade_module_path}")
+fi
+
 if [[ "${VERBOSE_GRAALVM_LAUNCHERS}" == "true" ]]; then
     set -x
 fi
@@ -128,8 +135,6 @@ fi
 exec "${location}/<jre_bin>/java" "${jvm_args[@]}" \
     -XX:+UnlockExperimentalVMOptions \
     -XX:+EnableJVMCI \
-    --module-path ${module_path} \
-    --upgrade-module-path ${upgrade_module_path} \
-    -cp ${cp} \
+    -cp "${cp}" \
     <main_class> \
-    ${launcher_args[@]}
+    "${launcher_args[@]}"

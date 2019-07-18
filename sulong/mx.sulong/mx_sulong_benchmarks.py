@@ -33,6 +33,8 @@ import shutil
 import mx, mx_benchmark, mx_sulong, mx_buildtools
 import os
 from os.path import join, exists
+
+import mx_subst
 from mx_benchmark import VmRegistry, java_vm_registry, Vm, GuestVm, VmBenchmarkSuite
 
 
@@ -212,15 +214,12 @@ class GccLikeVm(CExecutionEnvironmentMixin, Vm):
         return [retCode, myStdOut.data]
 
     def prepare_env(self, env):
-        env['CFLAGS'] = ' '.join(self.options + _env_flags + ['-lm', '-lgmp'])
-        env['CC'] = self.c_compiler_exe()
+        env['CFLAGS'] = ' '.join(self.options + _env_flags)
+        env['CC'] = self.c_compiler_exe() # pylint: disable=assignment-from-no-return
         return env
 
 
 class GccVm(GccLikeVm):
-    def __init__(self, config_name, options):
-        super(GccVm, self).__init__(config_name, options)
-
     def name(self):
         return "gcc"
 
@@ -232,9 +231,6 @@ class GccVm(GccLikeVm):
 
 
 class ClangVm(GccLikeVm):
-    def __init__(self, config_name, options):
-        super(ClangVm, self).__init__(config_name, options)
-
     def name(self):
         return "clang"
 
@@ -249,6 +245,9 @@ class ClangVm(GccLikeVm):
 class SulongVm(CExecutionEnvironmentMixin, GuestVm):
     def config_name(self):
         return "default"
+
+    def toolchain_name(self):
+        return "native"
 
     def name(self):
         return "sulong"
@@ -278,28 +277,20 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         return result
 
     def prepare_env(self, env):
-        env['CFLAGS'] = ' '.join(_env_flags + ['-lm', '-lgmp'])
-        env['LLVM_COMPILER'] = mx_buildtools.ClangCompiler.CLANG
-        env['CLANG'] = mx_buildtools.ClangCompiler.CLANG
-        env['OPT_FLAGS'] = ' '.join(self.opt_phases())
+        # if hasattr(self.host_vm(), 'run_launcher'):
+        #     import mx_vm
+        #     env['CC'] = os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'jre', 'languages', 'llvm', self.toolchain_name(), 'bin', 'graalvm-{}-clang'.format(self.toolchain_name()))
+        # else:
+        # we always use the bootstrap toolchain since the toolchain is not installed by default in a graalvm
+        # change this if we can properly install components into a graalvm deployment
+        env['CC'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CC>'.format(self.toolchain_name()))
         return env
 
     def out_file(self):
-        return 'bench.opt.bc'
+        return 'bench'
 
     def opt_phases(self):
-        return [
-            '-mem2reg',
-            '-globalopt',
-            '-simplifycfg',
-            '-constprop',
-            '-instcombine',
-            '-dse',
-            '-loop-simplify',
-            '-reassociate',
-            '-licm',
-            '-gvn',
-        ]
+        return []
 
     def launcher_vm_args(self):
         return mx_sulong.getClasspathOptions()
@@ -308,11 +299,12 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         launcher_args = [
             '--vm.Dgraal.TruffleInliningMaxCallerSize=10000',
             '--vm.Dgraal.TruffleCompilationExceptionsAreFatal=true',
-            '--llvm.libraries=libgmp.so.10'] + args
+        ]
         return launcher_args
 
     def hosting_registry(self):
         return java_vm_registry
+
 
 _suite = mx.suite("sulong")
 

@@ -7,6 +7,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `RootNode.getQualifiedName()` for a better distinction when printing stack traces. Languages are encouraged to implement it, in case it differs from the root name.
 * Added methods to identify date, time, timezone, instant and duration values in `InteropLibrary` and TCK `TypeDescriptor`.
 * Added ability to read the default time zone from the language Environment with `Env.getTimeZone()`.
+* Deprecated `Env.parse` and added replacement APIs `Env.parseInternal` and `Env.parsePublic`. The new API requires to differentiate between parse calls that were invoked by the guest language user and those which are part of the internal language semantics. The separation avoids accidentally exposing access to internal languages. 
+* Deprecated `Env.getLanguages()` and added replacement APIs `Env.getInternalLanguages()` and `Env.getPublicLanguages()`. 
+* Added [Source.newBuilder(Source)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#newBuilder-com.oracle.truffle.api.source.Source-) that inherits Source properties from an existing Source.
+* Added [RootBodyTag](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/StandardTags.RootBodyTag.html).
 
 ## Version 19.1.0
 * `@GenerateUncached` is now inherited by subclasses.

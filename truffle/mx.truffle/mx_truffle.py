@@ -116,7 +116,7 @@ def checkLinks(javadocDir):
                     minIndex = sectionIndex
                     if minIndex < 0:
                         minIndex = len(full)
-                    if questionIndex >= 0 and questionIndex < minIndex:
+                    if 0 <= questionIndex < minIndex:
                         minIndex = questionIndex
                     path = full[0:minIndex]
 
@@ -167,7 +167,7 @@ def _path_args(depNames=None):
             cpEntryToModule = {m.dist.path : m for m in modules}
 
             for e in mx.classpath(depNames).split(os.pathsep):
-                if cpEntryToModule.has_key(e):
+                if e in cpEntryToModule:
                     modulepath.append(cpEntryToModule[e].jarpath)
                 else:
                     classpath.append(e)

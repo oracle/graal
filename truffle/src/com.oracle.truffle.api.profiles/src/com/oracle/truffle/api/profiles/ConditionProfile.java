@@ -168,9 +168,14 @@ public abstract class ConditionProfile extends Profile {
             // locals required to guarantee no overflow in multi-threaded environments
             int t = trueCount;
             int f = falseCount;
-            if (value) {
+            boolean val = value;
+            if (val) {
                 if (t == 0) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (f == 0) {
+                    // Make this branch fold during PE
+                    val = true;
                 }
                 if (CompilerDirectives.inInterpreter()) {
                     if (t < MAX_VALUE) {
@@ -181,6 +186,10 @@ public abstract class ConditionProfile extends Profile {
                 if (f == 0) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
+                if (t == 0) {
+                    // Make this branch fold during PE
+                    val = false;
+                }
                 if (CompilerDirectives.inInterpreter()) {
                     if (f < MAX_VALUE) {
                         falseCount = f + 1;
@@ -189,10 +198,10 @@ public abstract class ConditionProfile extends Profile {
             }
             if (CompilerDirectives.inInterpreter()) {
                 // no branch probability calculation in the interpreter
-                return value;
+                return val;
             } else {
                 int sum = t + f;
-                return CompilerDirectives.injectBranchProbability((double) t / (double) sum, value);
+                return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
             }
         }
 

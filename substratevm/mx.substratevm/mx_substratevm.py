@@ -52,6 +52,15 @@ from mx_gate import Task
 from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets  # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 
+import sys
+
+if sys.version_info[0] < 3:
+    def _decode(x):
+        return x
+else:
+    def _decode(x):
+        return x.decode()
+
 GRAAL_COMPILER_FLAGS_BASE = [
     '-XX:+UnlockExperimentalVMOptions',
     '-XX:+EnableJVMCI',
@@ -168,7 +177,7 @@ def svm_java8():
 
 # The list of supported Java versions is implicitly defined via GRAAL_COMPILER_FLAGS_MAP:
 # If there are no compiler flags for a Java version, it is also not supported.
-if not str(svm_java_compliance().value) in GRAAL_COMPILER_FLAGS_MAP:
+if str(svm_java_compliance().value) not in GRAAL_COMPILER_FLAGS_MAP:
     mx.abort("Substrate VM does not support this Java version: " + str(svm_java_compliance()))
 GRAAL_COMPILER_FLAGS = GRAAL_COMPILER_FLAGS_BASE + GRAAL_COMPILER_FLAGS_MAP[str(svm_java_compliance().value)]
 
@@ -407,16 +416,29 @@ def svm_gate_body(args, tasks):
     with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
-                javac_image(['--output-path', svmbuild_dir()])
-                javac_command = ' '.join(javac_image_command(svmbuild_dir()))
-                helloworld(['--output-path', svmbuild_dir(), '--javac-command', javac_command])
+                if svm_java8():
+                    javac_image(['--output-path', svmbuild_dir()])
+                    javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
+                else:
+                    # Building javac image currently only supported for Java 8
+                    javac_command = []
+                helloworld(['--output-path', svmbuild_dir()] + javac_command)
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
                 cinterfacetutorial([])
                 clinittest([])
 
         with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
             if t:
-                native_unittest(['--build-args', '--initialize-at-build-time'])
+                with tempfile.NamedTemporaryFile(mode='w') as blacklist:
+                    if svm_java8():
+                        blacklist_args = []
+                    else:
+                        # Currently not working on Java > 8
+                        blacklist.write('com.oracle.svm.test.ServiceLoaderTest')
+                        blacklist.flush()
+                        blacklist_args = ['--blacklist', blacklist.name]
+
+                    native_unittest(['--build-args', '--initialize-at-build-time'] + blacklist_args)
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
@@ -448,10 +470,10 @@ def svm_gate_body(args, tasks):
                 finally:
                     remove_tree(junit_tmp_dir)
 
-    build_native_image_image(config=_graalvm_js_config)
-    with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config) as native_image:
-        with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
-            if t:
+    with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
+        if t:
+            build_native_image_image(config=_graalvm_js_config)
+            with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config) as native_image:
                 js = build_js(native_image)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
@@ -678,6 +700,7 @@ def _helloworld(native_image, javac_command, path, args):
             os.dup2(stdout, 1)  # restore original stdout
             mx.log("Stdout from calling {} in shared object {}:".format(run_main, so_name))
             mx.log(call_stdout)
+            actual_output = list(map(_decode, actual_output))
         finally:
             del os.environ[envkey]
             os.close(pin)
@@ -725,7 +748,7 @@ def pom_from_template(proj_dir, svmVersion):
     dom = parse(join(proj_dir, 'pom_template.xml'))
     for svmVersionElement in dom.getElementsByTagName('svmVersion'):
         svmVersionElement.parentNode.replaceChild(dom.createTextNode(svmVersion), svmVersionElement)
-    with open(join(proj_dir, 'pom.xml'), 'wb') as pom_file:
+    with open(join(proj_dir, 'pom.xml'), 'w') as pom_file:
         dom.writexml(pom_file)
 
 def deploy_native_image_maven_plugin(svmVersion, repo, gpg, keyid):
@@ -871,7 +894,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
     support_distributions=['substratevm:NATIVE_IMAGE_JUNIT_SUPPORT'],
 ))
 
-if os.environ.has_key('LIBGRAAL'):
+if 'LIBGRAAL' in os.environ:
     mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         suite=suite,
         name='LibGraal',

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import com.oracle.truffle.api.test.OSUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -126,7 +127,7 @@ public final class MemoryFileSystem implements FileSystem {
     public MemoryFileSystem() throws IOException {
         this.inodes = new HashMap<>();
         this.blocks = new HashMap<>();
-        root = parsePath("/");
+        root = MemoryPath.getRootDirectory();
         userDir = root;
         createDirectoryImpl();
     }
@@ -1115,6 +1116,23 @@ public final class MemoryFileSystem implements FileSystem {
                 return false;
             }
             return delegate.equals(((MemoryPath) other).delegate);
+        }
+
+        static Path getRootDirectory() {
+            Path delegate;
+            if (OSUtils.isUnix()) {
+                delegate = Paths.get("/");
+            } else {
+                delegate = null;
+                for (Path root : Paths.get("").getFileSystem().getRootDirectories()) {
+                    delegate = root;
+                    break;
+                }
+            }
+            if (delegate == null) {
+                throw new IllegalStateException("No root found.");
+            }
+            return new MemoryPath(delegate);
         }
     }
 }

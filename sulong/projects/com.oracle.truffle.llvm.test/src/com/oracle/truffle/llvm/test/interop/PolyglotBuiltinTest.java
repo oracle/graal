@@ -200,7 +200,7 @@ public class PolyglotBuiltinTest extends InteropTestBase {
             testEvalNoInternal.call();
             Assert.fail("Should have thrown an exception.");
         } catch (LLVMPolyglotException e) {
-            Assert.assertEquals("err_eval_no_lang", "Access to internal language 'nfi' is not allowed.", e.getMessage());
+            Assert.assertEquals("err_eval_no_lang", "Language 'nfi' not found.", e.getMessage());
         }
     }
 }

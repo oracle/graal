@@ -277,19 +277,19 @@ public final class PosixJavaNIOSubstitutions {
     // Checkstyle: stop
     @TargetClass(className = "sun.nio.ch.IOStatus")
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-    static final class Target_sun_nio_ch_IOStatus {
+    public static final class Target_sun_nio_ch_IOStatus {
         @Alias @TargetElement(name = "EOF")//
-        protected static int IOS_EOF;
+        public static int IOS_EOF;
         @Alias @TargetElement(name = "UNAVAILABLE")//
-        protected static int IOS_UNAVAILABLE;
+        public static int IOS_UNAVAILABLE;
         @Alias @TargetElement(name = "INTERRUPTED")//
-        protected static int IOS_INTERRUPTED;
+        public static int IOS_INTERRUPTED;
         @Alias @TargetElement(name = "UNSUPPORTED")//
-        protected static int IOS_UNSUPPORTED;
+        public static int IOS_UNSUPPORTED;
         @Alias @TargetElement(name = "THROWN")//
-        protected static int IOS_THROWN;
+        public static int IOS_THROWN;
         @Alias @TargetElement(name = "UNSUPPORTED_CASE")//
-        protected static int IOS_UNSUPPORTED_CASE;
+        public static int IOS_UNSUPPORTED_CASE;
     }
 
     @TargetClass(className = "sun.nio.ch.FileDispatcher")

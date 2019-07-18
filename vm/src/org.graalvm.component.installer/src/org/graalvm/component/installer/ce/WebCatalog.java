@@ -31,20 +31,16 @@ import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.NoRouteToHostException;
 import java.net.URL;
-import java.nio.file.Path;
 import java.util.Map;
 import java.util.Properties;
-import java.util.jar.JarFile;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
-import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.remote.FileDownloader;
-import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -165,11 +161,6 @@ public class WebCatalog implements SoftwareChannel {
         }
         props.putAll(loadProps);
         return storage;
-    }
-
-    @Override
-    public MetadataLoader createLocalFileLoader(ComponentInfo cInfo, Path localFile, boolean verify) throws IOException {
-        return new JarMetaLoader(new JarFile(localFile.toFile(), verify), feedback);
     }
 
     @Override
