@@ -65,7 +65,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-
         /*
          * It is difficult to track down all the places where exceptions are thrown via JNI. And
          * unconditional registration is cheap because the exception classes have no dependency on

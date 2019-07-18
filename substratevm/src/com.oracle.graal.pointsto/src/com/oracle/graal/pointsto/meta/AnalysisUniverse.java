@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -572,7 +573,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     public Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method) {
-        Set<AnalysisMethod> implementations = new HashSet<>();
+        Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
             if (method.isImplementationInvoked()) {
                 implementations.add(method);
@@ -611,6 +612,23 @@ public class AnalysisUniverse implements Universe {
             }
         }
         return holderOrSubtypeInstantiated;
+    }
+
+    public Set<AnalysisType> getSubtypes(AnalysisType baseType) {
+        LinkedHashSet<AnalysisType> result = new LinkedHashSet<>();
+        result.add(baseType);
+        collectSubtypes(baseType, result);
+        return result;
+    }
+
+    private void collectSubtypes(AnalysisType baseType, Set<AnalysisType> result) {
+        for (AnalysisType subType : baseType.subTypes) {
+            if (result.contains(subType)) {
+                continue;
+            }
+            result.add(subType);
+            collectSubtypes(subType, result);
+        }
     }
 
     @Override
