@@ -1017,6 +1017,8 @@ suite = {
         "mx:JUNIT",
       ],
       "distDependencies" : [
+        "TRUFFLE_API",
+        "TRUFFLE_ST"
       ],
       "maven" : False
     },
