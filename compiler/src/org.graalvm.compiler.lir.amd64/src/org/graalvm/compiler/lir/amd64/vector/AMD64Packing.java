@@ -31,17 +31,30 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
+import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+
+import static java.lang.Double.doubleToRawLongBits;
+import static java.lang.Float.floatToRawIntBits;
 
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
+import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 public final class AMD64Packing {
 
@@ -71,6 +84,131 @@ public final class AMD64Packing {
             final int alignment = pc.getSizeInBytes() / pc.getVectorLength();
             final AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(byteBuffer.array(), alignment);
             masm.movdqu(asRegister(result), address);
+        }
+    }
+
+    private static final void reg2addr(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, AMD64Address dst, Register src) {
+        switch (kind) {
+            case BYTE:
+                masm.movb(dst, src);
+                break;
+            case WORD:
+                masm.movw(dst, src);
+                break;
+            case DWORD:
+                masm.movl(dst, src);
+                break;
+            case QWORD:
+                masm.movq(dst, src);
+                break;
+            case SINGLE:
+                masm.movl(dst, src);
+                break;
+            case DOUBLE:
+                masm.movq(dst, src);
+                break;
+        }
+    }
+
+    private static final void addr2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, Register dst, AMD64Address src) {
+        switch (kind) {
+            case BYTE:
+            case WORD:
+            case DWORD:
+                masm.movl(dst, src);
+                break;
+            case QWORD:
+                masm.movq(dst, src);
+                break;
+            case SINGLE:
+                masm.movl(dst, src);
+                break;
+            case DOUBLE:
+                masm.movq(dst, src);
+                break;
+        }
+    }
+
+    private static final void const2addr(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, AMD64Address dst, JavaConstant src) {
+        switch (kind) {
+            case BYTE:
+                masm.movb(dst, src.asInt());
+                break;
+            case WORD:
+                masm.movw(dst, src.asInt());
+                break;
+            case DWORD:
+                masm.movl(dst, src.asInt());
+                break;
+            case QWORD:
+                masm.movlong(dst, src.asLong());
+                break;
+            case SINGLE:
+                masm.movl(dst, floatToRawIntBits(src.asFloat()));
+                break;
+            case DOUBLE:
+                masm.movlong(dst, doubleToRawLongBits(src.asDouble()));
+                break;
+        }
+    }
+
+    private static final void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, Register scratch) {
+        if (isRegister(src)) {
+            reg2addr(crb, masm, (AMD64Kind)src.getPlatformKind(), dst, asRegister(src));
+        }
+        else if (isStackSlot(src)) {
+            addr2reg(crb, masm, (AMD64Kind)src.getPlatformKind(), scratch, (AMD64Address)crb.asAddress(src));
+            reg2addr(crb, masm, (AMD64Kind)src.getPlatformKind(), dst, scratch);
+        }
+        else if (isJavaConstant(src)) {
+            const2addr(crb, masm, (AMD64Kind)src.getPlatformKind(), dst, asJavaConstant(src));
+        }
+    }
+
+    public static final class PackStackOp extends AMD64LIRInstruction {
+
+        private static final int YMM_LENGTH_IN_BYTES = 32;
+        public static final LIRInstructionClass<PackStackOp> TYPE = LIRInstructionClass.create(PackStackOp.class);
+
+        @Def({REG}) private AllocatableValue result;
+        @Temp({REG}) private AllocatableValue scratch;
+        @Use({REG, STACK}) private AllocatableValue[] values;
+
+        public PackStackOp(LIRGeneratorTool tool, AllocatableValue result, List<AllocatableValue> values) {
+            this(TYPE, tool, result, values);
+        }
+
+        protected PackStackOp(LIRInstructionClass<? extends PackStackOp> c, LIRGeneratorTool tool, AllocatableValue result, List<AllocatableValue> values) {
+            super(c);
+            assert !values.isEmpty() : "values to pack for pack op cannot be empty";
+            this.result = result;
+            this.scratch = tool.newVariable(result.getValueKind());
+            this.values = values.toArray(new AllocatableValue[0]);
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            assert isRegister(scratch) : "scratch must be a register";
+            final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
+            final AMD64Kind scalarKind = vectorKind.getScalar();
+
+            // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
+            int amt = (int)Math.ceil(((double)values.length * scalarKind.getSizeInBytes()) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
+
+            // Open scratch space for us to dump our values to.
+            masm.subq(rsp, amt);
+            int offset = 0;
+            for (int i = 0; i < values.length; i ++) {
+                AMD64Address target = new AMD64Address(rsp, offset);
+                move(crb, masm, target, values[i], asRegister(scratch));
+                offset += scalarKind.getSizeInBytes();
+            }
+
+            // Write memory into vector register.
+            masm.vmovdqu(asRegister(result), new AMD64Address(rsp, 0));
+
+            // Pop scratch space.
+            masm.addq(rsp, amt);
         }
     }
 
