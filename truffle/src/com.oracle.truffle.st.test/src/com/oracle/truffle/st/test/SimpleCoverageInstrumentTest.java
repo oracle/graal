@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.truffle.st.Coverage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -107,13 +108,13 @@ public class SimpleCoverageInstrumentTest {
     private void assertJSCorrect(final Context context) {
         // We can lookup services exported by the instrument, in our case this is
         // the instrument itself but it does not have to be.
-        SimpleCoverageInstrument coverage = context.getEngine().getInstruments().get(SimpleCoverageInstrument.ID).lookup(SimpleCoverageInstrument.class);
+        SimpleCoverageInstrument coverageInstrument = context.getEngine().getInstruments().get(SimpleCoverageInstrument.ID).lookup(SimpleCoverageInstrument.class);
         // We then use the looked up service to assert that it behaves as expected, just like in any
         // other test.
-        Map<com.oracle.truffle.api.source.Source, Set<SourceSection>> sourceToNotYetCoveredSections = coverage.getSourceToNotYetCoveredSections();
-        Assert.assertEquals(1, sourceToNotYetCoveredSections.size());
-        sourceToNotYetCoveredSections.forEach((com.oracle.truffle.api.source.Source s, Set<SourceSection> v) -> {
-            List<Integer> notYetCoveredLineNumbers = coverage.notYetCoveredLineNumbers(s);
+        Map<com.oracle.truffle.api.source.Source, Coverage> coverageMap = coverageInstrument.getCoverageMap();
+        Assert.assertEquals(1, coverageMap.size());
+        coverageMap.forEach((com.oracle.truffle.api.source.Source s, Coverage v) -> {
+            List<Integer> notYetCoveredLineNumbers = coverageInstrument.notYetCoveredLineNumbers(s);
             Object[] expected = new Integer[]{47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 61, 67};
             Assert.assertArrayEquals(expected, notYetCoveredLineNumbers.toArray());
         });
@@ -143,13 +144,13 @@ public class SimpleCoverageInstrumentTest {
             context.eval(source);
             // We can lookup services exported by the instrument, in our case this is
             // the instrument itself but it does not have to be.
-            SimpleCoverageInstrument coverage = context.getEngine().getInstruments().get(SimpleCoverageInstrument.ID).lookup(SimpleCoverageInstrument.class);
-            // We then use the looked up service to assert that it behaves as expected, just like in any
-            // other test.
-            Map<com.oracle.truffle.api.source.Source, Set<SourceSection>> sourceToNotYetCoveredSections = coverage.getSourceToNotYetCoveredSections();
-            Assert.assertEquals(1, sourceToNotYetCoveredSections.size());
-            sourceToNotYetCoveredSections.forEach((com.oracle.truffle.api.source.Source s, Set<SourceSection> v) -> {
-                List<Integer> notYetCoveredLineNumbers = coverage.notYetCoveredLineNumbers(s);
+            SimpleCoverageInstrument coverageInstrument = context.getEngine().getInstruments().get(SimpleCoverageInstrument.ID).lookup(SimpleCoverageInstrument.class);
+            // We then use the looked up service to assert that it behaves as expected, just like in
+            // any other test.
+            Map<com.oracle.truffle.api.source.Source, Coverage> coverageMap = coverageInstrument.getCoverageMap();
+            Assert.assertEquals(1, coverageMap.size());
+            coverageMap.forEach((com.oracle.truffle.api.source.Source s, Coverage v) -> {
+                List<Integer> notYetCoveredLineNumbers = coverageInstrument.notYetCoveredLineNumbers(s);
                 Object[] expected = new Integer[]{3, 4, 5};
                 Assert.assertArrayEquals(expected, notYetCoveredLineNumbers.toArray());
             });

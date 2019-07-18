@@ -2,6 +2,7 @@ package com.oracle.truffle.st;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -55,10 +56,10 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * The instrument keeps a mapping between a {@link Source} and it's loaded, but not yet executed
      * {@link SourceSection}s. This is used to calculate the coverage for each {@link Source}.
      */
-    final Map<Source, Set<SourceSection>> sourceToNotYetCoveredSections = new HashMap<>();
+    final Map<Source, Coverage> coverageMap = new HashMap<>();
 
-    public Map<Source, Set<SourceSection>> getSourceToNotYetCoveredSections() {
-        return sourceToNotYetCoveredSections;
+    public synchronized Map<Source, Coverage> getCoverageMap() {
+        return Collections.unmodifiableMap(coverageMap);
     }
 
     /**
@@ -117,8 +118,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * attach} our {@link CoverageEventFactory node factory} using the same filter. This factory
      * produces {@link Node Truffle Nodes} that will be inserted into the AST at positions specified
      * by the filter. Each of the inserted nodes will, once executed, remove the corresponding
-     * source section from the {@link #sourceToNotYetCoveredSections set of unexecuted source
-     * sections}.
+     * source section from the {@link #coverageMap set of unexecuted source sections}.
      *
      * @param env The environment, used to get the {@link Instrumenter}
      */
@@ -152,21 +152,19 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      *
      * @param env
      */
-    private void printResults(final Env env) {
+    private synchronized void printResults(final Env env) {
         final PrintStream printStream = new PrintStream(env.out());
-        synchronized (sourceToNotYetCoveredSections) {
-            for (Source source : sourceToNotYetCoveredSections.keySet()) {
-                final String path = source.getPath();
-                final int lineCount = source.getLineCount();
-                final List<Integer> notYetCoveredLineNumbers = notYetCoveredLineNumbers(source);
-                final int notYetCoveredSize = notYetCoveredLineNumbers.size();
-                double coveredPercentage = 100 * ((double) lineCount - notYetCoveredSize) / lineCount;
-                printStream.println("==");
-                printStream.println("Coverage of " + path + " is " + String.format("%.2f%%", coveredPercentage));
-                for (int i = 1; i <= source.getLineCount(); i++) {
-                    String covered = notYetCoveredLineNumbers.contains(i) ? "-" : "+";
-                    printStream.println(String.format("%s %s", covered, source.getCharacters(i)));
-                }
+        for (Source source : coverageMap.keySet()) {
+            final String path = source.getPath();
+            final int lineCount = source.getLineCount();
+            final List<Integer> notYetCoveredLineNumbers = notYetCoveredLineNumbers(source);
+            final int notYetCoveredSize = notYetCoveredLineNumbers.size();
+            double coveredPercentage = 100 * ((double) lineCount - notYetCoveredSize) / lineCount;
+            printStream.println("==");
+            printStream.println("Coverage of " + path + " is " + String.format("%.2f%%", coveredPercentage));
+            for (int i = 1; i <= source.getLineCount(); i++) {
+                String covered = notYetCoveredLineNumbers.contains(i) ? "-" : "+";
+                printStream.println(String.format("%s %s", covered, source.getCharacters(i)));
             }
         }
     }
@@ -176,20 +174,8 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * @return A sorted list of line numbers for not-yet-covered lines of source code in the given
      *         {@link Source}
      */
-    public List<Integer> notYetCoveredLineNumbers(final Source source) {
-        synchronized (sourceToNotYetCoveredSections) {
-            Set<SourceSection> sections = sourceToNotYetCoveredSections.get(source);
-            Set<Integer> linesNotCovered = new HashSet<>();
-            for (SourceSection ss : sections) {
-                for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
-                    linesNotCovered.add(i);
-                }
-            }
-            List<Integer> sortedLines = new ArrayList(linesNotCovered.size());
-            sortedLines.addAll(linesNotCovered);
-            sortedLines.sort(Integer::compare);
-            return sortedLines;
-        }
+    public synchronized List<Integer> notYetCoveredLineNumbers(final Source source) {
+        return coverageMap.get(source).nonCoveredLines();
     }
 
     /**
@@ -205,6 +191,16 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new SimpleCoverageInstrumentOptionDescriptors();
+    }
+
+    synchronized void addLoaded(SourceSection sourceSection) {
+        final Coverage coverage = coverageMap.computeIfAbsent(sourceSection.getSource(), (Source s) -> new Coverage());
+        coverage.addLoaded(sourceSection);
+    }
+
+    synchronized void addCovered(SourceSection instrumentedSourceSection) {
+            final Coverage coverage = coverageMap.get(instrumentedSourceSection.getSource());
+            coverage.addCovered(instrumentedSourceSection);
     }
 
 }

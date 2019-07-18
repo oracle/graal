@@ -5,8 +5,6 @@ import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-import java.util.HashSet;
-
 /**
  * A listener for new {@link SourceSection}s being loaded.
  *
@@ -33,14 +31,10 @@ class GatherSourceSectionsListener implements LoadSourceSectionListener {
     @Override
     public void onLoad(LoadSourceSectionEvent event) {
         final SourceSection sourceSection = event.getSourceSection();
-        final Source source = sourceSection.getSource();
-        // TODO: This should not be necesery becuase of the filter. Bug!
-        if (!source.isInternal()) {
-            synchronized (simpleCoverageInstrument.sourceToNotYetCoveredSections) {
-                simpleCoverageInstrument.sourceToNotYetCoveredSections.computeIfAbsent(source, (Source s) -> {
-                    return new HashSet<>();
-                }).add(sourceSection);
-            }
+        // TODO: This should not be necessary because of the filter. Bug!
+        if (!sourceSection.getSource().isInternal()) {
+            simpleCoverageInstrument.addLoaded(sourceSection);
         }
     }
+
 }

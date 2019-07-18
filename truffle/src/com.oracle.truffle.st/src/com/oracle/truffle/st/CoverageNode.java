@@ -71,10 +71,9 @@ class CoverageNode extends ExecutionEventNode {
             final Source source = instrumentedSourceSection.getSource();
             // TODO: This should not be necesery becuase of the filter. Bug!
             if (!source.isInternal()) {
-                synchronized (simpleCoverageInstrument.sourceToNotYetCoveredSections) {
-                    simpleCoverageInstrument.sourceToNotYetCoveredSections.get(source).remove(instrumentedSourceSection);
-                }
+                simpleCoverageInstrument.addCovered(instrumentedSourceSection);
             }
         }
     }
+
 }
