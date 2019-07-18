@@ -23,22 +23,8 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-public abstract class Substitutor {
+public interface GeneratedSubstitutions {
+    String holder();
 
-    public static final String INSTANCE_NAME = "theInstance";
-    public static final String GETTER = "getInstance";
-
-    public static String getClassName(String className, String methodName) {
-        return className + "_" + methodName;
-    }
-
-    public static String getQualifiedClassName(String className, String methodName) {
-        return Substitutor.class.getPackage().toString() + "." + getClassName(className, methodName);
-    }
-
-    public abstract String methodDescritor();
-
-    public abstract String type();
-
-    public abstract Object invoke(Object[] args);
+    Iterable<Substitutor> substitutors();
 }

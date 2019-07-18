@@ -29,9 +29,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.espresso.SubstitutionProcessor;
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.espresso.SubstitutionProcessor;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -101,6 +101,15 @@ public final class Substitutions implements ContextAccess {
         for (Class<?> clazz : ESPRESSO_SUBSTITUTIONS) {
             registerStaticSubstitutions(clazz);
         }
+// for (GeneratedSubstitutions g : ServiceLoader.load(GeneratedSubstitutions.class)) {
+// g.holder();
+// for (Substitutor substitutor : g.substitutors()) {
+//
+// register (, substitutor.methodDescritor(), substitutor);
+// }
+//
+// }
+
     }
 
     public Substitutions(EspressoContext context) {
@@ -176,7 +185,7 @@ public final class Substitutions implements ContextAccess {
             EspressoRootNodeFactory factory;
 
             try {
-                Class<?> substitutorClass = Class.forName(Substitutor.class.getPackage().getName() + "." + Substitutor.getClassName(clazz.getSimpleName(), method.getName()));
+                Class<?> substitutorClass = Class.forName(Substitutor.getQualifiedClassName(clazz.getSimpleName(), method.getName()));
                 Substitutor substitutor = (Substitutor) substitutorClass.getDeclaredMethod(Substitutor.GETTER).invoke(null);
                 factory = new EspressoRootNodeFactory() {
                     @Override
@@ -233,8 +242,10 @@ public final class Substitutions implements ContextAccess {
             }
 
             ++registered;
-            String file = SubstitutionProcessor.spawnSubstitutor(clazz.getSimpleName(), methodName, SubstitutionProcessor.getParameterTypes(method), substitution.hasReceiver(),
-                            returnType == Type._void);
+            // String file = SubstitutionProcessor.spawnSubstitutor(clazz.getSimpleName(),
+            // methodName,
+            // SubstitutionProcessor.getParameterTypes(method), substitution.hasReceiver(),
+            // returnType == Type._void);
             registerStaticSubstitution(classType,
                             StaticSymbols.putName(methodName),
                             StaticSymbols.putSignature(returnType, parameterTypes.toArray(new Symbol[parameterTypes.size()])),

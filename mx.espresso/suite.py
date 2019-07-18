@@ -43,16 +43,35 @@ suite = {
     # ------------- projects
 
     "projects": {
+        # "com.oracle.truffle.espresso.annotations": {
+        #     "subDir": "src",
+        #     "sourceDirs": ["src"],
+        #     "dependencies": [],
+        #     "javaCompliance": "1.8+",
+        #     "checkstyle" : "com.oracle.truffle.espresso",
+        # },
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
+                # "com.oracle.truffle.espresso.annotations",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],
-            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
-            "checkstyle" : "com.oracle.truffle.espresso",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.processor": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                # "com.oracle.truffle.espresso.annotations",
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.launcher": {
@@ -63,7 +82,7 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle" : "com.oracle.truffle.espresso.launcher",
+            "checkstyle": "com.oracle.truffle.espresso.launcher",
         },
 
         "com.oracle.truffle.espresso.playground": {
@@ -126,7 +145,7 @@ suite = {
 
         # Native library for tests
         "com.oracle.truffle.espresso.test.native": {
-            "testProject" : True,
+            "testProject": True,
             "subDir": "src",
             "native": True,
             "vpath": True,
@@ -199,7 +218,6 @@ suite = {
             "testDistribution": True,
         },
 
-
         "ESPRESSO_LAUNCHER": {
             "subDir": "src",
             "dependencies": [
@@ -213,6 +231,18 @@ suite = {
             "license": "UPL",
             "description": "Espresso launcher using the polyglot API.",
             "allowsJavadocWarnings": True,
+        },
+
+        "ESPRESSO_PROCESSOR": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.processor",
+            ],
+            # "overlaps": ["ESPRESSO"],
+            "distDependencies": [],
+            "license": "UPL",
+            "description": "Espresso ....",
+            "maven": False,
         },
 
         "ESPRESSO_SUPPORT": {
