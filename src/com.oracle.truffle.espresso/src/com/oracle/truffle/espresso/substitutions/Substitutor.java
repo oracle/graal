@@ -23,22 +23,45 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.List;
+
 public abstract class Substitutor {
 
     public static final String INSTANCE_NAME = "theInstance";
     public static final String GETTER = "getInstance";
 
-    public static String getClassName(String className, String methodName) {
-        return className + "_" + methodName;
+    private static String getClassName(String className, String methodName, List<String> parameterTypes) {
+        StringBuilder str = new StringBuilder();
+        str.append(className).append("_").append(methodName).append(signatureSuffixBuilder(parameterTypes));
+        return str.toString();
     }
 
-    public static String getQualifiedClassName(String className, String methodName) {
-        return Substitutor.class.getPackage().toString() + "." + getClassName(className, methodName);
+    /**
+     * This method MUST return the same as th one in SubstitutionProcessor.
+     */
+    public static String getQualifiedClassName(String className, String methodName, List<String> parameterTypes) {
+        return Substitutor.class.getPackage().getName() + "." + getClassName(className, methodName, parameterTypes);
     }
 
-    public abstract String methodDescritor();
+    private static StringBuilder signatureSuffixBuilder(List<String> parameterTypes) {
+        StringBuilder str = new StringBuilder();
+        str.append("_");
+        boolean first = true;
+        for (String parameter : parameterTypes) {
+            if (first) {
+                first = false;
+            } else {
+                str.append("_");
+            }
+            str.append(parameter);
+        }
+        str.append(parameterTypes.size());
+        return str;
+    }
 
-    public abstract String type();
+// public abstract String methodDescritor();
+//
+// public abstract String type();
 
     public abstract Object invoke(Object[] args);
 }

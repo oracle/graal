@@ -71,7 +71,7 @@ suite = {
                 # "com.oracle.truffle.espresso.annotations",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
+            "checkstyle": "com.oracle.truffle.espresso.processor",
         },
 
         "com.oracle.truffle.espresso.launcher": {
