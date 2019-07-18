@@ -36,6 +36,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
     private static final String REFERENCE_SNIPPET_2 = "reference2Snippet";
     private static final String REFERENCE_SNIPPET_3 = "reference3Snippet";
     private static final String REFERENCE_SNIPPET_4 = "reference4Snippet";
+    private static final String REFERENCE_SNIPPET_5 = "reference5Snippet";
 
     public static int referenceSnippet(int a) {
         switch (a) {
@@ -422,6 +423,43 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         test4("test9Snippet");
     }
 
+    public static int reference5Snippet(int a) {
+        switch (a) {
+            case 0:
+                return 4;
+            case 1:
+                return 1;
+            case 2:
+                return 1;
+            case 3:
+                return 6;
+            default:
+                return 7;
+        }
+    }
+
+    public static int test10Snippet(int a) {
+        if (a == 0) {
+            return 4;
+        } else {
+            if (a == 1 || a == 2) {
+                return 1;
+            } else {
+                switch (a) {
+                    case 3:
+                        return 6;
+                    default:
+                        return 7;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void test10() {
+        test5("test10Snippet");
+    }
+
     private void test1(String snippet) {
         test(snippet, REFERENCE_SNIPPET);
     }
@@ -436,6 +474,10 @@ public class SwitchFoldingTest extends GraalCompilerTest {
 
     private void test4(String snippet) {
         test(snippet, REFERENCE_SNIPPET_4);
+    }
+
+    private void test5(String snippet) {
+        test(snippet, REFERENCE_SNIPPET_5);
     }
 
     private void test(String snippet, String ref) {
