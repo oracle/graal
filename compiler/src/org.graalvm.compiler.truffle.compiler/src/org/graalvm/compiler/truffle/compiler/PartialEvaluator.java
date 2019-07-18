@@ -319,7 +319,7 @@ public abstract class PartialEvaluator {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             if (graph.getNodeCount() > nodeLimit) {
-                throw new PermanentBailoutException("Graph too big to safely compile.");
+                throw builder.bailout("Graph too big to safely compile.");
             }
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
             InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
