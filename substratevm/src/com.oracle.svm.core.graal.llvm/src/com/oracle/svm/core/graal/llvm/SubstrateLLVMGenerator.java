@@ -219,13 +219,12 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
         if (canModifySpecialRegisters(targetMethod)) {
             assert (isEntryPoint || canModifySpecialRegisters);
             specialRegisterArg = builder.buildBitcast(getSpecialRegisterPointer(index), builder.rawPointerType());
+        } else if (isEntryPoint || canModifySpecialRegisters) {
+            specialRegisterArg = builder.buildLoad(getSpecialRegisterPointer(index), builder.longType());
         } else {
-            if (isEntryPoint || canModifySpecialRegisters) {
-                specialRegisterArg = builder.buildLoad(getSpecialRegisterPointer(index), builder.longType());
-            } else {
-                specialRegisterArg = getSpecialRegister(index);
-            }
+            specialRegisterArg = getSpecialRegister(index);
         }
+
         return specialRegisterArg;
     }
 

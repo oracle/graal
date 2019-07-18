@@ -54,7 +54,9 @@ public class LLVMUtils {
     static final int UNTRACKED_POINTER_ADDRESS_SPACE = 0;
     static final int TRACKED_POINTER_ADDRESS_SPACE = 1;
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
+    public static final String ALWAYS_INLINE = "alwaysinline";
     public static final String GC_REGISTER_FUNCTION_NAME = "__llvm_gc_register";
+    public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
     public static final String JNI_WRAPPER_PREFIX = "__llvm_jni_wrapper_";
 
     public static final class DebugLevel {

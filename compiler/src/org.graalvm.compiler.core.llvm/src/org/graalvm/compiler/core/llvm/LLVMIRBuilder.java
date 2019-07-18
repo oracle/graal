@@ -79,8 +79,8 @@ public class LLVMIRBuilder {
              */
             gcRegisterFunction = addFunction(LLVMUtils.GC_REGISTER_FUNCTION_NAME, functionType(objectType(), rawPointerType()));
             LLVM.LLVMSetLinkage(gcRegisterFunction, LLVM.LLVMLinkOnceAnyLinkage);
-            setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, "alwaysinline");
-            setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+            setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+            setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
 
             LLVMBasicBlockRef block = appendBasicBlock("main", gcRegisterFunction);
             positionAtEnd(block);
@@ -163,7 +163,7 @@ public class LLVMIRBuilder {
         LLVM.LLVMTypeRef wrapperType = prependArguments(calleeType, rawPointerType(), typeOf(callee));
         LLVMValueRef transitionWrapper = addFunction(LLVMUtils.JNI_WRAPPER_PREFIX + intrinsicType(calleeType), wrapperType);
         LLVM.LLVMSetLinkage(transitionWrapper, LLVM.LLVMLinkOnceAnyLinkage);
-        setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+        setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "noinline");
 
         LLVM.LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
@@ -1163,14 +1163,14 @@ public class LLVMIRBuilder {
     public LLVMValueRef buildInlineGetRegister(String registerName) {
         LLVMValueRef getRegister = buildInlineAsm(functionType(rawPointerType()), LLVMUtils.TargetSpecific.get().getRegisterInlineAsm(registerName), "={" + registerName + "}", false, false);
         LLVMValueRef call = buildCall(getRegister);
-        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         return call;
     }
 
     public LLVMValueRef buildInlineJump(LLVMValueRef address) {
         LLVMValueRef jump = buildInlineAsm(functionType(voidType(), rawPointerType()), LLVMUtils.TargetSpecific.get().getJumpInlineAsm(), "r", true, false);
         LLVMValueRef call = buildCall(jump, address);
-        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, "gc-leaf-function");
+        setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         return call;
     }
 }

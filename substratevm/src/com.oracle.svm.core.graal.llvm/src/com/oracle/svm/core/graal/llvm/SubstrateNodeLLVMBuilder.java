@@ -111,9 +111,9 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
     }
 
     @Override
-    protected LLVMValueRef emitCall(Invoke i, LoweredCallTargetNode callTarget, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
+    protected LLVMValueRef emitCall(Invoke invoke, LoweredCallTargetNode callTarget, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
         if (!hasJavaFrameAnchor(callTarget)) {
-            return super.emitCall(i, callTarget, callee, patchpointId, args);
+            return super.emitCall(invoke, callTarget, callee, patchpointId, args);
         }
 
         LLVMValueRef anchor = llvmOperand(getJavaFrameAnchor(callTarget));
@@ -136,6 +136,6 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
         newArgs[0] = anchor;
         newArgs[1] = callee;
         System.arraycopy(args, 0, newArgs, 2, args.length);
-        return super.emitCall(i, callTarget, wrapper, patchpointId, newArgs);
+        return super.emitCall(invoke, callTarget, wrapper, patchpointId, newArgs);
     }
 }

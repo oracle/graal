@@ -435,10 +435,10 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
     }
 
     @SuppressWarnings("unused")
-    protected LLVMValueRef emitCall(Invoke i, LoweredCallTargetNode callTarget, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
+    protected LLVMValueRef emitCall(Invoke invoke, LoweredCallTargetNode callTarget, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
         LLVMValueRef call;
-        if (i instanceof InvokeWithExceptionNode) {
-            InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) i;
+        if (invoke instanceof InvokeWithExceptionNode) {
+            InvokeWithExceptionNode invokeWithExceptionNode = (InvokeWithExceptionNode) invoke;
             LLVMBasicBlockRef successor = gen.getBlock(invokeWithExceptionNode.next());
             LLVMBasicBlockRef handler = gen.getBlock(invokeWithExceptionNode.exceptionEdge());
 
