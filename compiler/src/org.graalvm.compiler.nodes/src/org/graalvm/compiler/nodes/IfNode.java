@@ -72,6 +72,7 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.SwitchFoldable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -89,7 +90,7 @@ import jdk.vm.ci.meta.TriState;
  * of a comparison.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_2, sizeRationale = "2 jmps")
-public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, SwitchFoldable {
     public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");
@@ -299,6 +300,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return;
         }
 
+        if (switchTransformationOptimization(tool)) {
+            return;
+        }
+
         if (falseSuccessor().hasNoUsages() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode &&
                         !(((IfNode) falseSuccessor().next()).falseSuccessor() instanceof LoopExitNode)) {
             AbstractBeginNode intermediateBegin = falseSuccessor();
@@ -454,6 +459,70 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         setCondition(graph().addOrUniqueWithInputs(LogicConstantNode.contradiction()));
 
         return true;
+    }
+
+    // SwitchFoldable implementation.
+
+    @Override
+    public Node getNextSwitchFoldableBranch() {
+        return falseSuccessor();
+    }
+
+    @Override
+    public boolean isInSwitch(ValueNode switchValue) {
+        return SwitchFoldable.maybeIsInSwitch(condition()) && SwitchFoldable.sameSwitchValue(condition(), switchValue);
+    }
+
+    @Override
+    public void cutOffCascadeNode() {
+        setTrueSuccessor(null);
+    }
+
+    @Override
+    public void cutOffLowestCascadeNode() {
+        setFalseSuccessor(null);
+        setTrueSuccessor(null);
+    }
+
+    @Override
+    public AbstractBeginNode getDefault() {
+        return falseSuccessor();
+    }
+
+    @Override
+    public ValueNode switchValue() {
+        if (SwitchFoldable.maybeIsInSwitch(condition())) {
+            return ((IntegerEqualsNode) condition()).getX();
+        }
+        return null;
+    }
+
+    @Override
+    public boolean isNonInitializedProfile() {
+        return getTrueSuccessorProbability() == 0.5d;
+    }
+
+    @Override
+    public int intKeyAt(int i) {
+        assert i == 0;
+        return ((IntegerEqualsNode) condition()).getY().asJavaConstant().asInt();
+    }
+
+    @Override
+    public double keyProbability(int i) {
+        assert i == 0;
+        return getTrueSuccessorProbability();
+    }
+
+    @Override
+    public AbstractBeginNode keySuccessor(int i) {
+        assert i == 0;
+        return trueSuccessor();
+    }
+
+    @Override
+    public double defaultProbability() {
+        return 1.0d - getTrueSuccessorProbability();
     }
 
     /**
