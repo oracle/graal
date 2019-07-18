@@ -879,7 +879,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     installable_id='llvm-toolchain',
     dir_name='jre/lib/llvm',
     license_files=[],
-    third_party_license_files=[],
+    third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
     support_distributions=['sulong:SULONG_LLVM_ORG']
 ))
 
