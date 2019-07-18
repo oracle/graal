@@ -108,6 +108,15 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramPacketInit,
                         method(a, "java.net.DatagramPacket", "init"));
 
+        /* See java.net.DatagramSocket.checkOldImpl */
+        a.registerMethodOverrideReachabilityHandler((access, method) -> {
+            // Checkstyle: stop
+            if (!java.lang.reflect.Modifier.isAbstract(method.getModifiers())) {
+                // Checkstyle: resume
+                RuntimeReflection.register(method);
+            }
+        }, method(a, "java.net.DatagramSocketImpl", "peekData", DatagramPacket.class));
+
         if (isPosix()) {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainDatagramSocketImplInit,
                             method(a, "java.net.PlainDatagramSocketImpl", "init"));
@@ -162,9 +171,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerPlainDatagramSocketImplInit(DuringAnalysisAccess a) {
-        /* See java.net.DatagramSocket.checkOldImpl */
-        RuntimeReflection.register(method(a, "java.net.PlainDatagramSocketImpl", "peekData", DatagramPacket.class));
-
         JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainDatagramSocketImpl", "timeout", "trafficClass", "connected", "connectedAddress", "connectedPort"));
         JNIRuntimeAccess.register(fields(a, "java.net.DatagramSocketImpl", "fd", "localPort"));
 
