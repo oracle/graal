@@ -13,9 +13,9 @@ and language implementers who want to use the GraalVM LLVM runtime.
   *GraalVM users* who want to run native projects via the GraalVM LLVM runtime
   must first compile these projects to LLVM bitcode.
   Although it is possible to do this with the standard LLVM tools (`clang`, `llvm-link`, etc.),
-  users need to address several additional considerations, such as optimizations and manual linking.
-  The toolchain aims to simplify this process, by providing an out-of-the-box drop-in replacement for compiling
-  native projects targeting the GraalVM LLVM runtime.
+  there are several additional considerations, such as optimizations and manual linking.
+  The toolchain aims to simplify this process, by providing an out-of-the-box drop-in replacement for the compiler
+  when building native projects targeting the GraalVM LLVM runtime.
 
 2. **Compilation of native extensions**
   *GraalVM language implementers* often use the GraalVM LLVM runtime to execute native extensions, 
