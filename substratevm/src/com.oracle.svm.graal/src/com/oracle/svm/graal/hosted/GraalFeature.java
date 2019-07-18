@@ -73,8 +73,8 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -306,6 +306,7 @@ public final class GraalFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess c) {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
+        AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
 
         try {
             /*
@@ -313,14 +314,18 @@ public final class GraalFeature implements Feature {
              * is the NodeClass from Truffle. So we require Truffle on the class path for any images
              * and tests that use Graal at run time.
              */
-            config.getMetaAccess().lookupJavaType(SubstrateType.class);
+            aMetaAccess.lookupJavaType(SubstrateType.class);
         } catch (NoClassDefFoundError ex) {
             throw VMError.shouldNotReachHere("Building a native image with Graal support requires Truffle on the class path. For unit tests run with 'svmtest', add the option '--truffle'.");
         }
 
         ImageSingletons.add(GraalSupport.class, new GraalSupport());
 
-        objectReplacer = new GraalObjectReplacer(config.getUniverse(), config.getMetaAccess());
+        if (!ImageSingletons.contains(RuntimeGraalSetup.class)) {
+            ImageSingletons.add(RuntimeGraalSetup.class, new SubstrateRuntimeGraalSetup());
+        }
+        GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class).getProviderObjectReplacements(aMetaAccess);
+        objectReplacer = new GraalObjectReplacer(config.getUniverse(), aMetaAccess, providerReplacements);
         config.registerObjectReplacer(objectReplacer);
 
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);

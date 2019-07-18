@@ -22,25 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.code;
+package com.oracle.svm.hosted.code;
 
-/**
- * Patcher used during native image runtime.
- */
-public interface NativeImagePatcher {
-    /**
-     * Patch directly in the code buffer with an offset relative to the start of this instruction.
-     */
-    void patchCode(int relative, byte[] code);
+import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
+import com.oracle.svm.core.util.VMError;
 
-    /**
-     * The position from the beginning of the method where the patch is applied. This offset is used
-     * in the reference map.
-     */
-    int getOffset();
+import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
-    /**
-     * The length of the value to patch in bytes, e.g., the size of an operand.
-     */
-    int getLength();
+public class HostedCodeCacheProvider extends SharedCodeCacheProvider {
+    HostedCodeCacheProvider(TargetDescription target, RegisterConfig registerConfig) {
+        super(target, registerConfig);
+    }
+
+    @Override
+    public InstalledCode installCode(ResolvedJavaMethod method, CompiledCode compiledCode, InstalledCode installedCode, SpeculationLog log, boolean isDefault) {
+        throw VMError.unimplemented();
+    }
 }

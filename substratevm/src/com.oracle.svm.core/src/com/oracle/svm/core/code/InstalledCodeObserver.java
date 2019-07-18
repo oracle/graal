@@ -65,11 +65,18 @@ public interface InstalledCodeObserver {
         void setAccessor(InstalledCodeObserverHandleAccessor accessor);
     }
 
+    @SuppressWarnings("unused")
     interface InstalledCodeObserverHandleAccessor {
         default void activate(InstalledCodeObserverHandle handle) {
         }
 
         default void release(InstalledCodeObserverHandle handle) {
+        }
+
+        default void detachFromCurrentIsolate(InstalledCodeObserverHandle handle) {
+        }
+
+        default void attachToCurrentIsolate(InstalledCodeObserverHandle handle) {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)

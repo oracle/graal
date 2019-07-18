@@ -82,6 +82,14 @@ public final class InstalledCodeObserverSupport {
         forEach(observerHandles, h -> getAccessor(h).activate(h));
     }
 
+    public static void detachFromCurrentIsolate(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
+        forEach(observerHandles, h -> getAccessor(h).detachFromCurrentIsolate(h));
+    }
+
+    public static void attachToCurrentIsolate(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
+        forEach(observerHandles, h -> getAccessor(h).attachToCurrentIsolate(h));
+    }
+
     public static void removeObservers(NonmovableArray<InstalledCodeObserverHandle> observerHandles) {
         forEach(observerHandles, h -> getAccessor(h).release(h));
     }

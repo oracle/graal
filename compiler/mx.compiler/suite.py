@@ -437,7 +437,6 @@ suite = {
       "dependencies" : [
           "sdk:GRAAL_SDK",
           "JVMCI_HOTSPOT",
-          "org.graalvm.util",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1979,6 +1978,7 @@ suite = {
         "org.graalvm.libgraal",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+        "org.graalvm.util",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8,11+",

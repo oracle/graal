@@ -94,8 +94,14 @@ public final class NonmovableArrays {
         Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(array, hub, HeapKind.Unmanaged);
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()
-        assert runtimeArraysInExistence.incrementAndGet() > 0 : "overflow";
+        trackUnmanagedArray((NonmovableArray<?>) array);
         return (T) array;
+    }
+
+    /** Begins tracking an array, e.g. when it is handed over from a different isolate. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void trackUnmanagedArray(@SuppressWarnings("unused") NonmovableArray<?> array) {
+        assert runtimeArraysInExistence.incrementAndGet() > 0 : "overflow";
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -229,6 +235,12 @@ public final class NonmovableArrays {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseUnmanagedArray(NonmovableArray<?> array) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array);
+        untrackUnmanagedArray(array);
+    }
+
+    /** Untracks an array created at runtime, e.g. before it is handed over to another isolate. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void untrackUnmanagedArray(NonmovableArray<?> array) {
         assert array.isNull() || runtimeArraysInExistence.getAndDecrement() > 0;
     }
 

@@ -37,6 +37,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
@@ -46,6 +47,7 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -78,5 +80,10 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
         return new SubstrateReplacements(p, snippetReflection, bytecodeProvider, ConfigurationValues.getTarget(), new SubstrateGraphMakerFactory(wordTypes));
+    }
+
+    @Override
+    protected SharedCodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
+        return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
 }
