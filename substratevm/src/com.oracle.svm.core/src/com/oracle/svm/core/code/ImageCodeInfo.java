@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
@@ -53,12 +52,10 @@ public class ImageCodeInfo {
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final HostedImageCodeInfo hostedImageCodeInfo = new HostedImageCodeInfo();
 
-    private final Object tether = SubstrateOptions.getRuntimeAssertionsForClass(ImageCodeInfo.class.getName()) ? //
-                    new UninterruptibleUtils.AtomicInteger(0) : new Object();
-
     @UnknownPrimitiveField private CodePointer codeStart;
     @UnknownPrimitiveField private UnsignedWord codeSize;
 
+    private final Object[] objectFields;
     @UnknownObjectField(types = {byte[].class}) byte[] codeInfoIndex;
     @UnknownObjectField(types = {byte[].class}) byte[] codeInfoEncodings;
     @UnknownObjectField(types = {byte[].class}) byte[] referenceMapEncoding;
@@ -70,6 +67,14 @@ public class ImageCodeInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     ImageCodeInfo() {
+        NonmovableObjectArray<Object> objfields = NonmovableArrays.createObjectArray(CodeInfo.OBJFIELDS_COUNT);
+        NonmovableArrays.setObject(objfields, CodeInfo.NAME_OBJFIELD, CODE_INFO_NAME);
+        Object tether = SubstrateOptions.getRuntimeAssertionsForClass(ImageCodeInfo.class.getName()) ? //
+                        new UninterruptibleUtils.AtomicInteger(0) : new Object();
+        NonmovableArrays.setObject(objfields, CodeInfo.TETHER_OBJFIELD, tether);
+        // no InstalledCode for image code
+        objectFields = NonmovableArrays.getHostedArray(objfields);
+
         int runtimeInfoSize = SizeOf.get(CodeInfo.class);
         runtimeCodeInfoData = new byte[runtimeInfoSize];
     }
@@ -79,12 +84,7 @@ public class ImageCodeInfo {
         CodeInfo info = NonmovableArrays.addressOf(NonmovableArrays.fromImageHeap(runtimeCodeInfoData), 0);
         assert info.getCodeStart().isNull() : "already initialized";
 
-        NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(CodeInfo.OBJFIELDS_COUNT);
-        NonmovableArrays.setObject(objectFields, CodeInfo.TETHER_OBJFIELD, tether);
-        NonmovableArrays.setObject(objectFields, CodeInfo.NAME_OBJFIELD, CODE_INFO_NAME);
-        // no InstalledCode or observer handles for image code
-        info.setObjectFields(objectFields);
-
+        info.setObjectFields(NonmovableArrays.fromImageHeap(objectFields));
         info.setCodeStart(codeStart);
         info.setCodeSize(codeSize);
         info.setCodeInfoIndex(NonmovableArrays.fromImageHeap(codeInfoIndex));
@@ -105,12 +105,6 @@ public class ImageCodeInfo {
 
     public HostedImageCodeInfo getHostedImageCodeInfo() {
         return hostedImageCodeInfo;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void tearDown(CodeInfo imageCodeInfo) {
-        NonmovableArrays.releaseUnmanagedArray(imageCodeInfo.getObjectFields());
-        imageCodeInfo.setObjectFields(WordFactory.nullPointer());
     }
 
     /**
