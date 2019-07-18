@@ -78,8 +78,13 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private final Map<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
     private static final int START_OF_THE_TRACE = 4;
-    private final Map<Class<?>, StackTraceElement[]> initializedClasses = Collections.synchronizedMap(new WeakHashMap<>());
-    private final Map<Object, StackTraceElement[]> instantiatedObjects = Collections.synchronizedMap(new WeakIdentityHashMap<>());
+
+    /*
+     * These two are intentionally static to keep the reference to object and classes that were
+     * initialized in the JDK.
+     */
+    private static final Map<Class<?>, StackTraceElement[]> initializedClasses = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Map<Object, StackTraceElement[]> instantiatedObjects = Collections.synchronizedMap(new WeakIdentityHashMap<>());
 
     private boolean configurationSealed;
 
@@ -314,7 +319,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
     }
 
-    private String classInitializationTrace(Class<?> clazz) {
+    private static String classInitializationTrace(Class<?> clazz) {
         return getTraceString(initializedClasses.get(clazz));
     }
 
@@ -377,6 +382,12 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     public void reportClassInitialized(Class<?> clazz) {
         assert TraceClassInitialization.getValue();
         initializedClasses.put(clazz, relevantStackTrace());
+        /*
+         * We don't do early failing here. Lambdas tend to initialize many classes that should not
+         * be initialized, but effectively they do not change the behavior of the final image.
+         *
+         * Failing early here creates many unnecessary constraints and reduces usability.
+         */
     }
 
     @Override
