@@ -8,7 +8,7 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * A factory for nodes that track coverage
  *
- * Because we {@link #enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+ * Because we {@link SimpleCoverageInstrument#enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
  * attached} an instance of this factory, each time a AST node of interest is created, it is
  * instrumented with a node created by this factory.
  */

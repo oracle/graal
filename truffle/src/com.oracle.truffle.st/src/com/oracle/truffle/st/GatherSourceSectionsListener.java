@@ -8,7 +8,8 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * A listener for new {@link SourceSection}s being loaded.
  *
- * Because we {@link #enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+ * Because we
+ * {@link SimpleCoverageInstrument#enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
  * attached} an instance of this listener, each time a new {@link SourceSection} of interest is
  * loaded, we are notified in the
  * {@link #onLoad(com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent) } method.
@@ -25,8 +26,7 @@ class GatherSourceSectionsListener implements LoadSourceSectionListener {
      * Notification that a new {@link LoadSourceSectionEvent} has occurred.
      *
      * @param event information about the event. We use this information to keep our
-     *            {@link #sourceToNotYetCoveredSections set of not-yet-covered}
-     *            {@link SourceSection}s up to date.
+     *            {@link SimpleCoverageInstrument#coverageMap} up to date.
      */
     @Override
     public void onLoad(LoadSourceSectionEvent event) {

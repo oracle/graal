@@ -30,7 +30,7 @@ public class Coverage {
         return nonCovered;
     }
 
-    List<Integer> nonCoveredLines() {
+    List<Integer> nonCoveredLineNumbers() {
         Set<Integer> linesNotCovered = new HashSet<>();
         for (SourceSection ss : nonCoveredSections()) {
             for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {

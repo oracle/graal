@@ -1,13 +1,10 @@
 package com.oracle.truffle.st;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -28,24 +25,33 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * Example for simple version of an expression coverage instrument.
  *
- * The instrument keeps a set of all loaded {@link SourceSection} for each {@link Source} removing
- * them once they are executed. At the end of the execution the remaining {@link SourceSection}s can
- * be used to calculate coverage.
+ * The instrument {@link #coverageMap keeps track} of all loaded {@link SourceSection}s and all
+ * coverd (i.e. executed) {@link SourceSection}s for each {@link Source}. At the end of the
+ * execution this information can be used to calculate coverage.
  *
  * The instrument is registered with the Truffle framework using the {@link Registration}
  * annotation. The annotation specifies a unique {@link Registration#id}, a human readable
  * {@link Registration#name} and {@link Registration#version} for the instrument. It also specifies
  * all service classes that the instrument exports to other instruments and, exceptionally, tests.
  * In this case the instrument itself is exported as a service and used in the
- * {@link SimpleCoverageInstrumentTest}.
+ * SimpleCoverageInstrumentTest.
+ * 
+ * NOTE: Fot the registration annotation to work the truffle dsl processor must be used (i.e. Must
+ * be a dependency. This is so in this maven project, as can be seen in the pom file.
  */
 @Registration(id = SimpleCoverageInstrument.ID, name = "Simple Code Coverage", version = "0.1", services = SimpleCoverageInstrument.class)
 public final class SimpleCoverageInstrument extends TruffleInstrument {
 
     // @formatter:off
+    /**
+     * Look at {@link #onCreate(Env)} and {@link #getOptionDescriptors()} for more info.
+     */
     @Option(name = "", help = "Enable Simple Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE) 
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
+    /**
+     * Look at {@link #onCreate(Env)} and {@link #getOptionDescriptors()} for more info.
+     */
     @Option(name = "PrintCoverage", help = "Print coverage to stdout on process exit (default: true).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> PRINT_COVERAGE = new OptionKey<>(true);
     // @formatter:on
@@ -53,8 +59,8 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
     public static final String ID = "simple-code-coverage";
 
     /**
-     * The instrument keeps a mapping between a {@link Source} and it's loaded, but not yet executed
-     * {@link SourceSection}s. This is used to calculate the coverage for each {@link Source}.
+     * The instrument keeps a mapping between a {@link Source} and {@link Coverage coverage} data
+     * for that source. Coverage tracks loaded and covered {@link SourceSection} during execution.
      */
     final Map<Source, Coverage> coverageMap = new HashMap<>();
 
@@ -70,8 +76,8 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * This method is used to properly initialize the instrument. A common practice is to use the
      * {@link Option} system to enable and configure the instrument, as is done in this method.
      * Defining {@link Option}s as is shown in {@link #ENABLED} and {@link #PRINT_COVERAGE}, and
-     * their usage can be seen in the {@link SimpleCoverageInstrumentTest} when the context is being
-     * created. Using them from the command line is shown in the runJsWithCoverage.sh script.
+     * their usage can be seen in the SimpleCoverageInstrumentTest when the context is being
+     * created. Using them from the command line is shown in the simpletool.sh script.
      *
      * @param env the environment for the instrument. Allows us to read the {@link Option}s, input
      *            and output streams to be used for reading and writing, as well as
@@ -139,9 +145,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * @param env
      */
     private void ensurePrintCoverage(final Env env) {
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            printResults(env);
-        }));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> printResults(env)));
     }
 
     /**
@@ -157,7 +161,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
         for (Source source : coverageMap.keySet()) {
             final String path = source.getPath();
             final int lineCount = source.getLineCount();
-            final List<Integer> notYetCoveredLineNumbers = notYetCoveredLineNumbers(source);
+            final List<Integer> notYetCoveredLineNumbers = nonCoveredLineNumbers(source);
             final int notYetCoveredSize = notYetCoveredLineNumbers.size();
             double coveredPercentage = 100 * ((double) lineCount - notYetCoveredSize) / lineCount;
             printStream.println("==");
@@ -174,8 +178,8 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * @return A sorted list of line numbers for not-yet-covered lines of source code in the given
      *         {@link Source}
      */
-    public synchronized List<Integer> notYetCoveredLineNumbers(final Source source) {
-        return coverageMap.get(source).nonCoveredLines();
+    public synchronized List<Integer> nonCoveredLineNumbers(final Source source) {
+        return coverageMap.get(source).nonCoveredLineNumbers();
     }
 
     /**
@@ -193,14 +197,25 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
         return new SimpleCoverageInstrumentOptionDescriptors();
     }
 
+    /**
+     * Called when a new {@link SourceSection} is loaded. We can update our {@link #coverageMap}.
+     * 
+     * @param sourceSection the newly loaded {@link SourceSection}
+     */
     synchronized void addLoaded(SourceSection sourceSection) {
         final Coverage coverage = coverageMap.computeIfAbsent(sourceSection.getSource(), (Source s) -> new Coverage());
         coverage.addLoaded(sourceSection);
     }
 
-    synchronized void addCovered(SourceSection instrumentedSourceSection) {
-            final Coverage coverage = coverageMap.get(instrumentedSourceSection.getSource());
-            coverage.addCovered(instrumentedSourceSection);
+    /**
+     * Called after a {@link SourceSection} is executed, and thus covered. We can update our
+     * {@link #coverageMap}.
+     * 
+     * @param sourceSection the executed {@link SourceSection}
+     */
+    synchronized void addCovered(SourceSection sourceSection) {
+        final Coverage coverage = coverageMap.get(sourceSection.getSource());
+        coverage.addCovered(sourceSection);
     }
 
 }
