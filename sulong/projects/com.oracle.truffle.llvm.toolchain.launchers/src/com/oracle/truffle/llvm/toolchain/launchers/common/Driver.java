@@ -150,6 +150,8 @@ public class Driver {
             System.out.println("##################################################");
             System.out.println("This it the the GraalVM wrapper script for " + getTool());
             System.out.println();
+            System.out.println(">>> WARNING: This tool is experimental. Functionality may be added, changed or removed without prior notice. <<<");
+            System.out.println();
             System.out.println("Its purpose is to make it easy to compile native projects to be used with");
             System.out.println("GraalVM's LLVM IR engine (bin/lli).");
             System.out.println("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
