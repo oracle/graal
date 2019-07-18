@@ -504,85 +504,85 @@ public class AMD64VectorShuffle {
 
     public static final class InsertByteOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<InsertByteOp> TYPE = LIRInstructionClass.create(InsertByteOp.class);
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue vector;
         @Use({REG, STACK}) protected AllocatableValue source;
         private final int selector;
 
-        public InsertByteOp(AllocatableValue result, AllocatableValue source, int selector) {
+        public InsertByteOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
-            assert ((AMD64Kind) result.getPlatformKind()).getScalar() == AMD64Kind.BYTE;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.BYTE;
             assert source.getPlatformKind() == AMD64Kind.BYTE;
-            this.result = result;
+            this.vector = vector;
             this.source = source;
             this.selector = selector;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (isRegister(result)) {
-                VPINSRB.emit(masm, XMM, asRegister(result), asRegister(source), selector);
+            if (isRegister(vector)) {
+                VPINSRB.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
             } else {
-                assert isStackSlot(result);
-                VPINSRB.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source), selector);
+                assert isStackSlot(vector);
+                VPINSRB.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
             }
         }
     }
 
     public static final class InsertShortOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<InsertShortOp> TYPE = LIRInstructionClass.create(InsertShortOp.class);
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue vector;
         @Use({REG, STACK}) protected AllocatableValue source;
         private final int selector;
 
-        public InsertShortOp(AllocatableValue result, AllocatableValue source, int selector) {
+        public InsertShortOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
-            assert ((AMD64Kind) result.getPlatformKind()).getScalar() == AMD64Kind.WORD;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.WORD;
             assert source.getPlatformKind() == AMD64Kind.WORD;
-            this.result = result;
+            this.vector = vector;
             this.source = source;
             this.selector = selector;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (isRegister(result)) {
-                VPINSRW.emit(masm, XMM, asRegister(result), asRegister(source), selector);
+            if (isRegister(vector)) {
+                VPINSRW.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
             } else {
-                assert isStackSlot(result);
-                VPINSRW.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source), selector);
+                assert isStackSlot(vector);
+                VPINSRW.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
             }
         }
     }
 
     public static final class InsertIntOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<InsertIntOp> TYPE = LIRInstructionClass.create(InsertIntOp.class);
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue vector;
         @Use({REG, STACK}) protected AllocatableValue source;
         private final int selector;
 
-        public InsertIntOp(AllocatableValue result, AllocatableValue source, int selector) {
+        public InsertIntOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
-            assert ((AMD64Kind) result.getPlatformKind()).getScalar() == AMD64Kind.DWORD;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.DWORD;
             assert source.getPlatformKind() == AMD64Kind.DWORD;
-            this.result = result;
+            this.vector = vector;
             this.source = source;
             this.selector = selector;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (isRegister(result)) {
+            if (isRegister(vector)) {
                 if (selector == 0) {
-                    VMOVD.emit(masm, XMM, asRegister(result), asRegister(source));
+                    VMOVD.emit(masm, XMM, asRegister(vector), asRegister(source));
                 } else {
-                    VPINSRD.emit(masm, XMM, asRegister(result), asRegister(source), selector);
+                    VPINSRD.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
                 }
             } else {
-                assert isStackSlot(result);
+                assert isStackSlot(vector);
                 if (selector == 0) {
-                    VMOVD.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source));
+                    VMOVD.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source));
                 } else {
-                    VPINSRD.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source), selector);
+                    VPINSRD.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
                 }
             }
         }
@@ -590,33 +590,33 @@ public class AMD64VectorShuffle {
 
     public static final class InsertLongOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<InsertLongOp> TYPE = LIRInstructionClass.create(InsertLongOp.class);
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue vector;
         @Use({REG, STACK}) protected AllocatableValue source;
         private final int selector;
 
-        public InsertLongOp(AllocatableValue result, AllocatableValue source, int selector) {
+        public InsertLongOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
-            assert ((AMD64Kind) result.getPlatformKind()).getScalar() == AMD64Kind.QWORD;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.QWORD;
             assert source.getPlatformKind() == AMD64Kind.QWORD;
-            this.result = result;
+            this.vector = vector;
             this.source = source;
             this.selector = selector;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (isRegister(result)) {
+            if (isRegister(vector)) {
                 if (selector == 0) {
-                    VMOVQ.emit(masm, XMM, asRegister(result), asRegister(source));
+                    VMOVQ.emit(masm, XMM, asRegister(vector), asRegister(source));
                 } else {
-                    VPINSRQ.emit(masm, XMM, asRegister(result), asRegister(source), selector);
+                    VPINSRQ.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
                 }
             } else {
-                assert isStackSlot(result);
+                assert isStackSlot(vector);
                 if (selector == 0) {
-                    VMOVQ.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source));
+                    VMOVQ.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source));
                 } else {
-                    VPINSRQ.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source), selector);
+                    VPINSRQ.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
                 }
             }
         }
@@ -624,33 +624,33 @@ public class AMD64VectorShuffle {
 
     public static final class InsertFloatOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<InsertFloatOp> TYPE = LIRInstructionClass.create(InsertFloatOp.class);
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue vector;
         @Use({REG, STACK}) protected AllocatableValue source;
         private final int selector;
 
-        public InsertFloatOp(AllocatableValue result, AllocatableValue source, int selector) {
+        public InsertFloatOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
-            assert ((AMD64Kind) result.getPlatformKind()).getScalar() == AMD64Kind.SINGLE;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.SINGLE;
             assert source.getPlatformKind() == AMD64Kind.SINGLE;
-            this.result = result;
+            this.vector = vector;
             this.source = source;
             this.selector = selector;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (isRegister(result)) {
+            if (isRegister(vector)) {
                 if (selector == 0) {
-                    VMOVSS.emit(masm, XMM, asRegister(result), asRegister(source));
+                    VMOVSS.emit(masm, XMM, asRegister(vector), asRegister(source));
                 } else {
-                    VINSERTPS.emit(masm, XMM, asRegister(result), asRegister(source), selector);
+                    VINSERTPS.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
                 }
             } else {
-                assert isStackSlot(result);
+                assert isStackSlot(vector);
                 if (selector == 0) {
-                    VMOVSS.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source));
+                    VMOVSS.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source));
                 } else {
-                    VINSERTPS.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source), selector);
+                    VINSERTPS.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
                 }
             }
         }
@@ -658,33 +658,33 @@ public class AMD64VectorShuffle {
 
     public static final class InsertDoubleOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<InsertDoubleOp> TYPE = LIRInstructionClass.create(InsertDoubleOp.class);
-        @Def({REG}) protected AllocatableValue result;
+        @Def({REG}) protected AllocatableValue vector;
         @Use({REG, STACK}) protected AllocatableValue source;
         private final int selector;
 
-        public InsertDoubleOp(AllocatableValue result, AllocatableValue source, int selector) {
+        public InsertDoubleOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
-            assert ((AMD64Kind) result.getPlatformKind()).getScalar() == AMD64Kind.DOUBLE;
+            assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.DOUBLE;
             assert source.getPlatformKind() == AMD64Kind.DOUBLE;
-            this.result = result;
+            this.vector = vector;
             this.source = source;
             this.selector = selector;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            if (isRegister(result)) {
+            if (isRegister(vector)) {
                 if (selector == 0) {
-                    VMOVSD.emit(masm, XMM, asRegister(result), asRegister(source));
+                    VMOVSD.emit(masm, XMM, asRegister(vector), asRegister(source));
                 } else {
-                    VPINSRQ.emit(masm, XMM, asRegister(result), asRegister(source), selector);
+                    VPINSRQ.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
                 }
             } else {
-                assert isStackSlot(result);
+                assert isStackSlot(vector);
                 if (selector == 0) {
-                    VMOVSD.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source));
+                    VMOVSD.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source));
                 } else {
-                    VPINSRQ.emit(masm, XMM, asRegister(result), (AMD64Address) crb.asAddress(source), selector);
+                    VPINSRQ.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
                 }
             }
         }
