@@ -58,56 +58,74 @@ public final class Target_jdk_net_LinuxSocketOptions {
 
     // ported from {jdk11}/src/jdk.net/linux/native/libextnet/LinuxSocketOptions.c
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   136  JNIEXPORT jboolean JNICALL Java_jdk_net_LinuxSocketOptions_keepAliveOptionsSupported0
     //   137  (JNIEnv *env, jobject unused) {
     @Substitute
     private static boolean keepAliveOptionsSupported0() {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //   138      return socketOptionSupported(TCP_KEEPIDLE) && socketOptionSupported(TCP_KEEPCNT)
         //   139              && socketOptionSupported(TCP_KEEPINTVL);
         return socketOptionSupported(TCP_KEEPIDLE()) != 0  && socketOptionSupported(TCP_KEEPCNT()) != 0
                 && socketOptionSupported(TCP_KEEPINTVL()) != 0;
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   147  JNIEXPORT void JNICALL Java_jdk_net_LinuxSocketOptions_setTcpkeepAliveProbes0
     //   148  (JNIEnv *env, jobject unused, jint fd, jint optval) {
     @Substitute
     private static void setTcpkeepAliveProbes0(int fd, int optval) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         CIntPointer optval_Pointer = StackValue.get(CIntPointer.class);
         optval_Pointer.write(optval);
         //   149      jint rv = setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &optval, sizeof (optval));
         int rv = setsockopt(fd, SOL_TCP(), TCP_KEEPCNT(), optval_Pointer, SizeOf.get(CIntPointer.class));
         //   150      handleError(env, rv, "set option TCP_KEEPCNT failed");
         handleError(rv, "set option TCP_KEEPCNT failed");
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   158  JNIEXPORT void JNICALL Java_jdk_net_LinuxSocketOptions_setTcpKeepAliveTime0
     //   159  (JNIEnv *env, jobject unused, jint fd, jint optval) {
     @Substitute
     private static void setTcpKeepAliveTime0(int fd, int optval) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         CIntPointer optval_Pointer = StackValue.get(CIntPointer.class);
         optval_Pointer.write(optval);
         //   160      jint rv = setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &optval, sizeof (optval));
         int rv = setsockopt(fd, SOL_TCP(), TCP_KEEPIDLE(), optval_Pointer, SizeOf.get(CIntPointer.class));
         //   161      handleError(env, rv, "set option TCP_KEEPIDLE failed");
         handleError(rv, "set option TCP_KEEPIDLE failed");
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   169  JNIEXPORT void JNICALL Java_jdk_net_LinuxSocketOptions_setTcpKeepAliveIntvl0
     //   170  (JNIEnv *env, jobject unused, jint fd, jint optval) {
     @Substitute
     private static void setTcpKeepAliveIntvl0(int fd, int optval) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         CIntPointer optval_Pointer = StackValue.get(CIntPointer.class);
         optval_Pointer.write(optval);
         //   171      jint rv = setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &optval, sizeof (optval));
         int rv = setsockopt(fd, SOL_TCP(), TCP_KEEPINTVL(), optval_Pointer, SizeOf.get(CIntPointer.class));
         //   172      handleError(env, rv, "set option TCP_KEEPINTVL failed");
         handleError(rv, "set option TCP_KEEPINTVL failed");
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   180  JNIEXPORT jint JNICALL Java_jdk_net_LinuxSocketOptions_getTcpkeepAliveProbes0
     //   181  (JNIEnv *env, jobject unused, jint fd) {
     @Substitute
     private static int getTcpkeepAliveProbes0(int fd) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //   182      jint optval, rv;
         CIntPointer optval_Pointer = StackValue.get(CIntPointer.class);
         int rv;
@@ -120,12 +138,16 @@ public final class Target_jdk_net_LinuxSocketOptions {
         handleError(rv, "get option TCP_KEEPCNT failed");
         //   186      return optval;
         return optval_Pointer.read();
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   194  JNIEXPORT jint JNICALL Java_jdk_net_LinuxSocketOptions_getTcpKeepAliveTime0
     //   195  (JNIEnv *env, jobject unused, jint fd) {
     @Substitute
     private static int getTcpKeepAliveTime0(int fd) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //   196      jint optval, rv;
         CIntPointer optval_Pointer = StackValue.get(CIntPointer.class);
         int rv;
@@ -138,12 +160,16 @@ public final class Target_jdk_net_LinuxSocketOptions {
         handleError(rv, "get option TCP_KEEPIDLE failed");
         //   200      return optval;
         return optval_Pointer.read();
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   208  JNIEXPORT jint JNICALL Java_jdk_net_LinuxSocketOptions_getTcpKeepAliveIntvl0
     //   209  (JNIEnv *env, jobject unused, jint fd) {
     @Substitute
     private static int getTcpKeepAliveIntvl0(int fd) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //   210      jint optval, rv;
         CIntPointer optval_Pointer = StackValue.get(CIntPointer.class);
         int rv;
@@ -156,12 +182,16 @@ public final class Target_jdk_net_LinuxSocketOptions {
         handleError(rv, "get option TCP_KEEPINTVL failed");
         //   214      return optval;
         return optval_Pointer.read();
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //    41  JNIEXPORT void JNICALL Java_jdk_net_LinuxSocketOptions_setQuickAck0
     //    42  (JNIEnv *env, jobject unused, jint fd, jboolean on) {
     @Substitute
     private static void setQuickAck0(int fd, boolean on) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //    43      int optval;
         CIntPointer optval_Pointer = StackValue.get(CIntPointer.class);
         //    44      int rv;
@@ -183,12 +213,16 @@ public final class Target_jdk_net_LinuxSocketOptions {
                 throw new SocketException(PosixUtils.lastErrorString("set option TCP_QUICKACK failed"));
             }
         }
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //    63  JNIEXPORT jboolean JNICALL Java_jdk_net_LinuxSocketOptions_getQuickAck0
     //    64  (JNIEnv *env, jobject unused, jint fd) {
     @Substitute
     private static boolean getQuickAck0(int fd) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //    65      int on;
         CIntPointer on_Pointer = StackValue.get(CIntPointer.class);
         //    66      socklen_t sz = sizeof (on);
@@ -211,12 +245,16 @@ public final class Target_jdk_net_LinuxSocketOptions {
         }
         //    77      return on != 0;
         return on_Pointer.read() != 0;
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //    85  JNIEXPORT jboolean JNICALL Java_jdk_net_LinuxSocketOptions_quickAckSupported0
     //    86  (JNIEnv *env, jobject unused) {
     @Substitute
     private static boolean quickAckSupported0() {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //    87      int one = 1;
         CIntPointer one_Pointer = StackValue.get(CIntPointer.class);
         //    88      int rv, s;
@@ -242,14 +280,18 @@ public final class Target_jdk_net_LinuxSocketOptions {
         ImageSingletons.lookup(PosixJavaNetClose.class).NET_SocketClose(s);
         //   100      return rv;
         return rv != 0;
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
 }
 
 class Util_jdk_net_LinuxSocketOptions {
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   103  static jint socketOptionSupported(jint sockopt) {
     static int socketOptionSupported(int sockopt) {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //   104      jint one = 1;
         CIntPointer one_Pointer = StackValue.get(CIntPointer.class);
         one_Pointer.write(1);
@@ -279,10 +321,14 @@ class Util_jdk_net_LinuxSocketOptions {
 
         //   117      return rv;
         return rv;
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
+    /* { Do not re-format commented out C code. @formatter:off */
     //   120  static void handleError(JNIEnv *env, jint rv, const char *errmsg) {
     static void handleError(int rv, String errmsg) throws SocketException {
+        /* ( Allow names with underscores: Checkstyle: stop */
         //   121      if (rv < 0) {
         if (rv < 0) {
             //   122          if (errno == ENOPROTOOPT) {
@@ -295,6 +341,8 @@ class Util_jdk_net_LinuxSocketOptions {
                 throw new SocketException(PosixUtils.lastErrorString(errmsg));
             }
         }
+        /* } Allow names with underscores: Checkstyle: resume */
     }
+    /* } Do not re-format commented out C code. @formatter:on */
 
 }
