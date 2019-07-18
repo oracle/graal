@@ -164,7 +164,7 @@ public class SystemUtils {
         String osName = System.getProperty("os.name"); // NOI18N
         return osName != null && osName.toLowerCase(Locale.ENGLISH).contains("windows");
     }
-    
+
     /**
      * Checks if running on Linux.
      * 

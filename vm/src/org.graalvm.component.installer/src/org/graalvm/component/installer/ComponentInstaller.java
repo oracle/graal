@@ -149,7 +149,7 @@ public final class ComponentInstaller {
             } catch (ServiceConfigurationError | Exception ex) {
                 if (report) {
                     LOG.log(Level.SEVERE,
-                            MessageFormat.format(BUNDLE.getString("ERROR_SoftwareChannelBroken"), ex.getLocalizedMessage()));
+                                    MessageFormat.format(BUNDLE.getString("ERROR_SoftwareChannelBroken"), ex.getLocalizedMessage()));
                 }
             }
         }
@@ -322,12 +322,11 @@ public final class ComponentInstaller {
     }
 
     /**
-     * Finds Graal Home directory. It is either specified by the GRAAL_HOME
-     * system property, environment variable, or the executing JAR's location -
-     * in the order of precedence.
+     * Finds Graal Home directory. It is either specified by the GRAAL_HOME system property,
+     * environment variable, or the executing JAR's location - in the order of precedence.
      * <p/>
-     * The location is sanity checked and the method throws
-     * {@link FailedOperationException} if not proper Graal dir.
+     * The location is sanity checked and the method throws {@link FailedOperationException} if not
+     * proper Graal dir.
      *
      * @return existing Graal home
      */
