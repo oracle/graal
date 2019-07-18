@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorRootNode;
+import com.oracle.truffle.espresso.SubstitutionProcessor;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -42,6 +42,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
+import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -173,15 +174,14 @@ public final class Substitutions implements ContextAccess {
             }
 
             EspressoRootNodeFactory factory;
-            int dood = 1;
 
             try {
                 Class<?> substitutorClass = Class.forName(Substitutor.class.getPackage().getName() + "." + Substitutor.getClassName(clazz.getSimpleName(), method.getName()));
                 Substitutor substitutor = (Substitutor) substitutorClass.getDeclaredMethod(Substitutor.GETTER).invoke(null);
                 factory = new EspressoRootNodeFactory() {
                     @Override
-                    public EspressoRootNode spawnNode(Method method) {
-                        return new EspressoRootNode(method, new IntrinsicSubstitutorRootNode(substitutor, method));
+                    public EspressoRootNode spawnNode(Method espressoMethod) {
+                        return new EspressoRootNode(espressoMethod, new IntrinsicSubstitutorRootNode(substitutor, espressoMethod));
                     }
                 };
             } catch (Throwable e) {

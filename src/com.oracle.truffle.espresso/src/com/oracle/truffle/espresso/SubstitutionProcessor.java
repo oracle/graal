@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
@@ -51,9 +51,21 @@ import javax.tools.JavaFileObject;
 public class SubstitutionProcessor extends AbstractProcessor {
 
     @Override
-    public synchronized void init(ProcessingEnvironment processingEnv) {
-        super.init(processingEnv);
+    public Set<String> getSupportedOptions() {
         System.err.println("launched");
+        return super.getSupportedOptions();
+    }
+
+    @Override
+    protected synchronized boolean isInitialized() {
+        System.err.println("launched");
+        return super.isInitialized();
+    }
+
+    @Override
+    public synchronized void init(ProcessingEnvironment processingEnvironment) {
+        System.err.println("launched");
+        super.init(processingEnvironment);
     }
 
     private static final String HEADER_TEMPLATE = "/* Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.\n" +
@@ -143,12 +155,14 @@ public class SubstitutionProcessor extends AbstractProcessor {
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
+        System.err.println("launched");
         return SourceVersion.latest();
     }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
         // Set<String> annotations = new HashSet<>(Arrays.asList("*"));
+        System.err.println("launched");
         Set<String> annotations = new HashSet<>();
         addAnnotation(annotations, EspressoSubstitutions.class);
         return annotations;

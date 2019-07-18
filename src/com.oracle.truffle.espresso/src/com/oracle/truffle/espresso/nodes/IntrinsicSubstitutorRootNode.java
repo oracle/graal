@@ -31,8 +31,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.substitutions.Substitutor;
 
-import java.lang.reflect.InvocationTargetException;
-
 public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
     private final Substitutor substitution;
 
@@ -55,7 +53,7 @@ public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
             if (inner instanceof EspressoExitException) {
                 throw (EspressoExitException) inner;
             }
-            // Box exceptions
+            // Wrap exceptions
             if (inner instanceof Exception) {
                 throw getMeta().throwExWithMessage(inner.getClass(), inner.getMessage());
             }
@@ -79,8 +77,7 @@ public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private Object callIntrinsic(Object... args) throws InvocationTargetException, IllegalAccessException {
+    private Object callIntrinsic(Object... args) {
         return substitution.invoke(args);
     }
 }
