@@ -87,7 +87,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
     /**
      * Look at {@link #onCreate(Env)} and {@link #getOptionDescriptors()} for more info.
      */
-    @Option(name = "", help = "Enable Simple Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE) 
+    @Option(name = "", help = "Enable Simple Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
     /**
