@@ -33,25 +33,42 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.phases.common.IsomorphicPackingPhase;
 
-public final class Pack<T extends Node> implements Iterable<T> {
-   private final List<T> elements;
+import static org.graalvm.compiler.phases.common.IsomorphicPackingPhase.Util.getStamp;
 
-   private Pack(List<T> elements) {
+public final class Pack implements Iterable<ValueNode> {
+   private final List<ValueNode> elements;
+   private VectorPrimitiveStamp stamp = null;
+
+   private Pack(List<ValueNode> elements) {
        this.elements = elements;
    }
 
-   public List<T> getElements() {
+   public List<ValueNode> getElements() {
        return elements;
    }
 
-   public T getFirst() {
+   public ValueNode getFirst() {
        return elements.get(0);
    }
 
-   public T getLast() {
+   public ValueNode getLast() {
        return elements.get(elements.size() - 1);
+   }
+
+   public VectorPrimitiveStamp stamp(NodeView view) {
+       if (stamp == null) {
+           stamp = elements.stream().reduce(getStamp(elements.get(0), view).unrestricted(),
+                   (stamp, valueNode) -> stamp.meet(getStamp(valueNode, view).unrestricted()),
+                   Stamp::meet).asVector(elements.size());
+       }
+
+       return stamp;
    }
 
    @Override
@@ -62,7 +79,7 @@ public final class Pack<T extends Node> implements Iterable<T> {
        if (o == null || getClass() != o.getClass()) {
            return false;
        }
-       Pack<?> pack = (Pack<?>) o;
+       Pack pack = (Pack) o;
        return elements.equals(pack.elements);
    }
 
@@ -79,28 +96,28 @@ public final class Pack<T extends Node> implements Iterable<T> {
    // Iterable<T>
 
    @Override
-   public Iterator<T> iterator() {
+   public Iterator<ValueNode> iterator() {
        return elements.iterator();
    }
 
    @Override
-   public Spliterator<T> spliterator() {
+   public Spliterator<ValueNode> spliterator() {
        return elements.spliterator();
    }
 
    @Override
-   public void forEach(Consumer<? super T> action) {
+   public void forEach(Consumer<? super ValueNode> action) {
        elements.forEach(action);
    }
 
    // Builders
-   public static <T extends Node> Pack<T> create(Pair<T, T> pair) {
-       return new Pack<T>(Stream.of(pair.getLeft(), pair.getRight()).collect(Collectors.toList()));
+   public static <T extends ValueNode> Pack create(Pair<T, T> pair) {
+       return new Pack(Stream.of(pair.getLeft(), pair.getRight()).collect(Collectors.toList()));
    }
 
-   public static <T extends Node> Pack<T> combine(Pack<T> left, Pack<T> right) {
-       T rightLeft = right.getFirst();
-       return new Pack<>(Stream.concat(
+   public static Pack combine(Pack left, Pack right) {
+       ValueNode rightLeft = right.getFirst();
+       return new Pack(Stream.concat(
                left.elements.stream().filter(x -> !x.equals(rightLeft)),
                right.elements.stream()).collect(Collectors.toList()));
    }
