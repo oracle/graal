@@ -39,7 +39,9 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNode.AccessLocation;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMInteropWriteNode extends LLVMNode {
@@ -48,26 +50,26 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
         return LLVMInteropWriteNodeGen.create();
     }
 
-    public abstract void execute(LLVMInteropType.Structured type, Object foreign, long offset, Object value);
+    public abstract void execute(LLVMInteropType.Structured baseType, Object foreign, long offset, Object value, ForeignToLLVMType writeType);
 
     @Specialization(guards = "type != null")
-    void doKnownType(LLVMInteropType.Structured type, Object foreign, long offset, Object value,
+    void doKnownType(LLVMInteropType.Structured type, Object foreign, long offset, Object value, ForeignToLLVMType writeType,
                     @Cached LLVMInteropAccessNode access,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @Cached ConvertOutgoingNode convertOutgoing,
                     @Cached BranchProfile exception) {
         AccessLocation location = access.execute(type, foreign, offset);
-        write(interop, location, value, exception);
+        write(interop, location, convertOutgoing.execute(value, location.type, writeType), exception);
     }
 
     @Specialization(guards = "type == null", limit = "3")
-    void doUnknownType(@SuppressWarnings("unused") LLVMInteropType.Structured type, Object foreign, long offset, Object value,
-                    @Cached GetValueSizeNode getSize,
+    void doUnknownType(@SuppressWarnings("unused") LLVMInteropType.Structured type, Object foreign, long offset, Object value, ForeignToLLVMType writeType,
                     @CachedLibrary("foreign") InteropLibrary interop,
+                    @Cached ConvertOutgoingNode convertOutgoing,
                     @Cached BranchProfile exception) {
         // type unknown: fall back to "array of unknown value type"
-        int elementAccessSize = getSize.execute(value);
-        AccessLocation location = new AccessLocation(foreign, Long.divideUnsigned(offset, elementAccessSize), null);
-        write(interop, location, value, exception);
+        AccessLocation location = new AccessLocation(foreign, Long.divideUnsigned(offset, writeType.getSizeInBytes()), null);
+        write(interop, location, convertOutgoing.execute(value, null, writeType), exception);
     }
 
     private void write(InteropLibrary interop, AccessLocation location, Object value, BranchProfile exception) {
@@ -102,28 +104,31 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
         }
     }
 
-    abstract static class GetValueSizeNode extends LLVMNode {
+    abstract static class ConvertOutgoingNode extends LLVMNode {
 
-        protected abstract int execute(Object value);
+        abstract Object execute(Object value, LLVMInteropType.Value outgoingType, ForeignToLLVMType writeType);
 
-        @Specialization(guards = "valueClass.isInstance(value)")
-        int doCached(@SuppressWarnings("unused") Object value,
-                        @Cached("value.getClass()") @SuppressWarnings("unused") Class<?> valueClass,
-                        @Cached("doGeneric(value)") int cachedSize) {
-            return cachedSize;
+        @Specialization(limit = "3", guards = {"outgoingType != null", "cachedOutgoingType == outgoingType.kind.foreignToLLVMType", "type.getSizeInBytes() == cachedOutgoingType.getSizeInBytes()"})
+        Object doKnownType(Object value, LLVMInteropType.Value outgoingType, @SuppressWarnings("unused") ForeignToLLVMType type,
+                        @Cached("outgoingType.kind.foreignToLLVMType") @SuppressWarnings("unused") ForeignToLLVMType cachedOutgoingType,
+                        @Cached(parameters = "cachedOutgoingType") LLVMDataEscapeNode dataEscape) {
+            return dataEscape.executeWithType(value, outgoingType.baseType);
         }
 
-        @Specialization(replaces = "doCached")
-        int doGeneric(Object value) {
-            if (value instanceof Byte || value instanceof Boolean) {
-                return 1;
-            } else if (value instanceof Short || value instanceof Character) {
-                return 2;
-            } else if (value instanceof Integer || value instanceof Float) {
-                return 4;
+        static boolean typeMismatch(LLVMInteropType.Value outgoingType, ForeignToLLVMType writeType) {
+            if (outgoingType == null) {
+                return true;
             } else {
-                return 8;
+                return outgoingType.getSize() != writeType.getSizeInBytes();
             }
+        }
+
+        @Specialization(limit = "3", guards = {"typeMismatch(outgoingType, cachedType)", "cachedType == type"})
+        @SuppressWarnings("unused")
+        Object doUnknownType(Object value, LLVMInteropType.Value outgoingType, ForeignToLLVMType type,
+                        @Cached("type") ForeignToLLVMType cachedType,
+                        @Cached(parameters = "type") LLVMDataEscapeNode dataEscape) {
+            return dataEscape.executeWithTarget(value);
         }
     }
 }
