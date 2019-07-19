@@ -42,6 +42,14 @@ suite = {
         ]
     },
 
+    "libraries" : {
+        "RENAISSANCE_HARNESS_11" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
+            "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
+            "packedResource": True,
+        }
+    },
+
     "projects": {
         "com.oracle.svm.util": {
             "subDir": "src",
