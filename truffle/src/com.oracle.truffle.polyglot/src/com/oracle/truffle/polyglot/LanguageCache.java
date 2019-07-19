@@ -274,8 +274,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static String formatLanguageLocation(LanguageCache languageCache) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Name ").append(languageCache.getName()).append(", ");
-        sb.append("Version ").append(languageCache.getVersion()).append(", ");
         sb.append("Language class ").append(languageCache.getClassName());
         CodeSource source = languageCache.getLanguageClass().getProtectionDomain().getCodeSource();
         if (source != null) {
