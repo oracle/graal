@@ -56,7 +56,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 final class CoverageNode extends ExecutionEventNode {
 
-    final private SimpleCoverageInstrument instrument;
+    private final SimpleCoverageInstrument instrument;
     @CompilerDirectives.CompilationFinal private boolean covered;
 
     /**

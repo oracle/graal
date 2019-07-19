@@ -49,7 +49,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * Contains per {@link com.oracle.truffle.api.source.Source} coverage by keeping track of loaded and
  * covered {@link com.oracle.truffle.api.source.SourceSection}s.
  */
-final public class Coverage {
+public final class Coverage {
     private final Set<SourceSection> loaded = new HashSet<>();
     private final Set<SourceSection> covered = new HashSet<>();
 
