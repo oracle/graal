@@ -70,6 +70,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
 import org.graalvm.compiler.lir.amd64.AMD64SignExtendOp;
 import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.graalvm.compiler.lir.amd64.AMD64ZeroMemoryOp;
+import org.graalvm.compiler.lir.amd64.vector.AMD64Packing;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary;
@@ -1314,7 +1315,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state) {
         AMD64AddressValue loadAddress = getAMD64LIRGen().asAddressValue(address);
         Variable result = getLIRGen().newVariable(vectorKind);
-        getLIRGen().append(new AMD64Unary.VectorReadMemory(result, loadAddress));
+//        getLIRGen().append(new AMD64Unary.VectorReadMemory(result, loadAddress));
+        getLIRGen().append(new AMD64Packing.StoreStackOp(getLIRGen(), asAllocatable(result), loadAddress, count));
         return result;
     }
 

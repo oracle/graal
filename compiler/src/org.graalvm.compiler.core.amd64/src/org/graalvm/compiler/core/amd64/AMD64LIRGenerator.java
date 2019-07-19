@@ -679,7 +679,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitPack(LIRKind resultKind, List<Value> values) {
         Variable result = newVariable(resultKind);
-        append(new AMD64Packing.PackOp(this, result, values.stream().map(this::asAllocatable).collect(Collectors.toList())));
+        append(new AMD64Packing.PackStackOp(this, result, values.stream().map(this::asAllocatable).collect(Collectors.toList())));
         return result;
     }
 

@@ -30,6 +30,7 @@ import java.util.List;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -46,6 +47,7 @@ import jdk.vm.ci.meta.Value;
 import static java.lang.Double.doubleToRawLongBits;
 import static java.lang.Float.floatToRawIntBits;
 
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
@@ -162,6 +164,90 @@ public final class AMD64Packing {
         }
         else if (isJavaConstant(src)) {
             const2addr(crb, masm, (AMD64Kind)src.getPlatformKind(), dst, asJavaConstant(src));
+        }
+    }
+
+    public static final class StoreStackOp extends AMD64LIRInstruction {
+
+        private static final int YMM_LENGTH_IN_BYTES = 32;
+        public static final LIRInstructionClass<StoreStackOp> TYPE = LIRInstructionClass.create(StoreStackOp.class);
+
+        @Def({REG}) private AllocatableValue result;
+        @Temp({REG}) private AllocatableValue scratch;
+        @Use({COMPOSITE}) private AMD64AddressValue input;
+        private final int valcount;
+
+        private static final AMD64Kind twice(AMD64Kind kind) {
+            switch (kind) {
+                case BYTE:
+                    return AMD64Kind.WORD;
+                case WORD:
+                    return AMD64Kind.DWORD;
+                case DWORD:
+                    return AMD64Kind.QWORD;
+                case SINGLE:
+                    return AMD64Kind.QWORD;
+                default:
+                    return kind;
+            }
+        }
+
+        public StoreStackOp(LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
+            this(TYPE, tool, result, input, valcount);
+        }
+
+        protected StoreStackOp(LIRInstructionClass<? extends StoreStackOp> c, LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
+            super(c);
+            assert valcount > 0 : "vector store must store at least one element";
+            this.result = result;
+            this.scratch = tool.newVariable(result.getValueKind());
+            this.input = input;
+            this.valcount = valcount;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            assert isRegister(scratch) : "scratch must be a register";
+            final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
+            final AMD64Kind scalarKind = vectorKind.getScalar();
+            int sizeInBytes = valcount * scalarKind.getSizeInBytes();
+
+            if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
+                masm.vmovdqu(asRegister(result), input.toAddress());
+            }
+            else {
+                // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
+                int amt = (int) Math.ceil(((double) sizeInBytes) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
+
+                // Open scratch space for us to dump our values to.
+                masm.subq(rsp, amt);
+                int offset = 0;
+                for (int i = 0; i < valcount;) {
+                    AMD64Kind movKind = scalarKind;
+                    int movSize = movKind.getSizeInBytes();
+                    while (i + movSize <= valcount && movSize < 8) {
+                        movSize *= 2;
+                        AMD64Kind prev = movKind;
+                        movKind = twice(movKind);
+                        if (prev == movKind) break;
+                    }
+
+                    AMD64Address source = new AMD64Address(input.toAddress().getBase(),
+                        input.toAddress().getIndex(), input.toAddress().getScale(), input.toAddress().getDisplacement() + offset);
+                    AMD64Address target = new AMD64Address(rsp, offset);
+                    addr2reg(crb, masm, movKind, asRegister(scratch), source);
+                    reg2addr(crb, masm, movKind, target, asRegister(scratch));
+                    offset += movSize;
+
+                    i += movSize / scalarKind.getSizeInBytes();
+                }
+
+                // Write memory into vector register.
+                masm.vmovdqu(asRegister(result), new AMD64Address(rsp, 0));
+
+                // Pop scratch space.
+                masm.addq(rsp, amt);
+            }
         }
     }
 

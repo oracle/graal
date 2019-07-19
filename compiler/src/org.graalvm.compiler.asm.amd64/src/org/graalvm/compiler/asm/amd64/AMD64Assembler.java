@@ -3679,12 +3679,20 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void vmovdqu(Register dst, AMD64Address src) {
-        VexMoveOp.VMOVDQU.emit(this, AVXSize.YMM, dst, src);
+        vmovdqu(dst, src, AVXSize.YMM);
+    }
+
+    public final void vmovdqu(Register dst, AMD64Address src, AVXSize size) {
+        VexMoveOp.VMOVDQU.emit(this, size, dst, src);
     }
 
     public final void vmovdqu(AMD64Address dst, Register src) {
+        vmovdqu(dst, src, AVXSize.YMM);
+    }
+
+    public final void vmovdqu(AMD64Address dst, Register src, AVXSize size) {
         assert inRC(XMM, src);
-        VexMoveOp.VMOVDQU.emit(this, AVXSize.YMM, dst, src);
+        VexMoveOp.VMOVDQU.emit(this, size, dst, src);
     }
 
     public final void vpmovzxbw(Register dst, AMD64Address src) {
