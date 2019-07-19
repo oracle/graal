@@ -306,10 +306,12 @@ public class BinaryReader extends BinaryStreamReader {
             byte limitsPrefix = read1();
             switch (limitsPrefix) {
                 case 0x00: {
+                    /* Return value ignored, as we don't rely on the memory definition for the memory size. */
                     readUnsignedInt32();  // initialSize (in Wasm pages)
                     break;
                 }
                 case 0x01: {
+                    /* Return values ignored, as we don't rely on the memory definition for the memory size. */
                     readUnsignedInt32();  // initial size (in Wasm pages)
                     readUnsignedInt32();  // max size (in Wasm pages)
                     break;

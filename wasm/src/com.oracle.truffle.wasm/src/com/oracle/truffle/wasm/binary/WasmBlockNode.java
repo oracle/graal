@@ -486,6 +486,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I64_LOAD16_U:
                 case I64_LOAD32_S:
                 case I64_LOAD32_U: {
+                    /* The memAlign hint is not currently used or taken into account. */
                     int memAlign = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
                     byte memAlignConstantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
@@ -626,6 +627,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case I64_STORE_8:
                 case I64_STORE_16:
                 case I64_STORE_32: {
+                    /* The memAlign hint is not currently used or taken into account. */
                     int memAlign = BinaryStreamReader.peekUnsignedInt32(codeEntry().data(), offset, null);
                     byte memAlignConstantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
@@ -1637,6 +1639,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
+        // TODO: Accessing the context like this seems to be quite slow.
         return execute(WasmContext.getCurrent(), frame) != -1;
     }
 
