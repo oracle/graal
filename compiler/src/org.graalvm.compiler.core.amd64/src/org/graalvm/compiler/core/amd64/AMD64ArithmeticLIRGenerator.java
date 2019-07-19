@@ -1316,7 +1316,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         AMD64AddressValue loadAddress = getAMD64LIRGen().asAddressValue(address);
         Variable result = getLIRGen().newVariable(vectorKind);
 //        getLIRGen().append(new AMD64Unary.VectorReadMemory(result, loadAddress));
-        getLIRGen().append(new AMD64Packing.StoreStackOp(getLIRGen(), asAllocatable(result), loadAddress, count));
+        getLIRGen().append(new AMD64Packing.LoadStackOp(getLIRGen(), asAllocatable(result), loadAddress, count));
         return result;
     }
 

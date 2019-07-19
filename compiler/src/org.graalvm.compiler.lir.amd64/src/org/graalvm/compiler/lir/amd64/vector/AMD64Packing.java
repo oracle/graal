@@ -167,10 +167,10 @@ public final class AMD64Packing {
         }
     }
 
-    public static final class StoreStackOp extends AMD64LIRInstruction {
+    public static final class LoadStackOp extends AMD64LIRInstruction {
 
         private static final int YMM_LENGTH_IN_BYTES = 32;
-        public static final LIRInstructionClass<StoreStackOp> TYPE = LIRInstructionClass.create(StoreStackOp.class);
+        public static final LIRInstructionClass<LoadStackOp> TYPE = LIRInstructionClass.create(LoadStackOp.class);
 
         @Def({REG}) private AllocatableValue result;
         @Temp({REG}) private AllocatableValue scratch;
@@ -192,11 +192,11 @@ public final class AMD64Packing {
             }
         }
 
-        public StoreStackOp(LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
+        public LoadStackOp(LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
             this(TYPE, tool, result, input, valcount);
         }
 
-        protected StoreStackOp(LIRInstructionClass<? extends StoreStackOp> c, LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
+        protected LoadStackOp(LIRInstructionClass<? extends LoadStackOp> c, LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
             super(c);
             assert valcount > 0 : "vector store must store at least one element";
             this.result = result;
@@ -211,6 +211,7 @@ public final class AMD64Packing {
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
             int sizeInBytes = valcount * scalarKind.getSizeInBytes();
+            System.out.println("loading " + sizeInBytes + " into register " + result);
 
             if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
                 masm.vmovdqu(asRegister(result), input.toAddress());
@@ -225,12 +226,14 @@ public final class AMD64Packing {
                 for (int i = 0; i < valcount;) {
                     AMD64Kind movKind = scalarKind;
                     int movSize = movKind.getSizeInBytes();
-                    while (i + movSize <= valcount && movSize < 8) {
+                    while (i + movSize * 2 <= valcount * scalarKind.getSizeInBytes() && movSize < 8) {
                         movSize *= 2;
                         AMD64Kind prev = movKind;
                         movKind = twice(movKind);
+                        movSize = movKind.getSizeInBytes();
                         if (prev == movKind) break;
                     }
+                    System.out.println("inserting value as " + movKind);
 
                     AMD64Address source = new AMD64Address(input.toAddress().getBase(),
                         input.toAddress().getIndex(), input.toAddress().getScale(), input.toAddress().getDisplacement() + offset);
