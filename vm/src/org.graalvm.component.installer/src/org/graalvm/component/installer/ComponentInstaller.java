@@ -53,6 +53,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
+import org.graalvm.component.installer.SystemUtils.OS;
 import org.graalvm.component.installer.commands.AvailableCommand;
 import org.graalvm.component.installer.commands.InfoCommand;
 import org.graalvm.component.installer.commands.InstallCommand;
@@ -326,7 +327,7 @@ public final class ComponentInstaller {
      * <p/>
      * The location is sanity checked and the method throws {@link FailedOperationException} if not
      * proper Graal dir.
-     * 
+     *
      * @return existing Graal home
      */
     Path finddGraalHome() {
@@ -373,9 +374,23 @@ public final class ComponentInstaller {
         String libpath = System.getProperty("java.library.path"); // NOI18N
         if (libpath == null || libpath.isEmpty()) {
             // SVM mode: libpath is not define, define it to the JRE:
-            String arch = System.getProperty("os.arch");
-            String p = graalHomePath.resolve(Paths.get("jre/lib", arch)).toString();
-            System.setProperty("java.library.path", p);
+            String newLibPath = "";
+            switch (OS.get()) {
+                case LINUX:
+                    String arch = System.getProperty("os.arch");
+                    newLibPath = graalHomePath.resolve(Paths.get("jre/lib", arch)).toString();
+                    break;
+                case MAC:
+                    newLibPath = graalHomePath.resolve(Paths.get("jre/lib")).toString();
+                    break;
+                case WINDOWS:
+                    newLibPath = graalHomePath.resolve(Paths.get("jre/bin")).toString();
+                    break;
+                case UNKNOWN:
+                default:
+                    throw SIMPLE_ENV.failure("ERROR_UnknownSystem", null, System.getProperty("os.name"));
+            }
+            System.setProperty("java.library.path", newLibPath);
         }
         return graalPath;
     }
