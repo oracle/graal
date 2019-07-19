@@ -272,7 +272,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // Ensure that both fixed access nodes are accessing the same array
-            if (!sameArray(left, right)) {
+            if (left instanceof FixedAccessNode && !sameArray(left, right)) {
                 return false;
             }
 
@@ -838,7 +838,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final VectorPackNode packVal = graph.addOrUnique(new VectorPackNode(vectorInputStamp, nodes.stream().map(UnaryNode::getValue).collect(Collectors.toList())));
 
                 final VectorExtractNode firstUANExtractNode = graph.addOrUnique(new VectorExtractNode(firstUAN.stamp(view), firstUAN, 0));
-                first.replaceAtUsages(firstUANExtractNode);
+                first.replaceAtUsages(firstUANExtractNode, n -> n != firstUANExtractNode);
 
                 firstUAN.setValue(packVal);
                 firstUAN.inferStamp();
@@ -847,7 +847,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 for (int i = 1; i < nodes.size(); i++) {
                     final UnaryArithmeticNode<?> node = nodes.get(i);
                     final VectorExtractNode extractNode = graph.addOrUnique(new VectorExtractNode(node.stamp(view), firstUAN, i));
-                    node.replaceAtUsagesAndDelete(extractNode);
+                    node.replaceAtUsagesAndDelete(extractNode, n -> n != extractNode);
                 }
                 return;
             }
@@ -867,7 +867,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final VectorPackNode packY = graph.addOrUnique(new VectorPackNode(vectorInputStamp, nodes.stream().map(BinaryNode::getY).collect(Collectors.toList())));
 
                 final VectorExtractNode firstBANExtractNode = graph.addOrUnique(new VectorExtractNode(firstBAN.stamp(view), firstBAN, 0));
-                first.replaceAtUsages(firstBANExtractNode);
+                first.replaceAtUsages(firstBANExtractNode, n -> n != firstBANExtractNode);
 
                 firstBAN.setX(packX);
                 firstBAN.setY(packY);
@@ -877,7 +877,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 for (int i = 1; i < nodes.size(); i++) {
                     final BinaryArithmeticNode<?> node = nodes.get(i);
                     final VectorExtractNode extractNode = graph.addOrUnique(new VectorExtractNode(node.stamp(view), firstBAN, i));
-                    node.replaceAtUsagesAndDelete(extractNode);
+                    node.replaceAtUsagesAndDelete(extractNode, n -> n != extractNode);
                 }
                 return;
             }
