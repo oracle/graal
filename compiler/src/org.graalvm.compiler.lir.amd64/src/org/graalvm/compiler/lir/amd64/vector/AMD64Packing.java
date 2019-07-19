@@ -218,7 +218,7 @@ public final class AMD64Packing {
         public static final LIRInstructionClass<PackOp> TYPE = LIRInstructionClass.create(PackOp.class);
 
         @Def({REG}) private AllocatableValue result;
-        @Temp({REG, STACK}) private AllocatableValue temp;
+        @Temp({REG}) private AllocatableValue temp;
         @Use({REG, STACK}) private AllocatableValue[] values;
 
         public PackOp(LIRGeneratorTool tool, AllocatableValue result, List<AllocatableValue> values) {
