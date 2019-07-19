@@ -975,7 +975,7 @@ public class NativeImage {
         }
 
         /* Enable class initializaiton tracing agent. */
-        if (imageBuilderArgs.contains("-H:+TraceClassInitialization")) {
+        if (traceClassInitialization()) {
             imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR());
         }
 
@@ -1076,6 +1076,17 @@ public class NativeImage {
             return 2;
         }
         return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
+    }
+
+    private boolean traceClassInitialization() {
+        String lastTracelArgument = null;
+        for (String imageBuilderArg : imageBuilderArgs) {
+            if (imageBuilderArg.contains("TraceClassInitialization")) {
+                lastTracelArgument = imageBuilderArg;
+            }
+        }
+
+        return "-H:+TraceClassInitialization".equals(lastTracelArgument);
     }
 
     private String mainClass;
