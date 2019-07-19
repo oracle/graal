@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -108,11 +107,7 @@ class CoverageNode extends ExecutionEventNode {
         if (!covered) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             covered = true;
-            final Source source = instrumentedSourceSection.getSource();
-            // TODO: This should not be necesery becuase of the filter. Bug!
-            if (!source.isInternal()) {
-                simpleCoverageInstrument.addCovered(instrumentedSourceSection);
-            }
+            simpleCoverageInstrument.addCovered(instrumentedSourceSection);
         }
     }
 
