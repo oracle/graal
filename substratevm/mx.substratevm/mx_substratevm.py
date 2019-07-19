@@ -918,6 +918,7 @@ if 'LIBGRAAL' in os.environ:
                     '--initialize-at-build-time',
                     '-H:-UseServiceLoaderFeature',
                     '-H:+AllowFoldMethods',
+                    '-H:+ReportExceptionStackTraces',
                     '-Djdk.vm.ci.services.aot=true',
                     '-Dtruffle.TruffleRuntime='
                 ],
