@@ -511,7 +511,6 @@ public class AMD64VectorShuffle {
         public InsertByteOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.BYTE;
-            assert source.getPlatformKind() == AMD64Kind.BYTE;
             this.vector = vector;
             this.source = source;
             this.selector = selector;
@@ -537,7 +536,6 @@ public class AMD64VectorShuffle {
         public InsertShortOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.WORD;
-            assert source.getPlatformKind() == AMD64Kind.WORD;
             this.vector = vector;
             this.source = source;
             this.selector = selector;
@@ -563,7 +561,6 @@ public class AMD64VectorShuffle {
         public InsertIntOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.DWORD;
-            assert source.getPlatformKind() == AMD64Kind.DWORD;
             this.vector = vector;
             this.source = source;
             this.selector = selector;
@@ -597,7 +594,6 @@ public class AMD64VectorShuffle {
         public InsertLongOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.QWORD;
-            assert source.getPlatformKind() == AMD64Kind.QWORD;
             this.vector = vector;
             this.source = source;
             this.selector = selector;
@@ -631,7 +627,6 @@ public class AMD64VectorShuffle {
         public InsertFloatOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.SINGLE;
-            assert source.getPlatformKind() == AMD64Kind.SINGLE;
             this.vector = vector;
             this.source = source;
             this.selector = selector;
@@ -665,7 +660,6 @@ public class AMD64VectorShuffle {
         public InsertDoubleOp(AllocatableValue vector, AllocatableValue source, int selector) {
             super(TYPE);
             assert ((AMD64Kind) vector.getPlatformKind()).getScalar() == AMD64Kind.DOUBLE;
-            assert source.getPlatformKind() == AMD64Kind.DOUBLE;
             this.vector = vector;
             this.source = source;
             this.selector = selector;
