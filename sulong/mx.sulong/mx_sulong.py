@@ -266,8 +266,6 @@ def checkCFiles(targetDir):
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
     clangFormat = findBundledLLVMProgram('clang-format')
-    if clangFormat is None:
-        exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
     formatCommand = [clangFormat, targetFile]
     formattedContent = _decode(subprocess.check_output(formatCommand)).splitlines()
     with open(targetFile) as f:
@@ -650,10 +648,7 @@ def findGCCProgram(gccProgram, optional=False):
 def findBundledLLVMProgram(llvm_program):
     llvm_dist = 'SULONG_LLVM_ORG'
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
-    path = os.path.join(dep.get_output(), 'bin', llvm_program)
-    if not os.path.exists(path):
-        mx.command_function('build')(['--project', llvm_dist])
-    return path if os.path.exists(path) else None
+    return os.path.join(dep.get_output(), 'bin', llvm_program)
 
 mx_subst.path_substitutions.register_with_arg('llvm-tool', findBundledLLVMProgram)
 
