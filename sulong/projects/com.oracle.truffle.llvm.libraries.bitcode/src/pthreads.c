@@ -34,10 +34,10 @@
 #include <time.h>
 
 #include "unsupported.h"
-// deleted create, join, exit, self
-// mutex_init, mutex_lock, mutex_trylock, mutex_unlock, mutex_destroy
-// mutexattr_init, mutexattr_settype
-// cond_init, cond_broadcast, cond_signal, cond_timedwait, cond_wait, cond_destroy
+// deleted create, join, once, exit, self
+// mutex_destroy, mutex_init, mutex_lock, mutex_trylock, mutex_unlock
+// mutexattr_destroy, mutexattr_init, mutexattr_settype
+// cond_destroy, cond_init, cond_broadcast, cond_signal, cond_wait
 // rwlock_destroy, rwlock_init, rwlock_rdlock, rwlock_tryrdlock, rwlock_wrlock, rwlock_trywrlock, rwlock_unlock
 int __sulong_getEBUSY() {
 	return EBUSY;
@@ -51,7 +51,18 @@ int __sulong_getEDEADLK() {
 int __sulong_getEPERM() {
 	return EPERM;
 }
-
+int __sulong_getPTHREAD_MUTEX_DEFAULT() {
+	return PTHREAD_MUTEX_DEFAULT;
+}
+int __sulong_getPTHREAD_MUTEX_ERRORCHECK() {
+	return PTHREAD_MUTEX_ERRORCHECK;
+}
+int __sulong_getPTHREAD_MUTEX_NORMAL() {
+	return PTHREAD_MUTEX_NORMAL;
+}
+int __sulong_getPTHREAD_MUTEX_RECURSIVE() {
+	return PTHREAD_MUTEX_RECURSIVE;
+}
 long __sulong_getNanoSeconds(struct timespec *time) {
 	return time->tv_nsec;
 }
@@ -118,6 +129,9 @@ int pthread_cancel(pthread_t thread) {
 }
 // void  pthread_cleanup_push(void*, void *);
 // void  pthread_cleanup_pop(int);
+int pthread_cond_timedwait(pthread_cond_t *restrict cond, pthread_mutex_t *restrict mutex, const struct timespec *restrict abstime) {
+  ERR_UNSUPPORTED(pthread_cond_timedwait);
+}
 int pthread_condattr_destroy(pthread_condattr_t *attr) {
   ERR_UNSUPPORTED(pthread_condattr_destroy);
 }
@@ -159,9 +173,6 @@ int pthread_mutex_getprioceiling(const pthread_mutex_t *restrict mutex, int *res
 }
 int pthread_mutex_setprioceiling(pthread_mutex_t *restrict mutex, int prioceiling, int *restrict old_ceiling) {
   ERR_UNSUPPORTED(pthread_mutex_setprioceiling);
-}
-int pthread_mutexattr_destroy(pthread_mutexattr_t *attr) {
-  ERR_UNSUPPORTED(pthread_mutexattr_destroy);
 }
 int pthread_mutexattr_getprioceiling(const pthread_mutexattr_t *restrict attr, int *restrict prioceiling) {
   ERR_UNSUPPORTED(pthread_mutexattr_getprioceiling);

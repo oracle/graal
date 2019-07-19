@@ -91,9 +91,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMContext {
     // my code start
-    public final ConcurrentMap<Object, Object> condStorage;
-    public final ConcurrentMap<Object, Object> mutexStorage;
-    public final ConcurrentMap<Object, Object> rwlockStorage;
+    public final ConcurrentMap<LLVMPointer, Object> condStorage;
+    public final ConcurrentMap<LLVMPointer, Object> mutexStorage;
+    public final ConcurrentMap<LLVMPointer, Object> rwlockStorage;
     public final ConcurrentMap<Long, Object> retValStorage;
     public final ConcurrentMap<Long, Thread> threadStorage;
     public final ConcurrentMap<LLVMPointer, Object> onceStorage;

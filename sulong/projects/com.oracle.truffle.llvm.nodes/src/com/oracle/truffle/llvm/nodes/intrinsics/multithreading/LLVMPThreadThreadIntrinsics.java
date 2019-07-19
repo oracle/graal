@@ -72,7 +72,7 @@ public class LLVMPThreadThreadIntrinsics {
         @Child LLVMStoreNode storeNode;
 
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, long th, Object threadReturn, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
+        protected int doIntrinsic(VirtualFrame frame, long th, LLVMPointer threadReturn, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             if (storeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 storeNode = ctxRef.get().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.POINTER);
@@ -88,8 +88,7 @@ public class LLVMPThreadThreadIntrinsics {
                 // get return value
                 Object retVal = UtilAccess.getLongObj(ctxRef.get().retValStorage, th);
                 // store return value at ptr
-                LLVMPointer thReturnPtr = LLVMPointer.cast(threadReturn);
-                if (!thReturnPtr.isNull() && retVal != null) {
+                if (!threadReturn.isNull() && retVal != null) {
                     storeNode.executeWithTarget(threadReturn, retVal);
                 }
             } catch (Exception e) {
