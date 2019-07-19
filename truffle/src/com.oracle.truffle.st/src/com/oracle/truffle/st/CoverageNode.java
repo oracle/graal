@@ -54,9 +54,9 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@link SimpleCoverageInstrument#addCovered(SourceSection) covered} it's
  * {@link #instrumentedSourceSection source section}.
  */
-class CoverageNode extends ExecutionEventNode {
+final class CoverageNode extends ExecutionEventNode {
 
-    private SimpleCoverageInstrument simpleCoverageInstrument;
+    final private SimpleCoverageInstrument instrument;
     @CompilerDirectives.CompilationFinal private boolean covered;
 
     /**
@@ -64,8 +64,8 @@ class CoverageNode extends ExecutionEventNode {
      */
     private final SourceSection instrumentedSourceSection;
 
-    CoverageNode(SimpleCoverageInstrument simpleCoverageInstrument, SourceSection instrumentedSourceSection) {
-        this.simpleCoverageInstrument = simpleCoverageInstrument;
+    CoverageNode(SimpleCoverageInstrument instrument, SourceSection instrumentedSourceSection) {
+        this.instrument = instrument;
         this.instrumentedSourceSection = instrumentedSourceSection;
     }
 
@@ -107,7 +107,7 @@ class CoverageNode extends ExecutionEventNode {
         if (!covered) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             covered = true;
-            simpleCoverageInstrument.addCovered(instrumentedSourceSection);
+            instrument.addCovered(instrumentedSourceSection);
         }
     }
 

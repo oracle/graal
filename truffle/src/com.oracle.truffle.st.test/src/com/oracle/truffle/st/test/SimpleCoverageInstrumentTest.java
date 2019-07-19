@@ -43,8 +43,10 @@ package com.oracle.truffle.st.test;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -128,7 +130,7 @@ public class SimpleCoverageInstrumentTest {
     @Test
     public void exampleJSTest() throws IOException {
         // This test only makes sense if JS is available.
-        Assume.assumeTrue(Context.create().getEngine().getLanguages().containsKey("js"));
+        Assume.assumeTrue(Engine.create().getLanguages().containsKey("js"));
         // This is how we can create a context with our tool enabled if we are embeddined in java
         try (Context context = Context.newBuilder("js").option(SimpleCoverageInstrument.ID, "true").option(SimpleCoverageInstrument.ID + ".PrintCoverage", "false").build()) {
             Source source = Source.newBuilder("js", JS_SOURCE, "main").build();
@@ -152,7 +154,7 @@ public class SimpleCoverageInstrumentTest {
         Map<com.oracle.truffle.api.source.Source, Coverage> coverageMap = coverageInstrument.getCoverageMap();
         Assert.assertEquals(1, coverageMap.size());
         coverageMap.forEach((com.oracle.truffle.api.source.Source s, Coverage v) -> {
-            List<Integer> notYetCoveredLineNumbers = coverageInstrument.nonCoveredLineNumbers(s);
+            Set<Integer> notYetCoveredLineNumbers = coverageInstrument.nonCoveredLineNumbers(s);
             Object[] expected = new Integer[]{47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 61, 67};
             Assert.assertArrayEquals(expected, notYetCoveredLineNumbers.toArray());
         });
@@ -175,7 +177,7 @@ public class SimpleCoverageInstrumentTest {
     @Test
     public void exampleSLTest() throws IOException {
         // This test only makes sense if SL is available.
-        Assume.assumeTrue(Context.create().getEngine().getLanguages().containsKey("sl"));
+        Assume.assumeTrue(Engine.create().getLanguages().containsKey("sl"));
         // This is how we can create a context with our tool enabled if we are embeddined in java
         try (Context context = Context.newBuilder("sl").option(SimpleCoverageInstrument.ID, "true").option(SimpleCoverageInstrument.ID + ".PrintCoverage", "false").build()) {
             Source source = Source.newBuilder("sl", SL_SOURCE, "main").build();
@@ -188,7 +190,7 @@ public class SimpleCoverageInstrumentTest {
             Map<com.oracle.truffle.api.source.Source, Coverage> coverageMap = coverageInstrument.getCoverageMap();
             Assert.assertEquals(1, coverageMap.size());
             coverageMap.forEach((com.oracle.truffle.api.source.Source s, Coverage v) -> {
-                List<Integer> notYetCoveredLineNumbers = coverageInstrument.nonCoveredLineNumbers(s);
+                Set<Integer> notYetCoveredLineNumbers = coverageInstrument.nonCoveredLineNumbers(s);
                 Object[] expected = new Integer[]{3, 4, 5};
                 Assert.assertArrayEquals(expected, notYetCoveredLineNumbers.toArray());
             });

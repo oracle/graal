@@ -53,7 +53,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * attached} an instance of this factory, each time a AST node of interest is created, it is
  * instrumented with a node created by this factory.
  */
-class CoverageEventFactory implements ExecutionEventNodeFactory {
+final class CoverageEventFactory implements ExecutionEventNodeFactory {
 
     private SimpleCoverageInstrument simpleCoverageInstrument;
 

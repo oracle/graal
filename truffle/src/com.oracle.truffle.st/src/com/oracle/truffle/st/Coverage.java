@@ -40,24 +40,21 @@
  */
 package com.oracle.truffle.st;
 
-import com.oracle.truffle.api.source.SourceSection;
-
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Contains per {@link com.oracle.truffle.api.source.Source} coverage by keeping track of loaded and
  * covered {@link com.oracle.truffle.api.source.SourceSection}s.
  */
-public class Coverage {
-    private Set<SourceSection> loaded = new HashSet<>();
-    private Set<SourceSection> covered = new HashSet<>();
+final public class Coverage {
+    private final Set<SourceSection> loaded = new HashSet<>();
+    private final Set<SourceSection> covered = new HashSet<>();
 
-    void addCovered(SourceSection instrumentedSourceSection) {
-        covered.add(instrumentedSourceSection);
+    void addCovered(SourceSection sourceSection) {
+        covered.add(sourceSection);
     }
 
     void addLoaded(SourceSection sourceSection) {
@@ -71,21 +68,13 @@ public class Coverage {
         return nonCovered;
     }
 
-    List<Integer> nonCoveredLineNumbers() {
+    Set<Integer> nonCoveredLineNumbers() {
         Set<Integer> linesNotCovered = new HashSet<>();
         for (SourceSection ss : nonCoveredSections()) {
             for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
                 linesNotCovered.add(i);
             }
         }
-        List<Integer> sortedLines = new ArrayList<>(linesNotCovered.size());
-        sortedLines.addAll(linesNotCovered);
-        sortedLines.sort(new Comparator<Integer>() {
-            @Override
-            public int compare(Integer x, Integer y) {
-                return Integer.compare(x, y);
-            }
-        });
-        return sortedLines;
+        return linesNotCovered;
     }
 }

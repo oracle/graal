@@ -53,12 +53,12 @@ import com.oracle.truffle.api.source.SourceSection;
  * loaded, we are notified in the
  * {@link #onLoad(com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent) } method.
  */
-class GatherSourceSectionsListener implements LoadSourceSectionListener {
+final class GatherSourceSectionsListener implements LoadSourceSectionListener {
 
-    private SimpleCoverageInstrument simpleCoverageInstrument;
+    private final SimpleCoverageInstrument instrument;
 
-    GatherSourceSectionsListener(SimpleCoverageInstrument simpleCoverageInstrument) {
-        this.simpleCoverageInstrument = simpleCoverageInstrument;
+    GatherSourceSectionsListener(SimpleCoverageInstrument instrument) {
+        this.instrument = instrument;
     }
 
     /**
@@ -70,6 +70,6 @@ class GatherSourceSectionsListener implements LoadSourceSectionListener {
     @Override
     public void onLoad(LoadSourceSectionEvent event) {
         final SourceSection sourceSection = event.getSourceSection();
-        simpleCoverageInstrument.addLoaded(sourceSection);
+        instrument.addLoaded(sourceSection);
     }
 }
