@@ -32,6 +32,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -49,7 +51,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @BeforeClass
     public static void before() {
-        Assume.assumeFalse(TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleCompileImmediately));
+        Assume.assumeFalse(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately));
     }
 
     @Test
