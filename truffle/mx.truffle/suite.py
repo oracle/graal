@@ -87,7 +87,7 @@ suite = {
       "version" : "3.2.1",
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz",
-        "ftp://sourceware.org/pub/libffi/libffi-{version}.tar.gz",
+        "https://sourceware.org/pub/libffi/libffi-{version}.tar.gz",
       ],
       "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
     },
@@ -104,7 +104,7 @@ suite = {
     "ANTLR4_COMPLETE": {
       "urls": [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.1-complete.jar",
-        "http://www.antlr.org/download/antlr-4.7.1-complete.jar"
+        "https://www.antlr.org/download/antlr-4.7.1-complete.jar"
       ],
       "sha1": "90aa8308da72ae610207d8f6ca27736921be692a",
     },
