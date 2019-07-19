@@ -161,7 +161,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(Thread.State.class) StaticObject getState(@Host(Thread.class) StaticObject self) {
+    public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self) {
         Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
         // If hostThread is null, start hasn't been called yet -> NEW state.
         return (StaticObject) self.getKlass().getMeta().toThreadState.invokeDirect(null, hostThread == null ? State.NEW.value : stateToInt(hostThread.getState()));

@@ -30,6 +30,20 @@ public abstract class Substitutor {
     public static final String INSTANCE_NAME = "theInstance";
     public static final String GETTER = "getInstance";
 
+    private final String methodName;
+    private final String substitutionClassName;
+    private final String returnType;
+    private final String[] parameterTypes;
+    private final boolean hasReceiver;
+
+    Substitutor(String methodName, String substitutionClassName, String returnType, String[] parameterTypes, boolean hasReceiver) {
+        this.methodName = methodName;
+        this.substitutionClassName = substitutionClassName;
+        this.returnType = returnType;
+        this.parameterTypes = parameterTypes;
+        this.hasReceiver = hasReceiver;
+    }
+
     private static String getClassName(String className, String methodName, List<String> parameterTypes) {
         StringBuilder str = new StringBuilder();
         str.append(className).append("_").append(methodName).append(signatureSuffixBuilder(parameterTypes));
@@ -45,23 +59,29 @@ public abstract class Substitutor {
 
     private static StringBuilder signatureSuffixBuilder(List<String> parameterTypes) {
         StringBuilder str = new StringBuilder();
-        str.append("_");
-        boolean first = true;
-        for (String parameter : parameterTypes) {
-            if (first) {
-                first = false;
-            } else {
-                str.append("_");
-            }
-            str.append(parameter);
-        }
-        str.append(parameterTypes.size());
+        str.append("_").append(parameterTypes.size());
         return str;
     }
 
-// public abstract String methodDescritor();
-//
-// public abstract String type();
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public String substitutionClassName() {
+        return substitutionClassName;
+    }
+
+    public String returnType() {
+        return returnType;
+    }
+
+    public String[] parameterTypes() {
+        return parameterTypes;
+    }
+
+    public boolean hasReceiver() {
+        return hasReceiver;
+    }
 
     public abstract Object invoke(Object[] args);
 }
