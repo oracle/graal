@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.test;
+package org.graalvm.compiler.options;
 
-/**
- * A class loader that exports all packages in the module defining the class loader to all classes
- * in the unnamed module associated with the loader.
- */
-public class ExportingClassLoader extends ClassLoader {
-    public ExportingClassLoader() {
-        ModuleSupport.exportAllPackagesTo(getClass(), this);
-    }
+import java.util.ServiceLoader;
 
-    public ExportingClassLoader(ClassLoader parent) {
-        super(parent);
-        ModuleSupport.exportAllPackagesTo(getClass(), this);
+public class ModuleSupport {
+
+    static Iterable<OptionDescriptors> getOptionsLoader() {
+        // On JDK 9+, Graal and its extensions are in the same module layer.
+        return ServiceLoader.load(ModuleSupport.class.getModule().getLayer(), OptionDescriptors.class);
     }
 }

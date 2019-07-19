@@ -89,13 +89,8 @@ public final class GraalServices {
             synchronized (servicesCache) {
                 ArrayList<S> providersList = new ArrayList<>();
                 for (S provider : providers) {
-                    /*
-                     * When building libgraal, we want providers that comes from the Graal community
-                     * and enterprise modules but not those available on the native-image class
-                     * path.
-                     */
                     Module module = provider.getClass().getModule();
-                    if (module.isNamed()) {
+                    if (isHotSpotGraalModule(module.getName())) {
                         providersList.add(provider);
                     }
                 }
@@ -106,6 +101,19 @@ public final class GraalServices {
         }
 
         return providers;
+    }
+
+    /**
+     * Determines if the module named by {@code name} is part of Graal when it is configured as a
+     * HotSpot JIT compiler.
+     */
+    private static boolean isHotSpotGraalModule(String name) {
+        if (name != null) {
+            return name.equals("jdk.internal.vm.compiler") ||
+                            name.equals("jdk.internal.vm.compiler.management") ||
+                            name.equals("com.oracle.graal.graal_enterprise");
+        }
+        return false;
     }
 
     protected static <S> Iterable<S> load0(Class<S> service) {

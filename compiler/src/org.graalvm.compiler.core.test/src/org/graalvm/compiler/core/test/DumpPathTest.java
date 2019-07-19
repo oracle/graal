@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugOptions;
@@ -49,22 +50,20 @@ public class DumpPathTest extends GraalCompilerTest {
     @Test
     public void testDump() throws IOException {
         assumeManagementLibraryIsLoadable();
-        Path dumpDirectoryPath = Files.createTempDirectory("DumpPathTest");
-        String[] extensions = new String[]{".cfg", ".bgv", ".graph-strings"};
-        EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
-        overrides.put(DebugOptions.DumpPath, dumpDirectoryPath.toString());
-        overrides.put(DebugOptions.PrintCFG, true);
-        overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.File);
-        overrides.put(DebugOptions.PrintCanonicalGraphStrings, true);
-        overrides.put(DebugOptions.Dump, "*");
+        try (TemporaryDirectory temp = new TemporaryDirectory(Paths.get("."), "DumpPathTest")) {
+            String[] extensions = new String[]{".cfg", ".bgv", ".graph-strings"};
+            EconomicMap<OptionKey<?>, Object> overrides = OptionValues.newOptionMap();
+            overrides.put(DebugOptions.DumpPath, temp.toString());
+            overrides.put(DebugOptions.PrintCFG, true);
+            overrides.put(DebugOptions.PrintGraph, PrintGraphTarget.File);
+            overrides.put(DebugOptions.PrintCanonicalGraphStrings, true);
+            overrides.put(DebugOptions.Dump, "*");
 
-        // Generate dump files.
-        test(new OptionValues(getInitialOptions(), overrides), "snippet");
-        // Check that IGV files got created, in the right place.
-        checkForFiles(dumpDirectoryPath, extensions);
-
-        // Clean up the generated files.
-        removeDirectory(dumpDirectoryPath);
+            // Generate dump files.
+            test(new OptionValues(getInitialOptions(), overrides), "snippet");
+            // Check that IGV files got created, in the right place.
+            checkForFiles(temp.path, extensions);
+        }
     }
 
     /**
