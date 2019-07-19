@@ -77,4 +77,14 @@ final public class Coverage {
         }
         return linesNotCovered;
     }
+
+    Set<Integer> loadedLineNumbers() {
+        Set<Integer> loadedLines = new HashSet<>();
+        for (SourceSection ss : loaded) {
+            for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
+                loadedLines.add(i);
+            }
+        }
+        return loadedLines;
+    }
 }

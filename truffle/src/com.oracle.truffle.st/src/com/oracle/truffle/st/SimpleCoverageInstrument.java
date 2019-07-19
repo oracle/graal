@@ -43,7 +43,6 @@ package com.oracle.truffle.st;
 import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -197,17 +196,29 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
     private synchronized void printResults(final Env env) {
         final PrintStream printStream = new PrintStream(env.out());
         for (Source source : coverageMap.keySet()) {
-            final String path = source.getPath();
-            final int lineCount = source.getLineCount();
-            final Set<Integer> nonCoveredLineNumbers = nonCoveredLineNumbers(source);
-            final int notYetCoveredSize = nonCoveredLineNumbers.size();
-            final double coveredPercentage = 100 * ((double) lineCount - notYetCoveredSize) / lineCount;
-            printStream.println("==");
-            printStream.println("Coverage of " + path + " is " + String.format("%.2f%%", coveredPercentage));
-            for (int i = 1; i <= source.getLineCount(); i++) {
-                String covered = nonCoveredLineNumbers.contains(i) ? "-" : "+";
-                printStream.println(String.format("%s %s", covered, source.getCharacters(i)));
-            }
+            printResult(printStream, source);
+        }
+    }
+
+    private void printResult(PrintStream printStream, Source source) {
+        String path = source.getPath();
+        int lineCount = source.getLineCount();
+        Set<Integer> nonCoveredLineNumbers = nonCoveredLineNumbers(source);
+        Set<Integer> loadedLineNumbers = coverageMap.get(source).loadedLineNumbers();
+        double coveredPercentage = 100 * ((double) loadedLineNumbers.size() - nonCoveredLineNumbers.size()) / lineCount;
+        printStream.println("==");
+        printStream.println("Coverage of " + path + " is " + String.format("%.2f%%", coveredPercentage));
+        for (int i = 1; i <= source.getLineCount(); i++) {
+            char covered = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, i);
+            printStream.println(String.format("%s %s", covered, source.getCharacters(i)));
+        }
+    }
+
+    private static char getCoverageCharacter(Set<Integer> nonCoveredLineNumbers, Set<Integer> loadedLineNumbers, int i) {
+        if (loadedLineNumbers.contains(i)) {
+            return nonCoveredLineNumbers.contains(i) ? '-' : '+';
+        } else {
+            return ' ';
         }
     }
 
