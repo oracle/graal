@@ -940,7 +940,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
 
-            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), combinedPackSet);
+            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)),
+                    combinedPackSet.stream().filter(p -> context.getTargetProvider().getVectorDescription().maxVectorWidth(p.stamp(view).getScalar()) == p.getElements().size()).collect(Collectors.toSet()));
         }
 
     }
