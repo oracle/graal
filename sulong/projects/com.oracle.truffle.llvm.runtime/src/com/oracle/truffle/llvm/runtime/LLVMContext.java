@@ -42,6 +42,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -95,6 +96,7 @@ public final class LLVMContext {
     public final ConcurrentMap<Object, Object> rwlockStorage;
     public final ConcurrentMap<Long, Object> retValStorage;
     public final ConcurrentMap<Long, Thread> threadStorage;
+    public final ConcurrentMap<LLVMPointer, Object> onceStorage;
     public CallTarget pthreadCallTarget = null;
     // my code end
 
@@ -228,6 +230,7 @@ public final class LLVMContext {
         this.rwlockStorage = new ConcurrentHashMap<>();
         this.retValStorage = new ConcurrentHashMap<>();
         this.threadStorage = new ConcurrentHashMap<>();
+        this.onceStorage = new ConcurrentHashMap<>();
     }
 
     private static final class InitializeContextNode extends LLVMStatementNode {

@@ -36,7 +36,7 @@ public class LLVMPThreadThreadIntrinsics {
 
         // no relevant error code handling here
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, Object thread, Object attr, Object startRoutine, Object arg, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
+        protected int doIntrinsic(VirtualFrame frame, LLVMPointer thread, LLVMPointer attr, LLVMPointer startRoutine, LLVMPointer arg, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
             // create store node
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -95,6 +95,24 @@ public class LLVMPThreadThreadIntrinsics {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            return 0;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class, value = "onceControl")
+    @NodeChild(type = LLVMExpressionNode.class, value = "initRoutine")
+    public abstract static class LLVMPThreadOnce extends LLVMBuiltin {
+        // no relevant error code handling here
+        @Specialization
+        protected int doIntrinsic(VirtualFrame frame, LLVMPointer onceControl, LLVMPointer initRoutine, @CachedContext(LLVMLanguage.class) TruffleLanguage.ContextReference<LLVMContext> ctxRef) {
+            synchronized (ctxRef.get()) {
+                if (ctxRef.get().onceStorage.containsKey(onceControl)) {
+                    return 0;
+                }
+                ctxRef.get().onceStorage.put(onceControl, new Object());
+            }
+            UtilStartThread.InitStartOfNewThread init = new UtilStartThread.InitStartOfNewThread(initRoutine, null, ctxRef);
+            init.run();
             return 0;
         }
     }

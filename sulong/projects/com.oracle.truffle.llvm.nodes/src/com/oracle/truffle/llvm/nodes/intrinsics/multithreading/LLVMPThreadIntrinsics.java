@@ -11,6 +11,10 @@ public class LLVMPThreadIntrinsics {
     public abstract static class LLVMPThreadMyTest extends LLVMBuiltin {
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, Object arg) {
+            int i = 15;
+            if (arg.equals(i)) {
+                return 15;
+            }
             return 35; // just to test return 35
         }
     }

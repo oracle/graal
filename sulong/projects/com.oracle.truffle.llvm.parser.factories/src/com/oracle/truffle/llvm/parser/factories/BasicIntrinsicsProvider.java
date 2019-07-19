@@ -332,6 +332,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         add("@pthread_exit", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadExitNodeGen.create(args.get(1), null));
         // error codes: no error codes are defined here
 
+        add("@pthread_once", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadOnceNodeGen.create(args.get(1), args.get(2), null));
+
         add("@pthread_join", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1), args.get(2), null));
         // error codes: none relevant
 
