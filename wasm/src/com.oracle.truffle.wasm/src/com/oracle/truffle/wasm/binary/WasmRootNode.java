@@ -34,6 +34,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -81,6 +82,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         }
     }
 
+    @ExplodeLoop
     private void argumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         for (int i = 0; i != args.length; ++i) {

@@ -103,7 +103,7 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public long load_i64_8u(long address) {
-        return 0x0000_00ffL & unsafe.getByte(start + address);
+        return 0x0000_0000_0000_00ffL & unsafe.getByte(start + address);
     }
 
     @Override
@@ -113,7 +113,7 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public long load_i64_16u(long address) {
-        return 0x0000_ffffL & unsafe.getShort(start + address);
+        return 0x0000_0000_0000_ffffL & unsafe.getShort(start + address);
     }
 
     @Override
