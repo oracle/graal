@@ -107,6 +107,7 @@ suite = {
       ],
       "buildEnv" : {
         "LIBSULONGTEST" : "<lib:sulongtest>",
+        "CLANG" : "<llvm-tool:clang>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
