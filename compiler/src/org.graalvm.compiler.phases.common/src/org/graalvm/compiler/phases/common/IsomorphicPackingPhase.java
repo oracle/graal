@@ -46,8 +46,10 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -893,11 +895,33 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
                 lastFixed.add((FixedNode) node);
             }
+
+            // non-fixed nodes don't have control flow, so don't need to do anything else
+        }
+
+        /**
+         * Predicate to determine whether performing the IPP operation is valid for this block.
+         * @return Boolean indicating whether we can proceed with packing.
+         */
+        private boolean validForBlock() {
+            for (FixedNode node : currentBlock.getNodes()) {
+                if (node instanceof ControlSplitNode) {
+                    return false;
+                }
+                if (node instanceof InvokeNode) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // Main
-        void slpExtract() {
-            // TODO: don't operate on blocks that contain changes in control flow
+        private void slpExtract() {
+            if (!validForBlock()) {
+                return;
+            }
+
             final Set<Pair<Node, Node>> packSet = new HashSet<>();
             final Set<Pack<Node>> combinedPackSet = new HashSet<>();
 
