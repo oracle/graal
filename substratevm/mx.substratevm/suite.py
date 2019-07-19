@@ -17,19 +17,6 @@ suite = {
         "write" : "git@github.com:oracle/graal.git",
     },
 
-    "libraries": {
-        "ASM_7.1": {
-            "sha1": "fa29aa438674ff19d5e1386d2c3527a0267f291e",
-            "sourceSha1" : "9d170062d595240da35301362b079e5579c86f49",
-            "maven": {
-                "groupId": "org.ow2.asm",
-                "artifactId": "asm",
-                "version": "7.1",
-            },
-            "license": "BSD-new",
-        },
-    },
-
     "defaultLicense" : "GPLv2-CPE",
 
     "versionConflictResolution": "latest",
@@ -302,7 +289,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
-                "ASM_7.1",
+                "mx:ASM_7.1",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
