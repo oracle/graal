@@ -137,6 +137,7 @@ public abstract class JavaThreads {
         return Thread.class.cast(thread);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     private static Target_java_lang_Thread toTarget(Thread thread) {
         return Target_java_lang_Thread.class.cast(thread);

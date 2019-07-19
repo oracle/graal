@@ -30,6 +30,7 @@ import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -100,6 +101,7 @@ public final class VMOperationControl {
         this.inProgress = new OpInProgress();
     }
 
+    @Fold
     static VMOperationControl get() {
         return ImageSingletons.lookup(VMOperationControl.class);
     }
@@ -120,6 +122,7 @@ public final class VMOperationControl {
         JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMOperationThread", () -> {
             dedicatedVMOperationThread.stop();
         });
+
         assert get().mainQueues.isEmpty();
     }
 
@@ -762,6 +765,7 @@ public final class VMOperationControl {
             return queueingThread;
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public IsolateThread getExecutingThread() {
             return executingThread;
         }

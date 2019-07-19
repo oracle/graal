@@ -71,9 +71,10 @@ public class VMMutex implements AutoCloseable {
 
     /**
      * Like {@linkplain #lock()}, but without a thread status transitions. E.g., for locking before
-     * everything is set up to track transitions. This method can only be called from
-     * uninterruptible code as it prevents the VM from entering a safepoint while waiting on the
-     * lock, which could result in deadlocks like the following:
+     * everything is set up to track transitions.
+     *
+     * This method can only be called from uninterruptible code as it prevents the VM from entering
+     * a safepoint while waiting on the lock, which could result in deadlocks like the following:
      * <ul>
      * <li>Thread A calls mutex.lockNoTransition() and acquires the mutex</li>
      * <li>Thread B calls mutex.lockNoTransition() and is blocked</li>
@@ -137,7 +138,7 @@ public class VMMutex implements AutoCloseable {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected final void assertNotOwner(String message) {
+    public final void assertNotOwner(String message) {
         assert !isOwner() : message;
     }
 

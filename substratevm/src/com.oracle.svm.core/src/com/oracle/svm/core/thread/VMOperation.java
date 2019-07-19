@@ -106,6 +106,7 @@ public abstract class VMOperation {
         return isInProgress(inProgress) && inProgress.operation.getCausesSafepoint();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isInProgress(OpInProgress inProgress) {
         return inProgress.getExecutingThread() == CurrentIsolate.getCurrentThread();
     }

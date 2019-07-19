@@ -61,6 +61,11 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         ImageSingletons.add(ThreadingSupport.class, new ThreadingSupportImpl());
     }
 
+    /**
+     * Recurring callbacks execute arbitrary code and can throw {@link SafepointException}s. In some
+     * code parts (e.g., when executing VM operations), we can't deal with arbitrary code execution
+     * and therefore need to pause the execution of recurring callbacks.
+     */
     public static class PauseRecurringCallback implements AutoCloseable {
         private boolean closed = false;
 

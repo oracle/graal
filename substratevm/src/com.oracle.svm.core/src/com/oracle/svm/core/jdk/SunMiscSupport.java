@@ -35,10 +35,9 @@ public class SunMiscSupport {
     @SuppressFBWarnings(value = "BC", justification = "Target_jdk_internal_ref_Cleaner is an alias for a class that extends Reference")
     @SuppressWarnings("try")
     public static void drainCleanerQueue() {
-        // An exception in a recurring callback could interrupt Cleaner processing and leak memory
         Target_java_lang_ref_ReferenceQueue queue = SubstrateUtil.cast(Target_jdk_internal_ref_Cleaner.dummyQueue, Target_java_lang_ref_ReferenceQueue.class);
         if (!queue.isEmpty()) {
-            try (PauseRecurringCallback prc = new PauseRecurringCallback()) {
+            try (PauseRecurringCallback prc = new PauseRecurringCallback("An exception in a recurring callback must not interrupt the cleaner processing as this would result in a memory leak.")) {
                 for (; /* return */ ;) {
                     final Object entry = queue.poll();
                     if (entry == null) {
