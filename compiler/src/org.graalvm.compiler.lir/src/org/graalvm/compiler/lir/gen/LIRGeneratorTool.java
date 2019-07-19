@@ -204,6 +204,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     void emitMove(AllocatableValue dst, Value src);
 
+    Variable emitReadRegister(Register register, ValueKind<?> kind);
+
+    void emitWriteRegister(Register dst, Value src, ValueKind<?> wordStamp);
+
     void emitMoveConstant(AllocatableValue dst, Constant src);
 
     Variable emitAddress(AllocatableValue stackslot);

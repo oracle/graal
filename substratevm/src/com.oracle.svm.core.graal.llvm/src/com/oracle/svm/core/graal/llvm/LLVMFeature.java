@@ -36,6 +36,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.llvm.LLVMUtils;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -53,6 +54,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -79,6 +81,17 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 public class LLVMFeature implements Feature, GraalFeature {
 
     private static HostedMethod personalityStub;
+
+    public static final int SPECIAL_REGISTER_COUNT;
+    public static final int THREAD_POINTER_INDEX;
+    public static final int HEAP_BASE_INDEX;
+
+    static {
+        int firstArgumentOffset = 0;
+        THREAD_POINTER_INDEX = (SubstrateOptions.MultiThreaded.getValue()) ? firstArgumentOffset++ : -1;
+        HEAP_BASE_INDEX = (SubstrateOptions.SpawnIsolates.getValue()) ? firstArgumentOffset++ : -1;
+        SPECIAL_REGISTER_COUNT = firstArgumentOffset;
+    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -181,5 +194,29 @@ public class LLVMFeature implements Feature, GraalFeature {
         if (!supportedVersions.contains(output)) {
             throw UserError.abort("Unsupported LLVM version: " + output + ". Supported versions are: [" + String.join(", ", supportedVersions) + "]");
         }
+    }
+}
+
+@AutomaticFeature
+@Platforms(Platform.AMD64.class)
+class LLVMAMD64TargetSpecificFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return CompilerBackend.getValue().equals("llvm");
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(LLVMUtils.TargetSpecific.class, new LLVMUtils.TargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "movq %" + register + ", $0";
+            }
+
+            @Override
+            public String getJumpInlineAsm() {
+                return "jmpq *($0)";
+            }
+        });
     }
 }
