@@ -1321,7 +1321,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state) {
         AMD64AddressValue storeAddress = getAMD64LIRGen().asAddressValue(address);
-        getLIRGen().append(new AMD64Unary.VectorWriteMemory(storeAddress, getLIRGen().asAllocatable(value)));
+        getLIRGen().append(new AMD64Unary.VectorWriteMemory(storeAddress, asAllocatable(value)));
     }
 
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {

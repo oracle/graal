@@ -679,7 +679,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitPack(LIRKind resultKind, List<Value> values) {
         Variable result = newVariable(resultKind);
-        append(new AMD64Packing.PackOp(this, asAllocatable(result), values.stream().map(this::asAllocatable).collect(Collectors.toList())));
+        append(new AMD64Packing.PackOp(this, result, values.stream().map(this::asAllocatable).collect(Collectors.toList())));
         return result;
     }
 
@@ -687,7 +687,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitExtract(LIRKind vectorKind, Value vector, int index) {
         final AMD64Kind scalarKind = ((AMD64Kind) vectorKind.getPlatformKind()).getScalar();
         final Variable result = newVariable(toRegisterKind(LIRKind.value(scalarKind)));
-        final AllocatableValue resultValue = asAllocatable(result);
 
         final int xmmLengthInElements = 16 / scalarKind.getSizeInBytes();
 
@@ -706,22 +705,22 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
         switch (scalarKind) {
             case BYTE:
-                append(new AMD64VectorShuffle.ExtractByteOp(resultValue, src, index));
+                append(new AMD64VectorShuffle.ExtractByteOp(result, src, index));
                 break;
             case WORD:
-                append(new AMD64VectorShuffle.ExtractShortOp(resultValue, src, index));
+                append(new AMD64VectorShuffle.ExtractShortOp(result, src, index));
                 break;
             case DWORD:
-                append(new AMD64VectorShuffle.ExtractIntOp(resultValue, src, index));
+                append(new AMD64VectorShuffle.ExtractIntOp(result, src, index));
                 break;
             case QWORD:
-                append(new AMD64VectorShuffle.ExtractLongOp(resultValue, src, index));
+                append(new AMD64VectorShuffle.ExtractLongOp(result, src, index));
                 break;
             case SINGLE:
-                append(new AMD64VectorShuffle.ExtractFloatOp(resultValue, src, index));
+                append(new AMD64VectorShuffle.ExtractFloatOp(result, src, index));
                 break;
             case DOUBLE:
-                append(new AMD64VectorShuffle.ExtractDoubleOp(resultValue, src, index));
+                append(new AMD64VectorShuffle.ExtractDoubleOp(result, src, index));
                 break;
         }
 
