@@ -55,4 +55,12 @@ public class NetinetTcp {
     @CConstant
     public static native int TCP_KEEPCNT();
 
+    @Platforms({Platform.LINUX.class})
+    @CConstant
+    public static native int SOL_TCP();
+
+    @Platforms({Platform.LINUX.class})
+    @CConstant
+    public static native int TCP_QUICKACK();
+
 }
