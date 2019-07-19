@@ -664,6 +664,7 @@ public class NativeImageGenerator {
             try (Indent ignored1 = debug.logAndIndent("process analysis initializers")) {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bigbang, nativeLibraries, debug);
                 featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
+                bigbang.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
             }
 
             try (StopTimer t = new Timer(imageName, "analysis").start()) {

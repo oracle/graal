@@ -289,6 +289,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
+                "mx:ASM_7.1",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
@@ -759,6 +760,9 @@ suite = {
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
             ],
+            "manifestEntries" : {
+                "Premain-Class": "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent",
+            },
             "distDependencies": [
                 "SVM_HOSTED_NATIVE",
                 "sdk:GRAAL_SDK",

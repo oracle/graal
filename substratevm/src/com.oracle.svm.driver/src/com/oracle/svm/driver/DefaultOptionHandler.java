@@ -152,7 +152,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError("Invalid " + debugAttach + " option: " + debugAttachArg);
                 }
             }
-            nativeImage.addImageBuilderJavaArgs("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
+            /* Using agentlib to allow interoperability with other agents */
+            nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
             return true;
         }
 
