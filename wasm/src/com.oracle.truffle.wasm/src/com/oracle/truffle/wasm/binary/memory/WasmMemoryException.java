@@ -29,52 +29,12 @@
  */
 package com.oracle.truffle.wasm.binary.memory;
 
-public interface WasmMemory {
-    void validateAddress(long address, int size);
+public class WasmMemoryException extends RuntimeException {
 
-    int load_i32(long address);
+    private static final long serialVersionUID = -5135952170574982889L;
 
-    long load_i64(long address);
+    public WasmMemoryException(String message) {
+        super(message);
+    }
 
-    float load_f32(long address);
-
-    double load_f64(long address);
-
-    int load_i32_8s(long address);
-
-    int load_i32_8u(long address);
-
-    int load_i32_16s(long address);
-
-    int load_i32_16u(long address);
-
-    long load_i64_8s(long address);
-
-    long load_i64_8u(long address);
-
-    long load_i64_16s(long address);
-
-    long load_i64_16u(long address);
-
-    long load_i64_32s(long address);
-
-    long load_i64_32u(long address);
-
-    void store_i32(long address, int value);
-
-    void store_i64(long address, long value);
-
-    void store_f32(long address, float value);
-
-    void store_f64(long address, double value);
-
-    void store_i32_8(long address, int value);
-
-    void store_i32_16(long address, int value);
-
-    void store_i64_8(long address, long value);
-
-    void store_i64_16(long address, long value);
-
-    void store_i64_32(long address, long value);
 }
