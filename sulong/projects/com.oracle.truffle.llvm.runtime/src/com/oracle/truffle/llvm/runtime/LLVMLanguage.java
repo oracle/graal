@@ -145,12 +145,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             LLVMExpressionNode root = d.parse();
             // no error found during parsing
             return new ExecutableNode(this) {
+                @Child LLVMExpressionNode rootExpr;
+
                 @Override
                 public Object execute(VirtualFrame frame) {
-
+                    rootExpr = root;
                     try {
                         // try to execute node
-                        return String.valueOf(root.executeGeneric(frame));
+                        return String.valueOf(rootExpr.executeGeneric(frame));
                     } catch (DebugExprException e) {
                         // return message of exception that occurred during AST execution
                         return e.getMessage();
