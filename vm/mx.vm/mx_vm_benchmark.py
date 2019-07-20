@@ -216,7 +216,7 @@ class NativeImageVM(GraalVm):
                     hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
 
                 if self.hotspot_pgo:
-                    hotspot_vm_args += ['-Dgraal.ProfilesCollectExperimental=true']
+                    hotspot_vm_args += ['-Dgraal.PGOInstrument=true']
 
                 if config.extra_agent_run_args:
                     hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo else config.extra_agent_run_args
