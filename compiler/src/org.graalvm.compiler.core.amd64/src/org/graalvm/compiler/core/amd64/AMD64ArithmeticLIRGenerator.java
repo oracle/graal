@@ -1315,7 +1315,8 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Variable emitVectorLoad(LIRKind vectorKind, int count, Value address, LIRFrameState state) {
         AMD64AddressValue loadAddress = getAMD64LIRGen().asAddressValue(address);
         Variable result = getLIRGen().newVariable(vectorKind);
-//        getLIRGen().append(new AMD64Unary.VectorReadMemory(result, loadAddress));
+        // getLIRGen().append(new AMD64Unary.VectorReadMemory(result, loadAddress));
+        // Use the line below instead of the line above for the temporary-stack-space load op.
         getLIRGen().append(new AMD64Packing.LoadStackOp(getLIRGen(), asAllocatable(result), loadAddress, count));
         return result;
     }
@@ -1323,7 +1324,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public void emitVectorStore(LIRKind kind, int count, Value address, Value value, LIRFrameState state) {
         AMD64AddressValue storeAddress = getAMD64LIRGen().asAddressValue(address);
-        getLIRGen().append(new AMD64Unary.VectorWriteMemory(storeAddress, asAllocatable(value)));
+        getLIRGen().append(new AMD64Packing.StoreStackOp(getLIRGen(), storeAddress, asAllocatable(value), count));
     }
 
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {
