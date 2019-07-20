@@ -38,7 +38,7 @@ import com.oracle.truffle.tck.DebuggerTester;
 public final class LLVMDebugExprParserTest {
 
     private static final Path BC_DIR_PATH = Paths.get(TestOptions.TEST_SUITE_PATH, "debugexpr");
-    private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr", "debug");
+    private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr", "debugexpr");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr", "testExpr");
 
     private static final String OPTION_ENABLE_LVI = "llvm.enableLVI";

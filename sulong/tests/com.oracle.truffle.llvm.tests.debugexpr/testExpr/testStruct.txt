@@ -29,12 +29,10 @@
 #
 
 BREAK 64 CONTINUE "main"
-	"p.x" "3"
-	"p.x+p.y" "7"
 	"len" "5.0"
 	"(int)len" "5"
 	"line.start.y + line.end.y" "4"
 	"line.end.x * line.end.y" "0"
-	"line.start.x-p.x" "0"
-	"line.start.y-p.y" "0"
+	"line.start.x-3" "0"
+	"line.start.y-4" "0"
 	END
