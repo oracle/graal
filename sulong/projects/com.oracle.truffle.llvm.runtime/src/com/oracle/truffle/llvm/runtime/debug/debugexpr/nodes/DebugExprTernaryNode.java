@@ -29,42 +29,59 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class DebugExprTernaryNode extends LLVMExpressionNode {
+@NodeChild(value = "condition", type = LLVMExpressionNode.class)
+public abstract class DebugExprTernaryNode extends LLVMExpressionNode {
+    public abstract Object executeWithTarget(VirtualFrame frame, Object condition);
 
-    @Child private LLVMExpressionNode condition;
     @Child private LLVMExpressionNode thenNode;
     @Child private LLVMExpressionNode elseNode;
 
     private final ConditionProfile conditionProfile;
 
-    public DebugExprTernaryNode(LLVMExpressionNode condition, LLVMExpressionNode thenNode, LLVMExpressionNode elseNode) {
-        this.condition = condition;
+    public DebugExprTernaryNode(LLVMExpressionNode thenNode, LLVMExpressionNode elseNode) {
         this.thenNode = thenNode;
         this.elseNode = elseNode;
         this.conditionProfile = ConditionProfile.createCountingProfile();
     }
 
-    private boolean evaluateCondition(VirtualFrame frame) {
-        try {
-            return condition.executeI1(frame);
-        } catch (UnexpectedResultException e) {
-            throw DebugExprException.typeError(this, e.getResult());
-        }
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        if (conditionProfile.profile(evaluateCondition(frame))) {
+    @Specialization
+    Object doTernary(VirtualFrame frame, boolean condition) {
+        if (conditionProfile.profile(condition)) {
             return thenNode.executeGeneric(frame);
         } else {
             return elseNode.executeGeneric(frame);
         }
+    }
+
+    @Specialization
+    Object doTernary(VirtualFrame frame, int condition) {
+        if (conditionProfile.profile(condition != 0)) {
+            return thenNode.executeGeneric(frame);
+        } else {
+            return elseNode.executeGeneric(frame);
+        }
+    }
+
+    @Specialization
+    Object doTernary(VirtualFrame frame, long condition) {
+        if (conditionProfile.profile(condition != 0)) {
+            return thenNode.executeGeneric(frame);
+        } else {
+            return elseNode.executeGeneric(frame);
+        }
+    }
+
+    @Fallback
+    Object doError(Object condition) {
+        throw DebugExprException.typeError(this, condition);
     }
 
 }

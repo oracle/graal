@@ -98,7 +98,7 @@ public final class DebugExprNodeFactory {
         checkError(condition, "? :");
         checkError(thenNode, "? :");
         checkError(elseNode, "? :");
-        LLVMExpressionNode node = new DebugExprTernaryNode(condition.getNode(), thenNode.getNode(), elseNode.getNode());
+        LLVMExpressionNode node = DebugExprTernaryNodeGen.create(thenNode.getNode(), elseNode.getNode(), condition.getNode());
         return DebugExpressionPair.create(node, DebugExprType.commonType(thenNode.getType(), elseNode.getType()));
     }
 
