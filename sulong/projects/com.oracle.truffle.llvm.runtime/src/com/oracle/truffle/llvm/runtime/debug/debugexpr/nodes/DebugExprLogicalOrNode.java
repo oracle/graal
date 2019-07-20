@@ -40,7 +40,7 @@ public class DebugExprLogicalOrNode extends DebugExprShortCircuitEvaluationNode 
     }
 
     @Override
-    protected boolean isEvaluateRight(boolean leftValue) {
+    protected boolean shouldEvaluateRight(boolean leftValue) {
         return !leftValue;
     }
 

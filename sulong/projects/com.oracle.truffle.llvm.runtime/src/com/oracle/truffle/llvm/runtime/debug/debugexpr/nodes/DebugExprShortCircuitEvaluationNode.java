@@ -62,7 +62,7 @@ public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpression
         }
         boolean rightValue;
         try {
-            if (evaluateRightProfile.profile(isEvaluateRight(leftValue))) {
+            if (evaluateRightProfile.profile(shouldEvaluateRight(leftValue))) {
                 rightValue = rightNode.executeI1(frame);
             } else {
                 rightValue = false;
@@ -73,11 +73,15 @@ public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpression
         return execute(leftValue, rightValue);
     }
 
-    protected abstract boolean isEvaluateRight(boolean leftValue);
+    /**
+     * Based on the value of the first term (='leftValue'), this method tells if the second term
+     * (='rightValue') is needed for the (short circuit) evaluation of the expression
+     */
+    protected abstract boolean shouldEvaluateRight(boolean leftValue);
 
     /**
-     * Calculates the result of the short circuit operation. If the right node is not evaluated then
-     * <code>false</code> is provided.
+     * Calculates the result of the short circuit operation. If 'shouldEvaluateRight(leftValue)'
+     * returns false, then this method will be called with rightValue=false.
      */
     protected abstract boolean execute(boolean leftValue, boolean rightValue);
 
