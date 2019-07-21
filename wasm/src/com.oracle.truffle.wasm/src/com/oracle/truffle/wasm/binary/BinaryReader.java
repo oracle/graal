@@ -190,7 +190,7 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.wasm.binary.constants.ExportIdentifier;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 
@@ -341,14 +341,23 @@ public class BinaryReader extends BinaryStreamReader {
         WasmCodeEntry codeEntry = new WasmCodeEntry(data);
         wasmModule.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
 
+        /*
+         * Create the root node and create and set the call target for the body.
+         * This needs to be done before reading the body block, because we need to be able to
+         * create direct call nodes {@see TruffleRuntime#createDirectCallNode} during parsing.
+         */
+        WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry);
+        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
+
         /* Initialise the code entry local variables (which contain the parameters and the locals). */
         initCodeEntryLocals(funcIndex);
 
-        /* Create the necessary objects, read and abstractly interpret the code entry */
+        /* Read (parse) and abstractly interpret the code entry */
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
         ExecutionState state = new ExecutionState();
-        WasmBlockNode block = readBlock(codeEntry, state, returnTypeId);
-        WasmRootNode rootNode = new WasmRootNode(wasmLanguage, codeEntry, block);
+        WasmBlockNode bodyBlock = readBlock(codeEntry, state, returnTypeId);
+        rootNode.setBody(bodyBlock);
 
         /* Push a frame slot to the frame descriptor for every local. */
         codeEntry.initLocalSlots(rootNode.getFrameDescriptor());
@@ -357,8 +366,6 @@ public class BinaryReader extends BinaryStreamReader {
         codeEntry.setByteConstants(state.byteConstants());
         codeEntry.setIntConstants(state.intConstants());
         codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -402,7 +409,8 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private WasmBlockNode readBlock(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
-        ArrayList<Node> nestedControlTable = new ArrayList<>();
+        ArrayList<WasmNode> nestedControlTable = new ArrayList<>();
+        ArrayList<DirectCallNode> callNodes = new ArrayList<>();
         int startStackSize = state.stackSize();
         int startOffset = offset();
         int startByteConstantOffset = state.byteConstantOffset();
@@ -468,10 +476,10 @@ public class BinaryReader extends BinaryStreamReader {
                 case CALL: {
                     int functionIndex = readFunctionIndex(bytesConsumed);
                     state.useByteConstant(bytesConsumed[0]);
-                    int functionNumArguments = wasmModule.symbolTable().function(functionIndex).numArguments();
-                    int functionReturnTypeLength = wasmModule.symbolTable().function(functionIndex).returnTypeLength();
-                    state.pop(functionNumArguments);
-                    state.push(functionReturnTypeLength);
+                    WasmFunction function = wasmModule.symbolTable().function(functionIndex);
+                    state.pop(function.numArguments());
+                    state.push(function.returnTypeLength());
+                    callNodes.add(Truffle.getRuntime().createDirectCallNode(function.getCallTarget()));
                     break;
                 }
                 case DROP:
@@ -740,6 +748,7 @@ public class BinaryReader extends BinaryStreamReader {
             }
         } while (opcode != END && opcode != ELSE);
         currentBlock.nestedControlTable = nestedControlTable.toArray(new WasmNode[nestedControlTable.size()]);
+        currentBlock.callNodeTable = callNodes.toArray(new DirectCallNode[callNodes.size()]);
         currentBlock.setByteLength(offset() - startOffset);
         currentBlock.setByteConstantLength(state.byteConstantOffset() - startByteConstantOffset);
         currentBlock.setIntConstantLength(state.intConstantOffset() - startIntConstantOffset);

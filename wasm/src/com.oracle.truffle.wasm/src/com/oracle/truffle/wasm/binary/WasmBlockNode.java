@@ -172,6 +172,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
@@ -184,6 +185,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialByteConstantOffset;
     @CompilationFinal private final int initialIntConstantOffset;
     @CompilationFinal(dimensions = 1) WasmNode[] nestedControlTable;
+    @CompilationFinal(dimensions = 1) DirectCallNode[] callNodeTable;
 
     public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int initialIntConstantOffset) {
         super(wasmModule, codeEntry, -1, -1);
@@ -193,11 +195,13 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         this.initialByteConstantOffset = initialByteConstantOffset;
         this.initialIntConstantOffset = initialIntConstantOffset;
         this.nestedControlTable = null;
+        this.callNodeTable = null;
     }
 
-    @ExplodeLoop
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     public int execute(WasmContext context, VirtualFrame frame) {
         int nestedControlOffset = 0;
+        int callNodeOffset = 0;
         int byteConstantOffset = initialByteConstantOffset;
         int intConstantOffset = initialIntConstantOffset;
         int stackPointer = initialStackPointer;
@@ -308,6 +312,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte returnType = function.returnType();
                     int numArgs = function.numArguments();
 
+                    DirectCallNode callNode = callNodeTable[callNodeOffset];
+                    callNodeOffset++;
+
                     Object[] args = new Object[numArgs];
                     for (int i = 0; i != numArgs; ++i) {
                         stackPointer--;
@@ -328,25 +335,22 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                         }
                     }
 
+                    Object result = callNode.call(args);
                     switch (returnType) {
                         case ValueTypes.I32_TYPE: {
-                            int result = (int) function.execute(args);
-                            pushInt(frame, stackPointer, result);
+                            pushInt(frame, stackPointer, (int) result);
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
-                            long result = (long) function.execute(args);
-                            push(frame, stackPointer, result);
+                            push(frame, stackPointer, (long) result);
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
-                            float result = (float) function.execute(args);
-                            pushFloat(frame, stackPointer, result);
+                            pushFloat(frame, stackPointer, (float) result);
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
-                            double result = (double) function.execute(args);
-                            pushDouble(frame, stackPointer, result);
+                            pushDouble(frame, stackPointer, (double) result);
                             break;
                         }
                         default: {

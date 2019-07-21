@@ -36,7 +36,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public class WasmUndefinedFunctionRootCallNode extends WasmRootNode {
 
     public WasmUndefinedFunctionRootCallNode(TruffleLanguage<?> language) {
-        super(language, null, null);
+        super(language, null);
     }
 
     @Override

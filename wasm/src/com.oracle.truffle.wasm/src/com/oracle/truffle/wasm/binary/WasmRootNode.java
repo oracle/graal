@@ -43,9 +43,13 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     @CompilationFinal private WasmCodeEntry codeEntry;
     @Child private WasmBlockNode body;
 
-    public WasmRootNode(TruffleLanguage<?> language, WasmCodeEntry codeEntry, WasmBlockNode body) {
+    public WasmRootNode(TruffleLanguage<?> language, WasmCodeEntry codeEntry) {
         super(language);
         this.codeEntry = codeEntry;
+        this.body = null;
+    }
+
+    public void setBody(WasmBlockNode body) {
         this.body = body;
     }
 
