@@ -143,9 +143,9 @@ public class SymbolTable {
         }
     }
 
-    public void allocateFunction(int typeIndex) {
+    public void allocateFunction(WasmLanguage language, int functionIndex, int typeIndex) {
         ensureFunctionTypeCapacity(typeIndex);
-        functionTypes[numFunctions] = new WasmFunction(this, typeIndex);
+        functionTypes[numFunctions] = new WasmFunction(this, language, functionIndex, typeIndex);
         ++numFunctions;
     }
 

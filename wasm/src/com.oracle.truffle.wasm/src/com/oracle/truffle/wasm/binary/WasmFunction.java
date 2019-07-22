@@ -30,6 +30,7 @@
 package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -37,16 +38,18 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmFunction implements TruffleObject {
-    private SymbolTable symbolTable;
+    private final SymbolTable symbolTable;
     private WasmCodeEntry codeEntry;
-    private int typeIndex;
+    private final String name;
+    private final int typeIndex;
     private RootCallTarget callTarget;
 
-    public WasmFunction(SymbolTable symbolTable, int typeIndex) {
+    public WasmFunction(SymbolTable symbolTable, WasmLanguage language, int functionIndex, int typeIndex) {
         this.symbolTable = symbolTable;
         this.codeEntry = null;
+        this.name = String.valueOf(functionIndex);
         this.typeIndex = typeIndex;
-        this.callTarget = null;
+        this.callTarget = Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootCallNode(language));
     }
 
     public int numArguments() {
@@ -67,6 +70,11 @@ public class WasmFunction implements TruffleObject {
 
     public RootCallTarget getCallTarget() {
         return callTarget;
+    }
+
+    @Override
+    public String toString() {
+        return name;
     }
 
     @ExportMessage

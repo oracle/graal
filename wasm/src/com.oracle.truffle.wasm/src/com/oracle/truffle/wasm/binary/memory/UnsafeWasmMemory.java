@@ -31,8 +31,6 @@ package com.oracle.truffle.wasm.binary.memory;
 
 import java.lang.reflect.Field;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.wasm.binary.Assert;
 import sun.misc.Unsafe;
 
 public class UnsafeWasmMemory implements WasmMemory {

@@ -290,10 +290,10 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readFunctionSection() {
-        int numFunctionTypeIdxs = readVectorLength();
-        for (byte t = 0; t != numFunctionTypeIdxs; ++t) {
-            int funcTypeIdx = readUnsignedInt32();
-            wasmModule.symbolTable().allocateFunction(funcTypeIdx);
+        int numFunctions = readVectorLength();
+        for (byte functionIndex = 0; functionIndex != numFunctions; ++functionIndex) {
+            int functionTypeIndex = readUnsignedInt32();
+            wasmModule.symbolTable().allocateFunction(wasmLanguage, functionIndex, functionTypeIndex);
         }
     }
 
