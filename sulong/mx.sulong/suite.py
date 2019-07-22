@@ -105,6 +105,9 @@ suite = {
       "results" : [
         "bin/<lib:sulongtest>",
       ],
+      "buildDependencies" : [
+        "SULONG_LLVM_ORG",
+      ],
       "buildEnv" : {
         "LIBSULONGTEST" : "<lib:sulongtest>",
         "CLANG" : "<llvm-tool:clang>",
