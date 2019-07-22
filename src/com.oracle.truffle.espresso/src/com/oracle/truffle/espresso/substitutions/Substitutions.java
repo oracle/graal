@@ -43,10 +43,51 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * Substitutions/intrinsics for Espresso.
+ * <p>
+ * Some substitutions are statically defined, others runtime-dependent. The static ones are
+ * collected by Espresso's annotation processor, and registered in the generated class
+ * {@link com.oracle.truffle.espresso.substitutions.SubstitutorCollector}. Iterating over the
+ * collection in this class allows to register them directly, and assign to each of them a node,
+ * which will dispatch them directly, without the need for reflection. In practice, this allows
+ * inlining.
+ * <p>
+ * To register a substitution in Espresso:
+ * <li>Create a class annotated with {@link EspressoSubstitutions}. Its name must be the fully
+ * qualified name of the substituted class, to which is prepended "Target_" and each "." is replaced
+ * by a "_". For example, java.lang.Class becomes Target_java_lang_Class. Keep the "$" in case you
+ * want to substitute an inner class.
+ * <li>For each substituted method of the class, create a method in the "Target_" class. This method
+ * should be annotated with {@link Substitution}. If the method is an instance method, it must be
+ * annotated with {@link Substitution#hasReceiver()} = true
+ * <li>If the method has a primitive signature, the signature of the substitution should be the
+ * same, save for a potential receiver. If there are reference types in the signature, Simply put a
+ * StaticObject type instead, but annotate the argument with {@link Host}. This must be done for
+ * EVERY reference argument, even the receiver.
+ * <li>If the class of the reference argument is public, (/ex {@link Class}), you can simply put @
+ * {@link Host}({@link Class}.class) in the annotation. If the class is private, you have to put
+ * {@link Host}(typeName() = ...), where "..." is the internal name of the class (ie: the qualified
+ * name, where all "." are replaced with "/", an "L" is prepended, and a ";" is appended. /ex:
+ * java.lang.Class becomes Ljava/lang/Class;.)
+ * <li>The name of the method in the substitution can be the same as the substitution target, and it
+ * will work out. Note that it might happen that a class overloads a method, and since types gets
+ * "erased" in the substitution, it is not possible to give the same name to both. If that happens,
+ * you can use the {@link Substitution#methodName()} value. For example, in {@link java.util.Arrays}
+ * , the toString(... array) method is overloaded with every primitive array type. In that case you
+ * can write in the substitution
  *
- * Some substitutions are statically defined, others runtime-dependent. The static-ones are
- * initialized in the static initializer; which allows using MethodHandles instead of reflection in
- * SVM.
+ * <pre>
+ * {@literal @}Substitution(methodName = toString)
+ * public static @Host(String.class) StaticObject toString_byte(@Host(byte[].class) StaticObject array) {
+ *     ...
+ * }
+ *
+ * {@literal @}Substitution(methodName = toString)
+ * public static @Host(String.class) StaticObject toString_int(@Host(int[].class) StaticObject array) {
+ *     ...
+ * }
+ * </pre>
+ *
+ * and so on so forth.
  */
 public final class Substitutions implements ContextAccess {
 

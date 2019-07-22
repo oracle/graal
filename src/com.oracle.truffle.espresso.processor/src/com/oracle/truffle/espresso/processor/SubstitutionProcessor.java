@@ -134,10 +134,14 @@ public class SubstitutionProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnvironment) {
         super.init(processingEnvironment);
         // Initialize the collector.
+        initCollector();
+    }
+
+    private void initCollector() {
         this.collector = new StringBuilder();
         collector.append(COPYRIGHT);
-        collector.append(GENERATED_BY).append(SubstitutionProcessor.class.getSimpleName()).append("\n\n");
-        collector.append(IMPORTS_COLLECTOR);
+        collector.append(IMPORTS_COLLECTOR).append("\n");
+        collector.append(GENERATED_BY).append(SubstitutionProcessor.class.getSimpleName());
         collector.append(PUBLIC_FINAL_CLASS).append(COLLECTOR).append(" {\n");
         collector.append(generateInstance("ArrayList<>", COLLECTOR_INSTANCE_NAME, "List<" + SUBSTITUTOR + ">"));
         collector.append(TAB_1).append("private ").append(COLLECTOR).append("() {\n").append(TAB_1).append("}\n");
@@ -612,14 +616,14 @@ public class SubstitutionProcessor extends AbstractProcessor {
         StringBuilder classFile = new StringBuilder();
         // Header
         classFile.append(COPYRIGHT);
-        classFile.append(GENERATED_BY).append(className).append("\n\n");
         classFile.append(PACKAGE);
 
         if (parameterTypeName.contains("StaticObject")) {
-            classFile.append(IMPORT_STATIC_OBJECT);
+            classFile.append(IMPORT_STATIC_OBJECT).append("\n");
         }
 
         // Class
+        classFile.append(GENERATED_BY).append(className);
         classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(EXTENSION);
         classFile.append(generateInstance(substitutorName, INSTANCE_NAME, SUBSTITUTOR)).append("\n");
         classFile.append(generateConstructor(substitutorName, className, actualMethodName, returnType, guestTypeNames, hasReceiver)).append("\n");
