@@ -59,7 +59,7 @@ public final class StandardTags {
         /* No instances */
     }
 
-    @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, ExpressionTag.class};
+    @SuppressWarnings({"rawtypes"}) static final Class[] ALL_TAGS = new Class[]{StatementTag.class, CallTag.class, RootTag.class, RootBodyTag.class, ExpressionTag.class, TryBlockTag.class};
 
     /**
      * Marks program locations that represent a statement of a language.
