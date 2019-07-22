@@ -106,10 +106,12 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         System.out.println(String.format("Running: %s (%d %s)", suiteName(), testCases.size(), testCases.size() == 1 ? "test" : "tests"));
         System.out.println("--------------------------------------------------------------------------------");
         System.out.println("Using runtime: " + Truffle.getRuntime().toString());
+        int skipped = 0;
         for (WasmTestCase testCase : testCases) {
             try {
                 WasmTestStatus status = runTestCase(testCase);
                 if (status == WasmTestStatus.SKIPPED) {
+                    skipped++;
                     continue;
                 }
                 System.out.print("\uD83D\uDE0D");
@@ -128,9 +130,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 System.err.println(entry.getValue().getClass().getSimpleName() + ": " + entry.getValue().getMessage());
                 entry.getValue().printStackTrace();
             }
-            System.err.println(String.format("\uD83D\uDCA5\u001B[31m %d/%d Wasm tests passed.\u001B[0m", testCases.size() - errors.size(), testCases.size()));
+            System.err.println(String.format("\uD83D\uDCA5\u001B[31m %d/%d Wasm tests passed.\u001B[0m", testCases.size() - skipped - errors.size(), testCases.size() - skipped));
         } else {
-            System.out.println(String.format("\uD83C\uDF40\u001B[32m %d/%d Wasm tests passed.\u001B[0m", testCases.size() - errors.size(), testCases.size()));
+            System.out.println(String.format("\uD83C\uDF40\u001B[32m %d/%d Wasm tests passed.\u001B[0m", testCases.size() - skipped - errors.size(), testCases.size() - skipped));
         }
         System.out.println();
     }
@@ -156,7 +158,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             List<Path> testFiles = walk.filter(isWatFile).collect(Collectors.toList());
             for (Path f : testFiles) {
                 String baseFileName = f.toAbsolutePath().toString().split("\\.(?=[^.]+$)")[0];
-                String testName = Paths.get(baseFileName).getFileName().toString().toUpperCase();
+                String testName = Paths.get(baseFileName).getFileName().toString();
                 Path resultPath = Paths.get(baseFileName + ".result");
                 String resultSpec = Files.lines(resultPath).limit(1).collect(Collectors.joining());
                 String[] resultTypeValue = resultSpec.split("\\s+");
