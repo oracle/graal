@@ -23,12 +23,9 @@
 
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.substitutions.Substitutor;
 
 public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
@@ -42,42 +39,18 @@ public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
     @Override
     public Object invokeNaked(VirtualFrame frame) {
         try {
-            return callIntrinsic(frame.getArguments());
-        } catch (Throwable inner) {
-            CompilerDirectives.transferToInterpreter();
-            // Exceptions that should propagate as is
-            if (inner instanceof EspressoException) {
-                throw (EspressoException) inner;
-            }
-            // Exceptions that should not be caught.
-            if (inner instanceof EspressoExitException) {
-                throw (EspressoExitException) inner;
-            }
-            // Wrap exceptions
-            if (inner instanceof Exception) {
-                throw getMeta().throwExWithMessage(inner.getClass(), inner.getMessage());
-            }
-            // Errors that should propagate without boxing
-            if (inner instanceof VirtualMachineError) {
-                throw (VirtualMachineError) inner;
-            }
-            if (inner instanceof EspressoError) {
-                EspressoError outer = (EspressoError) inner;
+            return substitution.invoke(frame.getArguments());
+        } catch (EspressoError e) {
+            // Unnest Espresso Errors
+            Throwable inner = e;
+            EspressoError outer = (EspressoError) inner;
+            inner = inner.getCause();
+            while (inner instanceof EspressoError) {
+                outer = (EspressoError) inner;
                 inner = inner.getCause();
-                while (inner instanceof EspressoError) {
-                    outer = (EspressoError) inner;
-                    inner = inner.getCause();
-                }
-
-                // outer.printStackTrace();
-                throw outer;
             }
-            inner.printStackTrace();
-            throw EspressoError.shouldNotReachHere(inner + "\n\t in reflected method: " + substitution);
-        }
-    }
 
-    private Object callIntrinsic(Object... args) {
-        return substitution.invoke(args);
+            throw outer;
+        }
     }
 }
