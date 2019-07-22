@@ -187,7 +187,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VECTOR_SUB_TABLE.getOp(scalarKind, length), getRegisterSize(result), result, input));
+            getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VECTOR_SUB_TABLE.getOp(scalarKind, length), getLIRGen(), getRegisterSize(result), result, input));
             return result;
         }
         switch ((AMD64Kind) input.getPlatformKind()) {
@@ -227,7 +227,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         AMD64Kind kind = (AMD64Kind) input.getPlatformKind();
 
         if (kind.getVectorLength() > 1 && isAvx) {
-            getLIRGen().append(new AMD64VectorUnary.AVXNotOp(getRegisterSize(result), result, input));
+            getLIRGen().append(new AMD64VectorUnary.AVXNotOp(getLIRGen(), getRegisterSize(result), result, input));
             return result;
         }
         switch ((AMD64Kind) input.getPlatformKind()) {
