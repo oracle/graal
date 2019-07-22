@@ -29,7 +29,6 @@ import pipes
 
 import mx, mx_benchmark
 import mx_sdk, mx_vm
-
 import os
 from os.path import dirname
 
@@ -106,6 +105,7 @@ class NativeImageVM(GraalVm):
             self.extra_profile_run_args = []
             self.needs_config = True
             self.config_dir = None
+            self.profile_dir = None
 
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
@@ -137,10 +137,11 @@ class NativeImageVM(GraalVm):
 
             return benchmark_run_args
 
-    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, hotspot_pgo):
+    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, hotspot_pgo, is_gate):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.pgo_instrumented_iterations = pgo_instrumented_iterations
         self.hotspot_pgo = hotspot_pgo
+        self.is_gate = is_gate
 
     @staticmethod
     def supported_vm_args():
@@ -201,22 +202,28 @@ class NativeImageVM(GraalVm):
         if '-version' in args:
             return super(NativeImageVM, self).run_java(args, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
         else:
+            non_zero_is_fatal = self.is_gate or nonZeroIsFatal
             config = NativeImageVM.BenchmarkConfig()
             original_java_run_args = config.parse(args)
             executable, classpath_arguments, system_properties, image_run_args = NativeImageVM.extract_benchmark_arguments(original_java_run_args)
+            executable_name = (executable[1] if executable[0] == '-jar' else executable[0]).lower()
 
             # Agent configuration and/or HotSpot profiling
             needs_config = (config.config_dir is None) and config.needs_config
             if needs_config or self.hotspot_pgo:
-                hotspot_vm_args = []
+                hotspot_vm_args = ['-ea', '-esa'] if self.is_gate else []
                 hotspot_run_args = []
 
                 if needs_config:
                     config.config_dir = mx.mkdtemp(suffix='config', prefix='native-image')
                     hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
 
+                if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo:
+                    config.profile_dir = mx.mkdtemp(suffix='profile', prefix='native-image')
+                    profile_path = os.path.join(config.profile_dir, executable_name + '.iprof')
+
                 if self.hotspot_pgo:
-                    hotspot_vm_args += ['-Dgraal.ProfilesCollectExperimental=true']
+                    hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
 
                 if config.extra_agent_run_args:
                     hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo else config.extra_agent_run_args
@@ -227,14 +234,13 @@ class NativeImageVM(GraalVm):
 
                 mx.log('Running with HotSpot to get the configuration files and profiles. This could take a while:')
                 super(NativeImageVM, self).run_java(hotspot_args,
-                                                    out=None, err=None, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                                                    out=None, err=None, cwd=cwd, nonZeroIsFatal=non_zero_is_fatal)
 
             base_image_build_args = [os.path.join(mx_vm.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
-            base_image_build_args += ['--no-fallback', '-H:+TraceClassInitialization']
-            base_image_build_args += ['-J-ea', '-J-esa']
+            base_image_build_args += ['--no-fallback']
+            base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '-H:+TraceClassInitialization'] if self.is_gate else []
             base_image_build_args += system_properties
             base_image_build_args += classpath_arguments
-            executable_name = (executable[1] if executable[0] == '-jar' else executable[0]).lower()
             base_image_build_args += executable
             base_image_build_args += ['-H:Name=' + executable_name]
             if needs_config:
@@ -248,9 +254,10 @@ class NativeImageVM(GraalVm):
                 instrument_image_build_args = base_image_build_args + instrument_args
                 mx.log('Building the instrumentation image with: ')
                 mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in instrument_image_build_args]))
-                mx.run(instrument_image_build_args, out=None, err=None, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                mx.run(instrument_image_build_args, out=None, err=None, cwd=cwd, nonZeroIsFatal=non_zero_is_fatal)
 
                 image_run_cmd = [os.path.abspath(executable_name)]
+                image_run_cmd += ['-XX:ProfilesDumpFile=' + profile_path]
                 if config.extra_profile_run_args:
                     image_run_cmd += config.extra_profile_run_args
                 else:
@@ -258,22 +265,22 @@ class NativeImageVM(GraalVm):
 
                 mx.log('Running the instrumented image with: ')
                 mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
-                mx.run(image_run_cmd, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                mx.run(image_run_cmd, out=out, err=err, cwd=cwd, nonZeroIsFatal=non_zero_is_fatal)
 
                 i += 1
 
             # Build the final image
-            pgo_args = ['--pgo'] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
+            pgo_args = ['--pgo=' + profile_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
             final_image_args = base_image_build_args + pgo_args
             mx.log('Building the final image with: ')
             mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in final_image_args]))
-            mx.run(final_image_args, out=None, err=None, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+            mx.run(final_image_args, out=None, err=None, cwd=cwd, nonZeroIsFatal=non_zero_is_fatal)
 
             # Execute the benchmark
             image_run_cmd = [os.path.abspath(executable_name)] + image_run_args + config.extra_run_args
             mx.log('Running the produced native executable with: ')
             mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in image_run_cmd]))
-            mx.run(image_run_cmd, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+            mx.run(image_run_cmd, out=out, err=err, cwd=cwd, nonZeroIsFatal=non_zero_is_fatal)
 
 
 class NativeImageBuildVm(GraalVm):
@@ -353,9 +360,10 @@ def register_graalvm_vms():
     # We support only EE and CE configuration for native-image benchmarks
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_vm.registered_graalvm_components(stage1=False)):
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix, None, None, 0, False), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-' + config_suffix, None, None, 1, False), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-hotspot-' + config_suffix, None, None, 0, True), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix, None, None, 0, False, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-' + config_suffix, None, None, 1, False, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'pgo-hotspot-' + config_suffix, None, None, 0, True, False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, None, None, 0, True, True), _suite, 10)
             break
 
 # Add VMs for libgraal
