@@ -218,6 +218,11 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
     }
 
     @Override
+    public Parameter[] getParameters() {
+        return original.getParameters();
+    }
+
+    @Override
     public Type[] getGenericParameterTypes() {
         return original.getGenericParameterTypes();
     }

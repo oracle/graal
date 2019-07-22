@@ -408,7 +408,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
     public Executable getJavaMethod() {
         try {
             ResolvedJavaMethod.Parameter[] parameters = getParameters();
-            Class<?>[] parameterTypes = new Class<?>[parameters == null ? 0 : parameters.length];
+            Class<?>[] parameterTypes = new Class<?>[parameters.length];
             for (int i = 0; i < parameterTypes.length; i++) {
                 parameterTypes[i] = universe.lookup(parameters[i].getType()).getJavaClass();
             }
