@@ -29,6 +29,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.InstanceReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -51,7 +52,8 @@ public class VMThreadLocalMTObjectReferenceWalker extends ObjectReferenceWalker 
     @Override
     public boolean walk(ObjectReferenceVisitor referenceVisitor) {
         for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-            if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, vmThreadReferenceMapEncoding, vmThreadReferenceMapIndex, referenceVisitor)) {
+            if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding),
+                            vmThreadReferenceMapIndex, referenceVisitor)) {
                 return false;
             }
         }

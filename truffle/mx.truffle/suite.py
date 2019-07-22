@@ -739,6 +739,32 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_21"],
       "testProject" : True,
     },
+
+    "com.oracle.truffle.st" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "TRUFFLE_API",
+      ],
+      "javaCompliance" : "8+",
+      "checkstyleVersion" : "8.8",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle,SimpleLanguage",
+    },
+
+    "com.oracle.truffle.st.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "com.oracle.truffle.st"
+      ],
+      "javaCompliance" : "8+",
+      "checkstyleVersion" : "8.8",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle,SimpleLanguage",
+      "testProject" : True,
+    },
    },
 
   "licenses" : {
@@ -960,6 +986,39 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:POLYGLOT_TCK"
+      ],
+      "maven" : False
+    },
+
+    "TRUFFLE_ST" : {
+      "subDir" : "src",
+      "javaCompliance" : "8+",
+      "dependencies" : [
+        "com.oracle.truffle.st",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+          "TRUFFLE_API",
+      ],
+      "description" : "Truffle ST is an example tool implemented using the Truffle API.",
+      "allowsJavadocWarnings": True,
+      "maven" : False
+    },
+
+    "TRUFFLE_ST_TEST" : {
+      "subDir" : "src",
+      "javaCompliance" : "8+",
+      "dependencies" : [
+        "com.oracle.truffle.st.test"
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+        "TRUFFLE_API",
+        "TRUFFLE_ST"
       ],
       "maven" : False
     },

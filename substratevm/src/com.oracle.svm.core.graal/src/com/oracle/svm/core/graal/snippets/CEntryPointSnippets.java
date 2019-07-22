@@ -72,6 +72,7 @@ import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -182,6 +183,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
+        CodeInfoTable.prepareImageCodeInfo();
         if (MultiThreaded.getValue()) {
             if (!VMThreads.ensureInitialized()) {
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;

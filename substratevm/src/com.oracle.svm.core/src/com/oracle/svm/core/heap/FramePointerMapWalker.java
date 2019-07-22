@@ -27,6 +27,7 @@ package com.oracle.svm.core.heap;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -42,24 +43,13 @@ public class FramePointerMapWalker implements StackFrameVisitor {
     }
 
     @Override
-    public boolean prologue() {
-        return visitor.prologue();
-    }
-
-    @Override
-    public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame) {
-        return CodeInfoTable.visitObjectReferences(sp, ip, deoptimizedFrame, visitor);
-    }
-
-    @Override
-    public boolean epilogue() {
-        return visitor.epilogue();
+    public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+        return CodeInfoTable.visitObjectReferences(sp, ip, codeInfo, deoptimizedFrame, visitor);
     }
 
     protected FramePointerMapWalker(final ObjectReferenceVisitor objRefVisitor) {
         this.visitor = objRefVisitor;
     }
 
-    /** State. */
     private final ObjectReferenceVisitor visitor;
 }

@@ -299,7 +299,6 @@ class HeapChunkProvider {
     /** Reset the mutable state of a chunk. */
     private static void resetChunkHeader(Header<?> chunk, Pointer objectsStart) {
         chunk.setTop(objectsStart);
-        chunk.setPinned(false);
         chunk.setSpace(null);
         chunk.setNext(WordFactory.nullPointer());
         chunk.setPrevious(WordFactory.nullPointer());
