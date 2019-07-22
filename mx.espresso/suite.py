@@ -131,6 +131,7 @@ suite = {
             "platformDependent": True,
             "use_jdk_headers": True,
             "buildDependencies": [
+                "espresso:ESPRESSO_MOKAPOT_VERSION_SCRIPT",
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
             "cflags": ["-Wall", "-Werror"],
@@ -150,7 +151,7 @@ suite = {
                 "<others>": {
                   "ldflags": [
                     "-Wl,-soname,libjvm.so",
-                    "-Wl,--version-script,../mapfile-vers",
+                    "-Wl,--version-script,<path:espresso:ESPRESSO_MOKAPOT_VERSION_SCRIPT>/mapfile-vers",
                   ], 
                 },
               },
@@ -264,5 +265,15 @@ suite = {
             "maven": False,
         },
 
+        "ESPRESSO_MOKAPOT_VERSION_SCRIPT": {
+            "native": True,
+            "platformDependent": True,
+            "description": "libmokapot (linker) version script",
+            "layout": {
+                "./": [
+                    "file:src/com.oracle.truffle.espresso.mokapot/mapfile-vers",
+                ],
+            }
+        },
     }
 }
