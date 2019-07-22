@@ -207,7 +207,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         return run(vmArgs, testClasses)
 
     def defaultTestClasses(self):
-        return ["com.oracle.truffle.llvm.test.GCCSuite"]
+        return ["com.oracle.truffle.llvm.tests.GCCSuite"]
 
     def getTestFile(self):
         if not hasattr(self, '_testfile'):

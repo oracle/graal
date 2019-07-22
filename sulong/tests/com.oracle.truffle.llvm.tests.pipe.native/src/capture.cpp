@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <jni.h>
-#include "com_oracle_truffle_llvm_pipe_CaptureNativeOutput.h"
+#include "com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput.h"
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -47,7 +47,7 @@ static bool check_error(JNIEnv *env, int ret) {
   }
 }
 
-JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureNativeOutput_startCapturing(JNIEnv *env, jclass self, jint stdFd, jstring filename) {
+JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_startCapturing(JNIEnv *env, jclass self, jint stdFd, jstring filename) {
   const char *path = env->GetStringUTFChars(filename, NULL);
 
   int fd = open(path, O_WRONLY);
@@ -74,17 +74,17 @@ JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureNativeOutput_sta
   return oldFd;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_pipe_CaptureNativeOutput_stopCapturing(JNIEnv *env, jclass self, jint oldStdOut, jint oldStdErr) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_stopCapturing(JNIEnv *env, jclass self, jint oldStdOut, jint oldStdErr) {
   if (check_error(env, fflush(stdout))) {
     return;
   }
   if (check_error(env, fflush(stderr))) {
     return;
   }
-  if (check_error(env, dup2(oldStdOut, com_oracle_truffle_llvm_pipe_CaptureNativeOutput_STDOUT))) {
+  if (check_error(env, dup2(oldStdOut, com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_STDOUT))) {
     return;
   }
-  if (check_error(env, dup2(oldStdErr, com_oracle_truffle_llvm_pipe_CaptureNativeOutput_STDERR))) {
+  if (check_error(env, dup2(oldStdErr, com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_STDERR))) {
     return;
   }
   if (check_error(env, close(oldStdOut))) {
