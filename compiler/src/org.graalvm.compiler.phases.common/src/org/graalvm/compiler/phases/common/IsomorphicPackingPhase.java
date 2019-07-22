@@ -421,7 +421,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
         }
 
-        private boolean stmtsCanPack(Set<Pair<ValueNode, ValueNode>> packSet, Node s1, Node s2, int align) {
+        private boolean stmtsCanPack(Set<Pair<ValueNode, ValueNode>> packSet, Node s1, Node s2, Integer align) {
             // TODO: Also make sure that the platform supports vectors of the primitive type of this candidate pack
 
             if (supported(s1) && supported(s2) &&
@@ -432,7 +432,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
                 final int s2DataSize = dataSize(s2);
                 boolean offset = false;
-                if (s2DataSize >= 0) {
+                if (s2DataSize >= 0 && align != null) {
                     offset = alignS2.map(v -> v == s2DataSize + align).orElse(false);
                 }
 
@@ -520,7 +520,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     }
 
                     // TODO: Rather than adding the first, add the best
-                    if (!align.isPresent() || stmtsCanPack(packSet, leftUsage, rightUsage, align.get())) {
+                    if (stmtsCanPack(packSet, leftUsage, rightUsage, align.orElse(null))) {
                         final int currentSavings = estSavings(packSet, leftUsage, rightUsage);
                         if (currentSavings > savings) {
                             savings = currentSavings;
@@ -639,7 +639,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 for (FixedAccessNode s2 : memoryNodes) {
                     if (adjacent(s1, s2)) {
                         final Optional<Integer> alignS1 = getAlignment(s1);
-                        if (alignS1.isPresent() && stmtsCanPack(packSet, s1, s2, alignS1.get())) {
+                        if (stmtsCanPack(packSet, s1, s2, alignS1.orElse(null))) {
                             packSet.add(Pair.create(s1, s2));
                         }
                     }
