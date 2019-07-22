@@ -37,7 +37,6 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -94,6 +93,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
+
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
+                    SpeculationLog.class, "speculationLog");
 
     /**
      * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
@@ -333,6 +335,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert frame != null && this != null;
             if (CompilerDirectives.inInterpreter() && inCompiled) {
+                if (!isValid()) {
+                    getCompilationProfile().reportInvalidated();
+                }
                 notifyDeoptimized(frame);
             }
         }
@@ -481,14 +486,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * this call target. Note that this may differ from the speculation log
      * {@linkplain CompilableTruffleAST#getCompilationSpeculationLog() used for compilation}.
      */
-    public synchronized SpeculationLog getSpeculationLog() {
+    public SpeculationLog getSpeculationLog() {
         if (speculationLog == null) {
-            speculationLog = ((GraalTruffleRuntime) Truffle.getRuntime()).createSpeculationLog();
+            SPECULATION_LOG_UPDATER.compareAndSet(this, null, ((GraalTruffleRuntime) Truffle.getRuntime()).createSpeculationLog());
         }
         return speculationLog;
     }
 
-    synchronized void setSpeculationLog(SpeculationLog speculationLog) {
+    void setSpeculationLog(SpeculationLog speculationLog) {
         this.speculationLog = speculationLog;
     }
 
@@ -606,11 +611,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * Intrinsifiable compiler directive for creating a frame.
      */
     public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
-        if (LazyFrameBoxingQuery.useFrameWithoutBoxing) {
-            return new FrameWithoutBoxing(descriptor, args);
-        } else {
-            return new FrameWithBoxing(descriptor, args);
-        }
+        return new FrameWithoutBoxing(descriptor, args);
     }
 
     final void onLoopCount(int count) {

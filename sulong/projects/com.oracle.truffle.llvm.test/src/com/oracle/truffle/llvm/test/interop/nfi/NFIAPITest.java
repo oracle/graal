@@ -33,6 +33,8 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.test.interop.InteropTestBase;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -52,10 +54,10 @@ import com.oracle.truffle.tck.TruffleRunner;
 
 public class NFIAPITest {
 
-    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
+    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(InteropTestBase.getContextBuilder());
 
     private static final Path TEST_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "nfi");
-    private static final String SULONG_FILENAME = "O0_MEM2REG.bc";
+    private static final String SULONG_FILENAME = "O0_MEM2REG." + NFIContextExtension.getNativeLibrarySuffix();
 
     public static TruffleObject sulongObject;
     public static CallTarget lookupAndBind;
@@ -73,8 +75,8 @@ public class NFIAPITest {
     private static TruffleObject loadLibrary(String lib, String filename) {
         File file = new File(TEST_DIR.toFile(), lib + "/" + filename);
         String loadLib = "with llvm load '" + file.getAbsolutePath() + "'";
-        Source source = Source.newBuilder("nfi", loadLib, "loadLibrary").build();
-        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        Source source = Source.newBuilder("nfi", loadLib, "loadLibrary").internal(true).build();
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         return (TruffleObject) target.call();
     }
 

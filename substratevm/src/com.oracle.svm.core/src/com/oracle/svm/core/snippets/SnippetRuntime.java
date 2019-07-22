@@ -64,7 +64,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
 
-    public static final SubstrateForeignCallDescriptor REPORT_TYPE_ASSERTION_ERROR = findForeignCall(SnippetRuntime.class, "reportTypeAssertionError", true, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor UNREACHED_CODE = findForeignCall(SnippetRuntime.class, "unreachedCode", true, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor UNRESOLVED = findForeignCall(SnippetRuntime.class, "unresolved", true, LocationIdentity.any());
 
@@ -110,7 +109,16 @@ public class SnippetRuntime {
         return findForeignCall(methodName, declaringClass, methodName, isReexecutable, killedLocations);
     }
 
+    public static SubstrateForeignCallDescriptor findForeignCall(Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo, LocationIdentity... killedLocations) {
+        return findForeignCall(methodName, declaringClass, methodName, isReexecutable, needsDebugInfo, killedLocations);
+    }
+
     private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, LocationIdentity... killedLocations) {
+        return findForeignCall(descriptorName, declaringClass, methodName, isReexecutable, true, killedLocations);
+    }
+
+    private static SubstrateForeignCallDescriptor findForeignCall(String descriptorName, Class<?> declaringClass, String methodName, boolean isReexecutable, boolean needsDebugInfo,
+                    LocationIdentity... killedLocations) {
         Method foundMethod = null;
         for (Method method : declaringClass.getDeclaredMethods()) {
             if (method.getName().equals(methodName)) {
@@ -127,7 +135,8 @@ public class SnippetRuntime {
         VMError.guarantee(declaringClass.getName().startsWith("java.lang") || DirectAnnotationAccess.isAnnotationPresent(foundMethod, SubstrateForeignCallTarget.class),
                         "Add missing @SubstrateForeignCallTarget to " + declaringClass.getName() + "." + methodName);
 
-        return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations);
+        boolean isGuaranteedSafepoint = needsDebugInfo && !DirectAnnotationAccess.isAnnotationPresent(foundMethod, Uninterruptible.class);
+        return new SubstrateForeignCallDescriptor(descriptorName, foundMethod, isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
     }
 
     public static class SubstrateForeignCallDescriptor extends ForeignCallDescriptor {
@@ -136,13 +145,17 @@ public class SnippetRuntime {
         private final String methodName;
         private final boolean isReexecutable;
         private final LocationIdentity[] killedLocations;
+        private final boolean needsDebugInfo;
+        private final boolean isGuaranteedSafepoint;
 
-        SubstrateForeignCallDescriptor(String descriptorName, Method method, boolean isReexecutable, LocationIdentity[] killedLocations) {
+        SubstrateForeignCallDescriptor(String descriptorName, Method method, boolean isReexecutable, LocationIdentity[] killedLocations, boolean needsDebugInfo, boolean isGuaranteedSafepoint) {
             super(descriptorName, method.getReturnType(), method.getParameterTypes());
             this.declaringClass = method.getDeclaringClass();
             this.methodName = method.getName();
             this.isReexecutable = isReexecutable;
             this.killedLocations = killedLocations;
+            this.needsDebugInfo = needsDebugInfo;
+            this.isGuaranteedSafepoint = isGuaranteedSafepoint;
         }
 
         public Class<?> getDeclaringClass() {
@@ -165,13 +178,14 @@ public class SnippetRuntime {
         public LocationIdentity[] getKilledLocations() {
             return killedLocations;
         }
-    }
 
-    /** Foreign call: {@link #REPORT_TYPE_ASSERTION_ERROR}. */
-    @SubstrateForeignCallTarget
-    private static void reportTypeAssertionError(byte[] msg, Object object) {
-        Log.log().string(msg).string(object == null ? "null" : object.getClass().getName()).newline();
-        throw VMError.shouldNotReachHere("type assertion error");
+        public boolean needsDebugInfo() {
+            return needsDebugInfo;
+        }
+
+        public boolean isGuaranteedSafepoint() {
+            return isGuaranteedSafepoint;
+        }
     }
 
     /** Foreign call: {@link #UNREACHED_CODE}. */
@@ -195,11 +209,11 @@ public class SnippetRuntime {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
         public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
-            CodePointer handlerPointer;
+            CodePointer handlerIP;
             if (deoptFrame != null) {
                 /* Deoptimization entry points always have an exception handler. */
                 deoptFrame.takeException();
-                handlerPointer = ip;
+                handlerIP = ip;
 
             } else {
                 long handler = CodeInfoTable.lookupExceptionOffset(ip);
@@ -208,7 +222,7 @@ public class SnippetRuntime {
                     return true;
                 }
 
-                handlerPointer = getExceptionHandlerPointer(ip, sp, handler);
+                handlerIP = (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handler));
             }
 
             Throwable exception = currentException.get();
@@ -216,20 +230,16 @@ public class SnippetRuntime {
 
             StackOverflowCheck.singleton().protectYellowZone();
 
-            KnownIntrinsics.farReturn(exception, sp, handlerPointer);
+            KnownIntrinsics.farReturn(exception, sp, handlerIP);
             /*
              * The intrinsic performs a jump to the specified instruction pointer, so this code is
              * unreachable.
              */
             return false;
         }
-
-        public CodePointer getExceptionHandlerPointer(CodePointer ip, @SuppressWarnings("unused") Pointer sp, long handlerOffset) {
-            return (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handlerOffset));
-        }
     }
 
-    protected static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
+    public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
 
     @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
     public static boolean isUnwindingForException() {
@@ -276,7 +286,7 @@ public class SnippetRuntime {
          * exception. So we can start looking for the exception handler immediately in that frame,
          * without skipping any frames in between.
          */
-        JavaStackWalker.walkCurrentThread(callerSP, callerIP, ImageSingletons.lookup(ExceptionStackFrameVisitor.class));
+        ImageSingletons.lookup(ExceptionUnwind.class).unwindException(callerSP, callerIP);
 
         /*
          * The stack walker does not return if an exception handler is found, but instead performs a
@@ -284,6 +294,14 @@ public class SnippetRuntime {
          * exception.
          */
         reportUnhandledExceptionRaw(exception);
+    }
+
+    public static class ExceptionUnwind {
+        private static final ExceptionStackFrameVisitor stackFrameVisitor = new ExceptionStackFrameVisitor();
+
+        public void unwindException(Pointer callerSP, CodePointer callerIP) {
+            JavaStackWalker.walkCurrentThread(callerSP, callerIP, stackFrameVisitor);
+        }
     }
 
     private static void reportUnhandledExceptionRaw(Throwable exception) {

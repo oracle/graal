@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,6 +44,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import org.junit.BeforeClass;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -240,9 +241,10 @@ public class TypedInteropTest extends InteropTestBase {
     }
 
     @Test
+    @Ignore("GR-17155")
     public void testAccessBitFields(@Inject(AccessBitFieldsNode.class) CallTarget accessBitFields) {
         int res = (int) accessBitFields.call(createBitFieldsStruct());
-        Assert.assertTrue(res != 0);
+        Assert.assertTrue(res == 6);
     }
 
     public static class FillFusedArrayNode extends SulongTestNode {
@@ -281,4 +283,39 @@ public class TypedInteropTest extends InteropTestBase {
         checkFusedArray(fusedArray);
     }
 
+    private static StructObject makeComplex(double re, double im) {
+        Map<String, Object> ret = new HashMap<>();
+        ret.put("re", re);
+        ret.put("im", im);
+        return new StructObject(ret);
+    }
+
+    public static class ReadTypeMismatchNode extends SulongTestNode {
+
+        public ReadTypeMismatchNode() {
+            super(testLibrary, "readTypeMismatch");
+        }
+    }
+
+    @Test
+    public void testReadTypeMismatch(@Inject(ReadTypeMismatchNode.class) CallTarget readTypeMismatch) {
+        double expected = 42.0;
+        Object ret = readTypeMismatch.call(makeComplex(expected, 0.0));
+        Assert.assertEquals(Double.doubleToLongBits(expected), ret);
+    }
+
+    public static class WriteTypeMismatchNode extends SulongTestNode {
+
+        public WriteTypeMismatchNode() {
+            super(testLibrary, "writeTypeMismatch");
+        }
+    }
+
+    @Test
+    public void writeTypeMismatch(@Inject(WriteTypeMismatchNode.class) CallTarget writeTypeMismatch) {
+        double expected = 37.0;
+        StructObject arg = makeComplex(0.0, 0.0);
+        writeTypeMismatch.call(arg, Double.doubleToLongBits(expected));
+        Assert.assertEquals(expected, arg.get("re"));
+    }
 }

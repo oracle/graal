@@ -25,9 +25,15 @@
 package org.graalvm.component.installer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.graalvm.component.installer.model.ComponentRegistry;
+import java.util.Locale;
 
 /**
  *
@@ -44,9 +50,38 @@ public class SystemUtils {
      */
     public static final String DELIMITER = "/"; // NOI18N
 
+    private static final String DOT = "."; // NOI18N
+
     private static final String DOTDOT = ".."; // NOI18N
 
     private static final String SPLIT_DELIMITER = Pattern.quote(DELIMITER);
+
+    public enum OS {
+        WINDOWS,
+        LINUX,
+        MAC,
+        UNKNOWN;
+
+        /**
+         * Obtain OS enum.
+         */
+        public static OS get() {
+            String osName = System.getProperty("os.name");
+            if (!(osName == null || osName.isEmpty())) {
+                String osNameLower = osName.toLowerCase(Locale.ENGLISH);
+                if (osNameLower.contains("windows")) {
+                    return WINDOWS;
+                }
+                if (osNameLower.contains("linux")) {
+                    return LINUX;
+                }
+                if (osNameLower.contains("mac") || osNameLower.contains("darwin")) {
+                    return MAC;
+                }
+            }
+            return UNKNOWN;
+        }
+    }
 
     /**
      * Creates a proper {@link Path} from string representation. The string representation uses
@@ -90,6 +125,9 @@ public class SystemUtils {
                         ((DELIMITER_CHAR != File.separatorChar) && (s.indexOf(File.separatorChar) >= 0))) {
             throw new IllegalArgumentException(s);
         }
+        if (DOT.equals(s) || DOTDOT.equals(s)) {
+            throw new IllegalArgumentException(s);
+        }
         return Paths.get(s);
     }
 
@@ -124,7 +162,27 @@ public class SystemUtils {
      */
     public static boolean isWindows() {
         String osName = System.getProperty("os.name"); // NOI18N
-        return osName != null && osName.toLowerCase().contains("windows");
+        return osName != null && osName.toLowerCase(Locale.ENGLISH).contains("windows");
+    }
+
+    /**
+     * Checks if running on Linux.
+     * 
+     * @return true, if on Linux.
+     */
+    public static boolean isLinux() {
+        String osName = System.getProperty("os.name"); // NOI18N
+        return osName != null && osName.toLowerCase(Locale.ENGLISH).contains("linux");
+    }
+
+    /**
+     * Checks if running on Mac.
+     *
+     * @return true, if on Mac.
+     */
+    public static boolean isMac() {
+        String osName = System.getProperty("os.name"); // NOI18N
+        return osName != null && osName.toLowerCase(Locale.ENGLISH).contains("mac");
     }
 
     /**
@@ -151,6 +209,17 @@ public class SystemUtils {
         System.arraycopy(comps, 1, comps, 0, l);
         comps[l] = ""; // NOI18N
         return Paths.get(s, comps);
+    }
+
+    public static Path resolveRelative(Path baseDir, String p) {
+        if (baseDir == null) {
+            return null;
+        }
+        if (p == null) {
+            return null;
+        }
+        String[] comps = checkRelativePath(baseDir, p);
+        return baseDir.resolve(fromArray(comps));
     }
 
     public static Path fromCommonRelative(Path base, String p) {
@@ -182,10 +251,13 @@ public class SystemUtils {
             throw new IllegalArgumentException("Absolute path");
         }
         String[] comps = p.split(SPLIT_DELIMITER);
-        int d = base == null ? 0 : base.getNameCount();
+        int d = base == null ? 0 : base.normalize().getNameCount() - 1;
+        int fromIndex = 0;
+        int toIndex = 0;
         for (String s : comps) {
             if (s.isEmpty()) {
-                throw new IllegalArgumentException("Empty path component");
+                fromIndex++;
+                continue;
             }
             if (DOTDOT.equals(s)) {
                 d--;
@@ -195,7 +267,94 @@ public class SystemUtils {
             } else {
                 d++;
             }
+            if (toIndex < fromIndex) {
+                comps[toIndex] = comps[fromIndex];
+            }
+            fromIndex++;
+            toIndex++;
         }
-        return comps;
+        if (fromIndex == toIndex) {
+            return comps;
+        } else {
+            // return without the empty parts
+            String[] newcomps = new String[toIndex];
+            System.arraycopy(comps, 0, newcomps, 0, toIndex);
+            return newcomps;
+        }
+    }
+
+    private static final Pattern OLD_VERSION_PATTERN = Pattern.compile("([0-9]+\\.[0-9]+(\\.[0-9]+)?(\\.[0-9]+)?)(-([a-z]+)([0-9]+)?)?");
+
+    /**
+     * Will transform some widely used formats to RPM-style. Currently it transforms:
+     * <ul>
+     * <li>1.0.1-dev[.x] => 1.0.1.0-0.dev[.x]
+     * <li>1.0.0 => 1.0.0.0
+     * </ul>
+     * 
+     * @param v
+     * @return normalized version
+     */
+    public static String normalizeOldVersions(String v) {
+        if (v == null) {
+            return null;
+        }
+        Matcher m = OLD_VERSION_PATTERN.matcher(v);
+        if (!m.matches()) {
+            return v;
+        }
+        String numbers = m.group(1);
+        String rel = m.group(5);
+        String relNo = m.group(6);
+
+        if (numbers.startsWith("0.")) {
+            return v;
+        }
+
+        if (rel == null) {
+            if (m.group(3) == null) {
+                return numbers + ".0";
+            } else {
+                return numbers;
+            }
+        } else {
+            if (m.group(3) == null) {
+                numbers = numbers + ".0";
+            }
+            return numbers + "-0." + rel + (relNo == null ? "" : "." + relNo);
+        }
+    }
+
+    public static Path getGraalVMJDKRoot(ComponentRegistry reg) {
+        if ("macos".equals(reg.getGraalCapabilities().get(CommonConstants.CAP_OS_NAME))) {
+            return Paths.get("Contents", "Home");
+        } else {
+            return Paths.get("");
+        }
+    }
+
+    /**
+     * Finds a file owner. On POSIX systems, returns owner of the file. On Windows (ACL fs view)
+     * returns the owner principal's name.
+     * 
+     * @param file the file to test
+     * @return owner name
+     */
+    public static String findFileOwner(Path file) throws IOException {
+        PosixFileAttributeView posix = file.getFileSystem().provider().getFileAttributeView(file, PosixFileAttributeView.class);
+        if (posix != null) {
+            return posix.getOwner().getName();
+        }
+        AclFileAttributeView acl = file.getFileSystem().provider().getFileAttributeView(file, AclFileAttributeView.class);
+        if (acl != null) {
+            return acl.getOwner().getName();
+        }
+        return null;
+    }
+
+    static boolean licenseTracking = false;
+
+    public static boolean isLicenseTrackingEnabled() {
+        return licenseTracking;
     }
 }

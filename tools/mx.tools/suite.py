@@ -1,10 +1,10 @@
 suite = {
-    "mxversion": "5.210.2",
+    "mxversion": "5.223.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "1.0.0-rc17",
+    "version" : "19.2.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -101,21 +101,15 @@ suite = {
     "libraries": {
        "NanoHTTPD" : {
           "path" : "lib/nanohttpd-2.3.1.jar",
-          "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/nanohttpd/nanohttpd/2.3.1/nanohttpd-2.3.1.jar",
-          ],
           "sha1" : "a8d54d1ca554a77f377eff6bf9e16ca8383c8f6c",
           "maven" : {
             "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd-webserver",
+            "artifactId" : "nanohttpd",
             "version" : "2.3.1",
           }
         },
        "NanoHTTPD-WebSocket" : {
           "path" : "lib/nanohttpd-websocket-2.3.1.jar",
-          "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/nanohttpd/nanohttpd-websocket/2.3.1/nanohttpd-websocket-2.3.1.jar",
-          ],
           "sha1" : "f2cfb09cee12469ff64f0d698b13de19903bb4f7",
           "maven" : {
             "groupId" : "org.nanohttpd",
@@ -131,9 +125,6 @@ suite = {
         },
         "Java-WebSocket" : {
             "path" : "lib/Java-WebSocket-1.3.9.jar",
-            "urls" : [
-                "https://search.maven.org/remotecontent?filepath=org/java-websocket/Java-WebSocket/1.3.9/Java-WebSocket-1.3.9.jar",
-            ],
             "sha1" : "e6e60889b7211a80b21052a249bd7e0f88f79fee",
             "maven" : {
                 "groupId" : "org.java-websocket",
@@ -142,27 +133,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670.tar.gz"],
-            "sha1" : "aee7dd2a9663701df57a96e501b9219a7c90cbc3",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683.tar.gz"],
+            "sha1" : "28b4ffc31ca729c93be77f6e66d9c5c67032c12f",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-linux-amd64.tar.gz"],
-                        "sha1" : "e607a0c40716f4a232de3726ab101f5c54798cfa",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-linux-amd64.tar.gz"],
+                        "sha1" : "9598ec2f792d42ff95a398e2d8af448bb6707449",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-macosx-x86_64.tar.gz"],
-                        "sha1" : "ea45e21c35f24d05e74d46bbdc068bf48865aa8f",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-macosx-x86_64.tar.gz"],
+                        "sha1" : "7428020503044bd6652eeb292aead587b0508984",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm-670-windows-amd64.tar.gz"],
-                        "sha1" : "6a4fa4b6a0c1fceeee63567af9f70d63a5ad6334",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-windows-amd64.tar.gz"],
+                        "sha1" : "f7c7c67a887002a208cff79a11088aa75c9defcc",
                     }
                 },
             }
@@ -171,6 +162,7 @@ suite = {
 
     "distributions": {
         "CHROMEINSPECTOR": {
+            "subDir": "src",
             # This distribution defines a module.
             "moduleName" : "com.oracle.truffle.tools.chromeinspector",
             "dependencies": ["com.oracle.truffle.tools.chromeinspector"],
@@ -184,6 +176,7 @@ suite = {
             "description" : "The bridge between truffle tools and the chrome inspector.",
         },
         "CHROMEINSPECTOR_TEST": {
+            "subDir": "src",
             "dependencies": ["com.oracle.truffle.tools.chromeinspector.test"],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
@@ -205,6 +198,7 @@ suite = {
             },
         },
         "TRUFFLE_PROFILER": {
+            "subDir": "src",
             # This distribution defines a module.
             "moduleName" : "com.oracle.truffle.tools.profiler",
             "dependencies": [
@@ -220,6 +214,7 @@ suite = {
             "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
         },
         "TRUFFLE_PROFILER_TEST": {
+            "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.tools.profiler.test",
             ],

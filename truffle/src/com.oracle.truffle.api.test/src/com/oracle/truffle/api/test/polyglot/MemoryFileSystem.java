@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import com.oracle.truffle.api.test.OSUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -57,6 +58,7 @@ import java.nio.file.AccessMode;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
@@ -86,7 +88,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import org.graalvm.polyglot.io.FileSystem;
 
-final class MemoryFileSystem implements FileSystem {
+public final class MemoryFileSystem implements FileSystem {
     private static final byte[] EMPTY = new byte[0];
     private static final UserPrincipal USER = new UserPrincipal() {
         @Override
@@ -122,10 +124,10 @@ final class MemoryFileSystem implements FileSystem {
     private volatile Path userDir;
     private long nextInode = 0;
 
-    MemoryFileSystem() throws IOException {
+    public MemoryFileSystem() throws IOException {
         this.inodes = new HashMap<>();
         this.blocks = new HashMap<>();
-        root = parsePath("/");
+        root = MemoryPath.getRootDirectory();
         userDir = root;
         createDirectoryImpl();
     }
@@ -137,7 +139,11 @@ final class MemoryFileSystem implements FileSystem {
 
     @Override
     public Path parsePath(URI uri) {
-        return new MemoryPath(Paths.get(uri));
+        try {
+            return new MemoryPath(Paths.get(uri));
+        } catch (IllegalArgumentException | FileSystemNotFoundException e) {
+            throw new UnsupportedOperationException(e);
+        }
     }
 
     @Override
@@ -1110,6 +1116,23 @@ final class MemoryFileSystem implements FileSystem {
                 return false;
             }
             return delegate.equals(((MemoryPath) other).delegate);
+        }
+
+        static Path getRootDirectory() {
+            Path delegate;
+            if (OSUtils.isUnix()) {
+                delegate = Paths.get("/");
+            } else {
+                delegate = null;
+                for (Path root : Paths.get("").getFileSystem().getRootDirectories()) {
+                    delegate = root;
+                    break;
+                }
+            }
+            if (delegate == null) {
+                throw new IllegalStateException("No root found.");
+            }
+            return new MemoryPath(delegate);
         }
     }
 }

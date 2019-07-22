@@ -1,6 +1,6 @@
 bench-llvm-common: {
   packages: {
-    llvm: "==3.8"
+    llvm: "==6.0.1"
   }
   downloads: {
     LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
@@ -28,7 +28,7 @@ sulong_logs_bc: ${sulong_logs} [
     "../sulong-benchmarks/*/*/*.bc"
 ]
 
-bench-llvm-linux: ${x52.default} ${labsjdk8} {
+bench-llvm-linux: ${x52.default} ${oraclejdk8} {
   capabilities: ${x52.default.capabilities} [tmpfs25g]
   environment: {
     RESULTS_FILE_PREFIX: results-

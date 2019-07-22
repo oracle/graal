@@ -41,12 +41,12 @@
 package com.oracle.truffle.api.debug;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -113,11 +113,10 @@ final class DebugSourcesResolver {
 
     private Source doResolve(Source source) {
         URI uri = source.getURI();
-        URLConnection connection = null;
+        InputStream stream = null;
         if (uri.isAbsolute()) {
             try {
-                connection = uri.toURL().openConnection();
-                connection.connect();
+                stream = uri.toURL().openConnection().getInputStream();
             } catch (IOException ioex) {
                 return null;
             }
@@ -126,8 +125,7 @@ final class DebugSourcesResolver {
             for (URI root : roots) {
                 URI resolved = resolve(root, uri);
                 try {
-                    connection = resolved.toURL().openConnection();
-                    connection.connect();
+                    stream = resolved.toURL().openConnection().getInputStream();
                     uri = resolved;
                     break;
                 } catch (IOException ioex) {
@@ -135,30 +133,37 @@ final class DebugSourcesResolver {
                 }
             }
         }
-        if (connection == null) {
+        if (stream == null) {
             return null;
-        }
-        Source.SourceBuilder builder = null;
-        if ("file".equals(uri.getScheme())) {
-            TruffleFile file = env.getTruffleFile(uri);
-            builder = Source.newBuilder(source.getLanguage(), file);
-        } else {
-            URL url;
-            try {
-                url = uri.toURL();
-                builder = Source.newBuilder(source.getLanguage(), url);
-            } catch (MalformedURLException | IllegalArgumentException ex) {
-                // fallback to a general Source
-            }
         }
         try {
-            if (builder == null) {
-                String name = uri.getPath() != null ? uri.getPath() : uri.getSchemeSpecificPart();
-                builder = Source.newBuilder(source.getLanguage(), new InputStreamReader(connection.getInputStream()), name).uri(uri).mimeType(source.getMimeType());
+            Source.SourceBuilder builder = null;
+            if ("file".equals(uri.getScheme())) {
+                TruffleFile file = env.getTruffleFile(uri);
+                builder = Source.newBuilder(source.getLanguage(), file);
+            } else {
+                URL url;
+                try {
+                    url = uri.toURL();
+                    builder = Source.newBuilder(source.getLanguage(), url);
+                } catch (MalformedURLException | IllegalArgumentException ex) {
+                    // fallback to a general Source
+                }
             }
-            return builder.cached(false).interactive(source.isInteractive()).internal(source.isInternal()).build();
-        } catch (IOException ex) {
-            return null;
+            try {
+                if (builder == null) {
+                    String name = uri.getPath() != null ? uri.getPath() : uri.getSchemeSpecificPart();
+                    builder = Source.newBuilder(source.getLanguage(), new InputStreamReader(stream), name).uri(uri).mimeType(source.getMimeType());
+                }
+                return builder.cached(false).interactive(source.isInteractive()).internal(source.isInternal()).build();
+            } catch (IOException ex) {
+                return null;
+            }
+        } finally {
+            try {
+                stream.close();
+            } catch (IOException ioe) {
+            }
         }
     }
 

@@ -48,5 +48,6 @@ public interface ReflectionRegistry {
 
     void register(Executable... methods);
 
-    void register(boolean finalIsWritable, Field... fields);
+    void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields);
+
 }

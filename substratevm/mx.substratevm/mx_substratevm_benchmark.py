@@ -37,8 +37,13 @@ import re
 import time
 
 import functools
+import zipfile
 import mx
 import mx_substratevm
+import mx_graal_benchmark
+import mx_benchmark
+
+_suite = mx.suite("substratevm")
 
 _default_image_options = ['-R:+PrintGCSummary', '-R:+PrintGC', '-H:+PrintImageHeapPartitionSizes',
                           '-H:+PrintImageElementSizes']
@@ -61,7 +66,7 @@ def _timedelta(name, out=print):
     yield
     end = time.time()
     elapsed = end - start
-    lf = '' if out == print else '\n'
+    lf = '' if out == print else '\n' # pylint: disable=comparison-with-callable
     out('INFO: TIMEDELTA: ' + name + '%0.2f' % elapsed + lf)
 
 
@@ -70,7 +75,7 @@ def _bench_result(benchmark, metric_name, metric_value, metric_unit, better="low
     if extra is None:
         extra = {}
     unit = {"metric.unit": metric_unit} if metric_unit else {}
-    return dict({
+    return dict(list({
                     "benchmark": benchmark,
                     "metric.name": metric_name,
                     "metric.type": m_type,
@@ -78,7 +83,7 @@ def _bench_result(benchmark, metric_name, metric_value, metric_unit, better="low
                     "metric.score-function": "id",
                     "metric.better": better,
                     "metric.iteration": m_iteration
-                }.items() + unit.items() + extra.items())
+                }.items()) + list(unit.items()) + list(extra.items()))
 
 
 def _get_bench_conf(args):
@@ -224,10 +229,13 @@ def bench_jsimage(bench_conf, out, err, extra_options=None):
 
     image_dir, js_image_name, image_path = _bench_image_params(bench_conf)
     if not exists(image_path):
+        native_image = mx_substratevm.vm_native_image_path(mx_substratevm._graalvm_js_config)
+        if not exists(native_image):
+            mx_substratevm.build_native_image_image(mx_substratevm._graalvm_js_config)
         with _timedelta('IMAGEBUILD: ', out=out):
             out('INFO: EXECUTE IMAGEBUILD: svmimage-%s\n' % bench_conf)
             _, image_building_options = _bench_configs[bench_conf]
-            command = [mx_substratevm.native_image_path(mx_substratevm.suite_native_image_root()), '--language:js', '-H:Path=' + image_dir,
+            command = [native_image, '--language:js', '-H:Path=' + image_dir,
                        '-H:Name=' + js_image_name] + image_building_options + extra_options
             # Print out the command.
             print(' '.join(command))
@@ -274,7 +282,7 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
     _, _, image_path = _bench_image_params(bench_conf)
     if should_bench_compile_server and not exists(image_path):
         for _ in range(_IMAGE_BENCH_REPETITIONS):
-            with mx_substratevm.native_image_context():
+            with mx_substratevm.native_image_context(config=mx_substratevm._graalvm_js_config, build_if_missing=True):
                 _bench_compile_server(bench_conf, out)
 
     image_path = bench_jsimage(bench_conf, out=out, err=err)
@@ -298,3 +306,172 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
     if nonZeroIsFatal:
         mx.abort('Javascript image building for js-benchmarks failed')
     return -1
+
+
+_RENAISSANCE_EXTRA_VM_ARGS = {
+    "scala-kmeans"    : '--initialize-at-build-time=scala.Function1',
+    "mnemonics"       : '--initialize-at-build-time=scala.Function1',
+    "par-mnemonics"   : '--initialize-at-build-time=scala.Function1',
+    "dotty"           : '--initialize-at-build-time=scala.Function0,scala.Function1',
+    "fj-kmeans"       : '--initialize-at-build-time=scala.Function1',
+    "future-genetic"  : '--initialize-at-build-time=scala.Function1',
+    "db-shootout"     : '--initialize-at-build-time=net.openhft.chronicle.wire.ReadMarshallable,net.openhft.chronicle.wire.WriteMarshallable',
+    "philosophers"    : '--initialize-at-build-time=scala.Function1,scala.Function2',
+    "scrabble"        : '--initialize-at-build-time=scala.Function1'
+}
+
+_RENAISSANCE_EXTRA_AGENT_ARGS = [
+    '-Dnative-image.benchmark.extra-agent-run-arg=-r',
+    '-Dnative-image.benchmark.extra-agent-run-arg=1'
+]
+
+RENAISSANCE_EXTRA_PROFILE_ARGS = [
+    '-Dnative-image.benchmark.extra-profile-run-arg=-r',
+    '-Dnative-image.benchmark.extra-profile-run-arg=10'
+]
+
+_renaissance_config = {
+    "akka-uct"         : ("actors", 11),
+    "reactors"         : ("actors", 11),
+    "scala-kmeans"     : ("scala-stdlib", 12),
+    "mnemonics"        : ("jdk-streams", 12),
+    "par-mnemonics"    : ("jdk-streams", 12),
+    "rx-scrabble"      : ("rx", 11),
+    "als"              : ("apache-spark", 11),
+    "chi-square"       : ("apache-spark", 11),
+    "db-shootout"      : ("database", 11),
+    "dec-tree"         : ("apache-spark", 11),
+    "dotty"            : ("scala-dotty", 12),
+    "finagle-chirper"  : ("twitter-finagle", 11),
+    "finagle-http"     : ("twitter-finagle", 11),
+    "fj-kmeans"        : ("jdk-concurrent", 12),
+    "future-genetic"   : ("jdk-concurrent", 12),
+    "gauss-mix"        : ("apache-spark", 11),
+    "log-regression"   : ("apache-spark", 11),
+    "movie-lens"       : ("apache-spark", 11),
+    "naive-bayes"      : ("apache-spark", 11),
+    "neo4j-analytics"  : ("neo4j", 11),
+    "page-rank"        : ("apache-spark", 11),
+    "philosophers"     : ("scala-stm", 12),
+    "scala-stm-bench7" : ("scala-stm", 12),
+    "scrabble"         : ("jdk-streams", 12)
+}
+
+
+def benchmark_group(benchmark):
+    return _renaissance_config[benchmark][0]
+
+
+def benchmark_scalaversion(benchmark):
+    return _renaissance_config[benchmark][1]
+
+
+class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchmarkSuite): #pylint: disable=too-many-ancestors
+    """
+    Building an image for a renaissance benchmark requires all libraries for the group this benchmark belongs to
+    and a harness project compiled with the same scala version as the benchmark.
+    Since we don't support building an image from fat-jars, we extract them to create project dependencies.
+    Depending on the benchmark's scala version we create corresponding renaissance harness and benchmark projects,
+    we set this harness project as a dependency for the benchmark project and collect project's classpath.
+    For each renaissance benchmark we store an information about the group and scala version in _renaissance-config.
+    We build an image from renaissance jar with the classpath as previously described, provided configurations and extra arguments while neccessary.
+    """
+
+    def name(self):
+        return "renaissance-substratevm"
+
+    def subgroup(self):
+        return "substratevm"
+
+    def renaissance_harness_lib_name(self):
+        return "RENAISSANCE_HARNESS_11"
+
+    def harness_path(self):
+        lib = mx.library(self.renaissance_harness_lib_name())
+        if lib:
+            return lib.get_path(True)
+        return None
+
+    def renaissance_unpacked(self):
+        renaissance_unpacked = mx.join(mx.dirname(self.renaissancePath()), 'renaissance.extracted')
+        if not mx.exists(renaissance_unpacked):
+            os.makedirs(renaissance_unpacked)
+            arc = zipfile.ZipFile(self.renaissancePath(), 'r')
+            arc.extractall(renaissance_unpacked)
+            arc.close()
+        return renaissance_unpacked
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        bench_arg = ""
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark.")
+        else:
+            bench_arg = benchmarks[0]
+        run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
+        vm_args = self.vmArgs(bmSuiteArgs) + self.extra_vm_args(bench_arg)
+
+        agent_args = _RENAISSANCE_EXTRA_AGENT_ARGS + ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg]
+        pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg]
+
+        return agent_args + pgo_args + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.renaissancePath()] + run_args + [bench_arg]
+
+    def create_classpath(self, benchArg):
+        harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject('harness', benchmark_scalaversion(benchArg), self)
+        group_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject(benchmark_group(benchArg), benchmark_scalaversion(benchArg), self, harness_project)
+        return ':'.join([mx.classpath(harness_project), mx.classpath(group_project)])
+
+    def extra_vm_args(self, benchmark):
+        if benchmark in _RENAISSANCE_EXTRA_VM_ARGS:
+            return ['-Dnative-image.benchmark.extra-image-build-argument=' + _RENAISSANCE_EXTRA_VM_ARGS[benchmark]]
+        return []
+
+    class RenaissanceDependency(mx.ClasspathDependency):
+        def __init__(self, name, path): # pylint: disable=super-init-not-called
+            mx.Dependency.__init__(self, _suite, name, None)
+            self.path = path
+
+        def classpath_repr(self, resolve=True):
+            return self.path
+
+        def _walk_deps_visit_edges(self, *args, **kwargs):
+            pass
+
+    class RenaissanceProject(mx.ClasspathDependency):
+        def __init__(self, group, scala_version=12, renaissance_suite=None, dep_project=None): # pylint: disable=super-init-not-called
+            mx.Dependency.__init__(self, _suite, group, None)
+            self.suite = renaissance_suite
+            self.deps = self.collect_group_dependencies(group, scala_version)
+            if dep_project is not None:
+                self.deps.append(dep_project)
+
+        def _walk_deps_visit_edges(self, visited, in_edge, preVisit=None, visit=None, ignoredEdges=None, visitEdge=None):
+            deps = [(mx.DEP_STANDARD, self.deps)]
+            self._walk_deps_visit_edges_helper(deps, visited, in_edge, preVisit, visit, ignoredEdges, visitEdge)
+
+        def classpath_repr(self, resolve=True):
+            return None
+
+        def get_dependencies(self, group):
+            deps = []
+            for f in os.listdir(group):
+                f_path = mx.join(group, f)
+                if os.path.isfile(f_path) and f.endswith('.jar'):
+                    deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(os.path.basename(f), f_path))
+            return deps
+
+        def collect_group_dependencies(self, group, scala_version):
+            if group == 'harness':
+                if scala_version == 12:
+                    unpacked_renaissance = RenaissanceNativeImageBenchmarkSuite.renaissance_unpacked(self.suite)
+                    path = mx.join(unpacked_renaissance, 'renaissance-harness')
+                else:
+                    path = RenaissanceNativeImageBenchmarkSuite.harness_path(self.suite)
+            else:
+                unpacked_renaissance = RenaissanceNativeImageBenchmarkSuite.renaissance_unpacked(self.suite)
+                path = mx.join(unpacked_renaissance, 'benchmarks', group)
+            return self.get_dependencies(path)
+
+
+mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())

@@ -167,7 +167,7 @@ public abstract class ValueProfile extends Profile {
     /**
      * Returns the uncached version of the profile. The uncached version of a profile does nothing.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static ValueProfile getUncached() {
         return Disabled.INSTANCE;

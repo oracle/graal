@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,9 +32,9 @@ package com.oracle.truffle.llvm.test.debug;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
@@ -58,6 +58,7 @@ final class Trace implements Iterable<StopRequest> {
     static final String KEYWORD_KIND_FLOAT_64 = "float64";
     static final String KEYWORD_KIND_INT = "int";
     static final String KEYWORD_KIND_STRUCTURED = "structured";
+    static final String KEYWORD_KIND_UNAVAILABLE = "unavailable";
 
     private static final String KEYWORD_HEADER = "#";
 
@@ -115,16 +116,16 @@ final class Trace implements Iterable<StopRequest> {
 
     private final class Parser implements Consumer<String> {
 
-        private final LinkedList<String> buffer;
-        private final LinkedList<LLVMDebugValue.Structured> parents;
+        private final ArrayDeque<String> buffer;
+        private final ArrayDeque<LLVMDebugValue.Structured> parents;
 
         private StopRequest request;
         private StopRequest.Scope scope;
         private LLVMDebugValue.Structured structured;
 
         private Parser() {
-            this.buffer = new LinkedList<>();
-            this.parents = new LinkedList<>();
+            this.buffer = new ArrayDeque<>();
+            this.parents = new ArrayDeque<>();
             this.request = null;
             this.scope = null;
             this.structured = null;
@@ -328,6 +329,11 @@ final class Trace implements Iterable<StopRequest> {
                     }
                     structured = newStructured;
                     return;
+                }
+                case Trace.KEYWORD_KIND_UNAVAILABLE: {
+                    final boolean isBuggy = parseBugginess();
+                    dbgValue = new LLVMDebugValue.Unavailable(type, isBuggy);
+                    break;
                 }
                 default:
                     throw new AssertionError("Invalid trace: Unknown member kind: " + kind);

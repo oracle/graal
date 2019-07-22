@@ -179,7 +179,8 @@ public final class JNIReflectionDictionary {
 
     public JNIMethodId getDeclaredMethodID(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, boolean isStatic) {
         JNIAccessibleMethod method = getDeclaredMethod(classObject, descriptor, "getDeclaredMethodID");
-        return toMethodID(method, isStatic);
+        boolean match = (method != null && method.isStatic() == isStatic);
+        return toMethodID(match ? method : null);
     }
 
     private JNIAccessibleMethod getDeclaredMethod(Class<?> classObject, JNIAccessibleMethodDescriptor descriptor, String dumpLabel) {
@@ -194,15 +195,13 @@ public final class JNIReflectionDictionary {
 
     public JNIMethodId getMethodID(Class<?> classObject, String name, String signature, boolean isStatic) {
         JNIAccessibleMethod method = findMethod(classObject, new JNIAccessibleMethodDescriptor(name, signature), "getMethodID");
-        return toMethodID(method, isStatic);
+        boolean match = (method != null && method.isStatic() == isStatic && method.isDiscoverableIn(classObject));
+        return toMethodID(match ? method : null);
     }
 
-    private static JNIMethodId toMethodID(JNIAccessibleMethod method, boolean requireStatic) {
+    private static JNIMethodId toMethodID(JNIAccessibleMethod method) {
         // Using the address is safe because JNIAccessibleMethod is immutable (non-movable)
-        if (method != null && method.isStatic() == requireStatic) {
-            return (JNIMethodId) Word.objectToUntrackedPointer(method);
-        }
-        return WordFactory.nullPointer();
+        return (method != null) ? (JNIMethodId) Word.objectToUntrackedPointer(method) : WordFactory.nullPointer();
     }
 
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
@@ -254,7 +253,7 @@ public final class JNIReflectionDictionary {
 
     public JNIFieldId getFieldID(Class<?> clazz, String name, boolean isStatic) {
         JNIAccessibleField field = findField(clazz, name, isStatic, "getFieldID");
-        return (field != null) ? field.getId() : WordFactory.nullPointer();
+        return (field != null && field.isDiscoverableIn(clazz)) ? field.getId() : WordFactory.nullPointer();
     }
 
     public String getFieldNameByID(Class<?> classObject, JNIFieldId id) {

@@ -53,11 +53,11 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);
+    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleCompilationThreshold.getDefaultValue());
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
+    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleFirstTierCompilationThreshold.getDefaultValue());
 
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
@@ -97,10 +97,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
 
     @Option(help = "Maximum number of inlined non-trivial AST nodes per compilation unit.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(2250);
+    public static final OptionKey<Integer> InliningNodeBudget = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize.getDefaultValue());
 
     @Option(help = "Maximum depth for recursive inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(4);
+    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining.getDefaultValue());
 
     @Option(help = "Enable automatic duplication of compilation profiles (splitting).",
                     category = OptionCategory.EXPERT)

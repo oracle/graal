@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,8 +46,6 @@ public abstract class Type {
 
     public abstract int getSize(DataLayout targetDataLayout);
 
-    public abstract Type shallowCopy();
-
     @Override
     public abstract boolean equals(Object obj);
 
@@ -69,10 +67,6 @@ public abstract class Type {
             default:
                 return new VariableBitWidthType(size);
         }
-    }
-
-    public static boolean isFunctionOrFunctionPointer(Type type) {
-        return type instanceof FunctionType || (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof FunctionType);
     }
 
     public static Type createConstantForType(Type type, Object value) {

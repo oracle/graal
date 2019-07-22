@@ -26,8 +26,6 @@ package com.oracle.svm.core.graal.stackvalue;
 
 import static org.graalvm.compiler.core.common.NumUtil.roundUp;
 
-import java.util.BitSet;
-
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.graph.IterableNodeType;
@@ -119,7 +117,7 @@ public final class StackValueNode extends FixedWithNextNode implements LIRLowera
             if (slot == null) {
                 int wordSize = gen.getLIRGeneratorTool().target().wordSize;
                 int slots = roundUp(size, wordSize) / wordSize;
-                slot = gen.getLIRGeneratorTool().allocateStackSlots(slots, new BitSet(0), null);
+                slot = gen.getLIRGeneratorTool().allocateStackSlots(slots);
                 stackSlotHolder.slot = slot;
             }
             gen.setResult(this, gen.getLIRGeneratorTool().emitAddress(slot));

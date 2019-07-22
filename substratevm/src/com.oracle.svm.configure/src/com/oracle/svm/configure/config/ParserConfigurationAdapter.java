@@ -26,7 +26,7 @@ package com.oracle.svm.configure.config;
 
 import java.util.List;
 
-import com.oracle.svm.hosted.config.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 
 public class ParserConfigurationAdapter implements ReflectionConfigurationParserDelegate<ConfigurationType> {
 
@@ -48,8 +48,8 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerField(ConfigurationType type, String fieldName, boolean allowWrite) {
-        type.addField(fieldName, ConfigurationMemberKind.PRESENT);
+    public void registerField(ConfigurationType type, String fieldName, boolean allowWrite, boolean allowUnsafeAccess) {
+        type.addField(fieldName, ConfigurationMemberKind.PRESENT, allowUnsafeAccess);
     }
 
     @Override

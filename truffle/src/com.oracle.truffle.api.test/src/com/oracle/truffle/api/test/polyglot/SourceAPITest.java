@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import com.oracle.truffle.api.test.OSUtils;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -76,6 +77,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.ReflectionUtils;
+import org.junit.Assume;
 
 public class SourceAPITest {
 
@@ -681,5 +683,22 @@ public class SourceAPITest {
         assertTrue(section.hasLines());
         assertTrue(section.hasColumns());
         assertEquals("", section.getCharacters());
+    }
+
+    @Test
+    public void testNonResolvableURL() throws IOException {
+        Assume.assumeFalse("Query parameters are not supported by file URLConnection on Windows", OSUtils.isWindows());
+        File file = File.createTempFile("Test", ".java");
+        file.deleteOnExit();
+        String text;
+        try (FileWriter w = new FileWriter(file)) {
+            text = "// Test";
+            w.write(text);
+        }
+        URL url = new URL(file.toURI() + "?query");
+        Source src = Source.newBuilder("TestJava", url).build();
+        assertNotNull(src);
+        assertTrue(text.contentEquals(src.getCharacters()));
+        assertEquals("text/plain", Source.findMimeType(url));
     }
 }

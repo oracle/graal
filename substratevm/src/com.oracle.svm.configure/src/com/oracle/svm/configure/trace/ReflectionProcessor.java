@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.configure.trace;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -39,10 +40,6 @@ class ReflectionProcessor extends AbstractProcessor {
     private final TypeConfiguration configuration;
     private final ProxyConfiguration proxyConfiguration;
     private final ResourceConfiguration resourceConfiguration;
-
-    ReflectionProcessor(AccessAdvisor advisor) {
-        this(advisor, new TypeConfiguration(), new ProxyConfiguration(), new ResourceConfiguration());
-    }
 
     ReflectionProcessor(AccessAdvisor advisor, TypeConfiguration typeConfiguration, ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration) {
         this.advisor = advisor;
@@ -89,8 +86,9 @@ class ReflectionProcessor extends AbstractProcessor {
         if (advisor.shouldIgnore(() -> callerClass)) {
             return;
         }
-        String declaringClass = (String) entry.get("declaring_class");
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;
+        boolean unsafeAccess = false;
+        String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "forName": {
                 assert clazz.equals("java.lang.Class");
@@ -127,24 +125,28 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
 
+            case "objectFieldOffset":
+                unsafeAccess = true;
+                // fall through
             case "getDeclaredField":
                 memberKind = ConfigurationMemberKind.DECLARED;
-                clazz = (declaringClass != null) ? declaringClass : clazz;
                 // fall through
             case "getField": {
-                configuration.getOrCreateType(clazz).addField(singleElement(args), memberKind);
+                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind, unsafeAccess);
                 break;
             }
 
             case "getDeclaredMethod":
                 memberKind = ConfigurationMemberKind.DECLARED;
-                clazz = (declaringClass != null) ? declaringClass : clazz;
                 // fall through
             case "getMethod": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 List<?> parameterTypes = (List<?>) args.get(1);
-                configuration.getOrCreateType(clazz).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
+                if (parameterTypes == null) { // tolerated and equivalent to no parameter types
+                    parameterTypes = Collections.emptyList();
+                }
+                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
                 break;
             }
 
@@ -152,8 +154,11 @@ class ReflectionProcessor extends AbstractProcessor {
                 memberKind = ConfigurationMemberKind.DECLARED; // fall through
             case "getConstructor": {
                 List<String> parameterTypes = singleElement(args);
+                if (parameterTypes == null) { // tolerated and equivalent to no parameter types
+                    parameterTypes = Collections.emptyList();
+                }
                 String signature = SignatureUtil.toInternalSignature(parameterTypes);
-                configuration.getOrCreateType(clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, memberKind);
+                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, memberKind);
                 break;
             }
 
@@ -187,7 +192,7 @@ class ReflectionProcessor extends AbstractProcessor {
         int classend = descriptor.lastIndexOf('.', sigbegin - 1);
         String qualifiedClass = descriptor.substring(0, classend);
         String methodName = descriptor.substring(classend + 1, sigbegin);
-        String signature = descriptor.substring(sigbegin + 1);
+        String signature = descriptor.substring(sigbegin);
         configuration.getOrCreateType(qualifiedClass).addMethod(methodName, signature, ConfigurationMemberKind.DECLARED);
     }
 

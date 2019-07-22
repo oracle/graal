@@ -41,7 +41,9 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
+import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
@@ -169,6 +171,18 @@ public abstract class AbstractPolyglotTest {
             context.close();
             context = null;
         }
+    }
+
+    protected static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+        try {
+            callable.call();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+            }
+            return;
+        }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
     }
 
     private static class TestRootNode extends RootNode {

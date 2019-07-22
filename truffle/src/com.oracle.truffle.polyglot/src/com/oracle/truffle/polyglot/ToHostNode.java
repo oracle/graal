@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,14 @@ import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -92,8 +100,20 @@ abstract class ToHostNode extends Node {
                     @CachedLibrary("operand") InteropLibrary interop,
                     @Cached("targetType") Class<?> cachedTargetType,
                     @Cached("isPrimitiveTarget(cachedTargetType)") boolean primitiveTarget,
+                    @Cached("allowsImplementation(languageContext, targetType)") boolean allowsImplementation,
                     @Cached TargetMappingNode targetMapping) {
-        return convertImpl(operand, cachedTargetType, genericType, primitiveTarget, languageContext, interop, useCustomTargetTypes, targetMapping);
+        return convertImpl(operand, cachedTargetType, genericType, allowsImplementation, primitiveTarget, languageContext, interop, useCustomTargetTypes, targetMapping);
+    }
+
+    @TruffleBoundary
+    static boolean allowsImplementation(PolyglotLanguageContext languagecontext, Class<?> type) {
+        if (languagecontext == null) {
+            return false;
+        }
+        if (!type.isInterface()) {
+            return false;
+        }
+        return languagecontext.getEngine().getHostClassCache().forClass(type).isAllowsImplementation();
     }
 
     @Specialization(replaces = "doCached")
@@ -104,7 +124,7 @@ abstract class ToHostNode extends Node {
                     boolean useTargetMapping,
                     @Cached TargetMappingNode targetMapping,
                     @CachedLibrary(limit = "0") InteropLibrary interop) {
-        return convertImpl(operand, targetType, genericType,
+        return convertImpl(operand, targetType, genericType, allowsImplementation(languageContext, targetType),
                         isPrimitiveTarget(targetType), languageContext, interop, useTargetMapping, targetMapping);
     }
 
@@ -168,7 +188,7 @@ abstract class ToHostNode extends Node {
         return null;
     }
 
-    private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean primitiveTargetType,
+    private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveTargetType,
                     PolyglotLanguageContext languageContext, InteropLibrary interop, boolean useCustomTargetTypes, TargetMappingNode targetMapping) {
         if (useCustomTargetTypes) {
             Object result = targetMapping.execute(value, targetType, languageContext, interop, false);
@@ -186,7 +206,7 @@ abstract class ToHostNode extends Node {
         if (targetType == Value.class && languageContext != null) {
             convertedValue = value instanceof Value ? value : languageContext.asValue(value);
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, languageContext);
+            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, allowsImplementation, languageContext);
         } else if (targetType.isAssignableFrom(value.getClass())) {
             convertedValue = value;
         } else {
@@ -211,7 +231,7 @@ abstract class ToHostNode extends Node {
     }
 
     @SuppressWarnings({"unused"})
-    static boolean canConvert(Object value, Class<?> targetType, Type genericType,
+    static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
                     PolyglotLanguageContext languageContext, int priority,
                     InteropLibrary interop,
                     TargetMappingNode targetMapping) {
@@ -255,12 +275,26 @@ abstract class ToHostNode extends Node {
                 return interop.hasMembers(value);
             } else if (targetType.isArray()) {
                 return interop.hasArrayElements(value);
+            } else if (targetType == LocalDate.class) {
+                return interop.isDate(value);
+            } else if (targetType == LocalTime.class) {
+                return interop.isTime(value);
+            } else if (targetType == LocalDateTime.class) {
+                return interop.isDate(value) && interop.isTime(value);
+            } else if (targetType == ZonedDateTime.class || targetType == Date.class || targetType == Instant.class) {
+                return interop.isInstant(value);
+            } else if (targetType == ZoneId.class) {
+                return interop.isTimeZone(value);
+            } else if (targetType == Duration.class) {
+                return interop.isDuration(value);
             } else if (priority < HOST_PROXY && HostObject.isInstance(value)) {
                 return false;
             } else {
-                if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
+                if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&
+                                (interop.isExecutable(value) || interop.isInstantiable(value)) && checkAllowsImplementation(targetType, allowsImplementation, languageContext)) {
                     return true;
-                } else if (priority >= OBJECT_PROXY && targetType.isInterface() && interop.hasMembers(value)) {
+                } else if (priority >= OBJECT_PROXY && targetType.isInterface() && interop.hasMembers(value) &&
+                                checkAllowsImplementation(targetType, allowsImplementation, languageContext)) {
                     return true;
                 } else {
                     return false;
@@ -270,6 +304,16 @@ abstract class ToHostNode extends Node {
             assert !(value instanceof TruffleObject);
             return targetType.isInstance(value);
         }
+    }
+
+    private static boolean checkAllowsImplementation(Class<?> targetType, Boolean allowsImplementation, PolyglotLanguageContext languageContext) {
+        boolean implementations;
+        if (allowsImplementation == null) {
+            implementations = allowsImplementation(languageContext, targetType);
+        } else {
+            implementations = allowsImplementation;
+        }
+        return implementations;
     }
 
     static boolean isPrimitiveTarget(Class<?> clazz) {
@@ -303,11 +347,11 @@ abstract class ToHostNode extends Node {
                 }
                 // fallthrough
             } else if (interop.hasMembers(value)) {
-                return asJavaObject(value, Map.class, null, languageContext);
+                return asJavaObject(value, Map.class, null, false, languageContext);
             } else if (interop.hasArrayElements(value)) {
-                return asJavaObject(value, List.class, null, languageContext);
+                return asJavaObject(value, List.class, null, false, languageContext);
             } else if (interop.isExecutable(value) || interop.isInstantiable(value)) {
-                return asJavaObject(value, Function.class, null, languageContext);
+                return asJavaObject(value, Function.class, null, false, languageContext);
             }
             return languageContext.asValue(value);
         } catch (UnsupportedMessageException e) {
@@ -338,7 +382,7 @@ abstract class ToHostNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Object value, Class<T> targetType, Type genericType, PolyglotLanguageContext languageContext) {
+    private static <T> T asJavaObject(Object value, Class<T> targetType, Type genericType, boolean allowsImplementation, PolyglotLanguageContext languageContext) {
         Objects.requireNonNull(value);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         Object obj;
@@ -388,7 +432,93 @@ abstract class ToHostNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
-        } else if (targetType.isInterface()) {
+        } else if (targetType == LocalDate.class) {
+            if (interop.isDate(value)) {
+                try {
+                    obj = interop.asDate(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+            }
+        } else if (targetType == LocalTime.class) {
+            if (interop.isTime(value)) {
+                try {
+                    obj = interop.asTime(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+            }
+        } else if (targetType == LocalDateTime.class) {
+            if (interop.isDate(value) && interop.isTime(value)) {
+                LocalDate date;
+                LocalTime time;
+                try {
+                    date = interop.asDate(value);
+                    time = interop.asTime(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+                obj = createDateTime(date, time);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+            }
+        } else if (targetType == ZonedDateTime.class) {
+            if (interop.isDate(value) && interop.isTime(value) && interop.isTimeZone(value)) {
+                LocalDate date;
+                LocalTime time;
+                ZoneId timeZone;
+                try {
+                    date = interop.asDate(value);
+                    time = interop.asTime(value);
+                    timeZone = interop.asTimeZone(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+                obj = createZonedDateTime(date, time, timeZone);
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date, time and time-zone information.");
+            }
+        } else if (targetType == ZoneId.class) {
+            if (interop.isTimeZone(value)) {
+                try {
+                    obj = interop.asTimeZone(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have time-zone information.");
+            }
+        } else if (targetType == Instant.class || targetType == Date.class) {
+            if (interop.isDate(value) && interop.isTime(value) && interop.isTimeZone(value)) {
+                Instant instantValue;
+                try {
+                    instantValue = interop.asInstant(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+                if (targetType == Date.class) {
+                    obj = Date.from(instantValue);
+                } else {
+                    obj = targetType.cast(instantValue);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date, time and time-zone information.");
+            }
+        } else if (targetType == Duration.class) {
+            if (interop.isDuration(value)) {
+                try {
+                    obj = interop.asDuration(value);
+                } catch (UnsupportedMessageException e) {
+                    throw new AssertionError(e);
+                }
+            } else {
+                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have duration information.");
+            }
+        } else if (allowsImplementation && targetType.isInterface()) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
                 obj = HostInteropReflect.asJavaFunction(targetType, value, languageContext);
             } else if (interop.hasMembers(value)) {
@@ -399,9 +529,18 @@ abstract class ToHostNode extends Node {
         } else {
             throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Unsupported target type.");
         }
-
         assert targetType.isInstance(obj);
         return targetType.cast(obj);
+    }
+
+    @TruffleBoundary
+    private static ZonedDateTime createZonedDateTime(LocalDate date, LocalTime time, ZoneId timeZone) {
+        return ZonedDateTime.of(date, time, timeZone);
+    }
+
+    @TruffleBoundary
+    private static LocalDateTime createDateTime(LocalDate date, LocalTime time) {
+        return LocalDateTime.of(date, time);
     }
 
     private static boolean shouldImplementFunction(Object truffleObject, InteropLibrary interop) {

@@ -179,4 +179,12 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
             throw VMError.shouldNotReachHere("Current target does not support the following CPU features that are required by the image: " + missingFeatures);
         }
     }
+
+    @Override
+    public void enableFeatures(Architecture runtimeArchitecture) {
+        AMD64 architecture = (AMD64) runtimeArchitecture;
+        EnumSet<AMD64.CPUFeature> features = determineHostCPUFeatures();
+        architecture.getFeatures().addAll(features);
+    }
+
 }

@@ -31,14 +31,11 @@ package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -61,7 +58,7 @@ public abstract class LLVMForeignReadNode extends LLVMNode {
     static Object doValue(LLVMPointer ptr, LLVMInteropType.Value type,
                     @Cached("type.getKind()") @SuppressWarnings(value = "unused") LLVMInteropType.ValueKind cachedKind,
                     @Cached("createLoadNode(cachedKind)") LLVMLoadNode load,
-                    @Cached LLVMDataEscapeNode dataEscape) {
+                    @Cached(parameters = "cachedKind.foreignToLLVMType") LLVMDataEscapeNode dataEscape) {
         Object ret = load.executeWithTarget(ptr);
         return dataEscape.executeWithType(ret, type.getBaseType());
     }
@@ -70,12 +67,11 @@ public abstract class LLVMForeignReadNode extends LLVMNode {
     @TruffleBoundary
     Object doValueUncached(LLVMPointer ptr, LLVMInteropType.Value type) {
         LLVMInteropType.ValueKind kind = type.getKind();
-        return doValue(ptr, type, kind, createLoadNode(kind), LLVMDataEscapeNodeGen.getUncached());
+        return doValue(ptr, type, kind, createLoadNode(kind), LLVMDataEscapeNode.getUncached(kind.foreignToLLVMType));
     }
 
     LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
         CompilerAsserts.neverPartOfCompilation();
-        TruffleLanguage.ContextReference<LLVMContext> ctxRef = lookupContextReference(LLVMLanguage.class);
-        return ctxRef.get().getNodeFactory().createLoadNode(kind);
+        return LLVMLanguage.getLanguage().getNodeFactory().createLoadNode(kind);
     }
 }

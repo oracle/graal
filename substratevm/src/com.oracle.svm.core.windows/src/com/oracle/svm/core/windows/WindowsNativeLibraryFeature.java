@@ -24,21 +24,22 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.word.Pointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JDKLibZipSubstitutions;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -60,7 +61,17 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
         if (!WindowsJavaNetSubstitutions.initIDs()) {
             return false;
         }
+        /*
+         * java.dll is normally loaded by the VM. After loading java.dll, the VM then calls
+         * initializeSystemClasses which loads zip.dll.
+         *
+         * We might want to consider calling System.initializeSystemClasses instead of explicitly
+         * loading the builtin zip library.
+         */
         if (!WindowsJavaIOSubstitutions.initIDs()) {
+            return false;
+        }
+        if (!JDKLibZipSubstitutions.initIDs()) {
             return false;
         }
         if (!WindowsJavaNIOSubstitutions.initIDs()) {
@@ -77,7 +88,7 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
     @Override
     public PointerBase findBuiltinSymbol(String name) {
         try (CCharPointerHolder symbol = CTypeConversion.toCString(name)) {
-            Pointer builtinHandle = WinBase.GetModuleHandleA(WordFactory.nullPointer());
+            HMODULE builtinHandle = WinBase.GetModuleHandleA(WordFactory.nullPointer());
             return WinBase.GetProcAddress(builtinHandle, symbol.get());
         }
     }
@@ -86,7 +97,7 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
 
         private final String canonicalIdentifier;
         private final boolean builtin;
-        private Pointer dlhandle = WordFactory.nullPointer();
+        private HMODULE dlhandle = WordFactory.nullPointer();
 
         WindowsNativeLibrary(String canonicalIdentifier, boolean builtin) {
             // Make sure the jvm.lib is available for linking

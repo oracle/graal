@@ -57,7 +57,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TVMCI;
 
 /**
@@ -297,7 +296,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @param frameSlot the slot
      * @return current kind of this slot
-     * @since 1.0
+     * @since 19.0
      */
     public FrameSlotKind getFrameSlotKind(final FrameSlot frameSlot) {
         assert checkFrameSlotOwnership(frameSlot);
@@ -314,7 +313,7 @@ public final class FrameDescriptor implements Cloneable {
      *
      * @param frameSlot the slot
      * @param kind new kind of the slot
-     * @since 1.0
+     * @since 19.0
      */
     public void setFrameSlotKind(final FrameSlot frameSlot, final FrameSlotKind kind) {
         if (frameSlot.kind != kind) {
@@ -583,34 +582,5 @@ public final class FrameDescriptor implements Cloneable {
             sb.append("}");
             return sb.toString();
         }
-    }
-
-    /** @since 0.14 */
-    static final class AccessorFrames extends Accessor {
-        @Override
-        protected Frames framesSupport() {
-            return new FramesImpl();
-        }
-
-        static final class FramesImpl extends Frames {
-            @Override
-            protected void markMaterializeCalled(FrameDescriptor descriptor) {
-                descriptor.materializeCalled = true;
-            }
-
-            @Override
-            protected boolean getMaterializeCalled(FrameDescriptor descriptor) {
-                return descriptor.materializeCalled;
-            }
-        }
-    }
-
-    private static AccessorFrames initialize() {
-        return new AccessorFrames();
-    }
-
-    static {
-        // registers into Accessor.FRAMES
-        initialize();
     }
 }

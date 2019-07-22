@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,11 @@
  */
 package com.oracle.truffle.llvm.nodes.op;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAbstractCompareNode extends LLVMExpressionNode {
     public abstract boolean executeWithTarget(Object a, Object b);
+
+    public abstract boolean executeGenericBoolean(VirtualFrame frame);
 }

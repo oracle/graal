@@ -93,6 +93,19 @@ public final class JNIFunctionPointerTypes {
         boolean invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID);
     }
 
+    public interface CallLongMethodFunctionPointer extends CFunctionPointer {
+    }
+
+    public interface CallLongMethod1FunctionPointer extends CallLongMethodFunctionPointer {
+        @InvokeCFunctionPointer
+        long invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0);
+    }
+
+    public interface CallLongMethod2FunctionPointer extends CallLongMethodFunctionPointer {
+        @InvokeCFunctionPointer
+        long invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0, WordBase arg1);
+    }
+
     public interface GetStringUTFCharsFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         CCharPointer invoke(JNIEnvironment env, JNIObjectHandle str, CIntPointer isCopy);
@@ -143,6 +156,11 @@ public final class JNIFunctionPointerTypes {
         JNIMethodId invoke(JNIEnvironment env, JNIObjectHandle method);
     }
 
+    public interface ToReflectedMethodFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, boolean isStatic);
+    }
+
     public interface DeleteGlobalRefFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         void invoke(JNIEnvironment env, JNIObjectHandle globalRef);
@@ -176,6 +194,16 @@ public final class JNIFunctionPointerTypes {
     public interface FromReflectedFieldFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JNIFieldId invoke(JNIEnvironment env, JNIObjectHandle field);
+    }
+
+    public interface ToReflectedFieldFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId field, boolean isStatic);
+    }
+
+    public interface RegisterNativesFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JNIEnvironment env, JNIObjectHandle clazz, JNINativeMethod methods, int nMethods);
     }
 
     private JNIFunctionPointerTypes() {

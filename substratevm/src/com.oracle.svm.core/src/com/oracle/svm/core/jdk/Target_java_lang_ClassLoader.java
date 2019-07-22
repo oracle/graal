@@ -34,6 +34,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -41,7 +42,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(ClassLoader.class)
@@ -52,7 +52,7 @@ public final class Target_java_lang_ClassLoader {
     @Substitute //
     private Target_java_lang_ClassLoader parent;
 
-    @Substitute @TargetElement(onlyWith = JDK9OrLater.class) private final ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages = new ConcurrentHashMap<>();
+    @Substitute @TargetElement(onlyWith = JDK11OrLater.class) private final ConcurrentHashMap<String, Target_java_lang_NamedPackage> packages = new ConcurrentHashMap<>();
 
     @Substitute
     public Target_java_lang_ClassLoader() {
@@ -117,7 +117,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     public static ClassLoader getSystemClassLoader() {
-        return KnownIntrinsics.unsafeCast(ClassLoaderSupport.getInstance().systemClassLoader, ClassLoader.class);
+        return SubstrateUtil.cast(ClassLoaderSupport.getInstance().systemClassLoader, ClassLoader.class);
     }
 
     @Substitute
@@ -128,7 +128,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(name);
+        return ClassForNameSupport.forName(name, false);
     }
 
     @Substitute
@@ -137,42 +137,42 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     public static ClassLoader getPlatformClassLoader() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getPlatformClassLoader()");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.getPlatformClassLoader()");
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     Class<?> loadClass(Target_java_lang_Module module, String name) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.loadClass(Target_java_lang_Module, String)");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.loadClass(Target_java_lang_Module, String)");
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.createOrGetClassLoaderValueMap()");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.createOrGetClassLoaderValueMap()");
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     private boolean trySetObjectField(String name, Object obj) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.trySetObjectField(String name, Object obj)");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.trySetObjectField(String name, Object obj)");
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     protected URL findResource(String moduleName, String name) throws IOException {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.findResource(String, String)");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.findResource(String, String)");
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     static ClassLoader getBuiltinPlatformClassLoader() {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getBuiltinPlatformClassLoader()");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.getBuiltinPlatformClassLoader()");
     }
 
     @Substitute //
@@ -189,40 +189,40 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     protected Class<?> findClass(String moduleName, String name) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.findClass(String moduleName, String name)");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.findClass(String moduleName, String name)");
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     public Package getDefinedPackage(String name) {
-        throw VMError.unsupportedFeature("JDK9OrLater: Target_java_lang_ClassLoader.getDefinedPackage(String name)");
+        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.getDefinedPackage(String name)");
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     public native Package definePackage(Class<?> clazz);
 
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     public native Package definePackage(String name, Target_java_lang_Module module);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK9OrLater.class) //
+    @TargetElement(onlyWith = JDK11OrLater.class) //
     private native Package toPackage(String name, Target_java_lang_NamedPackage p, Target_java_lang_Module m);
 
     @Substitute
-    @TargetElement(onlyWith = JDK9OrLater.class)
+    @TargetElement(onlyWith = JDK11OrLater.class)
     @SuppressWarnings({"unused"})
     public Target_java_lang_Module getUnnamedModule() {
         return DynamicHub.singleModuleReference.get();
     }
 }
 
-@TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK9OrLater.class) //
+@TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //
 final class Target_java_lang_NamedPackage {
 }

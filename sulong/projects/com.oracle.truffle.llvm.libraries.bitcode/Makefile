@@ -72,10 +72,6 @@ bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
 bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES} include/polyglot.h
 	$(QUIETLY) tar -czf $@ -C ${VPATH} .
 
-bin/$(LIB_POLYGLOT): libpolyglot/polyglot-mock.c
-	$(QUIETLY) $(CLANG) -fPIC -shared -o $@ -I${VPATH}/include -Wno-return-type ${CFLAGS} ${DEPFLAGS} $<
-	${POSTCOMPILE}
-
 deps/%.d: ;
 .PRECIOUS: deps/%.d
 

@@ -44,13 +44,16 @@ import java.util.stream.Stream;
 
 final class MacroOption {
     enum MacroOptionKind {
-        Language("languages"),
-        Tool("tools");
+        Language("languages", true),
+        Tool("tools", true),
+        Macro("macros", false);
 
         final String subdir;
+        final boolean allowAll;
 
-        MacroOptionKind(String subdir) {
+        MacroOptionKind(String subdir, boolean allowAll) {
             this.subdir = subdir;
+            this.allowAll = allowAll;
         }
 
         static MacroOptionKind fromSubdir(String subdir) {
@@ -171,7 +174,7 @@ final class MacroOption {
         private final String optionArg;
 
         private EnabledOption(MacroOption option, String optionArg) {
-            this.option = option;
+            this.option = Objects.requireNonNull(option);
             this.optionArg = optionArg;
         }
 
@@ -192,7 +195,11 @@ final class MacroOption {
         }
 
         boolean forEachPropertyValue(String propertyKey, Consumer<String> target) {
-            return NativeImage.forEachPropertyValue(option.properties.get(propertyKey), target, this::resolvePropertyValue);
+            return forEachPropertyValue(propertyKey, target, " ");
+        }
+
+        boolean forEachPropertyValue(String propertyKey, Consumer<String> target, String separatorRegex) {
+            return NativeImage.forEachPropertyValue(option.properties.get(propertyKey), target, this::resolvePropertyValue, separatorRegex);
         }
 
         MacroOption getOption() {
@@ -245,6 +252,10 @@ final class MacroOption {
             List<String> optionsToShow = new ArrayList<>();
             for (MacroOptionKind kind : MacroOptionKind.values()) {
                 if (forKind != null && !kind.equals(forKind)) {
+                    continue;
+                }
+                if (forKind == null && kind == MacroOptionKind.Macro) {
+                    // skip non-API macro options by default
                     continue;
                 }
                 for (MacroOption option : supported.get(kind).values()) {
@@ -310,6 +321,20 @@ final class MacroOption {
                 throw new VerboseInvalidMacroException("Empty option specification: " + optionString, kindPart, context);
             }
 
+            if (specNameParts.equals("all")) {
+                if (!kindPart.allowAll) {
+                    throw new VerboseInvalidMacroException("Empty option specification: " + kindPart + " does no support 'all'", kindPart, context);
+                }
+                for (String optionName : getAvailableOptions(kindPart)) {
+                    MacroOption option = getMacroOption(kindPart, optionName);
+                    if (Boolean.parseBoolean(option.properties.getOrDefault("ExcludeFromAll", "false"))) {
+                        continue;
+                    }
+                    enableResolved(option, null, addedCheck, context, enabler);
+                }
+                return true;
+            }
+
             String[] parts = specNameParts.split("=", 2);
             String optionName = parts[0];
             MacroOption option = getMacroOption(kindPart, optionName);
@@ -335,7 +360,7 @@ final class MacroOption {
                 }
             }
 
-            MacroOption truffleOption = getMacroOption(MacroOptionKind.Tool, "truffle");
+            MacroOption truffleOption = getMacroOption(MacroOptionKind.Macro, "truffle");
             if (option.kind.equals(MacroOptionKind.Language) && !addedCheck.contains(truffleOption)) {
                 /*
                  * Every language requires Truffle. If it is not specified explicitly as a

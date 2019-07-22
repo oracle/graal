@@ -33,11 +33,11 @@ import java.util.regex.Pattern;
 import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
-import com.oracle.svm.hosted.ResourcesFeature;
+import com.oracle.svm.core.configure.ResourcesRegistry;
 
 public class ResourceConfiguration implements JsonPrintable {
 
-    public static class ParserAdapter implements ResourcesFeature.ResourcesRegistry {
+    public static class ParserAdapter implements ResourcesRegistry {
         private final ResourceConfiguration configuration;
 
         public ParserAdapter(ResourceConfiguration configuration) {

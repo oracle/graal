@@ -1,0 +1,217 @@
+From 58112418268dfd986dddd194321409ff7be8eaef Mon Sep 17 00:00:00 2001
+From: Josef Eisl <josef.eisl@oracle.com>
+Date: Tue, 18 Dec 2018 17:19:42 +0100
+Subject: [PATCH 2/4] [GR-15966] [llvm-ar] support for extract with count
+
+---
+ .../tools/llvm-ar/extract-with-count.test     | 63 +++++++++++++++++++
+ llvm/tools/llvm-ar/llvm-ar.cpp                | 61 +++++++++++++++++-
+ 2 files changed, 121 insertions(+), 3 deletions(-)
+ create mode 100644 llvm/test/tools/llvm-ar/extract-with-count.test
+
+diff --git a/llvm/test/tools/llvm-ar/extract-with-count.test b/llvm/test/tools/llvm-ar/extract-with-count.test
+new file mode 100644
+index 00000000000..e687d6e47b1
+--- /dev/null
++++ b/llvm/test/tools/llvm-ar/extract-with-count.test
+@@ -0,0 +1,63 @@
++Test that we handle duplicate entries correctly
++
++RUN: echo "lib1" > %t-add-lib1.o
++RUN: echo "lib2" > %t-add-lib2.o
++RUN: echo "lib3" > %t-add-lib3.o
++
++RUN: rm -f %t.ar
++RUN: llvm-ar cr %t.ar %t-add-lib3.o
++RUN: llvm-ar cq %t.ar %t-add-lib1.o
++RUN: llvm-ar cq %t.ar %t-add-lib2.o
++
++Add file with different content
++RUN: echo "lib4" > %t-add-lib1.o
++RUN: llvm-ar cq %t.ar %t-add-lib1.o
++
++RUN: llvm-ar tv %t.ar | FileCheck %s --check-prefix=CHECK-NAMES-DUPLICATE
++CHECK-NAMES-DUPLICATE: extract-with-count.test.tmp-add-lib3.o
++CHECK-NAMES-DUPLICATE: extract-with-count.test.tmp-add-lib1.o
++CHECK-NAMES-DUPLICATE: extract-with-count.test.tmp-add-lib2.o
++CHECK-NAMES-DUPLICATE: extract-with-count.test.tmp-add-lib1.o
++
++CHECK-LIB1: lib1
++CHECK-LIB2: lib2
++CHECK-LIB3: lib3
++CHECK-LIB4: lib4
++
++Without a file filter, the last entry of a file should be extracted
++
++RUN: llvm-ar x %t.ar
++RUN: cat %t-add-lib1.o | FileCheck %s --check-prefix=CHECK-LIB4
++RUN: cat %t-add-lib2.o | FileCheck %s --check-prefix=CHECK-LIB2
++RUN: cat %t-add-lib3.o | FileCheck %s --check-prefix=CHECK-LIB3
++RUN: rm -f %t-add-lib1.o %t-add-lib2.o %t-add-lib3.o
++
++With a file filter but without count, the first entry of a file should be extracted
++
++RUN: llvm-ar x %t.ar extract-with-count.test.tmp-add-lib1.o
++RUN: cat extract-with-count.test.tmp-add-lib1.o | FileCheck %s --check-prefix=CHECK-LIB1
++RUN: rm -f %t-add-lib1.o %t-add-lib2.o %t-add-lib3.o
++
++With a file filter and count, the specified instance of the file should be extracted
++
++RUN: llvm-ar xN 1 %t.ar extract-with-count.test.tmp-add-lib1.o
++RUN: cat extract-with-count.test.tmp-add-lib1.o | FileCheck %s --check-prefix=CHECK-LIB1
++RUN: rm -f %t-add-lib1.o %t-add-lib2.o %t-add-lib3.o
++
++RUN: llvm-ar xN 2 %t.ar extract-with-count.test.tmp-add-lib1.o
++RUN: cat extract-with-count.test.tmp-add-lib1.o | FileCheck %s --check-prefix=CHECK-LIB4
++RUN: rm -f %t-add-lib1.o %t-add-lib2.o %t-add-lib3.o
++
++RUN: llvm-ar xN 2 %t.ar extract-with-count.test.tmp-add-lib1.o extract-with-count.test.tmp-add-lib2.o extract-with-count.test.tmp-add-lib3.o
++RUN: FileCheck %s --check-prefix=CHECK-LIB4 --input-file extract-with-count.test.tmp-add-lib1.o
++RUN: FileCheck %s --check-prefix=CHECK-LIB2 --input-file extract-with-count.test.tmp-add-lib2.o
++RUN: FileCheck %s --check-prefix=CHECK-LIB3 --input-file extract-with-count.test.tmp-add-lib3.o
++RUN: rm -f %t-add-lib1.o %t-add-lib2.o %t-add-lib3.o
++
++CHECK-POSITIVE: Value for [count] must be positive (>0)
++
++RUN: not llvm-ar xN 0 %t.ar extract-with-count.test.tmp-add-lib1.o 2>&1 | FileCheck %s --check-prefix=CHECK-POSITIVE
++RUN: not llvm-ar xN -1 %t.ar extract-with-count.test.tmp-add-lib1.o 2>&1 | FileCheck %s --check-prefix=CHECK-POSITIVE
++RUN: not llvm-ar xN nointeger %t.ar extract-with-count.test.tmp-add-lib1.o 2>&1 | FileCheck %s --check-prefix=CHECK-POSITIVE
++RUN: not llvm-ar xN 1nointeger %t.ar extract-with-count.test.tmp-add-lib1.o 2>&1 | FileCheck %s --check-prefix=CHECK-POSITIVE
++
+diff --git a/llvm/tools/llvm-ar/llvm-ar.cpp b/llvm/tools/llvm-ar/llvm-ar.cpp
+index 1c453ee0b56..355bbf5cd76 100644
+--- a/llvm/tools/llvm-ar/llvm-ar.cpp
++++ b/llvm/tools/llvm-ar/llvm-ar.cpp
+@@ -67,7 +67,7 @@ OPTIONS:
+ const char ArHelp[] = R"(
+ OVERVIEW: LLVM Archiver
+ 
+-USAGE: llvm-ar [options] [-]<operation>[modifiers] [relpos] <archive> [files]
++USAGE: llvm-ar [options] [-]<operation>[modifiers] [relpos|count] <archive> [files]
+        llvm-ar -M [<mri-script]
+ 
+ OPTIONS:
+@@ -98,6 +98,7 @@ MODIFIERS:
+   [i] - put [files] before [relpos] (same as [b])
+   [l] - ignored for compatibility
+   [L] - add archive's contents
++  [N] - extract the [count]th instance of [files]
+   [o] - preserve original dates
+   [s] - create an archive index (cf. ranlib)
+   [S] - do not build a symbol table
+@@ -173,6 +174,7 @@ static bool AddAfter = false;      ///< 'a' modifier
+ static bool AddBefore = false;     ///< 'b' modifier
+ static bool Create = false;        ///< 'c' modifier
+ static bool OriginalDates = false; ///< 'o' modifier
++static bool ExtractCount = false;  ///< 'N' modifier
+ static bool OnlyUpdate = false;    ///< 'u' modifier
+ static bool Verbose = false;       ///< 'v' modifier
+ static bool Symtab = true;         ///< 's' modifier
+@@ -186,6 +188,12 @@ static bool AddLibrary = false;    ///< 'L' modifier
+ // one variable.
+ static std::string RelPos;
+ 
++// Instance count for the 'N' modifier.
++static uint64_t Count;
++
++// Count member instances
++static StringMap<uint64_t> CountMap;
++
+ // This variable holds the name of the archive file as given on the
+ // command line.
+ static std::string ArchiveName;
+@@ -203,6 +211,16 @@ static void getRelPos() {
+   PositionalArgs.erase(PositionalArgs.begin());
+ }
+ 
++// Extract the position number from the command line for the [count] argument
++// associated with the N modifier
++static void getCount() {
++  if (PositionalArgs.size() == 0)
++    fail("Expected [count] for N modifier");
++  if (StringRef(PositionalArgs[0]).getAsInteger(10, Count) || Count == 0)
++    fail("Value for [count] must be positive (>0).");
++  PositionalArgs.erase(PositionalArgs.begin());
++}
++
+ // Get the archive file name from the command line
+ static void getArchive() {
+   if (PositionalArgs.empty())
+@@ -248,7 +266,7 @@ static ArchiveOperation parseCommandLine() {
+   // per execution.
+   unsigned NumOperations = 0;
+ 
+-  // Keep track of the number of positional modifiers (a,b,i). Only
++  // Keep track of the number of positional modifiers (a,b,i,N). Only
+   // one can be specified.
+   unsigned NumPositional = 0;
+ 
+@@ -318,6 +336,11 @@ static ArchiveOperation parseCommandLine() {
+       AddBefore = true;
+       NumPositional++;
+       break;
++    case 'N':
++      getCount();
++      ExtractCount = true;
++      NumPositional++;
++      break;
+     case 'i':
+       getRelPos();
+       AddBefore = true;
+@@ -369,6 +392,8 @@ static ArchiveOperation parseCommandLine() {
+   }
+   if (OriginalDates && Operation != Extract)
+     fail("The 'o' modifier is only applicable to the 'x' operation");
++  if (ExtractCount && Operation != Extract)
++    fail("The 'N' modifier is only applicable to the 'x' operation");
+   if (OnlyUpdate && Operation != ReplaceOrInsert)
+     fail("The 'u' modifier is only applicable to the 'r' operation");
+   if (AddLibrary && Operation != QuickAppend)
+@@ -493,13 +518,43 @@ static bool shouldCreateArchive(ArchiveOperation Op) {
+   llvm_unreachable("Missing entry in covered switch.");
+ }
+ 
++static void performExtractOperationWithCount(ArchiveOperation Operation,
++                                             object::Archive *OldArchive) {
++  assert(ExtractCount && Operation == Extract);
++  // Entries can occur multiple times and all occurrences
++  // may be get extracted. Maintain a copy of the original
++  // vector.
++  std::vector<StringRef> MembersCopy(Members);
++  Error Err = Error::success();
++  for (auto &C : OldArchive->children(Err)) {
++    Expected<StringRef> NameOrErr = C.getName();
++    failIfError(NameOrErr.takeError());
++    StringRef Name = NameOrErr.get();
++
++    auto I = find(MembersCopy, Name);
++    if (I == MembersCopy.end())
++      continue;
++
++    // Remove from original Members vector.
++    auto J = find(Members, Name);
++    if (J != Members.end())
++      Members.erase(J);
++
++    if (CountMap[Name]++ < Count)
++      doExtract(Name, C);
++  }
++  failIfError(std::move(Err));
++}
++
+ static void performReadOperation(ArchiveOperation Operation,
+                                  object::Archive *OldArchive) {
+   if (Operation == Extract && OldArchive->isThin())
+     fail("extracting from a thin archive is not supported");
+ 
+   bool Filter = !Members.empty();
+-  {
++  if (Filter && ExtractCount && Operation == Extract) {
++    performExtractOperationWithCount(Operation, OldArchive);
++  } else {
+     Error Err = Error::success();
+     for (auto &C : OldArchive->children(Err)) {
+       Expected<StringRef> NameOrErr = C.getName();
+-- 
+2.20.1
+

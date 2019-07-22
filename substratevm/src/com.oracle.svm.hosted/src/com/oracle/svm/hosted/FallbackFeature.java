@@ -33,33 +33,32 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.FallbackExecutor;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.image.AbstractBootImage;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticFeature
 public class FallbackFeature implements Feature {
-    private static final String ABORT_MSG_PREFIX = "Abort stand-alone image build";
+    private static final String ABORT_MSG_PREFIX = "Aborting stand-alone image build";
 
     private final List<ReflectionInvocationCheck> reflectionInvocationChecks = new ArrayList<>();
 
     private final List<String> reflectionCalls = new ArrayList<>();
     private final List<String> resourceCalls = new ArrayList<>();
+    private final List<String> jniCalls = new ArrayList<>();
     private final List<String> proxyCalls = new ArrayList<>();
 
     private static class AutoProxyInvoke {
@@ -172,6 +171,8 @@ public class FallbackFeature implements Feature {
 
             addCheck(Proxy.class.getMethod("getProxyClass", ClassLoader.class, Class[].class), this::collectProxyInvokes);
             addCheck(Proxy.class.getMethod("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class), this::collectProxyInvokes);
+
+            addCheck(System.class.getMethod("loadLibrary", String.class), this::collectJNIInvokes);
         } catch (NoSuchMethodException e) {
             throw VMError.shouldNotReachHere("Registering ReflectionInvocationChecks failed", e);
         }
@@ -183,6 +184,10 @@ public class FallbackFeature implements Feature {
 
     private void collectResourceInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
         resourceCalls.add("Resource access method " + check.locationString(invoke));
+    }
+
+    private void collectJNIInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
+        jniCalls.add("System method " + check.locationString(invoke));
     }
 
     private void collectProxyInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
@@ -214,22 +219,10 @@ public class FallbackFeature implements Feature {
     }
 
     static UserError.UserException reportAsFallback(RuntimeException original) {
-        if (Options.FallbackThreshold.getValue() == Options.NoFallback) {
+        if (SubstrateOptions.FallbackThreshold.getValue() == SubstrateOptions.NoFallback) {
             throw UserError.abort(original.getMessage(), original);
         }
         throw reportFallback(ABORT_MSG_PREFIX + ". " + original.getMessage(), original);
-    }
-
-    public static class Options {
-        public static final int ForceFallback = 10;
-        public static final int Automatic = 5;
-        public static final int NoFallback = 0;
-
-        @APIOption(name = "force-fallback", fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
-        @APIOption(name = "auto-fallback", fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
-        @APIOption(name = "no-fallback", fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
-        @Option(help = "Define when fallback-image generation should be used.")//
-        public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
     }
 
     @SuppressWarnings("serial")
@@ -244,10 +237,14 @@ public class FallbackFeature implements Feature {
     }
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return FallbackExecutor.Options.FallbackExecutorMainClass.getValue() == null;
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        if (Options.FallbackThreshold.getValue() == Options.ForceFallback) {
-            String fallbackArgument = SubstrateOptionsParser.commandArgument(Options.FallbackThreshold, "" + Options.FallbackThreshold.getValue());
-            reportFallback(ABORT_MSG_PREFIX + " due to native-image option " + fallbackArgument);
+        if (SubstrateOptions.FallbackThreshold.getValue() == SubstrateOptions.ForceFallback) {
+            reportFallback(ABORT_MSG_PREFIX + " due to native-image option --" + SubstrateOptions.OptionNameForceFallback);
         }
     }
 
@@ -262,14 +259,15 @@ public class FallbackFeature implements Feature {
 
     public FallbackImageRequest reflectionFallback = null;
     public FallbackImageRequest resourceFallback = null;
+    public FallbackImageRequest jniFallback = null;
     public FallbackImageRequest proxyFallback = null;
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess a) {
-        if (Options.FallbackThreshold.getValue() == Options.NoFallback ||
+        if (SubstrateOptions.FallbackThreshold.getValue() == SubstrateOptions.NoFallback ||
                         NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue() ||
                         NativeImageOptions.AllowIncompleteClasspath.getValue() ||
-                        !AbstractBootImage.NativeImageKind.EXECUTABLE.name().equals(NativeImageOptions.Kind.getValue())) {
+                        SubstrateOptions.SharedLibrary.getValue()) {
             /*
              * Any of the above ensures we unconditionally allow stand-alone image to be generated.
              */
@@ -296,6 +294,10 @@ public class FallbackFeature implements Feature {
         if (!resourceCalls.isEmpty()) {
             resourceCalls.add(ABORT_MSG_PREFIX + " due to accessing resources without configuration.");
             resourceFallback = new FallbackImageRequest(resourceCalls);
+        }
+        if (!jniCalls.isEmpty()) {
+            jniCalls.add(ABORT_MSG_PREFIX + " due to loading native libraries without configuration.");
+            jniFallback = new FallbackImageRequest(jniCalls);
         }
         if (!proxyCalls.isEmpty()) {
             proxyCalls.add(ABORT_MSG_PREFIX + " due to dynamic proxy use without configuration.");

@@ -43,7 +43,7 @@ package org.graalvm.options;
 /**
  * Categorizes options according to their stability.
  *
- * @since 1.0
+ * @since 19.0
  */
 public enum OptionStability {
 
@@ -52,14 +52,14 @@ public enum OptionStability {
      * an option being present. A stable option can still be removed but will go through a clear
      * deprecating process before being removed.
      *
-     * @since 1.0
+     * @since 19.0
      */
     STABLE,
 
     /**
      * An experimental option has no guarantees of stability and might be removed at any point.
      *
-     * @since 1.0
+     * @since 19.0
      */
     EXPERIMENTAL
 

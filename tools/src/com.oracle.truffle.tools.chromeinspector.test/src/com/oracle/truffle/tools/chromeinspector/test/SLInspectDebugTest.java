@@ -1509,6 +1509,10 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":6,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":11,\"columnNumber\":0},\"restrictToFunction\":false}}");
         assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":2,\"lineNumber\":11},{\"scriptId\":\"1\",\"columnNumber\":13,\"lineNumber\":11},{\"scriptId\":\"1\",\"columnNumber\":24,\"lineNumber\":11}]},\"id\":6}", tester.getMessages(true).trim());
 
+        // Test location after file length:
+        tester.sendMessage("{\"id\":7,\"method\":\"Debugger.getPossibleBreakpoints\",\"params\":{\"start\":{\"scriptId\":\"1\",\"lineNumber\":14,\"columnNumber\":0},\"end\":{\"scriptId\":\"1\",\"lineNumber\":14,\"columnNumber\":0},\"restrictToFunction\":false}}");
+        assertEquals("{\"result\":{\"locations\":[{\"scriptId\":\"1\",\"columnNumber\":24,\"lineNumber\":11}]},\"id\":7}", tester.getMessages(true).trim());
+
         // Resume to finish:
         tester.sendMessage("{\"id\":20,\"method\":\"Debugger.resume\"}");
         assertTrue(tester.compareReceivedMessages(

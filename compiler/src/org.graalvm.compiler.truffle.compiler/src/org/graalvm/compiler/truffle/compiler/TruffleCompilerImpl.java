@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -184,7 +184,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     }
 
     /**
-     * Gets the Graal compiler backend used for Truffle compilation.
+     * Gets the compiler backend used for Truffle compilation.
      */
     public Backend getBackend() {
         return backend;
@@ -433,6 +433,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
 
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
+            if (speculationLog != null) {
+                speculationLog.collectFailedSpeculations();
+            }
 
             try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
                 graph = partialEvaluator.createGraph(debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, task);
@@ -548,6 +551,14 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     }
 
     /**
+     * Calls {@link System#exit(int)} in the runtime embedding the Graal compiler. This will be a
+     * different runtime than Graal's runtime in the case of libgraal.
+     */
+    protected void exitHostVM(int status) {
+        System.exit(status);
+    }
+
+    /**
      * Creates the {@link CompilationResult} to be used for a Truffle compilation.
      */
     protected abstract CompilationResult createCompilationResult(String name, CompilationIdentifier compilationIdentifier, CompilableTruffleAST compilable);
@@ -606,8 +617,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         }
 
         @Override
-        protected DebugContext createRetryDebugContext(OptionValues options, PrintStream logStream) {
+        protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues options, PrintStream logStream) {
             return createDebugContext(options, compilationId, compilable, logStream);
+        }
+
+        @Override
+        protected void exitHostVM(int status) {
+            TruffleCompilerImpl.this.exitHostVM(status);
         }
 
         @Override

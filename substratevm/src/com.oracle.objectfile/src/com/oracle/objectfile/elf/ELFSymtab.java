@@ -110,7 +110,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
         @Override
         public Section getDefinedSection() {
-            return getReferencedSection();
+            return referencedSection;
         }
 
         @Override
@@ -152,21 +152,26 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
             // represents the null entry
             this("", 0, 0, null, null, null, null);
         }
-
-        ELFSection getReferencedSection() {
-            return referencedSection;
-        }
     }
 
     public enum SymBinding {
-        LOCAL,
+        LOCAL {
+            @Override
+            byte createVisibilityByte() {
+                return 2; /* set ELF Symbol Table Entry st_other to STV_HIDDEN */
+            }
+        },
         GLOBAL,
         WEAK,
         LOPROC,
         HIPROC;
 
-        static byte createInfoByte(SymType type, SymBinding binding) {
-            return SymType.createInfoByte(type, binding);
+        byte createInfoByte(SymType type) {
+            return type.createInfoByte(this);
+        }
+
+        byte createVisibilityByte() {
+            return 0; /* set ELF Symbol Table Entry st_other to STV_DEFAULT */
         }
     }
 
@@ -179,15 +184,8 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         LOPROC,
         HIPROC;
 
-        static byte createInfoByte(SymType type, SymBinding b) {
-            if (type == null || b == null) {
-                // they must both be null
-                assert type == null;
-                assert b == null;
-                // the byte is zero -- it's for the null symtab entry
-                return (byte) 0;
-            }
-            return (byte) (type.ordinal() | (b.ordinal() << 4)); // FIXME: handle non-ordinal values
+        byte createInfoByte(SymBinding b) {
+            return (byte) (this.ordinal() | (b.ordinal() << 4));
         }
 
     }
@@ -353,36 +351,32 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
         for (Entry e : entries) {
             EntryStruct s = new EntryStruct();
-            // even the null entry has a non-null name ("")
-            assert e.name != null;
             s.name = table.indexFor(e.name);
-            // careful: our symbol might not be defined,
-            // or might be absolute
-            ELFSection referencedSection = e.getReferencedSection();
-            if (e.pseudoSection == PseudoSection.ABS) {
-                // just emit the value
-                s.value = e.value;
-            } else if (e.pseudoSection == PseudoSection.UNDEF) {
-                // it's undefined
-                s.value = 0;
-            } else if (e.pseudoSection != null) {
-                // it's a pseudosection we don't support yet
-                assert false : "symbol " + e.name + " references unsupported pseudosection " + e.pseudoSection.name();
-                s.value = 0;
-            } else if (e.referencedSection == null) {
+
+            if (e.name.isEmpty()) {
+                /* If this is the NullEntry we are done */
                 assert e.isNull();
-                s.value = 0;
-            } else {
-                assert referencedSection != null;
-                // "value" is emitted as a vaddr in dynsym sections,
-                // but as a section offset in normal symtabs
-                s.value = isDynamic() ? ((int) alreadyDecided.get(e.getReferencedSection()).getDecidedValue(LayoutDecision.Kind.VADDR) + e.value) : e.value;
+                s.write(out);
+                continue;
             }
+
+            if (e.pseudoSection != null) {
+                if (e.pseudoSection == PseudoSection.ABS) {
+                    s.value = e.value;
+                } else {
+                    assert e.pseudoSection == PseudoSection.UNDEF;
+                }
+            } else {
+                s.value = e.value;
+                if (isDynamic()) {
+                    s.value += (int) alreadyDecided.get(e.referencedSection).getDecidedValue(LayoutDecision.Kind.VADDR);
+                }
+            }
+
             s.size = e.size;
-            s.info = SymBinding.createInfoByte(e.symType, e.binding);
-            assert !e.isNull() || s.info == 0;
-            s.other = (byte) 0;
-            s.shndx = (short) getOwner().getIndexForSection(e.getReferencedSection());
+            s.info = e.binding.createInfoByte(e.symType);
+            s.other = e.binding.createVisibilityByte();
+            s.shndx = (short) getOwner().getIndexForSection(e.referencedSection);
             s.write(out);
         }
         return out.getBlob();
@@ -415,7 +409,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
         if (isDynamic()) {
             Set<ELFSection> referencedSections = new HashSet<>();
             for (Entry ent : entries) {
-                ELFSection es = ent.getReferencedSection();
+                ELFSection es = ent.referencedSection;
                 if (es != null) {
                     referencedSections.add(es);
                 }

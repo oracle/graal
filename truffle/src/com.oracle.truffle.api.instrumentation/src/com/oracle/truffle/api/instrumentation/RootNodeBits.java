@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.nodes.RootNode;
 
 final class RootNodeBits {
@@ -87,11 +86,11 @@ final class RootNodeBits {
     }
 
     static int get(RootNode root) {
-        return AccessorInstrumentHandler.nodesAccess().getRootNodeBits(root);
+        return InstrumentAccessor.nodesAccess().getRootNodeBits(root);
     }
 
     static void set(RootNode root, int bits) {
-        AccessorInstrumentHandler.nodesAccess().setRootNodeBits(root, bits);
+        InstrumentAccessor.nodesAccess().setRootNodeBits(root, bits);
     }
 
     static boolean isUninitialized(int bits) {

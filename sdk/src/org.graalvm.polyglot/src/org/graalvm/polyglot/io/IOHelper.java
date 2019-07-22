@@ -41,6 +41,7 @@
 package org.graalvm.polyglot.io;
 
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessMode;
@@ -65,6 +66,13 @@ final class IOHelper {
 
     static void copy(final Path source, final Path target, final FileSystem fileSystem, CopyOption... options) throws IOException {
         copy(source, target, fileSystem, fileSystem, options);
+    }
+
+    /**
+     * See {@code org.graalvm.compiler.serviceprovider.BufferUtil}.
+     */
+    private static Buffer asBaseBuffer(Buffer obj) {
+        return obj;
     }
 
     static void copy(final Path source, final Path target, final FileSystem sourceFileSystem, final FileSystem targetFileSystem, CopyOption... options) throws IOException {
@@ -122,11 +130,11 @@ final class IOHelper {
                             SeekableByteChannel targetChannel = targetFileSystem.newByteChannel(targetReal, writeOptions)) {
                 final ByteBuffer buffer = ByteBuffer.allocateDirect(1 << 16);
                 while (sourceChannel.read(buffer) != -1) {
-                    buffer.flip();
+                    asBaseBuffer(buffer).flip();
                     while (buffer.hasRemaining()) {
                         targetChannel.write(buffer);
                     }
-                    buffer.clear();
+                    asBaseBuffer(buffer).clear();
                 }
             }
         }

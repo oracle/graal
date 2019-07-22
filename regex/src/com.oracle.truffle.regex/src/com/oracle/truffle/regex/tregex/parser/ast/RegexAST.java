@@ -144,6 +144,12 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return properties;
     }
 
+    public boolean isLiteralString() {
+        Group r = getRoot();
+        RegexProperties p = getProperties();
+        return !((p.hasAlternations() || p.hasCharClasses() || p.hasLookAroundAssertions() || r.hasLoops()) || ((r.startsWithCaret() || r.endsWithDollar()) && getFlags().isMultiline()));
+    }
+
     @Override
     public int getNumberOfStates() {
         return nodes.length;

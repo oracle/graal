@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
 public final class MDNode extends MDAggregateNode {
 
@@ -42,10 +43,10 @@ public final class MDNode extends MDAggregateNode {
         visitor.visit(this);
     }
 
-    public static MDNode create38(long[] record, MetadataValueList md) {
-        final MDNode node = new MDNode(record.length);
-        for (int i = 0; i < record.length; i++) {
-            node.set(i, md.getNullable(record[i], node));
+    public static MDNode create38(RecordBuffer buffer, MetadataValueList md) {
+        final MDNode node = new MDNode(buffer.size());
+        for (int i = 0; i < buffer.size(); i++) {
+            node.set(i, md.getNullable(buffer.read(), node));
         }
         return node;
     }

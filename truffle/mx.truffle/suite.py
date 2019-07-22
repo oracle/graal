@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.213.3",
+  "mxversion" : "5.223.0",
   "name" : "truffle",
-  "version" : "1.0.0-rc17",
+  "version" : "19.2.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -87,7 +87,7 @@ suite = {
       "version" : "3.2.1",
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz",
-        "ftp://sourceware.org/pub/libffi/libffi-{version}.tar.gz",
+        "https://sourceware.org/pub/libffi/libffi-{version}.tar.gz",
       ],
       "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
     },
@@ -104,7 +104,7 @@ suite = {
     "ANTLR4_COMPLETE": {
       "urls": [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.1-complete.jar",
-        "http://www.antlr.org/download/antlr-4.7.1-complete.jar"
+        "https://www.antlr.org/download/antlr-4.7.1-complete.jar"
       ],
       "sha1": "90aa8308da72ae610207d8f6ca27736921be692a",
     },
@@ -126,7 +126,7 @@ suite = {
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java
-        "com.oracle.truffle.api.impl", # exported to the Graal compiler
+        "com.oracle.truffle.api.impl", # exported to the GraalVM compiler
       ],
       # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
       # if warnings as errors is enabled. See GR-14683.
@@ -306,6 +306,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "9+",
+      "overlayTarget" : "com.oracle.truffle.dsl.processor",
       "multiReleaseJarVersion" : "9",
       "imports" : [
         "com.sun.tools.javac.processing",
@@ -857,6 +858,7 @@ suite = {
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
       "testProject" : True,
+      "maven": True,
     },
 
     "TRUFFLE_TCK_INSTRUMENTATION" : {
@@ -877,7 +879,7 @@ suite = {
     "TRUFFLE_DSL_PROCESSOR_INTERNAL" : {
       "internal" : True,
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.jdk9", "com.oracle.truffle.api.library"],
+      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.api.library"],
       "distDependencies" : ["sdk:GRAAL_SDK"],
       "maven" : False,
     },
@@ -885,14 +887,14 @@ suite = {
     "TRUFFLE_DSL_PROCESSOR_INTEROP_INTERNAL" : {
       "internal" : True,
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop", "com.oracle.truffle.dsl.processor.jdk9"],
+      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop"],
       "distDependencies" : ["sdk:GRAAL_SDK"],
       "maven" : False,
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop", "com.oracle.truffle.object.dsl.processor", "com.oracle.truffle.dsl.processor.jdk9", "truffle:ANTLR4"],
+      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop", "com.oracle.truffle.object.dsl.processor", "truffle:ANTLR4"],
       "distDependencies" : ["TRUFFLE_API"],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
@@ -1019,9 +1021,9 @@ suite = {
 
     "TRUFFLE_GRAALVM_SUPPORT" : {
       "native" : True,
-      "description" : "Truffle support distribution for the GraalVM",
+      "description" : "Truffle support distribution for SVM",
       "layout" : {
-        "native-image.properties" : "file:mx.truffle/tools-truffle.properties",
+        "native-image.properties" : "file:mx.truffle/macro-truffle.properties",
       },
     },
 
@@ -1029,7 +1031,7 @@ suite = {
       "native" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
       "layout" : {
-        "native-image.properties" : "file:mx.truffle/tools-nfi.properties",
+        "native-image.properties" : "file:mx.truffle/language-nfi.properties",
       },
     },
   },

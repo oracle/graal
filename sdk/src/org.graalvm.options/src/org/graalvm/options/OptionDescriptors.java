@@ -40,6 +40,7 @@
  */
 package org.graalvm.options;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -51,14 +52,14 @@ import java.util.NoSuchElementException;
 /**
  * An interface to a set of {@link OptionDescriptor}s.
  *
- * @since 1.0
+ * @since 19.0
  */
 public interface OptionDescriptors extends Iterable<OptionDescriptor> {
 
     /**
      * An empty set of option descriptors.
      *
-     * @since 1.0
+     * @since 19.0
      */
     OptionDescriptors EMPTY = new OptionDescriptors() {
 
@@ -75,7 +76,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
      * Gets the {@link OptionDescriptor} matching a given option name or {@code null} if this option
      * descriptor set does not contain a matching option name.
      *
-     * @since 1.0
+     * @since 19.0
      */
     OptionDescriptor get(String optionName);
 
@@ -84,7 +85,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
      * descriptors are not checked for duplicate keys. The option descriptors are iterated in
      * declaration order.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static OptionDescriptors createUnion(OptionDescriptors... descriptors) {
         if (descriptors.length == 0) {
@@ -99,7 +100,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     Iterator<OptionDescriptor> iterator();
@@ -108,7 +109,7 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
      * Creates an {@link OptionDescriptors} instance from a list. The option descriptors
      * implementation is backed by a {@link LinkedHashMap} that preserves ordering.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static OptionDescriptors create(List<OptionDescriptor> descriptors) {
         if (descriptors == null || descriptors.isEmpty()) {
@@ -121,15 +122,26 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
 class OptionDescriptorsMap implements OptionDescriptors {
 
     final Map<String, OptionDescriptor> descriptors = new LinkedHashMap<>();
+    final List<String> prefixes = new ArrayList<>();
 
     OptionDescriptorsMap(List<OptionDescriptor> descriptorList) {
         for (OptionDescriptor descriptor : descriptorList) {
+            if (descriptor.isOptionMap()) {
+                prefixes.add(descriptor.getName());
+            }
             descriptors.put(descriptor.getName(), descriptor);
         }
     }
 
     @Override
     public OptionDescriptor get(String optionName) {
+        if (!prefixes.isEmpty()) {
+            for (String prefix : prefixes) {
+                if (optionName.startsWith(prefix + ".") || optionName.equals(prefix)) {
+                    return descriptors.get(prefix);
+                }
+            }
+        }
         return descriptors.get(optionName);
     }
 

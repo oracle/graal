@@ -1,8 +1,49 @@
-# Version 1.0.0 RC17
+# Version 19.2.0
+
+New features:
+
+* Support locating dynamic libraries relatively using (`rpath`).
+* Preliminary support for compiling to bitcode using the LLVM toolchain.
+  See [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) for more details.
+  *WARNING*: The toolchain is experimental. Functionality may be added,
+  changed or removed without prior notice.
+* Support for simple pointer arithmetics with foreign objects.
+  In addition to offset arithmetics, GraalVM now supports "negated" pointers and
+  simple bitmask operations (typically used for alignment operations).
+
+Improvements:
+
+* Improved display of pointers to foreign objects in the LLVM debugger.
+  When inspecting pointer values that point somewhere inside a foreign object,
+  the debugger now allows inspecting the original foreign object, not just the
+  contents of the pointer itself.
+
+# Version 19.1.0
+
+Fixes:
+
+* Calling exit(...) in an embedded context is now a catchable PolyglotException.
+* Skip source path entries that we're not allowed to access.
+  Previously, when running in an embedded context with restricted access to the
+  file system, the LLVM engine threw an exception when it could not read the
+  source files, even if no debugger was attached. Now it will still run. Only
+  when a debugger is attached, an error is reported when the source file can't
+  be accessed.
+
+# Version 19.0.0
 
 Changes:
 
-* Moved `polyglot.h` into the `include` subdirectory
+* Moved `polyglot.h` into the `include` subdirectory.
+* Remove language version from LLVMLanguage.
+  The LLVM engine in GraalVM is always released in sync with GraalVM, no need for
+  a separate version number.
+
+Fixes:
+
+* Don't use host interop for LLVM engine internals.
+  This means the LLVM engine now works correctly with minimal permissions. In particular,
+  the host interop permission is not needed anymore.
 
 # Version 1.0.0 RC15
 

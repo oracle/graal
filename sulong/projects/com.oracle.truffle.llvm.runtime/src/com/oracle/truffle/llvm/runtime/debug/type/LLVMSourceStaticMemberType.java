@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.type;
 
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-
-import java.util.LinkedList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public final class LLVMSourceStaticMemberType extends LLVMSourceType {
 
@@ -49,11 +48,11 @@ public final class LLVMSourceStaticMemberType extends LLVMSourceType {
 
         private static final String TYPENAME = "";
 
-        private final List<LLVMSourceStaticMemberType> members;
+        private final ArrayList<LLVMSourceStaticMemberType> members;
 
         CollectionType() {
             super(() -> TYPENAME, 0L, 0L, 0L, null);
-            this.members = new LinkedList<>();
+            this.members = new ArrayList<>();
         }
 
         @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,6 +42,11 @@ void *allocPoint(int x, int y) {
   ret->x = x;
   ret->y = y;
   return polyglot_from_Point(ret);
+}
+
+void *allocPointUninitialized() {
+  void *ret = malloc(sizeof(struct Point));
+  return polyglot_from_typed(ret, polyglot_Point_typeid());
 }
 
 void freePoint(struct Point *point) {

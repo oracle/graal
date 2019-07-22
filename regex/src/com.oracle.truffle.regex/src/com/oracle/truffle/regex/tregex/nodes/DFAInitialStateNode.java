@@ -24,11 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.util.Arrays;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
@@ -82,17 +80,17 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     }
 
     @Override
-    public void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString) {
+    public void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
         if (searching) {
-            executor.setSuccessorIndex(frame, executor.rewindUpTo(frame, getPrefixLength()));
+            locals.setSuccessorIndex(executor.rewindUpTo(locals, getPrefixLength()));
         } else {
-            executor.setSuccessorIndex(frame, Math.max(0, Math.min(getPrefixLength(), executor.getFromIndex(frame) - executor.getIndex(frame))));
+            locals.setSuccessorIndex(Math.max(0, Math.min(getPrefixLength(), locals.getFromIndex() - locals.getIndex())));
         }
-        if (!executor.atBegin(frame)) {
-            executor.setSuccessorIndex(frame, executor.getSuccessorIndex(frame) + (successors.length / 2));
+        if (!executor.atBegin(locals)) {
+            locals.setSuccessorIndex(locals.getSuccessorIndex() + (successors.length / 2));
         }
         if (trackCaptureGroups) {
-            executor.setLastTransition(frame, (short) 0);
+            locals.setLastTransition((short) 0);
         }
     }
 

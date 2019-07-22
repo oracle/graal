@@ -56,40 +56,35 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Queue;
-import java.util.StringJoiner;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
+import java.util.jar.Attributes;
+import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.FallbackExecutor;
+import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
-import com.oracle.svm.graal.hosted.GraalFeature;
-import com.oracle.svm.hosted.FallbackFeature;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageGeneratorRunner;
-import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
-import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
-import com.oracle.svm.reflect.hosted.ReflectionFeature;
-import com.oracle.svm.reflect.proxy.hosted.DynamicProxyFeature;
 
 public class NativeImage {
 
@@ -101,18 +96,24 @@ public class NativeImage {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
-    static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
+    static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
     static final String graalvmConfig = System.getProperty("org.graalvm.config", "");
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
-        for (String versionTag : Arrays.asList("1.8", "11")) {
-            result.put(versionTag, getResource("/graal-compiler-flags-" + versionTag + ".config").split("\n"));
+        for (String versionTag : getResource(flagsFileName("versions")).split("\n")) {
+            result.put(versionTag, getResource(flagsFileName(versionTag)).split("\n"));
         }
         return result;
     }
 
+    private static String flagsFileName(String versionTag) {
+        return "/graal-compiler-flags-" + versionTag + ".config";
+    }
+
     static final Map<String, String[]> graalCompilerFlags = getCompilerFlags();
+
+    static Boolean useJVMCINativeLibrary = null;
 
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
@@ -135,10 +136,13 @@ public class NativeImage {
         }
 
         abstract boolean consume(Queue<String> args);
+
+        void addFallbackBuildArgs(@SuppressWarnings("unused") List<String> buildArgs) {
+            /* Override to forward fallback relevant args */
+        }
     }
 
     final APIOptionHandler apiOptionHandler;
-    final DefaultOptionHandler defaultOptionHandler;
 
     public static final String oH = "-H:";
     static final String oR = "-R:";
@@ -149,24 +153,28 @@ public class NativeImage {
         return oH + option.getName() + "=";
     }
 
-    final String oHClass = oH(NativeImageOptions.Class);
-    final String oHName = oH(NativeImageOptions.Name);
+    private static <T> String oR(OptionKey<T> option) {
+        return oR + option.getName() + "=";
+    }
+
+    final String oHClass = oH(SubstrateOptions.Class);
+    final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.Path);
-    final String oHKind = oH(NativeImageOptions.Kind);
+    final String enableSharedLibraryFlag = oH + "+" + SubstrateOptions.SharedLibrary.getName();
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     final String oHOptimize = oH(SubstrateOptions.Optimize);
-    final String oHFallbackThreshold = oH(FallbackFeature.Options.FallbackThreshold);
+    final String oHFallbackThreshold = oH(SubstrateOptions.FallbackThreshold);
+    final String oHFallbackExecutorJavaArg = oH(FallbackExecutor.Options.FallbackExecutorJavaArg);
+    final String oRRuntimeJavaArg = oR(Options.FallbackExecutorRuntimeJavaArg);
 
     /* List arguments */
-    final String oHSubstitutionFiles = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionFiles);
-    final String oHReflectionConfigurationFiles = oH(ReflectionFeature.Options.ReflectionConfigurationFiles);
-    final String oHDynamicProxyConfigurationFiles = oH(DynamicProxyFeature.Options.DynamicProxyConfigurationFiles);
-    final String oHJNIConfigurationFiles = oH(SubstrateOptions.JNIConfigurationFiles);
+    final String oHSubstitutionFiles = oH(ConfigurationFiles.Options.SubstitutionFiles);
+    final String oHReflectionConfigurationFiles = oH(ConfigurationFiles.Options.ReflectionConfigurationFiles);
+    final String oHDynamicProxyConfigurationFiles = oH(ConfigurationFiles.Options.DynamicProxyConfigurationFiles);
+    final String oHResourceConfigurationFiles = oH(ConfigurationFiles.Options.ResourceConfigurationFiles);
+    final String oHJNIConfigurationFiles = oH(ConfigurationFiles.Options.JNIConfigurationFiles);
 
-    final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
-    final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
-    final String oDLauncherClasspath = "-Dorg.graalvm.launcher.classpath=";
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
@@ -198,7 +206,7 @@ public class NativeImage {
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
     public static final String nativeImagePropertiesFilename = "native-image.properties";
-    public static final String nativeImagePropertiesMetaInf = "META-INF/native-image";
+    public static final String nativeImageMetaInf = "META-INF/native-image";
 
     public interface BuildConfiguration {
         /**
@@ -279,20 +287,51 @@ public class NativeImage {
          * @return additional arguments for JVM that runs image builder
          */
         default List<String> getBuilderJavaArgs() {
-            String javaVersion = System.getProperty("java.version");
-            if (javaVersion.startsWith("1.")) {
-                javaVersion = javaVersion.substring(0, 3);
-            } else if (javaVersion.contains("-")) {
-                javaVersion = javaVersion.split("-")[0];
-            } else {
-                javaVersion = javaVersion.split("\\.", 2)[0];
-            }
-
+            String javaVersion = String.valueOf(JavaVersionUtil.JAVA_SPEC);
             String[] flagsForVersion = graalCompilerFlags.get(javaVersion);
             if (flagsForVersion == null) {
-                showError("Image building not supported for Java version " + javaVersion);
+                showError(String.format("Image building not supported for Java version %s in %s with VM configuration \"%s\"",
+                                System.getProperty("java.version"),
+                                System.getProperty("java.home"),
+                                System.getProperty("java.vm.name")));
             }
-            return Arrays.asList(flagsForVersion);
+
+            if (useJVMCINativeLibrary == null) {
+                useJVMCINativeLibrary = false;
+                ProcessBuilder pb = new ProcessBuilder();
+                List<String> command = pb.command();
+                command.add(getJavaExecutable().toString());
+                command.add("-XX:+PrintFlagsFinal");
+                command.add("-version");
+                try {
+                    Process process = pb.start();
+                    try (java.util.Scanner inputScanner = new java.util.Scanner(process.getInputStream())) {
+                        while (inputScanner.hasNextLine()) {
+                            String line = inputScanner.nextLine();
+                            if (line.contains("bool UseJVMCINativeLibrary")) {
+                                String value = SubstrateUtil.split(line, "=")[1];
+                                if (value.trim().startsWith("true")) {
+                                    useJVMCINativeLibrary = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    process.waitFor();
+                    process.destroy();
+                } catch (Exception e) {
+                    /* Probing fails silently */
+                }
+            }
+
+            ArrayList<String> builderJavaArgs = new ArrayList<>();
+            builderJavaArgs.addAll(Arrays.asList(flagsForVersion));
+            if (useJVMCINativeLibrary) {
+                builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
+            } else {
+                builderJavaArgs.add("-XX:-UseJVMCICompiler");
+            }
+            return builderJavaArgs;
         }
 
         /**
@@ -324,60 +363,53 @@ public class NativeImage {
         }
 
         /**
-         * TODO Remove GraalVM Lanucher specific code.
-         *
-         * @return extra classpath entries for common GraalVM launcher components
-         *         (launcher-common.jar)
+         * @return true for fallback image building
          */
-        default List<Path> getLauncherCommonClasspath() {
-            return Collections.emptyList();
+        default boolean buildFallbackImage() {
+            return false;
         }
 
-        /**
-         * TODO Remove GraalVM Lanucher specific code.
-         *
-         * @return launcher classpath system property argument for image builder
-         */
-        default String getLauncherClasspathPropertyValue(@SuppressWarnings("unused") LinkedHashSet<Path> imageClasspath) {
+        default String getAgentJAR() {
             return null;
-        }
-
-        /**
-         * TODO Remove GraalVM Lanucher specific code.
-         */
-        default Stream<Path> getAbsoluteLauncherClassPath(@SuppressWarnings("unused") Stream<String> relativeLauncherClassPath) {
-            return Stream.empty();
         }
     }
 
     private static class DefaultBuildConfiguration implements BuildConfiguration {
         private final Path workDir;
         private final Path rootDir;
-        private final String[] args;
+        private final List<String> args;
+
+        DefaultBuildConfiguration(List<String> args) {
+            this(null, null, args);
+        }
 
         @SuppressWarnings("deprecation")
-        DefaultBuildConfiguration(String[] args) {
+        DefaultBuildConfiguration(Path rootDir, Path workDir, List<String> args) {
             this.args = args;
-            workDir = Paths.get(".").toAbsolutePath().normalize();
-            if (IS_AOT) {
-                Path executablePath = Paths.get(ProcessProperties.getExecutableName());
-                assert executablePath != null;
-                Path binDir = executablePath.getParent();
-                Path rootDirCandidate = binDir.getParent();
-                if (rootDirCandidate.endsWith(platform)) {
-                    rootDirCandidate = rootDirCandidate.getParent();
-                }
-                if (rootDirCandidate.endsWith(Paths.get("lib", "svm"))) {
-                    rootDirCandidate = rootDirCandidate.getParent().getParent();
-                }
-                rootDir = rootDirCandidate;
+            this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
+            if (rootDir != null) {
+                this.rootDir = rootDir;
             } else {
-                String rootDirProperty = "native-image.root";
-                String rootDirString = System.getProperty(rootDirProperty);
-                if (rootDirString == null) {
-                    rootDirString = System.getProperty("java.home");
+                if (IS_AOT) {
+                    Path executablePath = Paths.get(ProcessProperties.getExecutableName());
+                    assert executablePath != null;
+                    Path binDir = executablePath.getParent();
+                    Path rootDirCandidate = binDir.getParent();
+                    if (rootDirCandidate.endsWith(platform)) {
+                        rootDirCandidate = rootDirCandidate.getParent();
+                    }
+                    if (rootDirCandidate.endsWith(Paths.get("lib", "svm"))) {
+                        rootDirCandidate = rootDirCandidate.getParent().getParent();
+                    }
+                    this.rootDir = rootDirCandidate;
+                } else {
+                    String rootDirProperty = "native-image.root";
+                    String rootDirString = System.getProperty(rootDirProperty);
+                    if (rootDirString == null) {
+                        rootDirString = System.getProperty("java.home");
+                    }
+                    this.rootDir = Paths.get(rootDirString);
                 }
-                rootDir = Paths.get(rootDirString);
             }
         }
 
@@ -388,17 +420,16 @@ public class NativeImage {
 
         @Override
         public Path getJavaExecutable() {
-            Path javaHomePath = rootDir.getParent();
             Path binJava = Paths.get("bin", OS.getCurrent() == OS.WINDOWS ? "java.exe" : "java");
-            if (Files.isExecutable(javaHomePath.resolve(binJava))) {
-                return javaHomePath.resolve(binJava);
+            if (Files.isExecutable(rootDir.resolve(binJava))) {
+                return rootDir.resolve(binJava);
             }
 
             String javaHome = System.getenv("JAVA_HOME");
             if (javaHome == null) {
                 throw showError("Environment variable JAVA_HOME is not set");
             }
-            javaHomePath = Paths.get(javaHome);
+            Path javaHomePath = Paths.get(javaHome);
             if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
                 throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
             }
@@ -461,7 +492,7 @@ public class NativeImage {
 
         @Override
         public List<Path> getBuilderUpgradeModulePath() {
-            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal");
+            return getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal", "graal-management");
         }
 
         @Override
@@ -471,59 +502,70 @@ public class NativeImage {
 
         @Override
         public List<String> getBuildArgs() {
-            if (args.length == 0) {
+            if (args.isEmpty()) {
                 return Collections.emptyList();
             }
             List<String> buildArgs = new ArrayList<>();
             buildArgs.addAll(Arrays.asList("--configurations-path", rootDir.toString()));
-            buildArgs.addAll(Arrays.asList(args));
+            buildArgs.addAll(Arrays.asList("--configurations-path", rootDir.resolve(Paths.get("lib", "svm")).toString()));
+            buildArgs.addAll(args);
             return buildArgs;
         }
 
         @Override
-        public List<Path> getLauncherCommonClasspath() {
-            return Collections.singletonList(rootDir.resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
+        public String getAgentJAR() {
+            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar")).toAbsolutePath().toString();
         }
 
-        @Override
-        public String getLauncherClasspathPropertyValue(LinkedHashSet<Path> imageClasspath) {
-            StringJoiner sj = new StringJoiner(File.pathSeparator);
-            for (Path path : imageClasspath) {
-                if (!path.startsWith(rootDir)) {
-                    System.err.println(String.format("WARNING: ignoring '%s' while building launcher classpath: it does not live under the GraalVM root (%s)", path, rootDir));
-                    continue;
-                }
-                sj.add(Paths.get("jre").resolve(rootDir.relativize(path)).toString());
-            }
-            return sj.toString();
+    }
+
+    private ArrayList<String> createFallbackBuildArgs() {
+        ArrayList<String> buildArgs = new ArrayList<>();
+        Collection<String> fallbackSystemProperties = customJavaArgs.stream()
+                        .filter(s -> s.startsWith("-D"))
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+        for (String property : fallbackSystemProperties) {
+            buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorSystemProperty) + property);
         }
 
-        @Override
-        public Stream<Path> getAbsoluteLauncherClassPath(Stream<String> relativeLauncherClassPath) {
-            return relativeLauncherClassPath.map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> rootDir.resolve(p));
+        List<String> runtimeJavaArgs = imageBuilderArgs.stream()
+                        .filter(s -> s.startsWith(oRRuntimeJavaArg))
+                        .collect(Collectors.toList());
+        for (String runtimeJavaArg : runtimeJavaArgs) {
+            buildArgs.add(runtimeJavaArg);
         }
+
+        List<String> fallbackExecutorJavaArgs = imageBuilderArgs.stream()
+                        .filter(s -> s.startsWith(oHFallbackExecutorJavaArg))
+                        .collect(Collectors.toList());
+        for (String fallbackExecutorJavaArg : fallbackExecutorJavaArgs) {
+            buildArgs.add(fallbackExecutorJavaArg);
+        }
+
+        buildArgs.add(oH + "+" + SubstrateOptions.ParseRuntimeOptions.getName());
+        String classpathString = imageClasspath.stream()
+                        .map(imagePath::relativize)
+                        .map(ClasspathUtils::classpathToString)
+                        .collect(Collectors.joining(File.pathSeparator));
+        buildArgs.add(oHPath + imagePath.toString());
+        buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorClasspath) + classpathString);
+        buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorMainClass) + mainClass);
+        buildArgs.add(FallbackExecutor.class.getName());
+        buildArgs.add(imageName);
+
+        for (OptionHandler<? extends NativeImage> handler : optionHandlers) {
+            handler.addFallbackBuildArgs(buildArgs);
+        }
+        return buildArgs;
     }
 
     private static final class FallbackBuildConfiguration implements InvocationHandler {
         private final NativeImage original;
-        private final ArrayList<String> buildArgs;
+        private final List<String> buildArgs;
 
         private FallbackBuildConfiguration(NativeImage original) {
             this.original = original;
-            buildArgs = new ArrayList<>();
-            for (String property : original.effectiveSystemProperties) {
-                buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorSystemProperty) + property);
-            }
-            buildArgs.add(oH + "+" + SubstrateOptions.ParseRuntimeOptions.getName());
-            String classpathString = original.effectiveImageClasspath.stream()
-                            .map(original.effectiveImagePath::relativize)
-                            .map(ImageClassLoader::classpathToString)
-                            .collect(Collectors.joining(File.pathSeparator));
-            buildArgs.add(original.oHPath + original.effectiveImagePath.toString());
-            buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorClasspath) + classpathString);
-            buildArgs.add(oH(FallbackExecutor.Options.FallbackExecutorMainClass) + original.effectiveMainClass);
-            buildArgs.add(FallbackExecutor.class.getName());
-            buildArgs.add(original.effectiveImageName);
+            this.buildArgs = original.createFallbackBuildArgs();
         }
 
         static BuildConfiguration create(NativeImage imageName) {
@@ -541,6 +583,8 @@ public class NativeImage {
                     return Collections.emptyList();
                 case "getBuildArgs":
                     return buildArgs;
+                case "buildFallbackImage":
+                    return true;
                 default:
                     return method.invoke(original.config, args);
             }
@@ -567,8 +611,7 @@ public class NativeImage {
         optionRegistry = new MacroOption.Registry();
 
         /* Default handler needs to be fist */
-        defaultOptionHandler = new DefaultOptionHandler(this);
-        registerOptionHandler(defaultOptionHandler);
+        registerOptionHandler(new DefaultOptionHandler(this));
         apiOptionHandler = new APIOptionHandler(this);
         registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
@@ -615,7 +658,6 @@ public class NativeImage {
         addImageBuilderJavaArgs(oXms + getXmsValue());
         addImageBuilderJavaArgs(oXmx + getXmxValue(1));
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
-        addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
@@ -659,29 +701,11 @@ public class NativeImage {
         LinkedHashSet<EnabledOption> enabledOptions = optionRegistry.getEnabledOptions();
         /* Any use of MacroOptions opts-out of auto-fallback and activates --no-fallback */
         if (!enabledOptions.isEmpty()) {
-            addPlainImageBuilderArg(oHFallbackThreshold + FallbackFeature.Options.NoFallback);
+            addPlainImageBuilderArg(oHFallbackThreshold + SubstrateOptions.NoFallback);
         }
 
         /* Determine if truffle is needed- any MacroOption of kind Language counts */
         enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
-        for (EnabledOption enabledOption : enabledOptions) {
-            if (!MacroOptionKind.Language.equals(enabledOption.getOption().kind) && enabledOption.getProperty("LauncherClass") != null) {
-                /* Also identify non-Language MacroOptions as Language if LauncherClass is set */
-                enabledLanguages.add(enabledOption);
-            }
-        }
-
-        /* Create a polyglot image if we have more than one LauncherClass. */
-        if (getLauncherClasses().limit(2).count() > 1) {
-            /* Use polyglot as image name if not defined on command line */
-            if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
-                replaceArg(imageBuilderArgs, oHName, "polyglot");
-            }
-            if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHClass))) {
-                /* and the PolyglotLauncher as main class if not defined on command line */
-                replaceArg(imageBuilderArgs, oHClass, "org.graalvm.launcher.PolyglotLauncher");
-            }
-        }
 
         /* Provide more memory for image building if we have more than one language. */
         if (enabledLanguages.size() > 1) {
@@ -691,25 +715,8 @@ public class NativeImage {
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
 
-        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
-    }
-
-    private Stream<String> getLanguageLauncherClasses() {
-        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language)
-                        .map(lang -> lang.getProperty("LauncherClass"))
-                        .filter(Objects::nonNull).distinct();
-    }
-
-    private Stream<String> getLauncherClasses() {
-        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
-                        .map(lang -> lang.getProperty("LauncherClass"))
-                        .filter(Objects::nonNull).distinct();
-    }
-
-    private Stream<String> getRelativeLauncherClassPath() {
-        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
-                        .map(lang -> lang.getProperty("LauncherClassPath"))
-                        .filter(Objects::nonNull).flatMap(Pattern.compile(":", Pattern.LITERAL)::splitAsStream);
+        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity()); // legacy
+        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.image-build-time.PreinitializeContexts=", ",", Function.identity());
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
@@ -764,25 +771,41 @@ public class NativeImage {
         }
     }
 
-    interface NativeImagePropertiesProcessor {
-        void processNativeImageProperties(Path classpathEntry, Path nativeImagePropertyFile, Function<String, String> resolver) throws IOException;
+    enum MetaInfFileType {
+        Properties(null, nativeImagePropertiesFilename),
+        JniConfiguration(ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFiles.JNI_NAME),
+        ReflectConfiguration(ConfigurationFiles.Options.ReflectionConfigurationResources, ConfigurationFiles.REFLECTION_NAME),
+        ResourceConfiguration(ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFiles.RESOURCES_NAME),
+        ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFiles.DYNAMIC_PROXY_NAME);
+
+        final OptionKey<?> optionKey;
+        final String fileName;
+
+        MetaInfFileType(OptionKey<?> optionKey, String fileName) {
+            this.optionKey = optionKey;
+            this.fileName = fileName;
+        }
     }
 
-    private void processClasspathNativeImageProperties(Path classpathEntry) {
-        processClasspathNativeImageProperties(classpathEntry, this::processNativeImageProperties);
+    interface NativeImageMetaInfResourceProcessor {
+        void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type, Function<String, String> resolver) throws IOException;
     }
 
-    private void processClasspathNativeImageProperties(Path classpathEntry, NativeImagePropertiesProcessor propertiesProcessor) {
+    private void processClasspathNativeImageMetaInf(Path classpathEntry) {
+        processClasspathNativeImageMetaInf(classpathEntry, this::processNativeImageMetaInf);
+    }
+
+    private void processClasspathNativeImageMetaInf(Path classpathEntry, NativeImageMetaInfResourceProcessor metaInfProcessor) {
         try {
             if (Files.isDirectory(classpathEntry)) {
-                Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImagePropertiesMetaInf));
-                processNativeImageProperties(classpathEntry, nativeImageMetaInfBase, propertiesProcessor);
+                Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImageMetaInf));
+                processNativeImageMetaInf(classpathEntry, nativeImageMetaInfBase, metaInfProcessor);
             } else {
                 List<Path> jarFileMatches = Collections.emptyList();
-                if (classpathEntry.endsWith(ImageClassLoader.cpWildcardSubstitute)) {
+                if (classpathEntry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
                     try {
                         jarFileMatches = Files.list(classpathEntry.getParent())
-                                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
+                                        .filter(ClasspathUtils::isJar)
                                         .collect(Collectors.toList());
                     } catch (NoSuchFileException e) {
                         /* Fallthrough */
@@ -793,54 +816,138 @@ public class NativeImage {
 
                 for (Path jarFile : jarFileMatches) {
                     URI jarFileURI = URI.create("jar:" + jarFile.toUri());
-                    try (FileSystem jarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap())) {
-                        Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImagePropertiesMetaInf);
-                        processNativeImageProperties(jarFile, nativeImageMetaInfBase, propertiesProcessor);
+                    FileSystem probeJarFS;
+                    try {
+                        probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
+                    } catch (UnsupportedOperationException e) {
+                        probeJarFS = null;
+                        if (isVerbose()) {
+                            showWarning(ClasspathUtils.classpathToString(classpathEntry) + " does not describe valid jarfile" + (jarFileMatches.size() > 1 ? "s" : ""));
+                        }
+                    }
+                    if (probeJarFS != null) {
+                        try (FileSystem jarFS = probeJarFS) {
+                            Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInf);
+                            processNativeImageMetaInf(jarFile, nativeImageMetaInfBase, metaInfProcessor);
+                        }
                     }
                 }
             }
         } catch (IOException | FileSystemNotFoundException e) {
-            throw showError("Invalid classpath entry " + ImageClassLoader.classpathToString(classpathEntry), e);
+            throw showError("Invalid classpath entry " + ClasspathUtils.classpathToString(classpathEntry), e);
         }
     }
 
-    private void processNativeImageProperties(Path classpathEntry, Path nativeImageMetaInfBase, NativeImagePropertiesProcessor propertiesProcessor) throws IOException {
+    private void processNativeImageMetaInf(Path classpathEntry, Path nativeImageMetaInfBase, NativeImageMetaInfResourceProcessor metaInfProcessor) throws IOException {
         if (Files.isDirectory(nativeImageMetaInfBase)) {
-            List<Path> nativeImageProperties = Files.walk(nativeImageMetaInfBase)
-                            .filter(p -> p.endsWith(nativeImagePropertiesFilename))
-                            .collect(Collectors.toList());
-            for (Path nativeImagePropertyFile : nativeImageProperties) {
-                Function<String, String> resolver = str -> {
+            for (MetaInfFileType fileType : MetaInfFileType.values()) {
+                List<Path> nativeImageMetaInfFiles = Files.walk(nativeImageMetaInfBase)
+                                .filter(p -> p.endsWith(fileType.fileName))
+                                .collect(Collectors.toList());
+                for (Path nativeImageMetaInfFile : nativeImageMetaInfFiles) {
                     Path resourceRoot = nativeImageMetaInfBase.getParent().getParent();
-                    Path componentDirectory = resourceRoot.relativize(nativeImagePropertyFile).getParent();
-                    int nameCount = componentDirectory.getNameCount();
-                    String optionArg = null;
-                    if (nameCount > 2) {
-                        String optionArgKey = componentDirectory.subpath(2, nameCount).toString();
-                        optionArg = propertyFileSubstitutionValues.get(optionArgKey);
+                    Function<String, String> resolver = str -> {
+                        Path componentDirectory = resourceRoot.relativize(nativeImageMetaInfFile).getParent();
+                        int nameCount = componentDirectory.getNameCount();
+                        String optionArg = null;
+                        if (nameCount > 2) {
+                            String optionArgKey = componentDirectory.subpath(2, nameCount).toString();
+                            optionArg = propertyFileSubstitutionValues.get(optionArgKey);
+                        }
+                        return resolvePropertyValue(str, optionArg, componentDirectory.toString());
+                    };
+                    showVerboseMessage(isVerbose(), "Apply " + nativeImageMetaInfFile.toUri());
+                    try {
+                        metaInfProcessor.processMetaInfResource(classpathEntry, resourceRoot, nativeImageMetaInfFile, fileType, resolver);
+                    } catch (NativeImageError err) {
+                        showError("Processing " + nativeImageMetaInfFile.toUri() + " failed", err);
                     }
-                    return resolvePropertyValue(str, optionArg, componentDirectory.toString());
-                };
-                showVerboseMessage(isVerbose(), "Apply " + nativeImagePropertyFile.toUri());
-                try {
-                    propertiesProcessor.processNativeImageProperties(classpathEntry, nativeImagePropertyFile, resolver);
-                } catch (NativeImageError err) {
-                    showError("Processing " + nativeImagePropertyFile.toUri() + " failed", err);
                 }
             }
         }
     }
 
-    private void processNativeImageProperties(@SuppressWarnings("unused") Path classpathEntry, Path nativeImagePropertyFile, Function<String, String> resolver) throws IOException {
-        Map<String, String> properties = loadProperties(Files.newInputStream(nativeImagePropertyFile));
-        String imageName = properties.get("ImageName");
-        if (imageName != null) {
-            addCustomImageBuilderArgs(oHName + resolver.apply(imageName));
-        }
-        forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
+    private void processNativeImageMetaInf(@SuppressWarnings("unused") Path classpathEntry, Path resourceRoot,
+                    Path resourcePath, MetaInfFileType resourceType, Function<String, String> resolver) throws IOException {
+
         NativeImageArgsProcessor args = new NativeImageArgsProcessor();
-        forEachPropertyValue(properties.get("Args"), args, resolver);
-        args.apply();
+        if (resourceType == MetaInfFileType.Properties) {
+            Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
+            String imageNameValue = properties.get("ImageName");
+            if (imageNameValue != null) {
+                addCustomImageBuilderArgs(oHName + resolver.apply(imageNameValue));
+            }
+            forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
+            forEachPropertyValue(properties.get("Args"), args, resolver);
+        } else {
+            args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
+        }
+        args.apply(true);
+    }
+
+    static void processManifestMainAttributes(Path path, BiConsumer<Path, Attributes> manifestConsumer) {
+        if (path.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
+            if (!Files.isDirectory(path.getParent())) {
+                throw NativeImage.showError("Cannot expand wildcard: '" + path + "' is not a directory");
+            }
+            try {
+                Files.list(path.getParent())
+                                .filter(ClasspathUtils::isJar)
+                                .forEach(p -> processJarManifestMainAttributes(p, manifestConsumer));
+            } catch (IOException e) {
+                throw NativeImage.showError("Error while expanding wildcard for '" + path + "'", e);
+            }
+        } else if (!Files.isDirectory(path)) {
+            processJarManifestMainAttributes(path, manifestConsumer);
+        }
+    }
+
+    static boolean processJarManifestMainAttributes(Path jarFilePath, BiConsumer<Path, Attributes> manifestConsumer) {
+        try (JarFile jarFile = new JarFile(jarFilePath.toFile())) {
+            Manifest manifest = jarFile.getManifest();
+            if (manifest == null) {
+                return false;
+            }
+            manifestConsumer.accept(jarFilePath, manifest.getMainAttributes());
+            return true;
+        } catch (IOException e) {
+            throw NativeImage.showError("Invalid or corrupt jarfile " + jarFilePath, e);
+        }
+    }
+
+    void handleMainClassAttribute(Path jarFilePath, Attributes mainAttributes) {
+        String mainClassValue = mainAttributes.getValue("Main-Class");
+        if (mainClassValue == null) {
+            NativeImage.showError("No main manifest attribute, in " + jarFilePath);
+        }
+        addPlainImageBuilderArg(oHClass + mainClassValue);
+        String jarFileName = jarFilePath.getFileName().toString();
+        String jarSuffix = ".jar";
+        String jarFileNameBase;
+        if (jarFileName.endsWith(jarSuffix)) {
+            jarFileNameBase = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+        } else {
+            jarFileNameBase = jarFileName;
+        }
+        if (!jarFileNameBase.isEmpty()) {
+            addPlainImageBuilderArg(oHName + jarFileNameBase);
+        }
+    }
+
+    void handleClassPathAttribute(Path jarFilePath, Attributes mainAttributes) {
+        String classPathValue = mainAttributes.getValue("Class-Path");
+        /* Missing Class-Path Attribute is tolerable */
+        if (classPathValue != null) {
+            for (String cp : classPathValue.split(" +")) {
+                Path manifestClassPath = ClasspathUtils.stringToClasspath(cp);
+                if (!manifestClassPath.isAbsolute()) {
+                    /* Resolve relative manifestClassPath against directory containing jar */
+                    manifestClassPath = jarFilePath.getParent().resolve(manifestClassPath);
+                }
+                /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
+                addImageClasspathEntry(imageClasspath, manifestClassPath, false);
+            }
+        }
     }
 
     private int completeImageBuild() {
@@ -854,8 +961,8 @@ public class NativeImage {
         }
 
         /* If no customImageClasspath was specified put "." on classpath */
-        if (customImageClasspath.isEmpty() && queryOption == null) {
-            addImageProvidedClasspath(Paths.get("."));
+        if (!config.buildFallbackImage() && customImageClasspath.isEmpty() && queryOption == null) {
+            addImageClasspath(Paths.get("."));
         } else {
             imageClasspath.addAll(customImageClasspath);
         }
@@ -867,21 +974,25 @@ public class NativeImage {
             replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
         }
 
+        /* Enable class initializaiton tracing agent. */
+        if (traceClassInitialization()) {
+            imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR());
+        }
+
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
 
         /* Perform option consolidation of imageBuilderArgs */
         Function<String, String> canonicalizedPathStr = s -> canonicalize(Paths.get(s)).toString();
-        consolidateArgs(imageBuilderArgs, oHMaxRuntimeCompileMethods, Integer::parseInt, String::valueOf, () -> 0, Integer::sum);
         consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHDynamicProxyConfigurationFiles, ",", canonicalizedPathStr);
+        consolidateListArgs(imageBuilderArgs, oHResourceConfigurationFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", canonicalizedPathStr);
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
         String imagePathStr = consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);
-        Path imagePath;
         try {
             imagePath = canonicalize(Paths.get(imagePathStr));
         } catch (NativeImage.NativeImageError | InvalidPathException e) {
@@ -889,9 +1000,8 @@ public class NativeImage {
         }
 
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
-        String mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
-        String imageKind = consolidateSingleValueArg(imageBuilderArgs, oHKind);
-        boolean buildExecutable = !NativeImageKind.SHARED_LIBRARY.name().equals(imageKind);
+        mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
+        boolean buildExecutable = !imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enableSharedLibraryFlag));
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
 
         if (!printFlags) {
@@ -949,64 +1059,44 @@ public class NativeImage {
             }
         }
 
-        boolean isGraalVMLauncher = false;
-        if ("org.graalvm.launcher.PolyglotLauncher".equals(mainClass) && consolidateSingleValueArg(imageBuilderJavaArgs, oDPolyglotLauncherClasses) == null) {
-            /* Collect the launcherClasses for enabledLanguages. */
-            addImageBuilderJavaArgs(oDPolyglotLauncherClasses + getLanguageLauncherClasses().collect(Collectors.joining(",")));
-            isGraalVMLauncher = true;
-        }
-
-        if (!isGraalVMLauncher && mainClass != null) {
-            isGraalVMLauncher = getLauncherClasses().anyMatch(mainClass::equals);
-        }
-
-        if (isGraalVMLauncher) {
-            showVerboseMessage(isVerbose() || dryRun, "Automatically appending LauncherClassPath");
-            config.getAbsoluteLauncherClassPath(getRelativeLauncherClassPath()).forEach(p -> {
-                if (!Files.isRegularFile(p)) {
-                    showWarning(String.format("Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
-                } else {
-                    addImageClasspath(p);
-                }
-            });
-            config.getLauncherCommonClasspath().forEach(this::addImageClasspath);
-        }
+        imageName = consolidateSingleValueArg(imageBuilderArgs, oHName);
 
         if (!leftoverArgs.isEmpty()) {
             String prefix = "Unrecognized option" + (leftoverArgs.size() == 1 ? ": " : "s: ");
             showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
         }
 
-        if (isGraalVMLauncher && collectListArgs(imageBuilderJavaArgs, oDLauncherClasspath, File.pathSeparator).isEmpty()) {
-            String classpathPropertyValue = config.getLauncherClasspathPropertyValue(imageClasspath);
-            if (classpathPropertyValue != null) {
-                addImageBuilderJavaArgs(oDLauncherClasspath + classpathPropertyValue);
-            }
-        }
-
-        effectiveMainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
-        effectiveImageName = consolidateSingleValueArg(imageBuilderArgs, oHName);
-        effectiveImagePath = imagePath;
-        effectiveImageClasspath = new LinkedHashSet<>(imageClasspath);
-        effectiveSystemProperties = customJavaArgs.stream().filter(s -> s.startsWith("-D")).collect(Collectors.toCollection(LinkedHashSet::new));
-
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
         finalImageClasspath.addAll(imageBuilderClasspath);
         finalImageClasspath.addAll(imageProvidedClasspath);
-        finalImageClasspath.addAll(effectiveImageClasspath);
+        finalImageClasspath.addAll(imageClasspath);
+
+        if (!config.buildFallbackImage() && imageBuilderArgs.contains(oHFallbackThreshold + SubstrateOptions.ForceFallback)) {
+            /* Bypass regular build and proceed with fallback image building */
+            return 2;
+        }
         return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 
-    private String effectiveMainClass;
-    private String effectiveImageName;
-    private Path effectiveImagePath;
-    private LinkedHashSet<Path> effectiveImageClasspath;
-    private LinkedHashSet<String> effectiveSystemProperties;
+    private boolean traceClassInitialization() {
+        String lastTracelArgument = null;
+        for (String imageBuilderArg : imageBuilderArgs) {
+            if (imageBuilderArg.contains("TraceClassInitialization")) {
+                lastTracelArgument = imageBuilderArg;
+            }
+        }
+
+        return "-H:+TraceClassInitialization".equals(lastTracelArgument);
+    }
+
+    private String mainClass;
+    private String imageName;
+    private Path imagePath;
 
     protected static List<String> createImageBuilderArgs(LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         List<String> result = new ArrayList<>();
-        result.add(NativeImageGeneratorRunner.IMAGE_CLASSPATH_PREFIX);
-        result.add(imagecp.stream().map(ImageClassLoader::classpathToString).collect(Collectors.joining(File.pathSeparator)));
+        result.add(SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
+        result.add(imagecp.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(File.pathSeparator)));
         result.addAll(imageArgs);
         return result;
     }
@@ -1020,6 +1110,7 @@ public class NativeImage {
         if (!bcp.isEmpty()) {
             command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
+
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
         if (IS_AOT && OS.getCurrent().hasProcFS) {
@@ -1027,7 +1118,7 @@ public class NativeImage {
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
              * (e.g. using CTRL-C in Gradle daemon mode)
              */
-            command.addAll(Arrays.asList(NativeImageGeneratorRunner.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
+            command.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
         command.addAll(createImageBuilderArgs(imageArgs, imagecp));
 
@@ -1049,22 +1140,18 @@ public class NativeImage {
         return exitStatus;
     }
 
+    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
+
     public static void main(String[] args) {
-        try {
-            build(new DefaultBuildConfiguration(args));
-        } catch (NativeImageError e) {
-            boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
-            NativeImage.show(System.err::println, "Error: " + e.getMessage());
-            Throwable cause = e.getCause();
-            while (cause != null) {
-                NativeImage.show(System.err::println, "Caused by: " + cause);
-                cause = cause.getCause();
-            }
-            if (verbose) {
-                e.printStackTrace();
-            }
-            System.exit(1);
-        }
+        performBuild(new DefaultBuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);
+    }
+
+    public static void build(BuildConfiguration config) {
+        build(config, defaultNativeImageProvider);
+    }
+
+    public static void agentBuild(Path javaHome, Path workDir, List<String> buildArgs) {
+        performBuild(new DefaultBuildConfiguration(javaHome, workDir, buildArgs), NativeImage::new);
     }
 
     public static Map<Path, List<String>> extractEmbeddedImageArgs(Path workDir, String[] imageClasspath) {
@@ -1075,34 +1162,65 @@ public class NativeImage {
             }
         });
         Map<Path, List<String>> extractionResults = new HashMap<>();
-        NativeImagePropertiesProcessor extractor = (classpathEntry, nativeImagePropertyFile, resolver) -> {
-            Map<String, String> properties = loadProperties(Files.newInputStream(nativeImagePropertyFile));
+        NativeImageMetaInfResourceProcessor extractor = (classpathEntry, resourceRoot, resourcePath, resourceType, resolver) -> {
             nativeImage.imageBuilderArgs.clear();
             NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor();
-            forEachPropertyValue(properties.get("Args"), args, resolver);
-            args.apply();
-            extractionResults.put(classpathEntry, new ArrayList<>(nativeImage.imageBuilderArgs));
+            if (resourceType == MetaInfFileType.Properties) {
+                Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
+                forEachPropertyValue(properties.get("Args"), args, resolver);
+            } else {
+                args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
+            }
+            args.apply(true);
+            List<String> perEntryResults = extractionResults.computeIfAbsent(classpathEntry, unused -> new ArrayList<>());
+            perEntryResults.addAll(nativeImage.imageBuilderArgs);
         };
         for (String entry : imageClasspath) {
-            Path classpathEntry = nativeImage.canonicalize(ImageClassLoader.stringToClasspath(entry), false);
-            nativeImage.processClasspathNativeImageProperties(classpathEntry, extractor);
+            Path classpathEntry = nativeImage.canonicalize(ClasspathUtils.stringToClasspath(entry), false);
+            nativeImage.processClasspathNativeImageMetaInf(classpathEntry, extractor);
         }
         return extractionResults;
     }
 
-    public static void build(BuildConfiguration config) {
-        NativeImage nativeImage = IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
+    private static void performBuild(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
+        try {
+            build(config, nativeImageProvider);
+        } catch (NativeImageError e) {
+            NativeImage.show(System.err::println, "Error: " + e.getMessage());
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                NativeImage.show(System.err::println, "Caused by: " + cause);
+                cause = cause.getCause();
+            }
+            if (config.getBuildArgs().contains("--verbose")) {
+                e.printStackTrace();
+            }
+            System.exit(1);
+        }
+        System.exit(0);
+    }
+
+    private static void build(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
+        NativeImage nativeImage = nativeImageProvider.apply(config);
         if (config.getBuildArgs().isEmpty()) {
             nativeImage.showMessage(usageText);
         } else {
-            nativeImage.prepareImageBuildArgs();
+            try {
+                nativeImage.prepareImageBuildArgs();
+            } catch (NativeImageError e) {
+                if (nativeImage.isVerbose()) {
+                    throw showError("Requirements for building native images are not fulfilled", e);
+                } else {
+                    throw showError("Requirements for building native images are not fulfilled [cause: " + e.getMessage() + "]", null);
+                }
+            }
             int buildStatus = nativeImage.completeImageBuild();
             if (buildStatus == 2) {
                 /* Perform fallback build */
-                build(FallbackBuildConfiguration.create(nativeImage));
-                showWarning("Image '" + nativeImage.effectiveImageName +
+                build(FallbackBuildConfiguration.create(nativeImage), nativeImageProvider);
+                showWarning("Image '" + nativeImage.imageName +
                                 "' is a fallback image that requires a JDK for execution " +
-                                "(use --no-fallback to suppress fallback image generation).");
+                                "(use --" + SubstrateOptions.OptionNameNoFallback + " to suppress fallback image generation).");
             } else if (buildStatus != 0) {
                 throw showError("Image build request failed with exit status " + buildStatus);
             }
@@ -1118,24 +1236,24 @@ public class NativeImage {
         if (!strict) {
             return absolutePath;
         }
-        boolean hasWildcard = absolutePath.endsWith(ImageClassLoader.cpWildcardSubstitute);
+        boolean hasWildcard = absolutePath.endsWith(ClasspathUtils.cpWildcardSubstitute);
         if (hasWildcard) {
             absolutePath = absolutePath.getParent();
         }
         try {
             Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
             if (!Files.isReadable(realPath)) {
-                showError("Path entry " + ImageClassLoader.classpathToString(path) + " is not readable");
+                showError("Path entry " + ClasspathUtils.classpathToString(path) + " is not readable");
             }
             if (hasWildcard) {
                 if (!Files.isDirectory(realPath)) {
-                    showError("Path entry with wildcard " + ImageClassLoader.classpathToString(path) + " is not a directory");
+                    showError("Path entry with wildcard " + ClasspathUtils.classpathToString(path) + " is not a directory");
                 }
-                realPath = realPath.resolve(ImageClassLoader.cpWildcardSubstitute);
+                realPath = realPath.resolve(ClasspathUtils.cpWildcardSubstitute);
             }
             return realPath;
         } catch (IOException e) {
-            throw showError("Invalid Path entry " + ImageClassLoader.classpathToString(path), e);
+            throw showError("Invalid Path entry " + ClasspathUtils.classpathToString(path), e);
         }
     }
 
@@ -1156,22 +1274,35 @@ public class NativeImage {
     }
 
     class NativeImageArgsProcessor implements Consumer<String> {
-        ArrayDeque<String> args = new ArrayDeque<>();
+        Queue<String> args = new ArrayDeque<>();
 
         @Override
         public void accept(String arg) {
             args.add(arg);
         }
 
-        void apply() {
+        List<String> apply(boolean strict) {
+            List<String> leftoverArgs = new ArrayList<>();
             while (!args.isEmpty()) {
                 boolean consumed = false;
-                consumed = consumed || apiOptionHandler.consume(args);
-                consumed = consumed || defaultOptionHandler.consume(args);
+                for (int index = optionHandlers.size() - 1; index >= 0; --index) {
+                    OptionHandler<? extends NativeImage> handler = optionHandlers.get(index);
+                    int numArgs = args.size();
+                    if (handler.consume(args)) {
+                        assert args.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
+                        consumed = true;
+                        break;
+                    }
+                }
                 if (!consumed) {
-                    showError("Property 'Args' contains invalid entry '" + args.peek() + "'");
+                    if (strict) {
+                        showError("Property 'Args' contains invalid entry '" + args.peek() + "'");
+                    } else {
+                        leftoverArgs.add(args.poll());
+                    }
                 }
             }
+            return leftoverArgs;
         }
     }
 
@@ -1181,39 +1312,66 @@ public class NativeImage {
         imageBuilderArgs.add(plainArg);
     }
 
-    void addImageClasspath(Path classpath) {
+    /**
+     * For adding classpath elements that are only on the classpath in the context of native-image
+     * building. I.e. that are not on the classpath when the application would be run with the java
+     * command. (library-support.jar)
+     */
+    private void addImageProvidedClasspath(Path classpath) {
+        VMError.guarantee(imageClasspath.isEmpty() && customImageClasspath.isEmpty());
         Path classpathEntry = canonicalize(classpath);
-        processClasspathNativeImageProperties(classpathEntry);
-        imageClasspath.add(classpathEntry);
+        if (imageProvidedClasspath.add(classpathEntry)) {
+            processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
+            processClasspathNativeImageMetaInf(classpathEntry);
+        }
     }
 
     /**
-     * For adding classpath elements that are not normally on the classpath in the Java version: svm
-     * jars, truffle jars etc.
+     * For adding classpath elements that are automatically put on the image-classpath.
      */
-    void addImageProvidedClasspath(Path classpath) {
-        Path classpathEntry = canonicalize(classpath);
-        processClasspathNativeImageProperties(classpathEntry);
-        imageProvidedClasspath.add(classpathEntry);
+    void addImageClasspath(Path classpath) {
+        addImageClasspathEntry(imageClasspath, classpath, true);
     }
 
+    /**
+     * For adding classpath elements that are put *explicitly* on the image-classpath (i.e. when
+     * specified as -cp/-classpath/--class-path entry). This method handles invalid classpath
+     * strings same as java -cp (is tolerant against invalid classpath entries).
+     */
     void addCustomImageClasspath(String classpath) {
-        addCustomImageClasspath(ImageClassLoader.stringToClasspath(classpath));
+        addImageClasspathEntry(customImageClasspath, ClasspathUtils.stringToClasspath(classpath), false);
     }
 
+    /**
+     * For adding classpath elements that are put *explicitly* on the image-classpath (e.g. when
+     * adding a jar-file via -jar).
+     */
     void addCustomImageClasspath(Path classpath) {
+        addImageClasspathEntry(customImageClasspath, classpath, true);
+    }
+
+    private void addImageClasspathEntry(LinkedHashSet<Path> destination, Path classpath, boolean strict) {
         Path classpathEntry;
         try {
             classpathEntry = canonicalize(classpath);
-            processClasspathNativeImageProperties(classpathEntry);
         } catch (NativeImageError e) {
+            if (strict) {
+                throw e;
+            }
+
             if (isVerbose()) {
                 showWarning("Invalid classpath entry: " + classpath);
             }
             /* Allow non-existent classpath entries to comply with `java` command behaviour. */
-            classpathEntry = canonicalize(classpath, false);
+            destination.add(canonicalize(classpath, false));
+            return;
         }
-        customImageClasspath.add(classpathEntry);
+
+        if (!imageClasspath.contains(classpathEntry) && !customImageClasspath.contains(classpathEntry)) {
+            destination.add(classpathEntry);
+            processManifestMainAttributes(classpathEntry, this::handleClassPathAttribute);
+            processClasspathNativeImageMetaInf(classpathEntry);
+        }
     }
 
     void addCustomJavaArgs(String javaArg) {
@@ -1299,6 +1457,7 @@ public class NativeImage {
 
     static List<Path> getJars(Path dir, String... jarBaseNames) {
         try {
+            List<String> baseNameList = Arrays.asList(jarBaseNames);
             return Files.list(dir)
                             .filter(p -> {
                                 String jarFileName = p.getFileName().toString();
@@ -1306,7 +1465,6 @@ public class NativeImage {
                                 if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
                                     return false;
                                 }
-                                List<String> baseNameList = Arrays.asList(jarBaseNames);
                                 if (baseNameList.isEmpty()) {
                                     return true;
                                 }
@@ -1320,45 +1478,17 @@ public class NativeImage {
     }
 
     private List<String> processNativeImageArgs() {
-        List<String> leftoverArgs = new ArrayList<>();
-        Queue<String> arguments = new ArrayDeque<>();
+        NativeImageArgsProcessor argsProcessor = new NativeImageArgsProcessor();
         String defaultNativeImageArgs = getUserConfigProperties().get(pKeyNativeImageArgs);
         if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
-            arguments.addAll(Arrays.asList(defaultNativeImageArgs.split(" ")));
+            for (String defaultArg : defaultNativeImageArgs.split(" ")) {
+                argsProcessor.accept(defaultArg);
+            }
         }
         for (String arg : config.getBuildArgs()) {
-            switch (arg) {
-                case "--language:all":
-                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Language)) {
-                        arguments.add("--language:" + lang);
-                    }
-                    break;
-                case "--tool:all":
-                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Tool)) {
-                        arguments.add("--tool:" + lang);
-                    }
-                    break;
-                default:
-                    arguments.add(arg);
-                    break;
-            }
+            argsProcessor.accept(arg);
         }
-        while (!arguments.isEmpty()) {
-            boolean consumed = false;
-            for (int index = optionHandlers.size() - 1; index >= 0; --index) {
-                OptionHandler<? extends NativeImage> handler = optionHandlers.get(index);
-                int numArgs = arguments.size();
-                if (handler.consume(arguments)) {
-                    assert arguments.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
-                    consumed = true;
-                    break;
-                }
-            }
-            if (!consumed) {
-                leftoverArgs.add(arguments.poll());
-            }
-        }
-        return leftoverArgs;
+        return argsProcessor.apply(false);
     }
 
     protected String getXmsValue() {
@@ -1406,8 +1536,12 @@ public class NativeImage {
     }
 
     static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver) {
+        return forEachPropertyValue(propertyValue, target, resolver, " ");
+    }
+
+    static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver, String separatorRegex) {
         if (propertyValue != null) {
-            for (String propertyValuePart : propertyValue.split(" ")) {
+            for (String propertyValuePart : propertyValue.split(separatorRegex)) {
                 target.accept(resolver.apply(propertyValuePart));
             }
             return true;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
@@ -190,7 +189,7 @@ public abstract class LLVMValueProfilingNode extends LLVMExpressionNode {
                 // not create a memory leak nor must we cache @ValueType objects)
                 assert LLVMManagedPointer.isInstance(value);
                 LLVMManagedPointer pointer = LLVMManagedPointer.cast(value);
-                TruffleObject object = pointer.getObject();
+                Object object = pointer.getObject();
                 return object instanceof LLVMGlobalContainer || object instanceof LLVMFunctionDescriptor;
             }
         }

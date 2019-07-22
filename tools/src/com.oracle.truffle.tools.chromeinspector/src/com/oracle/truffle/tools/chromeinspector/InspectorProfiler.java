@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -83,7 +84,8 @@ public final class InspectorProfiler extends ProfilerDomain {
         this.connectionWatcher = connectionWatcher;
     }
 
-    private void doEnable() {
+    @Override
+    public void doEnable() {
         slh = context.acquireScriptsHandler();
         sampler = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUSamplerInstrument.ID), CPUSampler.class);
         tracer = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUTracerInstrument.ID), CPUTracer.class);
@@ -94,14 +96,7 @@ public final class InspectorProfiler extends ProfilerDomain {
     }
 
     @Override
-    public void enable() {
-        if (slh == null) {
-            doEnable();
-        }
-    }
-
-    @Override
-    public void disable() {
+    public void doDisable() {
         if (slh != null) {
             context.releaseScriptsHandler();
             slh = null;
@@ -233,25 +228,29 @@ public final class InspectorProfiler extends ProfilerDomain {
     }
 
     private Params getProfile(Collection<ProfilerNode<CPUSampler.Payload>> rootProfilerNodes, long idleHitCount, long startTime, long endTime) {
-        Map<ProfilerNode<CPUSampler.Payload>, Integer> node2id = new HashMap<>();
         List<ProfileNode> nodes = new ArrayList<>();
         List<Profile.TimeLineItem> timeLine = new ArrayList<>();
-        int[] counter = {1};
-        ProfileNode root = new ProfileNode(counter[0]++, new RuntimeCallFrame("(root)", 0, "", 0, 0), idleHitCount);
+        int counter = 1;
+        ProfileNode root = new ProfileNode(counter++, new RuntimeCallFrame("(root)", 0, "", 0, 0), idleHitCount);
         nodes.add(root);
-        fillChildren(root, rootProfilerNodes, node2id, nodes, timeLine, counter);
+        fillChildren(root, rootProfilerNodes, nodes, timeLine, counter);
         Collections.sort(timeLine, (item1, item2) -> Long.compare(item1.getTimestamp(), item2.getTimestamp()));
         JSONObject json = new JSONObject();
         json.put("profile", new Profile(nodes.toArray(new ProfileNode[nodes.size()]), startTime, endTime, timeLine.toArray(new Profile.TimeLineItem[timeLine.size()])).toJSON());
         return new Params(json);
     }
 
-    private void fillChildren(ProfileNode node, Collection<ProfilerNode<CPUSampler.Payload>> childProfilerNodes, Map<ProfilerNode<CPUSampler.Payload>, Integer> node2id,
-                    List<ProfileNode> nodes, List<Profile.TimeLineItem> timeLine, int[] counter) {
-        childProfilerNodes.stream().map(childProfilerNode -> {
-            Integer id = node2id.get(childProfilerNode);
-            if (id == null) {
-                id = counter[0]++;
+    private void fillChildren(ProfileNode node, Collection<ProfilerNode<CPUSampler.Payload>> childProfilerNodes,
+                    List<ProfileNode> nodes, List<Profile.TimeLineItem> timeLine, int lastCounter) {
+        Map<ProfilerNode<CPUSampler.Payload>, Integer> node2id = new HashMap<>();
+        ArrayDeque<ProfilerNode<CPUSampler.Payload>> dequeue = new ArrayDeque<>();
+        dequeue.addAll(childProfilerNodes);
+        int counter = assignChildIDs(node, childProfilerNodes, node2id, lastCounter);
+        while (!dequeue.isEmpty()) {
+            ProfilerNode<CPUSampler.Payload> childProfilerNode = dequeue.pollFirst();
+            int id = node2id.get(childProfilerNode);
+            if (id < 0) { // not computed yet
+                id = -id;
                 int scriptId = slh.getScriptId(childProfilerNode.getSourceSection().getSource());
                 Script script = scriptId < 0 ? null : slh.getScript(scriptId);
                 SourceSection sourceSection = childProfilerNode.getSourceSection();
@@ -262,12 +261,24 @@ public final class InspectorProfiler extends ProfilerDomain {
                     timeLine.add(new Profile.TimeLineItem(timestamp, id));
                 }
                 node2id.put(childProfilerNode, id);
-                fillChildren(childNode, childProfilerNode.getChildren(), node2id, nodes, timeLine, counter);
+                Collection<ProfilerNode<CPUSampler.Payload>> grandChildren = childProfilerNode.getChildren();
+                counter = assignChildIDs(childNode, grandChildren, node2id, counter);
+                dequeue.addAll(grandChildren);
             }
-            return id;
-        }).forEachOrdered(id -> {
-            node.addChild(id);
-        });
+        }
+    }
+
+    private static int assignChildIDs(ProfileNode node, Collection<ProfilerNode<CPUSampler.Payload>> childProfilerNodes, Map<ProfilerNode<CPUSampler.Payload>, Integer> node2id, int lastCounter) {
+        int counter = lastCounter;
+        for (ProfilerNode<CPUSampler.Payload> child : childProfilerNodes) {
+            Integer id = node2id.get(child);
+            if (id == null) {
+                id = counter++;
+                node2id.put(child, -id); // negative ID for children that are not computed yet
+            }
+            node.addChild(Math.abs(id));
+        }
+        return counter;
     }
 
     private Params getTypeProfile(Collection<TypeHandler.SectionTypeProfile> profiles) {

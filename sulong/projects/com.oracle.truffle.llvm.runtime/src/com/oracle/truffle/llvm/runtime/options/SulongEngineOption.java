@@ -77,6 +77,9 @@ public final class SulongEngineOption {
     @Option(name = "llvm.printLifetimeAnalysisStats", category = OptionCategory.USER, help = "Prints the results of the lifetime analysis. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
     public static final OptionKey<String> PRINT_LIFE_TIME_ANALYSIS_STATS = new OptionKey<>(String.valueOf(false));
 
+    @Option(name = "llvm.debugLoader", category = OptionCategory.EXPERT, help = "Turns dynamic loader debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    public static final OptionKey<String> LD_DEBUG = new OptionKey<>(String.valueOf(false));
+
     @Option(name = "llvm.parseOnly", category = OptionCategory.EXPERT, help = "Only parses a bc file; execution is not possible.") //
     public static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
 
@@ -101,7 +104,7 @@ public final class SulongEngineOption {
 
     public static final String LIBRARIES_NAME = "llvm.libraries";
     @Option(name = LIBRARIES_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
-            help = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). " + //
+            help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " + //
                    "Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
     // @formatter:on

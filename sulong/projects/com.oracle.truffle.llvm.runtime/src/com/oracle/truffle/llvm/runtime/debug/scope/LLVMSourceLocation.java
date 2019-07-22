@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,6 +72,7 @@ public abstract class LLVMSourceLocation {
         TYPE,
         LINE,
         MODULE,
+        COMMON_BLOCK,
         BLOCK,
         FUNCTION,
         NAMESPACE,
@@ -233,6 +234,13 @@ public abstract class LLVMSourceLocation {
                     return "module " + name;
                 } else {
                     return "<module>";
+                }
+
+            case COMMON_BLOCK:
+                if (name != null) {
+                    return name;
+                } else {
+                    return "<common block>";
                 }
 
             case FUNCTION: {

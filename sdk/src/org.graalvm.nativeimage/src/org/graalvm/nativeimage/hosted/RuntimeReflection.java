@@ -56,7 +56,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
  * This class provides methods that can be called during native image generation to register
  * classes, methods, and fields for reflection at run time.
  *
- * @since 1.0
+ * @since 19.0
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeReflection {
@@ -65,7 +65,7 @@ public final class RuntimeReflection {
      * Makes the provided classes available for reflection at run time. A call to
      * {@link Class#forName} for the names of the classes will return the classes at run time.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void register(Class<?>... classes) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(classes);
@@ -76,7 +76,7 @@ public final class RuntimeReflection {
      * by {@link Class#getMethod}, {@link Class#getMethods},and all the other methods on
      * {@link Class} that return a single or a list of methods.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void register(Executable... methods) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(methods);
@@ -87,7 +87,7 @@ public final class RuntimeReflection {
      * by {@link Class#getField}, {@link Class#getFields},and all the other methods on {@link Class}
      * that return a single or a list of fields.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void register(Field... fields) {
         register(false, fields);
@@ -101,10 +101,10 @@ public final class RuntimeReflection {
      * @param finalIsWritable for all of the passed fields which are marked {@code final}, indicates
      *            whether it should be possible to change their value using reflection.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void register(boolean finalIsWritable, Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(finalIsWritable, fields);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(finalIsWritable, false, fields);
     }
 
     /**
@@ -112,7 +112,7 @@ public final class RuntimeReflection {
      * {@link Class#newInstance}. This is equivalent to registering the nullary constructors of the
      * classes.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void registerForReflectiveInstantiation(Class<?>... classes) {
         for (Class<?> clazz : classes) {

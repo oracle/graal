@@ -41,12 +41,6 @@ final class Target_java_lang_System {
 
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static long currentTimeMillis() {
-        return nanoTime() / WindowsUtils.NANOSECS_PER_MILLISEC;
-    }
-
-    @Substitute
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     protected static long nanoTime() {
         return WindowsUtils.getNanoCounter();
     }

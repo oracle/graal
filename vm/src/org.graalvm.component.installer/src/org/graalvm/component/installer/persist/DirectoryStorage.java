@@ -26,11 +26,12 @@ package org.graalvm.component.installer.persist;
 
 import java.io.File;
 import java.io.FileFilter;
-import org.graalvm.component.installer.model.ComponentStorage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -57,12 +58,14 @@ import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ManagementStorage;
 
 /**
  * Directory-based implementation of component storage.
  */
-public class DirectoryStorage implements ComponentStorage {
+public class DirectoryStorage implements ManagementStorage {
     public static final String META_LICENSE_FILE = "LICENSE_PATH"; // NOI18N
 
     /**
@@ -74,6 +77,11 @@ public class DirectoryStorage implements ComponentStorage {
      * Suffix for the component metadata files, including comma.
      */
     private static final String COMPONENT_FILE_SUFFIX = ".component"; // NOI18N
+
+    /**
+     * Metadata for natively installed component.
+     */
+    private static final String NATIVE_COMPONENT_FILE_SUFFIX = ".meta"; // NOI18N
 
     /**
      * Suffix for the filelist metadata files.
@@ -105,16 +113,17 @@ public class DirectoryStorage implements ComponentStorage {
      * 
      */
     private static final String BUNDLE_REQUIRED_PREFIX = BundleConstants.BUNDLE_REQUIRED + "-"; // NOI18N
+    private static final String BUNDLE_PROVIDED_PREFIX = BundleConstants.BUNDLE_PROVIDED + "-"; // NOI18N
 
     /**
      * Root of the storage fileName.
      */
-    private final Path registryPath;
+    protected final Path registryPath;
 
     /**
      * GralVM installation home.
      */
-    private final Path graalHomePath;
+    protected final Path graalHomePath;
 
     /**
      * The environment for reporting errors etc.
@@ -122,6 +131,8 @@ public class DirectoryStorage implements ComponentStorage {
     private final Feedback feedback;
 
     private Properties loaded;
+
+    private ComponentInfo graalCore;
 
     private static final String GRAALVM_SOURCE = "source"; // NOI18N
     private static final Pattern SOURCE_REVISION = Pattern.compile("\\b([a-z-._]+):([0-9a-f]+)\\b"); // NOI18N
@@ -132,6 +143,9 @@ public class DirectoryStorage implements ComponentStorage {
                     CommonConstants.CAP_OS_NAME,
                     CommonConstants.CAP_OS_ARCH
     };
+
+    private static final String ENTERPRISE_EDITION = "ee"; // NOI18N
+    private static final String VM_ENTERPRISE_COMPONENT = "vm-enterprise:"; // NOI18N
 
     public DirectoryStorage(Feedback feedback, Path storagePath, Path graalHomePath) {
         this.feedback = feedback;
@@ -149,20 +163,27 @@ public class DirectoryStorage implements ComponentStorage {
         }
     }
 
+    public Version getGraalVMVersion() {
+        String s = loadGraalVersionInfo().get(CommonConstants.CAP_GRAALVM_VERSION);
+        return Version.fromString(s);
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, String> load(InputStream istm) throws IOException {
         Map<String, String> graalAttributes = new HashMap<>();
         Properties props = new Properties();
         props.load(istm);
+        String srcText = null;
         for (String key : Collections.list((Enumeration<String>) props.propertyNames())) {
             String val = props.getProperty(key, ""); // MOI18N
 
             String lowerKey = key.toLowerCase(Locale.ENGLISH);
-            if (val.charAt(0) == '"' && val.length() > 1 && val.charAt(val.length() - 1) == '"') { // MOI18N
+            if (!val.isEmpty() && val.charAt(0) == '"' && val.length() > 1 && val.charAt(val.length() - 1) == '"') { // MOI18N
                 val = val.substring(1, val.length() - 1).trim();
             }
             if (GRAALVM_SOURCE.equals(lowerKey)) {
                 Matcher m = SOURCE_REVISION.matcher(val);
+                srcText = val;
                 while (m.find()) {
                     if (m.group(1) == null || m.group(2) == null || m.group(1).isEmpty() || m.group(2).isEmpty()) {
                         throw feedback.failure("ERROR_ReleaseSourceRevisions", null, graalHomePath);
@@ -176,6 +197,14 @@ public class DirectoryStorage implements ComponentStorage {
         for (String a : REQUIRED_ATTRIBUTES) {
             if (!graalAttributes.containsKey(a)) {
                 throw feedback.failure("STORAGE_InvalidReleaseFile", null);
+            }
+        }
+        if (graalAttributes.get(CommonConstants.CAP_EDITION) == null && srcText != null) {
+            // Hardcoded, sorry ...
+            if (srcText.contains(VM_ENTERPRISE_COMPONENT)) {
+                graalAttributes.put(CommonConstants.CAP_EDITION, ENTERPRISE_EDITION); // NOI18N
+            } else {
+                graalAttributes.put(CommonConstants.CAP_EDITION, CommonConstants.EDITION_CE);
             }
         }
         return graalAttributes;
@@ -196,15 +225,23 @@ public class DirectoryStorage implements ComponentStorage {
         File[] files = d.listFiles(new FileFilter() {
             @Override
             public boolean accept(File child) {
-                return Files.isRegularFile(child.toPath()) && child.getName().endsWith(COMPONENT_FILE_SUFFIX);
+                if (!Files.isRegularFile(child.toPath())) {
+                    return false;
+                }
+                return child.getName().endsWith(COMPONENT_FILE_SUFFIX) ||
+                                child.getName().endsWith(NATIVE_COMPONENT_FILE_SUFFIX);
             }
         });
         if (files != null) {
             Set<String> result = new HashSet<>();
             for (File f : files) {
                 String s = registryPath.relativize(f.toPath()).toString();
-                int e = s.length() - COMPONENT_FILE_SUFFIX.length();
-                result.add(s.substring(0, e));
+                int lastDot = s.lastIndexOf('.');
+                result.add(s.substring(0, lastDot));
+            }
+            // GraalVM core is always present
+            if (Files.exists(graalHomePath.resolve("bin"))) {
+                result.add(BundleConstants.GRAAL_COMPONENT_ID);
             }
             return result;
         } else {
@@ -236,6 +273,26 @@ public class DirectoryStorage implements ComponentStorage {
                 String v = loaded.getProperty(s, ""); // NOI18N
                 ci.addRequiredValue(k, v);
             }
+            if (s.startsWith(BUNDLE_PROVIDED_PREFIX)) {
+                String k = s.substring(BUNDLE_PROVIDED_PREFIX.length());
+                String v = loaded.getProperty(s, ""); // NOI18N
+                if (v.length() < 2) {
+                    continue;
+                }
+                String val = v.substring(1);
+                Object o;
+                switch (v.charAt(0)) {
+                    case 'V':
+                        o = Version.fromString(val);
+                        break;
+                    case '"':
+                        o = val;
+                        break;
+                    default:
+                        continue;
+                }
+                ci.provideValue(k, o);
+            }
         }
         if (Boolean.TRUE.toString().equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, ""))) { // NOI18N
             ci.setPolyglotRebuild(true);
@@ -253,19 +310,56 @@ public class DirectoryStorage implements ComponentStorage {
         if (licType != null) {
             ci.setLicenseType(licType);
         }
+        String postInst = loaded.getProperty(BundleConstants.BUNDLE_MESSAGE_POSTINST);
+        if (postInst != null) {
+            String text = postInst.replace("\\n", "\n").replace("\\\\", "\\"); // NOI18N
+            ci.setPostinstMessage(text);
+        }
+        String u = loaded.getProperty(CommonConstants.BUNDLE_ORIGIN_URL);
+        if (u != null) {
+            try {
+                ci.setRemoteURL(new URL(u));
+            } catch (MalformedURLException ex) {
+                // ignore
+            }
+        }
         return ci;
     }
 
+    private ComponentInfo getCoreInfo() {
+        if (graalCore != null) {
+            return graalCore;
+        }
+        Version v = getGraalVMVersion();
+        ComponentInfo ci = new ComponentInfo(BundleConstants.GRAAL_COMPONENT_ID, feedback.l10n("NAME_GraalCoreComponent"),
+                        v.originalString());
+        Path cmpFile = registryPath.resolve(SystemUtils.fileName(BundleConstants.GRAAL_COMPONENT_ID + NATIVE_COMPONENT_FILE_SUFFIX));
+        if (Files.exists(cmpFile)) {
+            ci.setNativeComponent(true);
+        }
+        graalCore = ci;
+        return graalCore;
+    }
+
     @Override
-    public ComponentInfo loadComponentMetadata(String tag) throws IOException {
+    public Set<ComponentInfo> loadComponentMetadata(String tag) throws IOException {
         Path cmpFile = registryPath.resolve(SystemUtils.fileName(tag + COMPONENT_FILE_SUFFIX));
+        boolean nc = false;
         if (!Files.exists(cmpFile)) {
-            return null;
+            if (BundleConstants.GRAAL_COMPONENT_ID.equals(tag)) {
+                return Collections.singleton(getCoreInfo());
+            }
+            cmpFile = registryPath.resolve(SystemUtils.fileName(tag + NATIVE_COMPONENT_FILE_SUFFIX));
+            if (!Files.exists(cmpFile)) {
+                return null;
+            }
+            nc = true;
         }
         try (InputStream fileStream = Files.newInputStream(cmpFile)) {
             ComponentInfo info = loadMetadataFrom(fileStream);
             info.setInfoPath(cmpFile.toString());
-            return info;
+            info.setNativeComponent(nc);
+            return Collections.singleton(info);
         }
     }
 
@@ -377,7 +471,15 @@ public class DirectoryStorage implements ComponentStorage {
      */
     @Override
     public void saveComponent(ComponentInfo info) throws IOException {
-        assert info != null;
+        // hack: if the component is null, just verify that the user has access to the registry's
+        // data
+        verifyUserAccess();
+        if (info == null) {
+            return;
+        }
+        if (info.isNativeComponent()) {
+            return;
+        }
         Path cmpFile = registryPath.resolve(SystemUtils.fileName(info.getId() + COMPONENT_FILE_SUFFIX));
         try (OutputStream compFile = Files.newOutputStream(cmpFile, StandardOpenOption.CREATE,
                         StandardOpenOption.TRUNCATE_EXISTING)) {
@@ -404,6 +506,19 @@ public class DirectoryStorage implements ComponentStorage {
             }
             p.setProperty(BUNDLE_REQUIRED_PREFIX + k, v);
         }
+        for (String k : info.getProvidedValues().keySet()) {
+            Object o = info.getProvidedValue(k, Object.class);
+            char t;
+            if (o instanceof String) {
+                t = '"'; // NOI18N
+            } else if (o instanceof Version) {
+                t = 'V';
+                o = ((Version) o).originalString();
+            } else {
+                continue;
+            }
+            p.setProperty(BUNDLE_PROVIDED_PREFIX + k, t + o.toString());
+        }
 
         if (info.getPostinstMessage() != null) {
             p.setProperty(BundleConstants.BUNDLE_MESSAGE_POSTINST, info.getPostinstMessage());
@@ -413,6 +528,10 @@ public class DirectoryStorage implements ComponentStorage {
         }
         if (!info.getWorkingDirectories().isEmpty()) {
             p.setProperty(BundleConstants.BUNDLE_WORKDIRS, info.getWorkingDirectories().stream().sequential().collect(Collectors.joining(":")));
+        }
+        URL u = info.getRemoteURL();
+        if (u != null) {
+            p.setProperty(CommonConstants.BUNDLE_ORIGIN_URL, u.toString());
         }
         return p;
     }
@@ -434,6 +553,9 @@ public class DirectoryStorage implements ComponentStorage {
 
     @Override
     public Date licenseAccepted(ComponentInfo info, String licenseID) {
+        if (!SystemUtils.isLicenseTrackingEnabled()) {
+            return null;
+        }
         checkLicenseID(licenseID);
         try {
             String fn = MessageFormat.format(LICENSE_FILE_TEMPLATE, licenseID, info.getId());
@@ -448,7 +570,43 @@ public class DirectoryStorage implements ComponentStorage {
     }
 
     @Override
-    public void recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText) throws IOException {
+    public Map<String, Collection<String>> findAcceptedLicenses() {
+        if (!SystemUtils.isLicenseTrackingEnabled()) {
+            return Collections.emptyMap();
+        }
+        Path licDir = registryPath.resolve(LICENSE_DIR);
+        Map<String, Collection<String>> result = new HashMap<>();
+        try {
+            if (!Files.isDirectory(licDir)) {
+                return Collections.emptyMap();
+            }
+            Files.walk(licDir).forEach((lp) -> {
+                if (!Files.isRegularFile(lp)) {
+                    return;
+                }
+                Path parent = lp.getParent();
+                if (parent.equals(licDir)) {
+                    return;
+                }
+                String fn = parent.getFileName().toString();
+                if (!fn.endsWith(".accepted")) {
+                    return;
+                }
+                int dot = fn.lastIndexOf('.');
+                String id = fn.substring(0, dot);
+                result.computeIfAbsent(id, (x) -> new ArrayList<>()).add(lp.getFileName().toString());
+            });
+        } catch (IOException ex) {
+            throw feedback.failure("ERR_CannotReadAcceptance", ex, "(all)");
+        }
+        return result;
+    }
+
+    @Override
+    public void recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText, Date d) throws IOException {
+        if (!SystemUtils.isLicenseTrackingEnabled()) {
+            return;
+        }
         if (licenseID == null) {
             clearRecordedLicenses();
             return;
@@ -470,8 +628,8 @@ public class DirectoryStorage implements ComponentStorage {
                             MessageFormat.format(LICENSE_CONTENTS_NAME, licenseID)));
             Files.write(contentsFile, Arrays.asList(licenseText.split("\n")));
         }
-        Date d = new Date();
-        Files.write(listFile, Collections.singletonList(d.toString()), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        String ds = (d == null ? new Date() : d).toString();
+        Files.write(listFile, Collections.singletonList(ds), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
     void clearRecordedLicenses() throws IOException {
@@ -492,5 +650,31 @@ public class DirectoryStorage implements ComponentStorage {
                 throw ex.getCause();
             }
         }
+    }
+
+    @Override
+    public String licenseText(String licID) {
+        Path contentsFile = registryPath.resolve(SystemUtils.fromCommonRelative(
+                        MessageFormat.format(LICENSE_CONTENTS_NAME, licID)));
+        try {
+            return Files.lines(contentsFile).collect(Collectors.joining("\n"));
+        } catch (IOException ex) {
+            throw feedback.failure("ERR_CannotReadAcceptance", ex, licID);
+        }
+    }
+
+    void verifyUserAccess() {
+        if (Files.isWritable(registryPath)) {
+            return;
+        }
+        try {
+            String owner = SystemUtils.findFileOwner(registryPath);
+            if (owner != null) {
+                throw feedback.failure("ERROR_MustBecomeUser", null, owner);
+            }
+        } catch (IOException ex) {
+            // ignore, use generic message
+        }
+        throw feedback.failure("ERROR_MustBecomeAdmin", null);
     }
 }

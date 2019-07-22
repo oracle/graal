@@ -32,6 +32,8 @@ import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.io.PrintStream;
+import java.util.Collections;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -42,7 +44,9 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugDumpScope;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -56,6 +60,7 @@ import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 public class CompilationTask {
@@ -84,14 +89,21 @@ public class CompilationTask {
         }
 
         @Override
-        protected DebugContext createRetryDebugContext(OptionValues retryOptions, PrintStream logStream) {
+        protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues retryOptions, PrintStream logStream) {
             SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
-            return DebugContext.create(retryOptions, logStream, new GraalDebugHandlersFactory(snippetReflection));
+            Description description = initialDebug.getDescription();
+            List<DebugHandlersFactory> factories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
+            return DebugContext.create(retryOptions, description, initialDebug.getGlobalMetrics(), logStream, factories);
+        }
+
+        @Override
+        protected void exitHostVM(int status) {
+            HotSpotGraalServices.exit(status);
         }
 
         @Override
         public String toString() {
-            return getMethod().format("%H.%n(%p)");
+            return getMethod().format("%H.%n(%p) @ " + getEntryBCI());
         }
 
         @Override
@@ -169,18 +181,32 @@ public class CompilationTask {
             }
             stats.finish(method, installedCode);
             if (result != null) {
-                return HotSpotCompilationRequestResult.success(result.getBytecodeSize() - method.getCodeSize());
+                // For compilation of substitutions the method in the compilation request might be
+                // different than the actual method parsed. The root of the compilation will always
+                // be the first method in the methods list, so use that instead.
+                ResolvedJavaMethod rootMethod = result.getMethods()[0];
+                int inlinedBytecodes = result.getBytecodeSize() - rootMethod.getCodeSize();
+                assert inlinedBytecodes >= 0 : rootMethod + " " + method;
+                return HotSpotCompilationRequestResult.success(inlinedBytecodes);
             }
             return null;
         }
 
     }
 
-    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean installAsDefault) {
+    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime,
+                    HotSpotGraalCompiler compiler,
+                    HotSpotCompilationRequest request,
+                    boolean useProfilingInfo,
+                    boolean installAsDefault) {
         this(jvmciRuntime, compiler, request, useProfilingInfo, false, installAsDefault);
     }
 
-    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime, HotSpotGraalCompiler compiler, HotSpotCompilationRequest request, boolean useProfilingInfo, boolean shouldRetainLocalVariables,
+    public CompilationTask(HotSpotJVMCIRuntime jvmciRuntime,
+                    HotSpotGraalCompiler compiler,
+                    HotSpotCompilationRequest request,
+                    boolean useProfilingInfo,
+                    boolean shouldRetainLocalVariables,
                     boolean installAsDefault) {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;

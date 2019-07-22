@@ -41,6 +41,20 @@ import mx_compiler
 from mx_benchmark import ParserEntry
 from argparse import ArgumentParser
 
+import sys
+
+if sys.version_info[0] < 3:
+    from ConfigParser import ConfigParser
+    from StringIO import StringIO
+    def _configparser_read_file(configp, fp):
+        configp.readfp(fp)
+else:
+    from configparser import ConfigParser
+    from io import StringIO
+    def _configparser_read_file(configp, fp):
+        configp.read_file(fp)
+
+
 _suite = mx.suite('compiler')
 
 # Short-hand commands used to quickly run common benchmarks.
@@ -69,7 +83,31 @@ mx.update_commands(_suite, {
       lambda args: mx_benchmark.benchmark(["specjbb2015"] + args),
       '[-- [VM options] [-- [SPECjbb2015 options]]]'
     ],
+    'renaissance': [
+        lambda args: createBenchmarkShortcut("renaissance", args),
+        '[<benchmarks>|*] [-- [VM options] [-- [Renaissance options]]]'
+    ],
 })
+
+_IMAGE_JMH_BENCHMARK_ARGS = [
+    # JMH does not support forks with native-image. In the distant future we can capture this case.
+    '-Dnative-image.benchmark.extra-run-arg=-f0',
+
+    # GR-17177 should remove this from args.
+    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh'
+
+    # Don't waste time and energy collecting reflection config.
+    '-Dnative-image.benchmark.extra-agent-run-arg=-f0',
+    '-Dnative-image.benchmark.extra-agent-run-arg=-wi',
+    '-Dnative-image.benchmark.extra-agent-run-arg=1',
+    '-Dnative-image.benchmark.extra-agent-run-arg=-i1',
+
+    # Don't waste time profiling the same code but still wait for compilation on HotSpot.
+    '-Dnative-image.benchmark.extra-profile-run-arg=-f0',
+    '-Dnative-image.benchmark.extra-profile-run-arg=-wi',
+    '-Dnative-image.benchmark.extra-profile-run-arg=1',
+    '-Dnative-image.benchmark.extra-profile-run-arg=-i5',
+]
 
 
 def createBenchmarkShortcut(benchSuite, args):
@@ -410,93 +448,6 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin, Me
         return self.removeWarmup(results)
 
 
-class MoveProfilingBenchmarkMixin(object):
-    """Benchmark-mixin for measuring the number of dynamically executed move instructions.
-
-    See org.graalvm.compiler.lir.profiling.MoveProfilingPhase for more details.
-    """
-    benchmark_counters_file = 'benchmark-counters.csv'
-
-    def vmArgs(self, bmSuiteArgs):
-        vmArgs = [
-                  self.get_dynamic_counters_argument(),
-                  '-XX:JVMCICounterSize=10',
-                  '-Dgraal.LIRProfileMoves=true',
-                  '-Dgraal.DynamicCountersPrintGroupSeparator=false',
-                  '-Dgraal.BenchmarkCountersFile=' + MoveProfilingBenchmarkMixin.benchmark_counters_file] + super(MoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
-        return vmArgs
-
-    def get_dynamic_counters_argument(self):
-        """ The argument to select the desired dynamic counters mode. Possible values are
-        `-Dgraal.GenericDynamicCounters=...`, `-Dgraal.TimedDynamicCounters=...` or
-        `-Dgraal.BenchmarkDynamicCounters=...`. See org.graalvm.compiler.hotspot.debug.BenchmarkCounters
-        for more information.
-        """
-        raise NotImplementedError()
-
-    def getBenchmarkName(self):
-        raise NotImplementedError()
-
-    def benchSuiteName(self):
-        raise NotImplementedError()
-
-    def name(self):
-        return self.benchSuiteName() + "-move-profiling"
-
-    def shorten_flags(self, args):
-        def _shorten(x):
-            if any(p in x for p in ["DynamicCounter", "BenchmarkCounter"]):
-                return "..."
-            return x
-
-        arg_str = " ".join((_shorten(x) for x in args))
-        return mx_benchmark.Rule.crop_back("...")(arg_str)
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return [
-          mx_benchmark.CSVStdOutFileRule(
-            pattern="Writing benchmark counters to '(?P<name>[^']*)'",
-            match_name="name",
-            colnames=['type', 'group', 'name', 'value'],
-            replacement={
-              "benchmark": self.getBenchmarkName(),
-              "bench-suite": self.benchSuiteName(),
-              "vm": "jvmci",
-              "config.name": "default",
-              "config.vm-flags": self.shorten_flags(self.vmArgs(bmSuiteArgs)),
-              "metric.object": ("<name>", str),
-              "metric.name": ("dynamic-moves", str),
-              "metric.value": ("<value>", int),
-              "metric.unit": "#",
-              "metric.type": "numeric",
-              "metric.score-function": "id",
-              "metric.better": "lower",
-              "metric.iteration": 0
-            },
-            delimiter=';', quotechar='"', escapechar='\\'
-          ),
-        ]
-
-
-class DaCapoMoveProfilingBenchmarkMixin(MoveProfilingBenchmarkMixin):
-
-    def vmArgs(self, bmSuiteArgs):
-        # we need to boostrap to eagerly initialize Graal otherwise we cannot intercept
-        # stdio since it is rerouted by the dacapo harness
-        return ['-XX:+BootstrapJVMCI', '-Dgraal.BootstrapInitializeOnly=true'] +  super(DaCapoMoveProfilingBenchmarkMixin, self).vmArgs(bmSuiteArgs)
-
-    def get_dynamic_counters_argument(self):
-        # we only count the moves executed during the last (the measurement) iteration
-        return '-Dgraal.BenchmarkDynamicCounters=err, starting ====, PASSED in '
-
-    def postprocessRunArgs(self, benchname, runArgs):
-        self.currentBenchname = benchname
-        return super(DaCapoMoveProfilingBenchmarkMixin, self).postprocessRunArgs(benchname, runArgs)
-
-    def getBenchmarkName(self):
-        return self.currentBenchname
-
-
 class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
     def before(self, bmSuiteArgs):
         parser = mx_benchmark.parsers["temporary_workdir_parser"].parser
@@ -650,7 +601,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        return [key for key, value in self.daCapoIterations().iteritems() if value != -1]
+        return [key for key, value in self.daCapoIterations().items() if value != -1]
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
@@ -797,15 +748,6 @@ class DaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, DaCapoBenchmarkSuit
 
 mx_benchmark.add_bm_suite(DaCapoTimingBenchmarkSuite())
 
-
-class DaCapoMoveProfilingBenchmarkSuite(DaCapoMoveProfilingBenchmarkMixin, DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
-    """DaCapo 9.12 (Bach) benchmark suite implementation."""
-
-    def benchSuiteName(self):
-        return "dacapo"
-
-
-mx_benchmark.add_bm_suite(DaCapoMoveProfilingBenchmarkSuite())
 
 class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
     """DaCapo 9.12 Bach benchmark suite implementation with D3S modifications."""
@@ -1036,16 +978,6 @@ class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBen
 mx_benchmark.add_bm_suite(ScalaDaCapoTimingBenchmarkSuite())
 
 
-class ScalaDaCapoMoveProfilingBenchmarkSuite(DaCapoMoveProfilingBenchmarkMixin, ScalaDaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
-    """Scala DaCapo benchmark suite implementation."""
-
-    def benchSuiteName(self):
-        return "scala-dacapo"
-
-
-mx_benchmark.add_bm_suite(ScalaDaCapoMoveProfilingBenchmarkSuite())
-
-
 _allSpecJVM2008Benches = [
     'startup.helloworld',
     'startup.compiler.compiler',
@@ -1192,7 +1124,46 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 
 
-class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+_SpecJbb_specific_vmArgs = [
+    "-XX:+UseNUMA",
+    "-XX:+AlwaysPreTouch",
+    "-XX:+UseTransparentHugePages",
+    "-XX:+UseLargePagesInMetaspace",
+    "-XX:-UseAdaptiveSizePolicy",
+    "-XX:-UseAdaptiveNUMAChunkSizing",
+    "-XX:+PrintGCDetails"
+]
+
+
+class HeapSettingsMixin(object):
+
+    def vmArgshHeapFromEnv(self, vmArgs):
+        xmx_is_set = any([arg.startswith("-Xmx") for arg in vmArgs])
+        xms_is_set = any([arg.startswith("-Xms") for arg in vmArgs])
+        xmn_is_set = any([arg.startswith("-Xmn") for arg in vmArgs])
+
+        heap_args = []
+
+        xms = mx.get_env("XMS", default="")
+        xmx = mx.get_env("XMX", default="")
+        xmn = mx.get_env("XMN", default="")
+
+        if xms and not xms_is_set:
+            heap_args.append("-Xms{}".format(xms))
+            mx.log("Setting initial heap size based on XMS env var to -Xms{}".format(xms))
+
+        if xmx and not xmx_is_set:
+            heap_args.append("-Xmx{}".format(xmx))
+            mx.log("Setting maximum heap size based on XMX env var to -Xmx{}".format(xmx))
+
+        if xmn and not xmn_is_set:
+            heap_args.append("-Xmn{}".format(xmn))
+            mx.log("Setting young generation size based on XMN env var to -Xmn{}".format(xmn))
+
+        return vmArgs + heap_args
+
+
+class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):
     """SPECjbb2005 benchmark suite implementation.
 
     This suite has only a single benchmark, and does not allow setting a specific
@@ -1210,6 +1181,10 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def subgroup(self):
         return "graal-compiler"
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2005BenchmarkSuite, self).vmArgs(bmSuiteArgs))
+        return _SpecJbb_specific_vmArgs + vmArgs
 
     def specJbbClassPath(self):
         specjbb2005 = mx.get_env("SPECJBB2005")
@@ -1264,7 +1239,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             jbbprops.update(self.extractSuiteArgs(bmSuiteArgs))
             fd, self.prop_tmp_file = mkstemp(prefix="specjbb2005", suffix=".props")
             with os.fdopen(fd, "w") as f:
-                f.write("\n".join(["{}={}".format(key, value) for key, value in jbbprops.iteritems()]))
+                f.write("\n".join(["{}={}".format(key, value) for key, value in jbbprops.items()]))
 
         propArgs = ["-propfile", self.prop_tmp_file]
         vmArgs = self.vmArgs(bmSuiteArgs)
@@ -1275,20 +1250,18 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             runArgs)
 
     def after(self, bmSuiteArgs):
-        if self.prop_tmp_file != None and os.path.exists(self.prop_tmp_file):
+        if self.prop_tmp_file is not None and os.path.exists(self.prop_tmp_file):
             os.unlink(self.prop_tmp_file)
 
     def getDefaultProperties(self, benchmarks, bmSuiteArgs):
-        from ConfigParser import ConfigParser
-        import StringIO
         configfile = join(self.workingDirectory(benchmarks, bmSuiteArgs), "SPECjbb.props")
-        config = StringIO.StringIO()
+        config = StringIO()
         config.write("[root]\n")
         with open(configfile, "r") as f:
             config.write(f.read())
         config.seek(0, os.SEEK_SET)
         configp = ConfigParser()
-        configp.readfp(config)
+        _configparser_read_file(configp, config)
         return dict(configp.items("root"))
 
     def benchmarkList(self, bmSuiteArgs):
@@ -1332,7 +1305,7 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJbb2005BenchmarkSuite())
 
 
-class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):
     """SPECjbb2013 benchmark suite implementation.
 
     This suite has only a single benchmark, and does not allow setting a specific
@@ -1346,6 +1319,10 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def subgroup(self):
         return "graal-compiler"
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2013BenchmarkSuite, self).vmArgs(bmSuiteArgs))
+        return _SpecJbb_specific_vmArgs + vmArgs
 
     def specJbbClassPath(self):
         specjbb2013 = mx.get_env("SPECJBB2013")
@@ -1431,7 +1408,7 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 mx_benchmark.add_bm_suite(SpecJbb2013BenchmarkSuite())
 
 
-class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMixin):
     """SPECjbb2015 benchmark suite implementation.
 
     This suite has only a single benchmark, and does not allow setting a specific
@@ -1445,6 +1422,10 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def subgroup(self):
         return "graal-compiler"
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = self.vmArgshHeapFromEnv(super(SpecJbb2015BenchmarkSuite, self).vmArgs(bmSuiteArgs))
+        return _SpecJbb_specific_vmArgs + vmArgs
 
     def specJbbClassPath(self):
         specjbb2015 = mx.get_env("SPECJBB2015")
@@ -1556,13 +1537,16 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite): # 
         return "graal-compiler"
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
+        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
 
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 
 
 class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
+
+    def extraVmArgs(self):
+        return super(JMHJarGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
 
     def name(self):
         return "jmh-jar"
@@ -1578,6 +1562,9 @@ mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 
 
 class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
+
+    def extraVmArgs(self):
+        return super(JMHDistGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
 
     def name(self):
         return "jmh-dist"
@@ -1629,6 +1616,35 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHDistWhiteboxBenchmarkSuite())
 
 
+_renaissanceConfig = {
+    "akka-uct"         : 24,
+    "als"              : 60,
+    "chi-square"       : 60,
+    "db-shootout"      : 16,
+    "dec-tree"         : 40,
+    "dotty"            : 50,
+    "finagle-chirper"  : 90,
+    "finagle-http"     : 12,
+    "fj-kmeans"        : 30,
+    "future-genetic"   : 50,
+    "gauss-mix"        : 40,
+    "log-regression"   : 20,
+    "mnemonics"        : 16,
+    "movie-lens"       : 20,
+    "naive-bayes"      : 30,
+    "neo4j-analytics"  : 20,
+    "page-rank"        : 20,
+    "par-mnemonics"    : 16,
+    "philosophers"     : 30,
+    "reactors"         : 10,
+    "rx-scrabble"      : 80,
+    "scala-doku"       : 20,
+    "scala-kmeans"     : 50,
+    "scala-stm-bench7" : 60,
+    "scrabble"         : 50
+}
+
+
 class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
     """Renaissance benchmark suite implementation.
     """
@@ -1641,8 +1657,111 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def subgroup(self):
         return "graal-compiler"
 
+    def renaissanceLibraryName(self):
+        return "RENAISSANCE"
+
+    def renaissanceIterations(self):
+        return _renaissanceConfig.copy()
+
     def renaissancePath(self):
-        renaissance = mx.get_env("RENAISSANCE")
+        lib = mx.library(self.renaissanceLibraryName())
+        if lib:
+            return lib.get_path(True)
+        return None
+
+    def postprocessRunArgs(self, benchname, runArgs):
+        parser = argparse.ArgumentParser(add_help=False)
+        parser.add_argument("-r", default=None)
+        args, remaining = parser.parse_known_args(runArgs)
+        if args.r:
+            if args.r.isdigit():
+                return ["-r", args.r] + remaining
+            if args.n == "-1":
+                return None
+        else:
+            iterations = self.renaissanceIterations()[benchname]
+            if iterations == -1:
+                return None
+            else:
+                return ["-r", str(iterations)] + remaining
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        benchArg = ""
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) == 0:
+            mx.abort("Must specify at least one benchmark.")
+        else:
+            benchArg = ",".join(benchmarks)
+        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+        return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
+
+    def benchmarkList(self, bmSuiteArgs):
+        return sorted(_renaissanceConfig.keys())
+
+    def successPatterns(self):
+        return []
+
+    def failurePatterns(self):
+        return []
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(
+                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
+                {
+                    "benchmark": ("<benchmark>", str),
+                    "vm": "jvmci",
+                    "config.name": "default",
+                    "metric.name": "warmup",
+                    "metric.value": ("<value>", float),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": ("<iteration>", int),
+                }
+            ),
+            mx_benchmark.StdOutRule(
+                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
+                {
+                    "benchmark": ("<benchmark>", str),
+                    "vm": "jvmci",
+                    "config.name": "default",
+                    "metric.name": "final-time",
+                    "metric.value": ("<value>", float),
+                    "metric.unit": "ms",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                }
+            )
+        ]
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(RenaissanceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        self.addAverageAcrossLatestResults(results)
+        return results
+
+
+mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
+
+
+class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
+    """Legacy renaissance benchmark suite implementation.
+    """
+    def name(self):
+        return "renaissance-legacy"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def renaissancePath(self):
+        renaissance = mx.get_env("RENAISSANCE_LEGACY")
         if renaissance:
             return join(renaissance, "jars")
         return None
@@ -1650,7 +1769,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def validateEnvironment(self):
         if not self.renaissancePath():
             raise RuntimeError(
-                "The RENAISSANCE environment variable was not specified.")
+                "The RENAISSANCE_LEGACY environment variable was not specified.")
 
     def validateReturnCode(self, retcode):
         return retcode == 0
@@ -1720,12 +1839,12 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         ]
 
     def run(self, benchmarks, bmSuiteArgs):
-        results = super(RenaissanceBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        results = super(RenaissanceLegacyBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
         self.addAverageAcrossLatestResults(results)
         return results
 
 
-mx_benchmark.add_bm_suite(RenaissanceBenchmarkSuite())
+mx_benchmark.add_bm_suite(RenaissanceLegacyBenchmarkSuite())
 
 
 class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, TemporaryWorkdirMixin):
@@ -1786,10 +1905,7 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.A
                 return
             pos = match.start()
             decoder = json.JSONDecoder()
-            try:
-                part, pos = decoder.raw_decode(content, pos)
-            except json.JSONDecodeError:
-                raise
+            part, pos = decoder.raw_decode(content, pos)
             yield part
 
     def getExtraIterationCount(self, iterations):

@@ -37,7 +37,7 @@ public interface CommandInput {
      * @return next file from commandline
      * @throws FailedOperationException if the named file does not exist.
      */
-    Iterable<ComponentParam> existingFiles() throws FailedOperationException;
+    ComponentIterable existingFiles() throws FailedOperationException;
 
     /**
      * Retrieves the next required parameter.
@@ -55,6 +55,12 @@ public interface CommandInput {
     String nextParameter();
 
     /**
+     * Peeks onto the next parameter. Does not consume it. A call to {@link #nextParameter} is
+     * required to advance.
+     */
+    String peekParameter();
+
+    /**
      * Has some parameters ?
      */
     boolean hasParameter();
@@ -70,7 +76,7 @@ public interface CommandInput {
     /**
      * @return Registry of available components.
      */
-    ComponentRegistry getRegistry();
+    ComponentCollection getRegistry();
 
     /**
      * @return Registry of local components.
@@ -90,4 +96,6 @@ public interface CommandInput {
         String s = optValue(option);
         return s == null ? defV : s;
     }
+
+    FileOperations getFileOperations();
 }

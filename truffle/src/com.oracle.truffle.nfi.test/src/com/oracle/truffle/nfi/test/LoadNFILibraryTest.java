@@ -52,8 +52,8 @@ public class LoadNFILibraryTest extends NFITest {
     private final String nativeTestLib = System.getProperty("native.test.lib");
 
     private static TruffleObject eval(String format, Object... args) {
-        Source source = Source.newBuilder("nfi", String.format(format, args), "LoadLibraryTest").build();
-        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        Source source = Source.newBuilder("nfi", String.format(format, args), "LoadLibraryTest").internal(true).build();
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         return (TruffleObject) target.call();
     }
 

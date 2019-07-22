@@ -29,8 +29,6 @@ package com.oracle.svm.core.jdk;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
@@ -39,10 +37,10 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -52,6 +50,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 @TargetClass(java.net.URL.class)
 final class Target_java_net_URL {
@@ -140,16 +139,14 @@ public final class JavaNetSubstitutions {
             return true;
         }
         try {
-            Method method = URL.class.getDeclaredMethod("getURLStreamHandler", String.class);
-            method.setAccessible(true);
-            URLStreamHandler handler = (URLStreamHandler) method.invoke(null, protocol);
+            URLStreamHandler handler = (URLStreamHandler) ReflectionUtil.lookupMethod(URL.class, "getURLStreamHandler", String.class).invoke(null, protocol);
             if (handler != null) {
                 URLProtocolsSupport.put(protocol, handler);
                 return true;
             }
             return false;
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException ex) {
-            throw new Error(ex);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 

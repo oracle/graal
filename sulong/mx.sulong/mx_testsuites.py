@@ -30,6 +30,7 @@
 from __future__ import print_function
 
 import fnmatch
+import glob
 
 import mx
 import mx_unittest
@@ -39,6 +40,15 @@ import mx_buildtools
 
 import mx_sulong
 
+import sys
+
+if sys.version_info[0] < 3:
+    _unicode = unicode # pylint: disable=undefined-variable
+else:
+    _unicode = str
+
+_basestring = (str, _unicode)
+
 
 def run(vmArgs, unittests, extraOption=None, extraLibs=None):
     if not isinstance(unittests, list):
@@ -47,7 +57,7 @@ def run(vmArgs, unittests, extraOption=None, extraLibs=None):
         extraOption = []
     if mx.get_opts().verbose:
         command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + ['--very-verbose'] + unittests
-        print ('Running mx unittests ' + ' '.join(command))
+        print('Running mx unittests ' + ' '.join(command))
         return mx_unittest.unittest(command)
     else:
         command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + unittests
@@ -77,11 +87,13 @@ class SulongTestSuiteBuildTask(mx.NativeBuildTask):
 
 
 class SulongTestSuite(mx.NativeProject):
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **args):
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
+                 buildSharedObject=False, **args):
         d = os.path.join(suite.dir, subDir) # use common Makefile for all test suites
         mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d, **args)
         self.vpath = True
         self.buildRef = buildRef
+        self.buildSharedObject = buildSharedObject
         self._is_needs_rebuild_call = False
         if not hasattr(self, 'testClasses'):
             self.testClasses = self.defaultTestClasses()
@@ -139,6 +151,8 @@ class SulongTestSuite(mx.NativeProject):
         env['TESTS'] = ' '.join(self.getTests())
         env['VARIANTS'] = ' '.join(self.getVariants())
         env['BUILD_REF'] = '1' if self.buildRef else '0'
+        env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
+        env['SO_EXT'] = mx.add_lib_suffix("")
         env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
@@ -157,7 +171,8 @@ class SulongTestSuite(mx.NativeProject):
                 if self.buildRef:
                     self.results.append(os.path.join(t, 'ref.out'))
                 for v in self.getVariants():
-                    self.results.append(os.path.join(t, v + '.bc'))
+                    result_file = mx.add_lib_suffix(v) if self.buildSharedObject else v + '.bc'
+                    self.results.append(os.path.join(t, result_file))
         return super(SulongTestSuite, self).getResults(replaceVar=replaceVar)
 
 
@@ -169,7 +184,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         else:
             self.testDir = ''
         if hasattr(self, 'fileExts'):
-            self.fileExts = self.fileExts if not isinstance(self.fileExts, basestring) else [self.fileExts]
+            self.fileExts = self.fileExts if not isinstance(self.fileExts, _basestring) else [self.fileExts]
         else:
             self.fileExts = ['.c', '.cpp', '.C']
         if not hasattr(self, 'configDir'):
@@ -257,4 +272,30 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         roots = [d.get_path(resolve=True) for d in self.buildDependencies if d.isPackedResourceLibrary()]
         env['VPATH'] = ':'.join(roots)
         env['TESTFILE'] = self.getTestFile()
+        return env
+
+
+class GlobNativeProject(mx.NativeProject):
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d = os.path.join(suite.dir, projectDir)
+        elif subDir is None:
+            d = os.path.join(suite.dir, name)
+        else:
+            d = os.path.join(suite.dir, subDir, name)
+        super(GlobNativeProject, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
+
+    def getResults(self, replaceVar=mx_subst.results_substitutions):
+        results = super(GlobNativeProject, self).getResults(replaceVar)
+
+        def _glob(pathname):
+            return glob.glob(pathname) or mx.abort(
+                'Glob pattern "{}" did not return any file'.format(os.path.relpath(pathname, self.getOutput(replaceVar))))
+        results = [expanded for entry in results for expanded in _glob(entry)]
+        return results
+
+    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
+        env = super(GlobNativeProject, self).getBuildEnv(replaceVar=replaceVar)
+        env['SRC_DIR'] = self.dir
         return env

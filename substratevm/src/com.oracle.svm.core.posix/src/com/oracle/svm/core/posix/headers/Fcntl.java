@@ -184,6 +184,10 @@ public class Fcntl {
     @CConstant
     public static native int O_DIRECTORY();
 
+    @CConstant
+    @Platforms(Platform.LINUX.class)
+    public static native int O_DIRECT();
+
     /** Do not follow links. */
     @CConstant
     public static native int O_NOFOLLOW();
@@ -309,6 +313,10 @@ public class Fcntl {
     @CConstant
     @Platforms(Platform.LINUX.class)
     public static native short F_SHLCK();
+
+    @CConstant
+    @Platforms({Platform.DARWIN.class})
+    public static native int F_NOCACHE();
 
     /** Shared lock. */
     @CConstant

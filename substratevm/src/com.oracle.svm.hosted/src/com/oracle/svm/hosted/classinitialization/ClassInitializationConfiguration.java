@@ -55,6 +55,7 @@ import com.oracle.svm.core.util.UserError;
 public class ClassInitializationConfiguration {
     private static final String ROOT_QUALIFIER = "";
     private static final int MAX_NUMBER_OF_REASONS = 3;
+
     private InitializationNode root = new InitializationNode("", null, null);
 
     public synchronized void insert(String classOrPackage, InitKind kind, String reason) {
@@ -63,7 +64,13 @@ public class ClassInitializationConfiguration {
     }
 
     synchronized InitKind lookupKind(String classOrPackage) {
-        return lookupKindRec(root, qualifierList(classOrPackage), null);
+        InitializationNode node = lookupRec(root, qualifierList(classOrPackage), null);
+        return node == null ? null : node.kind;
+    }
+
+    synchronized String lookupReason(String classOrPackage) {
+        assert lookupRec(root, qualifierList(classOrPackage), null) != null : "Path for a file should be ";
+        return String.join(" and ", lookupRec(root, qualifierList(classOrPackage), null).reasons);
     }
 
     private static List<String> qualifierList(String classOrPackage) {
@@ -101,15 +108,15 @@ public class ClassInitializationConfiguration {
         }
     }
 
-    private InitKind lookupKindRec(InitializationNode node, List<String> classOrPackage, InitKind lastNonNullKind) {
+    private InitializationNode lookupRec(InitializationNode node, List<String> classOrPackage, InitializationNode lastNonNullKind) {
         List<String> tail = new ArrayList<>(classOrPackage);
         tail.remove(0);
         if (!tail.isEmpty() && node.children.containsKey(tail.get(0))) {
-            return lookupKindRec(node.children.get(tail.get(0)), tail, node.kind != null ? node.kind : lastNonNullKind);
+            return lookupRec(node.children.get(tail.get(0)), tail, node.kind != null ? node : lastNonNullKind);
         } else if (node.kind == null) {
             return lastNonNullKind;
         } else {
-            return node.kind;
+            return node;
         }
     }
 

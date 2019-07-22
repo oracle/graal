@@ -676,11 +676,8 @@ public abstract class Launcher {
         return options;
     }
 
-    @SuppressWarnings("deprecation")
     private static boolean sameCategory(OptionDescriptor descriptor, OptionCategory optionCategory) {
-        return descriptor.getCategory().ordinal() == optionCategory.ordinal() ||
-                        (optionCategory.ordinal() == OptionCategory.INTERNAL.ordinal() &&
-                                        descriptor.getCategory().ordinal() == OptionCategory.DEBUG.ordinal());
+        return descriptor.getCategory().ordinal() == optionCategory.ordinal();
     }
 
     void parsePolyglotOptions(String defaultOptionPrefix, Map<String, String> polyglotOptions, List<String> unrecognizedArgs) {
@@ -823,7 +820,6 @@ public abstract class Launcher {
     private OptionDescriptor findPolyglotOptionDescriptor(String group, String key) {
         OptionDescriptors descriptors = null;
         switch (group) {
-            case "compiler":
             case "engine":
                 descriptors = getTempEngine().getOptions();
                 break;

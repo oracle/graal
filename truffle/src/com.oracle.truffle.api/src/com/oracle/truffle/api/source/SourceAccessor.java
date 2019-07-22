@@ -55,22 +55,7 @@ final class SourceAccessor extends Accessor {
 
     static final SourceAccessor ACCESSOR = new SourceAccessor();
 
-    protected SourceAccessor() {
-    }
-
-    @Override
-    protected SourceSupport sourceSupport() {
-        return new SourceSupportImpl();
-    }
-
-    @Override
-    protected LanguageSupport languageSupport() {
-        return super.languageSupport();
-    }
-
-    @Override
-    protected EngineSupport engineSupport() {
-        return super.engineSupport();
+    private SourceAccessor() {
     }
 
     static Collection<ClassLoader> allLoaders() {
@@ -95,6 +80,10 @@ final class SourceAccessor extends Accessor {
 
     static TruffleFile getTruffleFile(String path, Object fileSystemContext) {
         return ACCESSOR.languageSupport().getTruffleFile(path, fileSystemContext);
+    }
+
+    static boolean isDefaultFileSystem(Object fileSystemContext) {
+        return ACCESSOR.languageSupport().isDefaultFileSystem(fileSystemContext);
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {

@@ -38,6 +38,7 @@ import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -103,11 +104,11 @@ public class FeatureImpl {
         }
 
         public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass) {
-            return imageClassLoader.findSubclasses(baseClass);
+            return imageClassLoader.findSubclasses(baseClass, false);
         }
 
         public List<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass) {
-            return imageClassLoader.findAnnotatedClasses(annotationClass);
+            return imageClassLoader.findAnnotatedClasses(annotationClass, false);
         }
 
         public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
@@ -166,6 +167,30 @@ public class FeatureImpl {
         public AnalysisMetaAccess getMetaAccess() {
             return bb.getMetaAccess();
         }
+
+        public boolean isReachable(Class<?> clazz) {
+            return isReachable(getMetaAccess().lookupJavaType(clazz));
+        }
+
+        public boolean isReachable(AnalysisType type) {
+            return type.isInTypeCheck() || type.isInstantiated();
+        }
+
+        public boolean isReachable(Field field) {
+            return isReachable(getMetaAccess().lookupJavaField(field));
+        }
+
+        public boolean isReachable(AnalysisField field) {
+            return field.isAccessed();
+        }
+
+        public boolean isReachable(Executable method) {
+            return isReachable(getMetaAccess().lookupJavaMethod(method));
+        }
+
+        public boolean isReachable(AnalysisMethod method) {
+            return method.isImplementationInvoked();
+        }
     }
 
     public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess {
@@ -198,7 +223,7 @@ public class FeatureImpl {
          * {@link DuringAnalysisAccess#requireAnalysisIteration()} to trigger a new iteration of the
          * analysis.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public void registerClassReachabilityListener(BiConsumer<DuringAnalysisAccess, Class<?>> listener) {
             getHostVM().registerClassReachabilityListener(listener);
@@ -320,6 +345,26 @@ public class FeatureImpl {
 
         public void registerHierarchyForReflectiveInstantiation(Class<?> c) {
             findSubclasses(c).stream().filter(clazz -> !Modifier.isAbstract(clazz.getModifiers())).forEach(clazz -> RuntimeReflection.registerForReflectiveInstantiation(clazz));
+        }
+
+        @Override
+        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
+            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, new Object[]{clazz});
+        }
+
+        @Override
+        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Field field) {
+            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, new Object[]{field});
+        }
+
+        @Override
+        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Executable method) {
+            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, new Object[]{method});
+        }
+
+        @Override
+        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
+            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, elements);
         }
     }
 

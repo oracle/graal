@@ -105,7 +105,11 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.OSUtils;
+import java.nio.file.FileSystemException;
 import java.nio.file.attribute.PosixFilePermission;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assume;
 
@@ -132,6 +136,7 @@ public class VirtualizedFileSystemTest {
     private static final String FILE_NEW_SYMLINK = "new_symlink.txt";
     private static final String FILE_NEW_COPY = "new_copy.txt";
     private static final String FOLDER_NEW_COPY = "folder_copy";
+    private static final String FILE_CHANGE_ATTRS = "existing_attrs.txt";
 
     private static Collection<Configuration> cfgs;
     private static Consumer<Env> languageAction;
@@ -198,7 +203,7 @@ public class VirtualizedFileSystemTest {
 
         // Memory
         fileSystem = new MemoryFileSystem();
-        Path memDir = mkdirs(fileSystem.parsePath(URI.create("file:///work")), fileSystem);
+        Path memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
         ((MemoryFileSystem) fileSystem).setCurrentWorkingDirectory(memDir);
         createContent(memDir, fileSystem);
         ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
@@ -636,7 +641,10 @@ public class VirtualizedFileSystemTest {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final boolean executable = file.isExecutable();
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
-                Assert.assertFalse(cfg.formatErrorMessage("Is executable"), executable);
+                // On Windows all files have executable mode.
+                if (!OSUtils.isWindows()) {
+                    Assert.assertFalse(cfg.formatErrorMessage("Is executable"), executable);
+                }
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
             }
@@ -766,11 +774,11 @@ public class VirtualizedFileSystemTest {
             Assert.assertEquals(fileNormalized, fileNormalized.normalize());
             Assert.assertSame(fileNormalized, fileNormalized.normalize());
             TruffleFile fileNonNormalized = env.getTruffleFile(FOLDER_EXISTING + "/lib/../.");
-            Assert.assertEquals(fileNormalized.getPath() + "/lib/../.", fileNonNormalized.getPath());
+            Assert.assertEquals(fileNormalized.resolve("lib/../.").getPath(), fileNonNormalized.getPath());
             Assert.assertEquals(fileNormalized.getPath(), fileNonNormalized.normalize().getPath());
             Assert.assertEquals(fileNormalized, fileNonNormalized.normalize());
             try {
-                Assert.assertEquals(fileNormalized.getAbsoluteFile().getPath() + "/lib/../.", fileNonNormalized.getAbsoluteFile().getPath());
+                Assert.assertEquals(fileNormalized.getAbsoluteFile().resolve("lib/../.").getPath(), fileNonNormalized.getAbsoluteFile().getPath());
                 Assert.assertEquals(fileNormalized.getAbsoluteFile().getPath(), fileNonNormalized.normalize().getAbsoluteFile().getPath());
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), allowsUserDir);
@@ -793,11 +801,11 @@ public class VirtualizedFileSystemTest {
             Assert.assertEquals(child, parent.resolve(relative.getPath()));
             child = env.getTruffleFile("/test/parent/child/inner");
             relative = parent.relativize(child);
-            Assert.assertEquals("child/inner", relative.getPath());
+            Assert.assertEquals(String.join(env.getFileNameSeparator(), "child", "inner"), relative.getPath());
             Assert.assertEquals(child, parent.resolve(relative.getPath()));
             TruffleFile sibling = env.getTruffleFile("/test/sibling");
             relative = parent.relativize(sibling);
-            Assert.assertEquals("../sibling", relative.getPath());
+            Assert.assertEquals(String.join(env.getFileNameSeparator(), "..", "sibling"), relative.getPath());
             Assert.assertEquals(sibling.normalize(), parent.resolve(relative.getPath()).normalize());
         };
         ctx.eval(LANGUAGE_ID, "");
@@ -1130,6 +1138,7 @@ public class VirtualizedFileSystemTest {
 
     @Test
     public void testCreateSymbolicLink() {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
         Context ctx = cfg.getContext();
         Path path = cfg.getPath();
         boolean canWrite = cfg.canWrite();
@@ -1321,6 +1330,15 @@ public class VirtualizedFileSystemTest {
     }
 
     @Test
+    public void testGetPathSeparator() {
+        final Context ctx = cfg.getContext();
+        languageAction = (Env env) -> {
+            Assert.assertEquals(cfg.fileSystem.getSeparator(), env.getFileNameSeparator());
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
     public void testGetAttribute() {
         Context ctx = cfg.getContext();
         Path path = cfg.getPath();
@@ -1347,6 +1365,50 @@ public class VirtualizedFileSystemTest {
                 Assert.assertTrue(verifyPermissions(file.getPosixPermissions(), file.getAttribute(TruffleFile.UNIX_MODE)));
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } catch (UnsupportedOperationException e) {
+                // Verify that file system does not support unix attributes
+                try {
+                    cfg.fileSystem.readAttributes(path, "unix:*");
+                    throw e;
+                } catch (UnsupportedOperationException unsupported) {
+                    // Expected
+                } catch (IOException ioe) {
+                    throw new RuntimeException(ioe);
+                }
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testSetAttribute() {
+        Context ctx = cfg.getContext();
+        Path path = cfg.getPath();
+        boolean canRead = cfg.canRead();
+        boolean canWrite = cfg.canWrite();
+        languageAction = (Env env) -> {
+            TruffleFile root = env.getTruffleFile(path.toString());
+            try {
+                TruffleFile file = root.resolve(FILE_CHANGE_ATTRS);
+                FileTime time = FileTime.from(Instant.now().minusSeconds(1_000).truncatedTo(ChronoUnit.MINUTES));
+                file.setAttribute(TruffleFile.LAST_MODIFIED_TIME, time);
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canWrite);
+                Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_MODIFIED_TIME));
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                file.setAttribute(TruffleFile.LAST_ACCESS_TIME, time);
+                Assert.assertEquals(time, file.getAttribute(TruffleFile.LAST_ACCESS_TIME));
+                file.setAttribute(TruffleFile.CREATION_TIME, time);
+                Assert.assertEquals(time, file.getAttribute(TruffleFile.CREATION_TIME));
+                file.setAttribute(TruffleFile.UNIX_PERMISSIONS, EnumSet.of(PosixFilePermission.OWNER_READ));
+                Assert.assertEquals(EnumSet.of(PosixFilePermission.OWNER_READ), file.getAttribute(TruffleFile.UNIX_PERMISSIONS));
+                file.setAttribute(TruffleFile.UNIX_PERMISSIONS, EnumSet.of(PosixFilePermission.OWNER_READ));
+                Assert.assertEquals(EnumSet.of(PosixFilePermission.OWNER_READ), file.getAttribute(TruffleFile.UNIX_PERMISSIONS));
+                file.setAttribute(TruffleFile.UNIX_MODE, (file.getAttribute(TruffleFile.UNIX_MODE) & ~0700) | 0200);
+                Assert.assertEquals(0200, file.getAttribute(TruffleFile.UNIX_MODE) & 0777);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canWrite);
             } catch (IOException ioe) {
                 throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
             } catch (UnsupportedOperationException e) {
@@ -1759,10 +1821,12 @@ public class VirtualizedFileSystemTest {
         touch(folder.resolve(FILE_EXISTING_WRITE_MMAP), fs);
         touch(folder.resolve(FILE_EXISTING_DELETE), fs);
         touch(folder.resolve(FILE_EXISTING_RENAME), fs);
+        touch(folder.resolve(FILE_CHANGE_ATTRS), fs);
         try {
             ln(folder.resolve(FOLDER_EXISTING), folder.resolve(SYMLINK_EXISTING), fs);
-        } catch (UnsupportedOperationException unsupported) {
-            // File system does not support optional symbolic links, test will be ignored
+        } catch (UnsupportedOperationException | FileSystemException unsupported) {
+            // File system does not support optional symbolic links or required privilege is not
+            // held by the client on Windows, the test will be ignored
         }
         return folder;
     }

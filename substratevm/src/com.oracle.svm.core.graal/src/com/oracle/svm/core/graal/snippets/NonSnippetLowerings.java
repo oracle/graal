@@ -155,6 +155,7 @@ public final class NonSnippetLowerings {
             StampProvider stampProvider = tool.getStampProvider();
             LoadHubNode loadHub = node.graph().unique(new LoadHubNode(stampProvider, node.getObject()));
             node.replaceAtUsagesAndDelete(loadHub);
+            tool.getLowerer().lower(loadHub, tool);
         }
     }
 

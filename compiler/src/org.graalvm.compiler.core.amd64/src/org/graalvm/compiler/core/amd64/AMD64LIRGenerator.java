@@ -47,8 +47,8 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.SSEOp;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -80,10 +80,10 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.CondSetOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondSetOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.ReturnOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TableSwitchOp;
-import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
@@ -576,13 +576,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayIndexOf(JavaKind kind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value... searchValues) {
-        Variable result = newVariable(LIRKind.value(AMD64Kind.QWORD));
-        Value[] allocatableSearchValues = new Value[searchValues.length];
-        for (int i = 0; i < searchValues.length; i++) {
-            allocatableSearchValues[i] = asAllocatable(searchValues[i]);
-        }
-        append(new AMD64ArrayIndexOfOp(kind, findTwoConsecutive, getVMPageSize(), getMaxVectorSize(), this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), allocatableSearchValues));
+    public Variable emitArrayIndexOf(JavaKind arrayKind, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value fromIndex, Value... searchValues) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(new AMD64ArrayIndexOfOp(arrayKind, valueKind, findTwoConsecutive, getMaxVectorSize(), this, result,
+                        asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex), searchValues));
         return result;
     }
 

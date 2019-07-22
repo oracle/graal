@@ -94,7 +94,6 @@ import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -106,7 +105,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -118,6 +116,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -130,55 +129,16 @@ import com.oracle.svm.core.posix.headers.Statvfs.statvfs;
 import com.oracle.svm.core.posix.headers.Termios;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
-@CLibrary("java")
+@CLibrary(value = "java", requireStatic = true)
 class PosixJavaIOSubstituteFeature implements Feature {
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        // Can't re-initialize the classes list below:
-        // Error: com.oracle.graal.pointsto.constraints.UnsupportedFeatureException: No instances
-        // are allowed in the image heap for a class
-        // that is initialized or reinitialized at image runtime: java.io.XXX.
-        //
-        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileDescriptor"));
-        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileInputStream"));
-        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.FileOutputStream"));
-        // RuntimeClassInitialization.rerun(access.findClassByName("java.io.UnixFileSystem"));
-
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.io.RandomAccessFile"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.ZipFile"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Inflater"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.zip.Deflater"), "required for substitutions");
-    }
-
-    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-            JNIRuntimeAccess.register(java.lang.String.class);
-            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredConstructor(byte[].class, String.class));
-            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredMethod("getBytes", String.class));
-            JNIRuntimeAccess.register(java.io.File.class);
-            JNIRuntimeAccess.register(java.io.File.class.getDeclaredField("path"));
-            JNIRuntimeAccess.register(java.io.FileOutputStream.class);
-            JNIRuntimeAccess.register(java.io.FileOutputStream.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.FileInputStream.class);
-            JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.FileDescriptor.class);
-            JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
-            JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.IOException.class);
-            JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
-            JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
-        } catch (NoSuchFieldException | NoSuchMethodException e) {
-            VMError.shouldNotReachHere("PosixJavaIOSubstitutionFeature: Error registering class or method: ", e);
-        }
+        JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
     }
 }
 
@@ -612,23 +572,23 @@ final class Target_java_io_FileOutputStream {
 
     @Substitute
     protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
-        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
+        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), bytes, off, len, append);
     }
 
     @Substitute
     private void open(String name, boolean append) throws FileNotFoundException {
-        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
+        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
-        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)));
+        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)));
     }
 
     @Substitute
     private void write(int b, boolean append) throws IOException {
-        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), b, append);
+        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), b, append);
     }
 }
 
@@ -782,7 +742,7 @@ final class Target_java_io_Console {
     // 050                           jboolean on) {
     @Substitute
     static boolean echo(boolean on) throws IOException {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             /* Initialize the echo shut down hook, once. */
             Util_java_io_Console_JDK8OrEarlier.addShutdownHook();
         }

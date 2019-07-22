@@ -177,7 +177,7 @@ public final class PosixJavaThreads extends JavaThreads {
 
         @SuppressWarnings("unused")
         static void enter(ThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate());
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
             if (code != 0) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
@@ -196,12 +196,10 @@ public final class PosixJavaThreads extends JavaThreads {
     }
 
     @Override
-    protected void noteThreadStart(Thread thread) {
+    protected void beforeThreadRun(Thread thread) {
         /* Complete the initialization of the thread, now that it is (nearly) running. */
         setPthreadIdentifier(thread, Pthread.pthread_self());
         setNativeName(thread, thread.getName());
-
-        super.noteThreadStart(thread);
     }
 }
 

@@ -182,14 +182,6 @@ public class LibC {
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native CCharPointer strdup(CCharPointer src);
 
-    /** Returns a pointer to the first occurrence of the character c in the string s. */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native CCharPointer strchr(CCharPointer s, int c);
-
-    /** Calculate the length of a string. */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native UnsignedWord strlen(CCharPointer s);
-
     /* Split a string into substrings at locations of delimiters, modifying the string in place. */
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native CCharPointer strtok_r(CCharPointer str, CCharPointer delim, CCharPointerPointer saveptr);

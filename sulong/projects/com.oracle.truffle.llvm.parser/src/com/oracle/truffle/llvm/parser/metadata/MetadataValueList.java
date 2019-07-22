@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-import com.oracle.truffle.llvm.parser.ValueList;
-
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import com.oracle.truffle.llvm.parser.ValueList;
 
 public final class MetadataValueList extends ValueList<MDBaseNode, MetadataVisitor> {
 
@@ -55,14 +53,15 @@ public final class MetadataValueList extends ValueList<MDBaseNode, MetadataVisit
         }
     };
 
-    private final Map<String, MDNamedNode> namedNodes;
-    private final Map<String, MDCompositeType> mdTypeRegistry = new HashMap<>();
-    private final List<MDKind> kinds;
-    private final List<MDLocalVariable> locals;
-    private final List<MDBaseNode> exportedScopes;
+    private final HashMap<String, MDNamedNode> namedNodes;
+    private final HashMap<String, MDCompositeType> mdTypeRegistry;
+    private final ArrayList<MDKind> kinds;
+    private final ArrayList<MDLocalVariable> locals;
+    private final ArrayList<MDBaseNode> exportedScopes;
 
     public MetadataValueList() {
         super(PLACEHOLDER_FACTORY);
+        this.mdTypeRegistry = new HashMap<>();
         this.namedNodes = new HashMap<>();
         this.kinds = new ArrayList<>();
         this.locals = new ArrayList<>();

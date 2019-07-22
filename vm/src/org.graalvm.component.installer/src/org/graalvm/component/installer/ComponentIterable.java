@@ -24,6 +24,15 @@
  */
 package org.graalvm.component.installer;
 
+import org.graalvm.component.installer.model.ComponentInfo;
+
 public interface ComponentIterable extends Iterable<ComponentParam> {
     void setVerifyJars(boolean verify);
+
+    ComponentIterable matchVersion(Version.Match m);
+
+    ComponentIterable allowIncompatible();
+
+    // XXX perhaps move to CatalogContents / ComponentCollection
+    ComponentParam createParam(String cmdString, ComponentInfo info);
 }

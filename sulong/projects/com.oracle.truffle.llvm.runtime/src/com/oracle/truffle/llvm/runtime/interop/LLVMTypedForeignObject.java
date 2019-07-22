@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -52,23 +51,23 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
 
-    final TruffleObject foreign;
+    final Object foreign;
     private final LLVMInteropType.Structured type;
 
-    public static LLVMTypedForeignObject create(TruffleObject foreign, LLVMInteropType.Structured type) {
+    public static LLVMTypedForeignObject create(Object foreign, LLVMInteropType.Structured type) {
         return new LLVMTypedForeignObject(foreign, type);
     }
 
-    public static LLVMTypedForeignObject createUnknown(TruffleObject foreign) {
+    public static LLVMTypedForeignObject createUnknown(Object foreign) {
         return new LLVMTypedForeignObject(foreign, null);
     }
 
-    private LLVMTypedForeignObject(TruffleObject foreign, LLVMInteropType.Structured type) {
+    private LLVMTypedForeignObject(Object foreign, LLVMInteropType.Structured type) {
         this.foreign = foreign;
         this.type = type;
     }
 
-    public TruffleObject getForeign() {
+    public Object getForeign() {
         return foreign;
     }
 
@@ -145,14 +144,12 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
     static class ForeignWriteNode extends LLVMNode implements LLVMObjectWriteNode {
 
         @Child LLVMInteropWriteNode write = LLVMInteropWriteNode.create();
-        @Child LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
         @Child ForeignGetTypeNode getType = ForeignGetTypeNodeGen.create();
 
         @Override
-        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) {
+        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType writeType) {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
-            Object escapedValue = dataEscape.executeWithTarget(value);
-            write.execute(getType.execute(object), object.getForeign(), offset, escapedValue);
+            write.execute(getType.execute(object), object.getForeign(), offset, value, writeType);
         }
 
         @Override

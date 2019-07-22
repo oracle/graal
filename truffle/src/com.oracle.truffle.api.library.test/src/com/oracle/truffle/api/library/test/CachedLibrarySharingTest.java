@@ -209,4 +209,38 @@ public class CachedLibrarySharingTest extends AbstractParametrizedLibraryTest {
         }
 
     }
+
+    @ExportLibrary(LibrarySharing1.class)
+    public static final class LibraryObject3 {
+
+        final Object d0;
+        final Object d1;
+        final Object d2;
+
+        LibraryObject3(Object d0, Object d1, Object d2) {
+            this.d0 = d0;
+            this.d1 = d1;
+            this.d2 = d2;
+        }
+
+        @ExportMessage
+        String m0(@CachedLibrary("this.d0") LibrarySharing2 lib0,
+                        @CachedLibrary("this.d1") LibrarySharing2 lib1,
+                        @CachedLibrary("this.d2") LibrarySharing2 lib2) {
+            String r0 = lib0.m0(d0);
+            String r1 = lib1.m0(d1);
+            String r2 = lib2.m0(d2);
+            assertEquals(r0, r1);
+            assertEquals(r1, r2);
+            return r2;
+        }
+    }
+
+    @Test
+    public void testLibraryObject3() {
+        LibraryObject3 obj = new LibraryObject3(new LibraryObject1(),
+                        new LibraryObject1(), new LibraryObject1());
+        LibrarySharing1 lib = createLibrary(LibrarySharing1.class, obj);
+        assertEquals("m0_2", lib.m0(obj));
+    }
 }

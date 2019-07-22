@@ -52,7 +52,6 @@ import org.junit.After;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -216,27 +215,6 @@ public class ComponentPackageLoaderTest extends TestBase {
         Map<String, String> caps = info.getRequiredGraalValues();
         assertNotNull(caps);
         assertNotNull(caps.get(CommonConstants.CAP_GRAALVM_VERSION));
-    }
-
-    @Test
-    public void testComponentLicensePath() throws Exception {
-        setupLoader();
-        delegateFeedback(new FeedbackAdapter() {
-            @Override
-            public String l10n(String key, Object... params) {
-                if (key.startsWith("LICENSE_")) {
-                    return reallyl10n(key, params);
-                }
-                return null;
-            }
-        });
-        // must load file paths
-        loader.loadPaths();
-        assertNotNull(info.getLicensePath());
-        assertNotEquals("LICENSE", info.getLicensePath());
-        assertTrue(info.getLicensePath().contains(info.getVersionString()));
-        // only remapped LICENSE, to avoid some shared file deletion
-        assertFalse(info.getPaths().contains("LICENSE"));
     }
 
     @Test

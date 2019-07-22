@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,9 +36,11 @@ import org.graalvm.component.installer.Commands;
 import static org.graalvm.component.installer.Commands.LONG_OPTION_LIST_FILES;
 import static org.graalvm.component.installer.Commands.OPTION_LIST_FILES;
 import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 
@@ -59,6 +62,7 @@ public abstract class QueryCommandBase implements InstallerCommand {
 
     protected CommandInput input;
     protected ComponentRegistry registry;
+    protected ComponentCollection catalog;
     protected Feedback feedback;
     protected boolean verbose;
     protected boolean printTable;
@@ -98,19 +102,20 @@ public abstract class QueryCommandBase implements InstallerCommand {
         this.verbose = verbose;
     }
 
-    protected ComponentRegistry initRegistry() {
+    protected ComponentCollection initRegistry() {
+        this.registry = input.getLocalRegistry();
         if (input.optValue(Commands.OPTION_CATALOG) != null ||
                         input.optValue(Commands.OPTION_FOREIGN_CATALOG) != null) {
             return input.getRegistry();
         } else {
-            return input.getLocalRegistry();
+            return registry;
         }
     }
 
     @Override
     public void init(CommandInput commandInput, Feedback feedBack) {
         this.input = commandInput;
-        this.registry = initRegistry();
+        this.catalog = initRegistry();
         this.feedback = feedBack;
         listFiles = commandInput.optValue(OPTION_LIST_FILES) != null;
         verbose = commandInput.optValue(Commands.OPTION_VERBOSE) != null;
@@ -152,20 +157,33 @@ public abstract class QueryCommandBase implements InstallerCommand {
 
     @SuppressWarnings("unused")
     void printDetails(ComponentParam param, ComponentInfo info) {
+        final String org;
+        URL u = info.getRemoteURL();
+        if (u == null) {
+            org = ""; // NOI18N
+        } else if (u.getProtocol().equals("file")) { // NOI18N
+            org = u.getFile();
+        } else {
+            org = u.getHost();
+        }
         if (printTable) {
             String line = String.format(feedback.l10n("LIST_ComponentShortList"),
-                            shortenComponentId(info), info.getVersionString(), info.getName());
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org);
             feedback.verbatimOut(line, false);
-            return;
         } else {
             feedback.output("LIST_ComponentBasicInfo",
-                            shortenComponentId(info), info.getVersionString(), info.getName(),
-                            findRequiredGraalVMVersion(info));
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(),
+                            findRequiredGraalVMVersion(info), u);
         }
     }
 
     protected String findRequiredGraalVMVersion(ComponentInfo info) {
-        return val(info.getRequiredGraalValues().get(CAP_GRAALVM_VERSION));
+        String s = info.getRequiredGraalValues().get(CAP_GRAALVM_VERSION);
+        if (s == null) {
+            return val(s);
+        }
+        Version v = Version.fromString(s);
+        return v.displayString();
     }
 
     void printFileList(ComponentInfo info) {

@@ -30,6 +30,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -40,11 +41,45 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
 public class SubstrateOptions {
 
+    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
+    public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
+
+    @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
+    public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");
+
+    @Option(help = "Name of the output file to be generated", type = OptionType.User)//
+    public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
+
+    @APIOption(name = "shared")//
+    @Option(help = "Build shared library")//
+    public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
+
+    @APIOption(name = "static")//
+    @Option(help = "Build statically linked executable (requires static libc and zlib)")//
+    public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
+
+    public static final int ForceFallback = 10;
+    public static final int Automatic = 5;
+    public static final int NoFallback = 0;
+
+    public static final String OptionNameForceFallback = "force-fallback";
+    public static final String OptionNameAutoFallback = "auto-fallback";
+    public static final String OptionNameNoFallback = "no-fallback";
+
+    @APIOption(name = OptionNameForceFallback, fixedValue = "" + ForceFallback, customHelp = "force building of fallback image") //
+    @APIOption(name = OptionNameAutoFallback, fixedValue = "" + Automatic, customHelp = "build stand-alone image if possible") //
+    @APIOption(name = OptionNameNoFallback, fixedValue = "" + NoFallback, customHelp = "build stand-alone image or report failure") //
+    @Option(help = "Define when fallback-image generation should be used.")//
+    public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
+
+    public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
+    public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler optimizeValueUpdateHandler;
 
     @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
@@ -125,6 +160,9 @@ public class SubstrateOptions {
     @Option(help = "Trace VMOperation execution.")//
     public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Instrument code to trace and report class initialization.")//
+    public static final HostedOptionKey<Boolean> TraceClassInitialization = new HostedOptionKey<>(false);
+
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
 
@@ -164,12 +202,6 @@ public class SubstrateOptions {
 
     @Option(help = "Enable Java Native Interface (JNI) support.")//
     public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(true);
-
-    @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
-    public static final HostedOptionKey<String[]> JNIConfigurationFiles = new HostedOptionKey<>(null);
-
-    @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
-    public static final HostedOptionKey<String[]> JNIConfigurationResources = new HostedOptionKey<>(null);
 
     @Option(help = "Report information about known JNI elements when lookup fails", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIVerboseLookupErrors = new HostedOptionKey<>(false);
@@ -246,7 +278,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
 
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
-    public static final HostedOptionKey<Boolean> UseStackBasePointer = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, InTypeCheck).", type = OptionType.Debug)//
     public static final HostedOptionKey<String[]> ReportAnalysisForbiddenType = new HostedOptionKey<>(new String[0]);
@@ -255,8 +287,15 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<String>("lir") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            if ("llvm".equals(newValue) && !JavaVersionUtil.Java8OrEarlier) {
-                EmitStringEncodingSubstitutions.update(values, false);
+            if ("llvm".equals(newValue)) {
+                if (JavaVersionUtil.JAVA_SPEC > 8) {
+                    EmitStringEncodingSubstitutions.update(values, false);
+                }
+                /*
+                 * The code information is filled before linking, which means that stripping dead
+                 * functions makes it incoherent with the executable.
+                 */
+                RemoveUnusedSymbols.update(values, false);
             }
         }
     };
@@ -278,5 +317,20 @@ public class SubstrateOptions {
             };
         }
         return javaName -> true;
+    }
+
+    @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
+    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(false);
+    @Option(help = "Use linker option to remove all local symbols from image.")//
+    public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+
+    /**
+     * The alignment for AOT and JIT compiled methods. The value is constant folded during image
+     * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible
+     * code.
+     */
+    @Fold
+    public static int codeAlignment() {
+        return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
     }
 }

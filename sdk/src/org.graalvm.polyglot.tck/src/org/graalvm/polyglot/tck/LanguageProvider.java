@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,6 +84,27 @@ public interface LanguageProvider {
      * @since 0.30
      */
     Value createIdentityFunction(Context context);
+
+    /**
+     * Creates a {@link Snippet} for an identity function. The identity function just returns its
+     * argument. This method allows an implementor to override the default identity function
+     * verification. In most cases it's not needed to implement this method and it's enough to
+     * implement {@link #createIdentityFunction}.
+     * <p>
+     * The implementor can delegate to the default identity function verifier obtained by
+     * {@link ResultVerifier#getIdentityFunctionDefaultResultVerifier()}.
+     *
+     * @param context the context for a guest language code literal evaluation
+     * @return the {@link Snippet} representing the identity function
+     * @since 19.1.0
+     */
+    default Snippet createIdentityFunctionSnippet(Context context) {
+        Value value = createIdentityFunction(context);
+        if (!value.canExecute()) {
+            throw new AssertionError(String.format("Result of createIdentityFunction for tck provider %s did not return an executable value. Returned value '%s'.", getId(), value));
+        }
+        return (Snippet.newBuilder("identity", value, TypeDescriptor.ANY).parameterTypes(TypeDescriptor.ANY).resultVerifier(ResultVerifier.getIdentityFunctionDefaultResultVerifier()).build());
+    }
 
     /**
      * Creates a collection of functions creating language data types. For each language data type

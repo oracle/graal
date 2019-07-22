@@ -220,7 +220,7 @@ public final class LLVMSourceTypeFactory {
 
         private long getBitSize(Type type) {
             final int byteSize = context.getByteSize(type);
-            return byteSize * Byte.SIZE;
+            return byteSize * (long) Byte.SIZE;
         }
 
         private long getAlignment(Type type) {

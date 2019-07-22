@@ -48,7 +48,7 @@ import org.graalvm.options.OptionDescriptors;
 /**
  * Used for manipulating options at run time.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class RuntimeOptions {
 
@@ -58,7 +58,7 @@ public final class RuntimeOptions {
     /**
      * Set the value of the option with the provided name to the new value.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void set(String optionName, Object value) {
         ImageSingletons.lookup(RuntimeOptionsSupport.class).set(optionName, value);
@@ -67,7 +67,7 @@ public final class RuntimeOptions {
     /**
      * Get the value of the option with the provided name.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static <T> T get(String optionName) {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).get(optionName);
@@ -76,7 +76,7 @@ public final class RuntimeOptions {
     /**
      * Classes of options that can be queried through {@link #getOptions(EnumSet)}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public enum OptionClass {
         VM,
@@ -86,7 +86,7 @@ public final class RuntimeOptions {
     /**
      * Returns available run time options for the selected {@linkplain OptionClass option classes}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions(classes);
@@ -95,7 +95,7 @@ public final class RuntimeOptions {
     /**
      * Returns all available run time options.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static OptionDescriptors getOptions() {
         return getOptions(EnumSet.allOf(OptionClass.class));

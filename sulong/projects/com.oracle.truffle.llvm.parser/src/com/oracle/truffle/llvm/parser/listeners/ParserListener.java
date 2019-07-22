@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.listeners;
 
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public interface ParserListener {
@@ -46,8 +47,8 @@ public interface ParserListener {
     default void exit() {
     }
 
-    void record(long id, long[] args);
+    void record(RecordBuffer recordBuffer);
 
-    ParserListener DEFAULT = (id, args) -> {
+    ParserListener DEFAULT = (buffer) -> {
     };
 }

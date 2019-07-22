@@ -46,7 +46,7 @@ import java.util.List;
 /**
  * Enables the dynamic creation of generated nodes. It provides an convenient way to instantiate
  * generated node classes without using reflection.
- * 
+ *
  * @since 0.8 or earlier
  */
 public interface NodeFactory<T> {
@@ -67,14 +67,14 @@ public interface NodeFactory<T> {
      * Returns the node class that will get created by {@link #createNode(Object...)}. The node
      * class does not match exactly to the instantiated object but they are guaranteed to be
      * assignable.
-     * 
+     *
      * @since 0.8 or earlier
      */
     Class<T> getNodeClass();
 
     /**
      * Returns a list of signatures that can be used to invoke {@link #createNode(Object...)}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     List<List<Class<?>>> getNodeSignatures();
@@ -82,9 +82,19 @@ public interface NodeFactory<T> {
     /**
      * Returns a list of children that will be executed by the created node. This is useful for base
      * nodes that can execute a variable amount of nodes.
-     * 
+     *
      * @since 0.8 or earlier
      */
     List<Class<? extends Node>> getExecutionSignature();
+
+    /**
+     * Returns the uncached version of this node or <code>null</code> if {@link GenerateUncached}
+     * was not applied to the node.
+     *
+     * @since 19.1.0
+     */
+    default T getUncachedInstance() {
+        return null;
+    }
 
 }

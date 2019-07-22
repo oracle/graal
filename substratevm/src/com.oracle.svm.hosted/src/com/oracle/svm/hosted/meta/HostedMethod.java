@@ -124,6 +124,10 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         return implementations;
     }
 
+    public String getQualifiedName() {
+        return wrapped.getQualifiedName();
+    }
+
     public void setCodeAddressOffset(int address) {
         assert isCompiled();
         codeAddressOffset = address;

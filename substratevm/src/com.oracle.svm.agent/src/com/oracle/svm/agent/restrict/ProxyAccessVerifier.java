@@ -24,26 +24,18 @@
  */
 package com.oracle.svm.agent.restrict;
 
-import static com.oracle.svm.agent.Support.handles;
-import static com.oracle.svm.agent.Support.jniFunctions;
-import static com.oracle.svm.agent.Support.toCString;
-
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-
-import com.oracle.svm.agent.Agent;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 public class ProxyAccessVerifier extends AbstractAccessVerifier {
-
     private final ProxyConfiguration configuration;
 
     public ProxyAccessVerifier(ProxyConfiguration configuration, AccessAdvisor advisor) {
-        super(null, advisor);
+        super(advisor);
         this.configuration = configuration;
     }
 
@@ -59,21 +51,6 @@ public class ProxyAccessVerifier extends AbstractAccessVerifier {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;
         }
-        String interfaceString = "(unknown)";
-        if (interfaceNames instanceof String[]) {
-            if (configuration.contains(Arrays.asList((String[]) interfaceNames))) {
-                return true;
-            }
-            interfaceString = Arrays.toString((String[]) interfaceNames);
-        }
-        try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit proxy class for interfaces: " + interfaceString)) {
-            beforeThrow(message);
-            jniFunctions().getThrowNew().invoke(env, handles().javaLangSecurityException, message.get());
-        }
-        return false;
-    }
-
-    private static void beforeThrow(@SuppressWarnings("unused") CCharPointerHolder message) {
-        // System.err.println(Agent.MESSAGE_PREFIX + fromCString(message.get()));
+        return (interfaceNames instanceof String[]) && configuration.contains(Arrays.asList((String[]) interfaceNames));
     }
 }

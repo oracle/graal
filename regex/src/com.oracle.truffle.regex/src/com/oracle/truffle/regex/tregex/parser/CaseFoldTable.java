@@ -24,12 +24,11 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.regex.charset.CodePointRange;
-import com.oracle.truffle.regex.charset.CodePointSetBuilder;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.RangesAccumulator;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 
 public class CaseFoldTable {
 
@@ -55,8 +54,8 @@ public class CaseFoldTable {
         }
     }
 
-    public static CodePointSetBuilder applyCaseFold(CodePointSetBuilder codePointSet, CaseFoldingAlgorithm algorithm) {
-        return getTable(algorithm).applyCaseFold(codePointSet);
+    public static void applyCaseFold(RangesAccumulator<IntRangesBuffer> codePointSet, CaseFoldingAlgorithm algorithm) {
+        getTable(algorithm).applyCaseFold(codePointSet);
     }
 
     private static CodePointSet rangeSet(int... ranges) {
@@ -68,7 +67,7 @@ public class CaseFoldTable {
     private static final int ALTERNATING_UL = 3;
     private static final int ALTERNATING_AL = 4;
 
-    private static final class CaseFoldTableImpl extends SortedListOfRanges {
+    private static final class CaseFoldTableImpl implements SortedListOfRanges {
 
         private final int[] ranges;
 
@@ -76,53 +75,56 @@ public class CaseFoldTable {
             this.ranges = ranges;
         }
 
-        CodePointSetBuilder applyCaseFold(CodePointSetBuilder codePointSet) {
-            CodePointSetBuilder result = codePointSet.copy();
-            for (CodePointRange r : codePointSet.getRanges()) {
-                int search = binarySearch(r.lo);
-                if (binarySearchExactMatch(search, r.lo, r.hi)) {
-                    apply(result, search, r.lo, r.hi);
+        void applyCaseFold(RangesAccumulator<IntRangesBuffer> acc) {
+            IntRangesBuffer copy = acc.getTmp();
+            copy.clear();
+            acc.get().appendRangesTo(copy, 0, acc.get().size());
+            for (int i = 0; i < copy.size(); i++) {
+                int search = binarySearch(copy.getLo(i));
+                if (binarySearchExactMatch(search, copy, i)) {
+                    apply(acc.get(), search, copy.getLo(i), copy.getHi(i));
                     continue;
                 }
-                int firstIntersection = binarySearchGetFirstIntersecting(search, r.lo, r.hi);
+                int firstIntersection = binarySearchGetFirstIntersecting(search, copy, i);
                 if (binarySearchNoIntersectingFound(firstIntersection)) {
                     continue;
                 }
-                for (int i = firstIntersection; i < size(); i++) {
-                    if (rightOf(i, r.lo, r.hi)) {
+                for (int j = firstIntersection; j < size(); j++) {
+                    if (rightOf(j, copy, i)) {
                         break;
                     }
-                    assert intersects(i, r.lo, r.hi);
-                    int intersectionLo = Math.max(getLo(i), r.lo);
-                    int intersectionHi = Math.min(getHi(i), r.hi);
-                    apply(result, i, intersectionLo, intersectionHi);
+                    assert intersects(j, copy, i);
+                    int intersectionLo = Math.max(getLo(j), copy.getLo(i));
+                    int intersectionHi = Math.min(getHi(j), copy.getHi(i));
+                    apply(acc.get(), j, intersectionLo, intersectionHi);
                 }
             }
-            return result;
         }
 
-        private void apply(CodePointSetBuilder codePointSetBuilder, int tblEntryIndex, int intersectionLo, int intersectionHi) {
+        private void apply(IntRangesBuffer codePointSet, int tblEntryIndex, int intersectionLo, int intersectionHi) {
             switch (ranges[tblEntryIndex * 4 + 2]) {
                 case INTEGER_OFFSET:
                     int delta = ranges[tblEntryIndex * 4 + 3];
-                    codePointSetBuilder.addRange(new CodePointRange(intersectionLo + delta, intersectionHi + delta));
+                    codePointSet.addRange(intersectionLo + delta, intersectionHi + delta);
                     break;
                 case DIRECT_MAPPING:
                     CodePointSet set = CHARACTER_SET_TABLE[ranges[tblEntryIndex * 4 + 3]];
                     for (int i = 0; i < set.size(); i++) {
-                        codePointSetBuilder.addRange(new CodePointRange(set.getLo(i), set.getHi(i)));
+                        codePointSet.addRange(set.getLo(i), set.getHi(i));
                     }
                     break;
                 case ALTERNATING_UL:
-                    final CodePointRange unAlignedRange = CodePointRange.fromUnordered(((intersectionLo - 1) ^ 1) + 1, ((intersectionHi - 1) ^ 1) + 1);
-                    if (!contains(intersectionLo, intersectionHi, unAlignedRange.lo, unAlignedRange.hi)) {
-                        codePointSetBuilder.addRange(unAlignedRange);
+                    int loUL = Math.min(((intersectionLo - 1) ^ 1) + 1, ((intersectionHi - 1) ^ 1) + 1);
+                    int hiUL = Math.max(((intersectionLo - 1) ^ 1) + 1, ((intersectionHi - 1) ^ 1) + 1);
+                    if (!SortedListOfRanges.contains(intersectionLo, intersectionHi, loUL, hiUL)) {
+                        codePointSet.addRange(loUL, hiUL);
                     }
                     break;
                 case ALTERNATING_AL:
-                    final CodePointRange alignedRange = CodePointRange.fromUnordered(intersectionLo ^ 1, intersectionHi ^ 1);
-                    if (!contains(intersectionLo, intersectionHi, alignedRange.lo, alignedRange.hi)) {
-                        codePointSetBuilder.addRange(alignedRange);
+                    int loAL = Math.min(intersectionLo ^ 1, intersectionHi ^ 1);
+                    int hiAL = Math.max(intersectionLo ^ 1, intersectionHi ^ 1);
+                    if (!SortedListOfRanges.contains(intersectionLo, intersectionHi, loAL, hiAL)) {
+                        codePointSet.addRange(loAL, hiAL);
                     }
                     break;
                 default:
@@ -146,57 +148,17 @@ public class CaseFoldTable {
         }
 
         @Override
-        protected <T extends SortedListOfRanges> T createEmpty() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected <T extends SortedListOfRanges> T createFull() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected <T extends SortedListOfRanges> T create(RangesBuffer buffer) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected int getMinValue() {
+        public int getMinValue() {
             return 0;
         }
 
         @Override
-        protected int getMaxValue() {
+        public int getMaxValue() {
             return 0x10ffff;
         }
 
         @Override
-        protected RangesBuffer getBuffer1(CompilationBuffer compilationBuffer) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected RangesBuffer getBuffer2(CompilationBuffer compilationBuffer) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected RangesBuffer getBuffer3(CompilationBuffer compilationBuffer) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected RangesBuffer createTempBuffer() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected void addRangeBulkTo(RangesBuffer buffer, int startIndex, int endIndex) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        protected boolean equalsBuffer(RangesBuffer buffer) {
+        public void appendRangesTo(RangesBuffer buffer, int startIndex, int endIndex) {
             throw new UnsupportedOperationException();
         }
     }
@@ -377,6 +339,7 @@ public class CaseFoldTable {
                     0x000275, 0x000275, INTEGER_OFFSET, -214,
                     0x00027d, 0x00027d, INTEGER_OFFSET, 10727,
                     0x000280, 0x000280, INTEGER_OFFSET, -218,
+                    0x000282, 0x000282, INTEGER_OFFSET, 42307,
                     0x000283, 0x000283, INTEGER_OFFSET, -218,
                     0x000287, 0x000287, INTEGER_OFFSET, 42282,
                     0x000288, 0x000288, INTEGER_OFFSET, -218,
@@ -505,6 +468,7 @@ public class CaseFoldTable {
                     0x001cbd, 0x001cbf, INTEGER_OFFSET, -3008,
                     0x001d79, 0x001d79, INTEGER_OFFSET, 35332,
                     0x001d7d, 0x001d7d, INTEGER_OFFSET, 3814,
+                    0x001d8e, 0x001d8e, INTEGER_OFFSET, 35384,
                     0x001e00, 0x001e5f, ALTERNATING_AL, 0,
                     0x001e60, 0x001e61, DIRECT_MAPPING, 22,
                     0x001e62, 0x001e95, ALTERNATING_AL, 0,
@@ -604,6 +568,7 @@ public class CaseFoldTable {
                     0x00a78b, 0x00a78c, ALTERNATING_UL, 0,
                     0x00a78d, 0x00a78d, INTEGER_OFFSET, -42280,
                     0x00a790, 0x00a793, ALTERNATING_AL, 0,
+                    0x00a794, 0x00a794, INTEGER_OFFSET, 48,
                     0x00a796, 0x00a7a9, ALTERNATING_AL, 0,
                     0x00a7aa, 0x00a7aa, INTEGER_OFFSET, -42308,
                     0x00a7ab, 0x00a7ab, INTEGER_OFFSET, -42319,
@@ -614,7 +579,11 @@ public class CaseFoldTable {
                     0x00a7b1, 0x00a7b1, INTEGER_OFFSET, -42282,
                     0x00a7b2, 0x00a7b2, INTEGER_OFFSET, -42261,
                     0x00a7b3, 0x00a7b3, INTEGER_OFFSET, 928,
-                    0x00a7b4, 0x00a7b9, ALTERNATING_AL, 0,
+                    0x00a7b4, 0x00a7bf, ALTERNATING_AL, 0,
+                    0x00a7c2, 0x00a7c3, ALTERNATING_AL, 0,
+                    0x00a7c4, 0x00a7c4, INTEGER_OFFSET, -48,
+                    0x00a7c5, 0x00a7c5, INTEGER_OFFSET, -42307,
+                    0x00a7c6, 0x00a7c6, INTEGER_OFFSET, -35384,
                     0x00ab53, 0x00ab53, INTEGER_OFFSET, -928,
                     0x00ab70, 0x00abbf, INTEGER_OFFSET, -38864,
                     0x00ff21, 0x00ff3a, INTEGER_OFFSET, 32,
@@ -745,6 +714,7 @@ public class CaseFoldTable {
                     0x000275, 0x000275, INTEGER_OFFSET, -214,
                     0x00027d, 0x00027d, INTEGER_OFFSET, 10727,
                     0x000280, 0x000280, INTEGER_OFFSET, -218,
+                    0x000282, 0x000282, INTEGER_OFFSET, 42307,
                     0x000283, 0x000283, INTEGER_OFFSET, -218,
                     0x000287, 0x000287, INTEGER_OFFSET, 42282,
                     0x000288, 0x000288, INTEGER_OFFSET, -218,
@@ -878,6 +848,7 @@ public class CaseFoldTable {
                     0x001cbd, 0x001cbf, INTEGER_OFFSET, -3008,
                     0x001d79, 0x001d79, INTEGER_OFFSET, 35332,
                     0x001d7d, 0x001d7d, INTEGER_OFFSET, 3814,
+                    0x001d8e, 0x001d8e, INTEGER_OFFSET, 35384,
                     0x001e00, 0x001e5f, ALTERNATING_AL, 0,
                     0x001e60, 0x001e61, DIRECT_MAPPING, 22,
                     0x001e62, 0x001e95, ALTERNATING_AL, 0,
@@ -981,6 +952,7 @@ public class CaseFoldTable {
                     0x00a78b, 0x00a78c, ALTERNATING_UL, 0,
                     0x00a78d, 0x00a78d, INTEGER_OFFSET, -42280,
                     0x00a790, 0x00a793, ALTERNATING_AL, 0,
+                    0x00a794, 0x00a794, INTEGER_OFFSET, 48,
                     0x00a796, 0x00a7a9, ALTERNATING_AL, 0,
                     0x00a7aa, 0x00a7aa, INTEGER_OFFSET, -42308,
                     0x00a7ab, 0x00a7ab, INTEGER_OFFSET, -42319,
@@ -991,7 +963,11 @@ public class CaseFoldTable {
                     0x00a7b1, 0x00a7b1, INTEGER_OFFSET, -42282,
                     0x00a7b2, 0x00a7b2, INTEGER_OFFSET, -42261,
                     0x00a7b3, 0x00a7b3, INTEGER_OFFSET, 928,
-                    0x00a7b4, 0x00a7b9, ALTERNATING_AL, 0,
+                    0x00a7b4, 0x00a7bf, ALTERNATING_AL, 0,
+                    0x00a7c2, 0x00a7c3, ALTERNATING_AL, 0,
+                    0x00a7c4, 0x00a7c4, INTEGER_OFFSET, -48,
+                    0x00a7c5, 0x00a7c5, INTEGER_OFFSET, -42307,
+                    0x00a7c6, 0x00a7c6, INTEGER_OFFSET, -35384,
                     0x00ab53, 0x00ab53, INTEGER_OFFSET, -928,
                     0x00ab70, 0x00abbf, INTEGER_OFFSET, -38864,
                     0x00ff21, 0x00ff3a, INTEGER_OFFSET, 32,
@@ -1158,6 +1134,7 @@ public class CaseFoldTable {
                     0x000275, 0x000275, INTEGER_OFFSET, -214,
                     0x00027d, 0x00027d, INTEGER_OFFSET, 10727,
                     0x000280, 0x000280, INTEGER_OFFSET, -218,
+                    0x000282, 0x000282, INTEGER_OFFSET, 42307,
                     0x000283, 0x000283, INTEGER_OFFSET, -218,
                     0x000287, 0x000287, INTEGER_OFFSET, 42282,
                     0x000288, 0x000288, INTEGER_OFFSET, -218,
@@ -1317,6 +1294,7 @@ public class CaseFoldTable {
                     0x001cbd, 0x001cbf, INTEGER_OFFSET, -3008,
                     0x001d79, 0x001d79, INTEGER_OFFSET, 35332,
                     0x001d7d, 0x001d7d, INTEGER_OFFSET, 3814,
+                    0x001d8e, 0x001d8e, INTEGER_OFFSET, 35384,
                     0x001e00, 0x001e5f, ALTERNATING_AL, 0,
                     0x001e60, 0x001e61, DIRECT_MAPPING, 22,
                     0x001e62, 0x001e95, ALTERNATING_AL, 0,
@@ -1535,6 +1513,7 @@ public class CaseFoldTable {
                     0x00a78b, 0x00a78c, ALTERNATING_UL, 0,
                     0x00a78d, 0x00a78d, INTEGER_OFFSET, -42280,
                     0x00a790, 0x00a793, ALTERNATING_AL, 0,
+                    0x00a794, 0x00a794, INTEGER_OFFSET, 48,
                     0x00a796, 0x00a7a9, ALTERNATING_AL, 0,
                     0x00a7aa, 0x00a7aa, INTEGER_OFFSET, -42308,
                     0x00a7ab, 0x00a7ab, INTEGER_OFFSET, -42319,
@@ -1545,7 +1524,11 @@ public class CaseFoldTable {
                     0x00a7b1, 0x00a7b1, INTEGER_OFFSET, -42282,
                     0x00a7b2, 0x00a7b2, INTEGER_OFFSET, -42261,
                     0x00a7b3, 0x00a7b3, INTEGER_OFFSET, 928,
-                    0x00a7b4, 0x00a7b9, ALTERNATING_AL, 0,
+                    0x00a7b4, 0x00a7bf, ALTERNATING_AL, 0,
+                    0x00a7c2, 0x00a7c3, ALTERNATING_AL, 0,
+                    0x00a7c4, 0x00a7c4, INTEGER_OFFSET, -48,
+                    0x00a7c5, 0x00a7c5, INTEGER_OFFSET, -42307,
+                    0x00a7c6, 0x00a7c6, INTEGER_OFFSET, -35384,
                     0x00ab53, 0x00ab53, INTEGER_OFFSET, -928,
                     0x00ab70, 0x00abbf, INTEGER_OFFSET, -38864,
                     0x00fb00, 0x00fb04, DIRECT_MAPPING, 29,

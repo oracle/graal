@@ -136,7 +136,23 @@ final class OptionValuesImpl implements OptionValues {
 
     public void put(String key, String value, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = findDescriptor(key, allowExperimentalOptions);
-        values.put(descriptor.getKey(), descriptor.getKey().getType().convert(value));
+        OptionKey<?> optionKey = descriptor.getKey();
+        Object previousValue;
+        if (values.containsKey(optionKey)) {
+            previousValue = values.get(optionKey);
+        } else {
+            previousValue = optionKey.getDefaultValue();
+        }
+        String name = descriptor.getName();
+        String suffix = null;
+        if (descriptor.isOptionMap()) {
+            suffix = key.substring(name.length());
+            assert suffix.isEmpty() || suffix.startsWith(".");
+            if (suffix.startsWith(".")) {
+                suffix = suffix.substring(1);
+            }
+        }
+        values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {
@@ -167,6 +183,7 @@ final class OptionValuesImpl implements OptionValues {
         return (T) value;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public <T> void set(OptionKey<T> optionKey, T value) {
         optionKey.getType().validate(value);

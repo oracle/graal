@@ -38,10 +38,10 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.JDK9OrLater;
-import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
@@ -105,7 +105,7 @@ public final class DarwinNIOSubstitutions {
 
         // static native int create() throws IOException;
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         static int create() throws IOException {
             return Util_sun_nio_ch_KQueue.create();
         }
@@ -119,7 +119,7 @@ public final class DarwinNIOSubstitutions {
 
         // static native int register(int kqfd, int fd, int filter, int flags);
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         static int register(int kqfd, int fd, int filter, int flags) {
             return Util_sun_nio_ch_KQueue.register(kqfd, fd, filter, flags);
         }
@@ -133,7 +133,7 @@ public final class DarwinNIOSubstitutions {
 
         // static native int poll(int kqfd, long pollAddress, int nevents, long timeout) throws IOException;
         @Substitute
-        @TargetElement(onlyWith = JDK9OrLater.class)
+        @TargetElement(onlyWith = JDK11OrLater.class)
         @SuppressWarnings({"unused"})
         static int poll(int kqfd, long pollAddress, int nevents, long timeout) throws IOException {
             return Util_sun_nio_ch_KQueue.poll(kqfd, pollAddress, nevents);

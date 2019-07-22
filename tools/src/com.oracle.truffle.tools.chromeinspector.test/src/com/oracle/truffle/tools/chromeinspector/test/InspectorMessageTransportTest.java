@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -56,24 +58,22 @@ public class InspectorMessageTransportTest {
                     "{\"id\":20,\"method\":\"Debugger.setBlackboxPatterns\",\"params\":{\"patterns\":[]}}",
                     "{\"id\":28,\"method\":\"Runtime.runIfWaitingForDebugger\"}"
     };
-    private static final String[] MESSAGES = {
-                    null, null, null, null, null, null,
-                    "toClient({\"result\":{},\"id\":5})",
-                    "toClient({\"result\":{},\"id\":6})",
-                    "toClient({\"result\":{},\"id\":7})",
-                    "toClient({\"result\":{},\"id\":8})",
-                    "toClient({\"result\":{},\"id\":20})",
-                    "toClient({\"result\":{},\"id\":28})",
-                    "toClient({\"method\":\"Runtime.executionContextCreated\"",
-                    "toClient({\"method\":\"Debugger.paused\",",
-                    "toBackend({\"id\":100,\"method\":\"Debugger.resume\"})",
-                    "toClient({\"result\":{},\"id\":100})",
-                    "toClient({\"method\":\"Debugger.resumed\"})"
+    private static final String[] MESSAGES_TO_BACKEND;
+    private static final String[] MESSAGES_TO_CLIENT = {
+                    "{\"result\":{},\"id\":5}",
+                    "{\"result\":{},\"id\":6}",
+                    "{\"result\":{},\"id\":7}",
+                    "{\"result\":{},\"id\":8}",
+                    "{\"result\":{},\"id\":20}",
+                    "{\"result\":{},\"id\":28}",
+                    "{\"method\":\"Runtime.executionContextCreated\"",
+                    "{\"method\":\"Debugger.paused\",",
+                    "{\"result\":{},\"id\":100}",
+                    "{\"method\":\"Debugger.resumed\"}"
     };
     static {
-        for (int i = 0; i < INITIAL_MESSAGES.length; i++) {
-            MESSAGES[i] = "toBackend(" + INITIAL_MESSAGES[i] + ")";
-        }
+        MESSAGES_TO_BACKEND = Arrays.copyOf(INITIAL_MESSAGES, INITIAL_MESSAGES.length + 1);
+        MESSAGES_TO_BACKEND[INITIAL_MESSAGES.length] = "{\"id\":100,\"method\":\"Debugger.resume\"}";
     }
 
     @Test
@@ -107,12 +107,60 @@ public class InspectorMessageTransportTest {
         Assert.assertEquals("Result", "1", result.toString());
 
         endpoint.onClose(session);
-        Assert.assertEquals(session.messages.toString(), MESSAGES.length, session.messages.size());
-        for (int i = 0; i < MESSAGES.length; i++) {
-            if (!session.messages.get(i).startsWith(MESSAGES[i])) {
-                Assert.assertTrue("i = " + i + ", Expected start with '" + MESSAGES[i] + "', got: '" + session.messages.get(i) + "'", false);
+        int numMessages = MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length;
+        Assert.assertEquals(session.messages.toString(), numMessages, session.messages.size());
+        assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
+    }
+
+    private static void assertMessages(List<String> messages, int num2B, int num2C) {
+        for (int ib = 0, ic = 0; ib < num2B && ic < num2C;) {
+            String msg = messages.get(ib + ic);
+            if (msg.startsWith("2B")) { // to backend
+                if (!msg.substring(2).startsWith(MESSAGES_TO_BACKEND[ib])) {
+                    Assert.fail("Expected start with '" + MESSAGES_TO_BACKEND[ib] + "', got: '" + msg + "'");
+                }
+                ib++;
+            } else {
+                Assert.assertTrue(msg, msg.startsWith("2C")); // to client
+                if (!msg.substring(2).startsWith(MESSAGES_TO_CLIENT[ic])) {
+                    Assert.fail("Expected start with '" + MESSAGES_TO_CLIENT[ic] + "', got: '" + msg + "'");
+                }
+                ic++;
             }
         }
+    }
+
+    @Test
+    public void inspectorReconnectTest() throws IOException, InterruptedException {
+        Session session = new Session(null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath", null);
+        Engine engine = endpoint.onOpen(session);
+
+        try (Context context = Context.newBuilder().engine(engine).build()) {
+            Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+            Assert.assertEquals("Result", "1", result.toString());
+
+            MessageEndpoint peerEndpoint = endpoint.peer;
+            peerEndpoint.sendClose();
+            Assert.assertNotSame(peerEndpoint, endpoint.peer);
+            result = context.eval("sl", "function main() {\n  x = 2;\n  return x;\n}");
+            Assert.assertEquals("Result", "2", result.toString());
+        }
+        // We will not get the last 3 messages to client and 1 to backend
+        // as we do not do initial suspension on re-connect
+        int expectedNumMessages = 2 * (MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length) - 4;
+        synchronized (session.messages) {
+            while (session.messages.size() < expectedNumMessages) {
+                // The reply messages are sent asynchronously. We need to wait for them.
+                session.messages.wait();
+            }
+        }
+
+        Assert.assertEquals(session.messages.toString(), expectedNumMessages, session.messages.size());
+        assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
+        // Messages after reconnect
+        List<String> messagesAfterReconnect = session.messages.subList(MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length, expectedNumMessages);
+        assertMessages(messagesAfterReconnect, MESSAGES_TO_BACKEND.length - 1, MESSAGES_TO_CLIENT.length - 3);
     }
 
     @Test
@@ -137,7 +185,7 @@ public class InspectorMessageTransportTest {
     private static final class Session {
 
         private final RaceControl rc;
-        final List<String> messages = new ArrayList<>(MESSAGES.length);
+        final List<String> messages = Collections.synchronizedList(new ArrayList<>(MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length));
         private final BasicRemote remote = new BasicRemote(messages);
         private boolean opened = true;
 
@@ -187,7 +235,10 @@ public class InspectorMessageTransportTest {
 
         void sendText(String text) throws IOException {
             if (!text.startsWith("{\"method\":\"Debugger.scriptParsed\"")) {
-                messages.add("toClient(" + text + ")");
+                synchronized (messages) {
+                    messages.add("2C" + text);
+                    messages.notifyAll();
+                }
             }
             if (text.startsWith("{\"method\":\"Debugger.paused\"")) {
                 handler.onMessage("{\"id\":100,\"method\":\"Debugger.resume\"}");
@@ -200,6 +251,7 @@ public class InspectorMessageTransportTest {
 
         private final String path;
         private final RaceControl rc;
+        MessageEndpoint peer;
 
         DebuggerEndpoint(String path, RaceControl rc) {
             this.path = path;
@@ -212,6 +264,7 @@ public class InspectorMessageTransportTest {
                 @Override
                 public MessageEndpoint open(URI requestURI, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
                     Assert.assertEquals("Invalid protocol", "ws", requestURI.getScheme());
+                    DebuggerEndpoint.this.peer = peerEndpoint;
                     String uriStr = requestURI.toString();
                     if (path == null) {
                         Assert.assertTrue(uriStr, URI_PATTERN.matcher(uriStr).matches());
@@ -252,7 +305,7 @@ public class InspectorMessageTransportTest {
             /* Forward a JSON message from the client to the backend. */
             session.addMessageHandler(message -> {
                 Assert.assertTrue(session.isOpen());
-                session.messages.add("toBackend(" + message + ")");
+                session.messages.add("2B" + message);
                 peerEndpoint.sendText(message);
             });
         }
