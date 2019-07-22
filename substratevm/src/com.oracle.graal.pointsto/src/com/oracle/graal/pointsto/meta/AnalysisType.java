@@ -250,7 +250,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
             return uniqueConstant;
         }
 
-        if (constantObjectsCache.size() > PointstoOptions.MaxConstantObjectsPerType.getValue(bb.getOptions())) {
+        if (constantObjectsCache.size() >= PointstoOptions.MaxConstantObjectsPerType.getValue(bb.getOptions())) {
             // The number of constant objects has increased above the limit,
             // merge the constants in the uniqueConstant and return it
             mergeConstantObjects(bb);
