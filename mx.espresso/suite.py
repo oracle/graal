@@ -52,7 +52,7 @@ suite = {
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "javaCompliance": "1.8+",
-            "checkstyle" : "com.oracle.truffle.espresso",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.launcher": {
@@ -63,7 +63,7 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle" : "com.oracle.truffle.espresso.launcher",
+            "checkstyle": "com.oracle.truffle.espresso.launcher",
         },
 
         "com.oracle.truffle.espresso.playground": {
@@ -77,6 +77,7 @@ suite = {
             "subDir": "src",
             "native": "shared_lib",
             "deliverable": "playground",
+            "platformDependent": True,
             "use_jdk_headers": True,
             "buildDependencies": [
                 "com.oracle.truffle.espresso.playground",
@@ -112,7 +113,7 @@ suite = {
 
         # Native library for tests
         "com.oracle.truffle.espresso.test.native": {
-            "testProject" : True,
+            "testProject": True,
             "subDir": "src",
             "native": "shared_lib",
             "deliverable": "nativetest",
@@ -131,31 +132,30 @@ suite = {
             "platformDependent": True,
             "use_jdk_headers": True,
             "buildDependencies": [
-                "espresso:ESPRESSO_MOKAPOT_VERSION_SCRIPT",
                 "truffle:TRUFFLE_NFI_NATIVE",
             ],
             "cflags": ["-Wall", "-Werror"],
             "os_arch": {
-              "darwin": {
-                "<others>": {
-                  "ldflags": [
-                    "-Wl,-install_name,@rpath/libjvm.dylib", 
-                    "-Wl,-rpath,@loader_path/.",
-                    "-Wl,-rpath,@loader_path/..",
-                    "-Wl,-current_version,1.0.0",
-                    "-Wl,-compatibility_version,1.0.0"
-                  ],
+                "darwin": {
+                    "<others>": {
+                        "ldflags": [
+                            "-Wl,-install_name,@rpath/libjvm.dylib",
+                            "-Wl,-rpath,@loader_path/.",
+                            "-Wl,-rpath,@loader_path/..",
+                            "-Wl,-current_version,1.0.0",
+                            "-Wl,-compatibility_version,1.0.0"
+                        ],
+                    },
                 },
-              },
-              "linux": {
-                "<others>": {
-                  "ldflags": [
-                    "-Wl,-soname,libjvm.so",
-                    "-Wl,--version-script,<path:espresso:ESPRESSO_MOKAPOT_VERSION_SCRIPT>/mapfile-vers",
-                  ], 
+                "linux": {
+                    "<others>": {
+                        "ldflags": [
+                            "-Wl,-soname,libjvm.so",
+                            "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
+                        ],
+                    },
                 },
-              },
-	    },
+            },
         },
     },
 
@@ -193,7 +193,6 @@ suite = {
             },
             "testDistribution": True,
         },
-
 
         "ESPRESSO_LAUNCHER": {
             "subDir": "src",
@@ -233,8 +232,6 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.playground"
             ],
-            "distDependencies": [
-            ],
             "description": "Espresso experiments",
             "javaProperties": {
                 "playground.library": "<path:ESPRESSO_PLAYGROUND_NATIVE>/<lib:playground>"
@@ -265,17 +262,6 @@ suite = {
             ],
             "testDistribution": True,
             "maven": False,
-        },
-
-        "ESPRESSO_MOKAPOT_VERSION_SCRIPT": {
-            "native": True,
-            "platformDependent": True,
-            "description": "libmokapot (linker) version script",
-            "layout": {
-                "./": [
-                    "file:src/com.oracle.truffle.espresso.mokapot/mapfile-vers",
-                ],
-            }
         },
     }
 }
