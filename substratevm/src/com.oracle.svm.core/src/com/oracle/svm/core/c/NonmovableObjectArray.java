@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
+package com.oracle.svm.core.c;
 
-import org.graalvm.compiler.options.OptionValues;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
-import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-
-public class ContextInsensitiveAnalysisPolicy extends DefaultAnalysisPolicy implements SVMAnalysisPolicy {
-
-    public ContextInsensitiveAnalysisPolicy(OptionValues options) {
-        super(options);
-    }
-
-    @Override
-    public AnalysisObject createPinnedObject(BigBang bb, AnalysisType objectType, BytecodeLocation allocationSite, AnalysisContext allocationContext) {
-        return objectType.getContextInsensitiveAnalysisObject();
-    }
+/**
+ * A non-moving array of Java objects.
+ *
+ * We use {@link Void} for the type parameter of {@link NonmovableArray} to prevent mistakenly
+ * assigning a {@link NonmovableObjectArray} to a {@link NonmovableArray}.
+ *
+ * @param <T> the type of stored objects, purely for tagging and compile-time checks.
+ *
+ * @see NonmovableArrays
+ */
+public interface NonmovableObjectArray<T> extends NonmovableArray<Void> {
 }

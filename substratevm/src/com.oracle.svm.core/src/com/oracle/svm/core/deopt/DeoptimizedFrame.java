@@ -37,6 +37,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -318,6 +320,7 @@ public final class DeoptimizedFrame {
     /**
      * The top frame, i.e., the innermost callee of the inlining hierarchy.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public VirtualFrame getTopFrame() {
         return topFrame;
     }
@@ -377,13 +380,14 @@ public final class DeoptimizedFrame {
     }
 
     /**
-     * Rewrites the first return address entry to the exception handler. This let's the
+     * Rewrites the first return address entry to the exception handler. This lets the
      * deoptimization stub return to the exception handler instead of the regular return address of
      * the deoptimization target.
      */
     public void takeException() {
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
-        long handler = CodeInfoTable.lookupExceptionOffset((CodePointer) WordFactory.unsigned(firstAddressEntry.returnAddress));
+        CodeInfo info = CodeInfoTable.getImageCodeInfo();
+        long handler = CodeInfoAccess.lookupExceptionOffset(info, CodeInfoAccess.relativeIP(info, WordFactory.pointer(firstAddressEntry.returnAddress)));
         assert handler != 0 : "no exception handler registered for deopt target";
         firstAddressEntry.returnAddress += handler;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.hub;
+package com.oracle.svm.core.code;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.c.NonmovableArray;
-import com.oracle.svm.core.c.NonmovableArrays;
 
-public final class DynamicHubSupport {
-
-    @UnknownObjectField(types = {byte[].class}) private byte[] referenceMapEncoding;
+final class CodeInfoMemoryWalker implements MemoryWalker.CodeAccess<CodeInfo> {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHubSupport() {
+    CodeInfoMemoryWalker() {
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(NonmovableArray<Byte> referenceMapEncoding) {
-        this.referenceMapEncoding = NonmovableArrays.getHostedArray(referenceMapEncoding);
+    @Override
+    public UnsignedWord getStart(CodeInfo codeInfo) {
+        return (UnsignedWord) CodeInfoAccess.getCodeStart(codeInfo);
     }
 
-    public static NonmovableArray<Byte> getReferenceMapEncoding() {
-        return NonmovableArrays.fromImageHeap(ImageSingletons.lookup(DynamicHubSupport.class).referenceMapEncoding);
+    @Override
+    public UnsignedWord getSize(CodeInfo codeInfo) {
+        return CodeInfoAccess.getCodeSize(codeInfo);
+    }
+
+    @Override
+    public UnsignedWord getMetadataSize(CodeInfo codeInfo) {
+        return CodeInfoAccess.getMetadataSize(codeInfo);
+    }
+
+    @Override
+    public String getName(CodeInfo codeInfo) {
+        return CodeInfoAccess.getName(codeInfo);
     }
 }
 
 @AutomaticFeature
-class DynamicHubFeature implements Feature {
+class CodeInfoMemoryWalkerFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(DynamicHubSupport.class, new DynamicHubSupport());
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ImageSingletons.add(CodeInfoMemoryWalker.class, new CodeInfoMemoryWalker());
     }
 }

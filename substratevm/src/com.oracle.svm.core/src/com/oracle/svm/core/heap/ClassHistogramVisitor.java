@@ -70,13 +70,6 @@ public class ClassHistogramVisitor implements ObjectVisitor {
      */
 
     @Override
-    /** Clear all the counters. */
-    public boolean prologue() {
-        reset();
-        return true;
-    }
-
-    @Override
     /** Accumulate information about this instance. */
     public boolean visitObject(Object o) {
         final HistogramEntry entry = findEntry(o.getClass().getName());
@@ -93,6 +86,13 @@ public class ClassHistogramVisitor implements ObjectVisitor {
     /*
      * Additional methods.
      */
+
+    public void prologue() {
+        reset();
+    }
+
+    public void epilogue() {
+    }
 
     private HistogramEntry findEntry(String s) {
         for (int index = 0; index < entryArray.length; index += 1) {

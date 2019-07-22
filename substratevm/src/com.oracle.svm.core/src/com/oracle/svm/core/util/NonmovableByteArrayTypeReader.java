@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.code;
+package com.oracle.svm.core.util;
 
 import org.graalvm.compiler.core.common.util.AbstractTypeReader;
 
 import com.oracle.svm.core.c.NonmovableArray;
-import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.util.NonmovableByteArrayReader;
-import com.oracle.svm.core.util.VMError;
 
-/**
- * Custom TypeReader that allows reusing the same instance over and over again. Only getSV(),
- * getSVInt(), getUV(), getUVInt() are implemented.
- */
-public final class ReusableTypeReader extends AbstractTypeReader {
+public class NonmovableByteArrayTypeReader extends AbstractTypeReader {
+    protected final NonmovableArray<Byte> array;
+    protected long byteIndex;
 
-    private NonmovableArray<Byte> data;
-    private long byteIndex = -1;
-
-    public ReusableTypeReader() {
-    }
-
-    public ReusableTypeReader(NonmovableArray<Byte> data, long byteIndex) {
-        this.data = data;
+    public NonmovableByteArrayTypeReader(NonmovableArray<Byte> array, long byteIndex) {
+        this.array = array;
         this.byteIndex = byteIndex;
-    }
-
-    public void reset() {
-        data = NonmovableArrays.nullArray();
-        byteIndex = -1;
-    }
-
-    public boolean isValid() {
-        return data != null && byteIndex >= 0;
     }
 
     @Override
@@ -67,48 +47,52 @@ public final class ReusableTypeReader extends AbstractTypeReader {
         this.byteIndex = byteIndex;
     }
 
-    public NonmovableArray<Byte> getData() {
-        return data;
-    }
-
-    public void setData(NonmovableArray<Byte> data) {
-        this.data = data;
-    }
-
     @Override
     public int getS1() {
-        throw VMError.unimplemented();
+        int result = NonmovableByteArrayReader.getS1(array, byteIndex);
+        byteIndex += Byte.BYTES;
+        return result;
     }
 
     @Override
     public int getU1() {
-        int result = NonmovableByteArrayReader.getU1(data, byteIndex);
+        int result = NonmovableByteArrayReader.getU1(array, byteIndex);
         byteIndex += Byte.BYTES;
         return result;
     }
 
     @Override
     public int getS2() {
-        throw VMError.unimplemented();
+        int result = NonmovableByteArrayReader.getS2(array, byteIndex);
+        byteIndex += Short.BYTES;
+        return result;
     }
 
     @Override
     public int getU2() {
-        throw VMError.unimplemented();
+        int result = NonmovableByteArrayReader.getU2(array, byteIndex);
+        byteIndex += Short.BYTES;
+        return result;
     }
 
     @Override
     public int getS4() {
-        throw VMError.unimplemented();
+        int result = NonmovableByteArrayReader.getS4(array, byteIndex);
+        byteIndex += Integer.BYTES;
+        return result;
     }
 
     @Override
     public long getU4() {
-        throw VMError.unimplemented();
+        long result = NonmovableByteArrayReader.getU4(array, byteIndex);
+        byteIndex += Integer.BYTES;
+        return result;
     }
 
     @Override
     public long getS8() {
-        throw VMError.unimplemented();
+        long result = NonmovableByteArrayReader.getS8(array, byteIndex);
+        byteIndex += Long.BYTES;
+        return result;
     }
 }

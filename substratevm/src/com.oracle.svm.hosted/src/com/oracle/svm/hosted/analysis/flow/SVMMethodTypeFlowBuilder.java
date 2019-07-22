@@ -32,22 +32,14 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.graal.nodes.NewPinnedArrayNode;
-import com.oracle.svm.core.graal.nodes.NewPinnedInstanceNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -90,22 +82,6 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                 }
             }
         }
-    }
-
-    @Override
-    protected NewInstanceTypeFlow createNewInstanceTypeFlow(NewInstanceNode node, AnalysisType type, BytecodeLocation allocationLabel) {
-        if (node instanceof NewPinnedInstanceNode) {
-            return new PinnedNewInstanceTypeFlow((Inflation) bb, node, type, allocationLabel);
-        }
-        return super.createNewInstanceTypeFlow(node, type, allocationLabel);
-    }
-
-    @Override
-    protected NewInstanceTypeFlow createNewArrayTypeFlow(NewArrayNode node, AnalysisType type, BytecodeLocation allocationLabel) {
-        if (node instanceof NewPinnedArrayNode) {
-            return new PinnedNewInstanceTypeFlow((Inflation) bb, node, type, allocationLabel);
-        }
-        return super.createNewArrayTypeFlow(node, type, allocationLabel);
     }
 
     @SuppressWarnings("serial")
