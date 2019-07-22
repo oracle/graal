@@ -223,6 +223,8 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:mokapot>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>"
                 ],
+                # On MacOS -install_name (Linux's -soname counterpart) is not enough to fool the dynamic linker.
+                "lib/<lib:jvm>": "link:<lib:mokapot>",
             },
         },
 
