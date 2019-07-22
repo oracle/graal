@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 
 public class NativeLibrary {
 
+    @SuppressWarnings("deprecation")
     public static TruffleObject loadLibrary(String lib) {
         // On SVM no need to use dlmopen backend.
         // Prepend "with dlmopen " in HotSpot.

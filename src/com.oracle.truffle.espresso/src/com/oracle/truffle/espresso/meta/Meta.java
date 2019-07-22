@@ -236,6 +236,9 @@ public final class Meta implements ContextAccess {
         sun_misc_VM = knownKlass(Type.sun_misc_VM);
         toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.toThreadState);
 
+        sun_reflect_ConstantPool = knownKlass(Type.sun_reflect_ConstantPool);
+        constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.Object);
+
         System = knownKlass(Type.System);
         System_initializeSystemClass = System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
         System_exit = System.lookupDeclaredMethod(Name.exit, Signature._void_int);
@@ -298,6 +301,7 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_MIRROR_KLASS;
     public final Field HIDDEN_PROTECTION_DOMAIN;
     public final Field HIDDEN_SIGNERS;
+    public final Field constantPoolOop;
     public final ArrayKlass Class_Array;
     public final Method Class_forName_String;
 
@@ -460,6 +464,7 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass sun_misc_VM;
     public final Method toThreadState;
+    public final ObjectKlass sun_reflect_ConstantPool;
 
     public final ObjectKlass System;
     public final Method System_initializeSystemClass;
@@ -684,6 +689,7 @@ public final class Meta implements ContextAccess {
         return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
     }
 
+    @TruffleBoundary
     public ObjectKlass knownKlass(java.lang.Class<?> hostClass) {
         assert isKnownClass(hostClass);
         // Resolve non-primitive classes using BCL.

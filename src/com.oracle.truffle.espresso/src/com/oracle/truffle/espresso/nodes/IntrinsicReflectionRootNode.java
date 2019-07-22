@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.nodes;
 import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -83,7 +82,6 @@ public class IntrinsicReflectionRootNode extends EspressoBaseNode {
         }
     }
 
-    @TruffleBoundary
     private Object callIntrinsic(Object... args) throws InvocationTargetException, IllegalAccessException {
         return reflectMethod.invoke(null, args);
     }

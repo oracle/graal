@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.descriptors;
 import java.io.IOException;
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.Stable;
 import com.oracle.truffle.espresso.jni.Utf8;
@@ -66,7 +66,7 @@ public abstract class ByteSequence {
 
     public static ByteSequence wrap(final byte[] underlyingBytes, int offset, int length) {
         if (offset >= underlyingBytes.length || offset + length > underlyingBytes.length || length < 0 || offset < 0) {
-            CompilerAsserts.neverPartOfCompilation();
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("ByteSequence illegal bounds: offset: " + offset + " length: " + length + " bytes length: " + underlyingBytes.length);
         }
         return new ByteSequence(underlyingBytes, hashOfRange(underlyingBytes, offset, length)) {

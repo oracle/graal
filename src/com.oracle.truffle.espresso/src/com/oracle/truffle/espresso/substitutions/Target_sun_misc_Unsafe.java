@@ -27,6 +27,7 @@ import java.lang.reflect.Array;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
@@ -897,6 +898,7 @@ public final class Target_sun_misc_Unsafe {
      * Allocate an instance but do not run any constructor. Initializes the class if it has not yet
      * been.
      */
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) { // throws
         // InstantiationException;

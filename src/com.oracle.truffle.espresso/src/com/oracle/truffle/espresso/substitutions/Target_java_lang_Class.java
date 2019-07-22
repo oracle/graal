@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
@@ -575,18 +576,18 @@ public final class Target_java_lang_Class {
         return StaticObject.NULL;
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(sun.reflect.ConstantPool.class) StaticObject getConstantPool(@Host(Class.class) StaticObject self) {
         Klass klass = self.getMirrorKlass();
-        if (klass instanceof ObjectKlass) {
-            Klass cpKlass = klass.getMeta().knownKlass(sun.reflect.ConstantPool.class);
-            Field constantPoolOop = cpKlass.lookupDeclaredField(Name.constantPoolOop, Type.Object);
-            StaticObject cp = cpKlass.allocateInstance();
-            constantPoolOop.set(cp, self);
-            return cp;
+        if (klass.isArray() || klass.isPrimitive()) {
+            // No constant pool for arrays and primitives.
+            return StaticObject.NULL;
         }
-        // No constant pool for arrays and primitives.
-        return StaticObject.NULL;
+        Meta meta = self.getKlass().getMeta();
+        StaticObject cp = new StaticObject(meta.sun_reflect_ConstantPool);
+        cp.setField(meta.constantPoolOop, self);
+        return cp;
     }
 
     @Substitution(hasReceiver = true)
