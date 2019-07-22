@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public final class StackManager {
 
     private StackManager() {
+        // no instances
     }
 
     public static FrameDescriptor createRootFrame() {

@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesReg
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
+
     private final UniquesRegionAllocator allocator;
 
     @CompilationFinal private FrameSlot stackPointer;
