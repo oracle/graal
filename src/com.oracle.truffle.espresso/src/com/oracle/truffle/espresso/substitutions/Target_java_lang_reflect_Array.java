@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.reflect.Array;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -131,7 +132,10 @@ public final class Target_java_lang_reflect_Array {
         return meta.getInterpreterToVM().newMultiArray(component.getArrayClass(dimensions.length - 1), dimensions);
     }
 
+    // TODO(garcia) Rework these acceses so that they no longer need a boundary.
+
     @Substitution
+    @TruffleBoundary
     public static boolean getBoolean(@Host(Object.class) StaticObject array, int index) {
         if (!(array.isArray())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
@@ -144,6 +148,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static byte getByte(@Host(Object.class) StaticObject array, int index) {
         if (!(array.isArray())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
@@ -156,6 +161,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static char getChar(@Host(Object.class) StaticObject array, int index) {
         if (!(array.isArray())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
@@ -168,6 +174,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static short getShort(@Host(Object.class) StaticObject array, int index) {
         if (!(array.isArray())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
@@ -180,6 +187,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static int getInt(@Host(Object.class) StaticObject array, int index) {
         if (!(array.isArray())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
@@ -192,6 +200,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static float getFloat(@Host(Object.class) StaticObject array, int index) {
         if (!(array.isArray())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
@@ -204,6 +213,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static double getDouble(@Host(Object.class) StaticObject array, int index) {
         if (!(array.isArray())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
@@ -216,6 +226,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static long getLong(@Host(Object.class) StaticObject array, int index) {
         if (!(array.isArray())) {
             throw EspressoLanguage.getCurrentContext().getMeta().throwEx(IllegalArgumentException.class);
@@ -228,6 +239,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void setBoolean(@Host(Object.class) StaticObject array, int index, boolean value) {
         try {
             Array.setBoolean(array.unwrap(), index, value);
@@ -237,6 +249,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void setByte(@Host(Object.class) StaticObject array, int index, byte value) {
         try {
             Array.setByte(array.unwrap(), index, value);
@@ -246,6 +259,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void setChar(@Host(Object.class) StaticObject array, int index, char value) {
         try {
             Array.setChar(array.unwrap(), index, value);
@@ -255,6 +269,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void setShort(@Host(Object.class) StaticObject array, int index, short value) {
         try {
             Array.setShort(array.unwrap(), index, value);
@@ -264,6 +279,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void setInt(@Host(Object.class) StaticObject array, int index, int value) {
         try {
             Array.setInt(array.unwrap(), index, value);
@@ -273,6 +289,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void setFloat(@Host(Object.class) StaticObject array, int index, float value) {
         try {
             Array.setFloat(array.unwrap(), index, value);
@@ -282,6 +299,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void setDouble(@Host(Object.class) StaticObject array, int index, double value) {
         try {
             Array.setDouble(array.unwrap(), index, value);
@@ -291,6 +309,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
+    @TruffleBoundary
     public static void setLong(@Host(Object.class) StaticObject array, int index, long value) {
         try {
             Array.setLong(array.unwrap(), index, value);

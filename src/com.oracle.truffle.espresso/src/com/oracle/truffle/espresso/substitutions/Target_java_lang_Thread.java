@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -170,7 +171,8 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution
     public static void registerNatives() {
-        /* nop */ }
+        /* nop */
+    }
 
     @Substitution(hasReceiver = true)
     public static boolean isInterrupted(@Host(Thread.class) StaticObject self) {
@@ -195,6 +197,7 @@ public final class Target_java_lang_Thread {
         return Thread.holdsLock(object);
     }
 
+    @TruffleBoundary
     @Substitution
     public static void sleep(long millis) {
         try {
@@ -205,6 +208,7 @@ public final class Target_java_lang_Thread {
         }
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void interrupt0(@Host(Object.class) StaticObject self) {
         Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
@@ -214,6 +218,7 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
+    @TruffleBoundary
     @SuppressWarnings({"unused", "deprecation"})
     @Substitution(hasReceiver = true)
     public static void resume0(@Host(Object.class) StaticObject self) {
@@ -228,6 +233,7 @@ public final class Target_java_lang_Thread {
         }
     }
 
+    @TruffleBoundary
     @SuppressWarnings({"unused", "deprecation"})
     @Substitution(hasReceiver = true)
     public static void suspend0(@Host(Object.class) StaticObject self) {
@@ -242,6 +248,7 @@ public final class Target_java_lang_Thread {
         }
     }
 
+    @TruffleBoundary
     @SuppressWarnings({"unused", "deprecation"})
     @Substitution(hasReceiver = true)
     public static void stop0(@Host(Object.class) StaticObject self, Object unused) {
