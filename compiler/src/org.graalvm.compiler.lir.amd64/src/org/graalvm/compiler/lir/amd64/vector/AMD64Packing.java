@@ -213,7 +213,6 @@ public final class AMD64Packing {
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
             int sizeInBytes = valcount * scalarKind.getSizeInBytes();
-            System.out.println("loading " + sizeInBytes + " into register " + result + " using scratch register " + scratch);
 
             if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
                 masm.vmovdqu(asRegister(result), input.toAddress());
@@ -235,7 +234,6 @@ public final class AMD64Packing {
                         movSize = movKind.getSizeInBytes();
                         if (prev == movKind) break;
                     }
-                    System.out.println("inserting value as " + movKind);
 
                     AMD64Address source = new AMD64Address(input.toAddress().getBase(),
                         input.toAddress().getIndex(), input.toAddress().getScale(), input.toAddress().getDisplacement() + offset);
@@ -300,7 +298,6 @@ public final class AMD64Packing {
             final AMD64Kind vectorKind = (AMD64Kind) input.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
             int sizeInBytes = valcount * scalarKind.getSizeInBytes();
-            System.out.println("storing " + sizeInBytes + " into register " + result + " using scratch register " + scratch);
 
             if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
                 masm.vmovdqu(result.toAddress(), asRegister(input));
