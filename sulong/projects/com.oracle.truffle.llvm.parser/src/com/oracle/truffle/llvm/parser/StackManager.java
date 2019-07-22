@@ -31,12 +31,8 @@ package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -49,45 +45,22 @@ public final class StackManager {
     }
 
     public static FrameDescriptor createRootFrame() {
-        final FrameDescriptor rootFrame = new FrameDescriptor();
+        FrameDescriptor rootFrame = new FrameDescriptor();
         rootFrame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
         return rootFrame;
     }
 
     public static FrameDescriptor createFrame(FunctionDefinition function) {
-        final FrameDescriptor frame = new FrameDescriptor();
+        FrameDescriptor frame = new FrameDescriptor();
 
         frame.addFrameSlot(LLVMUserException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
         frame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
 
         for (FunctionParameter parameter : function.getParameters()) {
             Type type = parameter.getType();
-            frame.addFrameSlot(parameter.getName(), type, Type.getFrameSlotKind(type));
+            frame.addFrameSlot(parameter.getFrameIdentifier(), type, Type.getFrameSlotKind(type));
         }
-
-        final StackAllocationFunctionVisitor functionVisitor = new StackAllocationFunctionVisitor(frame);
-        function.accept((FunctionVisitor) functionVisitor);
 
         return frame;
-    }
-
-    private static final class StackAllocationFunctionVisitor extends ValueInstructionVisitor implements FunctionVisitor {
-
-        private final FrameDescriptor frame;
-
-        private StackAllocationFunctionVisitor(FrameDescriptor frame) {
-            this.frame = frame;
-        }
-
-        @Override
-        public void visitValueInstruction(ValueInstruction valueInstruction) {
-            Type type = valueInstruction.getType();
-            frame.addFrameSlot(valueInstruction.getName(), type, Type.getFrameSlotKind(type));
-        }
-
-        @Override
-        public void visit(InstructionBlock block) {
-            block.accept(this);
-        }
     }
 }

@@ -29,16 +29,29 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.literals;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public class LLVMSimpleLiteralNode {
+public abstract class LLVMSimpleLiteralNode extends LLVMExpressionNode {
 
-    public static final class LLVMIVarBitLiteralNode extends LLVMExpressionNode {
+    private LLVMSimpleLiteralNode() {
+        // restrict access to constructor
+    }
+
+    @Override
+    public String toString() {
+        CompilerAsserts.neverPartOfCompilation();
+        // requires the executeGeneric function to be simple:
+        return getShortString() + " value=" + executeGeneric(null);
+    }
+
+    public static final class LLVMIVarBitLiteralNode extends LLVMSimpleLiteralNode {
 
         private final LLVMIVarBit literal;
 
@@ -57,7 +70,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMI1LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI1LiteralNode extends LLVMSimpleLiteralNode {
 
         private final boolean literal;
 
@@ -76,7 +89,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMI8LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI8LiteralNode extends LLVMSimpleLiteralNode {
 
         private final byte literal;
 
@@ -95,7 +108,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMI16LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI16LiteralNode extends LLVMSimpleLiteralNode {
 
         private final short literal;
 
@@ -114,7 +127,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMI32LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI32LiteralNode extends LLVMSimpleLiteralNode {
 
         private final int literal;
 
@@ -133,7 +146,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMI64LiteralNode extends LLVMExpressionNode {
+    public static final class LLVMI64LiteralNode extends LLVMSimpleLiteralNode {
 
         private final long literal;
 
@@ -152,7 +165,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMFloatLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMFloatLiteralNode extends LLVMSimpleLiteralNode {
 
         private final float literal;
 
@@ -171,7 +184,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMDoubleLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMDoubleLiteralNode extends LLVMSimpleLiteralNode {
 
         private final double literal;
 
@@ -190,7 +203,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVM80BitFloatLiteralNode extends LLVMExpressionNode {
+    public static final class LLVM80BitFloatLiteralNode extends LLVMSimpleLiteralNode {
 
         private final boolean sign;
         private final int exponent;
@@ -213,7 +226,7 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMManagedPointerLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMManagedPointerLiteralNode extends LLVMSimpleLiteralNode {
 
         private final LLVMManagedPointer address;
 
@@ -222,12 +235,23 @@ public class LLVMSimpleLiteralNode {
         }
 
         @Override
+        public String toString() {
+            CompilerAsserts.neverPartOfCompilation();
+            if (address.getObject() instanceof LLVMFunctionDescriptor) {
+                LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) address.getObject();
+                return getShortString() + " value=" + address + " function=\"" + function.getName() + "\"";
+            }
+
+            return getShortString() + " value=" + address;
+        }
+
+        @Override
         public Object executeGeneric(VirtualFrame frame) {
             return address.copy();
         }
     }
 
-    public static final class LLVMNativePointerLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMNativePointerLiteralNode extends LLVMSimpleLiteralNode {
 
         private final long address;
 

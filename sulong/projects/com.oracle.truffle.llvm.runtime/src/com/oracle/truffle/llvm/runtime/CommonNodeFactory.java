@@ -231,7 +231,7 @@ public class CommonNodeFactory {
         return LLVMBasicBlockNode.createBasicBlockNode(context, statementNodes, terminatorNode, blockId, blockName);
     }
 
-    public static LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration) {
+    public static LLVMFrameValueAccess createDebugFrameValue(int slot, boolean isDeclaration) {
         final LLVMDebugValue.Builder builder = getDebugDynamicValueBuilder(isDeclaration).createBuilder();
         return new LLVMFrameValueAccessImpl(slot, builder);
     }

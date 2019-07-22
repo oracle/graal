@@ -68,12 +68,13 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNuller;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMFrameNullerExpression;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
-import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNuller;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMBitcastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMUnsignedCastToLLVM80BitFloatNodeGen;
@@ -710,13 +711,18 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMFrameNuller createFrameNuller(FrameSlot slot) {
-        return new LLVMFrameNuller(slot);
+    public LLVMFrameNullerExpression createFrameNuller(FrameSlot[] slots, LLVMExpressionNode afterExpression) {
+        return new LLVMFrameNullerExpression(afterExpression, slots);
     }
 
     @Override
     public LLVMControlFlowNode createRetVoid() {
         return LLVMVoidReturnNodeGen.create();
+    }
+
+    @Override
+    public LLVMFrameNuller createFrameNuller(FrameSlot[] slots, LLVMStatementNode afterStatement) {
+        return new LLVMFrameNuller(slots, afterStatement);
     }
 
     @Override
@@ -1430,7 +1436,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createAllocaArray(Type elementType, LLVMExpressionNode numElements, int alignment) {
         int byteSize = getByteSize(elementType);
-        return LLVMAllocaInstructionNodeGen.create(numElements, byteSize, alignment, elementType);
+        return LLVMAllocaInstructionNodeGen.create(byteSize, alignment, elementType, numElements);
     }
 
     @Override
@@ -1537,14 +1543,18 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
+    public LLVMBasicBlockNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName) {
+        return LLVMBasicBlockNode.createBasicBlockNode(context, statementNodes, terminatorNode, blockId, blockName);
+    }
+
+    @Override
     public LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> allFunctionNodes, UniquesRegionAllocator uniquesRegionAllocator,
-                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
+                    LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegionAllocator);
-        LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller,
-                        afterBlockNuller);
-        body.getOrCreateSourceDescriptor().setSourceLocation(location);
+        LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]));
+        body.setSourceLocation(location);
         final LLVMFunctionRootNode functionRoot = new LLVMFunctionRootNode(uniquesRegionAllocNode, copyArgumentsToFrame, body, frameDescriptor);
-        functionRoot.getOrCreateSourceDescriptor().setSourceLocation(location);
+        functionRoot.setSourceLocation(location);
         return functionRoot;
     }
 

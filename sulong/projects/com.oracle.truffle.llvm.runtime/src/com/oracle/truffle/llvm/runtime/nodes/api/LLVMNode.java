@@ -30,16 +30,22 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -112,6 +118,75 @@ public abstract class LLVMNode extends Node {
             }
         }
         return ((LLVMHasDatalayoutNode) datalayoutNode).getDatalayout();
+    }
 
+    private static final WeakHashMap<Node, Long> nodeIdentifiers = new WeakHashMap<>();
+    private static final AtomicLong identifiers = new AtomicLong();
+
+    private static synchronized long getNodeId(Node node) {
+        return nodeIdentifiers.computeIfAbsent(node, (n) -> identifiers.incrementAndGet());
+    }
+
+    /**
+     * See {@link #getShortString(Node, String...)}.
+     */
+    protected final String getShortString(String... fields) {
+        return getShortString(this, fields);
+    }
+
+    /**
+     * Creates a short (single line) textual description of the given node.
+     *
+     * A unique name is built from the class name an a global map of node identifiers.
+     *
+     * A source location will be appended if available.
+     *
+     * The given fields will be extracted (in the given order) using {@link String#valueOf(Object)}
+     * (with a special case for arrays).
+     */
+    public static String getShortString(Node node, String... fields) {
+        CompilerAsserts.neverPartOfCompilation();
+        StringBuilder str = new StringBuilder();
+        if (node instanceof LLVMInstrumentableNode) {
+            LLVMInstrumentableNode instruction = (LLVMInstrumentableNode) node;
+            if (instruction.hasTag(StatementTag.class)) {
+                LLVMSourceLocation location = instruction.getSourceLocation();
+                str.append(location.getName()).append(":").append(location.getLine()).append(" ");
+            }
+
+        }
+        str.append(node.getClass().getSimpleName()).append("#").append(getNodeId(node));
+
+        for (String field : fields) {
+            Class<?> c = node.getClass();
+            while (c != Object.class) {
+                try {
+                    Field declaredField = c.getDeclaredField(field);
+                    declaredField.setAccessible(true);
+                    Object value = declaredField.get(node);
+                    str.append(" ").append(field).append("=").append(formatFieldValue(value));
+                    break;
+                } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+                    // skip
+                }
+                c = c.getSuperclass();
+            }
+        }
+
+        return str.toString();
+    }
+
+    @Override
+    public String toString() {
+        return getShortString();
+    }
+
+    private static Object formatFieldValue(Object value) {
+        if (value != null) {
+            if (value.getClass().isArray()) {
+                return Arrays.asList((Object[]) value).toString();
+            }
+        }
+        return String.valueOf(value);
     }
 }

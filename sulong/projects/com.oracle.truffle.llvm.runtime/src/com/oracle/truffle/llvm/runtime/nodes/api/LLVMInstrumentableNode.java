@@ -30,56 +30,46 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 public abstract class LLVMInstrumentableNode extends LLVMNode implements InstrumentableNode {
 
-    @CompilationFinal private LLVMNodeSourceDescriptor sourceDescriptor = null;
+    private static final SourceSection DEFAULT_SOURCE_SECTION;
 
-    /**
-     * Get a {@link LLVMNodeSourceDescriptor descriptor} for the debug and instrumentation
-     * properties of this node.
-     *
-     * @return a source descriptor attached to this node
-     */
-    public final LLVMNodeSourceDescriptor getSourceDescriptor() {
-        return sourceDescriptor;
+    static {
+        final Source source = Source.newBuilder("llvm", "LLVM IR", "<llvm ir>").mimeType("text/plain").build();
+        DEFAULT_SOURCE_SECTION = source.createUnavailableSection();
     }
 
+    private LLVMSourceLocation sourceLocation;
+    private boolean hasStatementTag;
+
     /**
-     * Get a {@link LLVMNodeSourceDescriptor descriptor} for the debug and instrumentation
-     * properties of this node. If no such descriptor is currently attached to this node, one will
-     * be created.
+     * Get a {@link LLVMSourceLocation descriptor} for the source-level code location and scope
+     * information of this node.
      *
-     * @return a source descriptor attached to this node
+     * @return the {@link LLVMSourceLocation} attached to this node
      */
-    public final LLVMNodeSourceDescriptor getOrCreateSourceDescriptor() {
-        if (sourceDescriptor == null) {
-            setSourceDescriptor(new LLVMNodeSourceDescriptor());
-        }
-        return sourceDescriptor;
+    public final LLVMSourceLocation getSourceLocation() {
+        return sourceLocation;
     }
 
-    public final void setSourceDescriptor(LLVMNodeSourceDescriptor sourceDescriptor) {
-        // the source descriptor should only be set in the parser, and should only be modified
-        // before this node is first executed
+    public final void setSourceLocation(LLVMSourceLocation sourceLocation) {
         CompilerAsserts.neverPartOfCompilation();
-        this.sourceDescriptor = sourceDescriptor;
+        this.sourceLocation = sourceLocation;
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceDescriptor != null ? sourceDescriptor.getSourceSection() : null;
-    }
-
-    @Override
-    public boolean isInstrumentable() {
-        return getSourceSection() != null;
+    public final SourceSection getSourceSection() {
+        if (sourceLocation == null) {
+            return DEFAULT_SOURCE_SECTION;
+        }
+        return sourceLocation.getSourceSection();
     }
 
     /**
@@ -89,18 +79,18 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
      * @return whether this node may provide the
      *         {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag}
      */
-    private boolean hasStatementTag() {
-        return sourceDescriptor != null && sourceDescriptor.hasStatementTag();
+    public final boolean hasStatementTag() {
+        return hasStatementTag && sourceLocation != null;
     }
 
-    /**
-     * Get a {@link LLVMSourceLocation descriptor} for the source-level code location and scope
-     * information of this node.
-     *
-     * @return the {@link LLVMSourceLocation} attached to this node
-     */
-    public LLVMSourceLocation getSourceLocation() {
-        return sourceDescriptor != null ? sourceDescriptor.getSourceLocation() : null;
+    public final void setHasStatementTag(boolean hasStatementTag) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.hasStatementTag = hasStatementTag;
+    }
+
+    @Override
+    public final boolean isInstrumentable() {
+        return getSourceSection() != null;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,40 +27,52 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.memory;
+package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion.UniquesRegionAllocator;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.NodeCost;
 
-public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
+public final class LLVMFrameNuller extends LLVMStatementNode {
 
-    private final UniquesRegionAllocator allocator;
+    @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlots;
 
-    @CompilationFinal private FrameSlot stackPointer;
+    @Child private LLVMStatementNode afterStatement;
 
-    public LLVMUniquesRegionAllocNode(UniquesRegionAllocator allocator) {
-        this.allocator = allocator;
+    public LLVMFrameNuller(FrameSlot[] frameSlots, LLVMStatementNode afterStatement) {
+        this.frameSlots = frameSlots;
+        this.afterStatement = afterStatement;
     }
 
-    public abstract void execute(VirtualFrame frame);
+    @Override
+    public NodeCost getCost() {
+        // this node reduces the compile code size
+        return NodeCost.NONE;
+    }
 
-    protected FrameSlot getStackPointerSlot() {
-        if (stackPointer == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stackPointer = getRootNode().getFrameDescriptor().findFrameSlot(LLVMStack.FRAME_ID);
+    public LLVMStatementNode getAfterStatement() {
+        return afterStatement;
+    }
+
+    public FrameSlot[] getFrameSlots() {
+        return frameSlots;
+    }
+
+    @Override
+    public String toString() {
+        return getShortString("frameSlots");
+    }
+
+    @Override
+    @ExplodeLoop
+    public void execute(VirtualFrame frame) {
+        if (afterStatement != null) {
+            afterStatement.execute(frame);
         }
-        return stackPointer;
+        for (int i = 0; i < frameSlots.length; i++) {
+            LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlots[i]);
+        }
     }
-
-    @Specialization
-    protected void doOp(VirtualFrame frame, @Cached("getLLVMMemory()") LLVMMemory memory) {
-        allocator.allocate(frame, memory, getStackPointerSlot());
-    }
-
 }

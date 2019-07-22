@@ -29,13 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
+import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
 
-public abstract class ValueInstruction extends Instruction implements ValueSymbol {
+public abstract class ValueInstruction extends Instruction implements StackValue, ValueSymbol {
 
     private final Type type;
+    private int frameIdentifier = -1;
+
+    // this name is only used for IR debugging
     private String name = LLVMIdentifier.UNKNOWN;
 
     ValueInstruction(Type type) {
@@ -55,5 +59,17 @@ public abstract class ValueInstruction extends Instruction implements ValueSymbo
     @Override
     public final void setName(String name) {
         this.name = name;
+    }
+
+    @Override
+    public final int getFrameIdentifier() {
+        assert frameIdentifier != -1 : "uninitialized frame identifier";
+        return frameIdentifier;
+    }
+
+    @Override
+    public final void setFrameIdentifier(int frameIdentifier) {
+        assert this.frameIdentifier == -1;
+        this.frameIdentifier = frameIdentifier;
     }
 }

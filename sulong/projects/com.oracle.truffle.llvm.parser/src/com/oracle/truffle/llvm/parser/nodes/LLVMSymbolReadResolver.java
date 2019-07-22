@@ -86,6 +86,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
+import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class LLVMSymbolReadResolver {
@@ -310,7 +311,7 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(GetElementPointerConstant constant) {
-            resolvedNode = resolveElementPointer(constant.getBasePointer(), constant.getIndices());
+            resolvedNode = resolveElementPointer(constant.getBasePointer(), constant.getIndices(), (symbol, excludeOtherIndex, other, others) -> resolve(symbol));
         }
 
         @Override
@@ -413,16 +414,22 @@ public final class LLVMSymbolReadResolver {
             resolvedNode = nodeFactory.createLiteral(value, new PointerType(global.getType()));
         }
 
+        private void visitStackValue(StackValue value) {
+            FrameSlot slot = frame.findFrameSlot(value.getFrameIdentifier());
+            if (slot == null) {
+                slot = frame.findOrAddFrameSlot(value.getFrameIdentifier(), Type.getFrameSlotKind(value.getType()));
+            }
+            resolvedNode = CommonNodeFactory.createFrameRead(value.getType(), slot);
+        }
+
         @Override
         public void visit(FunctionParameter param) {
-            final FrameSlot slot = frame.findFrameSlot(param.getName());
-            resolvedNode = CommonNodeFactory.createFrameRead(param.getType(), slot);
+            visitStackValue(param);
         }
 
         @Override
         public void visitValueInstruction(ValueInstruction value) {
-            final FrameSlot slot = frame.findFrameSlot(value.getName());
-            resolvedNode = CommonNodeFactory.createFrameRead(value.getType(), slot);
+            visitStackValue(value);
         }
     }
 
@@ -459,15 +466,33 @@ public final class LLVMSymbolReadResolver {
         }
     }
 
-    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, List<SymbolImpl> indices) {
-        LLVMExpressionNode currentAddress = resolve(base);
+    public interface OptimizedResolver {
+        LLVMExpressionNode resolve(SymbolImpl symbol, int excludeOtherIndex, SymbolImpl other, SymbolImpl... others);
+    }
+
+    /**
+     * Turns a base value and a list of indices into a list of "get element pointer" operations, and
+     * allows callers to intercept the resolution of values to nodes (used for frame slot
+     * optimization in LLVMBitcodeInstructionVisitor).
+     */
+    public LLVMExpressionNode resolveElementPointer(SymbolImpl base, SymbolImpl[] indices, OptimizedResolver resolver) {
+        LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indices.length];
+
+        for (int i = indices.length - 1; i >= 0; i--) {
+            SymbolImpl indexSymbol = indices[i];
+            if (evaluateLongIntegerConstant(indexSymbol) == null) {
+                indexNodes[i] = resolver.resolve(indexSymbol, i, base, indices);
+            }
+        }
+
+        LLVMExpressionNode currentAddress = resolver.resolve(base, -1, null, indices);
         Type currentType = base.getType();
 
-        for (int i = 0, indicesSize = indices.size(); i < indicesSize; i++) {
-            final SymbolImpl indexSymbol = indices.get(i);
-            final Type indexType = indexSymbol.getType();
+        for (int i = 0, indicesSize = indices.length; i < indicesSize; i++) {
+            SymbolImpl indexSymbol = indices[i];
+            Type indexType = indexSymbol.getType();
 
-            final Long indexInteger = evaluateLongIntegerConstant(indexSymbol);
+            Long indexInteger = evaluateLongIntegerConstant(indexSymbol);
             if (indexInteger == null) {
                 // the index is determined at runtime
                 if (currentType instanceof StructureType) {
@@ -475,20 +500,19 @@ public final class LLVMSymbolReadResolver {
                     throw new LLVMParserException("Indices on structs must be constant integers!");
                 }
                 AggregateType aggregate = (AggregateType) currentType;
-                final long indexedTypeLength = aggregate.getOffsetOf(1, dataLayout);
+                long indexedTypeLength = aggregate.getOffsetOf(1, dataLayout);
                 currentType = aggregate.getElementType(1);
-                final LLVMExpressionNode indexNode = resolve(indexSymbol);
-                currentAddress = nodeFactory.createTypedElementPointer(currentAddress, indexNode, indexedTypeLength, currentType);
+                currentAddress = nodeFactory.createTypedElementPointer(currentAddress, indexNodes[i], indexedTypeLength, currentType);
             } else {
                 // the index is a constant integer
                 AggregateType aggregate = (AggregateType) currentType;
-                final long addressOffset = aggregate.getOffsetOf(indexInteger, dataLayout);
+                long addressOffset = aggregate.getOffsetOf(indexInteger, dataLayout);
                 currentType = aggregate.getElementType(indexInteger);
 
                 // creating a pointer inserts type information, this needs to happen for the address
                 // computed by getelementptr even if it is the same as the basepointer
                 if (addressOffset != 0 || i == indicesSize - 1) {
-                    final LLVMExpressionNode indexNode;
+                    LLVMExpressionNode indexNode;
                     if (indexType == PrimitiveType.I32) {
                         indexNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
                     } else if (indexType == PrimitiveType.I64) {

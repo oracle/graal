@@ -80,6 +80,12 @@ public final class SulongEngineOption {
     @Option(name = "llvm.debugLoader", category = OptionCategory.EXPERT, help = "Turns dynamic loader debugging on/off. Can be \'stdout\' or \'stderr\'.") //
     public static final OptionKey<String> LD_DEBUG = new OptionKey<>(String.valueOf(false));
 
+    @Option(name = "llvm.optimizeFrameSlots", category = OptionCategory.INTERNAL, help = "Enable fusing of instructions producing values with instructions consuming values.") //
+    public static final OptionKey<Boolean> OPTIMIZE_FRAME_SLOTS = new OptionKey<>(true);
+
+    @Option(name = "llvm.printAST", category = OptionCategory.INTERNAL, help = "Prints the Truffle AST of functions when it is created. A comma-separated list of regular expressions that will be matched against function names.") //
+    public static final OptionKey<String> PRINT_AST = new OptionKey<>("");
+
     @Option(name = "llvm.parseOnly", category = OptionCategory.EXPERT, help = "Only parses a bc file; execution is not possible.") //
     public static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
 

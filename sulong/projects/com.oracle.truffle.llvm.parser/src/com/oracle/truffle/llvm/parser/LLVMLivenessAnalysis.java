@@ -38,12 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.collections.EconomicMap;
-
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
@@ -83,38 +78,42 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.types.symbols.StackValue;
 
 public final class LLVMLivenessAnalysis {
 
     private final FunctionDefinition functionDefinition;
 
-    private final FrameSlot[] frameSlots;
-    private final EconomicMap<Object, Integer> frameSlotIdToIndex;
+    private final StackValue[] frameSlots;
 
-    private static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
-
-    private LLVMLivenessAnalysis(FunctionDefinition functionDefinition, FrameDescriptor frame) {
+    private LLVMLivenessAnalysis(FunctionDefinition functionDefinition) {
         this.functionDefinition = functionDefinition;
-        this.frameSlots = frame.getSlots().toArray(NO_SLOTS);
 
-        this.frameSlotIdToIndex = EconomicMap.create();
-        for (int i = 0; i < frameSlots.length; i++) {
-            this.frameSlotIdToIndex.put(frameSlots[i].getIdentifier(), i);
+        // collect all stack values
+        ArrayList<StackValue> slots = new ArrayList<>();
+        for (FunctionParameter param : functionDefinition.getParameters()) {
+            param.setFrameIdentifier(slots.size());
+            slots.add(param);
         }
+        for (InstructionBlock block : functionDefinition.getBlocks()) {
+            for (Instruction instruction : block.getInstructions()) {
+                if (instruction instanceof ValueInstruction) {
+                    ValueInstruction value = (ValueInstruction) instruction;
+                    value.setFrameIdentifier(slots.size());
+                    slots.add(value);
+                }
+            }
+        }
+        this.frameSlots = slots.toArray(new StackValue[slots.size()]);
     }
 
-    private int getFrameSlotIndex(Object identifier) {
-        return frameSlotIdToIndex.get(identifier);
-    }
-
-    public static LLVMLivenessAnalysisResult computeLiveness(FrameDescriptor frame, Map<InstructionBlock, List<LLVMPhiManager.Phi>> phis, FunctionDefinition functionDefinition,
-                    PrintStream logLivenessStream) {
-        LLVMLivenessAnalysis analysis = new LLVMLivenessAnalysis(functionDefinition, frame);
+    public static LLVMLivenessAnalysisResult computeLiveness(Map<InstructionBlock, List<LLVMPhiManager.Phi>> phis, FunctionDefinition functionDefinition, PrintStream logLivenessStream) {
+        LLVMLivenessAnalysis analysis = new LLVMLivenessAnalysis(functionDefinition);
 
         List<InstructionBlock> blocks = functionDefinition.getBlocks();
         BlockInfo[] blockInfos = analysis.initializeGenKill(phis, blocks);
         ArrayList<InstructionBlock>[] predecessors = computePredecessors(blocks);
-        int processedBlocks = iterateToFixedPoint(blocks, frame, blockInfos, predecessors);
+        int processedBlocks = iterateToFixedPoint(blocks, analysis.frameSlots.length, blockInfos, predecessors);
         if (logLivenessStream != null) {
             analysis.printIntermediateResult(logLivenessStream, blocks, blockInfos, processedBlocks);
         }
@@ -134,7 +133,7 @@ public final class LLVMLivenessAnalysis {
             if (i == 0) {
                 // in the first block, the arguments are also always alive
                 for (FunctionParameter param : functionDefinition.getParameters()) {
-                    processRead(blockInfo, getFrameSlotIndex(param.getName()));
+                    processRead(blockInfo, param.getFrameIdentifier());
                 }
             }
 
@@ -163,14 +162,14 @@ public final class LLVMLivenessAnalysis {
         return result;
     }
 
-    private static int iterateToFixedPoint(List<InstructionBlock> blocks, FrameDescriptor frame, BlockInfo[] blockInfos, ArrayList<InstructionBlock>[] predecessors) {
+    private static int iterateToFixedPoint(List<InstructionBlock> blocks, int frameSize, BlockInfo[] blockInfos, ArrayList<InstructionBlock>[] predecessors) {
         // by processing the graph bottom-up, we may reach a fixed point more quickly
         ArrayDeque<InstructionBlock> workList = new ArrayDeque<>(blocks);
         BitSet blockOnWorkList = new BitSet(blocks.size());
         blockOnWorkList.set(0, blockOnWorkList.size());
 
-        BitSet newPredecessorOut = new BitSet(frame.getSize());
-        BitSet newIn = new BitSet(frame.getSize());
+        BitSet newPredecessorOut = new BitSet(frameSize);
+        BitSet newIn = new BitSet(frameSize);
 
         int processedBlocks = 0;
         while (!workList.isEmpty()) {
@@ -223,7 +222,7 @@ public final class LLVMLivenessAnalysis {
                 // as an approximation, we claim that the arguments are used by the first
                 // instruction
                 for (FunctionParameter param : functionDefinition.getParameters()) {
-                    int frameSlotIndex = getFrameSlotIndex(param.getName());
+                    int frameSlotIndex = param.getFrameIdentifier();
                     lastInstructionIndexTouchingLocal[frameSlotIndex] = 0;
                 }
             }
@@ -286,18 +285,18 @@ public final class LLVMLivenessAnalysis {
         return new LLVMLivenessAnalysisResult(frameSlots, nullableWithinBlock, nullableBeforeBlock, nullableAfterBlock);
     }
 
-    public static class NullerInformation implements Comparable<NullerInformation> {
+    public static final class NullerInformation implements Comparable<NullerInformation> {
 
-        private final FrameSlot frameSlot;
+        private final StackValue identifier;
         private final int instructionIndex;
 
-        public NullerInformation(FrameSlot frameSlot, int instructionIndex) {
-            this.frameSlot = frameSlot;
+        public NullerInformation(StackValue identifier, int instructionIndex) {
+            this.identifier = identifier;
             this.instructionIndex = instructionIndex;
         }
 
-        public FrameSlot getFrameSlot() {
-            return frameSlot;
+        public StackValue getIdentifier() {
+            return identifier;
         }
 
         public int getInstructionIndex() {
@@ -360,7 +359,7 @@ public final class LLVMLivenessAnalysis {
         return false;
     }
 
-    private void processRead(SymbolImpl symbol, BlockInfo blockInfo) {
+    private static void processRead(SymbolImpl symbol, BlockInfo blockInfo) {
         int frameSlotIndex = resolve(symbol);
         processRead(blockInfo, frameSlotIndex);
     }
@@ -373,14 +372,14 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
-    private void processValueUsedInPhi(SymbolImpl symbol, BlockInfo blockInfo) {
+    private static void processValueUsedInPhi(SymbolImpl symbol, BlockInfo blockInfo) {
         int frameSlotIndex = resolve(symbol);
         if (frameSlotIndex >= 0) {
             blockInfo.phiUses.set(frameSlotIndex);
         }
     }
 
-    private void processPhiWrite(PhiInstruction phi, BlockInfo blockInfo) {
+    private static void processPhiWrite(PhiInstruction phi, BlockInfo blockInfo) {
         int frameSlotIndex = resolve(phi);
         if (frameSlotIndex >= 0) {
             blockInfo.phiDefs.set(frameSlotIndex);
@@ -388,11 +387,11 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
-    private int resolve(SymbolImpl symbol) {
-        if (symbol instanceof FunctionParameter || symbol instanceof ValueInstruction) {
-            String name = ((ValueSymbol) symbol).getName();
-            assert name != null;
-            return getFrameSlotIndex(name);
+    private static int resolve(SymbolImpl symbol) {
+        if (symbol instanceof StackValue) {
+            int identifier = ((StackValue) symbol).getFrameIdentifier();
+            assert identifier >= 0;
+            return identifier;
         }
         return -1;
     }
@@ -630,7 +629,7 @@ public final class LLVMLivenessAnalysis {
         protected abstract void visitLocalRead(SymbolImpl symbol);
     }
 
-    private static class BlockInfo {
+    private static final class BlockInfo {
         public final BitSet in;
         public final BitSet out;
 
@@ -662,20 +661,20 @@ public final class LLVMLivenessAnalysis {
      */
     public static class LLVMLivenessAnalysisResult {
 
-        private final FrameSlot[] frameSlots;
+        private final StackValue[] frameSlots;
 
         private final ArrayList<NullerInformation>[] nullableWithinBlock;
         private final BitSet[] nullableBeforeBlock;
         private final BitSet[] nullableAfterBlock;
 
-        public LLVMLivenessAnalysisResult(FrameSlot[] frameSlots, ArrayList<NullerInformation>[] nullableWithinBlock, BitSet[] nullableBeforeBlock, BitSet[] nullableAfterBlock) {
+        public LLVMLivenessAnalysisResult(StackValue[] frameSlots, ArrayList<NullerInformation>[] nullableWithinBlock, BitSet[] nullableBeforeBlock, BitSet[] nullableAfterBlock) {
             this.frameSlots = frameSlots;
             this.nullableWithinBlock = nullableWithinBlock;
             this.nullableBeforeBlock = nullableBeforeBlock;
             this.nullableAfterBlock = nullableAfterBlock;
         }
 
-        public FrameSlot[] getFrameSlots() {
+        public StackValue[] getFrameSlots() {
             return frameSlots;
         }
 
@@ -772,7 +771,7 @@ public final class LLVMLivenessAnalysis {
             if (result.length() > 0) {
                 result.append(", ");
             }
-            result.append(frameSlots[bitIndex].getIdentifier());
+            result.append(frameSlots[bitIndex]);
         }
         return result.toString();
     }
@@ -783,7 +782,7 @@ public final class LLVMLivenessAnalysis {
             if (result.length() > 0) {
                 result.append(", ");
             }
-            result.append(nuller.frameSlot.getIdentifier());
+            result.append(nuller.getIdentifier());
         }
         return result.toString();
     }

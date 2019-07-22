@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,21 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.base;
+package com.oracle.truffle.llvm.runtime.types.symbols;
 
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+/**
+ * Stack values that can be referenced inside functions: parameters and instructions that generate
+ * values. The identifier will be initialized by the liveness analysis.
+ */
+public interface StackValue extends Symbol {
 
-public class LLVMFrameNuller extends LLVMStatementNode {
-    private final FrameSlot frameSlot;
+    int getFrameIdentifier();
 
-    public LLVMFrameNuller(FrameSlot frameSlot) {
-        this.frameSlot = frameSlot;
-    }
+    void setFrameIdentifier(int frameIdentifier);
 
-    @Override
-    public void execute(VirtualFrame frame) {
-        LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot, false);
-    }
 }

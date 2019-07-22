@@ -37,17 +37,18 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 
 public final class LLVMFrameValueAccessImpl implements LLVMFrameValueAccess {
 
-    private final FrameSlot slot;
+    private final int identifier;
     private final LLVMDebugValue.Builder builder;
 
-    public LLVMFrameValueAccessImpl(FrameSlot slot, LLVMDebugValue.Builder builder) {
-        this.slot = slot;
+    public LLVMFrameValueAccessImpl(int identifier, LLVMDebugValue.Builder builder) {
+        this.identifier = identifier;
         this.builder = builder;
     }
 
     @Override
     public LLVMDebugObjectBuilder getValue(Frame frame) {
-        final Object addr = frame.getValue(slot);
-        return LLVMDebugSimpleObjectBuilder.create(builder, addr);
+        FrameSlot slot = frame.getFrameDescriptor().findFrameSlot(identifier);
+        Object value = slot == null ? null : frame.getValue(slot);
+        return value == null ? null : LLVMDebugSimpleObjectBuilder.create(builder, value);
     }
 }
