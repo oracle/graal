@@ -162,6 +162,10 @@ def _sulong_gate_runner(args, tasks):
         if t:
             if mx.checkcopyrights(['--primary']) != 0:
                 t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
+
+    with Task('BuildLLVMorg', tasks, tags=['style', 'clangformat']) as t:
+        # needed for clang-format
+        if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: clangformatcheck()
     _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
@@ -245,6 +249,13 @@ def runLLVMUnittests(unittest_runner):
     build_args = ['--language:llvm'] + java_run_props
     unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--run-args'] + run_args +
                     ['--build-args', '--initialize-at-build-time'] + build_args)
+
+
+def build_llvm_org(args=None):
+    defaultBuildArgs = ['-p']
+    if not args.no_warning_as_error:
+        defaultBuildArgs += ['--warning-as-error']
+    mx.command_function('build')(defaultBuildArgs + ['--project', 'SULONG_LLVM_ORG'] + args.extra_build_args)
 
 
 def clangformatcheck(args=None):
