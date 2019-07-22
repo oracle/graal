@@ -57,7 +57,7 @@ public class WasmContext {
     }
 
     public CallTarget parse(Source source) {
-        return env.parse(source);
+        return env.parsePublic(source);
     }
 
     public WasmLanguage language() {
