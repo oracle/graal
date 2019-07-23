@@ -33,18 +33,15 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
-import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
 
 import static java.lang.Double.doubleToRawLongBits;
 import static java.lang.Float.floatToRawIntBits;
@@ -63,6 +60,21 @@ import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 public final class AMD64Packing {
 
     private AMD64Packing() { }
+
+    private static AMD64Kind twice(AMD64Kind kind) {
+        switch (kind) {
+            case BYTE:
+                return AMD64Kind.WORD;
+            case WORD:
+                return AMD64Kind.DWORD;
+            case DWORD:
+                return AMD64Kind.QWORD;
+            case SINGLE:
+                return AMD64Kind.QWORD;
+            default:
+                return kind;
+        }
+    }
 
     public static final class PackConstantsOp extends AMD64LIRInstruction {
 
@@ -91,7 +103,7 @@ public final class AMD64Packing {
         }
     }
 
-    private static final void reg2addr(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, AMD64Address dst, Register src) {
+    private static void reg2addr(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, AMD64Address dst, Register src) {
         switch (kind) {
             case BYTE:
                 masm.movb(dst, src);
@@ -114,7 +126,7 @@ public final class AMD64Packing {
         }
     }
 
-    private static final void addr2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, Register dst, AMD64Address src) {
+    private static void addr2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, Register dst, AMD64Address src) {
         switch (kind) {
             case BYTE:
             case WORD:
@@ -133,7 +145,7 @@ public final class AMD64Packing {
         }
     }
 
-    private static final void const2addr(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, AMD64Address dst, JavaConstant src) {
+    private static void const2addr(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, AMD64Address dst, JavaConstant src) {
         switch (kind) {
             case BYTE:
                 masm.movb(dst, src.asInt());
@@ -156,16 +168,14 @@ public final class AMD64Packing {
         }
     }
 
-    private static final void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, Register scratch) {
+    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, Register scratch) {
         if (isRegister(src)) {
-            reg2addr(crb, masm, (AMD64Kind)src.getPlatformKind(), dst, asRegister(src));
-        }
-        else if (isStackSlot(src)) {
-            addr2reg(crb, masm, (AMD64Kind)src.getPlatformKind(), scratch, (AMD64Address)crb.asAddress(src));
-            reg2addr(crb, masm, (AMD64Kind)src.getPlatformKind(), dst, scratch);
-        }
-        else if (isJavaConstant(src)) {
-            const2addr(crb, masm, (AMD64Kind)src.getPlatformKind(), dst, asJavaConstant(src));
+            reg2addr(crb, masm, (AMD64Kind) src.getPlatformKind(), dst, asRegister(src));
+        } else if (isStackSlot(src)) {
+            addr2reg(crb, masm, (AMD64Kind) src.getPlatformKind(), scratch, (AMD64Address) crb.asAddress(src));
+            reg2addr(crb, masm, (AMD64Kind) src.getPlatformKind(), dst, scratch);
+        } else if (isJavaConstant(src)) {
+            const2addr(crb, masm, (AMD64Kind) src.getPlatformKind(), dst, asJavaConstant(src));
         }
     }
 
@@ -178,21 +188,6 @@ public final class AMD64Packing {
         @Temp({REG}) private AllocatableValue scratch;
         @Use({COMPOSITE}) private AMD64AddressValue input;
         private final int valcount;
-
-        private static final AMD64Kind twice(AMD64Kind kind) {
-            switch (kind) {
-                case BYTE:
-                    return AMD64Kind.WORD;
-                case WORD:
-                    return AMD64Kind.DWORD;
-                case DWORD:
-                    return AMD64Kind.QWORD;
-                case SINGLE:
-                    return AMD64Kind.QWORD;
-                default:
-                    return kind;
-            }
-        }
 
         public LoadStackOp(LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
             this(TYPE, tool, result, input, valcount);
@@ -216,8 +211,7 @@ public final class AMD64Packing {
 
             if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
                 masm.vmovdqu(asRegister(result), input.toAddress());
-            }
-            else {
+            } else {
                 // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
                 int amt = (int) Math.ceil(((double) sizeInBytes) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
 
@@ -228,11 +222,12 @@ public final class AMD64Packing {
                     AMD64Kind movKind = scalarKind;
                     int movSize = movKind.getSizeInBytes();
                     while (i + (movSize / scalarKind.getSizeInBytes()) * 2 < valcount && movSize < 8) {
-                        movSize *= 2;
                         AMD64Kind prev = movKind;
                         movKind = twice(movKind);
                         movSize = movKind.getSizeInBytes();
-                        if (prev == movKind) break;
+                        if (prev == movKind) {
+                            break;
+                        }
                     }
 
                     AMD64Address source = new AMD64Address(input.toAddress().getBase(),
@@ -264,21 +259,6 @@ public final class AMD64Packing {
         @Use({REG}) private AllocatableValue input;
         private final int valcount;
 
-        private static final AMD64Kind twice(AMD64Kind kind) {
-            switch (kind) {
-                case BYTE:
-                    return AMD64Kind.WORD;
-                case WORD:
-                    return AMD64Kind.DWORD;
-                case DWORD:
-                    return AMD64Kind.QWORD;
-                case SINGLE:
-                    return AMD64Kind.QWORD;
-                default:
-                    return kind;
-            }
-        }
-
         public StoreStackOp(LIRGeneratorTool tool, AMD64AddressValue result, AllocatableValue input, int valcount) {
             this(TYPE, tool, result, input, valcount);
         }
@@ -301,8 +281,7 @@ public final class AMD64Packing {
 
             if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
                 masm.vmovdqu(result.toAddress(), asRegister(input));
-            }
-            else {
+            } else {
                 // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
                 int amt = (int) Math.ceil(((double) sizeInBytes) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
 
@@ -317,13 +296,13 @@ public final class AMD64Packing {
                     AMD64Kind movKind = scalarKind;
                     int movSize = movKind.getSizeInBytes();
                     while (i + (movSize / scalarKind.getSizeInBytes()) * 2 < valcount && movSize < 8) {
-                        movSize *= 2;
                         AMD64Kind prev = movKind;
                         movKind = twice(movKind);
                         movSize = movKind.getSizeInBytes();
-                        if (prev == movKind) break;
+                        if (prev == movKind) {
+                            break;
+                        }
                     }
-                    System.out.println("extracting value as " + movKind);
 
                     AMD64Address source = new AMD64Address(rsp, offset);
                     AMD64Address target = new AMD64Address(result.toAddress().getBase(),
@@ -369,14 +348,14 @@ public final class AMD64Packing {
             final AMD64Kind scalarKind = vectorKind.getScalar();
 
             // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
-            int amt = (int)Math.ceil(((double)values.length * scalarKind.getSizeInBytes()) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
+            int amt = (int) Math.ceil(values.length * scalarKind.getSizeInBytes() / (double) YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
 
             // Open scratch space for us to dump our values to.
             masm.subq(rsp, amt);
             int offset = 0;
-            for (int i = 0; i < values.length; i ++) {
+            for (AllocatableValue value : values) {
                 AMD64Address target = new AMD64Address(rsp, offset);
-                move(crb, masm, target, values[i], asRegister(scratch));
+                move(crb, masm, target, value, asRegister(scratch));
                 offset += scalarKind.getSizeInBytes();
             }
 
