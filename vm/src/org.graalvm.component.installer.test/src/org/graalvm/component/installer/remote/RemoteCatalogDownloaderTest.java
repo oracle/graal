@@ -28,20 +28,25 @@ import java.io.IOException;
 import java.net.ConnectException;
 import java.net.URL;
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.MockURLConnection;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.persist.NetworkTestBase;
 import org.graalvm.component.installer.persist.test.Handler;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class RemoteCatalogDownloaderTest extends NetworkTestBase {
@@ -181,5 +186,105 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         assertNotNull(findComponent(col, "r"));
         assertNotNull(findComponent(col, "ruby"));
         assertNotNull(findComponent(col, "python"));
+    }
+
+    /**
+     * Checks that simple explicit URL given 'the old way' will define a catalog that will be
+     * loaded.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testParseCatalogOverride() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
+        String single = "test://graalv.org/test/catalog.properties";
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, single);
+        List<SoftwareChannelSource> sources = d.getChannelSources();
+        assertNotNull(sources);
+        assertEquals(1, sources.size());
+        assertEquals(single, sources.get(0).getLocationURL());
+
+        URL clu1 = getClass().getResource("catalogMultiVersions");
+
+        Handler.bind(single, clu1);
+
+        ComponentStorage store = d.getStorage();
+        Set<String> ids = store.listComponentIDs();
+        assertTrue(ids.contains("ruby"));
+        assertTrue(Handler.isVisited(new URL(single)));
+    }
+
+    @Test
+    public void testParseCatalogOverrideParameters() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
+        String url = "test://graalv.org/test/catalog.properties";
+        String single = url + "?linux=a&macOS=a+b&windows=";
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, single);
+        List<SoftwareChannelSource> sources = d.getChannelSources();
+        assertNotNull(sources);
+        assertEquals(1, sources.size());
+
+        SoftwareChannelSource src = sources.get(0);
+        assertEquals(url, src.getLocationURL());
+
+        assertEquals("a", src.getParameter("linux"));
+        assertEquals("a b", src.getParameter("macOS"));
+        assertEquals("", src.getParameter("windows"));
+    }
+
+    private static final String FIRST_CATALOG_URL = "test://graalv.org/test/catalog.properties";
+    private static final String SECOND_CATALOG_URL = "test://graalv.org/test/catalog.2.properties";
+
+    private void checkMultipleCatalogResults(RemoteCatalogDownloader d) throws Exception {
+        URL clu1 = getClass().getResource("catalogMultiPart1");
+        Handler.bind(FIRST_CATALOG_URL, clu1);
+
+        URL clu2 = getClass().getResource("catalogMultiPart3");
+        Handler.bind(SECOND_CATALOG_URL, clu2);
+
+        ComponentStorage store = d.getStorage();
+        Set<String> ids = store.listComponentIDs();
+
+        assertTrue(ids.contains("ruby"));
+        assertTrue(ids.contains("r"));
+    }
+
+    /**
+     * Checks that multiple URLs given 'the old way' will define a catalog that will be loaded.
+     * Checks that parameters of the URL will be initialized.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testParseMultipleCatalogOverride() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.1.0");
+
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, String.join("|", FIRST_CATALOG_URL, SECOND_CATALOG_URL));
+        checkMultipleCatalogResults(d);
+    }
+
+    /**
+     * Checks that multiple catalogs defined in the release file are merged together and contain
+     * correct metadata.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testParseNewReleaseCatalogMulti() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.1.0");
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "1_url", "test://graalv.org/test/catalog.properties");
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "1_label", "First part");
+
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "3_url", "test://graalv.org/test/catalog.2.properties");
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "3_label", "Second part");
+        storage.graalInfo.put(CommonConstants.CAP_CATALOG_PREFIX + "3_linux", "a");
+
+        RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, this, (String) null);
+        checkMultipleCatalogResults(d);
+
+        List<SoftwareChannelSource> sources = d.getChannelSources();
+        assertEquals(2, sources.size());
+        assertEquals("First part", sources.get(0).getLabel());
+        assertEquals("a", sources.get(1).getParameter("linux"));
     }
 }

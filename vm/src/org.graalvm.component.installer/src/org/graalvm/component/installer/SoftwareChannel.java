@@ -71,12 +71,12 @@ public interface SoftwareChannel {
          * True, if the channel is willing to handle the URL. URL is passed as a String so that
          * custom protocols may be used without registering an URLStreamHandlerFactory.
          * 
-         * @param urlSpec url string, including the scheme
+         * @param source the definition of the channel including label
          * @param input input parameters
          * @param output output interface
          * @return true, if the channel is willing to work with the URL
          */
-        SoftwareChannel createChannel(String urlSpec, CommandInput input, Feedback output);
+        SoftwareChannel createChannel(SoftwareChannelSource source, CommandInput input, Feedback output);
 
         /**
          * Adds options to the set of global options. Global options allow to accept specific
