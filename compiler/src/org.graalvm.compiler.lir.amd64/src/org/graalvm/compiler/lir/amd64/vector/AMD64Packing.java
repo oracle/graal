@@ -207,10 +207,11 @@ public final class AMD64Packing {
             assert isRegister(scratch) : "scratch must be a register";
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
-            int sizeInBytes = valcount * scalarKind.getSizeInBytes();
+            final int sizeInBytes = valcount * scalarKind.getSizeInBytes();
 
+            final AMD64Address inputAddress = input.toAddress();
             if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
-                masm.vmovdqu(asRegister(result), input.toAddress());
+                masm.vmovdqu(asRegister(result), inputAddress);
             } else {
                 // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
                 int amt = (int) Math.ceil(((double) sizeInBytes) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
@@ -230,9 +231,9 @@ public final class AMD64Packing {
                         }
                     }
 
-                    AMD64Address source = new AMD64Address(input.toAddress().getBase(),
-                        input.toAddress().getIndex(), input.toAddress().getScale(), input.toAddress().getDisplacement() + offset);
-                    AMD64Address target = new AMD64Address(rsp, offset);
+                    final AMD64Address source = new AMD64Address(inputAddress.getBase(), inputAddress.getIndex(), inputAddress.getScale(), inputAddress.getDisplacement() + offset);
+                    final AMD64Address target = new AMD64Address(rsp, offset);
+
                     addr2reg(crb, masm, movKind, asRegister(scratch), source);
                     reg2addr(crb, masm, movKind, target, asRegister(scratch));
                     offset += movSize;
@@ -277,13 +278,14 @@ public final class AMD64Packing {
             assert isRegister(scratch) : "scratch must be a register";
             final AMD64Kind vectorKind = (AMD64Kind) input.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
-            int sizeInBytes = valcount * scalarKind.getSizeInBytes();
+            final int sizeInBytes = valcount * scalarKind.getSizeInBytes();
 
+            final AMD64Address outputAddress = result.toAddress();
             if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
-                masm.vmovdqu(result.toAddress(), asRegister(input));
+                masm.vmovdqu(outputAddress, asRegister(input));
             } else {
                 // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
-                int amt = (int) Math.ceil(((double) sizeInBytes) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
+                final int amt = (int) Math.ceil(((double) sizeInBytes) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
 
                 // Open scratch space for us to dump our values to.
                 masm.subq(rsp, amt);
@@ -296,7 +298,7 @@ public final class AMD64Packing {
                     AMD64Kind movKind = scalarKind;
                     int movSize = movKind.getSizeInBytes();
                     while (i + (movSize / scalarKind.getSizeInBytes()) * 2 < valcount && movSize < 8) {
-                        AMD64Kind prev = movKind;
+                        final AMD64Kind prev = movKind;
                         movKind = twice(movKind);
                         movSize = movKind.getSizeInBytes();
                         if (prev == movKind) {
@@ -304,9 +306,9 @@ public final class AMD64Packing {
                         }
                     }
 
-                    AMD64Address source = new AMD64Address(rsp, offset);
-                    AMD64Address target = new AMD64Address(result.toAddress().getBase(),
-                        result.toAddress().getIndex(), result.toAddress().getScale(), result.toAddress().getDisplacement() + offset);
+                    final AMD64Address source = new AMD64Address(rsp, offset);
+                    final AMD64Address target = new AMD64Address(outputAddress.getBase(), outputAddress.getIndex(), outputAddress.getScale(), outputAddress.getDisplacement() + offset);
+
                     addr2reg(crb, masm, movKind, asRegister(scratch), source);
                     reg2addr(crb, masm, movKind, target, asRegister(scratch));
                     offset += movSize;
