@@ -47,7 +47,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ThreadingSupportImpl.PauseRecurringCallback;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
@@ -112,8 +112,12 @@ public class MonitorSupport {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
             VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within a VMOperation: if the object is already locked, the VM is at a deadlock");
-
-            monitorEnterWithoutBlockingCheck(obj);
+            ThreadingSupportImpl.pauseRecurringCallback("No exception must flow out of the monitor code.");
+            try {
+                monitorEnterWithoutBlockingCheck(obj);
+            } finally {
+                ThreadingSupportImpl.resumeRecurringCallback();
+            }
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
@@ -122,6 +126,7 @@ public class MonitorSupport {
     @RestrictHeapAccess(reason = "No longer uninterruptible", overridesCallers = true, access = Access.UNRESTRICTED)
     @SuppressWarnings("try")
     public static void monitorEnterWithoutBlockingCheck(Object obj) {
+        assert ThreadingSupportImpl.isRecurringCallbackPaused();
         assert obj != null;
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* Synchronization is a no-op in single threaded mode. */
@@ -129,24 +134,22 @@ public class MonitorSupport {
         }
 
         ReentrantLock lockObject = null;
-        try (PauseRecurringCallback prc = new PauseRecurringCallback("No exception must flow out of the monitor code.")) {
-            try {
-                lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
-                lockObject.lock();
-            } catch (Throwable ex) {
-                /*
-                 * The foreign call from snippets to this method does not have an exception edge. So
-                 * we could miss an exception handler if we unwind an exception from this method.
-                 *
-                 * The only exception that the monitorenter bytecode is specified to throw is a
-                 * NullPointerException, and the null check already happens beforehand in the
-                 * snippet. So any exception would be surprising to users anyway.
-                 *
-                 * Finally, it would not be clear whether the monitor is locked or unlocked in case
-                 * of an exception.
-                 */
-                throw VMError.shouldNotReachHere("Unexpected exception in MonitorSupport.monitorEnter", ex);
-            }
+        try {
+            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
+            lockObject.lock();
+        } catch (Throwable ex) {
+            /*
+             * The foreign call from snippets to this method does not have an exception edge. So we
+             * could miss an exception handler if we unwind an exception from this method.
+             *
+             * The only exception that the monitorenter bytecode is specified to throw is a
+             * NullPointerException, and the null check already happens beforehand in the snippet.
+             * So any exception would be surprising to users anyway.
+             *
+             * Finally, it would not be clear whether the monitor is locked or unlocked in case of
+             * an exception.
+             */
+            throw VMError.shouldNotReachHere("Unexpected exception in MonitorSupport.monitorEnter", ex);
         }
     }
 
@@ -161,7 +164,12 @@ public class MonitorSupport {
     public static void monitorExit(Object obj) {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            monitorExit0(obj);
+            ThreadingSupportImpl.pauseRecurringCallback("No exception must flow out of the monitor code.");
+            try {
+                monitorExit0(obj);
+            } finally {
+                ThreadingSupportImpl.resumeRecurringCallback();
+            }
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
@@ -169,8 +177,8 @@ public class MonitorSupport {
 
     @RestrictHeapAccess(reason = "No longer uninterruptible", overridesCallers = true, access = Access.UNRESTRICTED)
     @SuppressWarnings("try")
-    public static void monitorExit0(Object obj) {
-
+    private static void monitorExit0(Object obj) {
+        assert ThreadingSupportImpl.isRecurringCallbackPaused();
         assert obj != null;
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* Synchronization is a no-op in single threaded mode. */
@@ -178,21 +186,19 @@ public class MonitorSupport {
         }
 
         ReentrantLock lockObject = null;
-        try (PauseRecurringCallback prc = new PauseRecurringCallback("No exception must flow out of the monitor code.")) {
-            try {
-                lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
-                lockObject.unlock();
-            } catch (Throwable ex) {
-                /*
-                 * The foreign call from snippets to this method does not have an exception edge. So
-                 * we could miss an exception handler if we unwind an exception from this method.
-                 *
-                 * Graal enforces structured locking and unlocking. This is a restriction compared
-                 * to the Java Virtual Machine Specification, but it ensures that we never need to
-                 * throw an IllegalMonitorStateException.
-                 */
-                throw VMError.shouldNotReachHere("Unexpected exception in MonitorSupport.monitorExit", ex);
-            }
+        try {
+            lockObject = ImageSingletons.lookup(MonitorSupport.class).getOrCreateMonitor(obj, true);
+            lockObject.unlock();
+        } catch (Throwable ex) {
+            /*
+             * The foreign call from snippets to this method does not have an exception edge. So we
+             * could miss an exception handler if we unwind an exception from this method.
+             *
+             * Graal enforces structured locking and unlocking. This is a restriction compared to
+             * the Java Virtual Machine Specification, but it ensures that we never need to throw an
+             * IllegalMonitorStateException.
+             */
+            throw VMError.shouldNotReachHere("Unexpected exception in MonitorSupport.monitorExit", ex);
         }
     }
 
