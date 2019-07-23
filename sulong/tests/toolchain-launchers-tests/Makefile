@@ -66,7 +66,7 @@ define CHECK_BC_SECTION
 	objdump -h -j .llvmbc  $(1) > /dev/null || ( echo No bitcode section in $(1) ; false )
 endef
 define CHECK_BC_FILE
-	( file $(1) | grep "LLVM IR bitcode" ) > /dev/null || ( echo Not a bitcode file: $(1) ; false )
+	( od -t x4 -N 4 $(1) | grep "dec04342" ) > /dev/null || ( echo Not a bitcode file: $(1) ; false )
 endef
 
 ifeq ($(OS), darwin)
