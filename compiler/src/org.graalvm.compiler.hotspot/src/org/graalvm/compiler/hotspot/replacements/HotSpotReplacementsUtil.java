@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.StoreHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -768,6 +769,9 @@ public class HotSpotReplacementsUtil {
 
     @NodeIntrinsic(value = LoadHubNode.class)
     public static native KlassPointer loadHubIntrinsic(Object object);
+
+    @NodeIntrinsic(value = LoadHubOrNullNode.class)
+    public static native KlassPointer loadHubOrNullIntrinsic(Object object);
 
     public static final LocationIdentity CLASS_STATE_LOCATION = NamedLocationIdentity.mutable("ClassState");
 

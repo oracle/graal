@@ -26,8 +26,8 @@ package com.oracle.svm.core.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
+import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.nodes.spi.StampProvider;
@@ -38,19 +38,19 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateStampProvider implements StampProvider {
 
-    private final Stamp hubStamp;
+    private final AbstractPointerStamp hubStamp;
 
     public SubstrateStampProvider(MetaAccessProvider metaAccess) {
         this.hubStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(DynamicHub.class)));
     }
 
     @Override
-    public Stamp createHubStamp(ObjectStamp object) {
+    public AbstractPointerStamp createHubStamp(ObjectStamp object) {
         return hubStamp;
     }
 
     @Override
-    public Stamp createMethodStamp() {
+    public AbstractPointerStamp createMethodStamp() {
         throw unimplemented();
     }
 }

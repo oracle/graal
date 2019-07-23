@@ -51,12 +51,12 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * Loads an object's hub. The object is not null-checked by this operation.
+ * Loads an object's hub, or null if the object is null.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class LoadHubNode extends FloatingNode implements Lowerable, Canonicalizable, Virtualizable {
+public final class LoadHubOrNullNode extends FloatingNode implements Lowerable, Canonicalizable, Virtualizable {
 
-    public static final NodeClass<LoadHubNode> TYPE = NodeClass.create(LoadHubNode.class);
+    public static final NodeClass<LoadHubOrNullNode> TYPE = NodeClass.create(LoadHubOrNullNode.class);
     @Input ValueNode value;
 
     public ValueNode getValue() {
@@ -65,11 +65,11 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
 
     private static AbstractPointerStamp hubStamp(StampProvider stampProvider, ValueNode value) {
         assert value.stamp(NodeView.DEFAULT) instanceof ObjectStamp;
-        return stampProvider.createHubStamp(((ObjectStamp) value.stamp(NodeView.DEFAULT)));
+        return stampProvider.createHubStamp(((ObjectStamp) value.stamp(NodeView.DEFAULT))).asMaybeNull();
     }
 
     public static ValueNode create(ValueNode value, StampProvider stampProvider, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        final AbstractPointerStamp stamp = hubStamp(stampProvider, value);
+        AbstractPointerStamp stamp = hubStamp(stampProvider, value);
         return create(value, stamp, metaAccess, constantReflection);
     }
 
@@ -78,14 +78,14 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
         if (synonym != null) {
             return synonym;
         }
-        return new LoadHubNode(stamp, value);
+        return new LoadHubOrNullNode(stamp, value);
     }
 
-    public LoadHubNode(@InjectedNodeParameter StampProvider stampProvider, ValueNode value) {
+    public LoadHubOrNullNode(@InjectedNodeParameter StampProvider stampProvider, ValueNode value) {
         this(hubStamp(stampProvider, value), value);
     }
 
-    public LoadHubNode(Stamp stamp, ValueNode value) {
+    public LoadHubOrNullNode(Stamp stamp, ValueNode value) {
         super(TYPE, stamp);
         this.value = value;
     }
@@ -101,7 +101,7 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
             NodeView view = NodeView.from(tool);
             MetaAccessProvider metaAccess = tool.getMetaAccess();
             ValueNode curValue = getValue();
-            ValueNode newNode = findSynonym(curValue, stamp(view), metaAccess, tool.getConstantReflection());
+            ValueNode newNode = findSynonym(curValue, (AbstractPointerStamp) stamp(view), metaAccess, tool.getConstantReflection());
             if (newNode != null) {
                 return newNode;
             }
@@ -109,12 +109,9 @@ public final class LoadHubNode extends FloatingNode implements Lowerable, Canoni
         return this;
     }
 
-    public static ValueNode findSynonym(ValueNode curValue, Stamp stamp, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        if (!GeneratePIC.getValue(curValue.getOptions())) {
-            TypeReference type = StampTool.typeReferenceOrNull(curValue);
-            if (type != null && type.isExact()) {
-                return ConstantNode.forConstant(stamp, constantReflection.asObjectHub(type.getType()), metaAccess);
-            }
+    public static ValueNode findSynonym(ValueNode curValue, AbstractPointerStamp stamp, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        if (StampTool.isPointerNonNull(stamp)) {
+            return LoadHubNode.create(curValue, stamp.asNonNull(), metaAccess, constantReflection);
         }
         return null;
     }
