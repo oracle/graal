@@ -37,7 +37,9 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Only one thread at a time can execute {@linkplain VMOperation}s (see
- * {@linkplain VMOperationControl}).
+ * {@linkplain VMOperationControl}). While executing a VM operation, it is guaranteed that the
+ * yellow zone is enabled and that recurring callbacks are paused. This is necessary to avoid
+ * unexpected exceptions while executing critical code.
  */
 public abstract class VMOperation {
     private final String name;

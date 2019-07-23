@@ -170,29 +170,25 @@ public final class FeebleReferenceList<T> {
                 return result;
             }
 
-            /**
-             * TODO: We have a potential race condition here:
-             * <ul>
-             * <li>Thread A executes pop(), the queue is empty, null is returned.</li>
-             * <li>Thread A gets blocked by a safepoint between pop() and the VMCondition.block()
-             * that is called somewhere in await().</li>
-             * <li>The GC pushes elements to the queue and sends a notification that new elements
-             * were queued</li>
-             * <li>Thread A executes VMCondition.block() and blocks even though new elements were
-             * queued in the meanwhile.</li>
-             * </ul>
+            /*-
+             * TODO: We have a potential race condition here, see GR-17276:
+             * - Thread A executes pop(), the queue is empty, null is returned.
+             * - Thread A gets blocked by a safepoint between pop() and the VMCondition.block()
+             * that is called somewhere in await().
+             * - The GC pushes elements to the queue and sends a notification that new elements
+             * were queued
+             * - Thread A executes VMCondition.block() and blocks even though new elements were
+             * queued in the meanwhile.
              */
             if (Thread.interrupted()) {
                 throw preallocatedInterruptedException;
             }
-            /**
-             * TODO: We have a potential race condition here:
-             * <ul>
-             * <li>Thread A executes Thread.interrupted() - this returns false.</li>
-             * <li>Thread B interrupts thread A. This sets the interrupted flag and wakes up all
-             * threads that are currently waiting for feeble references.</li>
-             * <li>Thread A executes await() and gets blocked.</li>
-             * </ul>
+            /*-
+             * TODO: We have a potential race condition here, see GR-17276:
+             * - Thread A executes Thread.interrupted() - this returns false.
+             * - Thread B interrupts thread A. This sets the interrupted flag and wakes up all
+             * threads that are currently waiting for feeble references.
+             * - Thread A executes await() and gets blocked.
              */
 
             /* Either wait forever or for however long is requested. */

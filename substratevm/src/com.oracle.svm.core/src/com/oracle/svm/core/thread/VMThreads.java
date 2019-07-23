@@ -283,6 +283,7 @@ public abstract class VMThreads {
         }
         // Signal that the VMThreads list has changed.
         THREAD_LIST_CONDITION.broadcast();
+        // At this point, it is guaranteed that all other threads were detached.
 
         singleton().freeIsolateThread(thread);
     }

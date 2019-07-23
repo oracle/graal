@@ -354,6 +354,8 @@ public abstract class JavaThreads {
 
     /** Wait (im)patiently for the VMThreads list to drain. */
     private static boolean waitForTearDown() {
+        assert isApplicationThread(CurrentIsolate.getCurrentThread()) : "we count the application threads until only the current one remains";
+
         final Log trace = Log.noopLog().string("[JavaThreads.waitForTearDown:").newline();
         final long warningNanos = SubstrateOptions.getTearDownWarningNanos();
         final String warningMessage = "JavaThreads.waitForTearDown is taking too long.";
@@ -369,7 +371,6 @@ public abstract class JavaThreads {
             final long previousLoopNanos = loopNanos;
             operation.enqueue();
             if (operation.getCount() == 1) {
-                assert isApplicationThread(CurrentIsolate.getCurrentThread());
                 trace.string("  returns true]").newline();
                 return true;
             }
