@@ -52,7 +52,8 @@ matrix:
   - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
-  - env: JDK="jdk11" GATE="build" PRIMARY="substratevm"
+# GR-16977
+#  - env: JDK="jdk11" GATE="build,test,helloworld" PRIMARY="substratevm"
 
 install:
   - |

@@ -45,7 +45,6 @@ import org.graalvm.component.installer.os.DefaultFileOperations;
 import org.graalvm.component.installer.os.WindowsFileOperations;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.remote.FileDownloader;
-import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.test.Handler;
 import org.graalvm.component.installer.remote.RemoteComponentParam;
 import org.graalvm.component.installer.remote.CatalogIterable.CatalogItemParam;
@@ -251,11 +250,6 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     @Override
     public FileDownloader configureDownloader(ComponentInfo ci, FileDownloader dn) {
         return dn;
-    }
-
-    @Override
-    public MetadataLoader createLocalFileLoader(ComponentInfo ci, Path localFile, boolean verify) throws IOException {
-        return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }
 
     @Override

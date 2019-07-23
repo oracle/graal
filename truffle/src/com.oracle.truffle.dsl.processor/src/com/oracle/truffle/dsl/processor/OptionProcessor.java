@@ -78,6 +78,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionMap;
 import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.Option;
@@ -257,6 +258,13 @@ public class OptionProcessor extends AbstractProcessor {
             return false;
         }
 
+        boolean optionMap = false;
+        TypeMirror optionMapType = ElementUtils.getTypeElement(processingEnv, OptionMap.class.getName()).asType();
+        List<? extends TypeMirror> typeArguments = ((DeclaredType) fieldType).getTypeArguments();
+        if (typeArguments.size() == 1) {
+            optionMap = types.isSubtype(typeArguments.get(0), types.erasure(optionMapType));
+        }
+
         String help = annotation.help();
         if (help.length() != 0) {
             char firstChar = help.charAt(0);
@@ -272,6 +280,13 @@ public class OptionProcessor extends AbstractProcessor {
             optionName = fieldName;
         } else {
             optionName = annotation.name();
+        }
+
+        // Applying this restriction to all options requires changes in some language
+        // implementations.
+        if (optionMap && optionName.contains(".")) {
+            error(element, elementAnnotation, "Option (maps) cannot contain a '.' in the name");
+            return false;
         }
 
         boolean deprecated = annotation.deprecated();
@@ -297,7 +312,7 @@ public class OptionProcessor extends AbstractProcessor {
                     name = group + "." + optionName;
                 }
             }
-            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability));
+            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap));
         }
         return true;
     }
@@ -353,15 +368,42 @@ public class OptionProcessor extends AbstractProcessor {
         CodeTreeBuilder builder = getMethod.createBuilder();
 
         String nameVariableName = getMethod.getParameters().get(0).getSimpleName().toString();
-        builder.startSwitch().string(nameVariableName).end().startBlock();
+
+        boolean elseIf = false;
         for (OptionInfo info : model.options) {
+            if (!info.optionMap) {
+                continue;
+            }
+            elseIf = builder.startIf(elseIf);
+            // Prefix options must be delimited by a '.' or match exactly.
+            // e.g. for java.Props: java.Props.Threshold and java.Props match, but
+            // java.PropsThreshold doesn't.
+            builder.startCall(nameVariableName, "startsWith").doubleQuote(info.name + ".").end();
+            builder.string(" || ");
+            builder.startCall(nameVariableName, "equals").doubleQuote(info.name).end();
+
+            builder.end().startBlock();
+            builder.startReturn().tree(createBuildOptionDescriptor(context, info)).end();
+            builder.end();
+        }
+
+        boolean startSwitch = false;
+        for (OptionInfo info : model.options) {
+            if (info.optionMap) {
+                continue;
+            }
+            if (!startSwitch) {
+                builder.startSwitch().string(nameVariableName).end().startBlock();
+                startSwitch = true;
+            }
             builder.startCase().doubleQuote(info.name).end().startCaseBlock();
             builder.startReturn().tree(createBuildOptionDescriptor(context, info)).end();
             builder.end(); // case
         }
-        builder.end(); // block
+        if (startSwitch) {
+            builder.end(); // block
+        }
         builder.returnNull();
-
         descriptors.add(getMethod);
 
         CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(optionDescriptorsType, "iterator"));
@@ -406,6 +448,7 @@ public class OptionProcessor extends AbstractProcessor {
         builder.startCall("", "help").doubleQuote(info.help).end();
         builder.startCall("", "category").staticReference(context.getType(OptionCategory.class), info.category.name()).end();
         builder.startCall("", "stability").staticReference(context.getType(OptionStability.class), info.stability.name()).end();
+
         builder.startCall("", "build").end();
         return builder.build();
     }
@@ -416,12 +459,13 @@ public class OptionProcessor extends AbstractProcessor {
         final String name;
         final String help;
         final boolean deprecated;
+        final boolean optionMap;
         final VariableElement field;
         final AnnotationMirror annotation;
         final OptionCategory category;
         final OptionStability stability;
 
-        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, OptionCategory category, OptionStability stability) {
+        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, OptionCategory category, OptionStability stability, boolean optionMap) {
             this.name = name;
             this.help = help;
             this.field = field;
@@ -429,6 +473,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.deprecated = deprecated;
             this.category = category;
             this.stability = stability;
+            this.optionMap = optionMap;
         }
 
         @Override

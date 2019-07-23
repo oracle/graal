@@ -35,10 +35,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -198,7 +200,7 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer());
         return this;
     }
 
@@ -715,6 +717,55 @@ final class Target_java_lang_Package {
             return SubstrateUtil.cast(pkg, Package.class);
         } else {
             return null;
+        }
+    }
+}
+
+@TargetClass(className = "jdk.internal.loader.BootLoader", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_loader_BootLoader {
+    @Substitute
+    static String[] getSystemPackageNames() {
+        return BootLoaderStaticUtils.packageNames.toArray(new String[BootLoaderStaticUtils.packageNames.size()]);
+    }
+
+    @Substitute
+    static Package getDefinedPackage(String name) {
+        if (BootLoaderStaticUtils.packageNames.contains(name.replace('.', '/'))) {
+            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                            null, null, null, null, null);
+            return SubstrateUtil.cast(pkg, Package.class);
+        } else {
+            return null;
+        }
+    }
+}
+
+final class BootLoaderStaticUtils {
+    static final Set<String> packageNames;
+
+    static {
+        final Package[] packages = new Helper().getPackages();
+        Set<String> set = new HashSet<>();
+        for (Package pkg : packages) {
+            set.add(pkg.getName());
+        }
+        packageNames = set;
+    }
+
+    static final class Helper extends ClassLoader {
+        @Override
+        protected Package[] getPackages() {
+            return super.getPackages();
+        }
+    }
+}
+
+@AutomaticFeature
+class JavaLangSubstituteFeature11 implements Feature {
+    @Override
+    public void duringSetup(final DuringSetupAccess access) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(BootLoaderStaticUtils.class, "Needed for getPackage() to work");
         }
     }
 }

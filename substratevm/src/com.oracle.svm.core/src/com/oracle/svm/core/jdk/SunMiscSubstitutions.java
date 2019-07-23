@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
-import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.function.Function;
@@ -41,9 +40,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -245,58 +242,6 @@ final class Target_sun_misc_MessageUtils {
     private static void toStdout(String msg) {
         Log.log().string(msg);
     }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_ref implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.ref." + annotation.className();
-        }
-    }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_ref.class, className = "Cleaner")
-final class Target_jdk_internal_ref_Cleaner {
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    static Target_jdk_internal_ref_Cleaner first;
-
-    /**
-     * Contrary to the comment on {@code sun.misc.Cleaner}.dummyQueue, in SubstrateVM the queue can
-     * have Cleaner instances on it, because SubstrateVM does not have a ReferenceHandler thread to
-     * clean instances, so SubstrateVM puts them on the queue and drains the queue after collections
-     * in {@link SunMiscSupport#drainCleanerQueue()}.
-     * <p>
-     * Cleaner instances that do bad things are even worse in SubstrateVM than they are in the
-     * HotSpot VM, because they are run on the thread that started a collection.
-     * <p>
-     * Changing the access from `private` to `protected`, and reinitializing to an empty queue.
-     */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
-
-    @Alias
-    native void clean();
-}
-
-@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_ref_CleanerImpl {
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
-    Target_jdk_internal_ref_PhantomCleanable phantomCleanableList;
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$WeakCleanableRef")//
-    Target_jdk_internal_ref_WeakCleanable weakCleanableList;
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$SoftCleanableRef")//
-    Target_jdk_internal_ref_SoftCleanable softCleanableList;
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.ref.ReferenceQueue")//
-    ReferenceQueue<Object> queue;
 }
 
 @TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK11OrLater.class)

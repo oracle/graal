@@ -75,11 +75,11 @@ $(RESULT_DIR)/%-linux-compile-fembed-bitcode.o: %.c
 
 $(RESULT_DIR)/%-linux-link-fembed-bitcode: %.c
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) -flto=full -Wl,--embed-bitcode -fuse-ld=lld -o $@ $<
+	$(QUIETLY) $(CLANG) -flto=full -Wl,--plugin-opt=embed-bitcode -fuse-ld=lld -o $@ $<
 
 $(RESULT_DIR)/%-linux-link-fembed-bitcode.so: %.c
 	@mkdir -p $(shell dirname $@)
-	$(QUIETLY) $(CLANG) -flto=full -Wl,--embed-bitcode -fuse-ld=lld -shared -fPIC -o $@ $<
+	$(QUIETLY) $(CLANG) -flto=full -Wl,--plugin-opt=embed-bitcode -fuse-ld=lld -shared -fPIC -o $@ $<
 endif
 else
 

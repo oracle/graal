@@ -27,6 +27,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+import sys
 import tarfile
 import os
 from os.path import join
@@ -35,6 +36,7 @@ import subprocess
 from argparse import ArgumentParser
 
 import mx
+import mx_gate
 import mx_subst
 import mx_sdk
 import re
@@ -49,6 +51,14 @@ import mx_testsuites
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
+from mx_testsuites import GlobNativeProject #pylint: disable=unused-import
+
+if sys.version_info[0] < 3:
+    def _decode(x):
+        return x
+else:
+    def _decode(x):
+        return x.decode()
 
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong")
@@ -155,8 +165,8 @@ def _sulong_gate_runner(args, tasks):
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: clangformatcheck()
     _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
-    _sulong_gate_unittest('Types', 'com.oracle.truffle.llvm.types.test', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.types.floating.test'])
-    _sulong_gate_unittest('Pipe', 'com.oracle.truffle.llvm.test', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
+    _sulong_gate_unittest('Types', 'SULONG_TEST', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.types.floating.test'])
+    _sulong_gate_unittest('Pipe', 'SULONG_TEST', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
     _sulong_gate_testsuite('LLVM', 'llvm', tasks, args, tags=['llvm', 'sulongCoverage'])
     _sulong_gate_testsuite('NWCC', 'nwcc', tasks, args, tags=['nwcc', 'sulongCoverage'])
     _sulong_gate_testsuite('GCCParserTorture', 'parserTorture', tasks, args, tags=['parser', 'sulongCoverage'], vmArgs=['-Dpolyglot.llvm.parseOnly=true'])
@@ -173,6 +183,10 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.MainArgsTest'])
     _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
     _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.VAArgsTest'])
+    with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
+        if t:
+            mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
+            mx.command_function('build')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
 
 
 add_gate_runner(_suite, _sulong_gate_runner)
@@ -255,7 +269,7 @@ def checkCFile(targetFile):
     if clangFormat is None:
         exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
     formatCommand = [clangFormat, targetFile]
-    formattedContent = subprocess.check_output(formatCommand).splitlines()
+    formattedContent = _decode(subprocess.check_output(formatCommand)).splitlines()
     with open(targetFile) as f:
         originalContent = f.read().splitlines()
     if not formattedContent == originalContent:
@@ -507,10 +521,10 @@ def getVersion(program):
     """executes --version on the supplied program and returns the version string"""
     assert program is not None
     try:
-        versionString = subprocess.check_output([program, '--version'])
+        versionString = _decode(subprocess.check_output([program, '--version']))
     except subprocess.CalledProcessError as e:
         # on my machine, e.g., opt returns a non-zero opcode even on success
-        versionString = e.output
+        versionString = _decode(e.output)
     return versionString
 
 def getLLVMVersion(llvmProgram):
@@ -536,6 +550,30 @@ def getClangImplicitArgs():
     return " ".join(getLLVMExplicitArgs(mainLLVMVersion))
 
 mx_subst.path_substitutions.register_no_arg('clangImplicitArgs', getClangImplicitArgs)
+
+
+def get_mx_exe():
+    mxpy = join(mx._mx_home, 'mx.py')
+    commands = [sys.executable, '-u', mxpy, '--java-home=' + mx.get_jdk().home]
+    return ' '.join(commands)
+
+
+mx_subst.path_substitutions.register_no_arg('mx_exe', get_mx_exe)
+
+
+def get_jacoco_setting():
+    return mx_gate._jacoco
+
+
+mx_subst.path_substitutions.register_no_arg('jacoco', get_jacoco_setting)
+
+
+mx.add_argument('--jacoco-exec-file', help='the coverage result file of JaCoCo', default='jacoco.exec')
+
+
+def mx_post_parse_cmd_line(opts):
+    mx_gate.JACOCO_EXEC = opts.jacoco_exec_file
+
 
 def getGCCVersion(gccProgram):
     """executes the program with --version and extracts the GCC version string"""
@@ -684,6 +722,132 @@ class SulongDocsProject(ArchiveProject):
 
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
+
+_toolchains = {}
+
+
+def _get_toolchain(toolchain_name):
+    if toolchain_name not in _toolchains:
+        mx.abort("Toolchain '{}' does not exists! Known toolchains {}".format(toolchain_name, ", ".join(_toolchains.keys())))
+    return _toolchains[toolchain_name]
+
+
+def _get_toolchain_tool(name_tool):
+    name, tool = name_tool.split(",", 2)
+    return _get_toolchain(name).get_toolchain_tool(tool)
+
+
+mx_subst.path_substitutions.register_with_arg('toolchainGetToolPath', _get_toolchain_tool)
+mx_subst.path_substitutions.register_with_arg('toolchainGetIdentifier',
+                                              lambda name: _get_toolchain(name).get_toolchain_subdir())
+
+
+class ToolchainConfig(object):
+    _tool_map = {
+        "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
+        "CXX": ["graalvm-{name}-clang++", "graalvm-clang++", "clang++", "c++", "g++"],
+    }
+
+    def __init__(self, name, dist, bootstrap_dist, tools, suite):
+        self.name = name
+        self.dist = dist
+        self.bootstrap_dist = bootstrap_dist
+        self.tools = tools
+        self.suite = suite
+        self.mx_command = self.name + '-toolchain'
+        self.tool_map = {tool: [alias.format(name=name) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
+        self.exe_map = {exe: tool for tool, aliases in self.tool_map.items() for exe in aliases}
+        # register mx command
+        mx.update_commands(_suite, {
+            self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],
+        })
+        if self.name in _toolchains:
+            mx.abort("Toolchain '{}' registered twice".format(self.name))
+        _toolchains[self.name] = self
+
+    def _toolchain_helper(self, args=None, out=None):
+        parser = ArgumentParser(prog='mx ' + self.mx_command, description='launch toolchain commands',
+                                epilog='Additional arguments are forwarded to the LLVM image command.', add_help=False)
+        parser.add_argument('command', help='toolchain command', metavar='<command>',
+                            choices=self._supported_exes())
+        parsed_args, tool_args = parser.parse_known_args(args)
+        main = self._tool_to_main(self.exe_map[parsed_args.command])
+        if "JACOCO" in os.environ:
+            mx_gate._jacoco = os.environ["JACOCO"]
+        return mx.run_java(mx.get_runtime_jvm_args([self.dist]) + [main] + tool_args, out=out)
+
+    def _supported_exes(self):
+        return [exe for tool in self._supported_tools() for exe in self._tool_to_aliases(tool)]
+
+    def _supported_tools(self):
+        return self.tools.keys()
+
+    def _tool_to_exe(self, tool):
+        return self._tool_to_aliases(tool)[0]
+
+    def _tool_to_aliases(self, tool):
+        self._check_tool(tool)
+        return self.tool_map[tool]
+
+    def _tool_to_main(self, tool):
+        self._check_tool(tool)
+        return self.tools[tool]
+
+    def _check_tool(self, tool):
+        if tool not in self._supported_tools():
+            mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist, tool))
+
+    def get_toolchain_tool(self, tool):
+        return os.path.join(mx.distribution(self.bootstrap_dist).get_output(), 'bin', self._tool_to_exe(tool))
+
+    def get_toolchain_subdir(self):
+        return self.name
+
+    def get_launcher_configs(self):
+        return [
+            mx_sdk.LauncherConfig(
+                destination=os.path.join(self.name, 'bin', self._tool_to_exe(tool)),
+                jar_distributions=[self.suite.name + ":" + self.dist],
+                main_class=self._tool_to_main(tool),
+                build_args=[
+                    '--macro:truffle',  # we need tool:truffle so that Engine.findHome works
+                    '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
+                ],
+                is_main_launcher=False,
+                default_symlinks=False,
+                links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)],
+            ) for tool in self._supported_tools()
+        ]
+
+
+class ToolchainLauncherProject(mx.NativeProject):
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **attrs):
+        results = ["bin/" + e for e in suite.toolchain._supported_exes()]
+        projectDir = attrs.pop('dir', None)
+        if projectDir:
+            d = join(suite.dir, projectDir)
+        elif subDir is None:
+            d = join(suite.dir, name)
+        else:
+            d = join(suite.dir, subDir, name)
+        super(ToolchainLauncherProject, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **attrs)
+
+    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
+        env = super(ToolchainLauncherProject, self).getBuildEnv(replaceVar=replaceVar)
+        env['RESULTS'] = ' '.join(self.results)
+        return env
+
+
+_suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
+                                   # unfortunately, we cannot define those in the suite.py because graalvm component
+                                   # registration runs before the suite is properly initialized
+                                   tools={
+                                       "CC": "com.oracle.truffle.llvm.toolchain.launchers.Clang",
+                                       "CXX": "com.oracle.truffle.llvm.toolchain.launchers.ClangXX",
+                                   },
+                                   suite=_suite)
+
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Sulong',
@@ -691,7 +855,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=['sulong:SULONG'],
+    truffle_jars=['sulong:SULONG', 'sulong:SULONG_API'],
     support_distributions=[
         'sulong:SULONG_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
@@ -703,9 +867,22 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
             build_args=[],
             language='llvm',
-        )
-    ],
+        ),
+    ] + _suite.toolchain.get_launcher_configs()
 ))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
+    suite=_suite,
+    name='LLVM.org toolchain',
+    short_name='llp',
+    installable=True,
+    installable_id='llvm-toolchain',
+    dir_name='jre/lib/llvm',
+    license_files=[],
+    third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
+    support_distributions=['sulong:SULONG_LLVM_ORG']
+))
+
 
 COPYRIGHT_HEADER_BSD = """\
 /*
@@ -745,6 +922,7 @@ COPYRIGHT_HEADER_BSD = """\
 def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
+
 
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],

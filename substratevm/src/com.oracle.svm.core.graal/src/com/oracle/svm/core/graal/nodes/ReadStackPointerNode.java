@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import jdk.vm.ci.code.Register;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -34,8 +35,6 @@ import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import com.oracle.svm.core.FrameAccess;
-
-import jdk.vm.ci.code.RegisterValue;
 
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public final class ReadStackPointerNode extends FixedWithNextNode implements LIRLowerable {
@@ -48,7 +47,7 @@ public final class ReadStackPointerNode extends FixedWithNextNode implements LIR
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
-        RegisterValue input = tool.getRegisterConfig().getFrameRegister().asValue(tool.getLIRKind(FrameAccess.getWordStamp()));
-        gen.setResult(this, tool.emitMove(input));
+        Register register = tool.getRegisterConfig().getFrameRegister();
+        gen.setResult(this, tool.emitReadRegister(register, tool.getLIRKind(FrameAccess.getWordStamp())));
     }
 }

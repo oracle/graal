@@ -843,9 +843,8 @@ public class Socket {
     @Platforms(Platform.LINUX.class)
     public static native int SO_BSDCOMPAT();
 
-    // [not present on old Linux systems]
-    // @CConstant
-    // public static native int SO_REUSEPORT();
+    @CConstant
+    public static native int SO_REUSEPORT();
 
     @CConstant
     @Platforms(Platform.LINUX.class)

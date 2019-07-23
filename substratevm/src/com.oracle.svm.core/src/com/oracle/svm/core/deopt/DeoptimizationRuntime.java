@@ -32,7 +32,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionDecoder;
 import com.oracle.svm.core.log.Log;
@@ -100,28 +99,25 @@ public class DeoptimizationRuntime {
         int debugId = Deoptimizer.decodeDebugId(actionAndReason);
         log.string("    debugId: ").signed(debugId).string("  speculation: ").string(Objects.toString(speculation)).newline();
 
-        CodeInfoQueryResult info = CodeInfoTable.lookupCodeInfoQueryResult(ip);
-        if (info != null) {
-            NodeSourcePosition sourcePosition = DeoptimizationSourcePositionDecoder.decode(debugId, info);
-            if (sourcePosition != null) {
-                log.string("    stack trace that triggered deoptimization:").newline();
-                NodeSourcePosition cur = sourcePosition;
-                while (cur != null) {
-                    log.string("        at ");
-                    if (cur.getMethod() != null) {
-                        StackTraceElement element = cur.getMethod().asStackTraceElement(cur.getBCI());
-                        if (element.getFileName() != null && element.getLineNumber() >= 0) {
-                            log.string(element.toString());
-                        } else {
-                            log.string(cur.getMethod().format("%H.%n(%p)")).string(" bci ").signed(cur.getBCI());
-                        }
+        NodeSourcePosition sourcePosition = DeoptimizationSourcePositionDecoder.decode(debugId, ip);
+        if (sourcePosition != null) {
+            log.string("    stack trace that triggered deoptimization:").newline();
+            NodeSourcePosition cur = sourcePosition;
+            while (cur != null) {
+                log.string("        at ");
+                if (cur.getMethod() != null) {
+                    StackTraceElement element = cur.getMethod().asStackTraceElement(cur.getBCI());
+                    if (element.getFileName() != null && element.getLineNumber() >= 0) {
+                        log.string(element.toString());
                     } else {
-                        log.string("[unknown method]");
+                        log.string(cur.getMethod().format("%H.%n(%p)")).string(" bci ").signed(cur.getBCI());
                     }
-                    log.newline();
-
-                    cur = cur.getCaller();
+                } else {
+                    log.string("[unknown method]");
                 }
+                log.newline();
+
+                cur = cur.getCaller();
             }
         }
     }

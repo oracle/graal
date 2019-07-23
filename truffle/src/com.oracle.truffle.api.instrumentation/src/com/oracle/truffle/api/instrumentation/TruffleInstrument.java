@@ -357,7 +357,7 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public Map<String, LanguageInfo> getLanguages() {
-            return InstrumentAccessor.engineAccess().getLanguages(vmObject);
+            return InstrumentAccessor.engineAccess().getInternalLanguages(vmObject);
         }
 
         /**

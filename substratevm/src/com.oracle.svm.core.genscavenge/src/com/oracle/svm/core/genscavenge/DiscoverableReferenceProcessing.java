@@ -209,22 +209,19 @@ public class DiscoverableReferenceProcessing {
         final boolean refYoung = (!refNull) && youngGen.slowlyFindPointer(refPointer);
         final boolean refOldFrom = (!refNull) && oldGen.slowlyFindPointerInFromSpace(refPointer);
         final boolean refOldTo = (!refNull) && oldGen.slowlyFindPointerInToSpace(refPointer);
-        final boolean refOldPinnedFrom = (!refNull) && oldGen.slowlyFindPointerInPinnedFromSpace(refPointer);
-        final boolean refOldPinnedTo = (!refNull) && oldGen.slowlyFindPointerInPinnedToSpace(refPointer);
         /* The referent might already have survived, or might not have. */
-        if (!(refNull || refYoung || refBootImage || refOldFrom || refOldPinnedFrom)) {
+        if (!(refNull || refYoung || refBootImage || refOldFrom)) {
             final Log witness = Log.log();
             witness.string("[DiscoverableReference.verify:");
             witness.string("  epoch: ").unsigned(HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch());
             witness.string("  refBootImage: ").bool(refBootImage);
             witness.string("  refYoung: ").bool(refYoung);
             witness.string("  refOldFrom: ").bool(refOldFrom);
-            witness.string("  refOldPinnedFrom: ").bool(refOldPinnedFrom);
             witness.string("  referent should be in heap.");
             witness.string("]").newline();
             return false;
         }
-        assert (!(refOldTo || refOldPinnedTo)) : "referent should be in the heap.";
+        assert !refOldTo : "referent should be in the heap.";
         return true;
     }
 

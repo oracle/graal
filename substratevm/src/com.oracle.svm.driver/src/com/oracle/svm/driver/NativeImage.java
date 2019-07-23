@@ -368,6 +368,10 @@ public class NativeImage {
         default boolean buildFallbackImage() {
             return false;
         }
+
+        default String getAgentJAR() {
+            return null;
+        }
     }
 
     private static class DefaultBuildConfiguration implements BuildConfiguration {
@@ -507,6 +511,12 @@ public class NativeImage {
             buildArgs.addAll(args);
             return buildArgs;
         }
+
+        @Override
+        public String getAgentJAR() {
+            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar")).toAbsolutePath().toString();
+        }
+
     }
 
     private ArrayList<String> createFallbackBuildArgs() {
@@ -795,7 +805,7 @@ public class NativeImage {
                 if (classpathEntry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
                     try {
                         jarFileMatches = Files.list(classpathEntry.getParent())
-                                        .filter(p -> p.getFileName().toString().toLowerCase().endsWith(".jar"))
+                                        .filter(ClasspathUtils::isJar)
                                         .collect(Collectors.toList());
                     } catch (NoSuchFileException e) {
                         /* Fallthrough */
@@ -875,10 +885,24 @@ public class NativeImage {
         args.apply(true);
     }
 
-    static boolean processManifestMainAttributes(Path jarFilePath, BiConsumer<Path, Attributes> manifestConsumer) {
-        if (Files.isDirectory(jarFilePath)) {
-            return false;
+    static void processManifestMainAttributes(Path path, BiConsumer<Path, Attributes> manifestConsumer) {
+        if (path.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
+            if (!Files.isDirectory(path.getParent())) {
+                throw NativeImage.showError("Cannot expand wildcard: '" + path + "' is not a directory");
+            }
+            try {
+                Files.list(path.getParent())
+                                .filter(ClasspathUtils::isJar)
+                                .forEach(p -> processJarManifestMainAttributes(p, manifestConsumer));
+            } catch (IOException e) {
+                throw NativeImage.showError("Error while expanding wildcard for '" + path + "'", e);
+            }
+        } else if (!Files.isDirectory(path)) {
+            processJarManifestMainAttributes(path, manifestConsumer);
         }
+    }
+
+    static boolean processJarManifestMainAttributes(Path jarFilePath, BiConsumer<Path, Attributes> manifestConsumer) {
         try (JarFile jarFile = new JarFile(jarFilePath.toFile())) {
             Manifest manifest = jarFile.getManifest();
             if (manifest == null) {
@@ -948,6 +972,11 @@ public class NativeImage {
         Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
         if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
             replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
+        }
+
+        /* Enable class initializaiton tracing agent. */
+        if (traceClassInitialization()) {
+            imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR());
         }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
@@ -1049,6 +1078,17 @@ public class NativeImage {
         return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 
+    private boolean traceClassInitialization() {
+        String lastTracelArgument = null;
+        for (String imageBuilderArg : imageBuilderArgs) {
+            if (imageBuilderArg.contains("TraceClassInitialization")) {
+                lastTracelArgument = imageBuilderArg;
+            }
+        }
+
+        return "-H:+TraceClassInitialization".equals(lastTracelArgument);
+    }
+
     private String mainClass;
     private String imageName;
     private Path imagePath;
@@ -1070,6 +1110,7 @@ public class NativeImage {
         if (!bcp.isEmpty()) {
             command.add(bcp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
+
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
         if (IS_AOT && OS.getCurrent().hasProcFS) {

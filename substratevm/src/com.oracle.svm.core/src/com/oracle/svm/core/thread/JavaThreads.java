@@ -26,7 +26,6 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
@@ -523,7 +522,7 @@ public abstract class JavaThreads {
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
-            return StackTraceUtils.getStackTrace(false, readCallerStackPointer(), readReturnAddress());
+            return StackTraceUtils.getStackTrace(false, readCallerStackPointer());
         } else {
             return StackTraceUtils.getStackTrace(false, thread);
         }

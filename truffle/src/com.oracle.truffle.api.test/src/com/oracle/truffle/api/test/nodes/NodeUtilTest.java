@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.nodes;
 
+import static com.oracle.truffle.api.test.OSUtils.toUnixString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -279,7 +280,7 @@ public class NodeUtilTest {
         assertEquals("" +
                         "  " + testNodeSimpleName + "\n" +
                         "    child0 = " + testNodeSimpleName + "\n" +
-                        "    child1 = " + testNodeSimpleName + "\n", output);
+                        "    child1 = " + testNodeSimpleName + "\n", toUnixString(output));
 
         TestForEachNode test2 = new TestForEachNode(4);
         test2.firstChild = new TestNode();
@@ -294,7 +295,7 @@ public class NodeUtilTest {
                         "      child0 = " + testNodeSimpleName + "\n" +
                         "      child1 = " + testNodeSimpleName + "\n" +
                         "    children[3] = " + testNodeSimpleName + "\n" +
-                        "    lastChild = " + testNodeSimpleName + "\n", output);
+                        "    lastChild = " + testNodeSimpleName + "\n", toUnixString(output));
         TestBlockResNode block = new TestBlockResNode(new Node[]{new TestNode(), new TestNode()}, new TestNode());
         String testBlockResNodeSimpleName = getSimpleName(TestBlockResNode.class);
         output = NodeUtil.printCompactTreeToString(block);
@@ -302,12 +303,12 @@ public class NodeUtilTest {
                         "  " + testBlockResNodeSimpleName + "\n" +
                         "    children[0] = " + testNodeSimpleName + "\n" +
                         "    children[1] = " + testNodeSimpleName + "\n" +
-                        "    resultNode = " + testNodeSimpleName + "\n", output);
+                        "    resultNode = " + testNodeSimpleName + "\n", toUnixString(output));
         block = new TestBlockResNode(null, new TestNode());
         output = NodeUtil.printCompactTreeToString(block);
         assertEquals("" +
                         "  " + testBlockResNodeSimpleName + "\n" +
-                        "    resultNode = " + testNodeSimpleName + "\n", output);
+                        "    resultNode = " + testNodeSimpleName + "\n", toUnixString(output));
     }
 
     private static int iterate(Iterator<Node> iterator) {

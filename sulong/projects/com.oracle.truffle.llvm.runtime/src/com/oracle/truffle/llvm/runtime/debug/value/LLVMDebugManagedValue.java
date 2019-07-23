@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.debug.value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
@@ -186,11 +185,7 @@ public abstract class LLVMDebugManagedValue extends LLVMDebuggerValue {
         @Override
         @TruffleBoundary
         public String toString() {
-            if (value instanceof LLVMIVarBit) {
-                return ((LLVMIVarBit) value).asBigInteger().toString();
-            } else {
-                return String.valueOf(value);
-            }
+            return String.valueOf(value);
         }
 
         @Override

@@ -152,7 +152,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError("Invalid " + debugAttach + " option: " + debugAttachArg);
                 }
             }
-            nativeImage.addImageBuilderJavaArgs("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
+            /* Using agentlib to allow interoperability with other agents */
+            nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
             return true;
         }
 
@@ -221,7 +222,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (Files.isDirectory(filePath)) {
             NativeImage.showError(filePath + " is a directory. (" + requireValidJarFileMessage + ")");
         }
-        if (!NativeImage.processManifestMainAttributes(filePath, nativeImage::handleMainClassAttribute)) {
+        if (!NativeImage.processJarManifestMainAttributes(filePath, nativeImage::handleMainClassAttribute)) {
             NativeImage.showError("No manifest in " + filePath);
         }
         nativeImage.addCustomImageClasspath(filePath);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ElfDynamicSection {
@@ -114,8 +116,8 @@ public final class ElfDynamicSection {
         return getEntry(DT_NEEDED);
     }
 
-    public List<String> getDTRunPath() {
-        return getEntry(DT_RUNPATH);
+    public Stream<String> getDTRunPathStream() {
+        return getEntryStream(DT_RUNPATH);
     }
 
     public List<String> getDTRPath() {
@@ -132,7 +134,11 @@ public final class ElfDynamicSection {
     }
 
     private List<String> getEntry(int tag) {
-        return Arrays.stream(entries).filter(e -> e.getTag() == tag).map(e -> getString(e.getValue())).collect(Collectors.toList());
+        return getEntryStream(tag).collect(Collectors.toList());
+    }
+
+    private Stream<String> getEntryStream(int tag) {
+        return Arrays.stream(entries).filter(e -> e.getTag() == tag).map(e -> getString(e.getValue()));
     }
 
     private String getString(long offset) {

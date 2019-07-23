@@ -62,6 +62,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -210,6 +212,7 @@ public class SubstrateUtil {
      * @return true if assertions are enabled.
      */
     @SuppressWarnings("all")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean assertionsEnabled() {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
@@ -219,9 +222,7 @@ public class SubstrateUtil {
     @NodeIntrinsic(BreakpointNode.class)
     public static native void breakpoint(Object arg0);
 
-    /**
-     * Fast power of 2 test.
-     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isPowerOf2(long value) {
         return (value & (value - 1)) == 0;
     }
@@ -375,17 +376,15 @@ public class SubstrateUtil {
         log.string("TopFrame info:").newline();
         log.indent(true);
         if (sp.isNonNull() && ip.isNonNull()) {
-            long totalFrameSize;
+            long totalFrameSize = getTotalFrameSize(sp, ip);
             DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
             if (deoptFrame != null) {
                 log.string("RSP ").zhex(sp.rawValue()).string(" frame was deoptimized:").newline();
                 log.string("SourcePC ").zhex(deoptFrame.getSourcePC().rawValue()).newline();
-                totalFrameSize = deoptFrame.getSourceTotalFrameSize();
-            } else {
-                log.string("Lookup TotalFrameSize in CodeInfoTable:").newline();
-                totalFrameSize = CodeInfoTable.lookupTotalFrameSize(ip);
+                log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
+            } else if (totalFrameSize != -1) {
+                log.string("TotalFrameSize in CodeInfoTable ").signed(totalFrameSize).newline();
             }
-            log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
 
             if (totalFrameSize == -1) {
                 log.string("Does not look like a Java Frame. Use JavaFrameAnchors to find LastJavaSP:").newline();
@@ -404,6 +403,29 @@ public class SubstrateUtil {
             }
         }
         log.indent(false);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    private static long getTotalFrameSize(Pointer sp, CodePointer ip) {
+        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
+        if (deoptFrame != null) {
+            return deoptFrame.getSourceTotalFrameSize();
+        }
+        CodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (codeInfo.isNonNull()) {
+            Object tether = CodeInfoAccess.acquireTether(codeInfo);
+            try {
+                return getTotalFrameSize0(ip, codeInfo);
+            } finally {
+                CodeInfoAccess.releaseTether(codeInfo, tether);
+            }
+        }
+        return -1;
+    }
+
+    @Uninterruptible(reason = "Wrap the now safe call to interruptibly look up the frame size.", calleeMustBe = false)
+    private static long getTotalFrameSize0(CodePointer ip, CodeInfo codeInfo) {
+        return CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
     }
 
     @NeverInline("catch implicit exceptions")
@@ -496,7 +518,7 @@ public class SubstrateUtil {
     private static void dumpStacktraceStage0(Log log, Pointer sp, CodePointer ip) {
         log.string("Stacktrace Stage0:").newline();
         log.indent(true);
-        JavaStackWalker.walkCurrentThread(sp, ip, Stage0Visitor);
+        JavaStackWalker.walkCurrentThreadWithForcedIP(sp, ip, Stage0Visitor);
         log.indent(false);
     }
 
@@ -504,7 +526,7 @@ public class SubstrateUtil {
     private static void dumpStacktraceStage1(Log log, Pointer sp, CodePointer ip) {
         log.string("Stacktrace Stage1:").newline();
         log.indent(true);
-        JavaStackWalker.walkCurrentThread(sp, ip, Stage1Visitor);
+        JavaStackWalker.walkCurrentThreadWithForcedIP(sp, ip, Stage1Visitor);
         log.indent(false);
     }
 

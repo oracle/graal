@@ -1,0 +1,10 @@
+{
+    "bundles": [
+        { "name" : "org.graalvm.component.installer.Bundle" },
+        { "name" : "org.graalvm.component.installer.commands.Bundle" },
+        { "name" : "org.graalvm.component.installer.remote.Bundle" },
+        { "name" : "org.graalvm.component.installer.persist.Bundle" },
+        { "name" : "org.graalvm.component.installer.jar.Bundle" },
+        { "name" : "org.graalvm.component.installer.ce.Bundle" }
+    ]
+}

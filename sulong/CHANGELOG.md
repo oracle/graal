@@ -1,5 +1,16 @@
 # Version 19.2.0
 
+New features:
+
+* Support locating dynamic libraries relatively using (`rpath`).
+* Preliminary support for compiling to bitcode using the LLVM toolchain.
+  See [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) for more details.
+  *WARNING*: The toolchain is experimental. Functionality may be added,
+  changed or removed without prior notice.
+* Support for simple pointer arithmetics with foreign objects.
+  In addition to offset arithmetics, GraalVM now supports "negated" pointers and
+  simple bitmask operations (typically used for alignment operations).
+
 Improvements:
 
 * Improved display of pointers to foreign objects in the LLVM debugger.

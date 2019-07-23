@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
+
 import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.AccessControlException;
@@ -37,10 +39,13 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import org.graalvm.word.Pointer;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -123,6 +128,17 @@ final class Target_java_security_AccessController {
 final class Target_java_security_AccessControlContext {
 
     @Alias protected boolean isPrivileged;
+}
+
+@TargetClass(SecurityManager.class)
+@SuppressWarnings({"static-method", "unused"})
+final class Target_java_lang_SecurityManager {
+    @Substitute
+    @NeverInline("Starting a stack walk in the caller frame")
+    protected Class<?>[] getClassContext() {
+        final Pointer startSP = readCallerStackPointer();
+        return StackTraceUtils.getClassContext(1, startSP);
+    }
 }
 
 @TargetClass(className = "javax.crypto.JceSecurityManager")

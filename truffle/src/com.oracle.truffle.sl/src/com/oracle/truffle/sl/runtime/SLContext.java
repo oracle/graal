@@ -272,7 +272,7 @@ public final class SLContext {
     }
 
     public CallTarget parse(Source source) {
-        return env.parse(source);
+        return env.parsePublic(source);
     }
 
     /**

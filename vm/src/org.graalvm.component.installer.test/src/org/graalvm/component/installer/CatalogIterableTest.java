@@ -31,15 +31,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.graalvm.component.installer.DownloadURLIterable.DownloadURLParam;
 import org.graalvm.component.installer.jar.JarArchive;
-import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -290,11 +287,6 @@ public class CatalogIterableTest extends CommandTestBase {
         exception.expectMessage("REMOTE_ErrorDownloadingNotExist");
 
         rubyComp.createFileLoader().getComponentInfo();
-    }
-
-    @Override
-    public MetadataLoader createLocalFileLoader(ComponentInfo ci, Path localFile, boolean verify) throws IOException {
-        return new JarMetaLoader(new JarFile(localFile.toFile(), verify), this);
     }
 
     @Override

@@ -43,20 +43,21 @@ package com.oracle.truffle.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import java.util.Collections;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.io.ProcessHandler;
 
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
@@ -71,7 +72,7 @@ final class PolyglotContextConfig {
     final boolean createProcessAllowed;
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
-    final Set<String> allowedPublicLanguages;
+    final EconomicSet<String> allowedPublicLanguages;
     private final Map<String, OptionValuesImpl> optionsByLanguage;
     @CompilationFinal FileSystem fileSystem;
     final Map<String, Level> logLevels;    // effectively final
@@ -87,7 +88,7 @@ final class PolyglotContextConfig {
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
-                    Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler,
+                    EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId timeZone) {
         assert out != null;
         assert err != null;
@@ -156,6 +157,10 @@ final class PolyglotContextConfig {
                 }
             } else {
                 if (from == to) {
+                    return true;
+                }
+                UnmodifiableEconomicSet<String> configuredAccess = from.engine.getAPIAccess().getEvalAccess(polyglotAccess, from.getId());
+                if (configuredAccess != null && configuredAccess.contains(to.getId())) {
                     return true;
                 }
             }

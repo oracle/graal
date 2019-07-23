@@ -803,6 +803,10 @@ final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
 final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
 }
 
+// If allowProcess() is disabled at build time, then we ensure that ProcessBuilder is not reachable.
+// The main purpose of this is to test that ProcessBuilder is not part of the image when building
+// language images with allowProcess() disabled, which we interpret as "forbid shelling out to
+// external processes" (GR-14041).
 @Delete
 @TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleFeature.IsEnabled.class, TruffleFeature.IsCreateProcessDisabled.class})
 final class Target_java_lang_ProcessBuilder {

@@ -103,7 +103,7 @@ public class SLParseInContextTest {
                 @TruffleBoundary
                 private Object parseAndEval() {
                     Source aPlusB = Source.newBuilder("sl", "a + b", "plus.sl").build();
-                    return getContextReference().get().parse(aPlusB, "a", "b").call(30, 12);
+                    return getContextReference().get().parsePublic(aPlusB, "a", "b").call(30, 12);
                 }
             });
         }

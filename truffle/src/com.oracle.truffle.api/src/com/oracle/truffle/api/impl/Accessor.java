@@ -101,7 +101,7 @@ import org.graalvm.polyglot.io.ProcessHandler;
  * be a static class nested under the "...Accessor" class. This is important to avoid cycles during
  * classloading and be able to initialize this class reliably.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "static-method"})
 public abstract class Accessor {
 
     @SuppressWarnings("all")
@@ -219,7 +219,7 @@ public abstract class Accessor {
 
         public abstract Object getCurrentVM();
 
-        public abstract CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames);
+        public abstract CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames, boolean allowInternal);
 
         public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
@@ -231,7 +231,9 @@ public abstract class Accessor {
 
         public abstract boolean isDisposed(Object vmInstance);
 
-        public abstract Map<String, LanguageInfo> getLanguages(Object vmInstance);
+        public abstract Map<String, LanguageInfo> getInternalLanguages(Object vmInstance);
+
+        public abstract Map<String, LanguageInfo> getPublicLanguages(Object vmInstance);
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object vmInstance);
 
@@ -361,7 +363,9 @@ public abstract class Accessor {
 
         public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object contextVMObject);
 
-        public abstract boolean isPolyglotAccessAllowed(Object vmObject);
+        public abstract boolean isPolyglotEvalAllowed(Object vmObject);
+
+        public abstract boolean isPolyglotBindingsAccessAllowed(Object vmObject);
 
         public abstract TruffleFile getTruffleFile(String path);
 

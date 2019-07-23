@@ -58,6 +58,7 @@ final class Trace implements Iterable<StopRequest> {
     static final String KEYWORD_KIND_FLOAT_64 = "float64";
     static final String KEYWORD_KIND_INT = "int";
     static final String KEYWORD_KIND_STRUCTURED = "structured";
+    static final String KEYWORD_KIND_UNAVAILABLE = "unavailable";
 
     private static final String KEYWORD_HEADER = "#";
 
@@ -328,6 +329,11 @@ final class Trace implements Iterable<StopRequest> {
                     }
                     structured = newStructured;
                     return;
+                }
+                case Trace.KEYWORD_KIND_UNAVAILABLE: {
+                    final boolean isBuggy = parseBugginess();
+                    dbgValue = new LLVMDebugValue.Unavailable(type, isBuggy);
+                    break;
                 }
                 default:
                     throw new AssertionError("Invalid trace: Unknown member kind: " + kind);

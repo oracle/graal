@@ -37,7 +37,6 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -612,11 +611,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * Intrinsifiable compiler directive for creating a frame.
      */
     public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
-        if (LazyFrameBoxingQuery.useFrameWithoutBoxing) {
-            return new FrameWithoutBoxing(descriptor, args);
-        } else {
-            return new FrameWithBoxing(descriptor, args);
-        }
+        return new FrameWithoutBoxing(descriptor, args);
     }
 
     final void onLoopCount(int count) {

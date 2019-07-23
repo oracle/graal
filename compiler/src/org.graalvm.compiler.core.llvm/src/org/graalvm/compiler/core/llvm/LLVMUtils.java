@@ -40,6 +40,7 @@ import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -53,12 +54,35 @@ public class LLVMUtils {
     static final int UNTRACKED_POINTER_ADDRESS_SPACE = 0;
     static final int TRACKED_POINTER_ADDRESS_SPACE = 1;
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
+    public static final String ALWAYS_INLINE = "alwaysinline";
+    public static final String GC_REGISTER_FUNCTION_NAME = "__llvm_gc_register";
+    public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
+    public static final String JNI_WRAPPER_PREFIX = "__llvm_jni_wrapper_";
 
     public static final class DebugLevel {
         public static final int NONE = 0;
         public static final int FUNCTION = 1;
         public static final int BLOCK = 2;
         public static final int NODE = 3;
+    }
+
+    /**
+     * LLVM target-specific inline assembly snippets.
+     */
+    public abstract static class TargetSpecific {
+        public static TargetSpecific get() {
+            return ImageSingletons.lookup(TargetSpecific.class);
+        }
+
+        /**
+         * Snippet that gets the value of an arbitrary register.
+         */
+        public abstract String getRegisterInlineAsm(String register);
+
+        /**
+         * Snippet that jumps to a runtime-computed address.
+         */
+        public abstract String getJumpInlineAsm();
     }
 
     static int getLLVMIntCond(Condition cond) {

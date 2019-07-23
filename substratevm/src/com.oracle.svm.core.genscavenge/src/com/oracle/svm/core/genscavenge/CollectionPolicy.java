@@ -25,9 +25,9 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.log.Log;
@@ -243,14 +243,13 @@ public abstract class CollectionPolicy {
         private static boolean voteOnMaximumSpace(Log trace) {
             final UnsignedWord youngSize = HeapPolicy.getMaximumYoungGenerationSize();
             final UnsignedWord oldInUse = getAccounting().getOldGenerationAfterChunkBytes();
-            final UnsignedWord averagePromotion = getAccounting().averagePromotedUnpinnedChunkBytes().add(getAccounting().averagePromotedPinnedChunkBytes());
+            final UnsignedWord averagePromotion = getAccounting().averagePromotedUnpinnedChunkBytes();
             final UnsignedWord expectedSize = youngSize.add(oldInUse).add(averagePromotion);
             final UnsignedWord maxHeapSize = HeapPolicy.getMaximumHeapSize();
             final boolean vote = maxHeapSize.belowThan(expectedSize);
             trace.string("  youngSize: ").unsigned(youngSize)
                             .string("  oldInUse: ").unsigned(oldInUse)
                             .string("  averagePromotedUnpinnedChunkBytes: ").unsigned(getAccounting().averagePromotedUnpinnedChunkBytes())
-                            .string("  averagePromotedPinnedChunkBytes: ").unsigned(getAccounting().averagePromotedPinnedChunkBytes())
                             .string("  averagePromotion: ").unsigned(averagePromotion)
                             .string("  expectedSize: ").unsigned(expectedSize)
                             .string("  maxHeapSize: ").unsigned(maxHeapSize)
