@@ -96,7 +96,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     public void testProcessCreationAllAccess() throws Exception {
         Path javaExecutable = getJavaExecutable();
         Assume.assumeNotNull(javaExecutable);
-        setupEnv(Context.newBuilder().allowIO(true).allowAllAccess(true).build());
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
         Process p = languageEnv.newProcessBuilder(javaExecutable.toString()).start();
         if (!p.waitFor(5, TimeUnit.SECONDS)) {
             p.destroy();
@@ -109,7 +109,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         Assume.assumeNotNull(javaExecutable);
         Path cp = getLocation();
         Assume.assumeNotNull(cp);
-        setupEnv(Context.newBuilder().allowIO(true).allowAllAccess(true).build());
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder(javaExecutable.toString(), "-cp", cp.toString(), Main.class.getName());
@@ -129,7 +129,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         Assume.assumeNotNull(javaExecutable);
         Path cp = getLocation();
         Assume.assumeNotNull(cp);
-        setupEnv(Context.newBuilder().allowIO(true).allowAllAccess(true).build());
+        setupEnv(Context.newBuilder().allowAllAccess(true).build());
         Process p = languageEnv.newProcessBuilder(javaExecutable.toString(), "-cp", cp.toString(), Main2.class.getName()).start();
         Context ctx = context;
         context = null;
@@ -191,7 +191,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     @Test
     public void testCurrentWorkingDirectory() throws Exception {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowIO(true).allowCreateProcess(true).allowIO(true).processHandler(testHandler).build());
+        setupEnv(Context.newBuilder().allowCreateProcess(true).allowIO(true).processHandler(testHandler).build());
         String workdirPath = Paths.get("/workdir").toString();
         TruffleFile workDir = languageEnv.getPublicTruffleFile(workdirPath);
         languageEnv.newProcessBuilder("process").directory(workDir).start();
