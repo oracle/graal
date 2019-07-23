@@ -117,13 +117,12 @@ public final class VMOperationControl {
         dedicatedVMOperationThread.waitUntilStarted();
     }
 
-    public static void shutdownAndDetachVMOperationThread() {
+    public static void stopVMOperationThread() {
         assert UseDedicatedVMOperationThread.getValue();
         JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMOperationThread", () -> {
             dedicatedVMOperationThread.shutdown();
         });
 
-        waitUntilVMOperationThreadDetached();
         assert get().mainQueues.isEmpty();
     }
 

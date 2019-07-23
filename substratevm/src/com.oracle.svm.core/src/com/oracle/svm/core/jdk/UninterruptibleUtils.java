@@ -126,18 +126,33 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long incrementAndGet() {
-            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, 1) + 1;
+        public long getAndSet(long newValue) {
+            return UNSAFE.getAndSetLong(this, VALUE_OFFSET, newValue);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long getAndDecrement() {
-            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, -1);
+        public long getAndAdd(long delta) {
+            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, delta);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long addAndGet(long delta) {
+            return getAndAdd(delta) + delta;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long incrementAndGet() {
+            return addAndGet(1);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public long decrementAndGet() {
-            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, -1) - 1;
+            return addAndGet(-1);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long getAndDecrement() {
+            return getAndAdd(-1);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
