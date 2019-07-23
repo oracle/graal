@@ -252,6 +252,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             suppressWarnings.add(originalMetaAccess.lookupJavaType(Class.forName("sun.security.provider.ByteArrayAccess")));
             if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 suppressWarnings.add(originalMetaAccess.lookupJavaType(Class.forName("jdk.internal.misc.InnocuousThread")));
+                suppressWarnings.add(originalMetaAccess.lookupJavaType(Class.forName("java.util.concurrent.atomic.AtomicIntegerArray")));
+                suppressWarnings.add(originalMetaAccess.lookupJavaType(Class.forName("java.util.concurrent.atomic.AtomicLongArray")));
+                suppressWarnings.add(originalMetaAccess.lookupJavaType(Class.forName("java.util.concurrent.atomic.AtomicReferenceArray")));
             }
         } catch (ClassNotFoundException e) {
             throw VMError.shouldNotReachHere(e);
