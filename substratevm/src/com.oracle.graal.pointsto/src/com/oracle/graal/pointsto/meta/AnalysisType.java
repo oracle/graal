@@ -282,7 +282,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         ConstantContextSensitiveObject uConstant = new ConstantContextSensitiveObject(bb, this, null);
         if (UNIQUE_CONSTANT_UPDATER.compareAndSet(this, null, uConstant)) {
             constantObjectsCache.values().stream().forEach(constantObject -> {
-		constantObject.setMergedWithUniqueConstantObject();
+                constantObject.setMergedWithUniqueConstantObject();
                 constantObject.mergeInstanceFieldsFlows(bb, uniqueConstant);
             });
         }

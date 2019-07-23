@@ -25,15 +25,11 @@
 package com.oracle.graal.pointsto.flow.context.object;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldTypeFlow;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -50,9 +46,10 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
     private final JavaConstant constant;
 
     /**
-     * Has this object been merged into the per-type unique constant
-     * object {@link AnalysisType.uniqueConstant}.
-     */                                                                                                                                 private volatile boolean mergedWithUniqueConstant;
+     * Has this object been merged into the per-type unique constant object
+     * {@link AnalysisType.uniqueConstant}.
+     */
+    private volatile boolean mergedWithUniqueConstant;
 
     /**
      * Constructor used for the merged constant object, i.e., after the number of individual
@@ -79,7 +76,7 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
     }
 
     public void setMergedWithUniqueConstantObject() {
-	this.mergedWithUniqueConstant = true;
+        this.mergedWithUniqueConstant = true;
     }
 
     /** The object has been in contact with an context insensitive object in an union operation. */
@@ -99,45 +96,16 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
         }
     }
 
-    /** Returns the filter field flow corresponding to an unsafe accessed field. */
     @Override
-    public FieldFilterTypeFlow getInstanceFieldFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {
-        assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed() && PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
-
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
-
-	/*
-	 * If this object has already been merged all the other fields have been merged as well.
-	 * Merge the type flows for the newly accessed field too.
-	 */
+    protected List<AnalysisObject> getAllObjectsMergedWith() {
+        List<AnalysisObject> result = new ArrayList<>();
         if (merged) {
-            mergeInstanceFieldFlow(bb, fieldTypeStore);
+            result.add(type().getContextInsensitiveAnalysisObject());
         }
         if (mergedWithUniqueConstant) {
-            mergeInstanceFieldFlow(bb, fieldTypeStore, type().getUniqueConstantObject());
+            result.add(type().getUniqueConstantObject());
         }
-
-        return fieldTypeStore.filterFlow(bb);
-    }
-
-    @Override
-    public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisMethod context, AnalysisField field, boolean isStore) {
-        assert !Modifier.isStatic(field.getModifiers()) && PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
-
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
-
-	/*
-	 * If this object has already been merged all the other fields have been merged as well.
-	 * Merge the type flows for the newly accessed field too.
-	 */
-        if (merged) {
-            mergeInstanceFieldFlow(bb, fieldTypeStore);
-        }
-        if (mergedWithUniqueConstant) {
-            mergeInstanceFieldFlow(bb, fieldTypeStore, type().getUniqueConstantObject());
-        }
-
-        return isStore ? fieldTypeStore.writeFlow() : fieldTypeStore.readFlow();
+        return result;
     }
 
     @Override

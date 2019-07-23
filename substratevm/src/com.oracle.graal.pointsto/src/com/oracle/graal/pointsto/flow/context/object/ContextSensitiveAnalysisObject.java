@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow.context.object;
 
 import java.lang.reflect.Modifier;
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -129,12 +130,12 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
 
-        if (merged) {
-            /*
-             * If this object has already been merged all the other fields have been merged as well.
-             * Merge the type flows for the newly accessed field too.
-             */
-            mergeInstanceFieldFlow(bb, fieldTypeStore);
+        /*
+         * If this object has already been merged all the other fields have been merged as well.
+         * Merge the type flows for the newly accessed field too.
+         */
+        for (AnalysisObject mergedWith : getAllObjectsMergedWith()) {
+            mergeInstanceFieldFlow(bb, fieldTypeStore, mergedWith);
         }
 
         return fieldTypeStore.filterFlow(bb);
@@ -146,15 +147,22 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
 
-        if (merged) {
-            /*
-             * If this object has already been merged all the other fields have been merged as well.
-             * Merge the type flows for the newly accessed field too.
-             */
-            mergeInstanceFieldFlow(bb, fieldTypeStore);
+        /*
+         * If this object has already been merged all the other fields have been merged as well.
+         * Merge the type flows for the newly accessed field too.
+         */
+        for (AnalysisObject mergedWith : getAllObjectsMergedWith()) {
+            mergeInstanceFieldFlow(bb, fieldTypeStore, mergedWith);
         }
 
         return isStore ? fieldTypeStore.writeFlow() : fieldTypeStore.readFlow();
+    }
+
+    /**
+     * This returns all the objects this object was ever merged with.
+     */
+    protected List<AnalysisObject> getAllObjectsMergedWith() {
+        return merged ? Collections.singletonList(type().getContextInsensitiveAnalysisObject()) : Collections.emptyList();
     }
 
     /**
