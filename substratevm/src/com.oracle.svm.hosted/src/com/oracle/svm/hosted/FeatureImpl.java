@@ -348,21 +348,6 @@ public class FeatureImpl {
         }
 
         @Override
-        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, new Object[]{clazz});
-        }
-
-        @Override
-        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Field field) {
-            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, new Object[]{field});
-        }
-
-        @Override
-        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Executable method) {
-            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, new Object[]{method});
-        }
-
-        @Override
         public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
             ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, elements);
         }
