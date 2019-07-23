@@ -1,1 +1,2 @@
 com.oracle.truffle.espresso.processor.SubstitutionProcessor
+com.oracle.truffle.espresso.processor.JniImplProcessor

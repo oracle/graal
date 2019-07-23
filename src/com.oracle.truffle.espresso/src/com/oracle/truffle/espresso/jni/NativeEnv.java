@@ -119,6 +119,26 @@ public abstract class NativeEnv {
         }
     }
 
+    protected static Object defaultValue(String returnType) {
+        if (returnType.equals("boolean"))
+            return false;
+        if (returnType.equals("byte"))
+            return (byte) 0;
+        if (returnType.equals("char"))
+            return (char) 0;
+        if (returnType.equals("short"))
+            return (short) 0;
+        if (returnType.equals("int"))
+            return 0;
+        if (returnType.equals("float"))
+            return 0.0F;
+        if (returnType.equals("double"))
+            return 0.0;
+        if (returnType.equals("long"))
+            return 0L;
+        return StaticObject.NULL;
+    }
+
     protected static Object defaultValue(Class<?> returnType) {
         if (returnType == boolean.class)
             return false;

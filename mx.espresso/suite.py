@@ -43,19 +43,11 @@ suite = {
     # ------------- projects
 
     "projects": {
-        # "com.oracle.truffle.espresso.annotations": {
-        #     "subDir": "src",
-        #     "sourceDirs": ["src"],
-        #     "dependencies": [],
-        #     "javaCompliance": "1.8+",
-        #     "checkstyle" : "com.oracle.truffle.espresso",
-        # },
 
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                # "com.oracle.truffle.espresso.annotations",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],
@@ -68,7 +60,6 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                # "com.oracle.truffle.espresso.annotations",
             ],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso.processor",
