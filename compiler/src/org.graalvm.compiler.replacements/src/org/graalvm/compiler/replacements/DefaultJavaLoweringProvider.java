@@ -591,7 +591,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode nullHub = ConstantNode.forConstant(hubStamp.asAlwaysNull(), JavaConstant.NULL_POINTER, tool.getMetaAccess(), graph);
         final ValueNode nonNullValue = graph.addOrUniqueWithInputs(PiNode.create(value, stamp.asNonNull(), ifNode.falseSuccessor()));
         ValueNode hub = createReadHub(graph, nonNullValue, tool);
-        ValueNode[] values = new ValueNode[] {nullHub, hub};
+        ValueNode[] values = new ValueNode[]{nullHub, hub};
         final PhiNode hubPhi = graph.unique(new ValuePhiNode(hubStamp, merge, values));
         final FixedNode oldNext = predecessor.next();
         predecessor.setNext(ifNode);
