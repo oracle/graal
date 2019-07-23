@@ -50,10 +50,10 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
@@ -68,7 +68,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
+public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
 
     private final AnalysisUniverse universe;
     public final ResolvedJavaMethod wrapped;
@@ -405,24 +405,6 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
         return implementations;
     }
 
-    public Executable getJavaMethod() {
-        try {
-            ResolvedJavaMethod.Parameter[] parameters = getParameters();
-            Class<?>[] parameterTypes = new Class<?>[parameters.length];
-            for (int i = 0; i < parameterTypes.length; i++) {
-                parameterTypes[i] = universe.lookup(parameters[i].getType()).getJavaClass();
-            }
-            Class<?> declaringClass = getDeclaringClass().getJavaClass();
-            if (isConstructor()) {
-                return declaringClass.getDeclaredConstructor(parameterTypes);
-            } else {
-                return declaringClass.getDeclaredMethod(getName(), parameterTypes);
-            }
-        } catch (NoSuchMethodException e) {
-            throw AnalysisError.shouldNotReachHere();
-        }
-    }
-
     @Override
     public ExceptionHandler[] getExceptionHandlers() {
         return exceptionHandlers;
@@ -535,5 +517,10 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
     @Override
     public boolean equals(Object obj) {
         return this == obj;
+    }
+
+    @Override
+    public Executable getJavaMethod() {
+        return OriginalMethodProvider.getJavaMethod(universe.getOriginalSnippetReflection(), wrapped);
     }
 }
