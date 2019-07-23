@@ -118,7 +118,7 @@ builds += [
   ${sulong-gateTest40-linux} ${requireGCC} { name: gate-sulong-basic_v40, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest60-linux} ${requireGCC} { name: gate-sulong-basic_v60, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-basic_v80, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
-  ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+  ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm,toolchain"]] }
 
   ${sulong-gateTest80-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
 
