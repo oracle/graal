@@ -28,7 +28,6 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 
-import java.io.File;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -47,9 +46,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
-import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.Utils;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -65,7 +62,9 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -780,24 +779,23 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         EspressoProperties props = getContext().getVmProperties();
 
-        // TODO(peterssen): Use EspressoProperties to store classpath.
-        EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "Classpath must be defined.");
-        setProperty.invokeWithConversions(properties, "java.class.path", props.classpath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
-
+        // Espresso uses VM properties, to ensure consistency the user-defined properties (that may
+        // differ in some cases) are overwritten.
+        setProperty.invokeWithConversions(properties, "java.class.path", Utils.stringify(props.classpath()));
         setProperty.invokeWithConversions(properties, "java.home", props.javaHome().toString());
         setProperty.invokeWithConversions(properties, "sun.boot.class.path", Utils.stringify(props.bootClasspath()));
         setProperty.invokeWithConversions(properties, "java.library.path", Utils.stringify(props.javaLibraryPath()));
         setProperty.invokeWithConversions(properties, "sun.boot.library.path", Utils.stringify(props.bootLibraryPath()));
         setProperty.invokeWithConversions(properties, "java.ext.dirs", Utils.stringify(props.extDirs()));
 
-        // VM properties.
-        setProperty.invokeWithConversions(properties, "java.vm.specification.version", EspressoProperties.VM_SPECIFICATION_VERSION);
-        setProperty.invokeWithConversions(properties, "java.vm.specification.name", EspressoProperties.VM_SPECIFICATION_NAME);
-        setProperty.invokeWithConversions(properties, "java.vm.specification.vendor", EspressoProperties.VM_SPECIFICATION_VENDOR);
-        setProperty.invokeWithConversions(properties, "java.vm.version", EspressoProperties.VM_VERSION);
-        setProperty.invokeWithConversions(properties, "java.vm.name", EspressoProperties.VM_NAME);
-        setProperty.invokeWithConversions(properties, "java.vm.vendor", EspressoProperties.VM_VENDOR);
-        setProperty.invokeWithConversions(properties, "java.vm.info", EspressoProperties.VM_INFO);
+        // Set VM information.
+        setProperty.invokeWithConversions(properties, "java.vm.specification.version", EspressoLanguage.VM_SPECIFICATION_VERSION);
+        setProperty.invokeWithConversions(properties, "java.vm.specification.name", EspressoLanguage.VM_SPECIFICATION_NAME);
+        setProperty.invokeWithConversions(properties, "java.vm.specification.vendor", EspressoLanguage.VM_SPECIFICATION_VENDOR);
+        setProperty.invokeWithConversions(properties, "java.vm.version", EspressoLanguage.VM_VERSION);
+        setProperty.invokeWithConversions(properties, "java.vm.name", EspressoLanguage.VM_NAME);
+        setProperty.invokeWithConversions(properties, "java.vm.vendor", EspressoLanguage.VM_VENDOR);
+        setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
 
         return properties;
     }

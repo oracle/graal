@@ -43,6 +43,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -58,6 +59,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
+import org.graalvm.polyglot.Engine;
 
 public final class EspressoContext {
 
@@ -281,12 +283,19 @@ public final class EspressoContext {
     private void initVmProperties() {
         EspressoProperties.Builder builder;
         if (EspressoOptions.RUNNING_ON_SVM) {
-            builder = new EspressoProperties.Builder() //
+            builder = EspressoProperties.newPlatformBuilder() //
+                            .javaHome(Engine.findHome().resolve("jre")) //
                             .espressoLibraryPath(Collections.singletonList(Paths.get(getLanguage().getEspressoHome()).resolve("lib")));
         } else {
             builder = EspressoProperties.inheritFromHostVM();
+            String espressoLibraryPath = System.getProperty("espresso.library.path");
+            if (espressoLibraryPath != null) {
+                builder.espressoLibraryPath(Utils.parsePaths(espressoLibraryPath));
+            }
         }
-        vmProperties = builder.processOptions(getEnv().getOptions()).build();
+
+        vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
+
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
@@ -323,8 +332,10 @@ public final class EspressoContext {
     }
 
     public void disposeContext() {
-        getVM().dispose();
-        getJNI().dispose();
+        if (initialized) {
+            getVM().dispose();
+            getJNI().dispose();
+        }
     }
 
     public Substitutions getSubstitutions() {
