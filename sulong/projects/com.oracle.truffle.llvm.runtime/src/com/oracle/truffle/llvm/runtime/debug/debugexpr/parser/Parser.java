@@ -15,21 +15,20 @@ public class Parser {
     public static final int _number = 2;
     public static final int _floatnumber = 3;
     public static final int _charConst = 4;
-    public static final int _stringType = 5;
-    public static final int _lpar = 6;
-    public static final int _asterisc = 7;
-    public static final int _signed = 8;
-    public static final int _unsigned = 9;
-    public static final int _int = 10;
-    public static final int _long = 11;
-    public static final int _short = 12;
-    public static final int _float = 13;
-    public static final int _double = 14;
-    public static final int _char = 15;
-    public static final int maxT = 45;
+    public static final int _lpar = 5;
+    public static final int _asterisc = 6;
+    public static final int _signed = 7;
+    public static final int _unsigned = 8;
+    public static final int _int = 9;
+    public static final int _long = 10;
+    public static final int _short = 11;
+    public static final int _float = 12;
+    public static final int _double = 13;
+    public static final int _char = 14;
+    public static final int maxT = 44;
 
-    static final boolean T = true;
-    static final boolean x = false;
+    static final boolean _T = true;
+    static final boolean _x = false;
     static final int minErrDist = 2;
 
     public Token t;    // last recognized token
@@ -193,10 +192,10 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair pThen = null, pElse = null;
         p = LogOrExpr();
-        if (la.kind == 42) {
+        if (la.kind == 41) {
             Get();
             pThen = Expr();
-            Expect(43);
+            Expect(42);
             pElse = Expr();
             p = NF.createTernaryNode(p, pThen, pElse);
         }
@@ -206,42 +205,24 @@ public class Parser {
     DebugExpressionPair PrimExpr() {
         DebugExpressionPair p;
         p = null;
-        switch (la.kind) {
-            case 1: {
-                Get();
-                p = NF.createVarNode(t.val);
-                break;
-            }
-            case 2: {
-                Get();
-                p = NF.createIntegerConstant(Integer.parseInt(t.val));
-                break;
-            }
-            case 3: {
-                Get();
-                p = NF.createFloatConstant(Float.parseFloat(t.val));
-                break;
-            }
-            case 4: {
-                Get();
-                SemErr("characters not available yet");
-                break;
-            }
-            case 5: {
-                Get();
-                SemErr("strings not available yet");
-                break;
-            }
-            case 6: {
-                Get();
-                p = Expr();
-                Expect(16);
-                break;
-            }
-            default:
-                SynErr(46);
-                break;
-        }
+        if (la.kind == 1) {
+            Get();
+            p = NF.createVarNode(t.val);
+        } else if (la.kind == 2) {
+            Get();
+            p = NF.createIntegerConstant(Integer.parseInt(t.val));
+        } else if (la.kind == 3) {
+            Get();
+            p = NF.createFloatConstant(Float.parseFloat(t.val));
+        } else if (la.kind == 4) {
+            Get();
+            SemErr("characters not available yet");
+        } else if (la.kind == 5) {
+            Get();
+            p = Expr();
+            Expect(15);
+        } else
+            SynErr(45);
         return p;
     }
 
@@ -251,15 +232,15 @@ public class Parser {
         List<DebugExpressionPair> l;
         p = PrimExpr();
         while (StartOf(1)) {
-            if (la.kind == 17) {
+            if (la.kind == 16) {
                 Get();
                 idxPair = Expr();
-                Expect(18);
+                Expect(17);
                 p = NF.createArrayElement(p, idxPair);
-            } else if (la.kind == 6) {
+            } else if (la.kind == 5) {
                 l = ActPars();
                 p = NF.createFunctionCall(p, l);
-            } else if (la.kind == 19) {
+            } else if (la.kind == 18) {
                 Get();
                 Expect(1);
                 p = NF.createObjectMember(p, t.val);
@@ -276,17 +257,17 @@ public class Parser {
         List l;
         DebugExpressionPair p1 = null, p2 = null;
         l = new LinkedList<DebugExpressionPair>();
-        Expect(6);
+        Expect(5);
         if (StartOf(2)) {
             p1 = Expr();
             l.add(p1);
-            while (la.kind == 21) {
+            while (la.kind == 20) {
                 Get();
                 p2 = Expr();
                 l.add(p2);
             }
         }
-        Expect(16);
+        Expect(15);
         return l;
     }
 
@@ -301,14 +282,14 @@ public class Parser {
             kind = UnaryOp();
             p = CastExpr();
             p = NF.createUnaryOpNode(p, kind);
-        } else if (la.kind == 22) {
+        } else if (la.kind == 21) {
             Get();
-            Expect(6);
+            Expect(5);
             typeP = DType();
-            Expect(16);
+            Expect(15);
             p = NF.createSizeofNode(typeP);
         } else
-            SynErr(47);
+            SynErr(46);
         return p;
     }
 
@@ -316,11 +297,15 @@ public class Parser {
         char kind;
         kind = '\0';
         switch (la.kind) {
-            case 23: {
+            case 22: {
                 Get();
                 break;
             }
-            case 7: {
+            case 6: {
+                Get();
+                break;
+            }
+            case 23: {
                 Get();
                 break;
             }
@@ -336,12 +321,8 @@ public class Parser {
                 Get();
                 break;
             }
-            case 27: {
-                Get();
-                break;
-            }
             default:
-                SynErr(48);
+                SynErr(47);
                 break;
         }
         kind = t.val.charAt(0);
@@ -352,9 +333,9 @@ public class Parser {
         DebugExpressionPair p;
         DebugExprType typeP = null;
         if (IsCast()) {
-            Expect(6);
+            Expect(5);
             typeP = DType();
-            Expect(16);
+            Expect(15);
         }
         p = UnaryExpr();
         if (typeP != null) {
@@ -366,23 +347,23 @@ public class Parser {
     DebugExprType DType() {
         DebugExprType ty;
         ty = BaseType();
-        if (la.kind == 7 || la.kind == 16 || la.kind == 17) {
-            while (la.kind == 7) {
+        if (la.kind == 6 || la.kind == 15 || la.kind == 16) {
+            while (la.kind == 6) {
                 Get();
                 SemErr("Pointer types are not available yet");
             }
-        } else if (la.kind == 23) {
+        } else if (la.kind == 22) {
             Get();
             SemErr("Reference types are not available yet");
         } else
-            SynErr(49);
-        while (la.kind == 17) {
+            SynErr(48);
+        while (la.kind == 16) {
             Get();
             SemErr("Array types are not available yet");
             if (la.kind == 2) {
                 Get();
             }
-            Expect(18);
+            Expect(17);
         }
         return ty;
     }
@@ -391,12 +372,12 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = CastExpr();
-        while (la.kind == 7 || la.kind == 28 || la.kind == 29) {
-            if (la.kind == 7) {
+        while (la.kind == 6 || la.kind == 27 || la.kind == 28) {
+            if (la.kind == 6) {
                 Get();
                 p1 = CastExpr();
                 p = NF.createArithmeticOp(ArithmeticOperation.MUL, p, p1);
-            } else if (la.kind == 28) {
+            } else if (la.kind == 27) {
                 Get();
                 p1 = CastExpr();
                 p = NF.createDivNode(p, p1);
@@ -413,8 +394,8 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = MultExpr();
-        while (la.kind == 24 || la.kind == 25) {
-            if (la.kind == 24) {
+        while (la.kind == 23 || la.kind == 24) {
+            if (la.kind == 23) {
                 Get();
                 p1 = MultExpr();
                 p = NF.createArithmeticOp(ArithmeticOperation.ADD, p, p1);
@@ -431,8 +412,8 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = AddExpr();
-        while (la.kind == 30 || la.kind == 31) {
-            if (la.kind == 30) {
+        while (la.kind == 29 || la.kind == 30) {
+            if (la.kind == 29) {
                 Get();
                 p1 = AddExpr();
                 p = NF.createShiftLeft(p, p1);
@@ -450,15 +431,15 @@ public class Parser {
         DebugExpressionPair p1 = null;
         p = ShiftExpr();
         while (StartOf(5)) {
-            if (la.kind == 32) {
+            if (la.kind == 31) {
                 Get();
                 p1 = ShiftExpr();
                 p = NF.createCompareNode(p, CompareKind.LT, p1);
-            } else if (la.kind == 33) {
+            } else if (la.kind == 32) {
                 Get();
                 p1 = ShiftExpr();
                 p = NF.createCompareNode(p, CompareKind.GT, p1);
-            } else if (la.kind == 34) {
+            } else if (la.kind == 33) {
                 Get();
                 p1 = ShiftExpr();
                 p = NF.createCompareNode(p, CompareKind.LE, p1);
@@ -475,8 +456,8 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = RelExpr();
-        while (la.kind == 36 || la.kind == 37) {
-            if (la.kind == 36) {
+        while (la.kind == 35 || la.kind == 36) {
+            if (la.kind == 35) {
                 Get();
                 p1 = RelExpr();
                 p = NF.createCompareNode(p, CompareKind.EQ, p1);
@@ -493,7 +474,7 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = EqExpr();
-        while (la.kind == 23) {
+        while (la.kind == 22) {
             Get();
             p1 = EqExpr();
             p = NF.createArithmeticOp(ArithmeticOperation.AND, p, p1);
@@ -505,7 +486,7 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = AndExpr();
-        while (la.kind == 38) {
+        while (la.kind == 37) {
             Get();
             p1 = AndExpr();
             p = NF.createArithmeticOp(ArithmeticOperation.XOR, p, p1);
@@ -517,7 +498,7 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = XorExpr();
-        while (la.kind == 39) {
+        while (la.kind == 38) {
             Get();
             p1 = XorExpr();
             p = NF.createArithmeticOp(ArithmeticOperation.OR, p, p1);
@@ -529,7 +510,7 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = OrExpr();
-        while (la.kind == 40) {
+        while (la.kind == 39) {
             Get();
             p1 = OrExpr();
             p = NF.createLogicalAndNode(p, p1);
@@ -541,7 +522,7 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = LogAndExpr();
-        while (la.kind == 41) {
+        while (la.kind == 40) {
             Get();
             p = LogAndExpr();
             p = NF.createLogicalOrNode(p, p1);
@@ -554,7 +535,7 @@ public class Parser {
         ty = null;
         boolean signed = false;
         switch (la.kind) {
-            case 44: {
+            case 43: {
                 Get();
                 ty = DebugExprType.getVoidType();
                 break;
@@ -563,9 +544,9 @@ public class Parser {
                 Get();
                 break;
             }
-            case 8:
-            case 9: {
-                if (la.kind == 8) {
+            case 7:
+            case 8: {
+                if (la.kind == 7) {
                     Get();
                     signed = true;
                 } else {
@@ -573,13 +554,13 @@ public class Parser {
                     signed = false;
                 }
                 if (StartOf(6)) {
-                    if (la.kind == 15) {
+                    if (la.kind == 14) {
                         Get();
                         ty = DebugExprType.getIntType(8, signed);
-                    } else if (la.kind == 12) {
+                    } else if (la.kind == 11) {
                         Get();
                         ty = DebugExprType.getIntType(16, signed);
-                    } else if (la.kind == 10) {
+                    } else if (la.kind == 9) {
                         Get();
                         ty = DebugExprType.getIntType(32, signed);
                     } else {
@@ -589,42 +570,42 @@ public class Parser {
                 }
                 break;
             }
-            case 15: {
+            case 14: {
                 Get();
                 ty = DebugExprType.getIntType(8, false);
                 break;
             }
-            case 12: {
+            case 11: {
                 Get();
                 ty = DebugExprType.getIntType(16, true);
                 break;
             }
-            case 10: {
+            case 9: {
                 Get();
                 ty = DebugExprType.getIntType(32, true);
                 break;
             }
-            case 11: {
+            case 10: {
                 Get();
                 ty = DebugExprType.getIntType(64, true);
-                if (la.kind == 14) {
+                if (la.kind == 13) {
                     Get();
                     ty = DebugExprType.getFloatType(128);
                 }
                 break;
             }
-            case 13: {
+            case 12: {
                 Get();
                 ty = DebugExprType.getFloatType(32);
                 break;
             }
-            case 14: {
+            case 13: {
                 Get();
                 ty = DebugExprType.getFloatType(64);
                 break;
             }
             default:
-                SynErr(50);
+                SynErr(49);
                 break;
         }
         return ty;
@@ -640,13 +621,20 @@ public class Parser {
     }
 
     private static final boolean[][] set = {
-                    {T, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x},
-                    {x, x, x, x, x, x, T, x, x, x, x, x, x, x, x, x, x, T, x, T, T, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x},
-                    {x, T, T, T, T, T, T, T, x, x, x, x, x, x, x, x, x, x, x, x, x, x, T, T, T, T, T, T, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x},
-                    {x, T, T, T, T, T, T, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x},
-                    {x, x, x, x, x, x, x, T, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, T, T, T, T, T, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x},
-                    {x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, T, T, T, T, x, x, x, x, x, x, x, x, x, x, x},
-                    {x, x, x, x, x, x, x, x, x, x, T, T, T, x, x, T, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x}
+                    {_T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                                    _x},
+                    {_x, _x, _x, _x, _x, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _x, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                                    _x},
+                    {_x, _T, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                                    _x},
+                    {_x, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                                    _x},
+                    {_x, _x, _x, _x, _x, _x, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                                    _x},
+                    {_x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                                    _x},
+                    {_x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _x, _x, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                                    _x}
 
     };
 
@@ -731,141 +719,138 @@ class Errors {
                 s = "charConst expected";
                 break;
             case 5:
-                s = "stringType expected";
-                break;
-            case 6:
                 s = "lpar expected";
                 break;
-            case 7:
+            case 6:
                 s = "asterisc expected";
                 break;
-            case 8:
+            case 7:
                 s = "signed expected";
                 break;
-            case 9:
+            case 8:
                 s = "unsigned expected";
                 break;
-            case 10:
+            case 9:
                 s = "int expected";
                 break;
-            case 11:
+            case 10:
                 s = "long expected";
                 break;
-            case 12:
+            case 11:
                 s = "short expected";
                 break;
-            case 13:
+            case 12:
                 s = "float expected";
                 break;
-            case 14:
+            case 13:
                 s = "double expected";
                 break;
-            case 15:
+            case 14:
                 s = "char expected";
                 break;
-            case 16:
+            case 15:
                 s = "\")\" expected";
                 break;
-            case 17:
+            case 16:
                 s = "\"[\" expected";
                 break;
-            case 18:
+            case 17:
                 s = "\"]\" expected";
                 break;
-            case 19:
+            case 18:
                 s = "\".\" expected";
                 break;
-            case 20:
+            case 19:
                 s = "\"->\" expected";
                 break;
-            case 21:
+            case 20:
                 s = "\",\" expected";
                 break;
-            case 22:
+            case 21:
                 s = "\"sizeof\" expected";
                 break;
-            case 23:
+            case 22:
                 s = "\"&\" expected";
                 break;
-            case 24:
+            case 23:
                 s = "\"+\" expected";
                 break;
-            case 25:
+            case 24:
                 s = "\"-\" expected";
                 break;
-            case 26:
+            case 25:
                 s = "\"~\" expected";
                 break;
-            case 27:
+            case 26:
                 s = "\"!\" expected";
                 break;
-            case 28:
+            case 27:
                 s = "\"/\" expected";
                 break;
-            case 29:
+            case 28:
                 s = "\"%\" expected";
                 break;
-            case 30:
+            case 29:
                 s = "\"<<\" expected";
                 break;
-            case 31:
+            case 30:
                 s = "\">>\" expected";
                 break;
-            case 32:
+            case 31:
                 s = "\"<\" expected";
                 break;
-            case 33:
+            case 32:
                 s = "\">\" expected";
                 break;
-            case 34:
+            case 33:
                 s = "\"<=\" expected";
                 break;
-            case 35:
+            case 34:
                 s = "\">=\" expected";
                 break;
-            case 36:
+            case 35:
                 s = "\"==\" expected";
                 break;
-            case 37:
+            case 36:
                 s = "\"!=\" expected";
                 break;
-            case 38:
+            case 37:
                 s = "\"^\" expected";
                 break;
-            case 39:
+            case 38:
                 s = "\"|\" expected";
                 break;
-            case 40:
+            case 39:
                 s = "\"&&\" expected";
                 break;
-            case 41:
+            case 40:
                 s = "\"||\" expected";
                 break;
-            case 42:
+            case 41:
                 s = "\"?\" expected";
                 break;
-            case 43:
+            case 42:
                 s = "\":\" expected";
                 break;
-            case 44:
+            case 43:
                 s = "\"void\" expected";
                 break;
-            case 45:
+            case 44:
                 s = "??? expected";
                 break;
-            case 46:
+            case 45:
                 s = "invalid PrimExpr";
                 break;
-            case 47:
+            case 46:
                 s = "invalid UnaryExpr";
                 break;
-            case 48:
+            case 47:
                 s = "invalid UnaryOp";
                 break;
-            case 49:
+            case 48:
                 s = "invalid DType";
                 break;
-            case 50:
+            case 49:
                 s = "invalid BaseType";
                 break;
             default:

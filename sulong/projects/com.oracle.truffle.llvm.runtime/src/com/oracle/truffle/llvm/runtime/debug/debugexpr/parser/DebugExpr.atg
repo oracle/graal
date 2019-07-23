@@ -51,7 +51,6 @@ TOKENS
    number = digit {digit}.
    floatnumber = digit {digit} "." digit {digit} [ ("e"|"E") ["+"|"-"] digit {digit}].
    charConst = singlecomma (letter|digit) singlecomma.
-   stringType = quote {letter|digit} quote.
    lpar = '('.
    asterisc = '*'.
    signed = "signed".
@@ -103,8 +102,6 @@ number 												(. p = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
 floatnumber 										(. p = NF.createFloatConstant(Float.parseFloat(t.val)); .)
 |
 charConst											(. SemErr("characters not available yet"); .)
-|
-stringType											(. SemErr("strings not available yet"); .)
 |
 "(" Expr<out p> ")"
 .
