@@ -235,6 +235,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return contextInsensitiveAnalysisObject;
     }
 
+    public AnalysisObject getUniqueConstantObject() {
+        return uniqueConstant;
+    }
+
     public AnalysisObject getCachedConstantObject(BigBang bb, JavaConstant constant) {
 
         /*
@@ -278,6 +282,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         ConstantContextSensitiveObject uConstant = new ConstantContextSensitiveObject(bb, this, null);
         if (UNIQUE_CONSTANT_UPDATER.compareAndSet(this, null, uConstant)) {
             constantObjectsCache.values().stream().forEach(constantObject -> {
+		constantObject.setMergedWithUniqueConstantObject();
                 constantObject.mergeInstanceFieldsFlows(bb, uniqueConstant);
             });
         }
