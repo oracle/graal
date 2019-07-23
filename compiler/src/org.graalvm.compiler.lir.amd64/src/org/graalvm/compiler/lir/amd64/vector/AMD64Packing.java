@@ -186,7 +186,7 @@ public final class AMD64Packing {
 
         @Def({REG}) private AllocatableValue result;
         @Temp({REG}) private AllocatableValue scratch;
-        @Use({COMPOSITE}) private AMD64AddressValue input;
+        @Alive({COMPOSITE}) private AMD64AddressValue input;
         private final int valcount;
 
         public LoadStackOp(LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
@@ -255,7 +255,7 @@ public final class AMD64Packing {
         private static final int YMM_LENGTH_IN_BYTES = 32;
         public static final LIRInstructionClass<StoreStackOp> TYPE = LIRInstructionClass.create(StoreStackOp.class);
 
-        @Use({COMPOSITE}) private AMD64AddressValue result;
+        @Alive({COMPOSITE}) private AMD64AddressValue result;
         @Temp({REG}) private AllocatableValue scratch;
         @Use({REG}) private AllocatableValue input;
         private final int valcount;
