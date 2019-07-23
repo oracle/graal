@@ -51,7 +51,6 @@ public class VMThreadLocalMTObjectReferenceWalker extends ObjectReferenceWalker 
 
     @Override
     public boolean walk(ObjectReferenceVisitor referenceVisitor) {
-        VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding),
                             vmThreadReferenceMapIndex, referenceVisitor)) {

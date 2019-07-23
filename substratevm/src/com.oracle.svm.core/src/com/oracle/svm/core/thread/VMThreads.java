@@ -195,8 +195,8 @@ public abstract class VMThreads {
     public abstract void failFatally(int code, CCharPointer message);
 
     /**
-     * Iteration of all {@link IsolateThread}s that are currently running. VMThreads.THREAD_MUTEX
-     * should be held when iterating the list.
+     * Iteration of all {@link IsolateThread}s that are currently running. {@link #THREAD_MUTEX}
+     * must be held when iterating the list.
      *
      * Use the following pattern to iterate all running threads. It is allocation free and can
      * therefore be used during GC:
@@ -207,6 +207,17 @@ public abstract class VMThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static IsolateThread firstThread() {
+        guaranteeOwnsThreadMutex("Threads mutex must be locked before accessing/iterating the thread list.");
+        return firstThreadUnsafe();
+    }
+
+    /**
+     * Like {@link #firstThread()} but without the check that {@link #THREAD_MUTEX} is locked by the
+     * current thread. Only use this method if absolutely necessary (e.g., for printing diagnostics
+     * on a fatal error).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static IsolateThread firstThreadUnsafe() {
         return head;
     }
 

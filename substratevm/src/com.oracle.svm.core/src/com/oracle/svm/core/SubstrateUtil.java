@@ -327,7 +327,8 @@ public class SubstrateUtil {
         }
 
         if (VMOperationControl.isFrozen()) {
-            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+            /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
+            for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
@@ -435,8 +436,8 @@ public class SubstrateUtil {
     private static void dumpVMThreads(Log log) {
         log.string("VMThreads info:").newline();
         log.indent(true);
-        /* Iterate all threads, no matter if this or some other thread owns the threads mutex. */
-        for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
+        /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
+        for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
                             .spaces(2).object(JavaThreads.fromVMThread(vmThread)).newline();
         }

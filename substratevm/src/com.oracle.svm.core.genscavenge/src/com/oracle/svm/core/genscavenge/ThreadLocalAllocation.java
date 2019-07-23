@@ -318,7 +318,6 @@ public final class ThreadLocalAllocation {
         VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableThreadLocalAllocation");
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 disableThreadLocalAllocation(vmThread);
             }
@@ -341,7 +340,8 @@ public final class ThreadLocalAllocation {
     static void tearDown() {
         final IsolateThread thread;
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            thread = VMThreads.firstThread();
+            // no other thread is alive, so it is always safe to access the first thread
+            thread = VMThreads.firstThreadUnsafe();
             VMError.guarantee(VMThreads.nextThread(thread).isNull(), "Other isolate threads are still active");
         } else {
             thread = WordFactory.nullPointer();

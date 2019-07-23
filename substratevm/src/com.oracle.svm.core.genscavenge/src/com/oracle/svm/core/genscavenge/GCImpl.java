@@ -664,7 +664,6 @@ public class GCImpl implements GC {
                  * Scan the stacks of all the threads. Other threads will be blocked at a safepoint
                  * (or in native code) so they will each have a JavaFrameAnchor in their VMThread.
                  */
-                VMThreads.guaranteeOwnsThreadMutex("must be locked before iterating the threads");
                 for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (vmThread == CurrentIsolate.getCurrentThread()) {
                         /*

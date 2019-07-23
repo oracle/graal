@@ -693,7 +693,6 @@ public final class Safepoint {
                 int ignoreSafepoints = 0;
                 int notAtSafepoint = 0;
 
-                VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
                 for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     // Check if the thread is at a safepoint or in native code.
                     if (VMThreads.StatusSupport.isStatusSafepoint(vmThread)) {

@@ -501,7 +501,6 @@ public abstract class JavaThreads {
     static StackTraceElement[] getStackTrace(Thread thread) {
         StackTraceElement[][] result = new StackTraceElement[1][0];
         JavaVMOperation.enqueueBlockingSafepoint("getStackTrace", () -> {
-            VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 if (JavaThreads.fromVMThread(cur) == thread) {
                     result[0] = getStackTrace(cur);
@@ -515,7 +514,6 @@ public abstract class JavaThreads {
     static Map<Thread, StackTraceElement[]> getAllStackTraces() {
         Map<Thread, StackTraceElement[]> result = new HashMap<>();
         JavaVMOperation.enqueueBlockingSafepoint("getAllStackTraces", () -> {
-            VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
             for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
                 result.put(JavaThreads.fromVMThread(cur), getStackTrace(cur));
             }
