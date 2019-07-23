@@ -187,34 +187,15 @@ public interface Feature {
 
         /**
          * Registers a callback that is invoked once {@link Feature#duringAnalysis during analysis}
-         * when the provided class is determined to be reachable at run time.
-         *
-         * @since 19.2
-         */
-        void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz);
-
-        /**
-         * Registers a callback that is invoked once {@link Feature#duringAnalysis during analysis}
-         * when the provided field is determined to be reachable at run time.
-         *
-         * @since 19.2
-         */
-        void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Field field);
-
-        /**
-         * Registers a callback that is invoked once {@link Feature#duringAnalysis during analysis}
-         * when the provided method or constructor is determined to be reachable at run time.
-         *
-         * @since 19.2
-         */
-        void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Executable method);
-
-        /**
-         * Registers a callback that is invoked once {@link Feature#duringAnalysis during analysis}
          * when any of the provided elements is determined to be reachable at run time. The elements
-         * can only be of a type accepted by {@link #registerReachabilityHandler(Consumer, Class)},
-         * {@link #registerReachabilityHandler(Consumer, Field)}, or
-         * {@link #registerReachabilityHandler(Consumer, Executable)}.
+         * can only be of the following types:
+         * <p>
+         * <ul>
+         * <li>{@link Class} to specify reachability of the given class
+         * <li>{@link Field} to specify reachability of a field
+         * <li>{@link Executable} to specify reachability of a method or constructor
+         * </ul>
+         * <p>
          *
          * @since 19.2
          */
@@ -227,7 +208,7 @@ public interface Feature {
      * @since 19.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface DuringAnalysisAccess extends BeforeAnalysisAccess, AfterAnalysisAccess {
+    interface DuringAnalysisAccess extends BeforeAnalysisAccess, QueryReachabilityAccess {
 
         /**
          * Notifies the static analysis that changes are made that enforce a new iteration of the
@@ -244,7 +225,17 @@ public interface Feature {
      * @since 19.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterAnalysisAccess extends FeatureAccess {
+    interface AfterAnalysisAccess extends QueryReachabilityAccess {
+    }
+
+    /**
+     * Access reachability methods available for {@link Feature#afterAnalysis} and
+     * {@link Feature#duringAnalysis}.
+     *
+     * @since 19.2
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface QueryReachabilityAccess extends FeatureAccess {
         /**
          * Returns true if the static analysis determined that the provided class is reachable at
          * run time.
