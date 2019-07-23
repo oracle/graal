@@ -152,7 +152,8 @@ java_base_opens_packages = [
     'java.base/javax.crypto',
     # Reflective access to java.util.Bits.words.
     'java.base/java.util',
-    'java.base/jdk.internal.logger',]
+    'java.base/jdk.internal.logger',
+    'java.sql/java.sql',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(java_base_opens_packages))
 
 # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
@@ -166,8 +167,9 @@ graal_truffle_opens_packages = [
     'org.graalvm.truffle/com.oracle.truffle.api.impl',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_truffle_opens_packages))
 
-# Currently JDK 13 and JDK 11 have the same flags
+# Currently JDK 13, 14 and JDK 11 have the same flags
 GRAAL_COMPILER_FLAGS_MAP['13'] = GRAAL_COMPILER_FLAGS_MAP['11']
+GRAAL_COMPILER_FLAGS_MAP['14'] = GRAAL_COMPILER_FLAGS_MAP['11']
 
 def svm_java_compliance():
     return mx.get_jdk(tag='default').javaCompliance

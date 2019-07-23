@@ -96,7 +96,7 @@ public class RelativeSourceInspectDebugTest {
             out.write(data, 0, data.length);
             out.closeEntry();
         }
-        try (FileSystem fs = FileSystems.newFileSystem(zip2.toPath(), null)) {
+        try (FileSystem fs = FileSystems.newFileSystem(zip2.toPath(), (ClassLoader)null)) {
             Path spInZip = fs.getPath("/");
             sourcePathURI[1] = spInZip.toUri();
             resolvedURI[1] = fs.getPath(relativePath[1]).toUri();
@@ -114,7 +114,7 @@ public class RelativeSourceInspectDebugTest {
             out.write(data, 0, data.length);
             out.closeEntry();
         }
-        try (FileSystem fs = FileSystems.newFileSystem(zip3.toPath(), null)) {
+        try (FileSystem fs = FileSystems.newFileSystem(zip3.toPath(), (ClassLoader)null)) {
             Path spInZip = fs.getPath(folderInZip3);
             sourcePathURI[2] = spInZip.toUri();
             resolvedURI[2] = fs.getPath(folderInZip3, relativePath[2]).toUri();
