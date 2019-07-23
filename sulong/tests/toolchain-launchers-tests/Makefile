@@ -61,12 +61,18 @@ $(eval $(call CHECK_ENV,CLANG))
 $(eval $(call CHECK_ENV,CLANGXX))
 $(eval $(call CHECK_ENV,SULONG_EXE))
 
+ifeq ($(OS), darwin)
+BC_MAGIC=0b17c0de
+else
+BC_MAGIC=dec04342
+endif
+
 # checks
 define CHECK_BC_SECTION
 	objdump -h -j .llvmbc  $(1) > /dev/null || ( echo No bitcode section in $(1) ; false )
 endef
 define CHECK_BC_FILE
-	( od -t x4 -N 4 $(1) | grep "dec04342" ) > /dev/null || ( echo Not a bitcode file: $(1) ; false )
+	( od -t x4 -N 4 $(1) | grep "$(BC_MAGIC)" ) > /dev/null || ( echo Not a bitcode file: $(1) ; false )
 endef
 
 ifeq ($(OS), darwin)
