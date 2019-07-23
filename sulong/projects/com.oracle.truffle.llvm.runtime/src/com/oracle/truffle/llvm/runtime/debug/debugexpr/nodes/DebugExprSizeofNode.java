@@ -29,32 +29,22 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class DebugExprSizeofNode extends LLVMExpressionNode {
+public class DebugExprSizeofNode extends LLVMExpressionNode {
 
-    private DebugExprType type;
+    private final int typeSize;
 
     public DebugExprSizeofNode(DebugExprType type) {
-        this.type = type;
+        this.typeSize = LLVMLanguage.getLLVMContextReference().get().getByteSize(type.getLLVMRuntimeType());
     }
 
-    @Specialization
-    protected Object doGeneric(VirtualFrame frame, @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ref) {
-        return getSizeInformation(ref);
-    }
-
-    @TruffleBoundary
-    protected int getSizeInformation(ContextReference<LLVMContext> ref) {
-        return ref.get().getByteSize(type.getLLVMRuntimeType());
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return typeSize;
     }
 
 }

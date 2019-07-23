@@ -38,16 +38,12 @@ import java.io.InputStream;
  * Parser.
  */
 public class CocoInputStream extends InputStream {
-    private final String s;
+    private final CharSequence s;
     private int pos;
 
-    public CocoInputStream(String s) {
+    public CocoInputStream(CharSequence s) {
         this.s = s;
         pos = 0;
-    }
-
-    public CocoInputStream(CharSequence cs) {
-        this(cs.toString());
     }
 
     @Override

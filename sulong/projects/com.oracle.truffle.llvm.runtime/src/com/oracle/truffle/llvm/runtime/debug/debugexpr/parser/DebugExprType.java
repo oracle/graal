@@ -1,7 +1,6 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
-import java.util.HashMap;
-
+import java.util.EnumMap;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
@@ -14,7 +13,7 @@ public class DebugExprType {
 
     private final Kind kind;
     private DebugExprType innerType; // used for arrays, pointers, ...
-    private static HashMap<Kind, DebugExprType> map = new HashMap<>();
+    private static EnumMap<Kind, DebugExprType> map = new EnumMap<>(Kind.class);
 
     private DebugExprType(Kind kind, DebugExprType innerType) {
         this.kind = kind;
@@ -94,6 +93,10 @@ public class DebugExprType {
         }
     }
 
+    /**
+     * returns the more general type in terms of implicit conversions (i.e. commonType(Int32,
+     * Float32) returns Float32, commonType(Int64, UInt32) returns UInt64).
+     */
     public static DebugExprType commonType(DebugExprType t1, DebugExprType t2) {
         if (t1 == t2)
             return t1;
@@ -102,7 +105,7 @@ public class DebugExprType {
         else if (t1.isFloatingType() && t2.isFloatingType()) {
             return getFloatType(Math.max(t1.getBitSize(), t2.getBitSize()));
         } else if (t1.isIntegerType() && t2.isIntegerType()) {
-            if (t1.isUnsigned() ^ t2.isUnsigned()) {
+            if (t1.isUnsigned() != t2.isUnsigned()) {
                 // return unsigned type
                 return getIntType(Math.max(t1.getBitSize(), t2.getBitSize()), false);
             } else {
@@ -240,32 +243,32 @@ public class DebugExprType {
         }
     }
 
-    public Object parseString(String s) {
+    public Object parse(Object member) {
         switch (kind) {
             case BOOL:
-                return Boolean.parseBoolean(s);
+                return Boolean.parseBoolean(member.toString());
             case UNSIGNED_CHAR:
             case SIGNED_CHAR:
                 // TODO adjust to characters
-                return Short.parseShort(s);
+                return Short.parseShort(member.toString());
             case UNSIGNED_SHORT:
             case SIGNED_SHORT:
-                return Short.parseShort(s);
+                return Short.parseShort(member.toString());
             case UNSIGNED_INT:
             case SIGNED_INT:
-                return Integer.parseInt(s);
+                return Integer.parseInt(member.toString());
             case UNSIGNED_LONG:
             case SIGNED_LONG:
-                return Long.parseLong(s);
+                return Long.parseLong(member.toString());
             case FLOAT:
-                return Float.parseFloat(s);
+                return Float.parseFloat(member.toString());
             case DOUBLE:
             case LONG_DOUBLE:
-                return Double.parseDouble(s);
+                return Double.parseDouble(member.toString());
             case STRUCT:
             case ARRAY:
             case POINTER:
-                return s;
+                return member;
             default:
                 return null;
         }
@@ -289,6 +292,7 @@ public class DebugExprType {
         REFERENCE,
         ARRAY,
         STRUCT,
-        FUNCTION
+        FUNCTION;
+
     }
 }

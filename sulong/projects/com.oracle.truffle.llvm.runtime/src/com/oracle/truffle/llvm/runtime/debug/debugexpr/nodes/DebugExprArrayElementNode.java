@@ -43,23 +43,18 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeInfo(shortName = "[]")
 public class DebugExprArrayElementNode extends LLVMExpressionNode {
 
+    @Child private LLVMExpressionNode baseNode;
     @Child private LLVMExpressionNode indexNode;
-    private DebugExprType type;
-    private Object member;
-    private Object baseMember;
+    final DebugExprType type;
 
-    public DebugExprArrayElementNode(Object baseMember, LLVMExpressionNode indexNode, DebugExprType type) {
+    public DebugExprArrayElementNode(DebugExpressionPair basePair, LLVMExpressionNode indexNode) {
         this.indexNode = indexNode;
-        this.baseMember = baseMember;
-        this.type = type;
+        this.baseNode = basePair.getNode();
+        this.type = basePair.getType();
     }
 
     public DebugExprType getType() {
         return type;
-    }
-
-    public Object getMember() {
-        return member;
     }
 
     @Override
@@ -76,6 +71,7 @@ public class DebugExprArrayElementNode extends LLVMExpressionNode {
                 throw DebugExprException.typeError(this, e.getResult());
             }
         }
+        Object baseMember = baseNode.executeGeneric(frame);
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
         if (library.hasMembers(baseMember)) {
             Object getmembers;
@@ -88,14 +84,13 @@ public class DebugExprArrayElementNode extends LLVMExpressionNode {
                     }
                 }
             } catch (UnsupportedMessageException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                throw DebugExprException.create(this, "Array access of " + baseMember + " not possible");
             } catch (InvalidArrayIndexException e) {
                 throw DebugExprException.create(this, "Invalid array index: " + e.getInvalidIndex());
             } catch (UnknownIdentifierException e) {
-                throw DebugExprException.symbolNotFound(this, e.getUnknownIdentifier(), member);
+                throw DebugExprException.symbolNotFound(this, e.getUnknownIdentifier(), baseMember);
             }
         }
-        throw DebugExprException.create(this, "cannot evaluate expression");
+        throw DebugExprException.create(this, "Array access of " + baseMember + " not possible");
     }
 }
