@@ -109,8 +109,7 @@ builds += [
   ${sulong-gateStyle} { name: gate-sulong-style, run: [[mx, gate, --tags, "style"]] }
   ${sulong-gateStyle} ${jdt} { name: gate-sulong-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
   ${sulong-gate-asm-parser} { name: gate-sulong-asm-parser }
-  ${sulong-gateTest80-linux} { name: gate-sulong-misc0, run: [[mx, gate, --tags, "build,assembly,args,callback,vaargs"]] }
-  ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe"]] }
+  ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-misc, run: [[mx, gate, --tags, "build,sulongMisc"]] }
   ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-parser, run: [[mx, gate, --tags, "build,parser"]] }
   ${sulong-gateTest80-linux} { name: gate-sulong-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]], timelimit: "45:00" }
   ${sulong-gateTest80-linux} { name: gate-sulong-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
