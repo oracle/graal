@@ -63,13 +63,15 @@ $(eval $(call CHECK_ENV,SULONG_EXE))
 
 ifeq ($(OS), darwin)
 BC_MAGIC=0b17c0de
+BC_SECTION=__bitcode\|__bundle
 else
 BC_MAGIC=dec04342
+BC_SECTION=\.llvmbc
 endif
 
 # checks
 define CHECK_BC_SECTION
-	objdump -h -j .llvmbc  $(1) > /dev/null || ( echo No bitcode section in $(1) ; false )
+	( objdump -h $(1) | grep "$(BC_SECTION)" ) > /dev/null || ( echo No bitcode section in $(1) ; false )
 endef
 define CHECK_BC_FILE
 	( od -t x4 -N 4 $(1) | grep "$(BC_MAGIC)" ) > /dev/null || ( echo Not a bitcode file: $(1) ; false )
