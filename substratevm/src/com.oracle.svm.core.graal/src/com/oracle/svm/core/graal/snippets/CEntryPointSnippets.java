@@ -89,7 +89,6 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
@@ -289,7 +288,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not (thread-local) allocate while detaching a thread.")
     private static int detachThreadMT(IsolateThread currentThread) {
         try {
-            VMThreads.detachThread(currentThread);
+            VMThreads.singleton().detachThread(currentThread);
             writeCurrentVMThread(WordFactory.nullPointer());
         } catch (Throwable t) {
             return CEntryPointErrors.UNCAUGHT_EXCEPTION;
@@ -306,24 +305,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int tearDownIsolate() {
         try {
             RuntimeSupport.executeTearDownHooks();
-            if (!JavaThreads.singleton().tearDownVM()) {
+            if (!JavaThreads.singleton().tearDown()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
 
-            if (UseDedicatedVMOperationThread.getValue()) {
-                VMOperationControl.stopVMOperationThread();
-            }
-
-            /*
-             * After stopping the VM operation thread, VM operations won't be processed anymore. So,
-             * we must ensure that the current thread does not cause any VM operations. To simplify
-             * testing, we enforce those restrictions regardless of the VM operation execution mode.
-             */
-            ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited.");
-            if (UseDedicatedVMOperationThread.getValue()) {
-                VMOperationControl.waitUntilVMOperationThreadExited();
-            }
-
+            VMThreads.singleton().tearDown();
             return Isolates.tearDownCurrent();
         } catch (Throwable t) {
             logException(t);

@@ -159,6 +159,12 @@ public abstract class JavaThreads {
         return toTarget(thread).sleepParkEvent;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    protected static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
+        Thread javaThread = currentThread.get(thread);
+        return toTarget(javaThread).wasStartedByCurrentIsolate;
+    }
+
     /* End of accessor functions. */
 
     public static Thread fromVMThread(IsolateThread vmThread) {
@@ -286,19 +292,18 @@ public abstract class JavaThreads {
     }
 
     /**
-     * Tear down the VMThreads.
-     * <p>
-     * This is called from an {@link CEntryPoint} exit action.
-     * <p>
-     * Returns true if the VM has been torn down, false otherwise.
+     * Tear down all application threads (except the current one). This is called from an
+     * {@link CEntryPoint} exit action.
+     *
+     * @return true if the application threads have been torn down, false otherwise.
      */
-    public boolean tearDownVM() {
+    public boolean tearDown() {
         /* If the VM is single-threaded then this is the last (and only) thread. */
         if (!MultiThreaded.getValue()) {
             return true;
         }
         /* Tell all the threads that the VM is being torn down. */
-        return tearDownIsolateThreads();
+        return tearDownJavaThreads();
     }
 
     /**
@@ -327,7 +332,7 @@ public abstract class JavaThreads {
     }
 
     /** Have each thread, except this one, tear itself down. */
-    private static boolean tearDownIsolateThreads() {
+    private static boolean tearDownJavaThreads() {
         final Log trace = Log.noopLog().string("[JavaThreads.tearDownIsolateThreads:").newline().flush();
         /* Prevent new threads from starting. */
         VMThreads.setTearingDown();

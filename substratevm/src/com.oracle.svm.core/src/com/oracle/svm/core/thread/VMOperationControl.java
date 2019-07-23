@@ -43,7 +43,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -117,29 +119,31 @@ public final class VMOperationControl {
         dedicatedVMOperationThread.waitUntilStarted();
     }
 
-    public static void stopVMOperationThread() {
+    public static void shutdownAndDetachVMOperationThread() {
         assert UseDedicatedVMOperationThread.getValue();
         JavaVMOperation.enqueueBlockingNoSafepoint("Stop VMOperationThread", () -> {
             dedicatedVMOperationThread.shutdown();
         });
 
+        waitUntilVMOperationThreadDetached();
         assert get().mainQueues.isEmpty();
     }
 
+    @RestrictHeapAccess(access = Access.NO_ALLOCATION, reason = "Called during teardown")
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
-    public static void waitUntilVMOperationThreadExited() {
+    private static void waitUntilVMOperationThreadDetached() {
         CFunctionPrologueNode.cFunctionPrologue();
-        waitUntilVMOperationThreadExitedInNative();
+        waitUntilVMOperationThreadDetachedInNative();
         CFunctionEpilogueNode.cFunctionEpilogue();
     }
 
     /**
-     * Wait until the VM operation thread reached a point where it does not access the heap anymore.
-     * Otherwise, we might tear down the heap although it is still being accessed.
+     * Wait until the VM operation thread reached a point where it detached from SVM and is
+     * therefore no longer executing Java code.
      */
     @Uninterruptible(reason = "Must not stop while in native.")
     @NeverInline("Provide a return address for the Java frame anchor.")
-    private static void waitUntilVMOperationThreadExitedInNative() {
+    private static void waitUntilVMOperationThreadDetachedInNative() {
         // this method may only access data in the image heap
         VMThreads.THREAD_MUTEX.lockNoTransition();
         try {

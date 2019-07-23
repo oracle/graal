@@ -61,7 +61,6 @@ import com.oracle.svm.core.windows.headers.WinBase;
 
 @Platforms(Platform.WINDOWS.class)
 public final class WindowsJavaThreads extends JavaThreads {
-
     @Platforms(HOSTED_ONLY.class)
     WindowsJavaThreads() {
     }
@@ -136,9 +135,13 @@ public final class WindowsJavaThreads extends JavaThreads {
         try {
             threadStartRoutine(threadHandle);
         } finally {
+            /*
+             * Note that there is another handle to the thread stored in VMThreads.OSThreadHandleTL.
+             * This is necessary to ensure that the operating system does not release the thread
+             * resources too early.
+             */
             WinBase.CloseHandle(osThreadHandle);
         }
-
         return WordFactory.nullPointer();
     }
 }

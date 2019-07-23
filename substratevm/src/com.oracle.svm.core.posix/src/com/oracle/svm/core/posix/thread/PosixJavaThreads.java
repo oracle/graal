@@ -91,7 +91,7 @@ public final class PosixJavaThreads extends JavaThreads {
                         Pthread.pthread_attr_init(attributes),
                         "PosixJavaThreads.start0: pthread_attr_init");
         PosixUtils.checkStatusIs0(
-                        Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_DETACHED()),
+                        Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_JOINABLE()),
                         "PosixJavaThreads.start0: pthread_attr_init");
         UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
         /* If there is a chosen stack size, use it as the stack size. */

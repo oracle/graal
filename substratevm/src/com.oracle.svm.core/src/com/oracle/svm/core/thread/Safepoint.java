@@ -484,6 +484,9 @@ public final class Safepoint {
             if (unlock) {
                 VMThreads.THREAD_MUTEX.unlock();
             }
+
+            // this can take a moment, so we do it after letting all other threads proceed
+            VMThreads.singleton().cleanupExitedOsThreads();
         }
 
         private static boolean isMyself(IsolateThread thread) {

@@ -61,6 +61,9 @@ final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     volatile boolean interrupted;
 
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    boolean wasStartedByCurrentIsolate;
+
     /**
      * Every thread has a {@link ParkEvent} for {@link sun.misc.Unsafe#park} and
      * {@link sun.misc.Unsafe#unpark}. Lazily initialized.
@@ -238,6 +241,7 @@ final class Target_java_lang_Thread {
          * child thread starts, or it could hang in case that the child thread is already dead.
          */
         threadStatus = ThreadStatus.RUNNABLE;
+        wasStartedByCurrentIsolate = true;
         JavaThreads.singleton().doStartThread(JavaThreads.fromTarget(this), chosenStackSize);
     }
 
