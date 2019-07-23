@@ -133,27 +133,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-19.tar.gz"],
-            "sha1" : "8164c2ead76c90d77d1e9d72e0605c7e3ddd1585",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20.tar.gz"],
+            "sha1" : "8dc5a90bed5f51d7538d05b8c31c31b7dfddbd66",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-19-linux-amd64.tar.gz"],
-                        "sha1" : "b1aa808483e5ba1d1091a2ce1355e5d3465a1b38",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-linux-amd64.tar.gz"],
+                        "sha1" : "fd1a723d62cbbc591041d303e8b151d89f131643",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-19-macosx-x86_64.tar.gz"],
-                        "sha1" : "86441161d82ac1ad76672e356504b64f60fabb0c",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-macosx-x86_64.tar.gz"],
+                        "sha1" : "ae23bb365930f720acc88c62640bae6852a37d67",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-19-windows-amd64.tar.gz"],
-                        "sha1" : "1e9d8495a78bb65c77dc40c0d991db35e2c2cdd8",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-windows-amd64.tar.gz"],
+                        "sha1" : "555ec5171d430112f14676217b27e1b0b7a49e53",
                     }
                 },
             }
