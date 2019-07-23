@@ -38,7 +38,6 @@ BREAK 50 CONTINUE "main"
 	"e->4" "col 4: ident expected"
 	"test->int" "col 7: ident expected" //type name
 	"a>>>b" "member at >> is not available"
-	"(ew[a])3" "ew not found"
 	END
 
 BREAK 55 CONTINUE "main"
@@ -51,5 +50,4 @@ BREAK 55 CONTINUE "main"
 	"e->4" "col 4: ident expected"
 	"test->int" "col 7: ident expected" //type name
 	"a>>>b" "member at >> is not available"
-	"(ew[a])3" "ew not found"
 	END

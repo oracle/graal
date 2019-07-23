@@ -35,4 +35,5 @@ BREAK 62 CONTINUE "main"
 	"gcd(a,b)" "18"
 	"gcd(fib(5),10)" "5"
 	"fib(gcd(20,50))" "55"
+	"((int)fib(10))+5" "60"
 	END

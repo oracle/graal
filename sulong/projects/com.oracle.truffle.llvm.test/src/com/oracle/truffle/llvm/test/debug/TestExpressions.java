@@ -90,7 +90,6 @@ public class TestExpressions implements Iterable<StopRequest> {
                     } else {
                         stopReqExpressionMap.put(request, map);
                         map = null;
-                        System.out.println("END_REQUEST");
                     }
                     break;
 
@@ -145,7 +144,6 @@ public class TestExpressions implements Iterable<StopRequest> {
             }
 
             final String functionName = nextToken();
-            System.out.printf("NEW_REQUEST(%s, %d)\n", functionName, line);
             request = new StopRequest(ContinueStrategy.CONTINUE, functionName, line, true);
             stops.add(request);
             map = new HashMap<>();
