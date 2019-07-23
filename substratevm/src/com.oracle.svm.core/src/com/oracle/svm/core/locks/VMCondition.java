@@ -60,7 +60,7 @@ public class VMCondition {
     }
 
     /**
-     * Like {@linkplain #block()}, but without a thread status transitions. This method can only be
+     * Like {@linkplain #block()}, but without a thread status transition. This method can only be
      * called from uninterruptible code that did an <b>explicit</b> to-native transition before, as
      * blocking while still in Java-mode could result in a deadlock.
      */

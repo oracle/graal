@@ -178,24 +178,6 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Unknown thread state.")
     public abstract void failFatally(int code, CCharPointer message);
 
-    /** The value of a {@code null} {@link IsolateThread}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static IsolateThread nullThread() {
-        return WordFactory.nullPointer();
-    }
-
-    /** A predicate for the {@code null} {@link IsolateThread}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isNullThread(IsolateThread vmThread) {
-        return vmThread.isNull();
-    }
-
-    /** A predicate for the {@code non-null} {@link IsolateThread}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isNonNullThread(IsolateThread vmThread) {
-        return vmThread.isNonNull();
-    }
-
     /**
      * Iteration of all {@link IsolateThread}s that are currently running. VMThreads.THREAD_MUTEX
      * should be held when iterating the list.
@@ -204,7 +186,7 @@ public abstract class VMThreads {
      * therefore be used during GC:
      *
      * <pre>
-     * for (VMThread thread = VMThreads.firstThread(); VMThreads.isNonNullThread(thread); thread = VMThreads.nextThread(thread)) {
+     * for (VMThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
      * </pre>
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -282,13 +264,13 @@ public abstract class VMThreads {
         detachJavaThread(thread);
 
         // Run down the current list and remove the given VMThread.
-        IsolateThread previous = nullThread();
+        IsolateThread previous = WordFactory.nullPointer();
         IsolateThread current = head;
-        while (isNonNullThread(current)) {
+        while (current.isNonNull()) {
             IsolateThread next = nextTL.get(current);
             if (current == thread) {
                 // Splice the current element out of the list.
-                if (isNullThread(previous)) {
+                if (previous.isNull()) {
                     head = next;
                 } else {
                     nextTL.set(previous, next);
@@ -332,7 +314,7 @@ public abstract class VMThreads {
         VMThreads.THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
         try {
             IsolateThread thread;
-            for (thread = firstThread(); isNonNullThread(thread) && OSThreadIdTL.get(thread).notEqual(id); thread = nextThread(thread)) {
+            for (thread = firstThread(); thread.isNonNull() && OSThreadIdTL.get(thread).notEqual(id); thread = nextThread(thread)) {
             }
             return thread;
         } finally {

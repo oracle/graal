@@ -319,7 +319,7 @@ public final class ThreadLocalAllocation {
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
-            for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 disableThreadLocalAllocation(vmThread);
             }
         } else {

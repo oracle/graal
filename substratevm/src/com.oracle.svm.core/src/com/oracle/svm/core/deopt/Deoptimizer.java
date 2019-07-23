@@ -292,7 +292,7 @@ public final class Deoptimizer {
         /* If I am multi-threaded, deoptimize this method on all the other stacks. */
         if (SubstrateOptions.MultiThreaded.getValue()) {
             VMThreads.guaranteeOwnsThreadMutex("Must own the threads mutex while iterating the threads.");
-            for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }

@@ -720,7 +720,7 @@ public abstract class JavaThreads {
         public void operate() {
             list.clear();
             try (VMMutex lock = VMThreads.THREAD_MUTEX.lock()) {
-                for (IsolateThread isolateThread = VMThreads.firstThread(); VMThreads.isNonNullThread(isolateThread); isolateThread = VMThreads.nextThread(isolateThread)) {
+                for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                     if (isApplicationThread(isolateThread)) {
                         final Thread thread = JavaThreads.fromVMThread(isolateThread);
                         if (thread != null) {
@@ -758,7 +758,7 @@ public abstract class JavaThreads {
         public void operate() {
             count = 0;
             try (VMMutex lock = VMThreads.THREAD_MUTEX.lock()) {
-                for (IsolateThread isolateThread = VMThreads.firstThread(); VMThreads.isNonNullThread(isolateThread); isolateThread = VMThreads.nextThread(isolateThread)) {
+                for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
                     if (isApplicationThread(isolateThread)) {
                         count++;
                         if (printLaggards.get() && trace.isEnabled() && isolateThread != queuingThread) {

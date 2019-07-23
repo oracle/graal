@@ -665,7 +665,7 @@ public class GCImpl implements GC {
                  * (or in native code) so they will each have a JavaFrameAnchor in their VMThread.
                  */
                 VMThreads.guaranteeOwnsThreadMutex("must be locked before iterating the threads");
-                for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
+                for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (vmThread == CurrentIsolate.getCurrentThread()) {
                         /*
                          * The current thread is already scanned by code above, so we do not have to
