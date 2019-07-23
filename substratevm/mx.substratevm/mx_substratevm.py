@@ -152,8 +152,7 @@ java_base_opens_packages = [
     'java.base/javax.crypto',
     # Reflective access to java.util.Bits.words.
     'java.base/java.util',
-    'java.base/jdk.internal.logger',
-    'java.sql/java.sql',]
+    'java.base/jdk.internal.logger',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(java_base_opens_packages))
 
 # Reflective access to org.graalvm.nativeimage.impl.ImageSingletonsSupport.
