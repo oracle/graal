@@ -2045,6 +2045,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitOperandHelper(src, dst, 0);
     }
 
+    public final void movb(Register dst, AMD64Address src) {
+      assert inRC(CPU, dst) : "must have byte register";
+      prefixb(src, dst);
+      emitByte(0x8A);
+      emitOperandHelper(dst, src, 0);
+    }
+
     public final void movl(Register dst, int imm32) {
         movl(dst, imm32, false);
     }

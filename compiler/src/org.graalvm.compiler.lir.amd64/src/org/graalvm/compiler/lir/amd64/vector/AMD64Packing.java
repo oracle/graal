@@ -129,7 +129,11 @@ public final class AMD64Packing {
     private static void addr2reg(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, Register dst, AMD64Address src) {
         switch (kind) {
             case BYTE:
+                masm.movb(dst, src);
+                break;
             case WORD:
+                masm.movw(dst, src);
+                break;
             case DWORD:
                 masm.movl(dst, src);
                 break;
@@ -197,8 +201,8 @@ public final class AMD64Packing {
             super(c);
             assert valcount > 0 : "vector store must store at least one element";
             this.result = result;
-            this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.input = input;
+            this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.valcount = valcount;
         }
 

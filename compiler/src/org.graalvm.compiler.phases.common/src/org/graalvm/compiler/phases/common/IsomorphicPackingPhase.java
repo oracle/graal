@@ -941,7 +941,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             combinePacks(packSet, combinedPackSet);
 
             schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)),
-                    combinedPackSet.stream().filter(p -> context.getTargetProvider().getVectorDescription().maxVectorWidth(p.stamp(view).getScalar()) == p.getElements().size()).collect(Collectors.toSet()));
+                    combinedPackSet);//.stream().filter(p -> context.getTargetProvider().getVectorDescription().maxVectorWidth(p.stamp(view).getScalar()) == p.getElements().size()).collect(Collectors.toSet()));
         }
 
     }
