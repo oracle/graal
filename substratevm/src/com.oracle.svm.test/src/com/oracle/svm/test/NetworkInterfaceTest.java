@@ -44,4 +44,16 @@ public class NetworkInterfaceTest {
 
         Assert.assertTrue("At least one loopback found", foundLoopback);
     }
+
+    @Test
+    public void testIsUp() throws SocketException {
+        Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+        boolean somethingIsUp = false;
+        while (ifaces.hasMoreElements()) {
+            NetworkInterface each = ifaces.nextElement();
+            somethingIsUp = somethingIsUp || each.isUp();
+        }
+        Assert.assertTrue("At least one interface is up", somethingIsUp);
+    }
+
 }
