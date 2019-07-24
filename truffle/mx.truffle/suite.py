@@ -838,6 +838,7 @@ suite = {
         "bin/" : "dependency:com.oracle.truffle.nfi.native",
         "include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
       },
+      "include_dirs" : ["include"],
       "description" : "Contains the native library needed by truffle-nfi.",
       "maven": True,
     },
