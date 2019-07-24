@@ -36,17 +36,22 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
 
     @Override
     public <T> void add(Class<T> key, T value) {
-        HostedManagement.get().doAdd(key, value);
+        HostedManagement.getAndAssertExists().doAdd(key, value);
     }
 
     @Override
     public <T> T lookup(Class<T> key) {
-        return HostedManagement.get().doLookup(key);
+        return HostedManagement.getAndAssertExists().doLookup(key);
     }
 
     @Override
     public boolean contains(Class<?> key) {
-        return HostedManagement.get().doContains(key);
+        HostedManagement hm = HostedManagement.get();
+        if (hm == null) {
+            return false;
+        } else {
+            return hm.doContains(key);
+        }
     }
 
     /**
@@ -68,10 +73,14 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport {
          */
         private static final ThreadLocal<HostedManagement> hostedVMConfig = new ThreadLocal<>();
 
-        public static HostedManagement get() {
-            HostedManagement result = hostedVMConfig.get();
+        public static HostedManagement getAndAssertExists() {
+            HostedManagement result = get();
             assert result != null;
             return result;
+        }
+
+        public static HostedManagement get() {
+            return hostedVMConfig.get();
         }
 
         public static void installInThread(HostedManagement vmConfig) {

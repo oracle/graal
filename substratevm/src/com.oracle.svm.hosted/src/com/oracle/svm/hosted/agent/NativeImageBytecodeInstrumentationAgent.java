@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
+package com.oracle.svm.hosted.agent;
 
-import org.graalvm.compiler.options.OptionValues;
+import static org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.BytecodeSensitiveAnalysisPolicy;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
-import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisType;
+import java.lang.instrument.Instrumentation;
 
-public class AllocationSiteSensitiveAnalysisPolicy extends BytecodeSensitiveAnalysisPolicy implements SVMAnalysisPolicy {
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
 
-    public AllocationSiteSensitiveAnalysisPolicy(OptionValues options) {
-        super(options);
+import com.oracle.svm.util.AgentSupport;
+
+public class NativeImageBytecodeInstrumentationAgent {
+    @SuppressWarnings({"unused", "Convert2Lambda"})
+    public static void premain(String agentArgs, Instrumentation inst) {
+        inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(NativeImageBytecodeInstrumentationAgent::applyTransformation), false);
     }
 
-    @Override
-    public AnalysisObject createPinnedObject(BigBang bb, AnalysisType objectType, BytecodeLocation allocationSite, AnalysisContext allocationContext) {
-        return objectType.getContextInsensitiveAnalysisObject();
+    static byte[] applyTransformation(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
+        ClassReader reader = new ClassReader(classfileBuffer);
+        ClassWriter writer = new ClassWriter(reader, COMPUTE_FRAMES);
+        ClassInitializationTrackingVisitor visitor = new ClassInitializationTrackingVisitor(moduleName, loader, className, writer);
+        reader.accept(visitor, 0);
+        return writer.toByteArray();
     }
 }

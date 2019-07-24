@@ -160,6 +160,9 @@ public class SubstrateOptions {
     @Option(help = "Trace VMOperation execution.")//
     public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
 
+    @Option(help = "Instrument code to trace and report class initialization.")//
+    public static final HostedOptionKey<Boolean> TraceClassInitialization = new HostedOptionKey<>(false);
+
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.core.c;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-
-import jdk.vm.ci.meta.ResolvedJavaType;
-
-@NodeInfo
-public class NewPinnedArrayNode extends NewArrayNode {
-    public static final NodeClass<NewPinnedArrayNode> TYPE = NodeClass.create(NewPinnedArrayNode.class);
-
-    @Input private ValueNode pinnedAllocator;
-
-    public NewPinnedArrayNode(ResolvedJavaType elementType, ValueNode length, ValueNode pinnedAllocator) {
-        super(TYPE, elementType, length, true, null);
-        this.pinnedAllocator = pinnedAllocator;
-    }
-
-    public ValueNode getPinnedAllocator() {
-        return pinnedAllocator;
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        /* Pinned objects cannot be virtualized. */
-    }
+/**
+ * A non-moving array of Java objects.
+ *
+ * We use {@link Void} for the type parameter of {@link NonmovableArray} to prevent mistakenly
+ * assigning a {@link NonmovableObjectArray} to a {@link NonmovableArray}.
+ *
+ * @param <T> the type of stored objects, purely for tagging and compile-time checks.
+ *
+ * @see NonmovableArrays
+ */
+public interface NonmovableObjectArray<T> extends NonmovableArray<Void> {
 }

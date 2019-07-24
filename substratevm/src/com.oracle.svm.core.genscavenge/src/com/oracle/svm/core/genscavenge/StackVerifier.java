@@ -31,6 +31,8 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -63,13 +65,13 @@ public final class StackVerifier {
         // Mutable data are passed as arguments.
     }
 
-    public boolean verifyInAllThreads(Pointer currentSp, CodePointer currentIp, String message) {
+    public boolean verifyInAllThreads(Pointer currentSp, String message) {
         final Log trace = getTraceLog();
         trace.string("[StackVerifier.verifyInAllThreads:").string(message).newline();
         // Flush thread-local allocation data.
         ThreadLocalAllocation.disableThreadLocalAllocation();
         trace.string("Current thread ").hex(CurrentIsolate.getCurrentThread()).string(": [").newline();
-        if (!JavaStackWalker.walkCurrentThread(currentSp, currentIp, stackFrameVisitor)) {
+        if (!JavaStackWalker.walkCurrentThread(currentSp, stackFrameVisitor)) {
             return false;
         }
         trace.string("]").newline();
@@ -89,7 +91,7 @@ public final class StackVerifier {
         return true;
     }
 
-    private static boolean verifyFrame(Pointer frameSP, CodePointer frameIP, DeoptimizedFrame deoptimizedFrame) {
+    private static boolean verifyFrame(Pointer frameSP, CodePointer frameIP, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
         final Log trace = getTraceLog();
         trace.string("[StackVerifier.verifyFrame:");
         trace.string("  frameSP: ").hex(frameSP);
@@ -97,7 +99,7 @@ public final class StackVerifier {
         trace.string("  pc: ").hex(frameIP);
         trace.newline();
 
-        if (!CodeInfoTable.visitObjectReferences(frameSP, frameIP, deoptimizedFrame, verifyFrameReferencesVisitor)) {
+        if (!CodeInfoTable.visitObjectReferences(frameSP, frameIP, codeInfo, deoptimizedFrame, verifyFrameReferencesVisitor)) {
             return false;
         }
 
@@ -110,14 +112,14 @@ public final class StackVerifier {
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")
-        public boolean visitFrame(Pointer currentSP, CodePointer currentIP, DeoptimizedFrame deoptimizedFrame) {
+        public boolean visitFrame(Pointer currentSP, CodePointer currentIP, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
             final Log trace = getTraceLog();
-            long totalFrameSize = CodeInfoTable.lookupTotalFrameSize(currentIP);
+            long totalFrameSize = CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, currentIP));
             trace.string("  currentIP: ").hex(currentIP);
             trace.string("  currentSP: ").hex(currentSP);
             trace.string("  frameSize: ").signed(totalFrameSize).newline();
 
-            if (!verifyFrame(currentSP, currentIP, deoptimizedFrame)) {
+            if (!verifyFrame(currentSP, currentIP, codeInfo, deoptimizedFrame)) {
                 final Log witness = Log.log();
                 witness.string("  frame fails to verify");
                 witness.string("  returns false]").newline();

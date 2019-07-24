@@ -22,9 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.util;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-package com.oracle.svm.hosted.c;
+import java.lang.instrument.ClassFileTransformer;
+import java.security.ProtectionDomain;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+public class AgentSupport {
+
+    public static ClassFileTransformer createClassInstrumentationTransformer(TransformerInterface applyTransformation) {
+        return new ClassFileTransformer() {
+            @Override
+            public byte[] transform(Module module, ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
+                return applyTransformation.apply(module.getName(), loader, className, classfileBuffer);
+            }
+        };
+    }
+}

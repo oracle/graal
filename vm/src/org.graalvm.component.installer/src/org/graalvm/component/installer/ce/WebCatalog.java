@@ -43,10 +43,12 @@ import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.model.ComponentInfo;
 
 public class WebCatalog implements SoftwareChannel {
     private final String urlString;
+    private final SoftwareChannelSource source;
 
     private URL catalogURL;
     private CommandInput input;
@@ -54,8 +56,9 @@ public class WebCatalog implements SoftwareChannel {
     private ComponentRegistry local;
     private ComponentStorage storage;
 
-    public WebCatalog(String u) {
+    public WebCatalog(String u, SoftwareChannelSource source) {
         this.urlString = u;
+        this.source = source;
     }
 
     protected static boolean acceptURLScheme(String scheme) {
@@ -106,7 +109,8 @@ public class WebCatalog implements SoftwareChannel {
         FileDownloader dn;
         try {
             catalogURL = new URL(urlString);
-            dn = new FileDownloader(feedback.l10n("REMOTE_CatalogLabel"), catalogURL, feedback);
+            String l = source.getLabel();
+            dn = new FileDownloader(feedback.l10n(l == null || l.isEmpty() ? "REMOTE_CatalogLabel2" : "REMOTE_CatalogLabel", l), catalogURL, feedback);
             dn.download();
         } catch (NoRouteToHostException | ConnectException ex) {
             throw feedback.failure("REMOTE_ErrorDownloadCatalogProxy", ex, catalogURL, ex.getLocalizedMessage());
@@ -172,14 +176,15 @@ public class WebCatalog implements SoftwareChannel {
         private CommandInput input;
 
         @Override
-        public SoftwareChannel createChannel(String urlSpec, CommandInput in, Feedback fb) {
+        public SoftwareChannel createChannel(SoftwareChannelSource src, CommandInput in, Feedback fb) {
+            String urlSpec = src.getLocationURL();
             int schColon = urlSpec.indexOf(':'); // NOI18N
             if (schColon == -1) {
                 return null;
             }
             String scheme = urlSpec.toLowerCase().substring(0, schColon);
             if (acceptURLScheme(scheme)) {
-                WebCatalog c = new WebCatalog(urlSpec);
+                WebCatalog c = new WebCatalog(urlSpec, src);
                 c.init(in, fb);
                 return c;
             }

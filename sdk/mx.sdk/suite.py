@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.223.0",
   "name" : "sdk",
-  "version" : "19.2.0",
+  "version" : "19.3.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -137,6 +137,7 @@ suite = {
       ],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
+        "org.graalvm.nativeimage.impl.clinit",  # class initialization instrumentation
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",

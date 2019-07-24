@@ -28,7 +28,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.meta.SharedMethod;
 
 public interface InstalledCodeObserver {
@@ -38,9 +38,13 @@ public interface InstalledCodeObserver {
 
         default void release() {
         }
+
+        @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+        default void releaseOnTearDown() {
+        }
     }
 
-    InstalledCodeObserverHandle install(PinnedAllocator metaInfoAllocator);
+    InstalledCodeObserverHandle install();
 
     interface Factory {
         InstalledCodeObserver create(DebugContext debug, SharedMethod method, CompilationResult compilation, Pointer code);

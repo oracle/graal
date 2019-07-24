@@ -200,7 +200,7 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer());
         return this;
     }
 

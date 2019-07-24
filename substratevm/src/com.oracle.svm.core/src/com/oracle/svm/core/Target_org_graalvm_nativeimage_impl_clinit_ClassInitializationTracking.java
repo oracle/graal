@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
+package com.oracle.svm.core;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
-import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisType;
+import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
-public interface SVMAnalysisPolicy {
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-    /** Create a pinned object abstraction. */
-    AnalysisObject createPinnedObject(BigBang bb, AnalysisType objectType, BytecodeLocation allocationSite, AnalysisContext allocationContext);
+@SuppressWarnings({"unused"})
+@TargetClass(ClassInitializationTracking.class)
+final class Target_org_graalvm_nativeimage_impl_clinit_ClassInitializationTracking {
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+    private static boolean IS_IMAGE_BUILD_TIME = false;
+    // Checkstyle: start
 }

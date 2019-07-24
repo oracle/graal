@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.analysis;
+package com.oracle.svm.util;
 
-import org.graalvm.compiler.options.OptionValues;
+import java.lang.instrument.ClassFileTransformer;
+import java.security.ProtectionDomain;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
-import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-import com.oracle.graal.pointsto.meta.AnalysisType;
+public class AgentSupport {
 
-public class ContextInsensitiveAnalysisPolicy extends DefaultAnalysisPolicy implements SVMAnalysisPolicy {
-
-    public ContextInsensitiveAnalysisPolicy(OptionValues options) {
-        super(options);
-    }
-
-    @Override
-    public AnalysisObject createPinnedObject(BigBang bb, AnalysisType objectType, BytecodeLocation allocationSite, AnalysisContext allocationContext) {
-        return objectType.getContextInsensitiveAnalysisObject();
+    public static ClassFileTransformer createClassInstrumentationTransformer(TransformerInterface applyTransformation) {
+        return new ClassFileTransformer() {
+            @Override
+            public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
+                return applyTransformation.apply(null, loader, className, classfileBuffer);
+            }
+        };
     }
 }

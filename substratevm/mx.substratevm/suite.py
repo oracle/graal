@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.223.0",
     "name": "substratevm",
-    "version" : "19.2.0",
+    "version" : "19.3.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -40,6 +40,14 @@ suite = {
                 ]
             },
         ]
+    },
+
+    "libraries" : {
+        "RENAISSANCE_HARNESS_11" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
+            "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
+            "packedResource": True,
+        }
     },
 
     "projects": {
@@ -281,6 +289,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
+                "mx:ASM_7.1",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
@@ -751,6 +760,9 @@ suite = {
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
             ],
+            "manifestEntries" : {
+                "Premain-Class": "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent",
+            },
             "distDependencies": [
                 "SVM_HOSTED_NATIVE",
                 "sdk:GRAAL_SDK",

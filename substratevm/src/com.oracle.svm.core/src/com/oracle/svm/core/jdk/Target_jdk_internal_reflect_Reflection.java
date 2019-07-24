@@ -37,7 +37,7 @@ public final class Target_jdk_internal_reflect_Reflection {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     public static Class<?> getCallerClass() {
-        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer());
     }
 
     @Substitute
