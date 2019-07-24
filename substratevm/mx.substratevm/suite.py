@@ -320,7 +320,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
             },
@@ -345,7 +345,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN"],
+                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
             },
@@ -358,16 +358,16 @@ suite = {
             "use_jdk_headers" : True,
             "os_arch" : {
                 "darwin": {
-                    "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2"],
+                    "<others>" : {
+                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
                 "linux": {
-                    "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2"],
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
                     },
-                    "aarch64" : {
-                        "cflags": ["-g", "-fPIC", "-O2"],
+                    "<others>" : {
+                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
                 "<others>": {
