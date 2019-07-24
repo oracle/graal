@@ -109,8 +109,8 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 out.println(" * containing the annotation processor is updated.");
                 out.println(" *");
                 out.println(" * GENERATED CONTENT - DO NOT EDIT");
-                out.println(" * GeneratedBy: {@link " + getClass().getName() + "}");
-                out.println(" * SpecifiedBy: {@link " + Option.class.getName() + "}");
+                out.println(" * GeneratedBy: " + getClass().getName());
+                out.println(" * SpecifiedBy: " + Option.class.getName());
                 out.println(" */");
                 out.println("public abstract class " + className + " {");
 
@@ -119,7 +119,7 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
 
                     String deprecatedByText = null;
                     if (option.deprecatedBy != null) {
-                        deprecatedByText = "Deprecated by {@link org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions." + option.deprecatedBy + "}.";
+                        deprecatedByText = "Deprecated by " + linkIfRuntime(isRuntime, "org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions#" + option.deprecatedBy) + ".";
                     }
 
                     if (isRuntime) {
@@ -185,5 +185,13 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
             }
         }
         return true;
+    }
+
+    private static String linkIfRuntime(boolean isRuntime, String className) {
+        if (isRuntime) {
+            return "{@link " + className + "}";
+        } else {
+            return className;
+        }
     }
 }

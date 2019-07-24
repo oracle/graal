@@ -41,14 +41,13 @@ import com.oracle.truffle.api.Option;
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
  * options are accessed by the Truffle runtime and not the Truffle compiler, unlike
- * {@link org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions}.
+ * org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions
  * <p>
  * They replace the deprecated {@code -Dgraal.} Truffle-related options declared in
- * {@link org.graalvm.compiler.truffle.common.processor.Option}.
+ * org.graalvm.compiler.truffle.common.processor.Option
  */
 @Option.Group("engine")
 public final class PolyglotCompilerOptions {
-
     public enum EngineModeEnum {
         DEFAULT,
         THROUGHPUT,
