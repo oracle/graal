@@ -51,7 +51,7 @@ public abstract class Substitutor {
     }
 
     /**
-     * This method MUST return the same as th one in SubstitutionProcessor.
+     * This method MUST return the same as the one in SubstitutionProcessor.
      */
     public static String getQualifiedClassName(String className, String methodName, List<String> parameterTypes) {
         return Substitutor.class.getPackage().getName() + "." + getClassName(className, methodName, parameterTypes);

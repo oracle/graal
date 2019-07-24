@@ -139,26 +139,6 @@ public abstract class NativeEnv {
         return StaticObject.NULL;
     }
 
-    protected static Object defaultValue(Class<?> returnType) {
-        if (returnType == boolean.class)
-            return false;
-        if (returnType == byte.class)
-            return (byte) 0;
-        if (returnType == char.class)
-            return (char) 0;
-        if (returnType == short.class)
-            return (short) 0;
-        if (returnType == int.class)
-            return 0;
-        if (returnType == float.class)
-            return 0.0F;
-        if (returnType == double.class)
-            return 0.0;
-        if (returnType == long.class)
-            return 0L;
-        return StaticObject.NULL;
-    }
-
     public static TruffleObject loadLibrary(String[] searchPaths, String name) {
         for (String path : searchPaths) {
             File libfile = new File(path, System.mapLibraryName(name));
