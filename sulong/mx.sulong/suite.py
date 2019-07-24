@@ -110,7 +110,7 @@ suite = {
       ],
       "buildEnv" : {
         "LIBSULONGTEST" : "<lib:sulongtest>",
-        "CLANG" : "<llvm-tool:clang>",
+        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -414,10 +414,10 @@ suite = {
       ],
       "buildEnv" : {
         "CFLAGS" : "-Xclang -disable-O0-optnone",
-        "CLANG" : "<llvm-tool:clang>",
-        "CLANGXX" : "<llvm-tool:clang++>",
-        "OPT" : "<llvm-tool:opt>",
-        "LLVM_LINK" : "<llvm-tool:llvm-link>",
+        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
+        "CLANGXX" : "<path:SULONG_LLVM_ORG>/bin/clang++",
+        "OPT" : "<path:SULONG_LLVM_ORG>/bin/opt",
+        "LLVM_LINK" : "<path:SULONG_LLVM_ORG>/bin/llvm-link",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -436,7 +436,7 @@ suite = {
         "SULONG_LLVM_ORG",
       ],
       "buildEnv" : {
-        "CLANG" : "<llvm-tool:clang>",
+        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
         "LIBSULONG" : "<lib:sulong>",
         "LIBPOLYGLOT" : "<lib:polyglot-mock>",
         "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
