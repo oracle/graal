@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,8 +41,8 @@ void test_adc(int a, int b, int cf) {
                    "pushf\n"
                    "pop %%rax\n"
                    "popf\n"
-                   : "=a"(out_flags), [b] "=r"(out)
-                   : [a] "r"(a), "1"(b), "a"(flags));
+                   : "=a"(out_flags), [ b ] "=r"(out)
+                   : [ a ] "r"(a), "1"(b), "a"(flags));
   printf("%08x:%08x:%x:%08x:%x:%x\n", a, b, cf, out, (out_flags & CC_C) ? 1 : 0, (out_flags & CC_O) ? 1 : 0);
 }
 

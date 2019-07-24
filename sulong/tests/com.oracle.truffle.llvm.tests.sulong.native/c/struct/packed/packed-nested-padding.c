@@ -33,7 +33,7 @@
 /*
  * Tests that the padding of the middle structure does not depend on the largest alignment
  * of the packed inner structure
-*/
+ */
 
 struct innerStruct {
   double d;

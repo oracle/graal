@@ -49,7 +49,7 @@ int main() {
   try {
     try {
       try {
-        throw & a;
+        throw &a;
       } catch (A *e) {
         printf("C1\n");
         throw;

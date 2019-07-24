@@ -162,6 +162,10 @@ def _sulong_gate_runner(args, tasks):
         if t:
             if mx.checkcopyrights(['--primary']) != 0:
                 t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
+
+    with Task('BuildLLVMorg', tasks, tags=['style', 'clangformat']) as t:
+        # needed for clang-format
+        if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: clangformatcheck()
     _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
@@ -247,6 +251,13 @@ def runLLVMUnittests(unittest_runner):
                     ['--build-args', '--initialize-at-build-time'] + build_args)
 
 
+def build_llvm_org(args=None):
+    defaultBuildArgs = ['-p']
+    if not args.no_warning_as_error:
+        defaultBuildArgs += ['--warning-as-error']
+    mx.command_function('build')(defaultBuildArgs + ['--project', 'SULONG_LLVM_ORG'] + args.extra_build_args)
+
+
 def clangformatcheck(args=None):
     """ Performs a format check on the include/truffle.h file """
     for f in clangFormatCheckPaths:
@@ -265,9 +276,7 @@ def checkCFiles(targetDir):
 
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
-    clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
-    if clangFormat is None:
-        exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
+    clangFormat = findBundledLLVMProgram('clang-format')
     formatCommand = [clangFormat, targetFile]
     formattedContent = _decode(subprocess.check_output(formatCommand)).splitlines()
     with open(targetFile) as f:
@@ -646,6 +655,11 @@ def findGCCProgram(gccProgram, optional=False):
         exit('found no supported version ' + str(supportedGCCVersions) + ' of ' + gccProgram)
     else:
         return installedProgram
+
+def findBundledLLVMProgram(llvm_program):
+    llvm_dist = 'SULONG_LLVM_ORG'
+    dep = mx.dependency(llvm_dist, fatalIfMissing=True)
+    return os.path.join(dep.get_output(), 'bin', llvm_program)
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""

@@ -34,7 +34,7 @@ int val = 5;
 int foo(int a) {
 
   if (a == 0) {
-    throw & val;
+    throw &val;
   }
   return a;
 }

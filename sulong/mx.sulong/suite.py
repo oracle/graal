@@ -105,8 +105,12 @@ suite = {
       "results" : [
         "bin/<lib:sulongtest>",
       ],
+      "buildDependencies" : [
+        "SULONG_LLVM_ORG",
+      ],
       "buildEnv" : {
         "LIBSULONGTEST" : "<lib:sulongtest>",
+        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -405,8 +409,15 @@ suite = {
       "headers" : [
         "include/polyglot.h",
       ],
+      "buildDependencies" : [
+        "SULONG_LLVM_ORG",
+      ],
       "buildEnv" : {
-        "CFLAGS" : "<clangImplicitArgs>",
+        "CFLAGS" : "-Xclang -disable-O0-optnone",
+        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
+        "CLANGXX" : "<path:SULONG_LLVM_ORG>/bin/clang++",
+        "OPT" : "<path:SULONG_LLVM_ORG>/bin/opt",
+        "LLVM_LINK" : "<path:SULONG_LLVM_ORG>/bin/llvm-link",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -422,8 +433,10 @@ suite = {
       "buildDependencies" : [
         "truffle:TRUFFLE_NFI_NATIVE",
         "com.oracle.truffle.llvm.libraries.bitcode",
+        "SULONG_LLVM_ORG",
       ],
       "buildEnv" : {
+        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
         "LIBSULONG" : "<lib:sulong>",
         "LIBPOLYGLOT" : "<lib:polyglot-mock>",
         "CPPFLAGS" : "-I<path:truffle:TRUFFLE_NFI_NATIVE>/include -I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
@@ -1001,7 +1014,6 @@ suite = {
       },
       "license" : "BSD-new",
       "testDistribution" : True,
-      "defaultBuild" : False,
     },
 
     "SULONG_TEST_NATIVE" : {

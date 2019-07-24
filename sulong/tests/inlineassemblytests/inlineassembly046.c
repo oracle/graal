@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,7 @@ struct data {
 };
 
 int main() {
-  struct data memory = {.x = 0x12345678, .y = 0x9ABCDEF0 };
+  struct data memory = { .x = 0x12345678, .y = 0x9ABCDEF0 };
   int out;
   __asm__("movl 0x4(%%rax), %0;" : "=r"(out) : "a"(&memory));
   return memory.y == out;

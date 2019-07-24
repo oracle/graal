@@ -34,7 +34,7 @@ int arr[] = { 1, 2, 42, 3 };
 int foo(int a) {
 
   if (a == 0) {
-    throw & (arr[0]);
+    throw &(arr[0]);
   }
   return a;
 }
