@@ -32,6 +32,8 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} {
     }
     environment: {
         NO_FEMBED_BITCODE: "true"
+        CLANG_CC: "clang-3.8"
+        CLANG_CXX: "clang-3.8 -x c++"
     }
 }
 
@@ -39,11 +41,19 @@ sulong-gateTest40-linux: ${sulong-gateTest-linux} {
     packages: {
         llvm: "==4.0.1"
     }
+    environment: {
+        CLANG_CC: "clang-4.0"
+        CLANG_CXX: "clang-4.0 -x c++"
+    }
 }
 
 sulong-gateTest60-linux: ${sulong-gateTest-linux} {
     packages: {
         llvm: "==6.0.1"
+    }
+    environment: {
+        CLANG_CC: "clang-6.0"
+        CLANG_CXX: "clang-6.0 -x c++"
     }
 }
 
@@ -51,11 +61,19 @@ sulong-gateTest80-linux: ${sulong-gateTest-linux} {
     packages: {
         llvm: "==8.0.0"
     }
+    environment: {
+        CLANG_CC: "clang-8"
+        CLANG_CXX: "clang-8 -x c++"
+    }
 }
 
 darwin-llvm : {
     packages: {
         llvm: "==4.0.1"
+    }
+    environment: {
+        CLANG_CC: "clang-4.0"
+        CLANG_CXX: "clang-4.0 -x c++"
     }
 }
 
