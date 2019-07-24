@@ -74,7 +74,7 @@ public class VMImplProcessor extends EspressoProcessor {
         super(SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
     }
 
-    private static class VMHelper extends SubstitutionHelper {
+    static class VMHelper extends SubstitutionHelper {
         final String jniNativeSignature;
         final List<Boolean> nonPrimitives;
         final String returnType;

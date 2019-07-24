@@ -69,7 +69,7 @@ public class JniImplProcessor extends EspressoProcessor {
         super(SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
     }
 
-    private static class JniHelper extends SubstitutionHelper {
+    static class JniHelper extends SubstitutionHelper {
         final String jniNativeSignature;
         final List<Boolean> nonPrimitives;
         final String returnType;

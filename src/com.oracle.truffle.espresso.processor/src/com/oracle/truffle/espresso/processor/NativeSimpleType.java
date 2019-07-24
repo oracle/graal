@@ -1,5 +1,9 @@
 package com.oracle.truffle.espresso.processor;
 
+/**
+ * A copy of the NativeSimpleType enum found in
+ * {@link com.oracle.truffle.nfi.spi.types.NativeSimpleType}. The two of them must be synchronized.
+ */
 enum NativeSimpleType {
     VOID,
     UINT8,

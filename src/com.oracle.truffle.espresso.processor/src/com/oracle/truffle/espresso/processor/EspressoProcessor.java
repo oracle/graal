@@ -2,9 +2,11 @@ package com.oracle.truffle.espresso.processor;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
@@ -30,8 +32,28 @@ import java.util.Set;
  * All other aspects of code generation are provided by this class.
  */
 public abstract class EspressoProcessor extends AbstractProcessor {
+    /**
+     * Does the actual work of the processor. The pattern used in espresso is:
+     * <li>Initialize the {@link TypeElement} of the annotations that will be used, along with their
+     * {@link AnnotationValue}, as necessary.
+     * <li>Iterate over all methods annotated with what was returned by
+     * {@link Processor#getSupportedAnnotationTypes()}, and process them so that each one spawns a
+     * class.
+     * 
+     * @see EspressoProcessor#commitSubstitution(Element, String, String)
+     */
     abstract void processImpl(RoundEnvironment roundEnvironment);
 
+    /**
+     * Generates the string corresponding to the imports of the current substitutor.
+     * <p>
+     * Note that the required imports vary between classes, as some might not be used, triggering
+     * style issues, which is why this is delegated.
+     * 
+     * @see EspressoProcessor#IMPORT_INTEROP_LIBRARY
+     * @see EspressoProcessor#IMPORT_STATIC_OBJECT
+     * @see EspressoProcessor#IMPORT_TRUFFLE_OBJECT
+     */
     abstract String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
     abstract String generateConstructor(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
@@ -65,6 +87,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     protected HashSet<String> classes = new HashSet<>();
     protected StringBuilder collector = null;
 
+    // Global constants
     private static final String INSTANCE_NAME = "theInstance";
     private static final String GETTER = "getInstance";
 
@@ -195,7 +218,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return str;
     }
 
-    static final String getSubstitutorClassName(String className, String methodName, List<String> parameterTypes) {
+    static String getSubstitutorClassName(String className, String methodName, List<String> parameterTypes) {
         StringBuilder str = new StringBuilder();
         str.append(className).append("_").append(methodName).append(signatureSuffixBuilder(parameterTypes));
         return str.toString();
@@ -235,6 +258,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return extractSimpleType(method.getReturnType().toString());
     }
 
+    // Commits a single substitution.
     void commitSubstitution(Element method, String substitutorName, String classFile) {
         try {
             // Create the file
@@ -305,6 +329,15 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return str.toString();
     }
 
+    /**
+     * Creates the substitutor.
+     * 
+     * @param className The name of the class where the substituted method is found.
+     * @param targetMethodName The name of the substituted method.
+     * @param parameterTypeName The list of *Host* parameter types of the substituted method.
+     * @param helper A helper structure.
+     * @return The string forming the substitutor.
+     */
     String spawnSubstitutor(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         String substitutorName = getSubstitutorClassName(className, targetMethodName, parameterTypeName);
         StringBuilder classFile = new StringBuilder();
