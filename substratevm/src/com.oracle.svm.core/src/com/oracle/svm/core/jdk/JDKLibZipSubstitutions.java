@@ -25,7 +25,6 @@
 
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.TargetElement;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -37,6 +36,7 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
