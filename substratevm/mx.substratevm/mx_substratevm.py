@@ -293,7 +293,7 @@ def _vm_home(config):
 
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 _graalvm_config = GraalVMConfig(disable_libpolyglot=True,
-                                force_bash_launchers=['polyglot', 'native-image-configure'],
+                                force_bash_launchers=['polyglot', 'native-image-configure', 'gu'],
                                 skip_libraries=['native-image-agent'],
                                 exclude_components=_graalvm_exclude_components)
 _graalvm_jvm_config = GraalVMConfig(disable_libpolyglot=True,
