@@ -113,4 +113,9 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     public WasmCodeEntry codeEntry() {
         return codeEntry;
     }
+
+    @Override
+    public String toString() {
+        return "wasm-function-" + codeEntry.functionIndex();
+    }
 }

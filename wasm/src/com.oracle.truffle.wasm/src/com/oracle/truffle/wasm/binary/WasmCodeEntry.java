@@ -35,6 +35,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 
 public class WasmCodeEntry {
+    @CompilationFinal private int functionIndex;
     @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal(dimensions = 1) private FrameSlot[] localSlots;
     @CompilationFinal(dimensions = 1) private FrameSlot[] stackSlots;
@@ -42,7 +43,8 @@ public class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private byte[] byteConstants;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
 
-    public WasmCodeEntry(byte[] data) {
+    public WasmCodeEntry(int functionIndex, byte[] data) {
+        this.functionIndex = functionIndex;
         this.data = data;
         this.localSlots = null;
         this.stackSlots = null;
@@ -121,5 +123,14 @@ public class WasmCodeEntry {
 
     public int numLocals() {
         return localTypes.length;
+    }
+
+    public int functionIndex() {
+        return functionIndex;
+    }
+
+    @Override
+    public String toString() {
+        return "wasm-code-entry-" + functionIndex;
     }
 }

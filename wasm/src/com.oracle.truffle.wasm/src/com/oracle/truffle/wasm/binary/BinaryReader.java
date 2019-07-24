@@ -338,7 +338,7 @@ public class BinaryReader extends BinaryStreamReader {
 
     private void readCodeEntry(int funcIndex) {
         /* Read code entry (function) locals. */
-        WasmCodeEntry codeEntry = new WasmCodeEntry(data);
+        WasmCodeEntry codeEntry = new WasmCodeEntry(funcIndex, data);
         wasmModule.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
 
         /*
