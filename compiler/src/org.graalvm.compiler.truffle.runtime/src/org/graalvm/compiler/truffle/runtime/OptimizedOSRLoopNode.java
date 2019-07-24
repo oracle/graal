@@ -285,8 +285,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     private static LoopNode createDefault(RepeatingNode repeatableNode, OptionValues options) {
         return new OptimizedDefaultOSRLoopNode(repeatableNode,
-                PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.OSRCompilationThreshold),
-                PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.InvalidationReprofileCount));
+                        PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.OSRCompilationThreshold),
+                        PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.InvalidationReprofileCount));
     }
 
     /**

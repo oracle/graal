@@ -57,8 +57,8 @@ public final class OptimizedCompilationProfile {
     private final OptionValues options;
 
     /**
-     * The values below must only be written under lock, or in the constructor,
-     * because they are modified by {@link #ensureProfiling(int, int)}.
+     * The values below must only be written under lock, or in the constructor, because they are
+     * modified by {@link #ensureProfiling(int, int)}.
      */
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;

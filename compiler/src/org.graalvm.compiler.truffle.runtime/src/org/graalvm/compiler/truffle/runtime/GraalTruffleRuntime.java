@@ -759,7 +759,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             try {
                 uninterruptibleWaitForCompilation(task);
             } catch (ExecutionException e) {
-                if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown) && !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
+                if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown) &&
+                                !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
                     throw new RuntimeException(e.getCause());
                 } else {
                     if (assertionsEnabled()) {

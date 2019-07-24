@@ -184,7 +184,7 @@ public class BackgroundCompileQueue {
     }
 
     public CancellableCompileTask submitCompilationRequest(GraalTruffleRuntime runtime, OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation)
-            throws RejectedExecutionException {
+                    throws RejectedExecutionException {
         final OptionValues optionOverrides = TruffleRuntimeOptions.getCurrentOptionOverrides();
         CancellableCompileTask cancellable = new CancellableCompileTask(lastTierCompilation);
         Request request = new Request(runtime, optionOverrides, optimizedCallTarget, cancellable);

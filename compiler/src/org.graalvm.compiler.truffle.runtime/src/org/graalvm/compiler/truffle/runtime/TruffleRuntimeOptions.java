@@ -164,6 +164,7 @@ public final class TruffleRuntimeOptions {
     /**
      * Determines whether an exception during a Truffle compilation should result in calling
      * {@link System#exit(int)}.
+     *
      * @param target
      */
     public static boolean areTruffleCompilationExceptionsFatal(OptimizedCallTarget target) {

@@ -39,9 +39,9 @@ import org.graalvm.polyglot.Engine;
 import com.oracle.truffle.api.Option;
 
 /**
- * Truffle compilation options that can be configured per {@link Engine engine} instance.
- * These options are accessed by the Truffle runtime and not the Truffle compiler,
- * unlike {@link org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions}.
+ * Truffle compilation options that can be configured per {@link Engine engine} instance. These
+ * options are accessed by the Truffle runtime and not the Truffle compiler, unlike
+ * {@link org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions}.
  * <p>
  * They replace the deprecated {@code -Dgraal.} Truffle-related options declared in
  * {@link org.graalvm.compiler.truffle.common.processor.Option}.
@@ -56,16 +56,16 @@ public final class PolyglotCompilerOptions {
     }
 
     static final OptionType<EngineModeEnum> ENGINE_MODE_TYPE = new OptionType<>("EngineMode",
-            new Function<String, EngineModeEnum>() {
-                @Override
-                public EngineModeEnum apply(String s) {
-                    try {
-                        return EngineModeEnum.valueOf(s.toUpperCase());
-                    } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
-                    }
-                }
-            });
+                    new Function<String, EngineModeEnum>() {
+                        @Override
+                        public EngineModeEnum apply(String s) {
+                            try {
+                                return EngineModeEnum.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
+                            }
+                        }
+                    });
 
     // @formatter:off
 

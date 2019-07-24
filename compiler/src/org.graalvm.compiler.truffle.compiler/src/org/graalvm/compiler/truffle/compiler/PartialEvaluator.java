@@ -532,7 +532,8 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings({"try", "unused"})
-    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext, PerformanceInformationHandler handler) {
+    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext,
+                    PerformanceInformationHandler handler) {
         DebugContext debug = graph.getDebug();
         doGraphPE(compilable, graph, tierContext, inliningDecision);
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After Partial Evaluation");

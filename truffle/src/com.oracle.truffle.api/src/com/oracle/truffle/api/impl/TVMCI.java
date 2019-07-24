@@ -275,9 +275,9 @@ public abstract class TVMCI {
     private static volatile Object fallbackEngineData;
 
     /**
-     * Used to get an {@link org.graalvm.compiler.truffle.runtime.EngineData},
-     * which contains the option values for --engine options, and other per-Engine data.
-     * Called in the {@link org.graalvm.compiler.truffle.runtime.OptimizedCallTarget} constructor.
+     * Used to get an {@link org.graalvm.compiler.truffle.runtime.EngineData}, which contains the
+     * option values for --engine options, and other per-Engine data. Called in the
+     * {@link org.graalvm.compiler.truffle.runtime.OptimizedCallTarget} constructor.
      * <p>
      * The resulting instance is cached in the Engine.
      */

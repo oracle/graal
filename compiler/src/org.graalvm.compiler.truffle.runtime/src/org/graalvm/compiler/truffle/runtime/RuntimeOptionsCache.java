@@ -46,7 +46,7 @@ public class RuntimeOptionsCache {
     public RuntimeOptionsCache(OptionValues options) {
         // Splitting
         splitting = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.Splitting) &&
-                PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY;
+                        PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY;
         legacySplitting = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.LegacySplitting);
         splittingAllowForcedSplits = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingAllowForcedSplits);
         splittingDumpDecisions = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.SplittingDumpDecisions);
