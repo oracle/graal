@@ -320,7 +320,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
             },
@@ -345,7 +345,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections"],
+                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
             },
@@ -359,7 +359,7 @@ suite = {
             "os_arch" : {
                 "darwin": {
                     "<others>" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
                 "linux": {
@@ -367,7 +367,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
                 "<others>": {
