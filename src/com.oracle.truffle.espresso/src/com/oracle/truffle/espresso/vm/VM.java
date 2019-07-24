@@ -1128,4 +1128,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         meta.AssertionStatusDirectives_deflt.set(instance, ea);
         return instance;
     }
+
+    @VmImpl
+    public static int JVM_ActiveProcessorCount() {
+        return Runtime.getRuntime().availableProcessors();
+    }
 }
