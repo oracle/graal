@@ -74,7 +74,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniImpl;
-import com.oracle.truffle.espresso.jni.NFIType;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.jni.NativeLibrary;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -90,7 +89,6 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -144,7 +142,20 @@ public final class VM extends NativeEnv implements ContextAccess {
                             "getJavaVM",
                             "(env): sint64");
 
-            Callback lookupVmImplCallback = Callback.wrapInstanceMethod(this, "lookupVmImpl", String.class);
+            Callback lookupVmImplCallback = new Callback(LOOKUP_VM_IMPL_PARAMETER_COUNT, new Callback.Function() {
+                @Override
+                public Object call(Object... args) {
+                    try {
+                        return VM.this.lookupVmImpl((String) args[0]);
+                    } catch (ClassCastException e) {
+                        throw EspressoError.shouldNotReachHere(e);
+                    } catch (RuntimeException e) {
+                        throw e;
+                    } catch (Throwable e) {
+                        throw EspressoError.shouldNotReachHere(e);
+                    }
+                }
+            });
             this.vmPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
 
             assert this.vmPtr != 0;
@@ -182,35 +193,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         return new VM(jniEnv);
     }
 
-    public static String vmNativeSignature(java.lang.reflect.Method method) {
-        StringBuilder sb = new StringBuilder("(");
-
-        boolean first = true;
-        if (method.getAnnotation(JniImpl.class) != null) {
-            sb.append(NativeSimpleType.SINT64); // Prepend JNIEnv*;
-            first = false;
-        }
-
-        for (Parameter param : method.getParameters()) {
-            if (!first) {
-                sb.append(", ");
-            } else {
-                first = false;
-            }
-
-            // Override NFI type.
-            NFIType nfiType = param.getAnnotatedType().getAnnotation(NFIType.class);
-            if (nfiType != null) {
-                sb.append(NativeSimpleType.valueOf(nfiType.value().toUpperCase()));
-            } else {
-                sb.append(classToType(param.getType(), false));
-            }
-        }
-        sb.append("): ").append(classToType(method.getReturnType(), true));
-        return sb.toString();
-    }
-
     private static final int JVM_CALLER_DEPTH = -1;
+
+    public static final int LOOKUP_VM_IMPL_PARAMETER_COUNT = 1;
 
     public TruffleObject lookupVmImpl(String methodName) {
         VMSubstitutor m = vmMethods.get(methodName);

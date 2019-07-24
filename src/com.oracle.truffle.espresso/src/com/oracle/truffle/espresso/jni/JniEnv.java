@@ -156,6 +156,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         });
     }
 
+    private static final int LOOKUP_JNI_IMPL_PARAMETER_COUNT = 1;
+
     public TruffleObject lookupJniImpl(String methodName) {
         JniSubstitutor m = jniMethods.get(methodName);
         try {
@@ -345,7 +347,20 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             popLong = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_long", "(sint64): sint64");
             popObject = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_object", "(sint64): object");
 
-            Callback lookupJniImplCallback = Callback.wrapInstanceMethod(this, "lookupJniImpl", String.class);
+            Callback lookupJniImplCallback = new Callback(LOOKUP_JNI_IMPL_PARAMETER_COUNT, new Callback.Function() {
+                @Override
+                public Object call(Object... args) {
+                    try {
+                        return JniEnv.this.lookupJniImpl((String) args[0]);
+                    } catch (ClassCastException e) {
+                        throw EspressoError.shouldNotReachHere(e);
+                    } catch (RuntimeException e) {
+                        throw e;
+                    } catch (Throwable e) {
+                        throw EspressoError.shouldNotReachHere(e);
+                    }
+                }
+            });
             this.jniEnvPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeNativeContext, lookupJniImplCallback);
             assert this.jniEnvPtr != 0;
         } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
