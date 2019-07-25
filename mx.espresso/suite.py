@@ -229,10 +229,9 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.processor",
             ],
-            # "overlaps": ["ESPRESSO"],
             "distDependencies": [],
             "license": "UPL",
-            "description": "Espresso ....",
+            "description": "Espresso annotation processor.",
             "maven": False,
         },
 

@@ -56,11 +56,29 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      */
     abstract String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
+    /**
+     * Generates the string corresponding to the Constructor for the current substitutor. In
+     * particular, it should call its super class substitutor's constructor.
+     * 
+     * @see EspressoProcessor#SUBSTITUTOR
+     */
     abstract String generateConstructor(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
+    /**
+     * Generates th string that corresponds to the code of the invoke method for the current
+     * substitutor. Care must be taken to correctly unwrap and cast the given arguments (given in an
+     * Object[]) so that they correspond to the substituted method's signature. Furthermore, all
+     * TruffleObject nulls must be replaced with Espresso nulls (Null check can be done through
+     * truffle libraries).
+     * 
+     * @see EspressoProcessor#castTo(String, String)
+     * @see EspressoProcessor#IMPORT_INTEROP_LIBRARY
+     * @see EspressoProcessor#FACTORY_IS_NULL
+     * @see EspressoProcessor#STATIC_OBJECT_NULL
+     */
     abstract String generateInvoke(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
-    public EspressoProcessor(String SUBSTITUTION_PACKAGE, String SUBSTITUTOR, String COLLECTOR, String COLLECTOR_INSTANCE_NAME) {
+    EspressoProcessor(String SUBSTITUTION_PACKAGE, String SUBSTITUTOR, String COLLECTOR, String COLLECTOR_INSTANCE_NAME) {
         this.SUBSTITUTION_PACKAGE = SUBSTITUTION_PACKAGE;
         this.SUBSTITUTOR = SUBSTITUTOR;
         this.COLLECTOR = COLLECTOR;
