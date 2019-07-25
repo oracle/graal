@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.ToolchainConfig;
 import org.graalvm.options.OptionDescriptor;
 
@@ -78,12 +79,12 @@ public final class NativeConfiguration implements Configuration {
     }
 
     @Override
-    public List<ContextExtension> createContextExtensions(LLVMContext context) {
+    public List<ContextExtension> createContextExtensions(TruffleLanguage.Env env, LLVMLanguage language) {
         List<ContextExtension> result = new ArrayList<>();
-        result.add(new BasicIntrinsicsProvider(context.getLanguage()));
-        result.add(new BasicSystemContextExtension(context.getEnv()));
-        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_NFI)) {
-            result.add(new NFIContextExtension(context.getEnv()));
+        result.add(new BasicIntrinsicsProvider(language));
+        result.add(new BasicSystemContextExtension(env));
+        if (env.getOptions().get(SulongEngineOption.ENABLE_NFI)) {
+            result.add(new NFIContextExtension(env));
         }
         return result;
     }

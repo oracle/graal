@@ -54,7 +54,7 @@ public interface Configuration {
      * Context extensions encapsulate optional functionality that has a state and which therefore
      * needs to live on the context-level.
      */
-    List<ContextExtension> createContextExtensions(LLVMContext context);
+    List<ContextExtension> createContextExtensions(Env env, LLVMLanguage language);
 
     /**
      * Capabilities encapsulate functionality that is stateless so that it can live on the
