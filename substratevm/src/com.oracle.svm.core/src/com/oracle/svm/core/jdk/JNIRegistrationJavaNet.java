@@ -65,7 +65,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-
         /*
          * It is difficult to track down all the places where exceptions are thrown via JNI. And
          * unconditional registration is cheap because the exception classes have no dependency on
@@ -165,7 +164,13 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     private static void registerPlainDatagramSocketImplInit(DuringAnalysisAccess a) {
         /* See java.net.DatagramSocket.checkOldImpl */
-        RuntimeReflection.register(method(a, "java.net.PlainDatagramSocketImpl", "peekData", DatagramPacket.class));
+        a.registerMethodOverrideReachabilityHandler((access, method) -> {
+            // Checkstyle: stop
+            if (!java.lang.reflect.Modifier.isAbstract(method.getModifiers())) {
+                // Checkstyle: resume
+                RuntimeReflection.register(method);
+            }
+        }, method(a, "java.net.DatagramSocketImpl", "peekData", DatagramPacket.class));
 
         JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainDatagramSocketImpl", "timeout", "trafficClass", "connected", "connectedAddress", "connectedPort"));
         JNIRuntimeAccess.register(fields(a, "java.net.DatagramSocketImpl", "fd", "localPort"));

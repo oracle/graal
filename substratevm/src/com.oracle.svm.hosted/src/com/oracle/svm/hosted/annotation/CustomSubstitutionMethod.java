@@ -27,9 +27,12 @@ package com.oracle.svm.hosted.annotation;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -42,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
+public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider {
 
     protected final ResolvedJavaMethod original;
 
@@ -237,5 +240,10 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
     @Override
     public SpeculationLog getSpeculationLog() {
         throw shouldNotReachHere();
+    }
+
+    @Override
+    public Executable getJavaMethod() {
+        return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
     }
 }

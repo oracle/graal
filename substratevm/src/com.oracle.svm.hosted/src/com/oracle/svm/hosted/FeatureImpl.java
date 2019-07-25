@@ -36,11 +36,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -190,6 +193,26 @@ public class FeatureImpl {
 
         public boolean isReachable(AnalysisMethod method) {
             return method.isImplementationInvoked();
+        }
+
+        public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
+            return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).stream()
+                            .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
+            Set<AnalysisType> result = getUniverse().getSubtypes(baseType);
+            result.removeIf(t -> !isReachable(t));
+            return result;
+        }
+
+        public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
+            return reachableMethodOverrides(getMetaAccess().lookupJavaMethod(baseMethod)).stream()
+                            .map(AnalysisMethod::getJavaMethod).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
+            return getUniverse().getMethodImplementations(getBigBang(), baseMethod);
         }
     }
 
@@ -350,6 +373,16 @@ public class FeatureImpl {
         @Override
         public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
             ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, elements);
+        }
+
+        @Override
+        public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
+            ReachabilityHandlerFeature.singleton().registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
+        }
+
+        @Override
+        public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
+            ReachabilityHandlerFeature.singleton().registerSubtypeReachabilityHandler(this, callback, baseClass);
         }
     }
 
