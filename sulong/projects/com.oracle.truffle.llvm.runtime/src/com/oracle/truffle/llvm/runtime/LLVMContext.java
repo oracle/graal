@@ -101,6 +101,8 @@ public final class LLVMContext {
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
+    private final Object globalsStoreLock = new Object();
+
     private final String languageHome;
 
     private DataLayout dataLayout;
@@ -373,6 +375,7 @@ public final class LLVMContext {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    // Executed in dispose(), therefore can read unsynchronized
                     for (LLVMPointer store : globalsReadOnlyStore) {
                         if (store != null) {
                             freeRo.execute(store);
@@ -737,14 +740,18 @@ public final class LLVMContext {
 
     @TruffleBoundary
     public void registerReadOnlyGlobals(LLVMPointer nonPointerStore) {
-        initFreeGlobalBlocks();
-        globalsReadOnlyStore.add(nonPointerStore);
+        synchronized (globalsStoreLock) {
+            initFreeGlobalBlocks();
+            globalsReadOnlyStore.add(nonPointerStore);
+        }
     }
 
     @TruffleBoundary
     public void registerGlobals(LLVMPointer nonPointerStore) {
-        initFreeGlobalBlocks();
-        globalsNonPointerStore.add(nonPointerStore);
+        synchronized (globalsStoreLock) {
+            initFreeGlobalBlocks();
+            globalsNonPointerStore.add(nonPointerStore);
+        }
     }
 
     @TruffleBoundary
