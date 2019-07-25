@@ -139,7 +139,6 @@ public final class LLVMContext {
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
-    private final Map<Thread, LLVMPointer> clearChildTid = new ConcurrentHashMap<>();
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -550,11 +549,6 @@ public final class LLVMContext {
     @TruffleBoundary
     public void setThreadLocalStorage(Object value) {
         tls.put(Thread.currentThread(), value);
-    }
-
-    @TruffleBoundary
-    public void setClearChildTid(LLVMPointer value) {
-        clearChildTid.put(Thread.currentThread(), value);
     }
 
     @TruffleBoundary
