@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.coverage.impl;
 
 import static com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
+import java.io.PrintStream;
 import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
@@ -34,13 +35,13 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
 
 @Registration(id = CoverageInstrument.ID, name = "Code Coverage", version = CoverageInstrument.VERSION, services = CoverageTracker.class)
 public class CoverageInstrument extends TruffleInstrument {
@@ -58,16 +59,16 @@ public class CoverageInstrument extends TruffleInstrument {
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-            new Function<String, Output>() {
-                @Override
-                public Output apply(String s) {
-                    try {
-                        return Output.valueOf(s.toUpperCase());
-                    } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Output can be: histogram or json");
-                    }
-                }
-            });
+                    new Function<String, Output>() {
+                        @Override
+                        public Output apply(String s) {
+                            try {
+                                return Output.valueOf(s.toUpperCase());
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException("Output can be: histogram or json");
+                            }
+                        }
+                    });
 
     // @formatter:off
     @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
@@ -92,13 +93,13 @@ public class CoverageInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (enabled) {
-            CoverageCLI.handleOutput(env, tracker.getCoverage());
+            CoverageCLI.handleOutput(new PrintStream(env.out()), tracker.getCoverage(), OUTPUT.getValue(env.getOptions()));
             tracker.close();
         }
     }
 
     private SourceFilter getSourceFilter(OptionValues options) {
-        return SourceFilter.ANY;
+        return SourceFilter.newBuilder().includeInternal(false).build();
     }
 
     public static void setFactory(Function<Env, CoverageTracker> factory) {
@@ -130,6 +131,5 @@ public class CoverageInstrument extends TruffleInstrument {
         }
         return instrument.lookup(CoverageTracker.class);
     }
-
 
 }
