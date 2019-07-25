@@ -3,12 +3,9 @@ package com.oracle.truffle.tools.coverage.impl;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiConsumer;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -44,15 +41,15 @@ class CoverageCLI {
         out.println("    e.g. a not-taken branch of a covered if statement");
         out.println("");
         printLine(out, divLength);
-        final Map<Source, PerSourceCoverage> histogram = buildHistogram(coverage);
+        final Map<Source, Coverage.PerSource> histogram = coverage.getCoverage();
         final List<Source> sources = sortedKeys(histogram);
         for (Source source : sources) {
             out.println(source.getPath());
             printLine(out, divLength);
-            final PerSourceCoverage perSourceCoverage = histogram.get(source);
-            final Set<Integer> nonCoveredLineNumbers = perSourceCoverage.nonCoveredLineNumbers();
-            final Set<Integer> loadedLineNumbers = perSourceCoverage.loadedLineNumbers();
-            final Set<Integer> coveredLineNumbers = perSourceCoverage.coveredLineNumbers();
+            final Coverage.PerSource perSource = histogram.get(source);
+            final Set<Integer> nonCoveredLineNumbers = perSource.nonCoveredLineNumbers();
+            final Set<Integer> loadedLineNumbers = perSource.loadedLineNumbers();
+            final Set<Integer> coveredLineNumbers = perSource.coveredLineNumbers();
             for (int i = 1; i <= source.getLineCount(); i++) {
                 char covered = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, coveredLineNumbers,i);
                 out.println(String.format("%s %s", covered, source.getCharacters(i)));
@@ -72,58 +69,8 @@ class CoverageCLI {
         }
     }
 
-    private static class PerSourceCoverage {
-        final Set<SourceSection> loadedStatements = new HashSet<>();
-        final Set<SourceSection> loadedRoots = new HashSet<>();
-        final Set<SourceSection> coveredStatements = new HashSet<>();
-        final Set<SourceSection> coveredRoots = new HashSet<>();
-
-        String percentFormat(double val) {
-            return String.format("%.2f%%", val);
-        }
-
-        String statementCoverage() {
-            return percentFormat(100 * (double) coveredStatements.size() / loadedStatements.size());
-        }
-
-        String rootCoverage() {
-            return percentFormat(100 * (double) coveredRoots.size() / loadedRoots.size());
-        }
-
-        String lineCoverage() {
-            final int loadedSize = loadedLineNumbers().size();
-            final int coveredSize = nonCoveredLineNumbers().size();
-            return percentFormat(100 * ((double) loadedSize - coveredSize) / loadedSize);
-        }
-
-        Set<Integer> nonCoveredLineNumbers() {
-            Set<SourceSection> nonCoveredSections = new HashSet<>();
-            nonCoveredSections.addAll(loadedStatements);
-            nonCoveredSections.removeAll(coveredStatements);
-            return statementsToLineNumbers(nonCoveredSections);
-        }
-
-        Set<Integer> coveredLineNumbers() {
-            return statementsToLineNumbers(coveredStatements);
-        }
-
-        Set<Integer> loadedLineNumbers() {
-            return statementsToLineNumbers(loadedStatements);
-        }
-
-        private static Set<Integer> statementsToLineNumbers(Set<SourceSection> sourceSections) {
-            Set<Integer> lines = new HashSet<>();
-            for (SourceSection ss : sourceSections) {
-                for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
-                    lines.add(i);
-                }
-            }
-            return lines;
-        }
-    }
-
     private static void printHistogram(PrintStream out, Coverage coverage) {
-        final Map<Source, PerSourceCoverage> histogram = buildHistogram(coverage);
+        final Map<Source, Coverage.PerSource> histogram = coverage.getCoverage();
         final String format = getHistogramLineFormat(histogram);
         final String header = String.format(format, "Path", "Statements", "Lines", "Roots");
         final int headerLen = header.length();
@@ -135,8 +82,8 @@ class CoverageCLI {
         printLine(out, headerLen);
         for (Source source : sortedKeys(histogram)) {
             final String path = source.getPath();
-            final PerSourceCoverage value = histogram.get(source);
-            final String line = String.format(format, path, value.statementCoverage(), value.lineCoverage(), value.rootCoverage());
+            final Coverage.PerSource value = histogram.get(source);
+            final String line = String.format(format, path, statementCoverage(value), lineCoverage(value), rootCoverage(value));
             out.println(line);
         }
         printLine(out, headerLen);
@@ -146,7 +93,7 @@ class CoverageCLI {
         out.println(String.format("%" + length + "s", "").replace(' ', '-'));
     }
 
-    private static List<Source> sortedKeys(Map<Source, PerSourceCoverage> histogram) {
+    private static List<Source> sortedKeys(Map<Source, Coverage.PerSource> histogram) {
         final List<Source> sorted = new ArrayList<>();
         sorted.addAll(histogram.keySet());
         sorted.removeIf(source -> source.getPath() == null);
@@ -154,7 +101,7 @@ class CoverageCLI {
         return sorted;
     }
 
-    private static String getHistogramLineFormat(Map<Source, PerSourceCoverage> histogram) {
+    private static String getHistogramLineFormat(Map<Source, Coverage.PerSource> histogram) {
         int maxPathLenght = 0;
         for (Source source : histogram.keySet()) {
             final String path = source.getPath();
@@ -165,27 +112,26 @@ class CoverageCLI {
         return " %-" + maxPathLenght + "s |  %10s |  %7s |  %7s ";
     }
 
-    private static Map<Source, PerSourceCoverage> buildHistogram(Coverage coverage) {
-        Map<Source, PerSourceCoverage> histogram = new HashMap<>();
-        populateHistogramEntries(histogram, coverage.getLoadedRoots(), (histogramEntry, loadedRoot) -> {
-            histogramEntry.loadedRoots.add(loadedRoot);
-        });
-        populateHistogramEntries(histogram, coverage.getCoveredRoots(), (histogramEntry, coveredRoot) -> {
-            histogramEntry.coveredRoots.add(coveredRoot);
-        });
-        populateHistogramEntries(histogram, coverage.getLoadedStatements(), (histogramEntry, loadedStatement) -> {
-            histogramEntry.loadedStatements.add(loadedStatement);
-        });
-        populateHistogramEntries(histogram, coverage.getCoveredStatements(), (histogramEntry, coveredStatement) -> {
-            histogramEntry.coveredStatements.add(coveredStatement);
-        });
-        return histogram;
+    private static String percentFormat(double val) {
+        return String.format("%.2f%%", val);
     }
 
-    private static void populateHistogramEntries(Map<Source, PerSourceCoverage> histogram, Set<SourceSection> roots, BiConsumer<PerSourceCoverage, SourceSection> add) {
-        for (SourceSection loadedRoot : roots) {
-            final PerSourceCoverage histogramEntry = histogram.computeIfAbsent(loadedRoot.getSource(), source -> new PerSourceCoverage());
-            add.accept(histogramEntry, loadedRoot);
-        }
+    private static String statementCoverage(Coverage.PerSource coverage) {
+        final Set<SourceSection> coveredStatements = coverage.getCoveredStatements();
+        final Set<SourceSection> loadedStatements = coverage.getLoadedStatements();
+        return percentFormat(100 * (double) coveredStatements.size() / loadedStatements.size());
     }
+
+    private static String rootCoverage(Coverage.PerSource coverage) {
+        final Set<SourceSection> coveredRoots = coverage.getCoveredRoots();
+        final Set<SourceSection> loadedRoots = coverage.getLoadedRoots();
+        return percentFormat(100 * (double) coveredRoots.size() / loadedRoots.size());
+    }
+
+    private static String lineCoverage(Coverage.PerSource coverage) {
+        final int loadedSize = coverage.loadedLineNumbers().size();
+        final int coveredSize = coverage.nonCoveredLineNumbers().size();
+        return percentFormat(100 * ((double) loadedSize - coveredSize) / loadedSize);
+    }
+
 }

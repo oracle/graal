@@ -1,6 +1,7 @@
 package com.oracle.truffle.tools.coverage.test;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Map;
 
 import com.oracle.truffle.tools.coverage.Coverage;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
@@ -31,10 +32,13 @@ public class CoverageTest {
                         ")");
         context.eval(defaultSourceForSampling);
         final CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine());
-        final Coverage coverage = tracker.getCoverage();
-        Assert.assertEquals(2, coverage.getLoadedStatements().size());
-        Assert.assertEquals(1, coverage.getCoveredStatements().size());
-        Assert.assertEquals(4, coverage.getLoadedRoots().size());
-        Assert.assertEquals(3, coverage.getCoveredRoots().size());
+        final Map<com.oracle.truffle.api.source.Source, Coverage.PerSource> coverage = tracker.getCoverage().getCoverage();
+        Assert.assertEquals(1, coverage.size());
+        for (Map.Entry<com.oracle.truffle.api.source.Source, Coverage.PerSource> entry : coverage.entrySet()) {
+            Assert.assertEquals(2, entry.getValue().getLoadedStatements().size());
+            Assert.assertEquals(1, entry.getValue().getCoveredStatements().size());
+            Assert.assertEquals(4, entry.getValue().getLoadedRoots().size());
+            Assert.assertEquals(3, entry.getValue().getCoveredRoots().size());
+        }
     }
 }
