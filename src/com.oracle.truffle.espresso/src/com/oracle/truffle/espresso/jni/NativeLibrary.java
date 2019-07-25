@@ -48,7 +48,7 @@ public class NativeLibrary {
         sb.append(")");
         sb.append(" '").append(lib).append("'");
         Source source = Source.newBuilder("nfi", sb.toString(), "loadLibrary").build();
-        CallTarget target = EspressoLanguage.getCurrentContext().getEnv().parse(source);
+        CallTarget target = EspressoLanguage.getCurrentContext().getEnv().parseInternal(source);
         return (TruffleObject) target.call();
     }
 
