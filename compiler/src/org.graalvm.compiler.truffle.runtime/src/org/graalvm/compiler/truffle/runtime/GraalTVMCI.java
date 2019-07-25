@@ -129,7 +129,7 @@ final class GraalTVMCI extends TVMCI {
         return OptimizedIndirectCallNode.createUncached();
     }
 
-    EngineData getEngineData(RootNode rootNode) {
+    static EngineData getEngineData(RootNode rootNode) {
         return getOrCreateRuntimeData(rootNode, EngineData.ENGINE_DATA_SUPPLIER);
     }
 

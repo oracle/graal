@@ -136,7 +136,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
         final GraalTVMCI tvmci = runtime().getTvmci();
-        engineData = tvmci.getEngineData(rootNode);
+        engineData = GraalTVMCI.getEngineData(rootNode);
         uninitializedNodeCount = tvmci.adoptChildrenAndCount(this.rootNode);
         knownCallNodes = engineData.options.isLegacySplitting() ? null : new ArrayList<>(1);
         tvmci.setCallTarget(rootNode, this);

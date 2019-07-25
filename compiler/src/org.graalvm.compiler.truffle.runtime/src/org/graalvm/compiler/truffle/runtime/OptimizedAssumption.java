@@ -174,7 +174,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                     if (callTarget != null) {
                         engineOptions = callTarget.getOptionValues();
                     } else {
-                        engineOptions = OptimizedCallTarget.runtime().getTvmci().getEngineData(null).engineOptions;
+                        engineOptions = GraalTVMCI.getEngineData(null).engineOptions;
                     }
                 }
 

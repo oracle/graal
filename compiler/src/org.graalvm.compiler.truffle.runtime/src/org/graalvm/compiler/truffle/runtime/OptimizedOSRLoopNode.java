@@ -272,7 +272,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
      */
     public static LoopNode create(RepeatingNode repeat) {
         // No RootNode accessible here, as repeat is not adopted.
-        OptionValues engineOptions = OptimizedCallTarget.runtime().getTvmci().getEngineData(null).engineOptions;
+        OptionValues engineOptions = GraalTVMCI.getEngineData(null).engineOptions;
 
         // using static methods with LoopNode return type ensures
         // that only one loop node implementation gets loaded.
