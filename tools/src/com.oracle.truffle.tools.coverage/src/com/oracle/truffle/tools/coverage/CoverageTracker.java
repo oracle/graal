@@ -74,20 +74,20 @@ public class CoverageTracker implements AutoCloseable {
         closed = true;
     }
 
-    public synchronized void addLoaded(SourceSection sourceSection) {
-        coverage.addLoaded(sourceSection);
+    public synchronized void addLoadedStatement(SourceSection sourceSection) {
+        coverage.addLoadedStatement(sourceSection);
     }
 
-    private synchronized void addLoaded(RootNode rootNode) {
-        coverage.addLoaded(rootNode);
+    private synchronized void addLoadedRoot(SourceSection rootSection) {
+        coverage.addLoadedRoot(rootSection);
     }
 
-    public synchronized void addCovered(SourceSection sourceSection) {
-        coverage.addCovered(sourceSection);
+    public synchronized void addCoveredStatement(SourceSection sourceSection) {
+        coverage.addCoveredStatement(sourceSection);
     }
 
-    public synchronized void addCovered(RootNode rootNode) {
-        coverage.addCovered(rootNode);
+    public synchronized void addCoveredRoot(SourceSection rootSection) {
+        coverage.addCoveredRoot(rootSection);
     }
 
     public synchronized Coverage getCoverage() {
@@ -138,13 +138,13 @@ public class CoverageTracker implements AutoCloseable {
         loadedRootBinding = instrumenter.attachLoadSourceSectionListener(rootFilter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
-               CoverageTracker.this.addLoaded(event.getNode().getRootNode());
+               CoverageTracker.this.addLoadedRoot(event.getSourceSection());
             }
         }, false);
         execRootBinding = instrumenter.attachExecutionEventFactory(rootFilter, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
-                return new RootCoverageNode(CoverageTracker.this, context.getInstrumentedNode().getRootNode());
+                return new RootCoverageNode(CoverageTracker.this, context.getInstrumentedSourceSection());
             }
         });
     }
@@ -154,7 +154,7 @@ public class CoverageTracker implements AutoCloseable {
         loadedStatementBinding = instrumenter.attachLoadSourceSectionListener(statementFilter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
-                CoverageTracker.this.addLoaded(event.getSourceSection());
+                CoverageTracker.this.addLoadedStatement(event.getSourceSection());
             }
         }, false);
         execStatementBinding = instrumenter.attachExecutionEventFactory(statementFilter, new ExecutionEventNodeFactory() {

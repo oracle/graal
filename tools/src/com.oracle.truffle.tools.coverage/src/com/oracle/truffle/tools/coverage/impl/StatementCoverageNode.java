@@ -13,6 +13,6 @@ public class StatementCoverageNode extends CoverageNode {
 
     @Override
     protected void notifyTracker() {
-        tracker.addCovered(sourceSection);
+        tracker.addCoveredStatement(sourceSection);
     }
 }

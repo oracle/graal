@@ -14,6 +14,6 @@ public final class LoadedElementListener implements LoadSourceSectionListener {
 
     @Override
     public void onLoad(LoadSourceSectionEvent event) {
-        tracker.addLoaded(event.getSourceSection());
+        tracker.addLoadedStatement(event.getSourceSection());
     }
 }

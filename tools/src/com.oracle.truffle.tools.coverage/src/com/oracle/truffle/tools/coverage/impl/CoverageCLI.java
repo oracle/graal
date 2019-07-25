@@ -9,6 +9,6 @@ class CoverageCLI {
     
     static void handleOutput(TruffleInstrument.Env env, Coverage coverage) {
         PrintStream out = new PrintStream(env.out());
-        out.println(coverage.getCoveredRootNodes().size() / coverage.getLoadedRootNodes().size());
+        out.println(coverage.getCoveredRoots().size() / coverage.getLoadedRoots().size());
     }
 }

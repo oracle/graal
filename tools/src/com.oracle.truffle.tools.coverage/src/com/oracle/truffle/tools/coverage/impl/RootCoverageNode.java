@@ -1,20 +1,19 @@
 package com.oracle.truffle.tools.coverage.impl;
 
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
 
 public class RootCoverageNode extends CoverageNode {
 
-    private final RootNode rootNode;
+    private final SourceSection rootSection;
 
-    public RootCoverageNode(CoverageTracker tracker, RootNode rootNode) {
+    public RootCoverageNode(CoverageTracker tracker, SourceSection rootSection) {
         super(tracker);
-        this.rootNode = rootNode;
+        this.rootSection = rootSection;
     }
-
 
     @Override
     protected void notifyTracker() {
-        tracker.addCovered(rootNode);
+        tracker.addCoveredRoot(rootSection);
     }
 }

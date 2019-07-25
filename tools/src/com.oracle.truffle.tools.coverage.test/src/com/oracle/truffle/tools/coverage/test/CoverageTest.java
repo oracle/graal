@@ -34,7 +34,7 @@ public class CoverageTest {
         final Coverage coverage = tracker.getCoverage();
         Assert.assertEquals(2, coverage.getLoadedStatements().size());
         Assert.assertEquals(1, coverage.getCoveredStatements().size());
-        Assert.assertEquals(4, coverage.getLoadedRootNodes().size());
-        Assert.assertEquals(3, coverage.getCoveredRootNodes().size());
+        Assert.assertEquals(4, coverage.getLoadedRoots().size());
+        Assert.assertEquals(3, coverage.getCoveredRoots().size());
     }
 }
