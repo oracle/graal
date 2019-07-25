@@ -103,28 +103,22 @@ Build Dependencies
 
 Sulong is mostly implemented in Java. However, parts of Sulong are
 implemented in C/C++ and will be compiled to a shared library or a bitcode
-file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
-tool) in one of the supported versions (v3.8 - v7.0) installed. For best
-experience we suggest to install either LLVM 4 or LLVM 6.
+file. To do so, we use `clang` and other LLVM tools bundled with the
+[Toolchain](docs/TOOLCHAIN.md).
+In addition, system tools such as a linker or `make` as well as system
+headers are needed.
 
 #### Linux
-On a Linux-based operating system you can usually use its included package
-manager to install a supported version. Note, however, that the LLVM that
-is shipped with MacOS does not contain the `opt` tool, which a Sulong
-build needs. On MacOS, we recommend installing LLVM via `homebrew` and
-appending the bin path to the `PATH`.
+
+On a Linux-based operating system you can usually use the package
+manager to install these requirements. For example, on Debian based system,
+installing the `build-essential` meta package should be sufficient.
 
 #### MacOS
-To install Clang and LLVM 4 on MacOS using `homebrew`, you can use the
-following commands:
 
-```bash
-brew install llvm@4
-export PATH="/usr/local/opt/llvm@4/bin:$PATH"
-```
+On MacOS those dependencies are provided by Xcode.
+On recent MacOS versions, you may run into a build error like this:
 
-On macOS Mojave 10.14 and later, you may run into a build error like
-this:
 ```
 Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make... [rebuild needed by GNU Make]
 ../graal/sulong/projects/com.oracle.truffle.llvm.libraries.bitcode/src/abort.c:30:10: fatal error: 'stdio.h' file not found
@@ -137,12 +131,12 @@ Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make failed
 1 build tasks failed
 ```
 
-In this case, please install the macOS SDK headers with the following
-commands:
+This is due to the non-standard location of the SDK headers in newer Xcode
+versions. In this case, please set the `SDKROOT` environment variable to the
+correct location:
 
 ```bash
-xcode-select --install
-open /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg
+SDKROOT=`xcrun --show-sdk-path`
 ```
 
 Runtime Dependencies
