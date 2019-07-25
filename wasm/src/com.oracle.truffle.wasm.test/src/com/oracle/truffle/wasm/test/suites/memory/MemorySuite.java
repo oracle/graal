@@ -29,13 +29,14 @@
  */
 package com.oracle.truffle.wasm.test.suites.memory;
 
-import com.oracle.truffle.wasm.test.WasmSuiteBase;
-import com.oracle.truffle.wasm.test.options.WasmTestOptions;
-import org.junit.Test;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
+import org.junit.Test;
+
+import com.oracle.truffle.wasm.test.WasmSuiteBase;
+import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 
 public class MemorySuite extends WasmSuiteBase {
     @Override
