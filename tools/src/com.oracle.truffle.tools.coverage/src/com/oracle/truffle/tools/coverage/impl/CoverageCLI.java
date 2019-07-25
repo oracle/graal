@@ -35,9 +35,10 @@ class CoverageCLI {
         final int divLength = 80;
         printLine(out, divLength);
         out.println("Code coverage per line of code.");
-        out.println("  + indicates the line was covered during execution");
-        out.println("  - indicates the line was not covered during execution");
-        out.println("  p indicates the line was partially covered during execution");
+        out.println("  ! indicates the line is part of a root that was NOT covered during execution");
+        out.println("  + indicates the line is part of a statement that was covered during execution");
+        out.println("  - indicates the line is part of a statement that was not covered during execution");
+        out.println("  p indicates the line is part of a statement that was partially covered during execution");
         out.println("    e.g. a not-taken branch of a covered if statement");
         out.println("");
         printLine(out, divLength);
@@ -50,20 +51,24 @@ class CoverageCLI {
             final Set<Integer> nonCoveredLineNumbers = perSource.nonCoveredLineNumbers();
             final Set<Integer> loadedLineNumbers = perSource.loadedLineNumbers();
             final Set<Integer> coveredLineNumbers = perSource.coveredLineNumbers();
+            final Set<Integer> nonCoveredRootLineNumbers = perSource.nonCoveredRootLineNumbers();
+            final Set<Integer> loadedRootLineNumbers = perSource.loadedRootLineNumbers();
+            final Set<Integer> coveredRootLineNumbers = perSource.coveredRootLineNumbers();
             for (int i = 1; i <= source.getLineCount(); i++) {
-                char covered = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, coveredLineNumbers,i);
-                out.println(String.format("%s %s", covered, source.getCharacters(i)));
+                char covered = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, coveredLineNumbers, i, 'p', '-', '+');
+                char rootCovered = getCoverageCharacter(nonCoveredRootLineNumbers, loadedRootLineNumbers, coveredRootLineNumbers, i, '!', '!', ' ');
+                out.println(String.format("%s%s %s", covered, rootCovered, source.getCharacters(i)));
             }
         }
         printLine(out, divLength);
     }
 
-    private static char getCoverageCharacter(Set<Integer> nonCoveredLineNumbers, Set<Integer> loadedLineNumbers, Set<Integer> coveredLineNumbers, int i) {
+    private static char getCoverageCharacter(Set<Integer> nonCoveredLineNumbers, Set<Integer> loadedLineNumbers, Set<Integer> coveredLineNumbers, int i, char partly, char not, char yes) {
         if (loadedLineNumbers.contains(i)) {
             if (coveredLineNumbers.contains(i) && nonCoveredLineNumbers.contains(i)) {
-                return 'p';
+                return partly;
             }
-            return nonCoveredLineNumbers.contains(i) ? '-' : '+';
+            return nonCoveredLineNumbers.contains(i) ? not : yes;
         } else {
             return ' ';
         }

@@ -112,6 +112,21 @@ public final class Coverage {
             return statementsToLineNumbers(loadedStatements);
         }
 
+        public Set<Integer> coveredRootLineNumbers() {
+            return statementsToLineNumbers(coveredRoots);
+        }
+
+        public Set<Integer> loadedRootLineNumbers() {
+            return statementsToLineNumbers(loadedRoots);
+        }
+
+        public Set<Integer> nonCoveredRootLineNumbers() {
+            Set<SourceSection> nonCoveredSections = new HashSet<>();
+            nonCoveredSections.addAll(loadedRoots);
+            nonCoveredSections.removeAll(coveredRoots);
+            return statementsToLineNumbers(nonCoveredSections);
+        }
+
         private static Set<Integer> statementsToLineNumbers(Set<SourceSection> sourceSections) {
             Set<Integer> lines = new HashSet<>();
             for (SourceSection ss : sourceSections) {
