@@ -424,7 +424,7 @@ public final class InterpreterToVM implements ContextAccess {
         return getStrings().intern(guestString);
     }
 
-    public static StaticObject fillInStackTrace(ArrayList<FrameInstance> frames, StaticObject throwable, Meta meta) {
+    public static StaticObject fillInStackTrace(ArrayList<Method> frames, StaticObject throwable, Meta meta) {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
         frames.clear();
@@ -438,7 +438,7 @@ public final class InterpreterToVM implements ContextAccess {
                         if (rootNode instanceof EspressoRootNode) {
                             if (!c.checkFillIn(((EspressoRootNode) rootNode).getMethod())) {
                                 if (!c.checkThrowableInit(((EspressoRootNode) rootNode).getMethod())) {
-                                    frames.add(frameInstance);
+                                    frames.add(((EspressoRootNode) rootNode).getMethod());
                                     c.inc();
                                 }
                             }
@@ -448,7 +448,7 @@ public final class InterpreterToVM implements ContextAccess {
                 return null;
             }
         });
-        throwable.setHiddenField(meta.HIDDEN_FRAMES, frames.toArray(MemoryErrorDelegate.EMPTY_FRAMES));
+        throwable.setHiddenField(meta.HIDDEN_FRAMES, frames.toArray(Method.EMPTY_ARRAY));
         meta.Throwable_backtrace.set(throwable, throwable);
         return throwable;
     }
