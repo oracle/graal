@@ -810,8 +810,9 @@ public class BytecodeParser implements GraphBuilderContext {
         this.parent = parent;
 
         ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
-        if (classInitializationPlugin != null && graphBuilderConfig.eagerResolving()) {
-            uninitializedIsError = eagerInitializing = !classInitializationPlugin.supportsLazyInitialization(constantPool);
+        if (classInitializationPlugin != null && graphBuilderConfig.eagerResolving() && classInitializationPlugin.supportsLazyInitialization(constantPool)) {
+            eagerInitializing = false;
+            uninitializedIsError = false;
         } else {
             eagerInitializing = graphBuilderConfig.eagerResolving();
             uninitializedIsError = graphBuilderConfig.unresolvedIsError();
@@ -2116,7 +2117,8 @@ public class BytecodeParser implements GraphBuilderContext {
      * {@code null} if there is no {@link InlineInfo} for this method.
      */
     private InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
-        boolean canBeInlined = forceInliningEverything || parsingIntrinsic() || targetMethod.canBeInlined();
+        boolean canBeInlined = forceInliningEverything || parsingIntrinsic() ||
+                        (targetMethod.canBeInlined() && (!targetMethod.isStatic() || targetMethod.getDeclaringClass().isInitialized()));
         if (!canBeInlined) {
             return null;
         }
