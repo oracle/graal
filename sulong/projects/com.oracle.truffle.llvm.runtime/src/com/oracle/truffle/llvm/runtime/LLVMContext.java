@@ -108,7 +108,7 @@ public final class LLVMContext {
     private final Object[] mainArguments;
     private final Map<String, String> environment;
     private final ArrayList<LLVMNativePointer> caughtExceptionStack = new ArrayList<>();
-    private final HashMap<String, Integer> nativeCallStatistics;
+    private final ConcurrentHashMap<String, Integer> nativeCallStatistics;
 
     private static final class Handle {
 
@@ -138,8 +138,8 @@ public final class LLVMContext {
     private final LLVMInteropType.InteropTypeRegistry interopTypeRegistry;
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
-    private final Map<Thread, Object> tls = new HashMap<>();
-    private final Map<Thread, LLVMPointer> clearChildTid = new HashMap<>();
+    private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
+    private final Map<Thread, LLVMPointer> clearChildTid = new ConcurrentHashMap<>();
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -175,7 +175,7 @@ public final class LLVMContext {
         this.cleanupNecessary = false;
         this.dataLayout = new DataLayout();
         this.destructorFunctions = new ArrayList<>();
-        this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
+        this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
