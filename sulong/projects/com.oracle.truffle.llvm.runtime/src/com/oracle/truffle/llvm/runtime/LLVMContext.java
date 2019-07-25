@@ -41,6 +41,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -94,7 +95,7 @@ public final class LLVMContext {
     private final List<String> internalLibraryNames = new ArrayList<>();
 
     // map that contains all non-native globals, needed for pointer->global lookups
-    private final HashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new HashMap<>();
+    private final ConcurrentHashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
