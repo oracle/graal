@@ -205,9 +205,8 @@ jlong JVM_MaxMemory(void) {
 }
 
 jint JVM_ActiveProcessorCount(void) {
-  NATIVE(JVM_ActiveProcessorCount);
-  // TODO(peterssen): What to report here?
-  return sysconf(_SC_NPROCESSORS_ONLN);
+  IMPLEMENTED(JVM_ActiveProcessorCount);  
+  return (*getEnv())->JVM_ActiveProcessorCount();
 }
 
 void *JVM_LoadLibrary(const char *name) {

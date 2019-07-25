@@ -507,15 +507,15 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
-        final ArrayList<FrameInstance> frames = new ArrayList<>(32);
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+        final ArrayList<Method> callers = new ArrayList<>(32);
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Method>() {
             @Override
-            public Object visitFrame(FrameInstance frameInstance) {
+            public Method visitFrame(FrameInstance frameInstance) {
                 CallTarget callTarget = frameInstance.getCallTarget();
                 if (callTarget instanceof RootCallTarget) {
                     RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
                     if (rootNode instanceof EspressoRootNode) {
-                        frames.add(frameInstance);
+                        callers.add(((EspressoRootNode) rootNode).getMethod());
                     }
                 }
                 return null;
@@ -525,8 +525,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         int nonThrowableInitStartIndex = 0;
         boolean skipFillInStackTrace = true;
         boolean skipThrowableInit = true;
-        for (FrameInstance fi : frames) {
-            Method m = ((EspressoRootNode) ((RootCallTarget) fi.getCallTarget()).getRootNode()).getMethod();
+        for (Method m : callers) {
             if (skipFillInStackTrace) {
                 if (!((m.getName() == Name.fillInStackTrace) || (m.getName() == Name.fillInStackTrace0))) {
                     skipFillInStackTrace = false;
@@ -539,7 +538,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
             nonThrowableInitStartIndex++;
         }
-        self.setHiddenField(getMeta().HIDDEN_FRAMES, frames.subList(nonThrowableInitStartIndex, frames.size()).toArray(new FrameInstance[0]));
+        self.setHiddenField(getMeta().HIDDEN_FRAMES, callers.subList(nonThrowableInitStartIndex, callers.size()).toArray(Method.EMPTY_ARRAY));
 
         getMeta().Throwable_backtrace.set(self, self);
         return self;
@@ -553,7 +552,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (StaticObject.isNull(backtrace)) {
             return 0;
         }
-        return ((FrameInstance[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES)).length;
+        return ((Method[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES)).length;
     }
 
     @VmImpl
@@ -562,18 +561,16 @@ public final class VM extends NativeEnv implements ContextAccess {
         Meta meta = getMeta();
         StaticObject ste = meta.StackTraceElement.allocateInstance();
         StaticObject backtrace = (StaticObject) meta.Throwable_backtrace.get(self);
-        FrameInstance[] frames = ((FrameInstance[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES));
-        FrameInstance frame = frames[index];
-        if (frame == null) {
+        Method[] allCallers = ((Method[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES));
+        Method caller = allCallers[index];
+        if (caller == null) {
             return StaticObject.NULL;
         }
 
-        EspressoRootNode rootNode = (EspressoRootNode) ((RootCallTarget) frame.getCallTarget()).getRootNode();
-
         meta.StackTraceElement_init.invokeDirect(
                         /* this */ ste,
-                        /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(rootNode.getMethod().getDeclaringKlass().getType().toString(), true, true)),
-                        /* methodName */ meta.toGuestString(rootNode.getMethod().getName()),
+                        /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(caller.getDeclaringKlass().getType().toString(), true, true)),
+                        /* methodName */ meta.toGuestString(caller.getName()),
                         /* fileName */ StaticObject.NULL,
                         /* lineNumber */ -1);
 
@@ -1130,5 +1127,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         boolean ea = getContext().getEnv().getOptions().get(EspressoOptions.EnableAssertions);
         meta.AssertionStatusDirectives_deflt.set(instance, ea);
         return instance;
+    }
+
+    @VmImpl
+    public static int JVM_ActiveProcessorCount() {
+        return Runtime.getRuntime().availableProcessors();
     }
 }

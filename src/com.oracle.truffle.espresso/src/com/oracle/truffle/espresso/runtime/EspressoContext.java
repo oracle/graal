@@ -47,6 +47,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -89,7 +90,7 @@ public final class EspressoContext {
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
-    @CompilationFinal private ArrayList<FrameInstance> frames;
+    @CompilationFinal private ArrayList<Method> frames;
 
     private final MemoryErrorDelegate delegate = new MemoryErrorDelegate();
 
@@ -344,7 +345,7 @@ public final class EspressoContext {
         return delegate;
     }
 
-    public ArrayList<FrameInstance> getFrames() {
+    public ArrayList<Method> getFrames() {
         return frames;
     }
 
