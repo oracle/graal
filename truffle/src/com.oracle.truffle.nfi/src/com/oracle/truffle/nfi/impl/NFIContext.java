@@ -171,7 +171,7 @@ class NFIContext {
     }
 
     Object lookupSymbol(LibFFILibrary library, String name) {
-        return LibFFISymbol.create(language, library, lookup(nativeContext, library.handle, name));
+        return LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
     }
 
     LibFFIType lookupArgType(NativeTypeMirror type) {
