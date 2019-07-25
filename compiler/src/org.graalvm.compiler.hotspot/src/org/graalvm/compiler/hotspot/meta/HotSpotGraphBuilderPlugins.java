@@ -154,7 +154,9 @@ public class HotSpotGraphBuilderPlugins {
                 plugins.setProfilingPlugin(new HotSpotAOTProfilingPlugin());
             }
         } else {
-            plugins.setClassInitializationPlugin(new HotSpotJITClassInitializationPlugin());
+            if (config.instanceKlassInitThreadOffset != -1) {
+                plugins.setClassInitializationPlugin(new HotSpotJITClassInitializationPlugin());
+            }
         }
 
         invocationPlugins.defer(new Runnable() {

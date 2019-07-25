@@ -788,6 +788,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     static int instanceKlassInitThreadOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        assert config.instanceKlassInitThreadOffset != -1;
         return config.instanceKlassInitThreadOffset;
     }
 
@@ -798,6 +799,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int instanceKlassStateBeingInitialized(@InjectedParameter GraalHotSpotVMConfig config) {
+        assert config.instanceKlassStateBeingInitialized != -1;
         return config.instanceKlassStateBeingInitialized;
     }
 

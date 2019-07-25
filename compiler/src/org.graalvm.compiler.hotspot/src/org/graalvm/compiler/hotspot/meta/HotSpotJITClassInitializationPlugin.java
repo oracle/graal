@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class HotSpotJITClassInitializationPlugin implements ClassInitializationPlugin {
     @Override
     public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
-        if (!type.isInitialized() && type.isInstanceClass()) {
+        if (!type.isInitialized() && (type.isInstanceClass() || type.isInterface())) {
             int code = builder.getCode().getCode()[builder.bci()] & 0xff;
             switch (code) {
                 case INVOKESTATIC:
