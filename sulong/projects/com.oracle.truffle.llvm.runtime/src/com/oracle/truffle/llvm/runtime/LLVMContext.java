@@ -553,15 +553,6 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMPointer getClearChildTid() {
-        LLVMPointer value = clearChildTid.get(Thread.currentThread());
-        if (value != null) {
-            return value;
-        }
-        return LLVMNativePointer.createNull();
-    }
-
-    @TruffleBoundary
     public void setClearChildTid(LLVMPointer value) {
         clearChildTid.put(Thread.currentThread(), value);
     }
