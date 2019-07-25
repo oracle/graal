@@ -31,7 +31,7 @@ import java.security.PrivilegedAction;
 import java.util.function.IntPredicate;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.hotspot.meta.HotSpotClassInitializationPlugin;
+import org.graalvm.compiler.hotspot.meta.HotSpotAOTClassInitializationPlugin;
 import org.graalvm.compiler.hotspot.meta.HotSpotInvokeDynamicPlugin;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveDynamicConstantNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveDynamicStubCall;
@@ -59,7 +59,7 @@ public class HotSpotInvokeDynamicPluginTest extends HotSpotGraalCompilerTest {
     @Override
     protected Plugins getDefaultGraphBuilderPlugins() {
         Plugins plugins = super.getDefaultGraphBuilderPlugins();
-        plugins.setClassInitializationPlugin(new HotSpotClassInitializationPlugin());
+        plugins.setClassInitializationPlugin(new HotSpotAOTClassInitializationPlugin());
         plugins.setInvokeDynamicPlugin(new HotSpotInvokeDynamicPlugin() {
             @Override
             public boolean isResolvedDynamicInvoke(GraphBuilderContext builder, int index, int opcode) {
