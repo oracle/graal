@@ -102,9 +102,10 @@ clangFormatCheckPaths = [
     join(_suite.dir, "include"),
     join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src"),
     join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "include"),
-    join(_root, "com.oracle.truffle.llvm.tests.pipe.native", "src"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulong"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.pipe.native", "src"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.sulong.native"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp.native"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.linker.native"),
     join(_testDir, "interoptests"),
     join(_testDir, "inlineassemblytests"),
     join(_testDir, "other")
