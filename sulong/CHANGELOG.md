@@ -1,3 +1,11 @@
+# Version 19.3.0
+
+Improvements:
+
+* Clang and other LLVM tools are no longer required to be installed for building
+  the GraalVM LLVM runtime. Instead, the LLVM distribution bundled with the
+  [Toolchain](docs/TOOLCHAIN.md) is used.
+
 # Version 19.2.0
 
 New features:
