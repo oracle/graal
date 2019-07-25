@@ -86,6 +86,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         }
     }
 
+    @ExplodeLoop
     private void argumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         for (int i = 0; i != args.length; ++i) {

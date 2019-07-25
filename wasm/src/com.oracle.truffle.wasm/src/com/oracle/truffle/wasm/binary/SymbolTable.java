@@ -32,6 +32,7 @@ package com.oracle.truffle.wasm.binary;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 
 public class SymbolTable {
@@ -57,18 +58,30 @@ public class SymbolTable {
      * where
      *   na: the number of arguments
      *   nr: the number of return values
+     *
+     * This array is monotonically populated from left to right during parsing. Any code that uses
+     * this array should only access the locations in the array that have already been populated.
      */
-    private int[] typeData;
+    @CompilationFinal(dimensions = 1) private int[] typeData;
 
     /**
      * Stores the offset of each function type into the {@link #typeData} array.
+     *
+     * This array is monotonically populated from left to right during parsing. Any code that uses
+     * this array should only access the locations in the array that have already been populated.
      */
-    private int[] offsets;
+    @CompilationFinal(dimensions = 1) private int[] offsets;
 
     private int typeDataSize;
     private int offsetsSize;
 
-    private WasmFunction[] functionTypes;
+    /**
+     * Stores the function objects for a WebAssembly module.
+     *
+     * This array is monotonically populated from left to right during parsing. Any code that uses
+     * this array should only access the locations in the array that have already been populated.
+     */
+    @CompilationFinal(dimensions = 1) private WasmFunction[] functionTypes;
     private int numFunctions;
 
     private Map<String, WasmFunction> exportedFunctions;
@@ -98,6 +111,13 @@ public class SymbolTable {
         return newArray;
     }
 
+    /**
+     * Ensure that the {@link #typeData} array has enough space to store {@code index}.
+     * If there is no enough space, then a reallocation of the array takes place, doubling its capacity.
+     *
+     * No synchronisation is required for this method, as it is only called during parsing,
+     * which is carried out by a single thread.
+     */
     private void ensureTypeDataCapacity(int index) {
         if (typeData.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * typeData.length);
@@ -105,6 +125,13 @@ public class SymbolTable {
         }
     }
 
+    /**
+     * Ensure that the {@link #offsets} array has enough space to store {@code index}.
+     * If there is no enough space, then a reallocation of the array takes place, doubling its capacity.
+     *
+     * No synchronisation is required for this method, as it is only called during parsing,
+     * which is carried out by a single thread.
+     */
     private void ensureOffsetsCapacity(int index) {
         if (offsets.length <= index) {
             int newLength = Math.max(Integer.highestOneBit(index) << 1, 2 * offsets.length);

@@ -315,25 +315,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     DirectCallNode callNode = callNodeTable[callNodeOffset];
                     callNodeOffset++;
 
-                    Object[] args = new Object[numArgs];
-                    for (int i = 0; i != numArgs; ++i) {
-                        stackPointer--;
-                        byte type = wasmModule().symbolTable().getFunctionTypeArgumentTypeAt(function.typeIndex(), i);
-                        switch (type) {
-                            case ValueTypes.I32_TYPE:
-                                args[i] = popInt(frame, stackPointer);
-                                break;
-                            case ValueTypes.I64_TYPE:
-                                args[i] = pop(frame, stackPointer);
-                                break;
-                            case ValueTypes.F32_TYPE:
-                                args[i] = popAsFloat(frame, stackPointer);
-                                break;
-                            case ValueTypes.F64_TYPE:
-                                args[i] = popAsDouble(frame, stackPointer);
-                                break;
-                        }
-                    }
+                    Object[] args = createArguementsForCall(frame, function, numArgs, stackPointer);
+                    stackPointer -= args.length;
 
                     Object result = callNode.call(args);
                     switch (returnType) {
@@ -1593,6 +1576,30 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
             }
         }
         return -1;
+    }
+
+    @ExplodeLoop
+    private Object[] createArguementsForCall(VirtualFrame frame, WasmFunction function, int numArgs, int stackPointer) {
+        Object[] args = new Object[numArgs];
+        for (int i = 0; i != numArgs; ++i) {
+            stackPointer--;
+            byte type = wasmModule().symbolTable().getFunctionTypeArgumentTypeAt(function.typeIndex(), i);
+            switch (type) {
+                case ValueTypes.I32_TYPE:
+                    args[i] = popInt(frame, stackPointer);
+                    break;
+                case ValueTypes.I64_TYPE:
+                    args[i] = pop(frame, stackPointer);
+                    break;
+                case ValueTypes.F32_TYPE:
+                    args[i] = popAsFloat(frame, stackPointer);
+                    break;
+                case ValueTypes.F64_TYPE:
+                    args[i] = popAsDouble(frame, stackPointer);
+                    break;
+            }
+        }
+        return args;
     }
 
     private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer) {
