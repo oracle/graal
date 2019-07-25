@@ -19,7 +19,7 @@
       i32.add
     end)
   (func (;1;) (type 0) (result i32)
-    i32.const 34
+    i32.const 42
     call 0)
   (func (;2;) (type 1) (param i32) (result i32)
     (local i32 i32)
