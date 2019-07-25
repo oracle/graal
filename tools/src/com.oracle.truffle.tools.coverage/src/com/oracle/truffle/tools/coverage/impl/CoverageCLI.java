@@ -32,35 +32,48 @@ class CoverageCLI {
     }
 
     private static void printLines(PrintStream out, Coverage coverage) {
-        final int divLength = 80;
-        printLine(out, divLength);
-        out.println("Code coverage per line of code.");
-        out.println("  ! indicates the line is part of a root that was NOT covered during execution");
+        Map<Source, Coverage.PerSource> histogram = coverage.getCoverage();
+        String format = getHistogramLineFormat(histogram);
+        String header = String.format(format, "Path", "Statements", "Lines", "Roots");
+        int length = header.length();
+        printLine(out, length);
+        printLinesLegend(out);
+        printLine(out, length);
+        final List<Source> sources = sortedKeys(histogram);
+        for (Source source : sources) {
+            final String path = source.getPath();
+            final Coverage.PerSource value = histogram.get(source);
+            out.println(header);
+            out.println(String.format(format, path, statementCoverage(value), lineCoverage(value), rootCoverage(value)));
+            out.println("");
+            printLinesOfSource(out, histogram, source);
+        }
+        printLine(out, length);
+    }
+
+    private static void printLinesOfSource(PrintStream out, Map<Source, Coverage.PerSource> histogram, Source source) {
+        Coverage.PerSource perSource = histogram.get(source);
+        Set<Integer> nonCoveredLineNumbers = perSource.nonCoveredLineNumbers();
+        Set<Integer> loadedLineNumbers = perSource.loadedLineNumbers();
+        Set<Integer> coveredLineNumbers = perSource.coveredLineNumbers();
+        Set<Integer> nonCoveredRootLineNumbers = perSource.nonCoveredRootLineNumbers();
+        Set<Integer> loadedRootLineNumbers = perSource.loadedRootLineNumbers();
+        Set<Integer> coveredRootLineNumbers = perSource.coveredRootLineNumbers();
+        for (int i = 1; i <= source.getLineCount(); i++) {
+            char covered = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, coveredLineNumbers, i, 'p', '-', '+');
+            char rootCovered = getCoverageCharacter(nonCoveredRootLineNumbers, loadedRootLineNumbers, coveredRootLineNumbers, i, '!', '!', ' ');
+            out.println(String.format("%s%s %s", covered, rootCovered, source.getCharacters(i)));
+        }
+    }
+
+    private static void printLinesLegend(PrintStream out) {
+        out.println("Code coverage per line of code and what percent of each element was covered during execution (per source)");
         out.println("  + indicates the line is part of a statement that was covered during execution");
         out.println("  - indicates the line is part of a statement that was not covered during execution");
         out.println("  p indicates the line is part of a statement that was partially covered during execution");
         out.println("    e.g. a not-taken branch of a covered if statement");
+        out.println("  ! indicates the line is part of a root that was NOT covered during execution");
         out.println("");
-        printLine(out, divLength);
-        final Map<Source, Coverage.PerSource> histogram = coverage.getCoverage();
-        final List<Source> sources = sortedKeys(histogram);
-        for (Source source : sources) {
-            out.println(source.getPath());
-            printLine(out, divLength);
-            final Coverage.PerSource perSource = histogram.get(source);
-            final Set<Integer> nonCoveredLineNumbers = perSource.nonCoveredLineNumbers();
-            final Set<Integer> loadedLineNumbers = perSource.loadedLineNumbers();
-            final Set<Integer> coveredLineNumbers = perSource.coveredLineNumbers();
-            final Set<Integer> nonCoveredRootLineNumbers = perSource.nonCoveredRootLineNumbers();
-            final Set<Integer> loadedRootLineNumbers = perSource.loadedRootLineNumbers();
-            final Set<Integer> coveredRootLineNumbers = perSource.coveredRootLineNumbers();
-            for (int i = 1; i <= source.getLineCount(); i++) {
-                char covered = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, coveredLineNumbers, i, 'p', '-', '+');
-                char rootCovered = getCoverageCharacter(nonCoveredRootLineNumbers, loadedRootLineNumbers, coveredRootLineNumbers, i, '!', '!', ' ');
-                out.println(String.format("%s%s %s", covered, rootCovered, source.getCharacters(i)));
-            }
-        }
-        printLine(out, divLength);
     }
 
     private static char getCoverageCharacter(Set<Integer> nonCoveredLineNumbers, Set<Integer> loadedLineNumbers, Set<Integer> coveredLineNumbers, int i, char partly, char not, char yes) {
