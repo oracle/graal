@@ -304,6 +304,11 @@ abstract class LibFFIType {
                     return this;
             }
         }
+
+        @Override
+        public String toString() {
+            return simpleType.toString();
+        }
     }
 
     static final class VoidType extends BasicType {
