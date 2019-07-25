@@ -93,7 +93,7 @@ public final class LLVMContext {
     @CompilationFinal private Path internalLibraryPath;
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
     private final Object externalLibrariesLock = new Object();
-    private final List<String> internalLibraryNames = new ArrayList<>();
+    private final List<String> internalLibraryNames;
 
     // map that contains all non-native globals, needed for pointer->global lookups
     private final ConcurrentHashMap<LLVMPointer, LLVMGlobal> globalsReverseMap = new ConcurrentHashMap<>();
@@ -185,6 +185,9 @@ public final class LLVMContext {
         this.functionPointerRegistry = new LLVMFunctionPointerRegistry();
         this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();
+
+        this.internalLibraryNames = Collections.unmodifiableList(Arrays.asList(language.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries()));
+        assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
         this.globalScope = new LLVMScope();
         this.dynamicLinkChain = new DynamicLinkChain();
@@ -474,10 +477,6 @@ public final class LLVMContext {
     }
 
     private boolean isInternalLibrary(String lib) {
-        if (internalLibraryNames.isEmpty()) {
-            internalLibraryNames.addAll(Arrays.asList(language.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries()));
-            assert !internalLibraryNames.isEmpty() : "No internal libraries?";
-        }
         for (String interalLibs : internalLibraryNames) {
             if (interalLibs.equals(lib)) {
                 return true;
