@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -46,7 +46,7 @@ public final class LLVMThreadingStack {
     public LLVMThreadingStack(Thread mainTread, long stackSize) {
         this.mainThread = mainTread;
         this.stackSize = stackSize;
-        this.threadMap = new HashMap<>();
+        this.threadMap = new ConcurrentHashMap<>();
     }
 
     public LLVMStack getStack() {
@@ -58,14 +58,15 @@ public final class LLVMThreadingStack {
     }
 
     @TruffleBoundary
-    private synchronized LLVMStack getCurrentStack() {
+    private LLVMStack getCurrentStack() {
         return threadMap.get(Thread.currentThread());
     }
 
     @TruffleBoundary
-    private synchronized LLVMStack createNewStack() {
+    private LLVMStack createNewStack() {
         LLVMStack s = new LLVMStack(stackSize);
-        threadMap.put(Thread.currentThread(), s);
+        Object previous = threadMap.putIfAbsent(Thread.currentThread(), s);
+        assert previous == null;
         return s;
     }
 
@@ -85,11 +86,10 @@ public final class LLVMThreadingStack {
         free(memory, mainThread);
     }
 
-    private synchronized void free(LLVMMemory memory, Thread thread) {
-        LLVMStack s = threadMap.get(thread);
+    private void free(LLVMMemory memory, Thread thread) {
+        LLVMStack s = threadMap.remove(thread);
         if (s != null) {
             s.free(memory);
-            threadMap.remove(thread);
         }
     }
 }
