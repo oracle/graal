@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -46,6 +48,10 @@ import jdk.vm.ci.meta.Value;
 import static java.lang.Double.doubleToRawLongBits;
 import static java.lang.Float.floatToRawIntBits;
 
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
@@ -99,7 +105,21 @@ public final class AMD64Packing {
             final PlatformKind pc = result.getPlatformKind();
             final int alignment = pc.getSizeInBytes() / pc.getVectorLength();
             final AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(byteBuffer.array(), alignment);
-            masm.movdqu(asRegister(result), address);
+            switch (byteBuffer.capacity()) {
+                case 4:  // TODO: Avoid using a constant here.
+                    VMOVD.emit(masm, DWORD, asRegister(result), address);
+                    break;
+                case 8:  // TODO: Avoid using a constant here.
+                    VMOVQ.emit(masm, QWORD, asRegister(result), address);
+                    break;
+                case 16: // TODO: Avoid using a constant here.
+                    masm.movdqu(asRegister(result), address);
+                    break;
+                case 32: // TODO: Avoid using a constant here.
+                    assert ((AMD64) masm.target.arch).getFeatures().contains(AMD64.CPUFeature.AVX) : "AVX is unsupported";
+                    masm.vmovdqu(asRegister(result), address);
+                    break;
+            }
         }
     }
 
