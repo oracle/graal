@@ -125,19 +125,36 @@ public final class LLVMCallNode extends LLVMExpressionNode {
                 argumentNodes[i] = insert(argumentNodes[i]);
             }
         }
+
         Object[] argValues = new Object[argumentNodes.length];
-        if (prepareArgumentNodes == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            prepareArgumentNodes = new ArgumentNode[argumentNodes.length];
-        }
+        ArgumentNode[] prepareArgumentNodes = getPrepareArgumentNodes();
         for (int i = 0; i < argumentNodes.length; i++) {
-            if (prepareArgumentNodes[i] == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                prepareArgumentNodes[i] = insert(ArgumentNodeGen.create());
-            }
             argValues[i] = prepareArgumentNodes[i].executeWithTarget(argumentNodes[i].executeGeneric(frame));
         }
         return dispatchNode.executeDispatch(function, argValues);
+    }
+
+    private ArgumentNode[] getPrepareArgumentNodes() {
+        ArgumentNode[] nodes = prepareArgumentNodes;
+        if (nodes == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                nodes = prepareArgumentNodes;
+                if (nodes == null) {
+                    nodes = insert(createPrepareArgumentNodes());
+                    prepareArgumentNodes = nodes;
+                }
+            }
+        }
+        return nodes;
+    }
+
+    private ArgumentNode[] createPrepareArgumentNodes() {
+        ArgumentNode[] nodes = new ArgumentNode[argumentNodes.length];
+        for (int i = 0; i < nodes.length; i++) {
+            nodes[i] = ArgumentNodeGen.create();
+        }
+        return nodes;
     }
 
     protected abstract static class ArgumentNode extends LLVMNode {
