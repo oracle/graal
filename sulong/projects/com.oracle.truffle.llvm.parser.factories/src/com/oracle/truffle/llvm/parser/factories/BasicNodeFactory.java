@@ -386,6 +386,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -1778,28 +1779,35 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, LLVMSourceLocation sourceSection) {
+    public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, Type[] argsTypes, int callerArgumentCount, LLVMSourceLocation sourceSection) {
         /*
          * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look
          * like function calls but are actually LLVM intrinsics. An example is llvm.stackpointer.
          * Also, it is not possible to retrieve the functionpointer of such pseudo-call-targets.
          *
-         * This builtins shall not be used for regular function intrinsification!
+         * These builtins shall not be used for regular function intrinsification!
          */
         if (target instanceof FunctionDeclaration) {
             FunctionDeclaration declaration = (FunctionDeclaration) target;
-            if (declaration.getName().startsWith("llvm.")) {
+            String name = declaration.getName();
+            if (name.startsWith("llvm.")) {
                 return getLLVMBuiltin(declaration, args, callerArgumentCount, sourceSection);
-            } else if (declaration.getName().startsWith("__builtin_")) {
+            } else if (name.startsWith("__builtin_")) {
                 return getGccBuiltin(declaration, args, sourceSection);
-            } else if (declaration.getName().equals("polyglot_get_arg")) {
+            } else if (name.equals("polyglot_get_arg")) {
                 // this function accesses the frame directly
                 // it must therefore not be hidden behind a call target
                 return LLVMTruffleGetArgNodeGen.create(args[1], sourceSection);
-            } else if (declaration.getName().equals("polyglot_get_arg_count")) {
+            } else if (name.equals("polyglot_get_arg_count")) {
                 // this function accesses the frame directly
                 // it must therefore not be hidden behind a call target
                 return LLVMTruffleGetArgCountNodeGen.create(sourceSection);
+            } else {
+                LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
+                LLVMExpressionNode intrinsicNode = intrinsicProvider.generateIntrinsicNode(name, args, argsTypes);
+                if (intrinsicNode != null) {
+                    return intrinsicNode;
+                }
             }
         }
         return null;
