@@ -118,8 +118,11 @@ public final class MethodHandleIntrinsics implements ContextAccess {
             return method;
         }
         CompilerAsserts.neverPartOfCompilation();
-        method = Method.createIntrinsic(thisMethod, signature, baseNodeFactory);
-        intrinsics.put(signature, method);
+        method = thisMethod.createIntrinsic(signature, baseNodeFactory);
+        Method previous = intrinsics.putIfAbsent(signature, method);
+        if (previous != null) {
+            return previous;
+        }
         return method;
     }
 
