@@ -10,6 +10,8 @@ import java.util.Set;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.Coverage;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 class CoverageCLI {
 
@@ -42,7 +44,48 @@ class CoverageCLI {
     }
 
     private static void printJson(PrintStream out, Coverage coverage) {
-        throw new UnsupportedOperationException();
+        JSONObject output = new JSONObject();
+        final Map<Source, Coverage.PerSource> sourceMap = coverage.getCoverage();
+        for (Map.Entry<Source, Coverage.PerSource> entry : sourceMap.entrySet()) {
+            final Coverage.PerSource perSource = entry.getValue();
+            final JSONObject perSourceJson = new JSONObject();
+            perSourceJson.put("loaded_statements", statementsJson(perSource.getLoadedStatements()));
+            perSourceJson.put("covered_statements", statementsJson(perSource.getCoveredStatements()));
+            perSourceJson.put("loaded_roots", statementsJson(perSource.getLoadedRoots()));
+            perSourceJson.put("covered_roots", statementsJson(perSource.getCoveredRoots()));
+            perSourceJson.put("summary", jsonSummary(perSource));
+            output.put(entry.getKey().getPath(), perSourceJson);
+        }
+        out.println(output.toString());
+    }
+
+    private static JSONObject jsonSummary(Coverage.PerSource perSource) {
+        JSONObject summary = new JSONObject();
+        summary.put("statement_coverage", perSource.statementCoverage());
+        summary.put("root_coverage", perSource.rootCoverage());
+        summary.put("line_coverage", perSource.lineCoverage());
+        return summary;
+    }
+
+    private static JSONArray statementsJson(Set<SourceSection> statements) {
+        final JSONArray array = new JSONArray();
+        for (SourceSection statement : statements) {
+            array.put(sourseSectionJson(statement));
+        }
+        return array;
+    }
+
+    private static JSONObject sourseSectionJson(SourceSection statement) {
+        JSONObject sourceSection = new JSONObject();
+        sourceSection.put("characters", statement.getCharacters());
+        sourceSection.put("start_line", statement.getStartLine());
+        sourceSection.put("end_line", statement.getEndLine());
+        sourceSection.put("start_column", statement.getStartColumn());
+        sourceSection.put("end_column", statement.getEndColumn());
+        sourceSection.put("char_index", statement.getCharIndex());
+        sourceSection.put("char_end_index", statement.getCharEndIndex());
+        sourceSection.put("char_lenght", statement.getCharLength());
+        return sourceSection;
     }
 
     private void printLinesOutput() {
@@ -144,21 +187,15 @@ class CoverageCLI {
     }
 
     private static String statementCoverage(Coverage.PerSource coverage) {
-        final Set<SourceSection> coveredStatements = coverage.getCoveredStatements();
-        final Set<SourceSection> loadedStatements = coverage.getLoadedStatements();
-        return percentFormat(100 * (double) coveredStatements.size() / loadedStatements.size());
+        return percentFormat(100 * coverage.statementCoverage());
     }
 
     private static String rootCoverage(Coverage.PerSource coverage) {
-        final Set<SourceSection> coveredRoots = coverage.getCoveredRoots();
-        final Set<SourceSection> loadedRoots = coverage.getLoadedRoots();
-        return percentFormat(100 * (double) coveredRoots.size() / loadedRoots.size());
+        return percentFormat(100 * coverage.rootCoverage());
     }
 
     private static String lineCoverage(Coverage.PerSource coverage) {
-        final int loadedSize = coverage.loadedLineNumbers().size();
-        final int coveredSize = coverage.nonCoveredLineNumbers().size();
-        return percentFormat(100 * ((double) loadedSize - coveredSize) / loadedSize);
+        return percentFormat(100 * coverage.lineCoverage());
     }
 
 }

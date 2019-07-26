@@ -73,6 +73,24 @@ public final class Coverage {
             this.coveredRoots = coveredRoots;
         }
 
+        public double rootCoverage() {
+            final Set<SourceSection> coveredRoots = getCoveredRoots();
+            final Set<SourceSection> loadedRoots = getLoadedRoots();
+            return (double) coveredRoots.size() / loadedRoots.size();
+        }
+
+        public double statementCoverage() {
+            final Set<SourceSection> coveredStatements = getCoveredStatements();
+            final Set<SourceSection> loadedStatements = getLoadedStatements();
+            return (double) coveredStatements.size() / loadedStatements.size();
+        }
+
+        public double lineCoverage() {
+            final int loadedSize = loadedLineNumbers().size();
+            final int coveredSize = nonCoveredLineNumbers().size();
+            return ((double) loadedSize - coveredSize) / loadedSize;
+        }
+
         private PerSource readOnlyCopy() {
             return new PerSource(
                             Collections.unmodifiableSet(loadedStatements),
