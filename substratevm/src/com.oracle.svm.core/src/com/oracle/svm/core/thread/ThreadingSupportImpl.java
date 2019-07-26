@@ -43,9 +43,9 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.Safepoint.Master;
 import com.oracle.svm.core.thread.Safepoint.SafepointException;
+import com.oracle.svm.core.thread.Safepoint.SafepointRequestValues;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -62,27 +62,6 @@ public class ThreadingSupportImpl implements ThreadingSupport {
     }
 
     /**
-     * Recurring callbacks execute arbitrary code and can throw {@link SafepointException}s. In some
-     * code parts (e.g., when executing VM operations), we can't deal with arbitrary code execution
-     * and therefore need to pause the execution of recurring callbacks.
-     */
-    public static class PauseRecurringCallback implements AutoCloseable {
-        private boolean closed = false;
-
-        public PauseRecurringCallback(String reason) {
-            pauseRecurringCallback(reason);
-        }
-
-        @Override
-        public void close() {
-            if (!closed) {
-                closed = true;
-                resumeRecurringCallback();
-            }
-        }
-    }
-
-    /**
      * Implementation of a per-thread timer that uses safepoint check operations to invoke a
      * callback method in regular (best-effort) time intervals. The timer starts with an initial
      * {@link #INITIAL_CHECKS number of check operations} for the interval and then measures how
@@ -90,7 +69,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
      * requested time intervals. The timer uses an exponentially weighted moving average (EWMA) to
      * adapt to a changing frequency of safepoint checks in the code that the thread executes.
      */
-    static class RecurringCallbackTimer {
+    private static class RecurringCallbackTimer {
         private static final RecurringCallbackAccess CALLBACK_ACCESS = new RecurringCallbackAccess() {
             @Override
             public void throwException(Throwable t) {
@@ -109,9 +88,10 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         private static final long MINIMUM_INTERVAL_NANOS = 1_000;
 
         private final long targetIntervalNanos;
+        private final long flexibleTargetIntervalNanos;
         private final RecurringCallback callback;
 
-        private long requestedChecks;
+        private int unsignedRequestedChecks;
         private double ewmaChecksPerNano;
         private long lastCapture;
         private long lastCallbackExecution;
@@ -120,16 +100,17 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
         RecurringCallbackTimer(long targetIntervalNanos, RecurringCallback callback) {
             this.targetIntervalNanos = Math.max(MINIMUM_INTERVAL_NANOS, targetIntervalNanos);
+            this.flexibleTargetIntervalNanos = (long) (targetIntervalNanos * TARGET_INTERVAL_FLEXIBILITY);
             this.callback = callback;
 
             long now = System.nanoTime();
             this.lastCapture = now;
             this.lastCallbackExecution = now;
-            this.requestedChecks = INITIAL_CHECKS;
+            this.unsignedRequestedChecks = INITIAL_CHECKS;
         }
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
-        void evaluate() {
+        public void evaluate() {
             updateStatistics();
             try {
                 executeCallback();
@@ -138,14 +119,20 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
-        private void updateStatistics() {
+        @Uninterruptible(reason = "Must be uninterruptible to avoid races with the safepoint code.")
+        public void updateStatistics() {
             long now = System.nanoTime();
             long elapsedNanos = now - lastCapture;
-            int safepointRequestedValue = getSafepointRequestedValue(CurrentIsolate.getCurrentThread());
-            long skippedChecks = safepointRequestedValue & UNSIGNED_INT_MAX;
-            if (elapsedNanos > 0 && skippedChecks < requestedChecks) { // basic sanity
-                double checksPerNano = (requestedChecks - skippedChecks) / (double) elapsedNanos;
+            int unsignedSkippedChecks = getSafepointRequestedValue(CurrentIsolate.getCurrentThread());
+
+            /*
+             * Normally, unsignedIntToLong(unsignedRequestedChecks) should always be greater equal
+             * than unsignedIntToLong(unsignedSkippedChecks). However, our implementation is
+             * currently not thread-safe enough to guarantee that all the time.
+             */
+            long executedChecks = unsignedIntToLong(unsignedRequestedChecks) - unsignedIntToLong(unsignedSkippedChecks);
+            if (elapsedNanos > 0 && executedChecks > 0) {
+                double checksPerNano = executedChecks / (double) elapsedNanos;
                 if (ewmaChecksPerNano == 0) { // initialization
                     ewmaChecksPerNano = checksPerNano;
                 } else {
@@ -155,18 +142,20 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Must be uninterruptible to avoid races with the safepoint code.")
         private static int getSafepointRequestedValue(IsolateThread thread) {
             /*
              * A concurrent safepoint request could destroy the safepointRequested value. However,
              * the safepoint logic saves the original value in
              * safepointRequestedValueBeforeSafepoint. So, we access that value if necessary to
              * avoid race conditions.
+             *
+             * This is still not a 100% thread safe (see updateStatistics).
              */
             int rawValue = Safepoint.getSafepointRequested(thread);
             if (rawValue == Safepoint.SafepointRequestValues.ENTER) {
                 int valueSavedBeforeSafepoint = Safepoint.getSafepointRequestedValueBeforeSafepoint(thread);
-                if (valueSavedBeforeSafepoint != Safepoint.SafepointRequestValues.RESET) {
+                if (valueSavedBeforeSafepoint != 0) {
                     assert Master.singleton().getRequestingThread().isNonNull();
                     return valueSavedBeforeSafepoint;
                 }
@@ -186,7 +175,12 @@ public class ThreadingSupportImpl implements ThreadingSupport {
                  * Allow the callback to trigger a bit early - otherwise, it can happen that we
                  * enter the slowpath multiple times while closing in on the deadline.
                  */
-                if (System.nanoTime() >= lastCallbackExecution + (long) (targetIntervalNanos * TARGET_INTERVAL_FLEXIBILITY)) {
+                if (System.nanoTime() >= lastCallbackExecution + flexibleTargetIntervalNanos) {
+                    /*
+                     * Before executing the callback, reset the safepoint requested counter as we
+                     * don't want to trigger another callback execution in the near future.
+                     */
+                    setSafepointRequested(SafepointRequestValues.RESET);
                     try {
                         invokeCallback();
                         /*
@@ -196,6 +190,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
                          */
                     } finally {
                         lastCallbackExecution = System.nanoTime();
+                        updateStatistics();
                     }
                 }
             } finally {
@@ -210,28 +205,27 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             if (remainingNanos < 0 && isCallbackDisabled()) {
                 /*
                  * If we are already behind the deadline and recurring callbacks are disabled for
-                 * some reason, then we can safely assume that there is no need to enter the
-                 * safepoint slow path for at least a full target interval (callback execution will
-                 * be triggered manually as soon as possible anyways).
+                 * some reason, then we can safely assume that there won't be any need to trigger
+                 * recurring callback execution for a long time (reenabling the callbacks triggers
+                 * the execution explicitly).
                  */
-                remainingNanos = targetIntervalNanos;
+                setSafepointRequested(SafepointRequestValues.RESET);
             } else {
                 remainingNanos = (remainingNanos < MINIMUM_INTERVAL_NANOS) ? MINIMUM_INTERVAL_NANOS : remainingNanos;
+                double checks = ewmaChecksPerNano * remainingNanos;
+                setSafepointRequested((checks > UNSIGNED_INT_MAX) ? (int) UNSIGNED_INT_MAX : ((checks < 1) ? 1 : (int) checks));
             }
+        }
 
-            double checks = ewmaChecksPerNano * remainingNanos;
-            requestedChecks = (checks > UNSIGNED_INT_MAX) ? UNSIGNED_INT_MAX : ((checks < 1L) ? 1L : (long) checks);
-            Safepoint.setSafepointRequested((int) requestedChecks);
+        @Uninterruptible(reason = "Called by uninterruptible code.")
+        public void setSafepointRequested(int value) {
+            unsignedRequestedChecks = value;
+            Safepoint.setSafepointRequested(value);
         }
 
         @Uninterruptible(reason = "Called by uninterruptible code.")
         private boolean isCallbackDisabled() {
-            /*
-             * Avoid recursively entering the callback, or executing the callback while currently
-             * unwinding the stack, the latter of which is particularly problematic when the
-             * callback throws an exception itself.
-             */
-            return isExecuting || SnippetRuntime.isUnwindingForException() || isRecurringCallbackPaused();
+            return isExecuting || isRecurringCallbackPaused();
         }
 
         /**
@@ -249,6 +243,11 @@ public class ThreadingSupportImpl implements ThreadingSupport {
                 Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
             }
         }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        private static long unsignedIntToLong(int unsignedValue) {
+            return unsignedValue & UNSIGNED_INT_MAX;
+        }
     }
 
     private static final FastThreadLocalObject<RecurringCallbackTimer> activeTimer = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class);
@@ -265,7 +264,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
             RecurringCallbackTimer timer = new RecurringCallbackTimer(intervalNanos, callback);
             activeTimer.set(timer);
-            Safepoint.setSafepointRequested((int) timer.requestedChecks);
+            Safepoint.setSafepointRequested(timer.unsignedRequestedChecks);
         } else {
             activeTimer.set(null);
         }
@@ -276,6 +275,9 @@ public class ThreadingSupportImpl implements ThreadingSupport {
      * safepoint slowpath and executes the callback if necessary. This also resets the safepoint
      * requested counter so that some time can pass before this thread enters the safepoint slowpath
      * again.
+     *
+     * Note that the callback execution can trigger safepoints and throw exceptions, so it is NOT
+     * uninterruptible.
      */
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     static void onSafepointCheckSlowpath() {
@@ -296,6 +298,11 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         return Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && activeTimer.get() != null;
     }
 
+    /**
+     * Recurring callbacks execute arbitrary code and can throw {@link SafepointException}s. In some
+     * code parts (e.g., when executing VM operations), we can't deal with arbitrary code execution
+     * and therefore need to pause the execution of recurring callbacks.
+     */
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     public static void pauseRecurringCallback(@SuppressWarnings("unused") String reason) {
         if (!MultiThreaded.getValue()) {
@@ -310,21 +317,43 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         currentPauseDepth.set(currentPauseDepth.get() + 1);
     }
 
+    /**
+     * Resumes the execution of recurring callbacks. The callback execution might be triggered at
+     * the next safepoint check.
+     */
     @Uninterruptible(reason = "Must not contain safepoint checks.")
-    public static void resumeRecurringCallback() {
-        if (!MultiThreaded.getValue()) {
-            return;
+    public static void resumeRecurringCallbackAtNextSafepoint() {
+        if (resumeCallbackExecution()) {
+            RecurringCallbackTimer timer = activeTimer.get();
+            assert timer != null;
+            timer.updateStatistics();
+            timer.setSafepointRequested(SafepointRequestValues.ENTER);
         }
+    }
 
-        assert currentPauseDepth.get() > 0;
-        currentPauseDepth.set(currentPauseDepth.get() - 1);
-        if (!isRecurringCallbackPaused()) {
+    /**
+     * Like {@link #resumeRecurringCallbackAtNextSafepoint()} but with the difference that this
+     * method may trigger the execution of the recurring callback right away.
+     */
+    public static void resumeRecurringCallback() {
+        if (resumeCallbackExecution()) {
             try {
                 onSafepointCheckSlowpath();
             } catch (SafepointException e) {
                 throwUnchecked(e.inner); // needed: callers cannot declare `throws Throwable`
             }
         }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean resumeCallbackExecution() {
+        if (!MultiThreaded.getValue()) {
+            return false;
+        }
+
+        assert currentPauseDepth.get() > 0;
+        currentPauseDepth.set(currentPauseDepth.get() - 1);
+        return !isRecurringCallbackPaused() && isRecurringCallbackRegistered(CurrentIsolate.getCurrentThread());
     }
 
     /**

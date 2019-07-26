@@ -243,7 +243,7 @@ public abstract class VMThreads {
         /* Set initial values for safepointRequested before making the thread visible. */
         assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
         Safepoint.setSafepointRequested(thread, Safepoint.SafepointRequestValues.RESET);
-        Safepoint.setSafepointRequestedValueBeforeSafepoint(thread, Safepoint.SafepointRequestValues.RESET);
+        Safepoint.setSafepointRequestedValueBeforeSafepoint(thread, 0);
 
         /*
          * Manipulating the VMThread list requires the lock, but the IsolateThread is not set up
@@ -429,7 +429,7 @@ public abstract class VMThreads {
         VMThreads.THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
         try {
             IsolateThread thread;
-            for (thread = firstThread(); thread.isNonNull() && OSThreadIdTL.get(thread).notEqual(osThreadId); thread = nextThread(thread)) {
+            for (thread = firstThreadUnsafe(); thread.isNonNull() && OSThreadIdTL.get(thread).notEqual(osThreadId); thread = nextThread(thread)) {
             }
             return thread;
         } finally {
@@ -437,6 +437,7 @@ public abstract class VMThreads {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guaranteeOwnsThreadMutex(String message) {
         THREAD_MUTEX.guaranteeIsOwner(message);
     }

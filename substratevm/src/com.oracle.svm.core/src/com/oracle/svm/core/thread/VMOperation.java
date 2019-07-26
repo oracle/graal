@@ -54,6 +54,7 @@ public abstract class VMOperation {
         return name;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final boolean getCausesSafepoint() {
         return systemEffect == SystemEffect.SAFEPOINT;
     }
@@ -103,6 +104,7 @@ public abstract class VMOperation {
      * Returns true if the current thread is currently executing a VM operation that causes a
      * safepoint.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInProgressAtSafepoint() {
         OpInProgress inProgress = VMOperationControl.get().getInProgress();
         return isInProgress(inProgress) && inProgress.operation.getCausesSafepoint();

@@ -44,8 +44,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -155,11 +155,12 @@ public final class VMOperationControl {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDedicatedVMOperationThread() {
         return isDedicatedVMOperationThread(CurrentIsolate.getCurrentThread());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isDedicatedVMOperationThread(IsolateThread thread) {
         if (UseDedicatedVMOperationThread.getValue()) {
             return thread == dedicatedVMOperationThread.getIsolateThread();
@@ -167,6 +168,7 @@ public final class VMOperationControl {
         return false;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean mayExecuteVmOperations() {
         if (!MultiThreaded.getValue()) {
             return true;
@@ -368,7 +370,7 @@ public final class VMOperationControl {
          * ensure that a VM operation that needs a safepoint can really bring all other threads to a
          * halt, even if those other threads also want to queue VM operations in the meanwhile.
          */
-        private final VMMutex mutex;
+        final VMMutex mutex;
         private final VMCondition operationQueued;
         private final VMCondition operationFinished;
 
