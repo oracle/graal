@@ -196,7 +196,7 @@ class CoverageCLI {
     }
 
     private static String getHistogramLineFormat(Map<Source, Coverage.PerSource> histogram) {
-        int maxPathLenght = 0;
+        int maxPathLenght = 10;
         for (Source source : histogram.keySet()) {
             final String path = source.getPath();
             if (path != null) {

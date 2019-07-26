@@ -27,7 +27,10 @@ package com.oracle.truffle.tools.coverage.impl;
 import static com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
 import java.io.PrintStream;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -40,6 +43,7 @@ import org.graalvm.polyglot.Instrument;
 
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
 
@@ -70,12 +74,119 @@ public class CoverageInstrument extends TruffleInstrument {
                         }
                     });
 
+    // TODO: following should be a shared lib for tools.
+    static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
+                    new Function<String, Object[]>() {
+                        @Override
+                        public Object[] apply(String filterWildcardExpression) {
+                            if (filterWildcardExpression == null) {
+                                return null;
+                            }
+                            String[] expressions = filterWildcardExpression.split(",");
+                            Object[] builtExpressions = new Object[expressions.length];
+                            for (int i = 0; i < expressions.length; i++) {
+                                String expression = expressions[i];
+                                expression = expression.trim();
+                                Object result = expression;
+                                if (expression.contains("?") || expression.contains("*")) {
+                                    try {
+                                        result = Pattern.compile(wildcardToRegex(expression));
+                                    } catch (PatternSyntaxException e) {
+                                        throw new IllegalArgumentException(
+                                                        String.format("Invalid wildcard pattern %s.", expression), e);
+                                    }
+                                }
+                                builtExpressions[i] = result;
+                            }
+                            return builtExpressions;
+                        }
+                    }, new Consumer<Object[]>() {
+                        @Override
+                        public void accept(Object[] objects) {
+
+                        }
+                    });
+
+    private static String wildcardToRegex(String wildcard) {
+        StringBuilder s = new StringBuilder(wildcard.length());
+        s.append('^');
+        for (int i = 0, is = wildcard.length(); i < is; i++) {
+            char c = wildcard.charAt(i);
+            switch (c) {
+                case '*':
+                    s.append("\\S*");
+                    break;
+                case '?':
+                    s.append("\\S");
+                    break;
+                // escape special regexp-characters
+                case '(':
+                case ')':
+                case '[':
+                case ']':
+                case '$':
+                case '^':
+                case '.':
+                case '{':
+                case '}':
+                case '|':
+                case '\\':
+                    s.append("\\");
+                    s.append(c);
+                    break;
+                default:
+                    s.append(c);
+                    break;
+            }
+        }
+        s.append('$');
+        return s.toString();
+    }
+
+    static boolean testWildcardExpressions(String value, Object[] fileFilters) {
+        if (fileFilters == null || fileFilters.length == 0) {
+            return true;
+        }
+        if (value == null) {
+            return false;
+        }
+        for (Object filter : fileFilters) {
+            if (filter instanceof Pattern) {
+                if (((Pattern) filter).matcher(value).matches()) {
+                    return true;
+                }
+            } else if (filter instanceof String) {
+                if (filter.equals(value)) {
+                    return true;
+                }
+            } else {
+                throw new AssertionError();
+            }
+        }
+        return false;
+    }
+
     // @formatter:off
     @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
     @Option(name = "Output", help = "", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
+
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+
+    @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
+
+    @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
+
+    @Option(name = "TrackInternal", help = "Track internal elements (default:false).", category = OptionCategory.INTERNAL) //
+    static final OptionKey<Boolean> TRACK_INTERNAL = new OptionKey<>(false);
     // @formatter:on
 
     @Override
@@ -84,7 +195,7 @@ public class CoverageInstrument extends TruffleInstrument {
         final OptionValues options = env.getOptions();
         enabled = ENABLED.getValue(options);
         if (enabled) {
-            tracker.setFilter(getSourceFilter(options));
+            tracker.setFilter(getSourceSectionFilter(options));
             tracker.setTracking(true);
             env.registerService(tracker);
         }
@@ -98,8 +209,22 @@ public class CoverageInstrument extends TruffleInstrument {
         }
     }
 
-    private SourceFilter getSourceFilter(OptionValues options) {
-        return SourceFilter.newBuilder().includeInternal(false).build();
+    private SourceSectionFilter getSourceSectionFilter(OptionValues options) {
+        final Object[] filterFile = FILTER_FILE.getValue(options);
+        final String filterMimeType = FILTER_MIME_TYPE.getValue(options);
+        final String filterLanguage = FILTER_LANGUAGE.getValue(options);
+        final Boolean internals = TRACK_INTERNAL.getValue(options);
+        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
+        builder.sourceIs(source -> {
+            boolean internal = (internals || !source.isInternal());
+            boolean file = testWildcardExpressions(source.getPath(), filterFile);
+            boolean mimeType = filterMimeType.equals("") || filterMimeType.equals(source.getMimeType());
+            final boolean languageId = filterLanguage.equals("") || filterMimeType.equals(source.getLanguage());
+            return internal && file && mimeType && languageId;
+        });
+        final Object[] filterRootName = FILTER_ROOT.getValue(options);
+        builder.rootNameIs(s -> testWildcardExpressions(s, filterRootName));
+        return builder.build();
     }
 
     public static void setFactory(Function<Env, CoverageTracker> factory) {

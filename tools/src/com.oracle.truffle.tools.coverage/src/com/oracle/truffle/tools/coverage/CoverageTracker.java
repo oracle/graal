@@ -45,7 +45,7 @@ import com.oracle.truffle.tools.coverage.impl.StatementCoverageNode;
 
 public class CoverageTracker implements AutoCloseable {
 
-    private static final SourceFilter DEFAULT_FILTER = SourceFilter.ANY;
+    private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().includeInternal(false).build();
 
     static {
         CoverageInstrument.setFactory(new Function<Env, CoverageTracker>() {
@@ -58,7 +58,7 @@ public class CoverageTracker implements AutoCloseable {
     }
 
     private final Env env;
-    private SourceFilter filter;
+    private SourceSectionFilter filter;
     private boolean tracking;
     private boolean closed;
     private EventBinding<LoadSourceSectionListener> loadedStatementBinding;
@@ -102,7 +102,7 @@ public class CoverageTracker implements AutoCloseable {
         this.env = env;
     }
 
-    public void setFilter(SourceFilter filter) {
+    public void setFilter(SourceSectionFilter filter) {
         this.filter = filter;
     }
 
@@ -122,7 +122,7 @@ public class CoverageTracker implements AutoCloseable {
         if (!tracking || closed) {
             return;
         }
-        SourceFilter f = this.filter;
+        SourceSectionFilter f = this.filter;
         if (f == null) {
             f = DEFAULT_FILTER;
         }
@@ -132,8 +132,8 @@ public class CoverageTracker implements AutoCloseable {
         coverage = new Coverage();
     }
 
-    private void instrumentRoots(SourceFilter f, Instrumenter instrumenter) {
-        final SourceSectionFilter rootFilter = SourceSectionFilter.newBuilder().sourceFilter(f).tagIs(StandardTags.RootTag.class).build();
+    private void instrumentRoots(SourceSectionFilter f, Instrumenter instrumenter) {
+        final SourceSectionFilter rootFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).and(f).build();
         loadedRootBinding = instrumenter.attachLoadSourceSectionListener(rootFilter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
@@ -148,8 +148,8 @@ public class CoverageTracker implements AutoCloseable {
         });
     }
 
-    private void instrumentStatements(SourceFilter f, Instrumenter instrumenter) {
-        final SourceSectionFilter statementFilter = SourceSectionFilter.newBuilder().sourceFilter(f).tagIs(StandardTags.StatementTag.class).build();
+    private void instrumentStatements(SourceSectionFilter f, Instrumenter instrumenter) {
+        final SourceSectionFilter statementFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).and(f).build();
         loadedStatementBinding = instrumenter.attachLoadSourceSectionListener(statementFilter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
