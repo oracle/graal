@@ -30,13 +30,14 @@
 package com.oracle.truffle.llvm;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.llvm.runtime.ToolchainConfig;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
-import com.oracle.truffle.llvm.parser.factories.BasicSystemContextExtension;
+import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -45,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
@@ -55,10 +57,12 @@ public final class NativeConfiguration implements Configuration {
 
     private final Loader loader;
     private final LLVMIntrinsicProvider intrinsicProvider;
+    private final PlatformCapability platformCapability;
 
-    NativeConfiguration(LLVMLanguage language) {
+    NativeConfiguration(LLVMLanguage language, Key key) {
         loader = new DefaultLoader();
         intrinsicProvider = new BasicIntrinsicsProvider(language);
+        platformCapability = new BasicPlatformCapability(key.loadCxxLibraries);
     }
 
     @Override
@@ -69,7 +73,6 @@ public final class NativeConfiguration implements Configuration {
     @Override
     public List<ContextExtension> createContextExtensions(TruffleLanguage.Env env) {
         List<ContextExtension> result = new ArrayList<>();
-        result.add(new BasicSystemContextExtension(env));
         if (env.getOptions().get(SulongEngineOption.ENABLE_NFI)) {
             result.add(new NFIContextExtension(env));
         }
@@ -89,6 +92,8 @@ public final class NativeConfiguration implements Configuration {
             return type.cast(loader);
         } else if (type == LLVMIntrinsicProvider.class) {
             return type.cast(intrinsicProvider);
+        } else if (type == PlatformCapability.class) {
+            return type.cast(platformCapability);
         }
         return null;
     }
