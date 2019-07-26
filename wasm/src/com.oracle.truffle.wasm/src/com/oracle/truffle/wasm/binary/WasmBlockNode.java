@@ -319,21 +319,27 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer -= args.length;
 
                     Object result = callNode.call(args);
+                    // At the moment, WebAssembly functions may return up to one value.
+                    // As per the WebAssembly specification, this restriction may be lifted in the future.
                     switch (returnType) {
                         case ValueTypes.I32_TYPE: {
                             pushInt(frame, stackPointer, (int) result);
+                            stackPointer++;
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
                             push(frame, stackPointer, (long) result);
+                            stackPointer++;
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
                             pushFloat(frame, stackPointer, (float) result);
+                            stackPointer++;
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
                             pushDouble(frame, stackPointer, (double) result);
+                            stackPointer++;
                             break;
                         }
                         default: {
@@ -342,7 +348,6 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                         }
                     }
 
-                    stackPointer++;
                     break;
                 }
                 case DROP: {
