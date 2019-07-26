@@ -37,7 +37,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.PrimitiveType;
+import javax.lang.model.type.ReferenceType;
 
 public class VMImplProcessor extends EspressoProcessor {
     // Annotations
@@ -76,14 +76,14 @@ public class VMImplProcessor extends EspressoProcessor {
 
     static class VMHelper extends SubstitutionHelper {
         final String jniNativeSignature;
-        final List<Boolean> nonPrimitives;
+        final List<Boolean> referenceTypes;
         final String returnType;
         final boolean isStatic;
         final boolean isJni;
 
-        public VMHelper(String jniNativeSignature, List<Boolean> nonPrimitives, String returnType, boolean isStatic, boolean isJni) {
+        public VMHelper(String jniNativeSignature, List<Boolean> referenceTypes, String returnType, boolean isStatic, boolean isJni) {
             this.jniNativeSignature = jniNativeSignature;
-            this.nonPrimitives = nonPrimitives;
+            this.referenceTypes = referenceTypes;
             this.returnType = returnType;
             this.isStatic = isStatic;
             this.isJni = isJni;
@@ -102,8 +102,8 @@ public class VMImplProcessor extends EspressoProcessor {
             String targetMethodName = jniMethod.getSimpleName().toString();
             // Obtain the host types of the parameters
             List<String> espressoTypes = new ArrayList<>();
-            List<Boolean> nonPrimitives = new ArrayList<>();
-            getEspressoTypes(jniMethod, espressoTypes, nonPrimitives);
+            List<Boolean> referenceTypes = new ArrayList<>();
+            getEspressoTypes(jniMethod, espressoTypes, referenceTypes);
             // Spawn the name of the Substitutor we will create.
             String substitutorName = getSubstitutorClassName(className, targetMethodName, espressoTypes);
             if (!classes.contains(substitutorName)) {
@@ -116,7 +116,7 @@ public class VMImplProcessor extends EspressoProcessor {
                 // Check if we need to call an instance method
                 boolean isStatic = jniMethod.getModifiers().contains(Modifier.STATIC);
                 // Spawn helper
-                VMHelper h = new VMHelper(jniNativeSignature, nonPrimitives, returnType, isStatic, isJni);
+                VMHelper h = new VMHelper(jniNativeSignature, referenceTypes, returnType, isStatic, isJni);
                 // Create the contents of the source file
                 String classFile = spawnSubstitutor(className, targetMethodName, espressoTypes, h);
                 commitSubstitution(jniMethod, substitutorName, classFile);
@@ -160,12 +160,12 @@ public class VMImplProcessor extends EspressoProcessor {
         return str.toString();
     }
 
-    private static void getEspressoTypes(ExecutableElement inner, List<String> parameterTypeNames, List<Boolean> nonPrimitives) {
+    private static void getEspressoTypes(ExecutableElement inner, List<String> parameterTypeNames, List<Boolean> referenceTypes) {
         for (VariableElement parameter : inner.getParameters()) {
             String arg = parameter.asType().toString();
             String result = extractSimpleType(arg);
             parameterTypeNames.add(result);
-            nonPrimitives.add(!(parameter.asType() instanceof PrimitiveType));
+            referenceTypes.add((parameter.asType() instanceof ReferenceType));
         }
     }
 
@@ -232,7 +232,7 @@ public class VMImplProcessor extends EspressoProcessor {
         StringBuilder str = new StringBuilder();
         VMHelper h = (VMHelper) helper;
         str.append(IMPORT_VM);
-        if (h.nonPrimitives.contains(true)) {
+        if (h.referenceTypes.contains(true)) {
             str.append(IMPORT_INTEROP_LIBRARY);
         }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("void")) {
@@ -268,7 +268,7 @@ public class VMImplProcessor extends EspressoProcessor {
         str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
         int argIndex = 0;
         for (String type : parameterTypeName) {
-            boolean isNonPrimitive = h.nonPrimitives.get(argIndex);
+            boolean isNonPrimitive = h.referenceTypes.get(argIndex);
             str.append(extractArg(argIndex++, type, isNonPrimitive, h.isJni ? 1 : 0, TAB_2));
         }
         switch (h.returnType) {
