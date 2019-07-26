@@ -845,6 +845,8 @@ public class BinaryReader extends BinaryStreamReader {
             byte instruction;
             do {
                 instruction = read1();
+                // Global initialization expressions must be constant expressions:
+                // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
                 switch (instruction) {
                     case I32_CONST:
                         value = readSignedInt32();
@@ -859,6 +861,8 @@ public class BinaryReader extends BinaryStreamReader {
                         value = readFloatAsInt64();
                         break;
                     case GLOBAL_GET:
+                        // The global.get instructions in global initializers are only allowed to refer to imported globals.
+                        // Imported globals are not yet supported in our implementation.
                         throw new NotImplementedException();
                     case END:
                         break;
