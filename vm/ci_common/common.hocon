@@ -107,6 +107,12 @@ fastr_darwin: ${fastr} {
   }
 }
 
+fastr_no_recommended: {
+  environment: {
+    FASTR_NO_RECOMMENDED: "true"
+  }
+}
+
 # GRAALPYTHON
 graalpython_linux: {
   packages: {
