@@ -59,6 +59,15 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String VERSION = "1.8";
     public static final String MIME_TYPE = "application/x-java";
 
+    // Espresso VM info
+    public static final String VM_SPECIFICATION_VERSION = "1.8";
+    public static final String VM_SPECIFICATION_NAME = "Java Virtual Machine Specification";
+    public static final String VM_SPECIFICATION_VENDOR = "Oracle Corporation";
+    public static final String VM_VERSION = "1.8.0_212";
+    public static final String VM_VENDOR = "Oracle Corporation";
+    public static final String VM_NAME = "Espresso 64-Bit VM";
+    public static final String VM_INFO = "mixed mode";
+
     public static final String FILE_EXTENSION = ".class";
 
     public static final String ESPRESSO_SOURCE_FILE_KEY = "EspressoSourceFile";
