@@ -35,7 +35,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Names;
@@ -214,8 +213,7 @@ public final class EspressoContext {
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
         // Call System.initializeSystemClass
-        // meta.System_initializeSystemClass.invokeDirect(null);
-        meta.System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void).invokeDirect(null);
+        meta.System_initializeSystemClass.invokeDirect(null);
 
         // System exceptions.
         for (Symbol<Type> type : Arrays.asList(

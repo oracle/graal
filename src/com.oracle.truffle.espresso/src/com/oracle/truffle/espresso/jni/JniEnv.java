@@ -146,6 +146,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 } catch (EspressoException targetEx) {
                     setPendingException(targetEx.getException());
                     return defaultValue(m.returnType());
+                } catch (ClassCastException e) {
+                    System.err.println(Arrays.deepToString(args));
+                    throw e;
                 } catch (RuntimeException targetEx) {
                     throw targetEx;
                 } catch (Throwable targetEx) {
