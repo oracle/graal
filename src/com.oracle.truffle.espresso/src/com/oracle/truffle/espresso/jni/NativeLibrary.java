@@ -34,10 +34,11 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
+import java.nio.file.Path;
+
 public class NativeLibrary {
 
-    @SuppressWarnings("deprecation")
-    public static TruffleObject loadLibrary(String lib) {
+    public static TruffleObject loadLibrary(Path lib) {
         // On SVM no need to use dlmopen backend.
         // Prepend "with dlmopen " in HotSpot.
         StringBuilder sb = new StringBuilder();

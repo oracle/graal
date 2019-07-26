@@ -22,7 +22,8 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
@@ -327,7 +328,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         try {
             EspressoProperties props = context.getVmProperties();
             this.context = context;
-            nespressoLibrary = loadLibrary(props.getEspressoLibraryPath().split(File.pathSeparator), "nespresso");
+            nespressoLibrary = loadLibrary(props.espressoLibraryPath(), "nespresso");
             dupClosureRef = NativeLibrary.lookup(nespressoLibrary, "dupClosureRef");
 
             initializeNativeContext = NativeLibrary.lookupAndBind(nespressoLibrary,
@@ -1981,5 +1982,55 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public static @Host(Object.class) StaticObject PopLocalFrame(@Host(Object.class) StaticObject result) {
         return result;
+    }
+
+    /**
+     * <h3>void* GetDirectBufferAddress(JNIEnv* env, jobject buf);</h3>
+     *
+     * Fetches and returns the starting address of the memory region referenced by the given direct
+     * {@link java.nio.Buffer}. This function allows native code to access the same memory region
+     * that is accessible to Java code via the buffer object.
+     *
+     * @param buf a direct java.nio.Buffer object (must not be NULL)
+     * @return the starting address of the memory region referenced by the buffer. Returns NULL if
+     *         the memory region is undefined, if the given object is not a direct java.nio.Buffer,
+     *         or if JNI access to direct buffers is not supported by this virtual machine.
+     */
+    @JniImpl
+    public long GetDirectBufferAddress(@Host(java.nio.Buffer.class) StaticObject buf) {
+        assert StaticObject.notNull(buf);
+        // HotSpot check.
+        assert InterpreterToVM.instanceOf(buf, getMeta().sun_nio_ch_DirectBuffer);
+        // TODO(peterssen): Returns NULL if the memory region is undefined.
+        if (!InterpreterToVM.instanceOf(buf, getMeta().Buffer)) {
+            return /* NULL */ 0L;
+        }
+        return (long) getMeta().Buffer_address.get(buf);
+    }
+
+    /**
+     * <h3>jlong GetDirectBufferCapacity(JNIEnv* env, jobject buf);</h3>
+     *
+     * Fetches and returns the capacity of the memory region referenced by the given direct
+     * {@link java.nio.Buffer}. The capacity is the number of elements that the memory region
+     * contains.
+     *
+     * @param buf a direct java.nio.Buffer object (must not be NULL)
+     * @return the capacity of the memory region associated with the buffer. Returns -1 if the given
+     *         object is not a direct java.nio.Buffer, if the object is an unaligned view buffer and
+     *         the processor architecture does not support unaligned access, or if JNI access to
+     *         direct buffers is not supported by this virtual machine.
+     */
+    @JniImpl
+    public long GetDirectBufferCapacity(@Host(java.nio.Buffer.class) StaticObject buf) {
+        assert StaticObject.notNull(buf);
+        // HotSpot check.
+        assert InterpreterToVM.instanceOf(buf, getMeta().sun_nio_ch_DirectBuffer);
+        // TODO(peterssen): Return -1 if the object is an unaligned view buffer and the processor
+        // architecture does not support unaligned access.
+        if (!InterpreterToVM.instanceOf(buf, getMeta().Buffer)) {
+            return -1L;
+        }
+        return (int) getMeta().Buffer_capacity.get(buf);
     }
 }

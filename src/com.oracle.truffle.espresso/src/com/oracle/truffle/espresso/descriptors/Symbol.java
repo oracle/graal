@@ -175,6 +175,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> target = StaticSymbols.putName("target");
         public static final Symbol<Name> isCompiled = StaticSymbols.putName("isCompiled");
         public static final Symbol<Name> compileToBytecode = StaticSymbols.putName("compileToBytecode");
+        public static final Symbol<Name> address = StaticSymbols.putName("address");
+        public static final Symbol<Name> capacity = StaticSymbols.putName("capacity");
 
         public static final Symbol<Name> lookup = StaticSymbols.putName("lookup");
         public static final Symbol<Name> findMethodHandleType = StaticSymbols.putName("findMethodHandleType");
@@ -305,6 +307,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> IllegalMonitorStateException = StaticSymbols.putType(IllegalMonitorStateException.class);
         public static final Symbol<Type> IllegalArgumentException = StaticSymbols.putType(IllegalArgumentException.class);
         public static final Symbol<Type> ClassNotFoundException = StaticSymbols.putType(ClassNotFoundException.class);
+        public static final Symbol<Type> NoClassDefFoundError = StaticSymbols.putType(NoClassDefFoundError.class);
         public static final Symbol<Type> InterruptedException = StaticSymbols.putType(InterruptedException.class);
         public static final Symbol<Type> NegativeArraySizeException = StaticSymbols.putType(NegativeArraySizeException.class);
         public static final Symbol<Type> RuntimeException = StaticSymbols.putType(RuntimeException.class);
@@ -315,6 +318,9 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType(VM.class);
         public static final Symbol<Type> ThreadStateEnum = StaticSymbols.putType(Thread.State.class);
+
+        public static final Symbol<Type> sun_nio_ch_DirectBuffer = StaticSymbols.putType(sun.nio.ch.DirectBuffer.class);
+        public static final Symbol<Type> Buffer = StaticSymbols.putType(java.nio.Buffer.class);
 
         // Guest reflection.
         public static final Symbol<Type> Field = StaticSymbols.putType(java.lang.reflect.Field.class);
@@ -387,6 +393,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> String_String = StaticSymbols.putSignature(Type.String, Type.String);
         public static final Symbol<Signature> _void_String_array = StaticSymbols.putSignature(Type._void, Type.String_array);
         public static final Symbol<Signature> Class_boolean_int_String = StaticSymbols.putSignature(Type.Class, Type._boolean, Type._int, Type.String);
+        public static final Symbol<Signature> Class_String_boolean_ClassLoader = StaticSymbols.putSignature(Type.Class, Type.String, Type._boolean, Type.ClassLoader);
 
         public static final Symbol<Signature> _void_Throwable = StaticSymbols.putSignature(Type._void, Type.Throwable);
         public static final Symbol<Signature> _void_String_Throwable = StaticSymbols.putSignature(Type._void, Type.String, Type.Throwable);

@@ -22,14 +22,15 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -139,11 +140,11 @@ public abstract class NativeEnv {
         return StaticObject.NULL;
     }
 
-    public static TruffleObject loadLibrary(String[] searchPaths, String name) {
-        for (String path : searchPaths) {
-            File libfile = new File(path, System.mapLibraryName(name));
+    public static TruffleObject loadLibrary(List<Path> searchPaths, String name) {
+        for (Path path : searchPaths) {
+            Path libPath = path.resolve(System.mapLibraryName(name));
             try {
-                return NativeLibrary.loadLibrary(libfile.getAbsolutePath());
+                return NativeLibrary.loadLibrary(libPath.toAbsolutePath());
             } catch (UnsatisfiedLinkError e) {
                 // continue
             }

@@ -28,12 +28,13 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 
-import java.io.File;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,7 +61,9 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -123,13 +126,14 @@ public final class VM extends NativeEnv implements ContextAccess {
         try {
             EspressoProperties props = getContext().getVmProperties();
 
-            List<String> libjavaSearchPaths = new ArrayList<>(Arrays.asList(props.getBootLibraryPath().split(File.pathSeparator)));
-            libjavaSearchPaths.addAll(Arrays.asList(props.getJavaLibraryPath().split(File.pathSeparator)));
+            List<Path> libjavaSearchPaths = new ArrayList<>();
+            libjavaSearchPaths.addAll(props.bootLibraryPath());
+            libjavaSearchPaths.addAll(props.javaLibraryPath());
 
-            mokapotLibrary = loadLibrary(props.getEspressoLibraryPath().split(File.pathSeparator), "mokapot");
+            mokapotLibrary = loadLibrary(props.espressoLibraryPath(), "mokapot");
 
             assert mokapotLibrary != null;
-            javaLibrary = loadLibrary(libjavaSearchPaths.toArray(new String[0]), "java");
+            javaLibrary = loadLibrary(libjavaSearchPaths, "java");
 
             initializeMokapotContext = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "initializeMokapotContext", "(env, sint64, (string): pointer): sint64");
@@ -587,7 +591,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public long JVM_LoadLibrary(String name) {
         try {
-            TruffleObject lib = NativeLibrary.loadLibrary(name);
+            TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
             Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
@@ -688,16 +692,25 @@ public final class VM extends NativeEnv implements ContextAccess {
             setProperty.invokeWithConversions(properties, entry.getKey(), entry.getValue());
         }
 
-        // TODO(peterssen): Use EspressoProperties to store classpath.
-        EspressoError.guarantee(options.hasBeenSet(EspressoOptions.Classpath), "Classpath must be defined.");
-        setProperty.invokeWithConversions(properties, "java.class.path", options.get(EspressoOptions.Classpath));
-
         EspressoProperties props = getContext().getVmProperties();
-        setProperty.invokeWithConversions(properties, "java.home", props.getJavaHome());
-        setProperty.invokeWithConversions(properties, "sun.boot.class.path", props.getBootClasspath());
-        setProperty.invokeWithConversions(properties, "java.library.path", props.getJavaLibraryPath());
-        setProperty.invokeWithConversions(properties, "sun.boot.library.path", props.getBootLibraryPath());
-        setProperty.invokeWithConversions(properties, "java.ext.dirs", props.getExtDirs());
+
+        // Espresso uses VM properties, to ensure consistency the user-defined properties (that may
+        // differ in some cases) are overwritten.
+        setProperty.invokeWithConversions(properties, "java.class.path", Utils.stringify(props.classpath()));
+        setProperty.invokeWithConversions(properties, "java.home", props.javaHome().toString());
+        setProperty.invokeWithConversions(properties, "sun.boot.class.path", Utils.stringify(props.bootClasspath()));
+        setProperty.invokeWithConversions(properties, "java.library.path", Utils.stringify(props.javaLibraryPath()));
+        setProperty.invokeWithConversions(properties, "sun.boot.library.path", Utils.stringify(props.bootLibraryPath()));
+        setProperty.invokeWithConversions(properties, "java.ext.dirs", Utils.stringify(props.extDirs()));
+
+        // Set VM information.
+        setProperty.invokeWithConversions(properties, "java.vm.specification.version", EspressoLanguage.VM_SPECIFICATION_VERSION);
+        setProperty.invokeWithConversions(properties, "java.vm.specification.name", EspressoLanguage.VM_SPECIFICATION_NAME);
+        setProperty.invokeWithConversions(properties, "java.vm.specification.vendor", EspressoLanguage.VM_SPECIFICATION_VENDOR);
+        setProperty.invokeWithConversions(properties, "java.vm.version", EspressoLanguage.VM_VERSION);
+        setProperty.invokeWithConversions(properties, "java.vm.name", EspressoLanguage.VM_NAME);
+        setProperty.invokeWithConversions(properties, "java.vm.vendor", EspressoLanguage.VM_VENDOR);
+        setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
 
         return properties;
     }
