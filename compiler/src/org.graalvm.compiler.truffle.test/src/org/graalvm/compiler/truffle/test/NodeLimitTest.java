@@ -74,7 +74,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
         });
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(
                         SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
-                        TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleMaximumInlineNodeCount, 10)) {
+                        TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumInlineNodeCount, 10)) {
             RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNode);
             final Object[] arguments = {1};
             partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
@@ -163,7 +163,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     @SuppressWarnings("try")
     private void peRootNode(int nodeLimit, RootNode rootNode) {
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
+        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumGraalNodeCount, nodeLimit)) {
             RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNode);
             final Object[] arguments = {1};
             partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
