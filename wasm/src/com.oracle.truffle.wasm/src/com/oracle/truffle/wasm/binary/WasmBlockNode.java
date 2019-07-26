@@ -199,10 +199,12 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 
@@ -1825,7 +1827,14 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
         // TODO: Accessing the context like this seems to be quite slow.
-        return execute(WasmContext.getCurrent(), frame) != -1;
+        // return execute(WasmContext.getCurrent(), frame) != -1;
+        throw new WasmException(this, "This method should never have been called.");
+    }
+
+    @Override
+    public int executeRepeatingWithStatus(VirtualFrame frame) {
+        // TODO: Accessing the context like this seems to be quite slow.
+        return execute(WasmContext.getCurrent(), frame);
     }
 
     @Override

@@ -141,7 +141,12 @@ public abstract class LoopNode extends Node {
      *            frame
      * @since 0.8 or earlier
      */
-    public abstract void executeLoop(VirtualFrame frame);
+    public abstract int executeLoopWithStatus(VirtualFrame frame);
+
+    // TODO: Document this and the *WithStatus variant.
+    public void executeLoop(VirtualFrame frame) {
+        executeLoopWithStatus(frame);
+    }
 
     /**
      * Returns the repeating node the loop node was created with.
