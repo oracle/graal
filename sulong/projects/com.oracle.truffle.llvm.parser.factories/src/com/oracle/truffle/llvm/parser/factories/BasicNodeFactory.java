@@ -1780,16 +1780,17 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, Type[] argsTypes, int callerArgumentCount, LLVMSourceLocation sourceSection) {
-        /*
-         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look
-         * like function calls but are actually LLVM intrinsics. An example is llvm.stackpointer.
-         * Also, it is not possible to retrieve the functionpointer of such pseudo-call-targets.
-         *
-         * These builtins shall not be used for regular function intrinsification!
-         */
         if (target instanceof FunctionDeclaration) {
             FunctionDeclaration declaration = (FunctionDeclaration) target;
             String name = declaration.getName();
+            /*
+             * These "llvm." builtins are *not* function intrinsics. Builtins replace statements
+             * that look like function calls but are actually LLVM intrinsics. An example is
+             * llvm.stackpointer. Also, it is not possible to retrieve the functionpointer of such
+             * pseudo-call-targets.
+             *
+             * These builtins shall not be used for regular function intrinsification!
+             */
             if (name.startsWith("llvm.")) {
                 return getLLVMBuiltin(declaration, args, callerArgumentCount, sourceSection);
             } else if (name.startsWith("__builtin_")) {
@@ -1803,6 +1804,8 @@ public class BasicNodeFactory implements NodeFactory {
                 // it must therefore not be hidden behind a call target
                 return LLVMTruffleGetArgCountNodeGen.create(sourceSection);
             } else {
+                // Inline Sulong intrinsics directly at their call site, to avoid the overhead of a
+                // call node and extra argument nodes.
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
                 LLVMExpressionNode intrinsicNode = intrinsicProvider.generateIntrinsicNode(name, args, argsTypes);
                 if (intrinsicNode != null) {
