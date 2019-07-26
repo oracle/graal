@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,20 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.List;
 
-public interface LLVMIntrinsicProvider extends ContextExtension {
+import org.graalvm.options.OptionDescriptor;
 
-    boolean isIntrinsified(String name);
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.config.Configuration;
+import com.oracle.truffle.llvm.runtime.config.ConfigurationFactory;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import org.graalvm.options.OptionValues;
 
-    RootCallTarget generateIntrinsicTarget(String name, Type[] argTypes);
+public final class NativeConfigurationFactory implements ConfigurationFactory<Boolean> {
 
-    LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type[] argTypes);
+    @Override
+    public Boolean parseOptions(OptionValues options) {
+        return Boolean.TRUE;
+    }
 
-    ExternalLibrary getLibrary();
+    @Override
+    public int getPriority() {
+        return 0;
+    }
+
+    @Override
+    public List<OptionDescriptor> getOptionDescriptors() {
+        return SulongEngineOption.describeOptions();
+    }
+
+    @Override
+    public Configuration createConfiguration(LLVMLanguage language, Boolean key) {
+        return new NativeConfiguration();
+    }
 }

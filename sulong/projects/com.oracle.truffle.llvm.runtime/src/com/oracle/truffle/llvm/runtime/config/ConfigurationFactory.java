@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,20 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.config;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import java.util.List;
 
-public interface LLVMIntrinsicProvider extends ContextExtension {
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionValues;
 
-    boolean isIntrinsified(String name);
+public interface ConfigurationFactory<KEY> {
 
-    RootCallTarget generateIntrinsicTarget(String name, Type[] argTypes);
+    /**
+     * If two factories say they are active, the one with the higher priority wins.
+     */
+    int getPriority();
 
-    LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type[] argTypes);
+    /**
+     * Parse the configuration specific options. This method should return a non-null value if the
+     * given {@link OptionValues} indicate that this configuration is active. The object should
+     * contain all information necessary to create the runtime {@link Configuration} object.
+     */
+    KEY parseOptions(OptionValues options);
 
-    ExternalLibrary getLibrary();
+    /**
+     * Create a runtime {@link Configuration} object. This method will be called exactly once for
+     * every {@link LLVMLanguage} instance, during context creation. It will be passed the KEY
+     * returned from {@link #parseOptions}.
+     *
+     * The engine may decide to share code between different contexts with options that produce the
+     * same KEY value. In that case, there is a single shared {@link LLVMLanguage} instance, and
+     * {@link #createConfiguration} is only called once, for the first context.
+     */
+    Configuration createConfiguration(LLVMLanguage language, KEY key);
+
+    List<OptionDescriptor> getOptionDescriptors();
 }

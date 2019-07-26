@@ -27,39 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.config;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
+import com.oracle.truffle.llvm.runtime.ContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import java.util.List;
-
-import org.graalvm.options.OptionDescriptor;
 
 public interface Configuration {
 
-    boolean isActive(Env env);
-
-    /**
-     * If two configurations say they are active, the one with the higher priority wins.
-     */
-    int getPriority();
-
-    List<OptionDescriptor> getOptionDescriptors();
-
     NodeFactory createNodeFactory(LLVMContext context);
-
-    Loader createLoader();
 
     /**
      * Context extensions encapsulate optional functionality that has a state and which therefore
-     * needs to live on the context-level.
+     * needs to live on the context-level. This function will be called once per context, at context
+     * initialization time.
      */
     List<ContextExtension> createContextExtensions(Env env, LLVMLanguage language);
 
     /**
-     * Capabilities encapsulate functionality that is stateless so that it can live on the
-     * language-level.
+     * Capabilities encapsulate functionality that is stateless, or has just static state that is
+     * not context specific and doesn't change at runtime. Repeated calls to this function with the
+     * same argument should always return the same object instance. The return value should be
+     * constant or a final field of the configuration.
      */
-    <E> E getCapability(Class<E> type);
-
+    <C extends LLVMCapability> C getCapability(Class<C> type);
 }
