@@ -140,6 +140,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpec
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMFrameAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMI64ObjectSizeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicWrapperNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantEndNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIsConstantNodeGen;
@@ -1809,7 +1810,7 @@ public class BasicNodeFactory implements NodeFactory {
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
                 LLVMExpressionNode intrinsicNode = intrinsicProvider.generateIntrinsicNode(name, args, argsTypes);
                 if (intrinsicNode != null) {
-                    return intrinsicNode;
+                    return new LLVMIntrinsicWrapperNode(sourceSection, intrinsicNode);
                 }
             }
         }
