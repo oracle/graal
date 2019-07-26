@@ -11,10 +11,10 @@
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a readOnlyCopy is included in the LICENSE file that
+ * version 2 for more details (a copy is included in the LICENSE file that
  * accompanied this code).
  *
- * You should have received a readOnlyCopy of the GNU General Public License version
+ * You should have received a copy of the GNU General Public License version
  * 2 along with this work; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
-import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.SourceSection;

@@ -42,7 +42,6 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
@@ -209,7 +208,7 @@ public class CoverageInstrument extends TruffleInstrument {
         }
     }
 
-    private SourceSectionFilter getSourceSectionFilter(OptionValues options) {
+    private static SourceSectionFilter getSourceSectionFilter(OptionValues options) {
         final Object[] filterFile = FILTER_FILE.getValue(options);
         final String filterMimeType = FILTER_MIME_TYPE.getValue(options);
         final String filterLanguage = FILTER_LANGUAGE.getValue(options);

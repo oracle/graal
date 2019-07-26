@@ -37,7 +37,7 @@ import com.oracle.truffle.tools.coverage.Coverage;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
-class CoverageCLI {
+final class CoverageCLI {
 
     private final PrintStream out;
     private final Map<Source, Coverage.PerSource> histogram;
@@ -45,7 +45,7 @@ class CoverageCLI {
     private final String summaryHeader;
     private final int summaryHeaderLen;
 
-    public CoverageCLI(PrintStream out, Coverage coverage) {
+    private CoverageCLI(PrintStream out, Coverage coverage) {
         this.out = out;
         histogram = coverage.getCoverage();
         format = getHistogramLineFormat(histogram);
