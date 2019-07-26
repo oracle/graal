@@ -11,92 +11,20 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class Coverage {
 
-    private final Map<Source, PerSource> coverage;
-
-    public Map<Source, PerSource> getCoverage() {
-        return coverage;
-    }
-
-    Coverage() {
-        coverage = new HashMap<>();
-    }
-
-    private Coverage(Map<Source, PerSource> coverage) {
-        this.coverage = coverage;
-    }
-
-    void addCoveredStatement(SourceSection statementSection) {
-        getPerSource(statementSection).coveredStatements.add(statementSection);
-    }
-
-    private PerSource getPerSource(SourceSection sourceSection) {
-        return coverage.computeIfAbsent(sourceSection.getSource(), source -> new PerSource());
-    }
-
-    void addCoveredRoot(SourceSection rootSection) {
-        getPerSource(rootSection).coveredRoots.add(rootSection);
-    }
-
-    void addLoadedStatement(SourceSection statementSection) {
-        getPerSource(statementSection).loadedStatements.add(statementSection);
-    }
-
-    void addLoadedRoot(SourceSection rootSection) {
-        getPerSource(rootSection).loadedRoots.add(rootSection);
-    }
-
-    Coverage readOnlyCopy() {
-        Map<Source, PerSource> coverageCopy = new HashMap<>();
-        for (Source source : coverage.keySet()) {
-            coverageCopy.put(source, coverage.get(source).readOnlyCopy());
-        }
-        return new Coverage(Collections.unmodifiableMap(coverageCopy));
-    }
-
     public static final class PerSource {
-        private final Set<SourceSection> loadedStatements;
-        private final Set<SourceSection> loadedRoots;
-        private final Set<SourceSection> coveredStatements;
-        private final Set<SourceSection> coveredRoots;
-
-        private PerSource() {
-            loadedStatements = new HashSet<>();
-            loadedRoots = new HashSet<>();
-            coveredStatements = new HashSet<>();
-            coveredRoots = new HashSet<>();
-        }
-
-        private PerSource(Set<SourceSection> loadedStatements, Set<SourceSection> loadedRoots, Set<SourceSection> coveredStatements, Set<SourceSection> coveredRoots) {
-            this.loadedStatements = loadedStatements;
-            this.loadedRoots = loadedRoots;
-            this.coveredStatements = coveredStatements;
-            this.coveredRoots = coveredRoots;
-        }
 
         public double rootCoverage() {
-            final Set<SourceSection> coveredRoots = getCoveredRoots();
-            final Set<SourceSection> loadedRoots = getLoadedRoots();
-            return (double) coveredRoots.size() / loadedRoots.size();
+            return (double) this.coveredRoots.size() / this.loadedRoots.size();
         }
 
         public double statementCoverage() {
-            final Set<SourceSection> coveredStatements = getCoveredStatements();
-            final Set<SourceSection> loadedStatements = getLoadedStatements();
-            return (double) coveredStatements.size() / loadedStatements.size();
+            return (double) this.coveredStatements.size() / this.loadedStatements.size();
         }
 
         public double lineCoverage() {
             final int loadedSize = loadedLineNumbers().size();
             final int coveredSize = nonCoveredLineNumbers().size();
             return ((double) loadedSize - coveredSize) / loadedSize;
-        }
-
-        private PerSource readOnlyCopy() {
-            return new PerSource(
-                            Collections.unmodifiableSet(loadedStatements),
-                            Collections.unmodifiableSet(loadedRoots),
-                            Collections.unmodifiableSet(coveredStatements),
-                            Collections.unmodifiableSet(coveredRoots));
         }
 
         public Set<SourceSection> getLoadedStatements() {
@@ -145,6 +73,36 @@ public final class Coverage {
             return statementsToLineNumbers(nonCoveredSections);
         }
 
+        private final Set<SourceSection> loadedStatements;
+
+        private final Set<SourceSection> loadedRoots;
+
+        private final Set<SourceSection> coveredStatements;
+
+        private final Set<SourceSection> coveredRoots;
+
+        private PerSource() {
+            loadedStatements = new HashSet<>();
+            loadedRoots = new HashSet<>();
+            coveredStatements = new HashSet<>();
+            coveredRoots = new HashSet<>();
+        }
+
+        private PerSource(Set<SourceSection> loadedStatements, Set<SourceSection> loadedRoots, Set<SourceSection> coveredStatements, Set<SourceSection> coveredRoots) {
+            this.loadedStatements = loadedStatements;
+            this.loadedRoots = loadedRoots;
+            this.coveredStatements = coveredStatements;
+            this.coveredRoots = coveredRoots;
+        }
+
+        private PerSource readOnlyCopy() {
+            return new PerSource(
+                            Collections.unmodifiableSet(loadedStatements),
+                            Collections.unmodifiableSet(loadedRoots),
+                            Collections.unmodifiableSet(coveredStatements),
+                            Collections.unmodifiableSet(coveredRoots));
+        }
+
         private static Set<Integer> statementsToLineNumbers(Set<SourceSection> sourceSections) {
             Set<Integer> lines = new HashSet<>();
             for (SourceSection ss : sourceSections) {
@@ -154,5 +112,47 @@ public final class Coverage {
             }
             return lines;
         }
+    }
+
+    public Map<Source, PerSource> getCoverage() {
+        return coverage;
+    }
+
+    private final Map<Source, PerSource> coverage;
+
+    Coverage() {
+        coverage = new HashMap<>();
+    }
+
+    private Coverage(Map<Source, PerSource> coverage) {
+        this.coverage = coverage;
+    }
+
+    void addCoveredStatement(SourceSection section) {
+        ensureEntryExists(section).coveredStatements.add(section);
+    }
+
+    void addCoveredRoot(SourceSection rootSection) {
+        ensureEntryExists(rootSection).coveredRoots.add(rootSection);
+    }
+
+    void addLoadedStatement(SourceSection statementSection) {
+        ensureEntryExists(statementSection).loadedStatements.add(statementSection);
+    }
+
+    void addLoadedRoot(SourceSection rootSection) {
+        ensureEntryExists(rootSection).loadedRoots.add(rootSection);
+    }
+
+    private PerSource ensureEntryExists(SourceSection sourceSection) {
+        return coverage.computeIfAbsent(sourceSection.getSource(), source -> new PerSource());
+    }
+
+    Coverage readOnlyCopy() {
+        Map<Source, PerSource> coverageCopy = new HashMap<>();
+        for (Source source : coverage.keySet()) {
+            coverageCopy.put(source, coverage.get(source).readOnlyCopy());
+        }
+        return new Coverage(Collections.unmodifiableMap(coverageCopy));
     }
 }
