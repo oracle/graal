@@ -87,7 +87,7 @@ public class DebugExprType {
             case DOUBLE:
                 return PrimitiveType.DOUBLE;
             case LONG_DOUBLE:
-                return PrimitiveType.F128;
+                return PrimitiveType.X86_FP80;
             default:
                 return VoidType.INSTANCE;
         }

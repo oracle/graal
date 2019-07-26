@@ -100,7 +100,6 @@ public final class DebugExprNodeFactory {
     public DebugExpressionPair createUnaryOpNode(DebugExpressionPair pair, char unaryOp) {
         checkError(pair, Character.toString(unaryOp));
         switch (unaryOp) {
-            case '&':
             case '*':
                 throw DebugExprException.create(pair.getNode(), "Pointer expressions have not been implemented yet");
             case '+':
@@ -193,7 +192,7 @@ public final class DebugExprNodeFactory {
     public DebugExpressionPair createObjectMember(DebugExpressionPair receiver, String fieldName) {
         LLVMExpressionNode baseNode = receiver.getNode();
         DebugExprObjectMemberNode node = new DebugExprObjectMemberNode(baseNode, fieldName);
-        DebugExprType type = node.getType(null);
+        DebugExprType type = node.getType();
         return DebugExpressionPair.create(node, type);
 
     }

@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public class DebugExprVarNode extends LLVMExpressionNode {
+public class DebugExprVarNode extends LLVMExpressionNode implements MemberAccessible {
 
     private final String name;
     private Iterable<Scope> scopes;
@@ -83,10 +83,12 @@ public class DebugExprVarNode extends LLVMExpressionNode {
         return Pair.create(null, DebugExprType.getVoidType());
     }
 
+    @Override
     public DebugExprType getType() {
         return findMemberAndType().getRight();
     }
 
+    @Override
     public Object getMember() {
         return findMemberAndType().getLeft();
     }

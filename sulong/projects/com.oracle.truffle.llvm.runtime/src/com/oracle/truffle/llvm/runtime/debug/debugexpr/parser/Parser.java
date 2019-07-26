@@ -296,35 +296,18 @@ public class Parser {
     char UnaryOp() {
         char kind;
         kind = '\0';
-        switch (la.kind) {
-            case 22: {
-                Get();
-                break;
-            }
-            case 6: {
-                Get();
-                break;
-            }
-            case 23: {
-                Get();
-                break;
-            }
-            case 24: {
-                Get();
-                break;
-            }
-            case 25: {
-                Get();
-                break;
-            }
-            case 26: {
-                Get();
-                break;
-            }
-            default:
-                SynErr(47);
-                break;
-        }
+        if (la.kind == 6) {
+            Get();
+        } else if (la.kind == 22) {
+            Get();
+        } else if (la.kind == 23) {
+            Get();
+        } else if (la.kind == 24) {
+            Get();
+        } else if (la.kind == 25) {
+            Get();
+        } else
+            SynErr(47);
         kind = t.val.charAt(0);
         return kind;
     }
@@ -347,16 +330,10 @@ public class Parser {
     DebugExprType DType() {
         DebugExprType ty;
         ty = BaseType();
-        if (la.kind == 6 || la.kind == 15 || la.kind == 16) {
-            while (la.kind == 6) {
-                Get();
-                SemErr("Pointer types are not available yet");
-            }
-        } else if (la.kind == 22) {
+        while (la.kind == 6) {
             Get();
-            SemErr("Reference types are not available yet");
-        } else
-            SynErr(48);
+            SemErr("Pointer types are not available yet");
+        }
         while (la.kind == 16) {
             Get();
             SemErr("Array types are not available yet");
@@ -372,12 +349,12 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = CastExpr();
-        while (la.kind == 6 || la.kind == 27 || la.kind == 28) {
+        while (la.kind == 6 || la.kind == 26 || la.kind == 27) {
             if (la.kind == 6) {
                 Get();
                 p1 = CastExpr();
                 p = NF.createArithmeticOp(ArithmeticOperation.MUL, p, p1);
-            } else if (la.kind == 27) {
+            } else if (la.kind == 26) {
                 Get();
                 p1 = CastExpr();
                 p = NF.createDivNode(p, p1);
@@ -394,8 +371,8 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = MultExpr();
-        while (la.kind == 23 || la.kind == 24) {
-            if (la.kind == 23) {
+        while (la.kind == 22 || la.kind == 23) {
+            if (la.kind == 22) {
                 Get();
                 p1 = MultExpr();
                 p = NF.createArithmeticOp(ArithmeticOperation.ADD, p, p1);
@@ -412,8 +389,8 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = AddExpr();
-        while (la.kind == 29 || la.kind == 30) {
-            if (la.kind == 29) {
+        while (la.kind == 28 || la.kind == 29) {
+            if (la.kind == 28) {
                 Get();
                 p1 = AddExpr();
                 p = NF.createShiftLeft(p, p1);
@@ -431,15 +408,15 @@ public class Parser {
         DebugExpressionPair p1 = null;
         p = ShiftExpr();
         while (StartOf(5)) {
-            if (la.kind == 31) {
+            if (la.kind == 30) {
                 Get();
                 p1 = ShiftExpr();
                 p = NF.createCompareNode(p, CompareKind.LT, p1);
-            } else if (la.kind == 32) {
+            } else if (la.kind == 31) {
                 Get();
                 p1 = ShiftExpr();
                 p = NF.createCompareNode(p, CompareKind.GT, p1);
-            } else if (la.kind == 33) {
+            } else if (la.kind == 32) {
                 Get();
                 p1 = ShiftExpr();
                 p = NF.createCompareNode(p, CompareKind.LE, p1);
@@ -456,8 +433,8 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = RelExpr();
-        while (la.kind == 35 || la.kind == 36) {
-            if (la.kind == 35) {
+        while (la.kind == 34 || la.kind == 35) {
+            if (la.kind == 34) {
                 Get();
                 p1 = RelExpr();
                 p = NF.createCompareNode(p, CompareKind.EQ, p1);
@@ -474,7 +451,7 @@ public class Parser {
         DebugExpressionPair p;
         DebugExpressionPair p1 = null;
         p = EqExpr();
-        while (la.kind == 22) {
+        while (la.kind == 36) {
             Get();
             p1 = EqExpr();
             p = NF.createArithmeticOp(ArithmeticOperation.AND, p, p1);
@@ -605,7 +582,7 @@ public class Parser {
                 break;
             }
             default:
-                SynErr(49);
+                SynErr(48);
                 break;
         }
         return ty;
@@ -625,13 +602,13 @@ public class Parser {
                                     _x},
                     {_x, _x, _x, _x, _x, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _x, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
                                     _x},
-                    {_x, _T, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                    {_x, _T, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
                                     _x},
                     {_x, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
                                     _x},
-                    {_x, _x, _x, _x, _x, _x, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                    {_x, _x, _x, _x, _x, _x, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
                                     _x},
-                    {_x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
+                    {_x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
                                     _x},
                     {_x, _x, _x, _x, _x, _x, _x, _x, _x, _T, _T, _T, _x, _x, _T, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x, _x,
                                     _x}
@@ -770,49 +747,49 @@ class Errors {
                 s = "\"sizeof\" expected";
                 break;
             case 22:
-                s = "\"&\" expected";
-                break;
-            case 23:
                 s = "\"+\" expected";
                 break;
-            case 24:
+            case 23:
                 s = "\"-\" expected";
                 break;
-            case 25:
+            case 24:
                 s = "\"~\" expected";
                 break;
-            case 26:
+            case 25:
                 s = "\"!\" expected";
                 break;
-            case 27:
+            case 26:
                 s = "\"/\" expected";
                 break;
-            case 28:
+            case 27:
                 s = "\"%\" expected";
                 break;
-            case 29:
+            case 28:
                 s = "\"<<\" expected";
                 break;
-            case 30:
+            case 29:
                 s = "\">>\" expected";
                 break;
-            case 31:
+            case 30:
                 s = "\"<\" expected";
                 break;
-            case 32:
+            case 31:
                 s = "\">\" expected";
                 break;
-            case 33:
+            case 32:
                 s = "\"<=\" expected";
                 break;
-            case 34:
+            case 33:
                 s = "\">=\" expected";
                 break;
-            case 35:
+            case 34:
                 s = "\"==\" expected";
                 break;
-            case 36:
+            case 35:
                 s = "\"!=\" expected";
+                break;
+            case 36:
+                s = "\"&\" expected";
                 break;
             case 37:
                 s = "\"^\" expected";
@@ -848,9 +825,6 @@ class Errors {
                 s = "invalid UnaryOp";
                 break;
             case 48:
-                s = "invalid DType";
-                break;
-            case 49:
                 s = "invalid BaseType";
                 break;
             default:

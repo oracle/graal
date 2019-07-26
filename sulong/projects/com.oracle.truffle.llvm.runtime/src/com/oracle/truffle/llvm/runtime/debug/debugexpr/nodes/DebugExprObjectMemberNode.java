@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeInfo(shortName = ".")
-public class DebugExprObjectMemberNode extends LLVMExpressionNode {
+public class DebugExprObjectMemberNode extends LLVMExpressionNode implements MemberAccessible {
 
     @Child private LLVMExpressionNode baseNode;
     private final String fieldName;
@@ -52,12 +52,22 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode {
         this.baseNode = baseNode;
     }
 
-    public DebugExprType getType(Object baseMember) {
-        return findMemberAndType(baseMember).getRight();
+    @Override
+    public DebugExprType getType() {
+        if (baseNode instanceof MemberAccessible) {
+            Object baseMember = ((MemberAccessible) baseNode).getMember();
+            return findMemberAndType(baseMember).getRight();
+        }
+        throw DebugExprException.create(this, "member access not possible for " + baseNode + "." + fieldName);
     }
 
-    public Object getMember(Object baseMember) {
-        return findMemberAndType(baseMember).getLeft();
+    @Override
+    public Object getMember() {
+        if (baseNode instanceof MemberAccessible) {
+            Object baseMember = ((MemberAccessible) baseNode).getMember();
+            return findMemberAndType(baseMember).getLeft();
+        }
+        throw DebugExprException.create(this, "member access not possible for " + baseNode + "." + fieldName);
     }
 
     public String getFieldName() {

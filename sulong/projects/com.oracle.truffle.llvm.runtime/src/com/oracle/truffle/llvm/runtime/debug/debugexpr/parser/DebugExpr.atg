@@ -147,8 +147,6 @@ UnaryOp<out kind> CastExpr<out p> 					(. p = NF.createUnaryOpNode(p, kind); .)
 UnaryOp<out char kind>								(. kind='\0'; .)
 =
 (
-	 "&"
-	|
 	 "*"
 	|
 	 "+"
@@ -289,18 +287,11 @@ LogOrExpr<out p>
 
 DType<out DebugExprType ty>
 =
-BaseType<out ty> 
-(
-	 
-	{
+BaseType<out ty>  
+{
 		 "*" 										(. SemErr("Pointer types are not available yet"); .)
 		
-	}
-	
-	|
-	 "&" 											(. SemErr("Reference types are not available yet"); .)
-	
-)
+}	
 {
 	 "[" 											(. SemErr("Array types are not available yet"); .)
 	 
