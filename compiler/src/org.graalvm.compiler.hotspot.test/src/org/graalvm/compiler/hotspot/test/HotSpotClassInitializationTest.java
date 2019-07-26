@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -102,9 +103,14 @@ public class HotSpotClassInitializationTest extends HotSpotGraalCompilerTest {
         static double field;
     }
 
+    @Before
+    public void checkAssumptions() {
+        // cannot be BeforeClass because we need a runtime and BeforeClass must be static
+        Assume.assumeTrue("init_thread field must be visible", runtime().getVMConfig().instanceKlassInitThreadOffset != -1);
+    }
+
     @SafeVarargs
     final void test(Class<?> testClass, String methodName, Class<? extends Node>... nodeTypes) {
-        Assume.assumeTrue("init_thread field must be visible", runtime().getVMConfig().instanceKlassInitThreadOffset != -1);
         ResolvedJavaMethod method = getResolvedJavaMethod(testClass, methodName);
         StructuredGraph graph = parseProfiled(method, StructuredGraph.AllowAssumptions.NO);
         for (DeoptimizeNode d : graph.getNodes().filter(DeoptimizeNode.class)) {
