@@ -101,7 +101,7 @@ public final class DebugExprNodeFactory {
         checkError(pair, Character.toString(unaryOp));
         switch (unaryOp) {
             case '*':
-                throw DebugExprException.create(pair.getNode(), "Pointer expressions have not been implemented yet");
+                return createDereferenceNode(pair);
             case '+':
                 return pair;
             case '-':
@@ -175,6 +175,38 @@ public final class DebugExprNodeFactory {
         return DebugExpressionPair.create(node, DebugExprType.getFloatType(32));
     }
 
+    public DebugExpressionPair createCharacterConstant(String charString) {
+        boolean valid = true;
+        char value = charString.charAt(1);
+        if (value == '\\') {
+            switch (charString.charAt(2)) {
+                case 'n':
+                    value = '\n';
+                    break;
+                case 'r':
+                    value = '\r';
+                    break;
+                case '\'':
+                    value = '\'';
+                    break;
+                case '\\':
+                    value = '\\';
+                    break;
+                case '\"':
+                    value = '\"';
+                    break;
+                default:
+                    valid = false;
+                    break;
+            }
+        }
+        LLVMExpressionNode node = contextReference.get().getNodeFactory().createSimpleConstantNoArray((byte) value, PrimitiveType.I8);
+        if (!valid) {
+            throw DebugExprException.create(node, "character " + charString + " not found");
+        }
+        return DebugExpressionPair.create(node, DebugExprType.getIntType(8, true));
+    }
+
     public DebugExpressionPair createCastIfNecessary(DebugExpressionPair pair, DebugExprType type) {
         checkError(pair, "cast");
         if (pair.getType() == type) {
@@ -194,7 +226,14 @@ public final class DebugExprNodeFactory {
         DebugExprObjectMemberNode node = new DebugExprObjectMemberNode(baseNode, fieldName);
         DebugExprType type = node.getType();
         return DebugExpressionPair.create(node, type);
+    }
 
+    @SuppressWarnings("static-method")
+    public DebugExpressionPair createDereferenceNode(DebugExpressionPair pointerPair) {
+        checkError(pointerPair, "*");
+        DebugExprDereferenceNode node = new DebugExprDereferenceNode(pointerPair.getNode());
+        DebugExprType type = pointerPair.getType().getInnerType();
+        return DebugExpressionPair.create(node, type);
     }
 
     public DebugExpressionPair createFunctionCall(DebugExpressionPair functionPair, List<DebugExpressionPair> arguments) {

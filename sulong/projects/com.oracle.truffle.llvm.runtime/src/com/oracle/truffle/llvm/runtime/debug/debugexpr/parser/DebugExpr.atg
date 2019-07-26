@@ -101,7 +101,7 @@ number 												(. p = NF.createIntegerConstant(Integer.parseInt(t.val)); .)
 |
 floatnumber 										(. p = NF.createFloatConstant(Float.parseFloat(t.val)); .)
 |
-charConst											(. SemErr("characters not available yet"); .)
+charConst											(. p = NF.createCharacterConstant(t.val); .)
 |
 "(" Expr<out p> ")"
 .

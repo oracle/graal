@@ -216,7 +216,7 @@ public class Parser {
             p = NF.createFloatConstant(Float.parseFloat(t.val));
         } else if (la.kind == 4) {
             Get();
-            SemErr("characters not available yet");
+            p = NF.createCharacterConstant(t.val);
         } else if (la.kind == 5) {
             Get();
             p = Expr();

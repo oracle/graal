@@ -249,8 +249,7 @@ public class DebugExprType {
                 return Boolean.parseBoolean(member.toString());
             case UNSIGNED_CHAR:
             case SIGNED_CHAR:
-                // TODO adjust to characters
-                return Short.parseShort(member.toString());
+                return Character.toString((char) (Short.parseShort(member.toString())));
             case UNSIGNED_SHORT:
             case SIGNED_SHORT:
                 return Short.parseShort(member.toString());
