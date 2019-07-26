@@ -30,7 +30,6 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
@@ -50,7 +49,7 @@ public class HotSpotClassInitializationTest extends HotSpotGraalCompilerTest {
 
     static class InvokeStatic {
         static {
-            instance.test(InvokeStatic.class, "m", InvokeNode.class);
+            instance.test(InvokeStatic.class, "m");
         }
 
         static boolean m() {
@@ -142,7 +141,7 @@ public class HotSpotClassInitializationTest extends HotSpotGraalCompilerTest {
     }
 
     @Test
-    public void testInvokeStatic3() {
+    public void testGetStatic() {
         GraalDirectives.inCompiledCode();
         instance = this;
         GetStatic.field = 0;

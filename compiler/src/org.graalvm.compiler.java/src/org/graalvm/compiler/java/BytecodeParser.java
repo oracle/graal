@@ -2117,8 +2117,7 @@ public class BytecodeParser implements GraphBuilderContext {
      * {@code null} if there is no {@link InlineInfo} for this method.
      */
     private InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
-        boolean canBeInlined = forceInliningEverything || parsingIntrinsic() ||
-                        (targetMethod.canBeInlined() && (!targetMethod.isStatic() || targetMethod.getDeclaringClass().isInitialized()));
+        boolean canBeInlined = forceInliningEverything || parsingIntrinsic() || targetMethod.canBeInlined();
         if (!canBeInlined) {
             return null;
         }
