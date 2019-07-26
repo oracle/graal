@@ -315,7 +315,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     DirectCallNode callNode = callNodeTable[callNodeOffset];
                     callNodeOffset++;
 
-                    Object[] args = createArguementsForCall(frame, function, numArgs, stackPointer);
+                    Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
                     stackPointer -= args.length;
 
                     Object result = callNode.call(args);
@@ -1579,7 +1579,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    private Object[] createArguementsForCall(VirtualFrame frame, WasmFunction function, int numArgs, int stackPointer) {
+    private Object[] createArgumentsForCall(VirtualFrame frame, WasmFunction function, int numArgs, int stackPointer) {
         Object[] args = new Object[numArgs];
         for (int i = 0; i != numArgs; ++i) {
             stackPointer--;
