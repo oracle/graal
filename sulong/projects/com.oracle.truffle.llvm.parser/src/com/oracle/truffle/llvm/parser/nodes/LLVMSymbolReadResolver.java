@@ -417,7 +417,7 @@ public final class LLVMSymbolReadResolver {
         private void visitStackValue(StackValue value) {
             FrameSlot slot = frame.findFrameSlot(value.getFrameIdentifier());
             if (slot == null) {
-                slot = frame.findOrAddFrameSlot(value.getFrameIdentifier(), Type.getFrameSlotKind(value.getType()));
+                slot = findOrAddFrameSlot(frame, value);
             }
             resolvedNode = CommonNodeFactory.createFrameRead(value.getType(), slot);
         }
@@ -439,6 +439,15 @@ public final class LLVMSymbolReadResolver {
         this.frame = frame;
         this.getStackSpaceFactory = getStackSpaceFactory;
         this.dataLayout = dataLayout;
+    }
+
+    public static FrameSlot findOrAddFrameSlot(FrameDescriptor descriptor, StackValue value) {
+        FrameSlot slot = descriptor.findFrameSlot(value.getFrameIdentifier());
+        if (slot == null) {
+            slot = descriptor.findOrAddFrameSlot(value.getFrameIdentifier(), value, Type.getFrameSlotKind(value.getType()));
+        }
+        assert slot.getInfo() == value;
+        return slot;
     }
 
     public static Integer evaluateIntegerConstant(SymbolImpl constant) {

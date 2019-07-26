@@ -33,10 +33,10 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class StackManager {
 
@@ -57,8 +57,7 @@ public final class StackManager {
         frame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
 
         for (FunctionParameter parameter : function.getParameters()) {
-            Type type = parameter.getType();
-            frame.addFrameSlot(parameter.getFrameIdentifier(), type, Type.getFrameSlotKind(type));
+            LLVMSymbolReadResolver.findOrAddFrameSlot(frame, parameter);
         }
 
         return frame;

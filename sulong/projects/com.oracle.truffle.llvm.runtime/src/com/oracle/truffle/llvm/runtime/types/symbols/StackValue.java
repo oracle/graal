@@ -39,4 +39,6 @@ public interface StackValue extends Symbol {
 
     void setFrameIdentifier(int frameIdentifier);
 
+    String getName();
+
 }

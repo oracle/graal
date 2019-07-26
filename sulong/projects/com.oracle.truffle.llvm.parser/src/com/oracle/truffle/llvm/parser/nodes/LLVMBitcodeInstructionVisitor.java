@@ -205,7 +205,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 assert node instanceof LLVMStatementNode;
             } else {
                 assert node instanceof LLVMExpressionNode;
-                instructionNodes.set(i, nodeFactory.createFrameWrite(target.getType(), (LLVMExpressionNode) node, findOrAddFrameSlot(frame, target)));
+                instructionNodes.set(i, nodeFactory.createFrameWrite(target.getType(), (LLVMExpressionNode) node, LLVMSymbolReadResolver.findOrAddFrameSlot(frame, target)));
             }
         }
         return instructionNodes.toArray(LLVMStatementNode.NO_STATEMENTS);
@@ -224,17 +224,13 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 FrameSlot[] result = new FrameSlot[count];
                 for (StackValue value : stackValues) {
                     if (value != null) {
-                        result[pos++] = findOrAddFrameSlot(frame, value);
+                        result[pos++] = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, value);
                     }
                 }
                 return result;
             }
         }
         return null;
-    }
-
-    public static FrameSlot findOrAddFrameSlot(FrameDescriptor frame, StackValue value) {
-        return frame.findOrAddFrameSlot(value.getFrameIdentifier(), Type.getFrameSlotKind(value.getType()));
     }
 
     public static FrameSlot findFrameSlot(FrameDescriptor frame, int frameIdentifier) {
@@ -551,7 +547,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         List<LLVMExpressionNode> unwindValue = new ArrayList<>();
         if (blockPhis != null) {
             for (LLVMPhiManager.Phi phi : blockPhis) {
-                FrameSlot slot = findOrAddFrameSlot(frame, phi.getPhiValue());
+                FrameSlot slot = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue());
                 LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
                     normalTo.add(slot);
@@ -572,9 +568,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = symbols.resolve(target);
-        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(findOrAddFrameSlot(frame, call), function, argNodes, new FunctionType(targetType, argTypes, false),
-                        regularIndex, unwindIndex, normalPhi,
-                        unwindPhi);
+        LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(LLVMSymbolReadResolver.findOrAddFrameSlot(frame, call), function, argNodes, new FunctionType(targetType, argTypes, false),
+                        regularIndex, unwindIndex, normalPhi, unwindPhi);
 
         setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
     }
@@ -612,7 +607,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         List<LLVMExpressionNode> unwindValue = new ArrayList<>();
         if (blockPhis != null) {
             for (LLVMPhiManager.Phi phi : blockPhis) {
-                FrameSlot slot = findOrAddFrameSlot(frame, phi.getPhiValue());
+                FrameSlot slot = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue());
                 LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
                     normalTo.add(slot);
@@ -941,7 +936,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             Type[] types = new Type[phisPerSuccessor[i].size()];
             for (int j = 0; j < phisPerSuccessor[i].size(); j++) {
                 Phi phi = phisPerSuccessor[i].get(j);
-                to[j] = findOrAddFrameSlot(frame, phi.getPhiValue());
+                to[j] = LLVMSymbolReadResolver.findOrAddFrameSlot(frame, phi.getPhiValue());
                 from[j] = symbols.resolve(phi.getValue());
                 types[j] = phi.getValue().getType();
             }
