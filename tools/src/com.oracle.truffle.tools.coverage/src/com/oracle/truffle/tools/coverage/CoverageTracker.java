@@ -40,8 +40,8 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
-import com.oracle.truffle.tools.coverage.impl.StatementCoverageNode;
 import com.oracle.truffle.tools.coverage.impl.RootCoverageNode;
+import com.oracle.truffle.tools.coverage.impl.StatementCoverageNode;
 
 public class CoverageTracker implements AutoCloseable {
 
@@ -67,7 +67,6 @@ public class CoverageTracker implements AutoCloseable {
     private EventBinding<ExecutionEventNodeFactory> execRootBinding;
     private Coverage coverage;
 
-
     @Override
     public void close() {
         closed = true;
@@ -92,6 +91,7 @@ public class CoverageTracker implements AutoCloseable {
     public synchronized Coverage getCoverage() {
         return coverage.readOnlyCopy();
     }
+
     public enum Mode {
         STATEMENTS,
         ROOTS
@@ -137,7 +137,7 @@ public class CoverageTracker implements AutoCloseable {
         loadedRootBinding = instrumenter.attachLoadSourceSectionListener(rootFilter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
-               CoverageTracker.this.addLoadedRoot(event.getSourceSection());
+                CoverageTracker.this.addLoadedRoot(event.getSourceSection());
             }
         }, false);
         execRootBinding = instrumenter.attachExecutionEventFactory(rootFilter, new ExecutionEventNodeFactory() {
@@ -172,6 +172,14 @@ public class CoverageTracker implements AutoCloseable {
         if (execStatementBinding != null) {
             execStatementBinding.dispose();
             execStatementBinding = null;
+        }
+        if (loadedRootBinding != null) {
+            loadedRootBinding.dispose();
+            loadedRootBinding = null;
+        }
+        if (execRootBinding != null) {
+            execRootBinding.dispose();
+            execRootBinding = null;
         }
     }
 
