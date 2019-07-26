@@ -13,13 +13,27 @@ import com.oracle.truffle.tools.coverage.Coverage;
 
 class CoverageCLI {
 
+    private final PrintStream out;
+    private final Map<Source, Coverage.PerSource> histogram;
+    private final String format;
+    private final String summaryHeader;
+    private final int summaryHeaderLen;
+
+    public CoverageCLI(PrintStream out, Coverage coverage) {
+        this.out = out;
+        histogram = coverage.getCoverage();
+        format = getHistogramLineFormat(histogram);
+        summaryHeader = String.format(format, "Path", "Statements", "Lines", "Roots");
+        summaryHeaderLen = summaryHeader.length();
+    }
+
     static void handleOutput(PrintStream out, Coverage coverage, CoverageInstrument.Output output) {
         switch (output) {
             case HISTOGRAM:
-                printHistogram(out, coverage);
+                new CoverageCLI(out, coverage).printHistogramOutput();
                 break;
             case LINES:
-                printLines(out, coverage);
+                new CoverageCLI(out, coverage).printLinesOutput();
                 break;
             case JSON:
                 printJson(out, coverage);
@@ -31,27 +45,23 @@ class CoverageCLI {
         throw new UnsupportedOperationException();
     }
 
-    private static void printLines(PrintStream out, Coverage coverage) {
-        Map<Source, Coverage.PerSource> histogram = coverage.getCoverage();
-        String format = getHistogramLineFormat(histogram);
-        String header = String.format(format, "Path", "Statements", "Lines", "Roots");
-        int length = header.length();
-        printLine(out, length);
-        printLinesLegend(out);
-        printLine(out, length);
-        final List<Source> sources = sortedKeys(histogram);
+    private void printLinesOutput() {
+        printLine();
+        printLinesLegend();
+        final List<Source> sources = sortedKeys();
         for (Source source : sources) {
             final String path = source.getPath();
             final Coverage.PerSource value = histogram.get(source);
-            out.println(header);
+            printLine();
+            printSummaryHeader();
             out.println(String.format(format, path, statementCoverage(value), lineCoverage(value), rootCoverage(value)));
             out.println("");
-            printLinesOfSource(out, histogram, source);
+            printLinesOfSource(source);
         }
-        printLine(out, length);
+        printLine();
     }
 
-    private static void printLinesOfSource(PrintStream out, Map<Source, Coverage.PerSource> histogram, Source source) {
+    private void printLinesOfSource(Source source) {
         Coverage.PerSource perSource = histogram.get(source);
         Set<Integer> nonCoveredLineNumbers = perSource.nonCoveredLineNumbers();
         Set<Integer> loadedLineNumbers = perSource.loadedLineNumbers();
@@ -66,14 +76,13 @@ class CoverageCLI {
         }
     }
 
-    private static void printLinesLegend(PrintStream out) {
+    private void printLinesLegend() {
         out.println("Code coverage per line of code and what percent of each element was covered during execution (per source)");
         out.println("  + indicates the line is part of a statement that was covered during execution");
         out.println("  - indicates the line is part of a statement that was not covered during execution");
         out.println("  p indicates the line is part of a statement that was partially covered during execution");
         out.println("    e.g. a not-taken branch of a covered if statement");
         out.println("  ! indicates the line is part of a root that was NOT covered during execution");
-        out.println("");
     }
 
     private static char getCoverageCharacter(Set<Integer> nonCoveredLineNumbers, Set<Integer> loadedLineNumbers, Set<Integer> coveredLineNumbers, int i, char partly, char not, char yes) {
@@ -87,31 +96,31 @@ class CoverageCLI {
         }
     }
 
-    private static void printHistogram(PrintStream out, Coverage coverage) {
-        final Map<Source, Coverage.PerSource> histogram = coverage.getCoverage();
-        final String format = getHistogramLineFormat(histogram);
-        final String header = String.format(format, "Path", "Statements", "Lines", "Roots");
-        final int headerLen = header.length();
-        printLine(out, headerLen);
+    private void printHistogramOutput() {
+        printLine();
         out.println("Code coverage histogram.");
         out.println("  Shows what percent of each element was covered during execution");
-        printLine(out, headerLen);
-        out.println(header);
-        printLine(out, headerLen);
-        for (Source source : sortedKeys(histogram)) {
+        printLine();
+        printSummaryHeader();
+        printLine();
+        for (Source source : sortedKeys()) {
             final String path = source.getPath();
             final Coverage.PerSource value = histogram.get(source);
             final String line = String.format(format, path, statementCoverage(value), lineCoverage(value), rootCoverage(value));
             out.println(line);
         }
-        printLine(out, headerLen);
+        printLine();
     }
 
-    private static void printLine(PrintStream out, int length) {
-        out.println(String.format("%" + length + "s", "").replace(' ', '-'));
+    private void printSummaryHeader() {
+        out.println(summaryHeader);
     }
 
-    private static List<Source> sortedKeys(Map<Source, Coverage.PerSource> histogram) {
+    private void printLine() {
+        out.println(String.format("%" + summaryHeaderLen + "s", "").replace(' ', '-'));
+    }
+
+    private List<Source> sortedKeys() {
         final List<Source> sorted = new ArrayList<>();
         sorted.addAll(histogram.keySet());
         sorted.removeIf(source -> source.getPath() == null);
