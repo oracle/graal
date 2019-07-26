@@ -36,8 +36,6 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 /**
  * All VM properties are overridable via options, some properties (e.g. boot classpath) are derived
  * from <b>java.home</b> and will be updated accordingly when <b>java.home</b> is updated.
@@ -248,14 +246,15 @@ public interface EspressoProperties {
     }
 
     static Builder newPlatformBuilder() {
-        String os = System.getProperty("os.name");
-        if (os.startsWith("Linux") || os.startsWith("LINUX")) {
-            return new LinuxBuilder();
+        OS os = OS.getCurrent();
+        switch (os) {
+            case Linux:
+                return new LinuxBuilder();
+            case Darwin:
+                return new DarwinBuilder();
+            default:
+                throw EspressoError.shouldNotReachHere(os + " not supported");
         }
-        if (os.startsWith("Mac OS X")) {
-            return new MacOSBuilder();
-        }
-        throw EspressoError.shouldNotReachHere(os + " not supported");
     }
 }
 
@@ -300,6 +299,44 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
     @Override
     List<Path> defaultEspressoLibraryPath() {
         throw new IllegalStateException("espressoLibraryPath not defined");
+    }
+}
+
+enum OS {
+    Darwin,
+    Linux,
+    Solaris,
+    Windows;
+
+    private static final OS current = findCurrent();
+
+    private static OS findCurrent() {
+        final String name = System.getProperty("os.name");
+        if (name.equals("Linux")) {
+            return OS.Linux;
+        }
+        if (name.equals("SunOS")) {
+            return OS.Solaris;
+        }
+        if (name.equals("Mac OS X") || name.equals("Darwin")) {
+            return OS.Darwin;
+        }
+        if (name.startsWith("Windows")) {
+            return OS.Windows;
+        }
+        throw new IllegalArgumentException("unknown OS: " + name);
+    }
+
+    public static OS getCurrent() {
+        return current;
+    }
+
+    public static boolean isWindows() {
+        return getCurrent() == OS.Windows;
+    }
+
+    public static boolean isUnix() {
+        return getCurrent() != OS.Windows;
     }
 }
 
