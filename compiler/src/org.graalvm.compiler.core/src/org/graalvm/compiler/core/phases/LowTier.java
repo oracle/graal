@@ -81,11 +81,13 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new FixReadsPhase(true,
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
 
-        appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST)));
-
         appendPhase(canonicalizerWithoutGVN);
 
         appendPhase(new UseTrappingNullChecksPhase());
+
+        appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST)));
+
+        appendPhase(canonicalizer);
 
         appendPhase(new DeadCodeEliminationPhase(Required));
 
