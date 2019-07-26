@@ -89,7 +89,7 @@ public final class TruffleCompilerOptions {
     public static final OptionKey<Integer> TruffleMaximumGraalNodeCount = new OptionKey<>(500000);
 
     @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.")
-    public static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(350000);
+    public static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(400000);
     // @formatter:on
 
     private TruffleCompilerOptions() {
