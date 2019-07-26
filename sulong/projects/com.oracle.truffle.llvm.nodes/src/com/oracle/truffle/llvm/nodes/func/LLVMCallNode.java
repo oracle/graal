@@ -82,7 +82,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     @Child private LLVMDispatchNode dispatchNode;
     @Child private IntrinsicDispatch intrinsicDispatch;
 
-    @CompilationFinal private boolean mayBeBuiltin = true;
+    @CompilationFinal private volatile boolean mayBeBuiltin = true;
 
     private final LLVMSourceLocation source;
 
