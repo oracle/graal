@@ -77,7 +77,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     private final FunctionType functionType;
 
     @Children private final LLVMExpressionNode[] argumentNodes;
-    @Children private ArgumentNode[] prepareArgumentNodes;
+    @Children private volatile ArgumentNode[] prepareArgumentNodes;
     @Child private LLVMLookupDispatchTargetNode dispatchTargetNode;
     @Child private LLVMDispatchNode dispatchNode;
     @Child private IntrinsicDispatch intrinsicDispatch;
