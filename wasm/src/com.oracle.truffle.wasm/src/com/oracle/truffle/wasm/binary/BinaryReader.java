@@ -838,7 +838,7 @@ public class BinaryReader extends BinaryStreamReader {
     private void readGlobalSection() {
         int numGlobals = readVectorLength();
         wasmModule.globals().initialize(numGlobals);
-        for (int i = 0; i != numGlobals; i++) {
+        for (int globalIndex = 0; globalIndex != numGlobals; globalIndex++) {
             byte type = readValueType();
             byte mut = read1();  // 0x00 means const, 0x01 means var
             long value = 0;
@@ -871,7 +871,7 @@ public class BinaryReader extends BinaryStreamReader {
                         break;
                 }
             } while (instruction != END);
-            wasmModule.globals().register(i, value, type, mut != 0x00);
+            wasmModule.globals().register(globalIndex, value, type, mut != 0x00);
         }
     }
 
