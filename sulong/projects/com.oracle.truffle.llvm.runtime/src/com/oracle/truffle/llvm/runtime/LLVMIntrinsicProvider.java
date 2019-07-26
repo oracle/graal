@@ -31,10 +31,11 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public interface LLVMIntrinsicProvider extends ContextExtension {
+public interface LLVMIntrinsicProvider extends LLVMCapability {
 
     boolean isIntrinsified(String name);
 

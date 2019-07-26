@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.config;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import java.util.List;
 
@@ -45,7 +44,7 @@ public interface Configuration {
      * needs to live on the context-level. This function will be called once per context, at context
      * initialization time.
      */
-    List<ContextExtension> createContextExtensions(Env env, LLVMLanguage language);
+    List<ContextExtension> createContextExtensions(Env env);
 
     /**
      * Capabilities encapsulate functionality that is stateless, or has just static state that is

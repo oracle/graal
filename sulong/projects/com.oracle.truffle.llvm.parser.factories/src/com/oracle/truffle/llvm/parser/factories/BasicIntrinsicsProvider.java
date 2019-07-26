@@ -138,7 +138,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangSt
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
-import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -150,17 +149,12 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  * native code. The intrinsic is also preferred over LLVM bitcode that is part of a Sulong-internal
  * library.
  */
-public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextExtension {
+public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     private final ExternalLibrary library = ExternalLibrary.internal("SulongIntrinsics", false);
 
     @Override
     public ExternalLibrary getLibrary() {
         return library;
-    }
-
-    @Override
-    public Class<?> extensionClass() {
-        return LLVMIntrinsicProvider.class;
     }
 
     @Override

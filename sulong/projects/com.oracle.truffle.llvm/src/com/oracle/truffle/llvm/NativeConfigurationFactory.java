@@ -58,6 +58,6 @@ public final class NativeConfigurationFactory implements ConfigurationFactory<Bo
 
     @Override
     public Configuration createConfiguration(LLVMLanguage language, Boolean key) {
-        return new NativeConfiguration();
+        return new NativeConfiguration(language);
     }
 }

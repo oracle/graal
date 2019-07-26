@@ -427,7 +427,7 @@ final class Runner {
         @TruffleBoundary
         private void bindUnresolvedSymbols(LLVMContext ctx) {
             NFIContextExtension nfiContextExtension = ctx.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-            LLVMIntrinsicProvider intrinsicProvider = ctx.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
+            LLVMIntrinsicProvider intrinsicProvider = ctx.getLanguage().getCapability(LLVMIntrinsicProvider.class);
             for (LLVMSymbol symbol : fileScope.values()) {
                 if (!symbol.isDefined()) {
                     if (symbol instanceof LLVMGlobal) {
@@ -1062,7 +1062,7 @@ final class Runner {
     }
 
     private void overrideSulongLibraryFunctionsWithIntrinsics(List<LLVMParserResult> sulongLibraries) {
-        LLVMIntrinsicProvider intrinsicProvider = language.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
+        LLVMIntrinsicProvider intrinsicProvider = language.getCapability(LLVMIntrinsicProvider.class);
         if (intrinsicProvider != null) {
             for (LLVMParserResult parserResult : sulongLibraries) {
                 for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
