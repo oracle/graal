@@ -26,6 +26,9 @@ package com.oracle.truffle.tools.coverage.impl;
 
 import static com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -186,6 +189,9 @@ public class CoverageInstrument extends TruffleInstrument {
 
     @Option(name = "TrackInternal", help = "Track internal elements (default:false).", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> TRACK_INTERNAL = new OptionKey<>(false);
+
+    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
     // @formatter:on
 
     @Override
@@ -203,8 +209,26 @@ public class CoverageInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (enabled) {
-            CoverageCLI.handleOutput(new PrintStream(env.out()), tracker.getCoverage(), OUTPUT.getValue(env.getOptions()));
+            final OptionValues options = env.getOptions();
+            CoverageCLI.handleOutput(chooseOutputStream(env, OUTPUT_FILE), tracker.getCoverage(), OUTPUT.getValue(options));
             tracker.close();
+        }
+    }
+
+    protected static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
+        try {
+            if (option.hasBeenSet(env.getOptions())) {
+                final String outputPath = option.getValue(env.getOptions());
+                final File file = new File(outputPath);
+                if (file.exists()) {
+                    throw new IllegalArgumentException("Cannot redirect output to an existing file!");
+                }
+                return new PrintStream(new FileOutputStream(file));
+            } else {
+                return new PrintStream(env.out());
+            }
+        } catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("Cannot redirect output to a directory");
         }
     }
 
