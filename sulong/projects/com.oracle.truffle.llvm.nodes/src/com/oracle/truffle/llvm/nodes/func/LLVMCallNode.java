@@ -53,7 +53,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
      */
     private static final class IntrinsicDispatch extends Node {
 
-        @CompilationFinal private LLVMFunctionDescriptor descriptor;
+        private final LLVMFunctionDescriptor descriptor;
         @Child private LLVMExpressionNode intrinsic;
 
         IntrinsicDispatch(LLVMFunctionDescriptor descriptor, LLVMExpressionNode[] argumentNodes, FunctionType functionType) {
@@ -77,12 +77,12 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     private final FunctionType functionType;
 
     @Children private final LLVMExpressionNode[] argumentNodes;
-    @Children private ArgumentNode[] prepareArgumentNodes;
+    @Children private volatile ArgumentNode[] prepareArgumentNodes;
     @Child private LLVMLookupDispatchTargetNode dispatchTargetNode;
     @Child private LLVMDispatchNode dispatchNode;
     @Child private IntrinsicDispatch intrinsicDispatch;
 
-    @CompilationFinal private boolean mayBeBuiltin = true;
+    @CompilationFinal private volatile boolean mayBeBuiltin = true;
 
     private final LLVMSourceLocation source;
 
@@ -100,19 +100,28 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         Object function = dispatchTargetNode.executeGeneric(frame);
         if (mayBeBuiltin) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            mayBeBuiltin = false;
-            if (function instanceof LLVMFunctionDescriptor) {
-                LLVMFunctionDescriptor descriptor = (LLVMFunctionDescriptor) function;
-                if (descriptor.isIntrinsicFunction()) {
+            synchronized (this) {
+                if (mayBeBuiltin) {
                     try {
-                        intrinsicDispatch = insert(new IntrinsicDispatch(descriptor, argumentNodes, functionType));
-                    } catch (LLVMPolyglotException e) {
-                        // re-throw with this node to generate correct stack trace
-                        throw new LLVMPolyglotException(this, e.getMessage(), e);
+                        if (function instanceof LLVMFunctionDescriptor) {
+                            LLVMFunctionDescriptor descriptor = (LLVMFunctionDescriptor) function;
+                            if (descriptor.isIntrinsicFunction()) {
+                                try {
+                                    intrinsicDispatch = insert(new IntrinsicDispatch(descriptor, argumentNodes, functionType));
+                                } catch (LLVMPolyglotException e) {
+                                    // re-throw with this node to generate correct stack trace
+                                    throw new LLVMPolyglotException(this, e.getMessage(), e);
+                                }
+                            }
+                        }
+                    } finally {
+                        // set it to false now that intrinsicDispatch has been set if needed
+                        mayBeBuiltin = false;
                     }
                 }
             }
         }
+
         IntrinsicDispatch intrinsic = intrinsicDispatch;
         if (intrinsic != null) {
             if (intrinsic.matches(function)) {
@@ -125,19 +134,36 @@ public final class LLVMCallNode extends LLVMExpressionNode {
                 argumentNodes[i] = insert(argumentNodes[i]);
             }
         }
+
         Object[] argValues = new Object[argumentNodes.length];
-        if (prepareArgumentNodes == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            prepareArgumentNodes = new ArgumentNode[argumentNodes.length];
-        }
+        ArgumentNode[] prepareNodes = getPrepareArgumentNodes();
         for (int i = 0; i < argumentNodes.length; i++) {
-            if (prepareArgumentNodes[i] == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                prepareArgumentNodes[i] = insert(ArgumentNodeGen.create());
-            }
-            argValues[i] = prepareArgumentNodes[i].executeWithTarget(argumentNodes[i].executeGeneric(frame));
+            argValues[i] = prepareNodes[i].executeWithTarget(argumentNodes[i].executeGeneric(frame));
         }
         return dispatchNode.executeDispatch(function, argValues);
+    }
+
+    private ArgumentNode[] getPrepareArgumentNodes() {
+        ArgumentNode[] nodes = prepareArgumentNodes;
+        if (nodes == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                nodes = prepareArgumentNodes;
+                if (nodes == null) {
+                    nodes = insert(createPrepareArgumentNodes());
+                    prepareArgumentNodes = nodes;
+                }
+            }
+        }
+        return nodes;
+    }
+
+    private ArgumentNode[] createPrepareArgumentNodes() {
+        ArgumentNode[] nodes = new ArgumentNode[argumentNodes.length];
+        for (int i = 0; i < nodes.length; i++) {
+            nodes[i] = ArgumentNodeGen.create();
+        }
+        return nodes;
     }
 
     protected abstract static class ArgumentNode extends LLVMNode {

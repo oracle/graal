@@ -151,9 +151,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
 
         env.registerService(new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this));
+        this.contextExtensions = activeConfiguration.createContextExtensions(env, this);
+
         LLVMContext context = new LLVMContext(this, env, getLanguageHome());
         this.nodeFactory = activeConfiguration.createNodeFactory(context);
-        this.contextExtensions = activeConfiguration.createContextExtensions(context);
         return context;
     }
 
