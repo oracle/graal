@@ -192,6 +192,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.wasm.binary.constants.ExportIdentifier;
+import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -871,7 +872,7 @@ public class BinaryReader extends BinaryStreamReader {
                         break;
                 }
             } while (instruction != END);
-            wasmModule.globals().register(globalIndex, value, type, mut != 0x00);
+            wasmModule.globals().register(globalIndex, value, type, mut != GlobalModifier.CONSTANT);
         }
     }
 
