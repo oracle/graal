@@ -51,7 +51,7 @@ public class WasmModule implements TruffleObject {
         this.globals = new ModuleGlobals();
     }
 
-    final class ModuleGlobals {
+    static final class ModuleGlobals {
         /**
          * Stores the globals as 64-bit values.
          */
@@ -67,16 +67,23 @@ public class WasmModule implements TruffleObject {
          */
         @CompilationFinal(dimensions = 1) private boolean[] globalMut;
 
+        private static boolean initialized = false;
+
         private ModuleGlobals() {
         }
 
         public void initialize(int numGlobals) {
+            if (initialized) {
+                throw new RuntimeException("ModuleGlobals has already been initialized.");
+            }
             this.globals = new long[numGlobals];
             this.globalTypes = new byte[numGlobals];
             this.globalMut = new boolean[numGlobals];
+            initialized = true;
         }
 
         public void register(int index, long value, byte type, boolean isMutable) {
+            Assert.assertInRange(index, 0, globals.length - 1, "Global index out-of-range.");
             this.globals[index] = value;
             this.globalTypes[index] = type;
             this.globalMut[index] = isMutable;
