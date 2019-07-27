@@ -229,11 +229,6 @@ public class SymbolTable {
         return module;
     }
 
-    public int numGlobals() {
-        // TODO: Implement
-        return Integer.MAX_VALUE;
-    }
-
     public byte getFunctionTypeArgumentTypeAt(int typeIndex, int i) {
         int typeOffset = offsets[typeIndex];
         return (byte) typeData[typeOffset + 2 + i];

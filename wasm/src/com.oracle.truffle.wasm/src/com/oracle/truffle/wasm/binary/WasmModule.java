@@ -43,10 +43,95 @@ import com.oracle.truffle.api.library.ExportMessage;
 public class WasmModule implements TruffleObject {
     @CompilationFinal private final String name;
     @CompilationFinal private final SymbolTable symbolTable;
+    @CompilationFinal private final ModuleGlobals globals;
 
     public WasmModule(String name) {
         this.name = name;
         this.symbolTable = new SymbolTable(this);
+        this.globals = new ModuleGlobals();
+    }
+
+    static final class ModuleGlobals {
+        /**
+         * Stores the globals as 64-bit values.
+         */
+        @CompilationFinal(dimensions = 1) private long[] globals;
+
+        /**
+         * Stores the type of each global. A global can be of any of the valid value types.
+         */
+        @CompilationFinal(dimensions = 1) private byte[] globalTypes;
+
+        /**
+         * Stores whether each global is mutable.
+         */
+        @CompilationFinal(dimensions = 1) private boolean[] globalMut;
+
+        private static boolean initialized = false;
+
+        private ModuleGlobals() {
+        }
+
+        public void initialize(int numGlobals) {
+            if (initialized) {
+                throw new RuntimeException("ModuleGlobals has already been initialized.");
+            }
+            this.globals = new long[numGlobals];
+            this.globalTypes = new byte[numGlobals];
+            this.globalMut = new boolean[numGlobals];
+            initialized = true;
+        }
+
+        public void register(int index, long value, byte type, boolean isMutable) {
+            Assert.assertInRange(index, 0, globals.length - 1, "Global index out-of-range.");
+            this.globals[index] = value;
+            this.globalTypes[index] = type;
+            this.globalMut[index] = isMutable;
+        }
+
+        public int size() {
+            return globals.length;
+        }
+
+        public byte type(int index) {
+            return globalTypes[index];
+        }
+
+        public boolean isMutable(int index) {
+            return globalMut[index];
+        }
+
+        public int getAsInt(int index) {
+            return (int) globals[index];
+        }
+
+        public long getAsLong(int index) {
+            return globals[index];
+        }
+
+        public float getAsFloat(int index) {
+            return Float.intBitsToFloat((int) globals[index]);
+        }
+
+        public double getAsDouble(int index) {
+            return Double.longBitsToDouble(globals[index]);
+        }
+
+        public void setInt(int index, int value) {
+            globals[index] = value;
+        }
+
+        public void setLong(int index, long value) {
+            globals[index] = value;
+        }
+
+        public void setFloat(int index, float value) {
+            globals[index] = Float.floatToRawIntBits(value);
+        }
+
+        public void setDouble(int index, double value) {
+            globals[index] = Double.doubleToRawLongBits(value);
+        }
     }
 
     public SymbolTable symbolTable() {
@@ -55,6 +140,10 @@ public class WasmModule implements TruffleObject {
 
     public String name() {
         return name;
+    }
+
+    public ModuleGlobals globals() {
+        return globals;
     }
 
     @ExportMessage
