@@ -1657,6 +1657,9 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def subgroup(self):
         return "graal-compiler"
 
+    def benchSuiteName(self):
+        return self.name()
+
     def renaissanceLibraryName(self):
         return "RENAISSANCE"
 
@@ -1711,6 +1714,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
                 {
                     "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "warmup",
@@ -1726,6 +1730,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
                 {
                     "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "final-time",

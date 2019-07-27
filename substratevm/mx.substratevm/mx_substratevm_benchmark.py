@@ -370,10 +370,10 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
     """
 
     def name(self):
-        return "renaissance-substratevm"
+        return 'renaissance-native-image'
 
-    def subgroup(self):
-        return "substratevm"
+    def benchSuiteName(self):
+        return 'renaissance'
 
     def renaissance_harness_lib_name(self):
         return "RENAISSANCE_HARNESS_11"
