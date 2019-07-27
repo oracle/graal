@@ -25,11 +25,11 @@
 #
 # ----------------------------------------------------------------------------------------------------
 suite = {
-  "mxversion" : "5.210.2",
+  "mxversion" : "5.223.0",
 
   "name" : "regex",
 
-  "version" : "19.0.2",
+  "version" : "19.1.1",
   "release" : True,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -108,6 +108,7 @@ suite = {
     },
 
     "TREGEX_UNIT_TESTS" : {
+      "subDir": "src",
       "dependencies" : [
         "com.oracle.truffle.regex.test",
       ],

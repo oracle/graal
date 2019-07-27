@@ -48,6 +48,7 @@ import org.graalvm.component.installer.ComponentIterable;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.FileOperations;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UnknownVersionException;
 import org.graalvm.component.installer.Version;
@@ -61,7 +62,7 @@ import org.graalvm.component.installer.persist.MetadataLoader;
  * 
  * @author sdedic
  */
-public class UpgradeProcess {
+public class UpgradeProcess implements AutoCloseable {
     private final CommandInput input;
     private final Feedback feedback;
     private final ComponentCollection catalog;
@@ -189,7 +190,7 @@ public class UpgradeProcess {
                         ed == null ? "UPGRADE_GraalVMDirName@" : "UPGRADE_GraalVMDirNameEdition@",
                         graal.getVersion().displayString(),
                         ed);
-        return base.resolve(dirName);
+        return base.resolve(SystemUtils.fileName(dirName));
     }
 
     /**
@@ -278,6 +279,7 @@ public class UpgradeProcess {
         metaLoader = ldr;
 
         GraalVMInstaller gvmInstaller = new GraalVMInstaller(feedback,
+                        input.getFileOperations(),
                         input.getLocalRegistry(), completeInfo, catalog,
                         metaLoader.getArchive());
         gvmInstaller.setCurrentInstallPath(input.getGraalHomePath());
@@ -482,12 +484,27 @@ public class UpgradeProcess {
         instCommand.execute();
     }
 
+    @Override
+    public void close() throws IOException {
+        for (ComponentParam p : allComponents()) {
+            p.close();
+        }
+        if (metaLoader != null) {
+            metaLoader.close();
+        }
+    }
+
     class InputDelegate implements CommandInput {
         private final List<ComponentParam> params;
         private int index;
 
         InputDelegate(List<ComponentParam> params) {
             this.params = params;
+        }
+
+        @Override
+        public FileOperations getFileOperations() {
+            return input.getFileOperations();
         }
 
         @Override

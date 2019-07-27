@@ -29,9 +29,9 @@ import org.graalvm.compiler.loop.LoopEx;
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
-public class LoopPeelingPhase extends LoopPhase<LoopPolicies, PhaseContext> {
+public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
     public LoopPeelingPhase(LoopPolicies policies) {
         super(policies);
@@ -39,7 +39,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies, PhaseContext> {
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph, PhaseContext context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         DebugContext debug = graph.getDebug();
         if (graph.hasLoops()) {
             LoopsData data = new LoopsData(graph);

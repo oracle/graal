@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import java.io.File;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -205,7 +203,7 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
         if (section == null || section.getSource() == null) {
             return "<unknown source>";
         } else {
-            String sourceName = new File(section.getSource().getName()).getName();
+            String sourceName = section.getSource().getName();
             int startLine = section.getStartLine();
             return String.format("%s:%d%s", sourceName, startLine, estimated ? "~" : "");
         }

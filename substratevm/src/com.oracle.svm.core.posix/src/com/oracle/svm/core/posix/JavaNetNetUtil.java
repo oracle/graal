@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -48,8 +49,9 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.os.IsDefined;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.headers.Errno;
+import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.headers.Ioctl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.NetinetIn;
@@ -355,7 +357,7 @@ class JavaNetNetUtil {
         // 105 initInetAddrs(env);
         initInetAddrs();
         // 106 holder = (*env)->GetObjectField(env, iaObj, ia6_holder6ID);
-        holder = Util_java_net_Inet6Address.from_Inet6Address(iaObj).holder6;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_Inet6Address.class).holder6;
         // 107 CHECK_NULL_RETURN(holder, NULL);
         if (holder == null) {
             return null;
@@ -372,7 +374,7 @@ class JavaNetNetUtil {
         // 114 initInetAddrs(env);
         initInetAddrs();
         // 115 holder = (*env)->GetObjectField(env, iaObj, ia6_holder6ID);
-        holder = Util_java_net_Inet6Address.from_Inet6Address(iaObj).holder6;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_Inet6Address.class).holder6;
         // 116 CHECK_NULL_RETURN(holder, JNI_FALSE);
         if (holder == null) {
             return -1;
@@ -390,7 +392,7 @@ class JavaNetNetUtil {
         // 133 initInetAddrs(env);
         initInetAddrs();
         // 134 holder = (*env)->GetObjectField(env, iaObj, ia6_holder6ID);
-        holder = Util_java_net_Inet6Address.from_Inet6Address(iaObj).holder6;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_Inet6Address.class).holder6;
         // 135 CHECK_NULL_RETURN(holder, -1);
         if (holder == null) {
             return -1;
@@ -406,7 +408,7 @@ class JavaNetNetUtil {
         // 142 initInetAddrs(env);
         initInetAddrs();
         // 143 holder = (*env)->GetObjectField(env, iaObj, ia6_holder6ID);
-        holder = Util_java_net_Inet6Address.from_Inet6Address(iaObj).holder6;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_Inet6Address.class).holder6;
         // 144 CHECK_NULL_RETURN(holder, JNI_FALSE);
         if (holder == null) {
             return Target_jni.JNI_FALSE();
@@ -431,7 +433,7 @@ class JavaNetNetUtil {
         // 157 initInetAddrs(env);
         initInetAddrs();
         // 158 holder = (*env)->GetObjectField(env, iaObj, ia6_holder6ID);
-        holder = Util_java_net_Inet6Address.from_Inet6Address(iaObj).holder6;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_Inet6Address.class).holder6;
         // 159 CHECK_NULL_RETURN(holder, JNI_FALSE);
         if (holder == null) {
             return Target_jni.JNI_FALSE();
@@ -457,7 +459,7 @@ class JavaNetNetUtil {
         // 170 initInetAddrs(env);
         initInetAddrs();
         // 171 holder = (*env)->GetObjectField(env, iaObj, ia6_holder6ID);
-        holder = Util_java_net_Inet6Address.from_Inet6Address(iaObj).holder6;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_Inet6Address.class).holder6;
         // 172 CHECK_NULL_RETURN(holder, JNI_FALSE);
         if (holder == null) {
             return Target_jni.JNI_FALSE();
@@ -484,7 +486,7 @@ class JavaNetNetUtil {
         // 185 initInetAddrs(env);
         initInetAddrs();
         // 186 holder = (*env)->GetObjectField(env, iaObj, ia_holderID);
-        holder = Util_java_net_InetAddress.from_InetAddress(iaObj).holder;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_InetAddress.class).holder;
         // 187 (*env)->SetIntField(env, holder, iac_addressID, address);
         holder.address = address;
     }
@@ -496,7 +498,7 @@ class JavaNetNetUtil {
         // 192 initInetAddrs(env);
         initInetAddrs();
         // 193 holder = (*env)->GetObjectField(env, iaObj, ia_holderID);
-        holder = Util_java_net_InetAddress.from_InetAddress(iaObj).holder;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_InetAddress.class).holder;
         // 194 (*env)->SetIntField(env, holder, iac_familyID, family);
         holder.family = family;
     }
@@ -508,7 +510,7 @@ class JavaNetNetUtil {
         // 199 initInetAddrs(env);
         initInetAddrs();
         // 200 holder = (*env)->GetObjectField(env, iaObj, ia_holderID);
-        holder = Util_java_net_InetAddress.from_InetAddress(iaObj).holder;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_InetAddress.class).holder;
         // 201 (*env)->SetObjectField(env, holder, iac_hostNameID, host);
         holder.hostName = host;
     }
@@ -520,7 +522,7 @@ class JavaNetNetUtil {
         // 214 initInetAddrs(env);
         initInetAddrs();
         // 215 holder = (*env)->GetObjectField(env, iaObj, ia_holderID);
-        holder = Util_java_net_InetAddress.from_InetAddress(iaObj).holder;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_InetAddress.class).holder;
         // 216 return (*env)->GetIntField(env, holder, iac_familyID);
         return holder.family;
     }
@@ -622,7 +624,7 @@ class JavaNetNetUtilMD {
         // 206 initInetAddrs(env);
         JavaNetNetUtil.initInetAddrs();
         // 207 holder = (*env)->GetObjectField(env, iaObj, ia_holderID);
-        holder = Util_java_net_InetAddress.from_InetAddress(iaObj).holder;
+        holder = SubstrateUtil.cast(iaObj, Target_java_net_InetAddress.class).holder;
         // 208 return (*env)->GetIntField(env, holder, iac_addressID);
         return holder.address;
     }
@@ -650,7 +652,7 @@ class JavaNetNetUtilMD {
 
     // 275 void
     // 276 NET_ThrowNew(JNIEnv *env, int errorNumber, char *msg) {
-    static void NET_ThrowNew(int errorNumber, String msgArg) throws SocketException, InterruptedException {
+    static void NET_ThrowNew(int errorNumber, String msgArg) throws SocketException, InterruptedIOException {
         /* Do not modify argument! */
         String msg = msgArg;
         // 277 char fullMsg[512];
@@ -671,7 +673,7 @@ class JavaNetNetUtilMD {
             // 286 case EINTR:
             // 287 JNU_ThrowByName(env, JNU_JAVAIOPKG "InterruptedIOException", msg);
             // 288 break;
-            throw new InterruptedException(msg);
+            throw new InterruptedIOException(msg);
         } else {
             // 290 errno = errorNumber;
             Errno.set_errno(errorNumber);
@@ -775,7 +777,7 @@ class JavaNetNetUtilMD {
                     // 842 if (ia6_cachedscopeidID) {
                     if (ia6_cachedscopeidID) {
                         // 843     cached_scope_id = (int)(*env)->GetIntField(env, iaObj, ia6_cachedscopeidID);
-                        cached_scope_id = Util_java_net_Inet6Address.from_Inet6Address((Inet6Address) iaObj).cached_scope_id;
+                        cached_scope_id = SubstrateUtil.cast((Inet6Address) iaObj, Target_java_net_Inet6Address.class).cached_scope_id;
                         // 844     /* if cached value exists then use it. Otherwise, check
                         // 845      * if scope is set in the address.
                         // 846      */
@@ -798,7 +800,7 @@ class JavaNetNetUtilMD {
                                     // 856 cached_scope_id = lo_scope_id;
                                     cached_scope_id = lo_scope_id;
                                     // 857 (*env)->SetIntField(env, iaObj, ia6_cachedscopeidID, cached_scope_id);
-                                    Util_java_net_Inet6Address.from_Inet6Address((Inet6Address) iaObj).cached_scope_id = cached_scope_id;
+                                    SubstrateUtil.cast((Inet6Address) iaObj, Target_java_net_Inet6Address.class).cached_scope_id = cached_scope_id;
                                 }
                             } else {
                                 // 860 /*
@@ -819,7 +821,7 @@ class JavaNetNetUtilMD {
                                     }
                                 }
                                 // 872 (*env)->SetIntField(env, iaObj, ia6_cachedscopeidID, cached_scope_id);
-                                Util_java_net_Inet6Address.from_Inet6Address((Inet6Address) iaObj).cached_scope_id = cached_scope_id;
+                                SubstrateUtil.cast((Inet6Address) iaObj, Target_java_net_Inet6Address.class).cached_scope_id = cached_scope_id;
                             }
                         }
                     }

@@ -24,12 +24,19 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.ArrayUtils;
+import java.util.ArrayList;
+
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.ArrayUtils;
+
+@RunWith(Parameterized.class)
 public class ArrayUtilsTest extends GraalCompilerTest {
 
     @Override
@@ -50,45 +57,68 @@ public class ArrayUtilsTest extends GraalCompilerTest {
     private static final String[] searchValues = {
                     "L",
                     "0",
-                    "\u0000",
-                    "\uffff",
-                    "X",
+                    "t",
                     "X0",
                     "LX",
-                    "LXY",
-                    "LXYZ",
+                    "XYL",
+                    "XLYZ",
                     "VXY0",
     };
 
-    @Test
-    public void testIndexOf() {
+    @Parameters(name = "{index}: haystack {0} fromIndex {1} maxIndex {2} needle {3}")
+    public static Iterable<Object[]> data() {
+        ArrayList<Object[]> parameters = new ArrayList<>();
         for (String str : strings) {
             for (String sv : searchValues) {
-                char[] needle = sv.toCharArray();
-                for (int maxIndex : new int[]{str.length() - 1, str.length()}) {
-                    for (int fromIndex : new int[]{0, 15, 16, 17, 31, 32, 33, str.length() - 1, str.length()}) {
-                        doTestIndexOf(str, fromIndex, maxIndex, needle);
-                    }
+                addTests(parameters, str, sv);
+            }
+        }
+        addTests(parameters, searchValues[searchValues.length - 1], "\u0000");
+        addTests(parameters, searchValues[searchValues.length - 1], "\uffff");
+        String str = strings[1];
+        String sv = searchValues[0];
+        for (int maxIndex : new int[]{-1, 0, str.length() + 1}) {
+            for (int fromIndex : new int[]{-1, 0, str.length(), str.length() + 1}) {
+                parameters.add(new Object[]{str, fromIndex, maxIndex, sv});
+            }
+        }
+        return parameters;
+    }
+
+    private static void addTests(ArrayList<Object[]> parameters, String str, String sv) {
+        for (int maxIndex : new int[]{str.length() - 1, str.length()}) {
+            for (int fromIndex : new int[]{0, 15, 16, 17, 31, 32, 33, str.length() - 1, str.length()}) {
+                if (fromIndex < maxIndex) {
+                    parameters.add(new Object[]{str, fromIndex, maxIndex, sv});
                 }
             }
         }
     }
 
-    @Test
-    public void testIndexOfOutOfBounds() {
-        String str = strings[1];
-        String sv = searchValues[0];
-        char[] needle = sv.toCharArray();
-        for (int maxIndex : new int[]{-1, 0, str.length() + 1}) {
-            for (int fromIndex : new int[]{-1, 0, str.length(), str.length() + 1}) {
-                doTestIndexOf(str, fromIndex, maxIndex, needle);
-            }
-        }
+    private final String haystack;
+    private final int fromIndex;
+    private final int maxIndex;
+    private final String needle;
+
+    public ArrayUtilsTest(String haystack, int fromIndex, int maxIndex, String needle) {
+        this.haystack = haystack;
+        this.fromIndex = fromIndex;
+        this.maxIndex = maxIndex;
+        this.needle = needle;
     }
 
-    private void doTestIndexOf(String haystack, int fromIndex, int maxIndex, char... needle) {
-        test("indexOfString", haystack, fromIndex, maxIndex, needle);
-        test("indexOfCharArray", haystack.toCharArray(), fromIndex, maxIndex, needle);
+    @Test
+    public void testString() {
+        test("indexOfString", haystack, fromIndex, maxIndex, needle.toCharArray());
+    }
+
+    @Test
+    public void testCharArray() {
+        test("indexOfCharArray", haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray());
+    }
+
+    @Test
+    public void testByteArray() {
         test("indexOfByteArray", toByteArray(haystack), fromIndex, maxIndex, toByteArray(needle));
     }
 
@@ -102,14 +132,6 @@ public class ArrayUtilsTest extends GraalCompilerTest {
 
     public static int indexOfByteArray(byte[] haystack, int fromIndex, int maxIndex, byte... needle) {
         return ArrayUtils.indexOf(haystack, fromIndex, maxIndex, needle);
-    }
-
-    private static byte[] toByteArray(char[] arr) {
-        byte[] ret = new byte[arr.length];
-        for (int i = 0; i < arr.length; i++) {
-            ret[i] = (byte) arr[i];
-        }
-        return ret;
     }
 
     private static byte[] toByteArray(String s) {

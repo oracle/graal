@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.llvm;
 
 import org.graalvm.compiler.options.Option;
 import com.oracle.svm.core.option.HostedOptionKey;
+import org.graalvm.compiler.options.OptionType;
 
 public class LLVMOptions {
 
@@ -35,4 +36,6 @@ public class LLVMOptions {
     @Option(help = "Dump contents of the generated stackmap to the specified file")//
     public static final HostedOptionKey<String> DumpLLVMStackMap = new HostedOptionKey<>(null);
 
+    @Option(help = "How many batches per thread should be used for LLVM compilation. 0 means a single batch, -1 means all functions separately", type = OptionType.Expert)//
+    public static final HostedOptionKey<Integer> LLVMBatchesPerThread = new HostedOptionKey<>(1);
 }

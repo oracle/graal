@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -90,6 +91,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.EnvironmentAccess;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -1125,26 +1127,6 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Looks an additional language service up. By default it checks if the language itself is
-     * implementing the requested class and if so, it returns <code>this</code>.
-     * <p>
-     * In future this method can be made protected and overridable by language implementors to
-     * create more dynamic service system.
-     *
-     * @param <T> the type to request
-     * @param clazz
-     * @return
-     */
-    final /* protected */ <T> T lookup(Class<T> clazz) {
-        if (clazz.isInterface()) {
-            if (clazz.isInstance(this)) {
-                return clazz.cast(this);
-            }
-        }
-        return null;
-    }
-
-    /**
      * Find a meta-object of a value, if any. The meta-object represents a description of the
      * object, reveals it's kind and it's features. Some information that a meta-object might define
      * includes the base object's type, interface, class, methods, attributes, etc.
@@ -1913,13 +1895,7 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
             Objects.requireNonNull(language);
-            S result = AccessAPI.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
-            if (result != null) {
-                return result;
-            }
-            // Legacy behaviour - deprecate and remove
-            Env otherEnv = AccessAPI.engineAccess().getLanguageEnv(vmObject, language);
-            return otherEnv == null ? null : otherEnv.getSpi().lookup(type);
+            return AccessAPI.engineAccess().lookupService(vmObject, language, this.getSpi().languageInfo, type);
         }
 
         /**
@@ -2085,6 +2061,23 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns the path separator used to separate filenames in a path list. On UNIX the path
+         * separator is {@code ':'}. On Windows it's {@code ';'}.
+         *
+         * @return the path separator
+         * @since 19.1.0
+         */
+        @TruffleBoundary
+        public String getPathSeparator() {
+            checkDisposed();
+            try {
+                return fileSystemContext.fileSystem.getPathSeparator();
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+            }
+        }
+
+        /**
          * Registers additional services provided by the language. The registered services are made
          * available to users via
          * {@link #lookup(com.oracle.truffle.api.nodes.LanguageInfo, java.lang.Class)} query method.
@@ -2108,6 +2101,49 @@ public abstract class TruffleLanguage<C> {
                 throw new IllegalStateException("The registerService method can only be called during the execution of the Env.createContext method.");
             }
             languageServicesCollector.add(service);
+        }
+
+        /**
+         * Returns {@code true} if the creation of a sub-process is allowed in the current
+         * environment.
+         *
+         * @see #newProcessBuilder(java.lang.String...)
+         * @since 19.1.0
+         */
+        public boolean isCreateProcessAllowed() {
+            return AccessAPI.engineAccess().isCreateProcessAllowed(vmObject);
+        }
+
+        /**
+         * Creates a new process builder with the specified operating program and arguments.
+         *
+         * @param command the executable and its arguments
+         * @throws SecurityException when process creation is not allowed
+         * @since 19.1.0
+         */
+        @TruffleBoundary
+        public TruffleProcessBuilder newProcessBuilder(String... command) {
+            if (!isCreateProcessAllowed()) {
+                throw new TruffleSecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
+            }
+            List<String> cmd = new ArrayList<>(command.length);
+            Collections.addAll(cmd, command);
+            return AccessAPI.ioAccess().createProcessBuilder(vmObject, fileSystemContext.fileSystem, cmd);
+        }
+
+        /**
+         * Returns an unmodifiable map of the process environment. When the {@code Context} is
+         * configured with {@link EnvironmentAccess#INHERIT} it returns the {@link System#getenv()}
+         * and the environment variables configured on the {@code Context}. For the
+         * {@link EnvironmentAccess#NONE} only the environment variables configured on the
+         * {@code Context} are returned.
+         *
+         * @return the process environment as a map of variable names to values
+         * @since 19.1.0
+         */
+        @TruffleBoundary
+        public Map<String, String> getEnvironment() {
+            return AccessAPI.engineAccess().getProcessEnvironment(vmObject);
         }
 
         @SuppressWarnings("rawtypes")
@@ -2425,6 +2461,10 @@ public abstract class TruffleLanguage<C> {
             return API.interopSupport();
         }
 
+        static IOSupport ioAccess() {
+            return API.ioSupport();
+        }
+
         @Override
         protected LanguageSupport languageSupport() {
             return new LanguageImpl();
@@ -2648,11 +2688,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public <S> S lookup(TruffleLanguage<?> language, Class<S> type) {
-            return language.lookup(type);
-        }
-
-        @Override
         public Iterable<Scope> findLocalScopes(Env env, Node node, Frame frame) {
             return env.findLocalScopes(node, frame);
         }
@@ -2812,6 +2847,11 @@ public abstract class TruffleLanguage<C> {
         @Override
         public TruffleLogger getLogger(String id, String loggerName, Object loggers) {
             return TruffleLogger.getLogger(id, loggerName, (TruffleLogger.LoggerCache) loggers);
+        }
+
+        @Override
+        public SecurityException throwSecurityException(String message) {
+            throw new TruffleSecurityException(message);
         }
     }
 }

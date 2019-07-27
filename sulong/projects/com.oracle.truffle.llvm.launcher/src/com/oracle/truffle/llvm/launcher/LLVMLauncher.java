@@ -172,7 +172,6 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         System.out.println("Run LLVM bitcode files on the GraalVM's lli.\n");
         System.out.println("Mandatory arguments to long options are mandatory for short options too.\n");
         System.out.println("Options:");
-        printOption("--print-result",    "print the return value");
         printOption("-L <path>",         "set path where lli searches for libraries");
         printOption("--lib <libraries>", "add library (*.bc or precompiled library *.so/*.dylib)");
         printOption("--version",         "print the version and exit");
@@ -183,7 +182,6 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     protected void collectArguments(Set<String> args) {
         args.addAll(Arrays.asList(
                         "-L", "--lib",
-                        "--print-result",
                         "--version",
                         "--show-version"));
     }

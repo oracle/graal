@@ -30,7 +30,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.GHASH_PROCESS_BLOCKS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
@@ -45,6 +44,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
@@ -101,11 +101,13 @@ import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.JavaKind;
@@ -278,7 +280,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementBytecodeProvider) {
         Registration r;
-        if (Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             r = new Registration(plugins, Unsafe.class, replacementBytecodeProvider);
         } else {
             r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementBytecodeProvider);
@@ -403,7 +405,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        if (!Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
             final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", bytecodeProvider);
             utf16r.registerMethodSubstitution(StringUTF16Substitutions.class, "toBytes", char[].class, int.class, int.class);
             utf16r.registerMethodSubstitution(StringUTF16Substitutions.class, "getChars", byte[].class, int.class, int.class, char[].class, int.class);
@@ -428,8 +430,6 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(ThreadSubstitutions.class, "isInterrupted", Receiver.class, boolean.class);
     }
 
-    public static final String cbcEncryptName;
-    public static final String cbcDecryptName;
     public static final String aesEncryptName;
     public static final String aesDecryptName;
 
@@ -437,21 +437,30 @@ public class HotSpotGraphBuilderPlugins {
     public static final String constantPoolClass;
 
     static {
-        if (Java8OrEarlier) {
-            cbcEncryptName = "encrypt";
-            cbcDecryptName = "decrypt";
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             aesEncryptName = "encryptBlock";
             aesDecryptName = "decryptBlock";
             reflectionClass = "sun.reflect.Reflection";
             constantPoolClass = "sun.reflect.ConstantPool";
         } else {
-            cbcEncryptName = "implEncrypt";
-            cbcDecryptName = "implDecrypt";
             aesEncryptName = "implEncryptBlock";
             aesDecryptName = "implDecryptBlock";
             reflectionClass = "jdk.internal.reflect.Reflection";
             constantPoolClass = "jdk.internal.reflect.ConstantPool";
         }
+    }
+
+    public static boolean cbcUsesImplNames(GraalHotSpotVMConfig config) {
+        for (VMIntrinsicMethod intrinsic : config.getStore().getIntrinsics()) {
+            if ("com/sun/crypto/provider/CipherBlockChaining".equals(intrinsic.declaringClass)) {
+                if ("encrypt".equals(intrinsic.name)) {
+                    return false;
+                } else if ("implEncrypt".equals(intrinsic.name)) {
+                    return true;
+                }
+            }
+        }
+        throw GraalError.shouldNotReachHere();
     }
 
     private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
@@ -463,9 +472,15 @@ public class HotSpotGraphBuilderPlugins {
             String arch = config.osArch;
             String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", bytecodeProvider);
+
+            boolean implNames = cbcUsesImplNames(config);
+            String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
+            String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
+
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcEncryptName, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, int.class, byte[].class,
                             int.class);
+
             r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", bytecodeProvider);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
             r.registerMethodSubstitution(AESCryptSubstitutions.class, aesDecryptName, aesDecryptName + decryptSuffix, Receiver.class, byte[].class, int.class, byte[].class, int.class);
@@ -476,7 +491,7 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, BigInteger.class, bytecodeProvider);
         if (config.useMultiplyToLenIntrinsic()) {
             assert config.multiplyToLen != 0L;
-            if (Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 r.registerMethodSubstitution(BigIntegerSubstitutions.class, "multiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class, int.class,
                                 int[].class);
             } else {
@@ -503,7 +518,7 @@ public class HotSpotGraphBuilderPlugins {
         boolean useSha256 = config.useSHA256Intrinsics();
         boolean useSha512 = config.useSHA512Intrinsics();
 
-        if (!Java8OrEarlier && (useSha1 || useSha256 || useSha512)) {
+        if (JavaVersionUtil.JAVA_SPEC > 8 && (useSha1 || useSha256 || useSha512)) {
             Registration r = new Registration(plugins, "sun.security.provider.DigestBase", bytecodeProvider);
             r.registerMethodSubstitution(DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
         }
@@ -602,7 +617,7 @@ public class HotSpotGraphBuilderPlugins {
         if (config.useCRC32Intrinsics) {
             Registration r = new Registration(plugins, CRC32.class, bytecodeProvider);
             r.registerMethodSubstitution(CRC32Substitutions.class, "update", int.class, int.class);
-            if (Java8OrEarlier) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer", int.class, long.class, int.class, int.class);
             } else {

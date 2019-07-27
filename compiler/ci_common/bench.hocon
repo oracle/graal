@@ -15,6 +15,7 @@ bench-jvmci : {
   mx-specjbb2005: ${bench-jvmci.mx-benchmark} ["specjbb2005"]
   mx-specjbb2015: ${bench-jvmci.mx-benchmark} ["specjbb2015"]
   mx-renaissance: ${bench-jvmci.mx-benchmark} ["renaissance:*"]
+  mx-renaissance-legacy: ${bench-jvmci.mx-benchmark} ["renaissance-legacy:*"]
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
   mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:*"]
@@ -37,6 +38,14 @@ large-heap: {
   environment : {
     XMS: ${LARGE_HEAP_SIZE}
     XMX: ${LARGE_HEAP_SIZE}
+  }
+}
+
+specjbb-large-heap: {
+  environment : {
+    XMS: ${LARGE_HEAP_SIZE}
+    XMX: ${LARGE_HEAP_SIZE}
+    XMN: ${LARGE_YOUNG_GEN_SIZE}
   }
 }
 
@@ -93,8 +102,8 @@ bench-scala-dacapo-move-profiling: ${bench-common} ${default-heap} ${scala-dacap
 
 # SPECjbb2005-related targets
 
-bench-specjbb2005: ${bench-common} ${large-heap} ${specjbb-bench-notifications} {
-  targets: [bench, weekly]
+bench-specjbb2005: ${bench-common} ${specjbb-large-heap} ${specjbb-bench-notifications} {
+  targets: [bench, daily]
   downloads: {
     SPECJBB2005: { name: specjbb2005, version: "1.07" }
   }
@@ -135,8 +144,8 @@ bench-specjvm2008-OneVM: ${bench-specjvm2008} ${specjvm-bench-notifications} {
 
 # SPECjbb2015-related targets
 
-bench-specjbb2015: ${bench-common} ${large-heap} ${specjbb-bench-notifications} {
-  targets: [bench, weekly]
+bench-specjbb2015: ${bench-common} ${specjbb-large-heap} ${specjbb-bench-notifications} {
+  targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments}
   ]
@@ -171,8 +180,16 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
   run: [
     ${bench-jvmci.mx-renaissance} ${bench-arguments}
   ]
+  timelimit: "3:00:00"
+}
+
+bench-renaissance-legacy: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  targets: [bench, post-merge]
+  run: [
+    ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments}
+  ]
   downloads: {
-    RENAISSANCE: { name: renaissance, version: "0.1" }
+    RENAISSANCE_LEGACY: { name: renaissance, version: "0.1" }
   }
   timelimit: "2:45:00"
 }

@@ -124,7 +124,7 @@ public final class NFIContextExtension implements ContextExtension {
 
         try {
             String signature = getNativeSignature(descriptor.getType(), 0);
-            TruffleObject createNativeWrapper = getNativeFunction(descriptor.getContext(), "@createNativeWrapper", String.format("(env, %s):object", signature));
+            TruffleObject createNativeWrapper = getNativeFunction(descriptor.getContext(), "createNativeWrapper", String.format("(env, %s):object", signature));
             try {
                 wrapper = (TruffleObject) INTEROP.execute(createNativeWrapper, new LLVMNativeWrapper(descriptor));
             } catch (InteropException ex) {
@@ -246,13 +246,12 @@ public final class NFIContextExtension implements ContextExtension {
 
     private static TruffleObject getNativeFunctionOrNull(TruffleObject library, String name) {
         CompilerAsserts.neverPartOfCompilation();
-        String demangledName = name.substring(1);
-        if (!INTEROP.isMemberReadable(library, demangledName)) {
+        if (!INTEROP.isMemberReadable(library, name)) {
             // try another library
             return null;
         }
         try {
-            return (TruffleObject) INTEROP.readMember(library, demangledName);
+            return (TruffleObject) INTEROP.readMember(library, name);
         } catch (UnknownIdentifierException ex) {
             return null;
         } catch (InteropException ex) {
@@ -326,15 +325,14 @@ public final class NFIContextExtension implements ContextExtension {
         CompilerAsserts.neverPartOfCompilation();
         addLibraries(context);
 
-        String realName = name.substring(1);
         MapCursor<ExternalLibrary, TruffleObject> cursor = libraryHandles.getEntries();
         while (cursor.advance()) {
-            TruffleObject symbol = getNativeDataObjectOrNull(cursor.getValue(), realName);
+            TruffleObject symbol = getNativeDataObjectOrNull(cursor.getValue(), name);
             if (symbol != null) {
                 return new NativeLookupResult(cursor.getKey(), symbol);
             }
         }
-        TruffleObject symbol = getNativeDataObjectOrNull(defaultLibraryHandle, realName);
+        TruffleObject symbol = getNativeDataObjectOrNull(defaultLibraryHandle, name);
         if (symbol != null) {
             assert isInitialized();
             return new NativeLookupResult(defaultLibrary, symbol);

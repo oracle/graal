@@ -1,23 +1,23 @@
 # overlay version
-overlay = a50c85084b41abadb16269dc0bf0e9c236eee6b8
+overlay = 24a9cd249544a2c8b61e225aa1f02c85db569fc4
 
 # oraclejdk* are released OracleJDK binaries
 # oraclejdk* are JDKs based on OracleJDK binaries
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  oraclejdk8:      {name : oraclejdk, version : "8u212-jvmci-19-b04", platformspecific: true}
-  openjdk8:        {name : openjdk,   version : "8u212-jvmci-19-b04", platformspecific: true}
-  oraclejdk8Debug: {name : oraclejdk, version : "8u212-jvmci-19-b04-fastdebug", platformspecific: true}
-  oraclejdk11:     {name : oraclejdk, version : "11.0.3+4", platformspecific: true}
-  openjdk11:       {name : openjdk,   version : "11.0.3+4", platformspecific: true}
+  oraclejdk8:      {name : oraclejdk, version : "8u221-jvmci-19.1-b01", platformspecific: true}
+  openjdk8:        {name : openjdk,   version : "8u222-jvmci-19.1-b01", platformspecific: true}
+  oraclejdk8Debug: {name : oraclejdk, version : "8u221-jvmci-19.1-b01-fastdebug", platformspecific: true}
+  oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
+  openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "HEAD"
+    mx: "c01eef6e31cd5655b1f0682c445f4ed50aa5c05e" # fix issue with obfuscated `TYPE` fields
   }
 }
 
@@ -95,6 +95,7 @@ linux-aarch64 : ${linux} {
 
 DEFAULT_HEAP_SIZE : "8G"
 LARGE_HEAP_SIZE : "31G"
+LARGE_YOUNG_GEN_SIZE : "27G"
 
 eclipse : {
   downloads : {
@@ -154,6 +155,7 @@ svm-common-linux-amd64: ${svm-common} ${linux-amd64} {
   packages: {
     make: ">=3.83"
     gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+    binutils: ">=2.30"
     ruby: ">=2.1.0"
     valgrind: ">=3.9.0"
   }
@@ -197,6 +199,6 @@ svm-common-windows: ${svm-common} ${windows-amd64} {
 
 svm-common-sulong: {
   packages: {
-    llvm: "==3.8"
+    llvm: "==6.0.1"
   }
 }

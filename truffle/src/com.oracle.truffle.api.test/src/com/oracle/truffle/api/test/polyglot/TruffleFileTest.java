@@ -40,7 +40,16 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -105,4 +114,90 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         file = languageEnv.getTruffleFile("/");
         Assert.assertNull(file.getName());
     }
+
+    @Test
+    public void testGetMimeType() throws IOException {
+        TruffleFile file = languageEnv.getTruffleFile("/folder/filename.duplicate");
+        String result = file.getMimeType();
+        assertNull(result);
+        assertEquals(1, BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).resetFindMimeTypeCalled());
+        assertEquals(1, BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).resetFindMimeTypeCalled());
+        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType(null);
+        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
+        result = file.getMimeType();
+        assertEquals("text/x-duplicate-mime", result);
+        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
+        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType(null);
+        result = file.getMimeType();
+        assertEquals("text/x-duplicate-mime", result);
+        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime");
+        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime");
+        result = file.getMimeType();
+        assertEquals("text/x-duplicate-mime", result);
+        BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).setMimeType("text/x-duplicate-mime-1");
+        BaseDetector.getInstance(DuplicateMimeTypeLanguage2.Detector.class).setMimeType("text/x-duplicate-mime-2");
+        result = file.getMimeType();
+        // Order is not deterministic can be either 'text/x-duplicate-mime-1' or
+        // 'text/x-duplicate-mime-2'
+        assertTrue("text/x-duplicate-mime-1".equals(result) || "text/x-duplicate-mime-2".equals(result));
+    }
+
+    public static class BaseDetector implements TruffleFile.FileTypeDetector {
+
+        private static Map<Class<? extends BaseDetector>, BaseDetector> INSTANCES = new HashMap<>();
+
+        private int findMimeTypeCalled;
+        private String mimeType;
+
+        protected BaseDetector() {
+            INSTANCES.put(getClass(), this);
+        }
+
+        int resetFindMimeTypeCalled() {
+            int res = findMimeTypeCalled;
+            findMimeTypeCalled = 0;
+            return res;
+        }
+
+        void setMimeType(String value) {
+            mimeType = value;
+        }
+
+        @Override
+        public String findMimeType(TruffleFile file) throws IOException {
+            String name = file.getName();
+            if (name != null && name.endsWith(".duplicate")) {
+                findMimeTypeCalled++;
+                return mimeType;
+            } else {
+                return null;
+            }
+        }
+
+        @Override
+        public Charset findEncoding(TruffleFile file) throws IOException {
+            return null;
+        }
+
+        @SuppressWarnings("unchecked")
+        static <T extends BaseDetector> T getInstance(Class<T> clazz) {
+            return (T) INSTANCES.get(clazz);
+        }
+    }
+
+    @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage1", name = "DuplicateMimeTypeLanguage1", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage1.Detector.class)
+    public static final class DuplicateMimeTypeLanguage1 extends ProxyLanguage {
+
+        public static final class Detector extends BaseDetector {
+        }
+    }
+
+    @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage2", name = "DuplicateMimeTypeLanguage2", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage2.Detector.class)
+    public static final class DuplicateMimeTypeLanguage2 extends ProxyLanguage {
+
+        public static final class Detector extends BaseDetector {
+        }
+
+    }
+
 }

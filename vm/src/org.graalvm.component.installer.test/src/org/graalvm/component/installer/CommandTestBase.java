@@ -41,6 +41,8 @@ import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
+import org.graalvm.component.installer.os.DefaultFileOperations;
+import org.graalvm.component.installer.os.WindowsFileOperations;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
@@ -59,6 +61,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     protected Path targetPath;
 
+    protected FileOperations fileOps;
     protected MockStorage storage;
     protected MockStorage catalogStorage;
     protected ComponentCollection registry;
@@ -76,6 +79,8 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     ComponentInfo info;
 
     public CommandTestBase() {
+        fileOps = SystemUtils.isWindows() ? new WindowsFileOperations() : new DefaultFileOperations();
+        fileOps.init(this);
     }
 
     protected void initRemoteComponent(String relativeJar, String u, String disp, String spec) throws IOException {
@@ -111,6 +116,11 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     protected ComponentIterable paramIterable;
 
     boolean verifyJars;
+
+    @Override
+    public FileOperations getFileOperations() {
+        return fileOps;
+    }
 
     @Override
     public ComponentIterable existingFiles() throws FailedOperationException {
@@ -235,7 +245,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
         targetPath = folder.newFolder("inst").toPath();
         storage = new MockStorage();
         catalogStorage = new MockStorage();
-
+        fileOps.setRootPath(targetPath);
     }
 
     @Override

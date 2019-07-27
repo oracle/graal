@@ -74,6 +74,11 @@ public class PinnedObjectImpl implements PinnedObject {
     @AutomaticFeature
     static class PinnedObjectFeature implements Feature {
         @Override
+        public boolean isInConfiguration(IsInConfigurationAccess access) {
+            return HeapOptions.UseCardRememberedSetHeap.getValue();
+        }
+
+        @Override
         public void afterRegistration(AfterRegistrationAccess access) {
             ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
         }

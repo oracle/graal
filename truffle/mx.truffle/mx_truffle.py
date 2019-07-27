@@ -449,11 +449,14 @@ def _tck(args):
     if len(tests) == 0:
         tests = ["com.oracle.truffle.tck.tests"]
     index = len(args_no_tests)
+    has_separator_arg = False
     for arg in reversed(args_no_tests):
         if arg.startswith("--"):
+            if arg == "--":
+                has_separator_arg = True
             break
         index = index - 1
-    unitTestOptions = args_no_tests[0:max(index-1, 0)]
+    unitTestOptions = args_no_tests[0:max(index - (1 if has_separator_arg else 0), 0)]
     jvmOptions = args_no_tests[index:len(args_no_tests)]
     if tckConfiguration == "default":
         unittest(unitTestOptions + ["--"] + jvmOptions + tests)

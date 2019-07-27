@@ -1328,10 +1328,18 @@ public class FlatNodeGenFactory {
         final Collection<SpecializationData> allSpecializations = node.computeUncachedSpecializations(reachableSpecializations);
         final List<SpecializationData> compatibleSpecializations = filterCompatibleSpecializations(allSpecializations, forType);
 
-        CodeExecutableElement method = new CodeExecutableElement(modifiers(), forType.getReturnType(), forType.getName());
+        CodeExecutableElement method = createExecuteMethod(forType);
         FrameState frameState = FrameState.load(this, forType, Integer.MAX_VALUE, NodeExecutionMode.UNCACHED, method);
-        frameState.addParametersTo(method, Integer.MAX_VALUE);
-        method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
+        if (forType.getMethod() == null) {
+            frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
+        } else {
+            renameOriginalParameters(forType, method, frameState);
+        }
+
+        boolean isExecutableInUncached = forType.getEvaluatedCount() != node.getExecutionCount();
+        if (!isExecutableInUncached) {
+            method.getAnnotationMirrors().add(new CodeAnnotationMirror(context.getDeclaredType(TruffleBoundary.class)));
+        }
 
         if (forType.getMethod() != null) {
             method.getModifiers().addAll(forType.getMethod().getModifiers());
@@ -1339,13 +1347,20 @@ public class FlatNodeGenFactory {
         }
 
         CodeTreeBuilder builder = method.createBuilder();
-
-        SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
-        FrameState originalFrameState = frameState.copy();
-        builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
-        if (group.hasFallthrough()) {
-            builder.tree(createThrowUnsupported(builder, originalFrameState));
+        if (isExecutableInUncached) {
+            builder.startThrow().startNew(context.getType(AssertionError.class));
+            builder.doubleQuote("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
+                            "Use an execute method that takes all arguments as parameters.");
+            builder.end().end();
+        } else {
+            SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
+            FrameState originalFrameState = frameState.copy();
+            builder.tree(visitSpecializationGroup(builder, null, group, forType, frameState, allSpecializations));
+            if (group.hasFallthrough()) {
+                builder.tree(createThrowUnsupported(builder, originalFrameState));
+            }
         }
+
         return method;
     }
 
@@ -1643,7 +1658,7 @@ public class FlatNodeGenFactory {
         for (NodeExecutionData execution : node.getChildExecutions()) {
             NodeChildData child = execution.getChild();
             LocalVariable var = frameState.getValue(execution);
-            if (child != null) {
+            if (child != null && !frameState.getMode().isUncached()) {
                 builder.string(accessNodeField(execution));
             } else {
                 builder.string("null");

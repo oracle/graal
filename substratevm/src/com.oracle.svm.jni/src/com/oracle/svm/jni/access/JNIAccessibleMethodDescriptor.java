@@ -104,6 +104,21 @@ public final class JNIAccessibleMethodDescriptor {
         return false;
     }
 
+    boolean matchesIgnoreReturnType(Method method) {
+        if (!name.equals(method.getName())) {
+            return false;
+        }
+        int position = 1; // skip '('
+        for (Class<?> parameterType : method.getParameterTypes()) {
+            String paramInternal = MetaUtil.toInternalName(parameterType.getName());
+            if (!signature.startsWith(paramInternal, position)) {
+                return false;
+            }
+            position += paramInternal.length();
+        }
+        return signature.startsWith(")", position);
+    }
+
     @Override
     public int hashCode() {
         return name.hashCode() * 31 + signature.hashCode();

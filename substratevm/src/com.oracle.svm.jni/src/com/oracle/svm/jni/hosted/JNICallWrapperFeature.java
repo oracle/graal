@@ -27,11 +27,11 @@ package com.oracle.svm.jni.hosted;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 import com.oracle.svm.jni.JNIThreadLocalEnvironmentFeature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNIAccessibleMethod;

@@ -113,10 +113,6 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             this.provider = provider;
         }
 
-        public RootCallTarget generateCallTarget(FunctionType type) {
-            return generateTarget(type);
-        }
-
         public RootCallTarget cachedCallTarget(FunctionType type) {
             if (exists(type)) {
                 return get(type);
@@ -170,7 +166,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
             TruffleObject wrapper = null;
             LLVMNativePointer pointer = null;
-            NFIContextExtension nfiContextExtension = descriptor.context.getContextExtensionOrNull(NFIContextExtension.class);
+            NFIContextExtension nfiContextExtension = descriptor.context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
             if (nfiContextExtension != null) {
                 wrapper = nfiContextExtension.createNativeWrapper(descriptor);
                 if (wrapper != null) {
@@ -230,8 +226,8 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             // we already did the initial function resolution after parsing but further native
             // libraries could have been loaded in the meantime
             LLVMContext context = descriptor.getContext();
-            NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-            LLVMIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
+            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+            LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
             assert intrinsicProvider == null || !intrinsicProvider.isIntrinsified(descriptor.getName());
             if (nfiContextExtension != null) {
                 NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
@@ -422,10 +418,6 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
         return Long.compare(functionId, o.functionId);
-    }
-
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMFunctionDescriptor;
     }
 
     public LLVMContext getContext() {

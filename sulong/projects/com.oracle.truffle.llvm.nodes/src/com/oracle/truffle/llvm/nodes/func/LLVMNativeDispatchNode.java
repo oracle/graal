@@ -70,14 +70,14 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     @TruffleBoundary
     protected TruffleObject identityFunction() {
         LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-        NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+        NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtension(NFIContextExtension.class);
         String signature;
         try {
             signature = nfiContextExtension.getNativeSignature(type, LLVMCallNode.USER_ARGUMENT_OFFSET);
         } catch (UnsupportedNativeTypeException e) {
             throw new IllegalStateException(e);
         }
-        return nfiContextExtension.getNativeFunction(context, "@identity", String.format("(POINTER):%s", signature));
+        return nfiContextExtension.getNativeFunction(context, "identity", String.format("(POINTER):%s", signature));
     }
 
     protected Object dispatchIdentity(long pointer) {

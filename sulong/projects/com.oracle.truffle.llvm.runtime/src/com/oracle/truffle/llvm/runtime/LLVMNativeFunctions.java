@@ -53,7 +53,7 @@ public final class LLVMNativeFunctions {
     }
 
     public NullPointerNode createNullPointerNode(LLVMContext context) {
-        TruffleObject nullPointerFunction = getNativeFunction(context, "@getNullPointer", "():POINTER");
+        TruffleObject nullPointerFunction = getNativeFunction(context, "getNullPointer", "():POINTER");
         return new NullPointerNode(nullPointerFunction);
     }
 

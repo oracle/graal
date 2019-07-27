@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,6 +41,17 @@ public final class LLVMIdentifier {
     private LLVMIdentifier() {
     }
 
+    /*
+     * Object parameter to avoid warnings about string comparisons.
+     */
+    private static Object asObject(String value) {
+        return value;
+    }
+
+    public static boolean isUnknown(Object name) {
+        return name == asObject(UNKNOWN);
+    }
+
     public static String toGlobalIdentifier(String name) {
         if (GLOBAL_VARNAME_PATTERN.matcher(name).matches()) {
             // already a global identifier
@@ -59,16 +70,8 @@ public final class LLVMIdentifier {
         }
     }
 
-    public static String toExplicitBlockName(String name) {
-        return toLocalIdentifier(name);
-    }
-
     public static String toImplicitBlockName(int label) {
         return String.format("%d", label);
-    }
-
-    public static String toTypeIdentifier(String name) {
-        return toLocalIdentifier(name);
     }
 
     private static final Pattern UNESCAPED_VARNAME_PATTERN = Pattern.compile("[\\w\\d\\u0024_\\u002e]+");

@@ -31,6 +31,9 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} {
     packages: {
         llvm: "==3.8"
     }
+    environment: {
+        NO_FEMBED_BITCODE: "true"
+    }
 }
 
 sulong-gateTest40-linux: ${sulong-gateTest-linux} {
@@ -102,6 +105,7 @@ sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} ${sulong-weekly-
     run: [
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacocout, html]
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", --exclude-generated]
+        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", coverage-upload]
     ]
     targets: [weekly]
     timelimit: "1:00:00"

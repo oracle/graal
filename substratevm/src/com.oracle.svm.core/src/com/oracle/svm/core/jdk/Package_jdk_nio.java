@@ -36,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 public class Package_jdk_nio implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "com.sun.nio." + annotation.className();
         } else {
             return "jdk.nio." + annotation.className();

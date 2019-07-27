@@ -138,11 +138,11 @@ public final class ComponentRegistry implements ComponentCollection {
         String lcid = id.toLowerCase(Locale.ENGLISH);
         String end = "." + lcid; // NOI18N
         for (String s : getComponentIDs()) {
-            String lcs = s.toLowerCase();
+            String lcs = s.toLowerCase(Locale.ENGLISH);
             if (lcs.equals(lcid)) {
                 return s;
             }
-            if (lcs.toLowerCase().endsWith(end)) {
+            if (lcs.endsWith(end)) {
                 if (candidate != null) {
                     throw env.failure("COMPONENT_AmbiguousIdFound", null, candidate, s);
                 }

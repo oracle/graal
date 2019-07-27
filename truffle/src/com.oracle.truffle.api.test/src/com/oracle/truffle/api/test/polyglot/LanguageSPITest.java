@@ -112,10 +112,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
+import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService1;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService2;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService3;
-import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService4;
-import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 public class LanguageSPITest {
 
@@ -1602,7 +1602,19 @@ public class LanguageSPITest {
         assertNull(scopes[2].values.get("foo"));
         ValueAssert.assertValue(bindings, ValueAssert.Trait.MEMBERS);
 
+        // test it does not insert early before already existing member
+        scopes[0].insertable = true;
+        ValueAssert.assertFails(() -> bindings.putMember("foo", "baz"), UnsupportedOperationException.class);
+        scopes[1].modifiable = true;
+        // does not insert in 1 but modifies foo in 2
+        bindings.putMember("foo", "baz");
+        assertNull(scopes[0].values.get("foo"));
+        assertEquals("baz", scopes[1].values.get("foo"));
+        assertEquals("baz", bindings.getMember("foo").asString());
+
         // test check for existing keys for remove
+        scopes[1].values.clear();
+        scopes[1].values.put("foo", "bar");
         scopes[2].removable = true;
         scopes[2].values.put("foo", "baz");
         scopes[2].values.put("bar", "baz");
@@ -1823,31 +1835,13 @@ public class LanguageSPITest {
 
     @Test
     public void testLookup() {
-        // Not loaded language
-        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
-            context.initialize(ProxyLanguage.ID);
-            context.enter();
-            assertFalse(lookupLanguage(LanguageSPITestLanguageService.class));
-            context.leave();
-        }
-        // Loaded language
-        try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
-            context.initialize(ProxyLanguage.ID);
-            context.initialize(SERVICE_LANGUAGE);
-            context.enter();
-            try {
-                assertTrue(lookupLanguage(LanguageSPITestLanguageService.class));
-            } finally {
-                context.leave();
-            }
-        }
         // Registered service
         try (Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build()) {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             try {
+                assertTrue(lookupLanguage(LanguageSPITestLanguageService1.class));
                 assertTrue(lookupLanguage(LanguageSPITestLanguageService2.class));
-                assertTrue(lookupLanguage(LanguageSPITestLanguageService3.class));
             } finally {
                 context.leave();
             }
@@ -1858,7 +1852,7 @@ public class LanguageSPITest {
             context.initialize(ProxyLanguage.ID);
             context.enter();
             try {
-                assertFalse(lookupLanguage(LanguageSPITestLanguageService4.class));
+                assertFalse(lookupLanguage(LanguageSPITestLanguageService3.class));
                 assertFalse(isLanguageLoaded(SERVICE_LANGUAGE));
             } finally {
                 context.leave();
@@ -1904,7 +1898,7 @@ public class LanguageSPITest {
         ProxyLanguage registerServiceLanguage = new ProxyLanguage() {
             @Override
             protected ProxyLanguage.LanguageContext createContext(Env env) {
-                env.registerService(new LanguageSPITestLanguageService2() {
+                env.registerService(new LanguageSPITestLanguageService1() {
                 });
                 return super.createContext(env);
             }
@@ -1912,7 +1906,7 @@ public class LanguageSPITest {
             @Override
             protected void initializeContext(ProxyLanguage.LanguageContext context) throws Exception {
                 try {
-                    context.env.registerService(new LanguageSPITestLanguageService3() {
+                    context.env.registerService(new LanguageSPITestLanguageService2() {
                     });
                     fail("Illegal state exception should be thrown when calling Env.registerService outside createContext");
                 } catch (IllegalStateException e) {
@@ -1924,7 +1918,7 @@ public class LanguageSPITest {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 try {
-                    getContextReference().get().env.registerService(new LanguageSPITestLanguageService4() {
+                    getContextReference().get().env.registerService(new LanguageSPITestLanguageService3() {
                     });
                     fail("Illegal state exception should be thrown when calling Env.registerService outside createContext");
                 } catch (IllegalStateException e) {
@@ -2000,14 +1994,14 @@ public class LanguageSPITest {
     }
 
     @TruffleLanguage.Registration(id = SERVICE_LANGUAGE, name = SERVICE_LANGUAGE, version = "1.0", contextPolicy = ContextPolicy.SHARED, services = {
-                    LanguageSPITestLanguageService2.class, LanguageSPITestLanguageService3.class})
-    public static class ServiceTestLanguage extends TruffleLanguage<Env> implements LanguageSPITestLanguageService {
+                    LanguageSPITestLanguageService1.class, LanguageSPITestLanguageService2.class})
+    public static class ServiceTestLanguage extends TruffleLanguage<Env> {
 
         @Override
         protected Env createContext(Env env) {
-            env.registerService(new LanguageSPITestLanguageService2() {
+            env.registerService(new LanguageSPITestLanguageService1() {
             });
-            env.registerService(new LanguageSPITestLanguageService3() {
+            env.registerService(new LanguageSPITestLanguageService2() {
             });
             return env;
         }
@@ -2017,18 +2011,14 @@ public class LanguageSPITest {
             return false;
         }
 
+        interface LanguageSPITestLanguageService1 {
+        }
+
         interface LanguageSPITestLanguageService2 {
         }
 
         interface LanguageSPITestLanguageService3 {
         }
 
-        interface LanguageSPITestLanguageService4 {
-        }
-
     }
-
-    interface LanguageSPITestLanguageService {
-    }
-
 }

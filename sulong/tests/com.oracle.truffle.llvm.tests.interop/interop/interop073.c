@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,8 +32,8 @@
 void *global;
 
 int argTest(int a, int b, int c, int d) {
-	return polyglot_get_arg(2);
+	return polyglot_as_i32(polyglot_get_arg(2)) + c;
 }
 int main() {
-  return argTest(1, 2, 42, 4);
+  return argTest(1, 2, 21, 4);
 }

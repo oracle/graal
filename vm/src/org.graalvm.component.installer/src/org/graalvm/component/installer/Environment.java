@@ -64,6 +64,7 @@ public final class Environment implements Feedback, CommandInput {
     private boolean autoYesEnabled;
     private boolean nonInteractive;
     private Path graalHome;
+    private FileOperations fileOperations;
 
     Environment(String commandName, List<String> parameters, Map<String, String> options) {
         this(commandName, (String) null, parameters, options);
@@ -496,5 +497,23 @@ public final class Environment implements Feedback, CommandInput {
     @Override
     public Path getLocalCache(URL location) {
         return fileMap.get(location);
+    }
+
+    @Override
+    public FileOperations getFileOperations() {
+        return fileOperations;
+    }
+
+    public void setFileOperations(FileOperations fileOperations) {
+        this.fileOperations = fileOperations;
+    }
+
+    public void close() {
+        if (out != null) {
+            out.flush();
+        }
+        if (err != null) {
+            err.flush();
+        }
     }
 }

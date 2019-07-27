@@ -2,6 +2,22 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 19.1.0
+* `@GenerateUncached` is now inherited by subclasses.
+* `NodeFactory` now supports `getUncachedInstance` that returns the uncached singleton.  
+* Introduced Truffle process sandboxing. Added a [TruffleLanguage.Env.newProcessBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#newProcessBuilder-java.lang.String...-) method creating a new [TruffleProcessBuilder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/io/TruffleProcessBuilder.html) to configure and start a new sub-process.
+* Added support for reading environment variables, use [TruffleLanguage.Env.getEnvironment](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getEnvironment--) to obtain process environment variables.
+* `NodeFactory` now supports `getUncachedInstance` that returns the uncached singleton. 
+* `@GenerateUncached` can now be used in combination with `@NodeChild` if execute signatures for all arguments are present.
+* Removed deprecated automatic registration of the language class as a service.
+* The [LanguageProvider](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/LanguageProvider.html#createIdentityFunctionSnippet-org.graalvm.polyglot.Context-) can override the default verfication of the TCK `IdentityFunctionTest`.
+* Removed deprecated and misspelled method `TruffleStackTrace#getStacktrace`.
+* Removed deprecated methods`TruffleStackTraceElement#getStackTrace` and `TruffleStackTraceElement#fillIn` (use methods of `TruffleStackTrace` instead).
+* `SlowPathException#fillInStackTrace` is now `final`.
+* Added an ability to read a [path separator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPathSeparator--) used to separate filenames in a path list.
+* `@TruffleBoundary` methods that throw but are not annotated with `@TruffleBoundary(transferToInterpreterOnException=false)` will now transfer to the interpreter only once per `CallTarget` (compilation root).
+* Added [TruffleFile.setAttribute](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#setAttribute-com.oracle.truffle.api.TruffleFile.AttributeDescriptor-T-java.nio.file.LinkOption...-) to allow languages to set file attributes.
+
 ## Version 19.0.0
 * Renamed version 1.0.0 to 19.0.0
 

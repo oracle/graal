@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java11OrEarlier;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 
 import java.util.Arrays;
 
@@ -59,8 +57,10 @@ import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.UnsafePutPl
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.BitCountNode;
+import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
@@ -70,7 +70,8 @@ import sun.misc.Unsafe;
 
 public class AMD64GraphBuilderPlugins {
 
-    public static void register(Plugins plugins, BytecodeProvider replacementsBytecodeProvider, AMD64 arch, boolean explicitUnsafeNullChecks, boolean emitJDK9StringSubstitutions) {
+    public static void register(Plugins plugins, BytecodeProvider replacementsBytecodeProvider, AMD64 arch, boolean explicitUnsafeNullChecks, boolean emitJDK9StringSubstitutions,
+                    boolean useFMAIntrinsics) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
@@ -86,14 +87,14 @@ public class AMD64GraphBuilderPlugins {
                     registerStringLatin1Plugins(invocationPlugins, replacementsBytecodeProvider);
                     registerStringUTF16Plugins(invocationPlugins, replacementsBytecodeProvider);
                 }
-                registerMathPlugins(invocationPlugins, arch, replacementsBytecodeProvider);
+                registerMathPlugins(invocationPlugins, useFMAIntrinsics, arch, replacementsBytecodeProvider);
                 registerArraysEqualsPlugins(invocationPlugins, replacementsBytecodeProvider);
             }
         });
     }
 
     private static void registerThreadPlugins(InvocationPlugins plugins, AMD64 arch) {
-        if (!Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
             // Pause instruction introduced with SSE2
             if (arch.getFeatures().contains(AMD64.CPUFeature.SSE2)) {
                 Registration r = new Registration(plugins, Thread.class);
@@ -133,6 +134,7 @@ public class AMD64GraphBuilderPlugins {
         if (arch.getFeatures().contains(AMD64.CPUFeature.BMI1) && arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
             r.setAllowOverwrite(true);
             r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
+
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ValueNode folded = AMD64CountTrailingZerosNode.tryFold(value);
@@ -155,9 +157,10 @@ public class AMD64GraphBuilderPlugins {
                 }
             });
         }
+
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, AMD64 arch, BytecodeProvider bytecodeProvider) {
+    private static void registerMathPlugins(InvocationPlugins plugins, boolean useFMAIntrinsics, AMD64 arch, BytecodeProvider bytecodeProvider) {
         Registration r = new Registration(plugins, Math.class, bytecodeProvider);
         registerUnaryMath(r, "log", LOG);
         registerUnaryMath(r, "log10", LOG10);
@@ -172,6 +175,45 @@ public class AMD64GraphBuilderPlugins {
             registerRound(r, "ceil", RoundingMode.UP);
             registerRound(r, "floor", RoundingMode.DOWN);
         }
+
+        if (useFMAIntrinsics && JavaVersionUtil.JAVA_SPEC > 8 && arch.getFeatures().contains(CPUFeature.FMA)) {
+            registerFMA(r);
+        }
+    }
+
+    private static void registerFMA(Registration r) {
+        r.register3("fma",
+                        Double.TYPE,
+                        Double.TYPE,
+                        Double.TYPE,
+                        new InvocationPlugin() {
+                            @Override
+                            public boolean apply(GraphBuilderContext b,
+                                            ResolvedJavaMethod targetMethod,
+                                            Receiver receiver,
+                                            ValueNode na,
+                                            ValueNode nb,
+                                            ValueNode nc) {
+                                b.push(JavaKind.Double, b.append(new FusedMultiplyAddNode(na, nb, nc)));
+                                return true;
+                            }
+                        });
+        r.register3("fma",
+                        Float.TYPE,
+                        Float.TYPE,
+                        Float.TYPE,
+                        new InvocationPlugin() {
+                            @Override
+                            public boolean apply(GraphBuilderContext b,
+                                            ResolvedJavaMethod targetMethod,
+                                            Receiver receiver,
+                                            ValueNode na,
+                                            ValueNode nb,
+                                            ValueNode nc) {
+                                b.push(JavaKind.Float, b.append(new FusedMultiplyAddNode(na, nb, nc)));
+                                return true;
+                            }
+                        });
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
@@ -205,7 +247,7 @@ public class AMD64GraphBuilderPlugins {
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
-        if (Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             Registration r;
             r = new Registration(plugins, String.class, replacementsBytecodeProvider);
             r.setAllowOverwrite(true);
@@ -241,9 +283,10 @@ public class AMD64GraphBuilderPlugins {
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider, boolean explicitUnsafeNullChecks) {
         registerUnsafePlugins(new Registration(plugins, Unsafe.class), explicitUnsafeNullChecks, new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}, true);
-        if (!Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
             registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider), explicitUnsafeNullChecks,
-                            new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object}, Java11OrEarlier);
+                            new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object},
+                            JavaVersionUtil.JAVA_SPEC <= 11);
         }
     }
 

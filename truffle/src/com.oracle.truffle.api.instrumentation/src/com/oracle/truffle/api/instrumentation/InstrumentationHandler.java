@@ -78,6 +78,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode.EventChainNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -957,9 +958,6 @@ final class InstrumentationHandler {
         try {
             if (node instanceof InstrumentableNode) {
                 wrapper = ((InstrumentableNode) node).createWrapper(probe);
-                if (wrapper == null) {
-                    throw new IllegalStateException("No wrapper returned for " + node + " of class " + node.getClass().getName());
-                }
             } else {
                 Class<?> factory = null;
                 Class<?> currentClass = node.getClass();
@@ -990,6 +988,17 @@ final class InstrumentationHandler {
             throw new IllegalStateException("Failed to create wrapper of " + node, e);
         }
 
+        final Node wrapperNode = getWrapperNodeChecked(wrapper, node, parent);
+
+        node.replace(wrapperNode, "Insert instrumentation wrapper node.");
+
+        assert probe.getContext().validEventContext();
+    }
+
+    private static Node getWrapperNodeChecked(Object wrapper, Node node, Node parent) {
+        if (wrapper == null) {
+            throw new IllegalStateException("No wrapper returned for " + node + " of class " + node.getClass().getName());
+        }
         if (!(wrapper instanceof Node)) {
             throw new IllegalStateException(String.format("Implementation of %s must be a subclass of %s.",
                             wrapper.getClass().getName(), Node.class.getSimpleName()));
@@ -1008,10 +1017,7 @@ final class InstrumentationHandler {
             throw new IllegalStateException(
                             String.format("WrapperNode implementation %s cannot be safely replaced in parent node class %s.", wrapperNode.getClass().getName(), parent.getClass().getName()));
         }
-
-        node.replace(wrapperNode, "Insert instrumentation wrapper node.");
-
-        assert probe.getContext().validEventContext();
+        return wrapperNode;
     }
 
     private <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(AbstractInstrumenter instrumenter, SourceSectionFilter filter, SourceSectionFilter inputFilter, T factory) {
@@ -1301,22 +1307,24 @@ final class InstrumentationHandler {
             SourceSection previousParentSourceSection = null;
             if (instrumentable) {
                 computeRootBits(sourceSection);
-                Node oldNode = node;
-                node = materializeSyntaxNodes(node, sourceSection);
-                if (node != oldNode && !visitingOldNodes) {
-                    /*
-                     * We also need to traverse all old children on materialization. This is
-                     * necessary if the old node is still currently executing and does not yet see
-                     * the new node. Unfortunately we don't know reliably whether we are currently
-                     * executing that is why we always need to instrument the old node as well. This
-                     * is especially problematic for long or infinite loops in combination with
-                     * cancel events.
-                     */
-                    visitingOldNodes = true;
-                    try {
-                        NodeUtil.forEachChild(oldNode, this);
-                    } finally {
-                        visitingOldNodes = false;
+                if (!visitingOldNodes) {
+                    Node oldNode = node;
+                    node = materializeSyntaxNodes(node, sourceSection);
+                    if (node != oldNode) {
+                        /*
+                         * We also need to traverse all old children on materialization. This is
+                         * necessary if the old node is still currently executing and does not yet
+                         * see the new node. Unfortunately we don't know reliably whether we are
+                         * currently executing that is why we always need to instrument the old node
+                         * as well. This is especially problematic for long or infinite loops in
+                         * combination with cancel events.
+                         */
+                        visitingOldNodes = true;
+                        try {
+                            NodeUtil.forEachChild(oldNode, this);
+                        } finally {
+                            visitingOldNodes = false;
+                        }
                     }
                 }
                 visitInstrumentable(this.savedParent, this.savedParentSourceSection, node, sourceSection);
@@ -1355,7 +1363,17 @@ final class InstrumentationHandler {
                         throw new IllegalStateException(String.format("The source section of the materialized syntax node must match the source section of the original node. %s != %s.", sourceSection,
                                         newSourceSection));
                     }
-                    return ((Node) currentNode).replace((Node) materializedNode);
+                    Node currentParent = ((Node) currentNode).getParent();
+                    // The current parent is a wrapper. We need to replace the wrapper.
+                    if (currentParent instanceof WrapperNode && !NodeUtil.isReplacementSafe(currentParent, instrumentableNode, (Node) materializedNode)) {
+                        ProbeNode probe = ((WrapperNode) currentParent).getProbeNode();
+                        WrapperNode wrapper = materializedNode.createWrapper(probe);
+                        final Node wrapperNode = getWrapperNodeChecked(wrapper, (Node) materializedNode, currentParent.getParent());
+                        currentParent.replace(wrapperNode, "Insert instrumentation wrapper node.");
+                        return (Node) materializedNode;
+                    } else {
+                        return ((Node) currentNode).replace((Node) materializedNode);
+                    }
                 }
             }
             return instrumentableNode;

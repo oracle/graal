@@ -96,4 +96,6 @@ public interface CommandInput {
         String s = optValue(option);
         return s == null ? defV : s;
     }
+
+    FileOperations getFileOperations();
 }

@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionDecoder;
@@ -38,8 +39,8 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
-import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -51,6 +52,7 @@ public class DeoptimizationRuntime {
 
     /** Foreign call: {@link #DEOPTIMIZE}. */
     @SubstrateForeignCallTarget
+    @NeverInline("Access of caller frame")
     private static void deoptimize(long actionAndReason, SpeculationReason speculation) {
         /*
          * In cases where we doeptimize because of a StackOverflowError, we do not immediately want
@@ -64,7 +66,8 @@ public class DeoptimizationRuntime {
             DeoptimizationAction action = Deoptimizer.decodeDeoptAction(actionAndReason);
 
             if (Deoptimizer.Options.TraceDeoptimization.getValue()) {
-                traceDeoptimization(actionAndReason, speculation, action, sp);
+                CodePointer ip = KnownIntrinsics.readReturnAddress();
+                traceDeoptimization(actionAndReason, speculation, action, sp, ip);
             }
 
             if (action.doesInvalidateCompilation()) {
@@ -82,10 +85,9 @@ public class DeoptimizationRuntime {
         }
     }
 
-    private static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp) {
+    private static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp, CodePointer ip) {
         Log log = Log.log().string("[Deoptimization initiated").newline();
 
-        CodePointer ip = KnownIntrinsics.readReturnAddress();
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);
         if (installedCode != null) {
             log.string("    name: ").string(installedCode.getName()).newline();

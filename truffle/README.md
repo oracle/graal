@@ -19,7 +19,7 @@ Software of the Johannes Kepler University Linz.
 
 Information on how to get starting building your language can be found in the Truffle language implementation [tutorial](./docs/LanguageTutorial.md).
 The reference API documentation is available as part of the [Truffle javadoc](http://graalvm.org/truffle/javadoc/).
-Truffle comes prebuilt with Graal and several language implementations as as part of [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/).
+Truffle comes prebuilt with Graal and several language implementations as as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 
 The Truffle bits are uploaded to Maven central. You can use them from your
 `pom.xml` file as:

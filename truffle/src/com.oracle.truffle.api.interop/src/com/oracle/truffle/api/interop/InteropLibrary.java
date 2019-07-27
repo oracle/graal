@@ -40,14 +40,8 @@
  */
 package com.oracle.truffle.api.interop;
 
-import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
-import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
-import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
-import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
-
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -57,6 +51,13 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+
+import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
+import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
+import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
+import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
@@ -523,8 +524,9 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given member is {@link #readMember(Object, String) readable}.
      * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
-     * <code>true</code> as well. Invoking this message does not cause any observable side-effects.
-     * Returns <code>false</code> by default.
+     * <code>true</code> as well and {@link #isMemberInsertable(Object, String)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
      *
      * @see #readMember(Object, String)
      * @since 19.0
@@ -555,9 +557,9 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given member is existing and
      * {@link #writeMember(Object, String, Object) writable}. This method may only return
-     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well. Invoking
-     * this message does not cause any observable side-effects. Returns <code>false</code> by
-     * default.
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeMember(Object, String, Object)
      * @since 19.0
@@ -570,9 +572,9 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given member is not existing and
      * {@link #writeMember(Object, String, Object) writable}. This method may only return
-     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well. Invoking
-     * this message does not cause any observable side-effects. Returns <code>false</code> by
-     * default.
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberExisting(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeMember(Object, String, Object)
      * @since 19.0
@@ -604,9 +606,9 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if a given member is existing and removable. This method may only
-     * return <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well.
-     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
-     * by default.
+     * return <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #removeMember(Object, String)
      * @since 19.0
@@ -636,9 +638,9 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if a given member is invocable. This method may only return
-     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well. Invoking
-     * this message does not cause any observable side-effects. Returns <code>false</code> by
-     * default.
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #invokeMember(Object, String, Object...)
      * @since 19.0
@@ -809,14 +811,16 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Remove an array element from the receiver object. Removing member is allowed if the array
-     * element is {@link #isArrayElementRemovable(Object, long) removable}.
+     * element is {@link #isArrayElementRemovable(Object, long) removable}. This method may only
+     * return <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as
+     * well and {@link #isArrayElementInsertable(Object, long)} returns <code>false</code>.
      *
      * This method does not have not observable side-effects other than the removed array element.
      *
      * @throws UnsupportedMessageException if the array element is not removable
      * @throws InvalidArrayIndexException if the given array element index is not existing but
      *             removing would be allowed
-     * @see #isMemberRemovable(Object, String)
+     * @see #isArrayElementRemovable(Object, long)
      * @since 19.0
      */
     @Abstract(ifExported = "isArrayElementRemovable")
@@ -828,11 +832,12 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given array element index is existing and
      * {@link #writeArrayElement(Object, long, Object) writable}. This method may only return
-     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well.
-     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
-     * by default.
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementInsertable(Object, long)} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeArrayElement(Object, long, Object)
+     * @see #isArrayElementInsertable(Object, long)
      * @since 19.0
      */
     @Abstract(ifExported = "writeArrayElement")
@@ -841,13 +846,14 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns <code>true</code> if a given array element index is existing and
+     * Returns <code>true</code> if a given array element index is not existing and
      * {@link #writeArrayElement(Object, long, Object) insertable}. This method may only return
-     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well.
-     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
-     * by default.
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementExisting(Object, long)}} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeArrayElement(Object, long, Object)
+     * @see #isArrayElementModifiable(Object, long)
      * @since 19.0
      */
     @Abstract(ifExported = "writeArrayElement")
@@ -858,9 +864,9 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given array element index is existing and
      * {@link #removeArrayElement(Object, long) removable}. This method may only return
-     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well.
-     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
-     * by default.
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementInsertable(Object, long)}} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #removeArrayElement(Object, long)
      * @since 19.0
@@ -996,7 +1002,11 @@ public abstract class InteropLibrary extends Library {
         }
 
         private static boolean isMultiThreaded(Object receiver) {
-            return InteropAccessor.ACCESSOR.engineSupport().isMultiThreaded(receiver);
+            EngineSupport engine = InteropAccessor.ACCESSOR.engineSupport();
+            if (engine == null) {
+                return false;
+            }
+            return engine.isMultiThreaded(receiver);
         }
 
         @Override
@@ -1499,7 +1509,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberReadable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1508,7 +1518,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberModifiable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1517,7 +1527,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberInsertable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberExisting(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1526,7 +1536,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberRemovable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1535,7 +1545,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberInvocable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1616,7 +1626,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isArrayElementReadable(Object receiver, long identifier) {
             assert preCondition(receiver);
             boolean result = delegate.isArrayElementReadable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1624,7 +1634,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isArrayElementModifiable(Object receiver, long identifier) {
             assert preCondition(receiver);
             boolean result = delegate.isArrayElementModifiable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1632,7 +1642,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isArrayElementInsertable(Object receiver, long identifier) {
             assert preCondition(receiver);
             boolean result = delegate.isArrayElementInsertable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementExisting(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1640,7 +1650,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isArrayElementRemovable(Object receiver, long identifier) {
             assert preCondition(receiver);
             boolean result = delegate.isArrayElementRemovable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 

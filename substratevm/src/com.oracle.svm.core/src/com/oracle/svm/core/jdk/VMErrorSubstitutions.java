@@ -112,6 +112,7 @@ public class VMErrorSubstitutions {
         doShutdown(msg, ex);
     }
 
+    @NeverInline("Starting a stack walk in the caller frame")
     private static void doShutdown(String msg, Throwable ex) {
         try {
             Log log = Log.log();

@@ -25,9 +25,63 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Function;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SUB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.BSF;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.BSR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.LZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOV;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZX;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZXB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.POPCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TESTB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROL;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SAR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHL;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SD;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SS;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
+import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
 
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
@@ -68,6 +122,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64MulDivOp;
 import org.graalvm.compiler.lir.amd64.AMD64ShiftOp;
 import org.graalvm.compiler.lir.amd64.AMD64SignExtendOp;
+import org.graalvm.compiler.lir.amd64.AMD64Ternary;
 import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.graalvm.compiler.lir.amd64.AMD64ZeroMemoryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64Packing;
@@ -92,48 +147,16 @@ import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.OR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.SUB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NEG;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp.NOT;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.BSF;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.BSR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.LZCNT;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOV;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSX;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVSXD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZX;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.MOVZXB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.POPCNT;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TEST;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TESTB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROL;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SAR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHL;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHR;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPADDQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPAND;
@@ -144,25 +167,6 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSUBQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SD;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SS;
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
-import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
-import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.FREM;
 
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
@@ -545,6 +549,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             default:
                 throw GraalError.shouldNotReachHere();
         }
+    }
+
+    public Value emitBinaryMemory(VexRVMOp op, OperandSize size, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
+        assert (size.isXmmType() && supportAVX());
+        Variable result = getLIRGen().newVariable(LIRKind.combine(a));
+        getLIRGen().append(new AMD64VectorBinary.AVXBinaryMemoryOp(op, getRegisterSize(result), result, a, location, state));
+        return result;
     }
 
     public Value emitBinaryMemory(AMD64RMOp op, OperandSize size, AllocatableValue a, AMD64AddressValue location, LIRFrameState state) {
@@ -1132,6 +1143,22 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
+    public Variable emitFusedMultiplyAdd(Value a, Value b, Value c) {
+        Variable result = getLIRGen().newVariable(LIRKind.combine(a, b, c));
+        assert ((AMD64Kind) a.getPlatformKind()).isXMM() && ((AMD64Kind) b.getPlatformKind()).isXMM() && ((AMD64Kind) c.getPlatformKind()).isXMM();
+        assert a.getPlatformKind().equals(b.getPlatformKind());
+        assert b.getPlatformKind().equals(c.getPlatformKind());
+
+        if (a.getPlatformKind() == AMD64Kind.DOUBLE) {
+            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SD, AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
+        } else {
+            assert a.getPlatformKind() == AMD64Kind.SINGLE;
+            getLIRGen().append(new AMD64Ternary.ThreeOp(VFMADD231SS, AVXSize.XMM, result, asAllocatable(c), asAllocatable(a), asAllocatable(b)));
+        }
+        return result;
+    }
+
+    @Override
     public Value emitCountLeadingZeros(Value value) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(value).changeType(AMD64Kind.DWORD));
         assert ((AMD64Kind) value.getPlatformKind()).isInteger();
@@ -1506,7 +1533,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
-    private boolean supportAVX() {
+    public boolean supportAVX() {
         TargetDescription target = getLIRGen().target();
         return ((AMD64) target.arch).getFeatures().contains(CPUFeature.AVX);
     }

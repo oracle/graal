@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -73,6 +74,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
     private final int id;
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
+    private final String qualifiedName;
     private MethodTypeFlow typeFlow;
 
     private boolean isRootMethod;
@@ -139,13 +141,17 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider {
             assert Modifier.isStatic(getModifiers());
             assert getSignature().getParameterCount(false) == 0;
             try {
-                Method switchTableMethod = getDeclaringClass().getJavaClass().getDeclaredMethod(getName());
-                switchTableMethod.setAccessible(true);
+                Method switchTableMethod = ReflectionUtil.lookupMethod(getDeclaringClass().getJavaClass(), getName());
                 switchTableMethod.invoke(null);
             } catch (ReflectiveOperationException ex) {
                 throw GraalError.shouldNotReachHere(ex);
             }
         }
+        this.qualifiedName = format("%H.%n(%P)");
+    }
+
+    public String getQualifiedName() {
+        return qualifiedName;
     }
 
     private JavaType getCatchType(ExceptionHandler handler) {

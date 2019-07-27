@@ -118,6 +118,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -130,13 +131,11 @@ import com.oracle.svm.core.posix.headers.Statvfs.statvfs;
 import com.oracle.svm.core.posix.headers.Termios;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
-@CLibrary("java")
+@CLibrary(value = "java", requireStatic = true)
 class PosixJavaIOSubstituteFeature implements Feature {
 
     @Override
@@ -171,11 +170,18 @@ class PosixJavaIOSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.FileDescriptor.class);
             JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
+            if (JavaVersionUtil.JAVA_SPEC > 8) {
+                JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("append"));
+            }
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.IOException.class);
             JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
             JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
+            }
         } catch (NoSuchFieldException | NoSuchMethodException e) {
             VMError.shouldNotReachHere("PosixJavaIOSubstitutionFeature: Error registering class or method: ", e);
         }
@@ -612,23 +618,23 @@ final class Target_java_io_FileOutputStream {
 
     @Substitute
     protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
-        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
+        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), bytes, off, len, append);
     }
 
     @Substitute
     private void open(String name, boolean append) throws FileNotFoundException {
-        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
+        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
-        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)));
+        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)));
     }
 
     @Substitute
     private void write(int b, boolean append) throws IOException {
-        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), b, append);
+        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), b, append);
     }
 }
 
@@ -782,7 +788,7 @@ final class Target_java_io_Console {
     // 050                           jboolean on) {
     @Substitute
     static boolean echo(boolean on) throws IOException {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             /* Initialize the echo shut down hook, once. */
             Util_java_io_Console_JDK8OrEarlier.addShutdownHook();
         }

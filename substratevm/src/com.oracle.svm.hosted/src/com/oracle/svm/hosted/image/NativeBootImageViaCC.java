@@ -37,6 +37,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
@@ -54,7 +55,6 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public abstract class NativeBootImageViaCC extends NativeBootImage {
 
@@ -75,6 +75,15 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
+
+            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+                /* Perform garbage collection of unused input sections. */
+                additionalPreOptions.add("-Wl,--gc-sections");
+            }
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                additionalPreOptions.add("-Wl,-x");
+            }
         }
 
         @Override
@@ -102,6 +111,17 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     }
 
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
+
+        DarwinCCLinkerInvocation() {
+            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+                /* Remove functions and data unreachable by entry points. */
+                additionalPreOptions.add("-Wl,-dead_strip");
+            }
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                additionalPreOptions.add("-Wl,-x");
+            }
+        }
 
         @Override
         protected void addOneSymbolAliasOption(List<String> cmd, Entry<ResolvedJavaMethod, String> ent) {
@@ -163,9 +183,20 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             // Add debugging info
             cmd.add("/Zi");
 
+            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+                additionalPreOptions.add("/OPT:REF");
+            }
+
+            if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
+                cmd.add("/PDBSTRIPPED");
+            }
+
             cmd.add("/Fe" + outputFile.toString());
 
             cmd.addAll(inputFilenames);
+            for (Path staticLibrary : nativeLibs.getStaticLibraries()) {
+                cmd.add(staticLibrary.toString());
+            }
 
             cmd.add("/link /INCREMENTAL:NO /NODEFAULTLIB:LIBCMT /NODEFAULTLIB:OLDNAMES");
 
@@ -224,6 +255,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
         for (String filename : codeCache.getCCInputFiles(tempDirectory, imageName)) {
             inv.addInputFile(filename);
+        }
+
+        for (Path staticLibraryPath : nativeLibs.getStaticLibraries()) {
+            inv.addInputFile(staticLibraryPath.toString());
         }
 
         addMainEntryPoint(inv);

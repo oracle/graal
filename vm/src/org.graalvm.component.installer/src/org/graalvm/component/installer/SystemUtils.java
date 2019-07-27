@@ -49,6 +49,8 @@ public class SystemUtils {
      */
     public static final String DELIMITER = "/"; // NOI18N
 
+    private static final String DOT = "."; // NOI18N
+
     private static final String DOTDOT = ".."; // NOI18N
 
     private static final String SPLIT_DELIMITER = Pattern.quote(DELIMITER);
@@ -93,6 +95,9 @@ public class SystemUtils {
     public static Path fileName(String s) {
         if ((s.indexOf(DELIMITER_CHAR) >= 0) ||
                         ((DELIMITER_CHAR != File.separatorChar) && (s.indexOf(File.separatorChar) >= 0))) {
+            throw new IllegalArgumentException(s);
+        }
+        if (DOT.equals(s) || DOTDOT.equals(s)) {
             throw new IllegalArgumentException(s);
         }
         return Paths.get(s);
@@ -156,6 +161,17 @@ public class SystemUtils {
         System.arraycopy(comps, 1, comps, 0, l);
         comps[l] = ""; // NOI18N
         return Paths.get(s, comps);
+    }
+
+    public static Path resolveRelative(Path baseDir, String p) {
+        if (baseDir == null) {
+            return null;
+        }
+        if (p == null) {
+            return null;
+        }
+        String[] comps = checkRelativePath(baseDir, p);
+        return baseDir.resolve(fromArray(comps));
     }
 
     public static Path fromCommonRelative(Path base, String p) {

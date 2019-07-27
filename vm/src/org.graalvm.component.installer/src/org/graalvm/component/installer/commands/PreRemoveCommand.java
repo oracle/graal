@@ -54,7 +54,7 @@ public class PreRemoveCommand implements InstallerCommand {
     @Override
     public int execute() throws IOException {
         String compId;
-        PreRemoveProcess pp = new PreRemoveProcess(input.getGraalHomePath(), feedback);
+        PreRemoveProcess pp = new PreRemoveProcess(input.getGraalHomePath(), input.getFileOperations(), feedback);
         while ((compId = input.nextParameter()) != null) {
             ComponentInfo info = input.getLocalRegistry().loadSingleComponent(compId.toLowerCase(), true);
             if (info != null) {

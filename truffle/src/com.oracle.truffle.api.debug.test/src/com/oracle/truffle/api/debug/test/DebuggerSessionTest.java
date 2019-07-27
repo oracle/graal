@@ -625,7 +625,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
         }
         URI sourcePathURI;
         URI resolvedURI;
-        try (FileSystem fs = FileSystems.newFileSystem(zip.toPath(), null)) {
+        try (FileSystem fs = FileSystems.newFileSystem(zip.toPath(), (ClassLoader) null)) {
             Path spInZip = fs.getPath("src");
             sourcePathURI = spInZip.toUri();
             resolvedURI = fs.getPath("src", relativePath).toUri();

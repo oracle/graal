@@ -33,11 +33,12 @@ import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
-public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies, MidTierContext> {
+public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
 
     private final CanonicalizerPhase canonicalizer;
 
@@ -48,7 +49,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies, MidTierConte
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph, MidTierContext context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         if (graph.hasLoops()) {
             EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
             boolean changed = true;
@@ -64,7 +65,7 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies, MidTierConte
                         if (!LoopTransformations.isUnrollableLoop(loop)) {
                             continue;
                         }
-                        if (getPolicies().shouldPartiallyUnroll(loop, context.getVectorDescription())) {
+                        if (context instanceof MidTierContext && getPolicies().shouldPartiallyUnroll(loop, ((MidTierContext) context).getVectorDescription())) {
                             if (loop.loopBegin().isSimpleLoop()) {
                                 // First perform the pre/post transformation and do the partial
                                 // unroll when we come around again.

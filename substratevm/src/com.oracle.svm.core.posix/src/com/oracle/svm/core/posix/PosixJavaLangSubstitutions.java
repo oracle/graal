@@ -31,10 +31,17 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.function.Function;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -54,13 +61,11 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.PointerUtils;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -70,7 +75,14 @@ class PosixJavaLangSubstituteFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.UNIXProcess"), "required for substitutions");
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.UNIXProcess"), "required for substitutions");
+        } else {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.ProcessImpl"), "required for substitutions");
+            Class<?> processHandleImplClass = access.findClassByName("java.lang.ProcessHandleImpl");
+            VMError.guarantee(processHandleImplClass != null);
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(processHandleImplClass, "for substitutions");
+        }
     }
 }
 
@@ -121,7 +133,7 @@ final class Target_java_lang_ProcessEnvironment {
                 }
 
                 theEnvironment = env;
-                theUnmodifiableEnvironment = KnownIntrinsics.unsafeCast(new Target_java_lang_ProcessEnvironment_StringEnvironment(env), Map.class);
+                theUnmodifiableEnvironment = SubstrateUtil.cast(new Target_java_lang_ProcessEnvironment_StringEnvironment(env), Map.class);
             }
         }
     }
@@ -194,13 +206,28 @@ final class Target_java_lang_ProcessEnvironment_Value {
     public static native Target_java_lang_ProcessEnvironment_Value valueOf(byte[] bytes);
 }
 
-@TargetClass(className = "java.lang.UNIXProcess", onlyWith = JDK8OrEarlier.class)
+@Platforms(Platform.HOSTED_ONLY.class)
+class ProcessNameProvider implements Function<TargetClass, String> {
+
+    @Override
+    public String apply(TargetClass annotation) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            return "java.lang.UNIXProcess";
+        } else {
+            return "java.lang.ProcessImpl";
+        }
+    }
+}
+
+@TargetClass(classNameProvider = ProcessNameProvider.class)
 @Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
     // reaper threads individually (with the only difference being that threads are not recycled)
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class}) @Delete static Executor processReaperExecutor;
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})//
+    @TargetElement(onlyWith = JDK8OrEarlier.class)//
+    @Delete static Executor processReaperExecutor;
 
     @Alias int pid;
     @Alias OutputStream stdin;
@@ -231,63 +258,29 @@ final class Target_java_lang_UNIXProcess {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     void initStreams(int[] fds) {
-        Object in = Target_java_lang_ProcessBuilder_NullOutputStream.INSTANCE;
-        if (fds[0] != -1) {
-            in = new Target_java_lang_UNIXProcess_ProcessPipeOutputStream(fds[0]);
-        }
-        stdin = KnownIntrinsics.unsafeCast(in, OutputStream.class);
+        UNIXProcess_Support.doInitStreams(this, fds, false);
+    }
 
-        Object out = Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE;
-        if (fds[1] != -1) {
-            out = new Target_java_lang_UNIXProcess_ProcessPipeInputStream(fds[1]);
-        }
-        stdout = KnownIntrinsics.unsafeCast(out, InputStream.class);
-
-        Object err = Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE;
-        if (fds[2] != -1) {
-            err = new Target_java_lang_UNIXProcess_ProcessPipeInputStream(fds[2]);
-        }
-        stderr = KnownIntrinsics.unsafeCast(err, InputStream.class);
-
-        Thread reaperThread = Java_lang_Process_Supplement.reaperFactory.newThread(new Runnable() {
-            @Override
-            public void run() {
-                int status = waitForProcessExit(pid);
-                // Checkstyle: stop
-                // We need to use synchronized to synchronize with non-substituted UNIXProcess code
-                synchronized (Target_java_lang_UNIXProcess.this) {
-                    // Checkstyle: resume
-                    Target_java_lang_UNIXProcess.this.exitcode = status;
-                    Target_java_lang_UNIXProcess.this.hasExited = true;
-                    Target_java_lang_UNIXProcess.this.notifyAll();
-                }
-                if ((Object) stdout != Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE) {
-                    KnownIntrinsics.unsafeCast(stdout, Target_java_lang_UNIXProcess_ProcessPipeInputStream.class)
-                                    .processExited();
-                }
-                if ((Object) stderr != Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE) {
-                    KnownIntrinsics.unsafeCast(stderr, Target_java_lang_UNIXProcess_ProcessPipeInputStream.class)
-                                    .processExited();
-                }
-                if ((Object) stdin != Target_java_lang_ProcessBuilder_NullOutputStream.INSTANCE) {
-                    KnownIntrinsics.unsafeCast(stdin, Target_java_lang_UNIXProcess_ProcessPipeOutputStream.class)
-                                    .processExited();
-                }
-            }
-        });
-        reaperThread.start();
+    @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    void initStreams(int[] fds, boolean forceNullOutputStream) {
+        UNIXProcess_Support.doInitStreams(this, fds, forceNullOutputStream);
     }
 
     @Substitute
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings({"static-method"})
     int waitForProcessExit(int ppid) {
         return PosixUtils.waitForProcessExit(ppid);
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static void destroyProcess(int ppid, boolean force) {
         int sig = force ? Signal.SignalEnum.SIGKILL.getCValue() : Signal.SignalEnum.SIGTERM.getCValue();
@@ -295,7 +288,57 @@ final class Target_java_lang_UNIXProcess {
     }
 }
 
-@TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeInputStream", onlyWith = JDK8OrEarlier.class)
+final class UNIXProcess_Support {
+    static void doInitStreams(Target_java_lang_UNIXProcess proc, int[] fds, boolean forceNullOutputStream) {
+        Object in = Target_java_lang_ProcessBuilder_NullOutputStream.INSTANCE;
+        if (fds[0] != -1 && !forceNullOutputStream) {
+            in = new Target_java_lang_UNIXProcess_ProcessPipeOutputStream(fds[0]);
+        }
+        proc.stdin = SubstrateUtil.cast(in, OutputStream.class);
+
+        Object out = Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE;
+        if (fds[1] != -1 && !forceNullOutputStream) {
+            out = new Target_java_lang_UNIXProcess_ProcessPipeInputStream(fds[1]);
+        }
+        proc.stdout = SubstrateUtil.cast(out, InputStream.class);
+
+        Object err = Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE;
+        if (fds[2] != -1 && !forceNullOutputStream) {
+            err = new Target_java_lang_UNIXProcess_ProcessPipeInputStream(fds[2]);
+        }
+        proc.stderr = SubstrateUtil.cast(err, InputStream.class);
+
+        Thread reaperThread = Java_lang_Process_Supplement.reaperFactory.newThread(new Runnable() {
+            @Override
+            public void run() {
+                int status = PosixUtils.waitForProcessExit(proc.pid);
+                // Checkstyle: stop
+                // We need to use synchronized to synchronize with non-substituted UNIXProcess code
+                synchronized (proc) {
+                    // Checkstyle: resume
+                    proc.exitcode = status;
+                    proc.hasExited = true;
+                    proc.notifyAll();
+                }
+                if ((Object) proc.stdout != Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE) {
+                    SubstrateUtil.cast(proc.stdout, Target_java_lang_UNIXProcess_ProcessPipeInputStream.class)
+                                    .processExited();
+                }
+                if ((Object) proc.stderr != Target_java_lang_ProcessBuilder_NullInputStream.INSTANCE) {
+                    SubstrateUtil.cast(proc.stderr, Target_java_lang_UNIXProcess_ProcessPipeInputStream.class)
+                                    .processExited();
+                }
+                if ((Object) proc.stdin != Target_java_lang_ProcessBuilder_NullOutputStream.INSTANCE) {
+                    SubstrateUtil.cast(proc.stdin, Target_java_lang_UNIXProcess_ProcessPipeOutputStream.class)
+                                    .processExited();
+                }
+            }
+        });
+        reaperThread.start();
+    }
+}
+
+@TargetClass(classNameProvider = ProcessNameProvider.class, innerClass = "ProcessPipeInputStream")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
     @Alias
@@ -306,7 +349,7 @@ final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
     native void processExited();
 }
 
-@TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeOutputStream", onlyWith = JDK8OrEarlier.class)
+@TargetClass(classNameProvider = ProcessNameProvider.class, innerClass = "ProcessPipeOutputStream")
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
     @Alias
@@ -357,7 +400,7 @@ final class Target_java_lang_Shutdown {
 }
 
 @TargetClass(java.lang.Runtime.class)
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.DARWIN.class})
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 

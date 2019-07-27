@@ -104,4 +104,7 @@ public class CommonConstants {
      * ID of the native-image component.
      */
     public static final String NATIVE_IMAGE_ID = "native-image";
+
+    public static final String ENV_DELETE_LIST = "GU_POST_DELETE_LIST"; // NOI18N
+    public static final String ENV_COPY_CONTENTS = "GU_POST_COPY_CONTENTS"; // NOI18N
 }

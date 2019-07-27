@@ -58,6 +58,7 @@ import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.meta.MethodPointer;
@@ -118,7 +119,7 @@ public class ClassInitializationFeature implements Feature {
         @APIOption(name = "initialize-at-run-time", valueTransformer = InitializationValueDelay.class, defaultValue = "", //
                         customHelp = "A comma-separated list of packages and classes (and implicitly all of their subclasses) that must be initialized at runtime and not during image building. An empty string is currently not supported.")//
         @APIOption(name = "initialize-at-build-time", valueTransformer = InitializationValueEager.class, defaultValue = "", //
-                        customHelp = "A comma-separated list of packages and classes  (and implicitly all of their superclasses) that are initialized during image generation. An empty string designates all packages.")//
+                        customHelp = "A comma-separated list of packages and classes (and implicitly all of their superclasses) that are initialized during image generation. An empty string designates all packages.")//
         @APIOption(name = "delay-class-initialization-to-runtime", valueTransformer = InitializationValueDelay.class, deprecated = "Use --initialize-at-run-time.", //
                         defaultValue = "", customHelp = "A comma-separated list of classes (and implicitly all of their subclasses) that are initialized at runtime and not during image building")//
         @APIOption(name = "rerun-class-initialization-at-runtime", valueTransformer = InitializationValueRerun.class, //
@@ -285,8 +286,14 @@ public class ClassInitializationFeature implements Feature {
                         .forEach(c -> {
                             AnalysisType type = metaAccess.lookupJavaType(c);
                             if (!initGraph.isUnsafe(type)) {
-                                provenSafe.add(type);
-                                classInitializationSupport.forceInitializeHosted(c, "proven safe to initialize");
+                                classInitializationSupport.forceInitializeHosted(c, "proven safe to initialize", true);
+                                /*
+                                 * See if initialization worked--it can fail due to implicit
+                                 * exceptions.
+                                 */
+                                if (!classInitializationSupport.shouldInitializeAtRuntime(c)) {
+                                    provenSafe.add(type);
+                                }
                             }
                         });
         return provenSafe;
@@ -302,19 +309,45 @@ public class ClassInitializationFeature implements Feature {
     }
 
     private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
-        ClassInitializationInfo info;
+        ClassInitializationInfo info = null;
         if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
+            assert !type.isInitialized();
             AnalysisMethod classInitializer = type.getClassInitializer();
-            /*
-             * If classInitializer.getCode() returns null then the type failed to initialize due to
-             * verification issues triggered by missing types.
-             */
-            if (classInitializer != null && classInitializer.getCode() != null) {
-                access.registerAsCompiled(classInitializer);
-            }
-            info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
+            if (type.isLinked()) {
+                if (classInitializer != null) {
+                    assert classInitializer.getCode() != null;
+                    access.registerAsCompiled(classInitializer);
+                }
+                info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
+            } else {
+                try {
+                    /*
+                     * Workaround to force linking the type which is not provided by the JVMCI API.
+                     * This throws verification errors even if linking was attempted and had failed
+                     * beforehand
+                     */
+                    type.getDeclaredConstructors();
+                    type.getDeclaredMethods();
+                } catch (VerifyError e) {
+                    /* Synthesize a VerifyError to be thrown at run time. */
+                    AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
+                    access.registerAsCompiled(throwVerifyError);
+                    info = new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+                } catch (Throwable t) {
+                    // silently ignore other errors
+                }
 
+                if (info == null) {
+                    /*
+                     * The type failed to link due to verification issues triggered by missing
+                     * types.
+                     */
+                    assert classInitializer == null || classInitializer.getCode() == null;
+                    info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
+                }
+            }
         } else {
+            assert type.isInitialized();
             info = ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
 

@@ -31,11 +31,9 @@ package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
@@ -75,7 +73,6 @@ public abstract class LLVMForeignReadNode extends LLVMNode {
 
     LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
         CompilerAsserts.neverPartOfCompilation();
-        TruffleLanguage.ContextReference<LLVMContext> ctxRef = lookupContextReference(LLVMLanguage.class);
-        return ctxRef.get().getNodeFactory().createLoadNode(kind);
+        return LLVMLanguage.getLanguage().getNodeFactory().createLoadNode(kind);
     }
 }

@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
+import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.hosted.ImageClassLoader;
 
 import jdk.vm.ci.meta.MetaUtil;

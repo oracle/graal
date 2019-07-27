@@ -98,17 +98,6 @@ public final class SulongLibrary implements TruffleObject {
         }
 
         protected static LLVMFunctionDescriptor lookupFunctionDescriptor(SulongLibrary library, String name) {
-            if (name.startsWith("@")) {
-                // safeguard: external users are never supposed to see the "@"
-                // TODO remove after getting rid of the @
-                return null;
-            }
-
-            String atname = "@" + name;
-            LLVMFunctionDescriptor d = library.lookupFunctionDescriptor(atname);
-            if (d != null) {
-                return d;
-            }
             return library.lookupFunctionDescriptor(name);
         }
     }

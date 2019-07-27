@@ -24,8 +24,9 @@ export PATH=$PWD/mx:$PATH
 
 The compiler depends on a JDK that supports a compatible version of JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
 There is a JVMCI [port](https://github.com/graalvm/graal-jvmci-8) for JDK 8 and the required JVMCI version is built into the JDK as of JDK 11.
-You need either a JVMCI-enabled JDK 8 (download from [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) or [build](#building-jvmci-jdk8) yourself)
-or JDK 11.
+A JVMCI-enabled JDK 8 can be downloaded from [OTN](https://www.oracle.com/technetwork/graalvm/downloads/index.html)
+or [GitHub](https://github.com/graalvm/openjdk8-jvmci-builder/releases)
+or you can [build](#building-jvmci-jdk8) it yourself.
 
 Most compiler sources are compliant with Java 8. Some sources use API specific to JDK 8 or only introduced in JDK 9.
 These sources are in [versioned projects](https://github.com/graalvm/mx#versioning-sources-for-different-jdk-releases).
@@ -33,7 +34,7 @@ If you don't have a JDK that satisfies the requirement of a versioned project, t
 
 If you want to develop on a single JDK version, you only need to define `JAVA_HOME`. For example:
 ```
-export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-19-b01
+export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-20-b01
 ```
 or:
 ```
@@ -44,12 +45,12 @@ If you want to ensure your changes will pass both JDK 8 and JDK 11 gates, you ca
 For example, to develop for JDK 8 while ensuring `mx build` still works with the JDK 11 specific sources:
 
 ```
-export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-19-b01
+export JAVA_HOME=/usr/lib/jvm/oraclejdk1.8.0_212-jvmci-20-b01
 export EXTRA_JAVA_HOMES=/usr/lib/jvm/jdk-11
 ```
 And on macOS:
 ```
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/oraclejdk1.8.0_212-jvmci-19-b01/Contents/Home
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/oraclejdk1.8.0_212-jvmci-20-b01/Contents/Home
 export EXTRA_JAVA_HOMES=/Library/Java/JavaVirtualMachines/jdk-11.jdk/Contents/Home
 ```
 If you omit `EXTRA_JAVA_HOMES` in the above examples, versioned projects depending on the specified JDK(s) will be ignored.
@@ -90,7 +91,7 @@ This will generate Eclipse, IntelliJ, and NetBeans project configurations.
 Further information on how to import these project configurations into individual IDEs can be found on the [IDEs](docs/IDEs.md) page.
 
 The [Ideal Graph Visualizer](https://www.graalvm.org/docs/reference-manual/tools/#ideal-graph-visualizer)(IGV) is very useful in terms of visualizing the compiler's intermediate representation (IR).
-IGV is distributed as part of [GraalVM EE](https://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+IGV is available on [OTN](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 You can get a quick insight into this tool by running the commands below.
 The first command launches the tool and the second runs one of the unit tests included in the code base with extra options to dump the compiler IR for all methods compiled.
 You should wait for the GUI to appear before running the second command.
@@ -177,7 +178,7 @@ mx --java-home /path/to/jdk8 unittest
 export JAVA_HOME=$(mx --java-home /path/to/jdk8 jdkhome)
 ```
 
-You need to use the same JDK the [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html) downloads are based on as the argument to `--java-home` in the above commands.
+You need to use the same JDK the [OTN](https://www.oracle.com/technetwork/graalvm/downloads/index.html) downloads are based on as the argument to `--java-home` in the above commands.
 The build step above should work on all [supported JDK 8 build platforms](https://wiki.openjdk.java.net/display/Build/Supported+Build+Platforms).
 It should also work on other platforms (such as Oracle Linux, CentOS and Fedora as described [here](http://mail.openjdk.java.net/pipermail/graal-dev/2015-December/004050.html)).
 If you run into build problems, send a message to http://mail.openjdk.java.net/mailman/listinfo/graal-dev.

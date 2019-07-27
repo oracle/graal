@@ -25,13 +25,18 @@
 package com.oracle.graal.pointsto;
 
 import java.lang.reflect.Modifier;
-import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.stream.StreamSupport;
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.word.WordBase;
 
@@ -40,45 +45,101 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-/** Provides functionality for scanning constant objects. */
+/**
+ * Provides functionality for scanning constant objects.
+ *
+ * The scanning is done in parallel. The set of visited elements is a special datastructure whose
+ * structure can be reused over multiple scanning iterations to save CPU resources. (For details
+ * {@link ReusableSet}).
+ */
 public abstract class ObjectScanner {
 
     protected final BigBang bb;
-    protected final Map<Object, Boolean> scannedObjects;
+    private final ReusableSet scannedObjects;
     protected final Deque<WorklistEntry> worklist;
+    /**
+     * Used to track whether all work has been completed or not.
+     */
+    private final AtomicLong workInProgressCount = new AtomicLong(0);
 
-    public ObjectScanner(BigBang bigbang) {
+    public ObjectScanner(BigBang bigbang, ReusableSet scannedObjects) {
         this.bb = bigbang;
-        this.scannedObjects = new IdentityHashMap<>();
-        this.worklist = new ArrayDeque<>();
+        this.worklist = new ConcurrentLinkedDeque<>();
+        this.scannedObjects = scannedObjects;
     }
 
-    public void scanBootImageHeapRoots() {
-        scanBootImageHeapRoots((f1, f2) -> 0, (m1, m2) -> 0);
+    public void scanBootImageHeapRoots(CompletionExecutor executor) {
+        scanBootImageHeapRoots(executor, null, null);
     }
 
     public void scanBootImageHeapRoots(Comparator<AnalysisField> fieldComparator, Comparator<AnalysisMethod> methodComparator) {
+        scanBootImageHeapRoots(null, fieldComparator, methodComparator);
+    }
 
+    private void scanBootImageHeapRoots(CompletionExecutor exec, Comparator<AnalysisField> fieldComparator, Comparator<AnalysisMethod> methodComparator) {
         // scan the original roots
         // the original roots are all the static fields, of object type, that were accessed
-        bb.getUniverse().getFields().stream()
-                        .filter(field -> Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isAccessed())
-                        .sorted(fieldComparator)
-                        .forEach(field -> scanField(field, null, field));
+        Collection<AnalysisField> fields = bb.getUniverse().getFields();
+        if (fieldComparator != null) {
+            ArrayList<AnalysisField> fieldsList = new ArrayList<>(fields);
+            fieldsList.sort(fieldComparator);
+            fields = fieldsList;
+        }
+        for (AnalysisField field : fields) {
+            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isAccessed()) {
+                if (exec != null) {
+                    workInProgressCount.incrementAndGet();
+                    exec.execute(new CompletionExecutor.DebugContextRunnable() {
+                        @Override
+                        public void run(DebugContext debug) {
+                            try {
+                                scanField(field, null, field);
+                            } finally {
+                                workInProgressCount.decrementAndGet();
+                            }
+                        }
+                    });
+                } else {
+                    scanField(field, null, field);
+                }
+            }
+        }
 
         // scan the constant nodes
-        bb.getUniverse().getMethods().stream()
-                        .filter(method -> method.getTypeFlow().getGraph() != null)
-                        .sorted(methodComparator)
-                        .forEach(this::scanMethod);
+        Collection<AnalysisMethod> methods = bb.getUniverse().getMethods();
+        if (methodComparator != null) {
+            ArrayList<AnalysisMethod> methodsList = new ArrayList<>(methods);
+            methodsList.sort(methodComparator);
+            methods = methodsList;
+        }
+        for (AnalysisMethod method : methods) {
+            if (method.getTypeFlow().getGraph() != null) {
+                if (exec != null) {
+                    workInProgressCount.incrementAndGet();
+                    exec.execute(new CompletionExecutor.DebugContextRunnable() {
+                        @Override
+                        public void run(DebugContext debug) {
+                            try {
+                                scanMethod(method);
+                            } finally {
+                                workInProgressCount.decrementAndGet();
+                            }
+                        }
+                    });
+                } else {
+                    scanMethod(method);
+                }
+            }
+        }
 
-        finish();
+        finish(exec);
     }
 
     /*
@@ -220,14 +281,19 @@ public abstract class ObjectScanner {
 
     public final void scanConstant(JavaConstant value, Object reason) {
         Object valueObj = bb.getSnippetReflectionProvider().asObject(Object.class, value);
-        if (valueObj == null || scannedObjects.containsKey(valueObj) || valueObj instanceof WordBase) {
+        if (valueObj == null || valueObj instanceof WordBase) {
             return;
         }
-        scannedObjects.put(valueObj, Boolean.TRUE);
+        if (scannedObjects.putAndAcquire(valueObj) == null) {
+            try {
+                forScannedConstant(value, reason);
+            } finally {
+                scannedObjects.release(valueObj);
+                workInProgressCount.incrementAndGet();
+                worklist.push(new WorklistEntry(value, reason));
+            }
+        }
 
-        forScannedConstant(value, reason);
-
-        worklist.push(new WorklistEntry(value, reason));
     }
 
     private void unsupportedFeature(String key, String message, Object entry) {
@@ -286,14 +352,15 @@ public abstract class ObjectScanner {
 
     private void scanMethod(AnalysisMethod method) {
         try {
-            StreamSupport.stream(method.getTypeFlow().getGraph().getNodes().spliterator(), false)
-                            .filter(n -> n instanceof ConstantNode).forEach(n -> {
-                                ConstantNode cn = (ConstantNode) n;
-                                JavaConstant c = (JavaConstant) cn.getValue();
-                                if (c.getJavaKind() == JavaKind.Object) {
-                                    scanConstant(c, method);
-                                }
-                            });
+            for (Node n : method.getTypeFlow().getGraph().getNodes()) {
+                if (n instanceof ConstantNode) {
+                    ConstantNode cn = (ConstantNode) n;
+                    JavaConstant c = (JavaConstant) cn.getValue();
+                    if (c.getJavaKind() == JavaKind.Object) {
+                        scanConstant(c, method);
+                    }
+                }
+            }
         } catch (UnsupportedFeatureException ex) {
             bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getMessage(), null, ex);
         }
@@ -314,9 +381,62 @@ public abstract class ObjectScanner {
         return result;
     }
 
-    protected void finish() {
-        while (!worklist.isEmpty()) {
-            doScan(worklist.pop());
+    /**
+     * Process all consequences for scanned fields. This is done in parallel. Buckets of fields are
+     * emitted into the {@code exec}, to mitigate the calling overhead.
+     *
+     * Processing fields can issue new fields to be scanned so we always add the check for workitems
+     * at the end of the worklist.
+     */
+    protected void finish(CompletionExecutor exec) {
+        if (exec != null) {
+            // We add a task which checks for workitems in the worklist, we keep it adding as long
+            // there are more workitems available.
+            exec.execute(new CompletionExecutor.DebugContextRunnable() {
+                @Override
+                public void run(DebugContext ignored) {
+                    if (workInProgressCount.get() > 0) {
+                        int worklistLength = worklist.size();
+                        while (!worklist.isEmpty()) {
+                            // Put workitems into buckets to avoid overhead for scheduling
+                            int bucketSize = Integer.max(1, Integer.max(worklistLength, worklist.size()) / (2 * exec.getExecutorService().getPoolSize()));
+                            final ArrayList<WorklistEntry> items = new ArrayList<>();
+                            while (!worklist.isEmpty() && items.size() < bucketSize) {
+                                items.add(worklist.remove());
+                            }
+                            exec.execute(new CompletionExecutor.DebugContextRunnable() {
+                                @Override
+                                public void run(DebugContext ignored2) {
+                                    Iterator<WorklistEntry> it = items.iterator();
+                                    try {
+                                        while (it.hasNext()) {
+                                            try {
+                                                doScan(it.next());
+                                            } finally {
+                                                workInProgressCount.decrementAndGet();
+                                            }
+                                        }
+                                    } finally {
+                                        // Push back leftover elements (In exception case)
+                                        while (it.hasNext()) {
+                                            worklist.push(it.next());
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        // Put ourself into the queue to re-check the worklist
+                        exec.execute(this);
+                    }
+                }
+            });
+        } else {
+            while (!worklist.isEmpty()) {
+                int size = worklist.size();
+                for (int i = 0; i < size; i++) {
+                    doScan(worklist.remove());
+                }
+            }
         }
     }
 
@@ -338,4 +458,77 @@ public abstract class ObjectScanner {
         }
     }
 
+    /**
+     * This datastructure keeps track if an object was already put or not atomically. It takes
+     * advantage of the fact that each typeflow iteration adds more objects to the set but never
+     * removes elements. Since insertions into maps are expensive we keep the map around over
+     * multiple iterations and only update the AtomicInteger sequence number after each iteration.
+     *
+     * Furthermore it also serializes on the object put until the method release is called with this
+     * object. So each object goes through two states:
+     * <li>In flight: counter = sequence - 1
+     * <li>Commited: counter = sequence
+     *
+     * If the object is in state in flight, all other calls with this object to putAndAcquire will
+     * block until release with the object is called.
+     */
+    public static final class ReusableSet {
+        /**
+         * The storage of atomic integers. During analysis the constant count for rather large
+         * programs such as the JS interpreter are 90k objects. Hence we use 64k as a good start.
+         */
+        private final IdentityHashMap<Object, AtomicInteger> store = new IdentityHashMap<>(65536);
+        private int sequence = 0;
+
+        public Object putAndAcquire(Object object) {
+            IdentityHashMap<Object, AtomicInteger> map = this.store;
+            AtomicInteger i = map.get(object);
+            int seq = this.sequence;
+            int inflightSequence = seq - 1;
+            while (true) {
+                if (i != null) {
+                    int current = i.get();
+                    if (current == seq) {
+                        return object; // Found and is already released
+                    } else {
+                        if (current != inflightSequence && i.compareAndSet(current, inflightSequence)) {
+                            return null; // We have successfully acquired
+                        } else { // Someone else has acquired
+                            while (i.get() != seq) { // Wait until released
+                                Thread.yield();
+                            }
+                            return object; // Object has been released
+                        }
+                    }
+                } else {
+                    AtomicInteger newSequence = new AtomicInteger(inflightSequence);
+                    synchronized (map) {
+                        i = map.putIfAbsent(object, newSequence);
+                        if (i == null) {
+                            return null;
+                        } else {
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+
+        public void release(Object o) {
+            IdentityHashMap<Object, AtomicInteger> map = this.store;
+            AtomicInteger i = map.get(o);
+            if (i == null) {
+                // We have missed a value likely someone else has updated the map at the same time.
+                // Now synchronize
+                synchronized (map) {
+                    i = map.get(o);
+                }
+            }
+            i.set(sequence);
+        }
+
+        public void reset() {
+            sequence += 2;
+        }
+    }
 }

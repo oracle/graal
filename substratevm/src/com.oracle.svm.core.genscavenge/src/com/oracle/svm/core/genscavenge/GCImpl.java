@@ -53,6 +53,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
@@ -73,10 +74,12 @@ import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+import com.sun.management.GcInfo;
 
 //Checkstyle: stop
 import sun.management.Util;
@@ -723,6 +726,9 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
+    @NeverInline("Starting a stack walk in the caller frame. " +
+                    "Note that we could start the stack frame also further down the stack, because GC stack frames must not access any objects that are processed by the GC. " +
+                    "But we don't store stack frame information for the first frame we would need to process.")
     @SuppressWarnings("try")
     private void blackenStackRoots() {
         final Log trace = Log.noopLog().string("[GCImpl.blackenStackRoots:").newline();
@@ -901,10 +907,32 @@ public class GCImpl implements GC {
      * on, and only put out one report per collection.
      */
     void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
-        if (requestingEpoch.belowThan(getCollectionEpoch())) {
-            SunMiscSupport.drainCleanerQueue();
-            visitWatchersReport();
+        if (requestingEpoch.aboveOrEqual(getCollectionEpoch())) {
+            /* No GC happened, so do not run any epilogue. */
+            return;
+
+        } else if (VMOperation.isInProgress()) {
+            /*
+             * We are inside a VMOperation where we are not allowed to do certain things, e.g.,
+             * perform a synchronization (because it can deadlock when a lock is held outside the
+             * VMOperation).
+             *
+             * Note that the GC operation we are running the epilogue for is no longer in progress,
+             * otherwise this check would always return.
+             */
+            return;
+
+        } else if (!JavaThreads.currentJavaThreadInitialized()) {
+            /*
+             * Too early in the attach sequence of a thread to do anything useful, e.g., perform a
+             * synchronization. Probably the allocation slow path for the first allocation of that
+             * thread caused this epilogue.
+             */
+            return;
         }
+
+        SunMiscSupport.drainCleanerQueue();
+        visitWatchersReport();
     }
 
     /* Collection counting. */
@@ -1742,7 +1770,7 @@ final class GarbageCollectorManagementFactory {
     }
 
     /** A GarbageCollectorMXBean for the incremental collector. */
-    private static final class IncrementalGarbageCollectorMXBean implements GarbageCollectorMXBean, NotificationEmitter {
+    private static final class IncrementalGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
 
         private IncrementalGarbageCollectorMXBean() {
             /* Nothing to do. */
@@ -1798,10 +1826,14 @@ final class GarbageCollectorManagementFactory {
             return new MBeanNotificationInfo[0];
         }
 
+        @Override
+        public GcInfo getLastGcInfo() {
+            return null;
+        }
     }
 
     /** A GarbageCollectorMXBean for the complete collector. */
-    private static final class CompleteGarbageCollectorMXBean implements GarbageCollectorMXBean, NotificationEmitter {
+    private static final class CompleteGarbageCollectorMXBean implements com.sun.management.GarbageCollectorMXBean, NotificationEmitter {
 
         private CompleteGarbageCollectorMXBean() {
             /* Nothing to do. */
@@ -1857,5 +1889,9 @@ final class GarbageCollectorManagementFactory {
             return new MBeanNotificationInfo[0];
         }
 
+        @Override
+        public GcInfo getLastGcInfo() {
+            return null;
+        }
     }
 }

@@ -45,19 +45,20 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.configure.ResourceConfigurationParser;
+import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.hosted.config.ConfigurationDirectories;
-import com.oracle.svm.hosted.config.ConfigurationParser;
-import com.oracle.svm.hosted.config.ResourceConfigurationParser;
+import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 
 @AutomaticFeature
 public final class ResourcesFeature implements Feature {
@@ -65,22 +66,10 @@ public final class ResourcesFeature implements Feature {
     public static class Options {
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
         public static final HostedOptionKey<String[]> IncludeResources = new HostedOptionKey<>(new String[0]);
-
-        @Option(help = "Files describing Java resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> ResourceConfigurationFiles = new HostedOptionKey<>(new String[0]);
-
-        @Option(help = "Resources describing Java resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> ResourceConfigurationResources = new HostedOptionKey<>(new String[0]);
     }
 
     private boolean sealed = false;
     private Set<String> newResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-    public interface ResourcesRegistry {
-        void addResources(String pattern);
-
-        void addResourceBundles(String name);
-    }
 
     private class ResourcesRegistryImpl implements ResourcesRegistry {
         @Override
@@ -104,8 +93,9 @@ public final class ResourcesFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         ImageClassLoader imageClassLoader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
         ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class));
-        ConfigurationParser.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
-                        Options.ResourceConfigurationFiles, Options.ResourceConfigurationResources, ConfigurationDirectories.FileNames.RESOURCES_NAME);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
+                        ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
+                        ConfigurationFiles.RESOURCES_NAME);
 
         newResources.addAll(Arrays.asList(Options.IncludeResources.getValue()));
     }
@@ -175,8 +165,8 @@ public final class ResourcesFeature implements Feature {
         }
         FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
         if (resourceFallback != null && Options.IncludeResources.getValue().length == 0 &&
-                        Options.ResourceConfigurationFiles.getValue().length == 0 &&
-                        Options.ResourceConfigurationResources.getValue().length == 0) {
+                        ConfigurationFiles.Options.ResourceConfigurationFiles.getValue().length == 0 &&
+                        ConfigurationFiles.Options.ResourceConfigurationResources.getValue().length == 0) {
             throw resourceFallback;
         }
     }

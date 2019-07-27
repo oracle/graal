@@ -29,12 +29,10 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -47,6 +45,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotAsPrimitiveF
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotAsPrimitiveFactory.AsI8NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMAsForeignNode.class)
@@ -59,7 +58,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(limit = "3")
-        boolean asBoolean(TruffleObject foreign,
+        boolean asBoolean(Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached BranchProfile exception) {
             try {
@@ -78,7 +77,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(limit = "3")
-        byte asI8(TruffleObject foreign,
+        byte asI8(Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached BranchProfile exception) {
             try {
@@ -97,7 +96,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(limit = "3")
-        short asI16(TruffleObject foreign,
+        short asI16(Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached BranchProfile exception) {
             try {
@@ -116,7 +115,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(limit = "3")
-        int asI32(TruffleObject foreign,
+        int asI32(Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached BranchProfile exception) {
             try {
@@ -135,7 +134,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(limit = "3")
-        long asI64(TruffleObject foreign,
+        long asI64(Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached BranchProfile exception) {
             try {
@@ -154,7 +153,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(limit = "3")
-        float asFloat(TruffleObject foreign,
+        float asFloat(Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached BranchProfile exception) {
             try {
@@ -173,7 +172,7 @@ public abstract class LLVMPolyglotAsPrimitive extends LLVMIntrinsic {
         }
 
         @Specialization(limit = "3")
-        double asDouble(TruffleObject foreign,
+        double asDouble(Object foreign,
                         @CachedLibrary("foreign") InteropLibrary interop,
                         @Cached BranchProfile exception) {
             try {

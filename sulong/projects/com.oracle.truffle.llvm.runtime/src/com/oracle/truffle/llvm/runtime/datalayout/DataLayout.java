@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.datalayout;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
 
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutParser.DataTypeSpecification;
@@ -51,6 +52,9 @@ public final class DataLayout {
 
     private final List<DataTypeSpecification> dataLayout;
 
+    private final IdentityHashMap<Type, Integer> sizeCache = new IdentityHashMap<>();
+    private final IdentityHashMap<Type, Integer> alignmentCache = new IdentityHashMap<>();
+
     public DataLayout() {
         this.dataLayout = new ArrayList<>();
     }
@@ -60,20 +64,32 @@ public final class DataLayout {
     }
 
     public int getSize(Type type) {
+        Integer cachedSize = sizeCache.get(type);
+        if (cachedSize != null) {
+            return cachedSize;
+        }
         int size = type.getBitSize();
         int align = getBitAlignment(type);
         if (size % align != 0) {
             size += align - (size % align);
         }
-        return Math.max(1, size / Byte.SIZE);
+        size = Math.max(1, size / Byte.SIZE);
+        sizeCache.put(type, size);
+        return size;
     }
 
     public int getBitAlignment(Type baseType) {
+        Integer cachedAlignment = alignmentCache.get(baseType);
+        if (cachedAlignment != null) {
+            return cachedAlignment;
+        }
         DataTypeSpecification spec = getDataTypeSpecification(baseType);
         if (spec == null) {
             throw new IllegalStateException("No data specification found for " + baseType);
         }
-        return spec.getAbiAlignment();
+        int alignment = spec.getAbiAlignment();
+        alignmentCache.put(baseType, alignment);
+        return alignment;
     }
 
     public DataLayout merge(DataLayout other) {

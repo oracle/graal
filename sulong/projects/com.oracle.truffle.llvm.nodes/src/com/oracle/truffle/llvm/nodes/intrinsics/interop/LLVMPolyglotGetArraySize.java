@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -52,7 +51,7 @@ public abstract class LLVMPolyglotGetArraySize extends LLVMIntrinsic {
                     @Cached LLVMAsForeignNode asForeign,
                     @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached BranchProfile exception) {
-        TruffleObject foreign = asForeign.execute(value);
+        Object foreign = asForeign.execute(value);
         try {
             return interop.getArraySize(foreign);
         } catch (UnsupportedMessageException ex) {

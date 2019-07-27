@@ -51,6 +51,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +73,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
@@ -554,8 +556,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public <S> S lookup(LanguageInfo info, Class<S> serviceClass) {
             PolyglotLanguage language = (PolyglotLanguage) NODES.getEngineObject(info);
-            PolyglotLanguageContext languageContext = PolyglotContextImpl.requireContext().getContextInitialized(language, language);
-            return LANGUAGE.lookup(LANGUAGE.getLanguage(languageContext.env), serviceClass);
+            if (!language.cache.supportsService(serviceClass)) {
+                return null;
+            }
+            PolyglotLanguageContext languageContext = PolyglotContextImpl.requireContext().getContext(language);
+            languageContext.ensureCreated(language);
+            return languageContext.lookupService(serviceClass);
         }
 
         @SuppressWarnings("unchecked")
@@ -994,13 +1000,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public TruffleLanguage.Env getLanguageEnv(Object languageVMObject, LanguageInfo language) {
-            PolyglotLanguage lang = (PolyglotLanguage) NODES.getEngineObject(language);
-            PolyglotLanguageContext context = ((PolyglotLanguageContext) languageVMObject);
-            return context.context.getContext(lang).env;
-        }
-
-        @Override
         public Object legacyTckEnter(Object vm) {
             throw new AssertionError("Should not reach here.");
         }
@@ -1204,6 +1203,32 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object contextVMObject) {
             return ((PolyglotContextImpl) contextVMObject).engine.getFileTypeDetectorsSupplier();
+        }
+
+        @Override
+        public boolean isCreateProcessAllowed(Object polylgotLanguageContext) {
+            return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.createProcessAllowed;
+        }
+
+        @Override
+        public Map<String, String> getProcessEnvironment(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.getEnvironment();
+        }
+
+        @Override
+        public ProcessHandler.ProcessCommand newProcessCommand(Object vmObject, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) {
+            return ((VMObject) vmObject).getImpl().getIO().newProcessCommand(cmd, cwd, environment, redirectErrorStream, inputRedirect, outputRedirect, errorRedirect);
+        }
+
+        @Override
+        public ProcessHandler getProcessHandler(Object polylgotLanguageContext) {
+            return ((PolyglotLanguageContext) polylgotLanguageContext).context.config.processHandler;
+        }
+
+        @Override
+        public boolean isDefaultProcessHandler(ProcessHandler handler) {
+            return ProcessHandlers.isDefault(handler);
         }
     }
 }

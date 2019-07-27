@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -113,6 +113,6 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
             visitor.setInstructionIndex(i);
             instruction.accept(visitor);
         }
-        blocks.add(context.getNodeFactory().createBasicBlockNode(visitor.getInstructions(), visitor.getControlFlowNode(), block.getBlockIndex(), block.getName()));
+        blocks.add(context.getLanguage().getNodeFactory().createBasicBlockNode(visitor.getInstructions(), visitor.getControlFlowNode(), block.getBlockIndex(), block.getName()));
     }
 }

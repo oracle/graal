@@ -30,10 +30,10 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -70,7 +70,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected void instrumentGraph(StructuredGraph graph, PhaseContext context, JavaConstant tableConstant) {
+    protected void instrumentGraph(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant) {
         TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
         for (Node n : graph.getNodes()) {
             if (n instanceof Invoke && runtime.isTruffleBoundary(((Invoke) n).callTarget().targetMethod())) {

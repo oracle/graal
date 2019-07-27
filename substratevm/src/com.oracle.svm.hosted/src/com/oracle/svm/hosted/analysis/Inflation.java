@@ -289,6 +289,40 @@ public class Inflation extends BigBang {
         }
     }
 
+    /** Modified copy of {@link Arrays#equals(Object[], Object[])}. */
+    private static boolean shallowEquals(Object[] a, Object[] a2) {
+        if (a == a2) {
+            return true;
+        } else if (a == null || a2 == null) {
+            return false;
+        }
+        int length = a.length;
+        if (a2.length != length) {
+            return false;
+        }
+        for (int i = 0; i < length; i++) {
+            /* Modification: use reference equality. */
+            if (a[i] != a2[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Modified copy of {@link Arrays#hashCode(Object[])}. */
+    private static int shallowHashCode(Object[] a) {
+        if (a == null) {
+            return 0;
+        }
+        int result = 1;
+
+        for (Object element : a) {
+            /* Modification: use identity hash code. */
+            result = 31 * result + System.identityHashCode(element);
+        }
+        return result;
+    }
+
     class AnnotatedInterfacesEncodingKey {
         final AnnotatedType[] interfaces;
 
@@ -296,14 +330,22 @@ public class Inflation extends BigBang {
             this.interfaces = aInterfaces;
         }
 
+        /*
+         * JDK 12 introduced a broken implementation of hashCode() and equals() for the
+         * implementation classes of annotated types, leading to an infinite recursion. Tracked as
+         * JDK-8224012. As a workaround, we use shallow implementations that only depend on the
+         * identity hash code and reference equality. This is the same behavior as on JDK 8 and JDK
+         * 11 anyway.
+         */
+
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof AnnotatedInterfacesEncodingKey && Arrays.equals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
+            return obj instanceof AnnotatedInterfacesEncodingKey && shallowEquals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(interfaces);
+            return shallowHashCode(interfaces);
         }
     }
 
@@ -647,10 +689,10 @@ public class Inflation extends BigBang {
 
     /**
      * Builds a pattern that checks if the tested string starts with any of the target prefixes,
-     * like so: {@code str1(.*)|str2(.*)|str3(.*)}.
+     * like so: {@code ^(str1(.*)|str2(.*)|str3(.*))}.
      */
     private static Pattern buildPrefixMatchPattern(String[] targetPrefixes) {
-        StringBuilder patternStr = new StringBuilder();
+        StringBuilder patternStr = new StringBuilder("^(");
         for (int i = 0; i < targetPrefixes.length; i++) {
             String prefix = targetPrefixes[i];
             patternStr.append(prefix);
@@ -659,14 +701,15 @@ public class Inflation extends BigBang {
                 patternStr.append("|");
             }
         }
+        patternStr.append(')');
         return Pattern.compile(patternStr.toString());
     }
 
     @Override
     public boolean isCallAllowed(BigBang bb, AnalysisMethod caller, AnalysisMethod callee, NodeSourcePosition srcPosition) {
-        String calleeName = callee.format("%H.%n");
+        String calleeName = callee.getQualifiedName();
         if (illegalCalleesPattern.matcher(calleeName).find()) {
-            String callerName = caller.format("%H.%n");
+            String callerName = caller.getQualifiedName();
             if (targetCallersPattern.matcher(callerName).find()) {
                 SuppressSVMWarnings suppress = caller.getAnnotation(SuppressSVMWarnings.class);
                 AnalysisType callerType = caller.getDeclaringClass();

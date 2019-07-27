@@ -77,11 +77,13 @@ class SulongTestSuiteBuildTask(mx.NativeBuildTask):
 
 
 class SulongTestSuite(mx.NativeProject):
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **args):
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
+                 buildSharedObject=False, **args):
         d = os.path.join(suite.dir, subDir) # use common Makefile for all test suites
         mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d, **args)
         self.vpath = True
         self.buildRef = buildRef
+        self.buildSharedObject = buildSharedObject
         self._is_needs_rebuild_call = False
         if not hasattr(self, 'testClasses'):
             self.testClasses = self.defaultTestClasses()
@@ -139,6 +141,8 @@ class SulongTestSuite(mx.NativeProject):
         env['TESTS'] = ' '.join(self.getTests())
         env['VARIANTS'] = ' '.join(self.getVariants())
         env['BUILD_REF'] = '1' if self.buildRef else '0'
+        env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
+        env['SO_EXT'] = mx.add_lib_suffix("")
         env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
@@ -157,7 +161,8 @@ class SulongTestSuite(mx.NativeProject):
                 if self.buildRef:
                     self.results.append(os.path.join(t, 'ref.out'))
                 for v in self.getVariants():
-                    self.results.append(os.path.join(t, v + '.bc'))
+                    result_file = mx.add_lib_suffix(v) if self.buildSharedObject else v + '.bc'
+                    self.results.append(os.path.join(t, result_file))
         return super(SulongTestSuite, self).getResults(replaceVar=replaceVar)
 
 

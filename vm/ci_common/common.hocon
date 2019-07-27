@@ -41,7 +41,7 @@ common_vm_windows: ${common_vm} ${windows} {
 # SULONG
 sulong_linux: {
   packages: {
-    llvm: "==3.8"
+    llvm: "==6.0.1"
     ruby: "==2.1.0" # for mdl
   }
   downloads: {
@@ -62,7 +62,7 @@ sulong_darwin: {
 # TRUFFLERUBY
 truffleruby_linux: {
   packages: {
-    llvm: "==3.8"
+    llvm: "==6.0.1"
     ruby: "==2.1.0"
   }
 }
@@ -182,6 +182,14 @@ daily_vm_darwin: ${vm_darwin} {
   targets: [daily]
 }
 
+weekly_vm_linux: ${vm_linux} {
+  targets: [weekly]
+}
+
+weekly_vm_darwin: ${vm_darwin} {
+  targets: [weekly]
+}
+
 mx_vm_common: [mx, --strip-jars, --no-sources, --with-debuginfo, --env, "${VM_ENV}"]
 mx_vm_installables: ${mx_vm_common}
 maven_deploy_vm: [--suite, vm, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata, ${binaries-repository}]
@@ -210,8 +218,9 @@ builds += [
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju", build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju"] ${maven_deploy_vm}
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_vm}
+    ] ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_vm}
       ${notify-nexus-deploy}
       [set-export, GRAALVM_HOME, ${mx_vm_common} [graalvm-home]]
     ] ${scan_malware.run}
@@ -238,9 +247,9 @@ builds += [
     name: deploy-vm-installable-darwin-amd64
   }
   ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
-    run: [
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_vm}
+    run: ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_vm}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:45:00"

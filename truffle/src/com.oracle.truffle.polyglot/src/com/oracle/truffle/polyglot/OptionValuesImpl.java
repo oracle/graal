@@ -167,6 +167,7 @@ final class OptionValuesImpl implements OptionValues {
         return (T) value;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public <T> void set(OptionKey<T> optionKey, T value) {
         optionKey.getType().validate(value);

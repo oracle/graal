@@ -181,10 +181,6 @@ public abstract class LLVMInteropType implements TruffleObject {
             return length;
         }
 
-        public LLVMInteropType.Array resize(long newLength) {
-            return new LLVMInteropType.Array(elementType, elementSize, newLength);
-        }
-
         @Override
         @TruffleBoundary
         protected String toString(EconomicSet<LLVMInteropType> visited) {

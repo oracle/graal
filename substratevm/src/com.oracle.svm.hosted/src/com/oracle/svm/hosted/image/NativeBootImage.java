@@ -31,8 +31,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.AnnotatedType;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
@@ -56,6 +54,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
@@ -89,7 +88,6 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -106,6 +104,8 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MethodPointer;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -238,17 +238,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
     private static Header instantiateCHeader(Class<? extends CHeader.Header> header) {
         try {
-            Constructor<?> constructor = header.getDeclaredConstructor();
-            constructor.setAccessible(true);
-            return (CHeader.Header) constructor.newInstance();
-        } catch (NoSuchMethodException e) {
-            throw UserError.abort("CHeader " + header.getName() + " can't be instantiated. Please make sure that it has a nullary constructor.");
-        } catch (InstantiationException e) {
-            throw UserError.abort("CHeader " + header.getName() + " can't be instantiated. Make sure that " + header.getSimpleName() + " is not abstract.");
-        } catch (IllegalAccessException e) {
-            throw VMError.shouldNotReachHere("We set the constructor to accessible.");
-        } catch (InvocationTargetException e) {
-            throw UserError.abort("CHeader " + header.getName() + " can't be instantiated. The constructor threw and exception: " + e.getTargetException().getMessage());
+            return ReflectionUtil.newInstance(header);
+        } catch (ReflectionUtilError ex) {
+            throw UserError.abort("CHeader " + header.getName() + " cannot be instantiated. Please make sure that it has a nullary constructor and is not abstract.", ex.getCause());
         }
     }
 
@@ -512,11 +504,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
     /**
      * Covariant return type overrides added by https://bugs.openjdk.java.net/browse/JDK-4774077
-     * make the cast below unnecessary as of JDK 9.
+     * make the cast below unnecessary as of JDK 11.
      */
     @SuppressWarnings("cast")
     private static ByteBuffer castToByteBuffer(final RelocatableBuffer heapSectionBuffer) {
-        return (ByteBuffer) heapSectionBuffer.getBuffer().asReadOnlyBuffer().position(0);
+        return (ByteBuffer) BufferUtil.asBaseBuffer(heapSectionBuffer.getBuffer().asReadOnlyBuffer()).position(0);
     }
 
     private void markRelocationSitesFromMaps(RelocatableBuffer relocationMap, ProgbitsSectionImpl sectionImpl, Map<Object, NativeImageHeap.ObjectInfo> objectMap) {
@@ -789,7 +781,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             return getContent();
         }
 
-        protected abstract void defineMethodSymbol(String name, Element section, HostedMethod method, CompilationResult result);
+        protected abstract void defineMethodSymbol(String name, boolean global, Element section, HostedMethod method, CompilationResult result);
 
         @SuppressWarnings("try")
         protected void writeTextSection(DebugContext debug, final Section textSection, final List<HostedMethod> entryPoints) {
@@ -849,7 +841,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                     } else {
                         methodsBySignature.put(signatureString, current);
                     }
-                    defineMethodSymbol(symName, textSection, current, ent.getValue());
+                    defineMethodSymbol(symName, entryPoints.contains(current), textSection, current, ent.getValue());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -864,13 +856,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
                     if (entryPointIndex != -1) {
                         final String mangledSignature = mangleName(ent.getKey());
                         assert mangledSignature.equals(globalSymbolNameForMethod(method));
-                        defineMethodSymbol(mangledSignature, textSection, method, null);
+                        defineMethodSymbol(mangledSignature, true, textSection, method, null);
 
                         // 3. Also create @CEntryPoint linkage names in this case
                         if (cEntryData != null) {
                             assert !cEntryData.getSymbolName().isEmpty();
                             // no need for mangling: name must already be a valid external name
-                            defineMethodSymbol(cEntryData.getSymbolName(), textSection, method, codeCache.getCompilations().get(method));
+                            defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.getCompilations().get(method));
                         }
                     }
                 }

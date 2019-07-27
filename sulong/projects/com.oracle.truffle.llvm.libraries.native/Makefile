@@ -30,20 +30,27 @@
 QUIETLY$(MX_VERBOSE) = @
 
 .PHONY: default
-default: bin/${LIBSULONG}
+default: bin/${LIBSULONG} bin/${LIBPOLYGLOT}
 
 CLANG?=clang
 
 ifeq ($(OS), darwin)
 LDFLAGS=-dynamiclib -g
+bin/${LIBSULONG}: LDFLAGS+=-install_name ${LIBSULONG}
+bin/${LIBPOLYGLOT}: LDFLAGS+=-install_name ${LIBPOLYGLOT}
 else
 LDFLAGS=-shared -g
 endif
 
 CFLAGS=-g -fPIC -DPIC -O3
 
+bin/polyglot-mock.o: CFLAGS+=-Wno-return-type
+
 bin/${LIBSULONG}: bin/misc.o bin/posix.o bin/fp80.o bin/globals.o
 	$(QUIETLY) $(CLANG) ${LDFLAGS} -lm -o $@ $+
+
+bin/${LIBPOLYGLOT}: bin/polyglot-mock.o
+	$(QUIETLY) $(CLANG) ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c
 	@mkdir -p bin

@@ -150,6 +150,13 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     /**
+     * Returns true if NaN is included in the value described by this stamp.
+     */
+    public boolean canBeNaN() {
+        return !nonNaN;
+    }
+
+    /**
      * Returns true if this stamp represents the NaN value.
      */
     public boolean isNaN() {
@@ -323,8 +330,10 @@ public class FloatStamp extends PrimitiveStamp {
         /*
          * There are many forms of NaNs and any operations on them can silently convert them into
          * the canonical NaN.
+         *
+         * We need to exclude 0 here since it can contain -0.0 && 0.0 .
          */
-        return (Double.compare(lowerBound, upperBound) == 0 && nonNaN);
+        return (Double.compare(lowerBound, upperBound) == 0 && nonNaN) && lowerBound != 0;
     }
 
     private static FloatStamp stampForConstant(Constant constant) {

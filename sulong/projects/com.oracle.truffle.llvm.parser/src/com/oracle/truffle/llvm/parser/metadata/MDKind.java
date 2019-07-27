@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,12 +62,6 @@ public final class MDKind implements MDBaseNode {
     @Override
     public String toString() {
         return String.format("Kind (id=%d, name=\"%s\")", id, name);
-    }
-
-    private static final int ARG_ID = 0;
-
-    public static MDKind create(long[] args) {
-        return create(args[ARG_ID], ParseUtil.longArrayToString(1, args));
     }
 
     public static MDKind create(long id, String name) {

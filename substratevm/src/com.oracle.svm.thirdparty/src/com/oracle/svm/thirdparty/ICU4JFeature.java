@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -88,15 +89,14 @@ public final class ICU4JFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        RuntimeClassInitialization.initializeAtRunTime(getIcu4jClasses(access));
-    }
 
-    static class Helper {
-        /** Dummy ClassLoader used only for resource loading. */
-        // Checkstyle: stop
-        static final ClassLoader DUMMY_LOADER = new ClassLoader(null) {
-        };
-        // CheckStyle: resume
+        // we should fail the native-image build, if any ICU4J class instance
+        // made it to the build-time generated heap
+        RuntimeClassInitialization.initializeAtRunTime(getIcu4jClasses(access));
+
+        // ClassLoaderHelper is a utility class used in @TargetClass annotated substitutions bellow
+        RuntimeClassInitialization.initializeAtBuildTime(ClassLoaderHelper.class);
+        RuntimeClassInitialization.initializeAtBuildTime(ClassLoaderHelper.DummyClassLoader.class);
     }
 
     private static Class<?>[] getIcu4jClasses(FeatureAccess access) {
@@ -105,12 +105,26 @@ public final class ICU4JFeature implements Feature {
     }
 }
 
+// Checkstyle: stop
+final class ClassLoaderHelper {
+
+    static final class DummyClassLoader extends ClassLoader {
+        DummyClassLoader(ClassLoader parent) {
+            super(parent);
+        }
+    }
+
+    /** Dummy ClassLoader used only for resource loading. */
+    static final ClassLoader DUMMY_LOADER = new DummyClassLoader(null);
+}
+// CheckStyle: resume
+
 @TargetClass(className = "com.ibm.icu.impl.ClassLoaderUtil", onlyWith = ICU4JFeature.IsEnabled.class)
 final class Target_com_ibm_icu_impl_ClassLoaderUtil {
     @Substitute
     // Checkstyle: stop
     public static ClassLoader getClassLoader() {
-        return ICU4JFeature.Helper.DUMMY_LOADER;
+        return ClassLoaderHelper.DUMMY_LOADER;
     }
     // Checkstyle: resume
 }
@@ -135,26 +149,39 @@ final class Target_com_ibm_icu_impl_ICUBinary {
                         ICU4J_DATA_PATH_ENV_VAR +
                         ", to contain path to your ICU4J icudt directory";
 
-        private static volatile List<?> instance;
+        // once fully populated, the data file list will be kept here
+        private static volatile List<?> instance = null;
+        // helper collection to which the list will be populated
+        private static List<?> populatingDataFiles = null;
 
+        private static final Object lock = new Object();
+
+        @NeverInline("So the lock does not get eliminated.")
         static List<?> get() {
 
             if (instance == null) {
                 // Checkstyle: allow synchronization
-                synchronized (IcuDataFilesAccessors.class) {
+                synchronized (lock) {
                     if (instance == null) {
-
-                        instance = new ArrayList<>();
+                        if (populatingDataFiles == null) {
+                            // the very first call, from "outside"
+                            populatingDataFiles = new ArrayList<>();
+                        } else {
+                            // second, re-entrant, call from the same thread
+                            // comes from the addDataFilesFromPath method invoked bellow
+                            return populatingDataFiles;
+                        }
 
                         String dataPath = System.getProperty(ICU4J_DATA_PATH_SYS_PROP);
                         if (dataPath == null || dataPath.isEmpty()) {
                             dataPath = System.getenv(ICU4J_DATA_PATH_ENV_VAR);
                         }
                         if (dataPath != null && !dataPath.isEmpty()) {
-                            addDataFilesFromPath(dataPath, instance);
+                            addDataFilesFromPath(dataPath, populatingDataFiles);
                         } else {
                             System.err.println(NO_DATA_PATH_ERR_MSG);
                         }
+                        instance = populatingDataFiles;
                     }
                 }
                 // Checkstyle: disallow synchronization
@@ -176,7 +203,7 @@ final class Target_com_ibm_icu_impl_ICUBinary {
 final class Target_com_ibm_icu_impl_ICUResourceBundle {
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true)
     // Checkstyle: stop
-    private static ClassLoader ICU_DATA_CLASS_LOADER = ICU4JFeature.Helper.DUMMY_LOADER;
+    private static ClassLoader ICU_DATA_CLASS_LOADER = ClassLoaderHelper.DUMMY_LOADER;
     // Checkstyle: resume
 
     @SuppressWarnings("unused")

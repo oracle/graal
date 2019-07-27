@@ -27,6 +27,8 @@ package com.oracle.svm.core.graal.code.aarch64;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.aarch64.AArch64.lr;
+import static jdk.vm.ci.aarch64.AArch64.r0;
+import static jdk.vm.ci.aarch64.AArch64.r1;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
@@ -339,11 +341,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         @Override
-        public Value emitReadInstructionPointer() {
-            throw unimplemented();
-        }
-
-        @Override
         public void emitVerificationMarker(Object marker) {
             append(new VerificationMarkerOp(marker));
         }
@@ -393,6 +390,24 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         public LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues) {
             throw unimplemented();
+        }
+
+        @Override
+        public void emitConvertNullToZero(AllocatableValue result, Value value) {
+            if (useLinearPointerCompression()) {
+                append(new AArch64Move.ConvertNullToZeroOp(result, (AllocatableValue) value));
+            } else {
+                emitMove(result, value);
+            }
+        }
+
+        @Override
+        public void emitConvertZeroToNull(AllocatableValue result, Value value) {
+            if (useLinearPointerCompression()) {
+                append(new AArch64Move.ConvertZeroToNullOp(result, (AllocatableValue) value));
+            } else {
+                emitMove(result, value);
+            }
         }
 
         @Override
@@ -588,7 +603,16 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     protected static class DeoptEntryStubContext extends SubstrateAArch64FrameContext {
         @Override
         public void enter(CompilationResultBuilder tasm) {
-            throw unimplemented();
+            AArch64MacroAssembler asm = (AArch64MacroAssembler) tasm.asm;
+
+            // Move the DeoptimizedFrame into r1
+            asm.ldr(64, r1, AArch64Address.createUnscaledImmediateAddress(sp, 0));
+
+            // Store the original return value registers
+            int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
+            asm.str(64, r0, AArch64Address.createUnscaledImmediateAddress(r1, scratchOffset));
+
+            super.enter(tasm);
         }
     }
 
@@ -598,8 +622,32 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
      */
     protected static class DeoptExitStubContext extends SubstrateAArch64FrameContext {
         @Override
+        public void enter(CompilationResultBuilder tasm) {
+            AArch64MacroAssembler asm = (AArch64MacroAssembler) tasm.asm;
+
+            /* The new stack pointer is passed in as the first method parameter. */
+            Register firstParameter = tasm.frameMap.getRegisterConfig().getCallingConventionRegisters(SubstrateCallingConventionType.JavaCall, tasm.target.wordJavaKind).get(0);
+            asm.mov(64, sp, firstParameter);
+            /*
+             * Compensate that we set the stack pointer after the return address was pushed. Note
+             * that the "new" frame location does not have a valid return address at this point.
+             * That is OK because the return address for the deoptimization target frame will be
+             * patched into this location.
+             */
+            asm.sub(64, sp, sp, FrameAccess.returnAddressSize());
+
+            super.enter(tasm);
+        }
+
+        @Override
         public void leave(CompilationResultBuilder tasm) {
-            throw unimplemented();
+            AArch64MacroAssembler asm = (AArch64MacroAssembler) tasm.asm;
+
+            super.leave(tasm);
+
+            // Restore the return value registers (the DeoptimizedFrame is in r1).
+            int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
+            asm.ldr(64, r0, AArch64Address.createUnscaledImmediateAddress(r1, scratchOffset));
         }
     }
 

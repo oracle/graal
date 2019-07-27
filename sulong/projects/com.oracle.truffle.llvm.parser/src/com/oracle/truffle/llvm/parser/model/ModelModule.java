@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,13 +40,11 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class ModelModule {
@@ -55,17 +53,17 @@ public final class ModelModule {
     // one.
     private static final TargetDataLayout defaultLayout = TargetDataLayout.fromString("e-i64:64-f80:128-n8:16:32:64-S128");
 
-    private final List<Type> types = new ArrayList<>();
-    private final List<GlobalVariable> globalVariables = new ArrayList<>();
-    private final List<GlobalAlias> aliases = new ArrayList<>();
-    private final List<FunctionDeclaration> declares = new ArrayList<>();
-    private final List<FunctionDefinition> defines = new ArrayList<>();
-    private final List<TargetInformation> targetInfo = new ArrayList<>();
-    private final List<String> libraries = new ArrayList<>();
-    private final List<String> paths = new ArrayList<>();
-    private final Map<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
-    private final Map<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
-    private final Map<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
+    private final ArrayList<Type> types = new ArrayList<>();
+    private final ArrayList<GlobalVariable> globalVariables = new ArrayList<>();
+    private final ArrayList<GlobalAlias> aliases = new ArrayList<>();
+    private final ArrayList<FunctionDeclaration> declares = new ArrayList<>();
+    private final ArrayList<FunctionDefinition> defines = new ArrayList<>();
+    private final ArrayList<TargetInformation> targetInfo = new ArrayList<>();
+    private final ArrayList<String> libraries = new ArrayList<>();
+    private final ArrayList<String> paths = new ArrayList<>();
+    private final HashMap<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
+    private final HashMap<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
+    private final HashMap<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
     private TargetDataLayout targetDataLayout = defaultLayout;
     private DebugInfoFunctionProcessor functionProcessor = null;
 
@@ -78,20 +76,6 @@ public final class ModelModule {
 
     public TargetDataLayout getTargetDataLayout() {
         return targetDataLayout;
-    }
-
-    public void accept(ModelVisitor visitor) {
-        visitor.visit(targetDataLayout);
-        targetInfo.forEach(visitor::visit);
-        types.forEach(visitor::visit);
-        for (GlobalValueSymbol variable : globalVariables) {
-            variable.accept(visitor);
-        }
-        for (GlobalValueSymbol alias : aliases) {
-            alias.accept(visitor);
-        }
-        defines.forEach(visitor::visit);
-        declares.forEach(visitor::visit);
     }
 
     public void addFunctionDeclaration(FunctionDeclaration declaration) {
