@@ -162,6 +162,15 @@ public class OSRCancelTest {
             }
             return true;
         }
+
+        @Override
+        public int executeRepeatingWithStatus(VirtualFrame frame) {
+            if (executeRepeating(frame)) {
+                return RepeatingNode.CONTINUE_LOOP_STATUS;
+            } else {
+                return RepeatingNode.BREAK_LOOP_STATUS;
+            }
+        }
     }
 
     static class TestMaterializedLoopNode extends TestInstrumentableNode {
