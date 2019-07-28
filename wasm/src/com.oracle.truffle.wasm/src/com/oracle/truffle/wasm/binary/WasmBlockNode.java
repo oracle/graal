@@ -249,10 +249,13 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     break;
                 case BLOCK: {
                     WasmNode block = nestedControlTable[nestedControlOffset];
+
+                    // The unwind counter indicates how many levels up we need to branch from within the block.
                     int unwindCounter = block.execute(context, frame);
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
                     }
+
                     nestedControlOffset++;
                     offset += block.byteLength();
                     stackPointer += block.returnTypeLength();
@@ -262,20 +265,24 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case LOOP: {
                     WasmNode loopNode = nestedControlTable[nestedControlOffset];
 
-                    /**
-                     * The loopNode is a {@link WasmLoopNode} instance containing an instance of the {@link com.oracle.truffle.api.nodes.LoopNode}.
-                     * The LoopNode instance is created based on the {@link WasmBlockNode} (which implements {@link RepeatingNode})
-                     * for the loop block. When the execute method below is called, a call is made to the Truffle loop
-                     * node {@link com.oracle.truffle.api.nodes.LoopNode#executeLoop(VirtualFrame)} method,
-                     * which executes the loop as long as the return value of the
-                     * {@link WasmBlockNode#execute(VirtualFrame)} method is not -1
-                     * (see the {@link WasmBlockNode#executeRepeating(VirtualFrame)}} method).
-                     */
-                    int unwindCounter = loopNode.execute(context, frame);
-
-                    // The return value of the above call (unwindCounter) will normally indicate where we need to
-                    // branch to after the loop completion (i.e. to the code just after the loop or further out).
-                    // This is not supported yet.
+                    // The unwind counter indicates how many levels up we need to branch from within the loop block.
+                    // There are three possibilities for the value of unwind counter:
+                    // - A value equal to -1 indicates normal loop completion and that the flow should continue
+                    //   after the loop end (break out of the loop).
+                    // - A value equal to 0 indicates that we need to branch to the beginning of the loop (repeat loop).
+                    //   This is handled internally by Truffle and the executing loop should never return 0 here.
+                    //   The call may still return 0, if the current loop is the branch target of a further nested block.
+                    //   In that case, since the continuation of a loop block is the beginning of the loop, we need to
+                    //   start executing a new version of the loop again.
+                    // - A value larger than 0 indicates that we need to branch to a level "shallower" than the current
+                    //   loop block (break out of the loop and even further).
+                    int unwindCounter;
+                    do {
+                        unwindCounter = loopNode.execute(context, frame);
+                    } while (unwindCounter == 0);
+                    if (unwindCounter > 0) {
+                        return unwindCounter - 1;
+                    }
 
                     nestedControlOffset++;
                     offset += loopNode.byteLength();
