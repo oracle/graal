@@ -45,6 +45,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.code.CEntryPointData;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -139,14 +141,25 @@ public class FeatureImpl {
 
     public static class AfterRegistrationAccessImpl extends FeatureAccessImpl implements Feature.AfterRegistrationAccess {
         private final MetaAccessProvider metaAccess;
+        private Pair<Method, CEntryPointData> mainEntryPoint;
 
-        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
+        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, Pair<Method, CEntryPointData> mainEntryPoint,
+                        DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.metaAccess = metaAccess;
+            this.mainEntryPoint = mainEntryPoint;
         }
 
         public MetaAccessProvider getMetaAccess() {
             return metaAccess;
+        }
+
+        public void setMainEntryPoint(Pair<Method, CEntryPointData> mainEntryPoint) {
+            this.mainEntryPoint = mainEntryPoint;
+        }
+
+        public Pair<Method, CEntryPointData> getMainEntryPoint() {
+            return mainEntryPoint;
         }
     }
 

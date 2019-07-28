@@ -36,7 +36,7 @@ public abstract class ConfigurationParser {
     public abstract void parseAndRegister(Reader reader) throws IOException;
 
     @SuppressWarnings("unchecked")
-    static List<Object> asList(Object data, String errorMessage) {
+    protected static List<Object> asList(Object data, String errorMessage) {
         if (data instanceof List) {
             return (List<Object>) data;
         }
@@ -44,7 +44,7 @@ public abstract class ConfigurationParser {
     }
 
     @SuppressWarnings("unchecked")
-    static Map<String, Object> asMap(Object data, String errorMessage) {
+    protected static Map<String, Object> asMap(Object data, String errorMessage) {
         if (data instanceof Map) {
             return (Map<String, Object>) data;
         }
@@ -58,7 +58,7 @@ public abstract class ConfigurationParser {
         throw new JSONParserException("Invalid string value \"" + value + "\".");
     }
 
-    static String asString(Object value, String propertyName) {
+    protected static String asString(Object value, String propertyName) {
         if (value instanceof String) {
             return (String) value;
         }
