@@ -53,6 +53,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.ROR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SAR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHR;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSD;
@@ -78,6 +79,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64Arithmetic.DREM;
@@ -168,6 +170,8 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBPS;
 
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+
 /**
  * This class implements the AMD64 specific portion of the LIR generator.
  */
@@ -191,7 +195,22 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VECTOR_SUB_TABLE.getOp(scalarKind, length), getLIRGen(), getRegisterSize(result), result, input));
+            switch (scalarKind) {
+                case DWORD:
+                    getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VPSUBD, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
+                    break;
+                case QWORD:
+                    getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VPSUBQ, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
+                    break;
+                case SINGLE:
+                    getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VSUBPS, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
+                    break;
+                case DOUBLE:
+                    getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VSUBPD, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
             return result;
         }
         switch ((AMD64Kind) input.getPlatformKind()) {
@@ -335,32 +354,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return result;
     }
 
-    private static class VectorOpTable {
-        private final Map<AMD64Kind, Function<Integer, VexRVMOp>> getters = new HashMap<>();
-
-        protected VectorOpTable addMapping(AMD64Kind scalarKind, Function<Integer, VexRVMOp> function) {
-            getters.put(scalarKind, function);
-            return this;
-        }
-
-        VexRVMOp getOp(AMD64Kind scalarKind, int size) {
-            Function<Integer, VexRVMOp> fn = getters.get(scalarKind);
-            if (fn == null) {
-                GraalError.shouldNotReachHere("Unsupported vector operation on kind " + scalarKind.name() + ".");
-            }
-            return getters.get(scalarKind).apply(size);
-        }
-    }
-
-    private static final VectorOpTable VECTOR_ADD_TABLE = new VectorOpTable() {
-        {
-            addMapping(AMD64Kind.DOUBLE, (size) -> VADDSD);
-            addMapping(AMD64Kind.SINGLE, (size) -> VADDSS);
-            addMapping(AMD64Kind.DWORD, (size) -> size == 2 ? VPADDD : VPADDQ);
-            addMapping(AMD64Kind.QWORD, (size) -> VPADDQ);
-        }
-    };
-
     @Override
     public Variable emitAdd(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         boolean isAvx = supportAVX();
@@ -369,7 +362,18 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            return emitBinary(resultKind, VECTOR_ADD_TABLE.getOp(scalarKind, length), a, b);
+            switch (scalarKind) {
+                case DWORD:
+                    return emitBinary(resultKind, VPADDD, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPADDQ, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VADDSD, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VADDPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
         switch (kind) {
             case DWORD:
@@ -405,15 +409,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
     }
 
-    private static final VectorOpTable VECTOR_SUB_TABLE = new VectorOpTable() {
-        {
-            addMapping(AMD64Kind.DOUBLE, (size) -> VSUBPD);
-            addMapping(AMD64Kind.SINGLE, (size) -> VSUBPS);
-            addMapping(AMD64Kind.DWORD, (size) -> size == 2 ? VPSUBD : VPSUBQ);
-            addMapping(AMD64Kind.QWORD, (size) -> VPSUBQ);
-        }
-    };
-
     @Override
     public Variable emitSub(LIRKind resultKind, Value a, Value b, boolean setFlags) {
         boolean isAvx = supportAVX();
@@ -422,7 +417,18 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            return emitBinary(resultKind, VECTOR_SUB_TABLE.getOp(scalarKind, length), a, b);
+            switch (scalarKind) {
+                case DWORD:
+                    return emitBinary(resultKind, VPSUBD, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPSUBQ, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VSUBSD, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VSUBPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
@@ -475,14 +481,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
     }
 
-    private static final VectorOpTable VECTOR_MUL_TABLE = new VectorOpTable() {
-        {
-            addMapping(AMD64Kind.DOUBLE, (size) -> VMULPD);
-            addMapping(AMD64Kind.SINGLE, (size) -> VMULPS);
-            addMapping(AMD64Kind.DWORD, (size) -> VPMULLD);
-        }
-    };
-
     @Override
     public Variable emitMul(Value a, Value b, boolean setFlags) {
         boolean isAvx = supportAVX();
@@ -492,7 +490,16 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            return emitBinary(resultKind, VECTOR_MUL_TABLE.getOp(scalarKind, length), a, b);
+            switch (scalarKind) {
+                case DWORD:
+                    return emitBinary(resultKind, VPMULLD, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VMULSD, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VMULPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
@@ -639,13 +646,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return new Value[]{getLIRGen().emitMove(op.getQuotient()), getLIRGen().emitMove(op.getRemainder())};
     }
 
-    private static final VectorOpTable VECTOR_DIV_TABLE = new VectorOpTable() {
-        {
-            addMapping(AMD64Kind.DOUBLE, (size) -> VDIVPD);
-            addMapping(AMD64Kind.SINGLE, (size) -> VDIVPS);
-        }
-    };
-
     @Override
     public Value emitDiv(Value a, Value b, LIRFrameState state) {
         boolean isAvx = supportAVX();
@@ -655,7 +655,14 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            return emitBinary(resultKind, VECTOR_DIV_TABLE.getOp(scalarKind, length), a, b);
+            switch (scalarKind) {
+                case SINGLE:
+                    return emitBinary(resultKind, VDIVSD, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VDIVPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
@@ -737,17 +744,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         return getLIRGen().emitMove(op.getRemainder());
     }
 
-    private static final VectorOpTable VECTOR_AND_TABLE = new VectorOpTable() {
-        {
-            addMapping(AMD64Kind.BYTE, (size) -> VPAND);
-            addMapping(AMD64Kind.WORD, (size) -> VPAND);
-            addMapping(AMD64Kind.DWORD, (size) -> VPAND);
-            addMapping(AMD64Kind.QWORD, (size) -> VPAND);
-            addMapping(AMD64Kind.SINGLE, (size) -> VANDPS);
-            addMapping(AMD64Kind.DOUBLE, (size) -> VANDPD);
-        }
-    };
-
     @Override
     public Variable emitAnd(Value a, Value b) {
         LIRKind resultKind = LIRKind.combine(a, b);
@@ -757,7 +753,22 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            return emitBinary(resultKind, VECTOR_AND_TABLE.getOp(scalarKind, length), a, b);
+            switch (scalarKind) {
+                case BYTE:
+                    return emitBinary(resultKind, VPAND, a, b);
+                case WORD:
+                    return emitBinary(resultKind, VPAND, a, b);
+                case DWORD:
+                    return emitBinary(resultKind, VPAND, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPAND, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VANDPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VANDPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
@@ -773,17 +784,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
     }
 
-    private static final VectorOpTable VECTOR_OR_TABLE = new VectorOpTable() {
-        {
-            addMapping(AMD64Kind.BYTE, (size) -> VPOR);
-            addMapping(AMD64Kind.WORD, (size) -> VPOR);
-            addMapping(AMD64Kind.DWORD, (size) -> VPOR);
-            addMapping(AMD64Kind.QWORD, (size) -> VPOR);
-            addMapping(AMD64Kind.SINGLE, (size) -> VORPS);
-            addMapping(AMD64Kind.DOUBLE, (size) -> VORPD);
-        }
-    };
-
     @Override
     public Variable emitOr(Value a, Value b) {
         LIRKind resultKind = LIRKind.combine(a, b);
@@ -793,7 +793,22 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            return emitBinary(resultKind, VECTOR_OR_TABLE.getOp(scalarKind, length), a, b);
+            switch (scalarKind) {
+                case BYTE:
+                    return emitBinary(resultKind, VPOR, a, b);
+                case WORD:
+                    return emitBinary(resultKind, VPOR, a, b);
+                case DWORD:
+                    return emitBinary(resultKind, VPOR, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPOR, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VORPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VORPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:
@@ -817,17 +832,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         }
     }
 
-    private static final VectorOpTable VECTOR_XOR_TABLE = new VectorOpTable() {
-        {
-            addMapping(AMD64Kind.BYTE, (size) -> VPXOR);
-            addMapping(AMD64Kind.WORD, (size) -> VPXOR);
-            addMapping(AMD64Kind.DWORD, (size) -> VPXOR);
-            addMapping(AMD64Kind.QWORD, (size) -> VPXOR);
-            addMapping(AMD64Kind.SINGLE, (size) -> VXORPS);
-            addMapping(AMD64Kind.DOUBLE, (size) -> VXORPD);
-        }
-    };
-
     @Override
     public Variable emitXor(Value a, Value b) {
         boolean isAvx = supportAVX();
@@ -837,7 +841,22 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
             int length = kind.getVectorLength();
-            return emitBinary(resultKind, VECTOR_XOR_TABLE.getOp(scalarKind, length), a, b);
+            switch (scalarKind) {
+                case BYTE:
+                    return emitBinary(resultKind, VPXOR, a, b);
+                case WORD:
+                    return emitBinary(resultKind, VPXOR, a, b);
+                case DWORD:
+                    return emitBinary(resultKind, VPXOR, a, b);
+                case QWORD:
+                    return emitBinary(resultKind, VPXOR, a, b);
+                case SINGLE:
+                    return emitBinary(resultKind, VXORPS, a, b);
+                case DOUBLE:
+                    return emitBinary(resultKind, VXORPD, a, b);
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
         switch ((AMD64Kind) a.getPlatformKind()) {
             case DWORD:

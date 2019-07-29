@@ -53,6 +53,7 @@ import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
@@ -88,8 +89,8 @@ public class AMD64VectorUnary {
     public static final class AVXNegateOp extends AMD64LIRInstruction {
         public static final LIRInstructionClass<AVXNegateOp> TYPE = LIRInstructionClass.create(AVXNegateOp.class);
 
-        private final AVXKind.AVXSize size;
         private final VexRVMOp sub;
+        private final AVXKind.AVXSize size;
 
         @Def({REG}) protected AllocatableValue result;
         @Temp({REG}) protected AllocatableValue temp;
@@ -97,11 +98,11 @@ public class AMD64VectorUnary {
 
         public AVXNegateOp(VexRVMOp sub, LIRGeneratorTool tool, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
             super(TYPE);
-            this.size = size;
             this.result = result;
             this.temp = tool.newVariable(result.getValueKind());
             this.input = input;
             this.sub = sub;
+            this.size = size;
         }
 
         @Override
