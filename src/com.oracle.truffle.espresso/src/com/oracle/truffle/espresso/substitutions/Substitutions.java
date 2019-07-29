@@ -76,12 +76,12 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * can write in the substitution
  *
  * <pre>
- * {@literal @}Substitution(methodName = toString)
+ * {@literal @}Substitution(methodName = "toString")
  * public static @Host(String.class) StaticObject toString_byte(@Host(byte[].class) StaticObject array) {
  *     ...
  * }
  *
- * {@literal @}Substitution(methodName = toString)
+ * {@literal @}Substitution(methodName = "toString")
  * public static @Host(String.class) StaticObject toString_int(@Host(int[].class) StaticObject array) {
  *     ...
  * }

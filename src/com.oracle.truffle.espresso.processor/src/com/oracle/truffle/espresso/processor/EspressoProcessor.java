@@ -219,7 +219,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         this.collector = new StringBuilder();
         collector.append(COPYRIGHT);
         collector.append(IMPORTS_COLLECTOR).append("\n");
-        collector.append("// ").append(GENERATED_BY).append(JniImplProcessor.class.getSimpleName()).append("\n");
+        collector.append("// ").append(GENERATED_BY).append(SUBSTITUTOR).append("\n");
         collector.append(PUBLIC_FINAL_CLASS).append(COLLECTOR).append(" {\n");
         collector.append(generateInstance("ArrayList<>", COLLECTOR_INSTANCE_NAME, "List<" + SUBSTITUTOR + ">"));
         collector.append(TAB_1).append("private ").append(COLLECTOR).append("() {\n").append(TAB_1).append("}\n");
@@ -309,7 +309,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         StringBuilder str = new StringBuilder();
         str.append("/**\n * ").append(GENERATED_BY).append("{").append(AT_LINK).append(className).append("#").append(targetMethodName).append("(");
         boolean first = true;
-        for (String param: parameterTypes) {
+        for (String param : parameterTypes) {
             if (first) {
                 first = false;
             } else {
@@ -383,7 +383,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
         // Class
         classFile.append(generateGeneratedBy(className, targetMethodName, parameterTypeName)).append("\n");
-//        classFile.append(GENERATED_BY).append(className).append("\n");
         classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(EXTENSION);
 
         // Instance
