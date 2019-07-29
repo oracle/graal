@@ -32,7 +32,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSV
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JObject;
 
 /**
  * Proxy for a {@code Supplier<Boolean>} object in the HotSpot heap.

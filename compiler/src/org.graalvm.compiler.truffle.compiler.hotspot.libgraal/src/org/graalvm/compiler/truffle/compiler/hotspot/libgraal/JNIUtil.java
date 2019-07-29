@@ -24,17 +24,17 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JArray;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JByteArray;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JClass;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JLongArray;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JMethodID;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObjectArray;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JThrowable;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JValue;
+import org.graalvm.libgraal.jni.JNI.JArray;
+import org.graalvm.libgraal.jni.JNI.JByteArray;
+import org.graalvm.libgraal.jni.JNI.JClass;
+import org.graalvm.libgraal.jni.JNI.JLongArray;
+import org.graalvm.libgraal.jni.JNI.JMethodID;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JObjectArray;
+import org.graalvm.libgraal.jni.JNI.JString;
+import org.graalvm.libgraal.jni.JNI.JThrowable;
+import org.graalvm.libgraal.jni.JNI.JValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;

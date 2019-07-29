@@ -502,6 +502,17 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.libgraal.jni" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.util" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -740,6 +751,22 @@ suite = {
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
       "javaCompliance" : "13+",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.management.libgraal" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot",
+        "org.graalvm.compiler.hotspot.management",
+        "org.graalvm.libgraal.jni",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+      ],
+      "javaCompliance" : "8+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1993,6 +2020,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.libgraal",
+        "org.graalvm.libgraal.jni",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.truffle.common.hotspot.libgraal",
       ],

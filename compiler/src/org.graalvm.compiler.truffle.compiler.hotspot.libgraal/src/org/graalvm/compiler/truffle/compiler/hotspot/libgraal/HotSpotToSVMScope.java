@@ -29,8 +29,8 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.Pus
 
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
 
 /**
  * Scope of a call from HotSpot to SVM. This also provides access to the {@link JNIEnv} value for

@@ -194,10 +194,10 @@ public class SVMToHotSpotProcessor extends AbstractProcessor {
             }
             out.println("");
             out.println("import org.graalvm.nativeimage.StackValue;");
-            out.println("import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;");
-            out.println("import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JValue;");
+            out.println("import org.graalvm.libgraal.jni.JNI.JNIEnv;");
+            out.println("import org.graalvm.libgraal.jni.JNI.JValue;");
             if (usesJObject) {
-                out.println("import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;");
+                out.println("import org.graalvm.libgraal.jni.JNI.JObject;");
             }
             out.println("");
             out.printf("final class %s {%n", genClassName);

@@ -56,11 +56,11 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.cre
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObjectArray;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JThrowable;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JObjectArray;
+import org.graalvm.libgraal.jni.JNI.JString;
+import org.graalvm.libgraal.jni.JNI.JThrowable;
 import org.graalvm.word.WordFactory;
 
 /**

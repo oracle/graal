@@ -47,11 +47,11 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JClass;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JMethodID;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
-import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JValue;
+import org.graalvm.libgraal.jni.JNI.JClass;
+import org.graalvm.libgraal.jni.JNI.JMethodID;
+import org.graalvm.libgraal.jni.JNI.JNIEnv;
+import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.libgraal.jni.JNI.JValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 /**
