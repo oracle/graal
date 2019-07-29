@@ -810,8 +810,9 @@ public class BytecodeParser implements GraphBuilderContext {
         this.parent = parent;
 
         ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
-        if (classInitializationPlugin != null && graphBuilderConfig.eagerResolving()) {
-            uninitializedIsError = eagerInitializing = !classInitializationPlugin.supportsLazyInitialization(constantPool);
+        if (classInitializationPlugin != null && graphBuilderConfig.eagerResolving() && classInitializationPlugin.supportsLazyInitialization(constantPool)) {
+            eagerInitializing = false;
+            uninitializedIsError = false;
         } else {
             eagerInitializing = graphBuilderConfig.eagerResolving();
             uninitializedIsError = graphBuilderConfig.unresolvedIsError();
