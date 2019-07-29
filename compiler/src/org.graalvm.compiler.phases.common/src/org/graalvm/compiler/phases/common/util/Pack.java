@@ -31,13 +31,11 @@ import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.phases.common.IsomorphicPackingPhase;
 
 import static org.graalvm.compiler.phases.common.IsomorphicPackingPhase.Util.getStamp;
 
