@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,49 +27,63 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.api;
+package com.oracle.truffle.llvm.runtime.instrumentation;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public abstract class LLVMControlFlowNode extends LLVMNode implements LLVMInstrumentableNode {
+import java.util.Arrays;
 
-    @CompilationFinal private LLVMNodeSourceDescriptor sourceDescriptor = null;
+@ExportLibrary(InteropLibrary.class)
+public class LLVMNodeObjectKeys implements TruffleObject {
 
-    public LLVMControlFlowNode() {
+    public static boolean isInstance(TruffleObject obj) {
+        return obj instanceof LLVMNodeObjectKeys;
     }
 
-    public abstract int getSuccessorCount();
+    @CompilationFinal(dimensions = 1) private final String[] properties;
 
-    public abstract LLVMStatementNode getPhiNode(int successorIndex);
-
-    public boolean needsBranchProfiling() {
-        return getSuccessorCount() > 1;
+    public LLVMNodeObjectKeys(String[] properties) {
+        this.properties = properties;
     }
 
-    @Override
-    public LLVMNodeSourceDescriptor getSourceDescriptor() {
-        return sourceDescriptor;
+    public String[] getProperties() {
+        return properties;
     }
 
-    @Override
-    public LLVMNodeSourceDescriptor getOrCreateSourceDescriptor() {
-        if (sourceDescriptor == null) {
-            setSourceDescriptor(new LLVMNodeSourceDescriptor());
-        }
-        return sourceDescriptor;
-    }
-
-    @Override
-    public void setSourceDescriptor(LLVMNodeSourceDescriptor sourceDescriptor) {
-        // the source descriptor should only be set in the parser, and should only be modified
-        // before this node is first executed
-        CompilerAsserts.neverPartOfCompilation();
-        this.sourceDescriptor = sourceDescriptor;
-    }
-
-    @Override
-    public boolean hasStatementTag() {
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean hasArrayElements() {
         return true;
+    }
+
+    @ExportMessage
+    public long getArraySize() {
+        return properties.length;
+    }
+
+    @ExportMessage
+    public boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < properties.length;
+    }
+
+    @ExportMessage
+    public String readArrayElement(long index) throws InvalidArrayIndexException {
+        if (index >= 0 && index < properties.length) {
+            return properties[(int) index];
+        } else {
+            throw InvalidArrayIndexException.create(index);
+        }
+    }
+
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return Arrays.toString(getProperties());
     }
 }
