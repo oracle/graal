@@ -31,9 +31,23 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue.Builder;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public class DebugExprDereferenceNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode pointerNode;
@@ -44,13 +58,53 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
+        InteropLibrary library = InteropLibrary.getFactory().getUncached();
         Object llvmDebugValue = pointerNode.executeGeneric(frame);
         try {
-            return ((LLVMDebugValue) llvmDebugValue).dereferencePointer(0);
+            LLVMDebuggerValue llvmDebuggerValue = (LLVMDebuggerValue) llvmDebugValue;
+            Builder builder = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createDebugValueBuilder();
+            Object metaObj = llvmDebuggerValue.getMetaObject();
+            DebugExprType pointerType = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
+            if (!pointerType.isPointer()) {
+                throw DebugExprException.create(this, llvmDebuggerValue + " is no pointer");
+            }
+            DebugExprType type = pointerType.getInnerType();
+            LLVMSourcePointerType llvmSourcePointerType = (LLVMSourcePointerType) metaObj;
+            LLVMSourcePointerType newLLVMSourcePointerType = new LLVMSourcePointerType(llvmSourcePointerType.getSize(),
+                            llvmSourcePointerType.getAlign(), llvmSourcePointerType.getOffset(), true,
+                            llvmSourcePointerType.isReference(), llvmSourcePointerType.getLocation());
+            LLVMSourceType llvmSourceType = llvmSourcePointerType.getBaseType();
+            LLVMDebugObject llvmPointerObject = (LLVMDebugObject) llvmDebugValue;
+            LLVMDebugValue pointerValue = builder.build(pointerNode.executeGeneric(frame));
+
+            LLVMDebugObject pointerObject = LLVMDebugObject.instantiate(newLLVMSourcePointerType, 0L, pointerValue, null);
+            LLVMDebugValue dereferencedValue = pointerValue.dereferencePointer(0);
+            LLVMDebugObject dereferencedObject = LLVMDebugObject.instantiate(llvmSourceType, 0L, dereferencedValue, null);
+            System.out.println("pointerValue.toString =" + pointerValue);
+            System.out.println("pointerValue.class = " + pointerValue.getClass().getName());
+            System.out.println("pointerObject.toString =" + pointerObject);
+            System.out.println("pointerObject.class = " + pointerObject.getClass().getName());
+            System.out.println("pointerNode.generic.toString = " + llvmDebugValue);
+            System.out.println("pointerNode.generec.getClass = " + llvmDebugValue.getClass().getName());
+
+            if (dereferencedValue != null) {
+                System.out.println("dereferencedValue.toString =" + dereferencedValue);
+                System.out.println("dereferencedValue.class = " + dereferencedValue.getClass().getName());
+            }
+            if (dereferencedObject != null) {
+                System.out.println("dereferencedObject.toString =" + dereferencedObject);
+                System.out.println("dereferencedObject.class = " + dereferencedObject.getClass().getName());
+                // return type.parse(dereferencedObject);
+            }
+
+            // throw DebugExprException.create(this, llvmDebugValue + " is of type " +
+            // llvmSourceType + "*");
         } catch (ClassCastException e) {
-            throw DebugExprException.create(this, llvmDebugValue + " is of type " + llvmDebugValue.getClass().getName());
+            e.printStackTrace();
         }
 
+        throw DebugExprException.create(this, llvmDebugValue + " is of type " +
+                        llvmDebugValue.getClass().getName());
     }
 
 }

@@ -35,4 +35,6 @@ BREAK 64 CONTINUE "main"
 	"line.end.x * line.end.y" "0"
 	"line.start.x-3" "0"
 	"line.start.y-4" "0"
+	"sqrt(9)" "3.0"
+	"sqrt(4+12)+12" "16.0"
 	END

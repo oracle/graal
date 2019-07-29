@@ -204,7 +204,7 @@ public final class DebugExprNodeFactory {
         if (!valid) {
             throw DebugExprException.create(node, "character " + charString + " not found");
         }
-        return DebugExpressionPair.create(node, DebugExprType.getIntType(8, true));
+        return DebugExpressionPair.create(node, DebugExprType.getIntType(8, false));
     }
 
     public DebugExpressionPair createCastIfNecessary(DebugExpressionPair pair, DebugExprType type) {
@@ -236,12 +236,19 @@ public final class DebugExprNodeFactory {
         return DebugExpressionPair.create(node, type);
     }
 
+    @SuppressWarnings("static-method")
+    public DebugExpressionPair createObjectPointerMember(DebugExpressionPair receiver, String fieldName) {
+        DebugExpressionPair dereferenced = createDereferenceNode(receiver);
+        return createObjectMember(dereferenced, fieldName);
+    }
+
     public DebugExpressionPair createFunctionCall(DebugExpressionPair functionPair, List<DebugExpressionPair> arguments) {
         checkError(functionPair, "call(...)");
         if (functionPair.getNode() instanceof DebugExprVarNode) {
             DebugExprVarNode varNode = (DebugExprVarNode) functionPair.getNode();
-            LLVMExpressionNode node = varNode.createFunctionCall(arguments, globalScopes);
-            return DebugExpressionPair.create(node, varNode.getType());
+            DebugExprFunctionCallNode node = varNode.createFunctionCall(arguments, globalScopes);
+            DebugExprType type = node.getType();
+            return DebugExpressionPair.create(node, type);
         }
         throw DebugExprException.typeError(functionPair.getNode(), functionPair.getNode().toString());
     }

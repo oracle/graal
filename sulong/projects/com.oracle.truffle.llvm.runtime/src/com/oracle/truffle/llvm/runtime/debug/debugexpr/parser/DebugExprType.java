@@ -5,7 +5,11 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
@@ -22,6 +26,10 @@ public class DebugExprType {
 
     public DebugExprType getInnerType() {
         return innerType;
+    }
+
+    public boolean isPointer() {
+        return kind == Kind.POINTER;
     }
 
     public boolean isUnsigned() {
@@ -114,7 +122,7 @@ public class DebugExprType {
         } else if (t1.isIntegerType() && t2.isFloatingType()) {
             return t2;
         } else if (t1.isFloatingType() && t2.isIntegerType()) {
-            return t2;
+            return t1;
         }
         return getVoidType();
     }
@@ -189,11 +197,11 @@ public class DebugExprType {
 
     public static DebugExprType getFloatType(long sizeInBits) {
         Kind kind = Kind.VOID;
-        if (sizeInBits == 32) {
+        if (sizeInBits <= 32) {
             kind = Kind.FLOAT;
-        } else if (sizeInBits == 64) {
+        } else if (sizeInBits <= 64) {
             kind = Kind.DOUBLE;
-        } else if (sizeInBits == 128) {
+        } else if (sizeInBits <= 128) {
             kind = Kind.LONG_DOUBLE;
         }
         if (map.containsKey(kind))
@@ -201,6 +209,49 @@ public class DebugExprType {
         DebugExprType t = new DebugExprType(kind, null);
         map.put(kind, t);
         return t;
+    }
+
+    public static DebugExprType getTypeFromLLVMType(Type llvmType) {
+        if (llvmType instanceof PrimitiveType) {
+            return getTypeFromPrimitiveType((PrimitiveType) llvmType);
+        } else if (llvmType instanceof PointerType) {
+            PointerType pointerType = (PointerType) llvmType;
+            return new DebugExprType(Kind.POINTER, getTypeFromLLVMType(pointerType.getPointeeType()));
+        } else if (llvmType instanceof ArrayType) {
+            ArrayType arrayType = (ArrayType) llvmType;
+            return new DebugExprType(Kind.ARRAY, getTypeFromLLVMType(arrayType.getElementType()));
+        } else if (llvmType instanceof StructureType) {
+            StructureType structureType = (StructureType) llvmType;
+            return new DebugExprType(Kind.STRUCT, null);
+        } else {
+            return DebugExprType.getVoidType();
+        }
+    }
+
+    private static DebugExprType getTypeFromPrimitiveType(PrimitiveType type) {
+        switch (type.getPrimitiveKind()) {
+            case I1:
+                return getBoolType();
+            case I8:
+                return getIntType(8, true);
+            case I16:
+                return getIntType(16, true);
+            case I32:
+                return getIntType(32, true);
+            case I64:
+                return getIntType(64, true);
+            case HALF:
+            case FLOAT:
+                return getFloatType(32);
+            case DOUBLE:
+                return getFloatType(64);
+            case F128:
+            case X86_FP80:
+            case PPC_FP128:
+                return getFloatType(128);
+            default:
+                return getVoidType();
+        }
     }
 
     public static DebugExprType getTypeFromSymbolTableMetaObject(Object metaObj) {
@@ -232,11 +283,12 @@ public class DebugExprType {
             DebugExprType innerType = getTypeFromSymbolTableMetaObject(arrayType.getElementType(0));
             return new DebugExprType(Kind.ARRAY, innerType);
         } else if (metaObj instanceof LLVMSourceDecoratorType) {
-            LLVMSourceDecoratorType arrayType = (LLVMSourceDecoratorType) metaObj;
+            LLVMSourceDecoratorType structType = (LLVMSourceDecoratorType) metaObj;
             return new DebugExprType(Kind.STRUCT, null);
         } else if (metaObj instanceof LLVMSourcePointerType) {
             LLVMSourcePointerType pointerType = (LLVMSourcePointerType) metaObj;
-            return new DebugExprType(Kind.POINTER, null);
+            DebugExprType baseType = getTypeFromSymbolTableMetaObject(pointerType.getBaseType());
+            return new DebugExprType(Kind.POINTER, baseType);
         } else {
             System.out.println(metaObj + " is type of " + metaObj.getClass().getName());
             return DebugExprType.getVoidType();

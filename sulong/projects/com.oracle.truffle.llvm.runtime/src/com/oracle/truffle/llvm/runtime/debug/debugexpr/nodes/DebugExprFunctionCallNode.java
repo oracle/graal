@@ -37,9 +37,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class DebugExprFunctionCallNode extends LLVMExpressionNode {
 
@@ -64,8 +66,15 @@ public class DebugExprFunctionCallNode extends LLVMExpressionNode {
                 continue;
             try {
                 Object member = library.readMember(vars, functionName);
-                System.out.println(member.getClass().getName());
-                return DebugExprType.getIntType(32, true);
+                try {
+                    LLVMFunctionDescriptor ldv = (LLVMFunctionDescriptor) member;
+                    Type returnType = ldv.getType().getReturnType();
+                    DebugExprType t = DebugExprType.getTypeFromLLVMType(returnType);
+                    return t;
+                } catch (ClassCastException e) {
+
+                }
+                throw DebugExprException.create(this, "no type found for function " + functionName);
             } catch (UnsupportedMessageException e) {
                 throw DebugExprException.create(this, "error while accessing function " + functionName);
             } catch (UnknownIdentifierException e) {
