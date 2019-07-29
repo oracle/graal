@@ -29,24 +29,15 @@ import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ReferenceType;
 
-public class JniImplProcessor extends EspressoProcessor {
+public class JniImplProcessor extends IntrinsicsProcessor {
     // @JniImpl
     private TypeElement jniImpl;
-    // @NFIType
-    private TypeElement nfiType;
-
-    // @NFIType.value()
-    private ExecutableElement nfiTypeValueElement;
 
     // region Various String constants.
 
@@ -66,7 +57,7 @@ public class JniImplProcessor extends EspressoProcessor {
     private static final String INVOKE = "invoke(" + JNI_ENV + " " + ENV_NAME + ", Object[] " + ARGS_NAME + ") {\n";
 
     public JniImplProcessor() {
-        super(SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
+        super(ENV_NAME, SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
     }
 
     static class JniHelper extends SubstitutionHelper {
@@ -81,42 +72,6 @@ public class JniImplProcessor extends EspressoProcessor {
             this.returnType = returnType;
             this.isStatic = isStatic;
         }
-    }
-
-    private static String extractArg(int index, String clazz, boolean isNonPrimitive, int startAt, String tabulation) {
-        String decl = tabulation + clazz + " " + ARG_NAME + index + " = ";
-        String obj = ARGS_NAME + "[" + (index + startAt) + "]";
-        if (isNonPrimitive) {
-            return decl + genIsNull(obj) + " ? " + (clazz.equals("StaticObject") ? STATIC_OBJECT_NULL : "null") + " : " + castTo(obj, clazz) + ";\n";
-        }
-        switch (clazz) {
-            case "boolean":
-                return decl + "(" + castTo(obj, "byte") + ") != 0;\n";
-            case "char":
-                return decl + castTo(castTo(obj, "short"), "char") + ";\n";
-            default:
-                return decl + castTo(obj, clazz) + ";\n";
-        }
-    }
-
-    private static String extractInvocation(String className, String methodName, int nParameters, boolean isStatic) {
-        StringBuilder str = new StringBuilder();
-        if (isStatic) {
-            str.append(className).append(".").append(methodName).append("(");
-        } else {
-            str.append(ENV_NAME).append(".").append(methodName).append("(");
-        }
-        boolean notFirst = false;
-        for (int i = 0; i < nParameters; i++) {
-            if (notFirst) {
-                str.append(", ");
-            } else {
-                notFirst = true;
-            }
-            str.append(ARG_NAME).append(i);
-        }
-        str.append(");\n");
-        return str.toString();
     }
 
     private void processElement(Element method) {
@@ -139,7 +94,7 @@ public class JniImplProcessor extends EspressoProcessor {
                 // Obtain the fully qualified guest return type of the method.
                 String returnType = extractReturnType(jniMethod);
                 // Obtain the jniNativeSignature
-                String jniNativeSignature = jniNativeSignature(jniMethod, returnType);
+                String jniNativeSignature = jniNativeSignature(jniMethod, returnType, true);
                 // Check if we need to call an instance method
                 boolean isStatic = jniMethod.getModifiers().contains(Modifier.STATIC);
                 // Spawn helper
@@ -153,39 +108,6 @@ public class JniImplProcessor extends EspressoProcessor {
                 commitSubstitution(jniMethod, substitutorName, classFile);
             }
         }
-    }
-
-    private static void getEspressoTypes(ExecutableElement inner, List<String> parameterTypeNames, List<Boolean> referenceTypes) {
-        for (VariableElement parameter : inner.getParameters()) {
-            String arg = parameter.asType().toString();
-            String result = extractSimpleType(arg);
-            parameterTypeNames.add(result);
-            referenceTypes.add(parameter.asType() instanceof ReferenceType);
-        }
-    }
-
-    public String jniNativeSignature(ExecutableElement method, String returnType) {
-        StringBuilder sb = new StringBuilder("(");
-        // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
-        sb.append(NativeSimpleType.SINT64);
-        for (VariableElement param : method.getParameters()) {
-            sb.append(", ");
-
-            // Override NFI type.
-            AnnotationMirror nfi = getAnnotation(param.asType(), nfiType);
-            if (nfi != null) {
-                AnnotationValue value = nfi.getElementValues().get(nfiTypeValueElement);
-                if (value != null) {
-                    sb.append(NativeSimpleType.valueOf(((String) value.getValue()).toUpperCase()));
-                } else {
-                    sb.append(classToType(param.asType().toString(), false));
-                }
-            } else {
-                sb.append(classToType(param.asType().toString(), false));
-            }
-        }
-        sb.append("): ").append(classToType(returnType, true));
-        return sb.toString();
     }
 
     @Override

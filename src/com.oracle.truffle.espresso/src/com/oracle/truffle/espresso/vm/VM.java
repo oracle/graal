@@ -37,7 +37,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;

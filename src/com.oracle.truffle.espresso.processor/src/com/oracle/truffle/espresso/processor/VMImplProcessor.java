@@ -29,36 +29,26 @@ import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ReferenceType;
 
-public class VMImplProcessor extends EspressoProcessor {
+public class VMImplProcessor extends IntrinsicsProcessor {
     // Annotations
 
     // @VmImpl
     private TypeElement vmImpl;
     // @JniImpl
     private TypeElement jniImpl;
-    // @NFIType
-    private TypeElement nfiType;
-    // @NFIType.value()
-    private ExecutableElement nfiTypeValueElement;
 
     // Processor-specific constants
 
     private static final String SUBSTITUTION_PACKAGE = "com.oracle.truffle.espresso.vm";
-    private static final String JNI_PACKAGE = "com.oracle.truffle.espresso.jni";
 
     private static final String VM_IMPL = SUBSTITUTION_PACKAGE + "." + "VmImpl";
     private static final String JNI_IMPL = JNI_PACKAGE + "." + "JniImpl";
-    private static final String NFI_TYPE = JNI_PACKAGE + "." + "NFIType";
 
     private static final String VM = "VM";
     private static final String VM_NAME = "env";
@@ -71,7 +61,7 @@ public class VMImplProcessor extends EspressoProcessor {
     private static final String INVOKE = "invoke(" + VM + " " + VM_NAME + ", Object[] " + ARGS_NAME + ") {\n";
 
     public VMImplProcessor() {
-        super(SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
+        super(VM_NAME, SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
     }
 
     static class VMHelper extends SubstitutionHelper {
@@ -118,87 +108,14 @@ public class VMImplProcessor extends EspressoProcessor {
                 // Spawn helper
                 VMHelper h = new VMHelper(jniNativeSignature, referenceTypes, returnType, isStatic, isJni);
                 // Create the contents of the source file
-                String classFile = spawnSubstitutor(className, targetMethodName, espressoTypes, h);
+                String classFile = spawnSubstitutor(
+                                className,
+                                targetMethodName,
+                                espressoTypes,
+                                h);
                 commitSubstitution(jniMethod, substitutorName, classFile);
             }
         }
-    }
-
-    private static String extractArg(int index, String clazz, boolean isNonPrimitive, int startAt, String tabulation) {
-        String decl = tabulation + clazz + " " + ARG_NAME + index + " = ";
-        String obj = ARGS_NAME + "[" + (index + startAt) + "]";
-        if (isNonPrimitive) {
-            return decl + genIsNull(obj) + " ? " + (clazz.equals("StaticObject") ? STATIC_OBJECT_NULL : "null") + " : " + castTo(obj, clazz) + ";\n";
-        }
-        switch (clazz) {
-            case "boolean":
-                return decl + "(" + castTo(obj, "byte") + ") != 0;\n";
-            case "char":
-                return decl + castTo(castTo(obj, "short"), "char") + ";\n";
-            default:
-                return decl + castTo(obj, clazz) + ";\n";
-        }
-    }
-
-    private static String extractInvocation(String className, String methodName, int nParameters, boolean isStatic) {
-        StringBuilder str = new StringBuilder();
-        if (isStatic) {
-            str.append(className).append(".").append(methodName).append("(");
-        } else {
-            str.append(VM_NAME).append(".").append(methodName).append("(");
-        }
-        boolean notFirst = false;
-        for (int i = 0; i < nParameters; i++) {
-            if (notFirst) {
-                str.append(", ");
-            } else {
-                notFirst = true;
-            }
-            str.append(ARG_NAME).append(i);
-        }
-        str.append(");\n");
-        return str.toString();
-    }
-
-    private static void getEspressoTypes(ExecutableElement inner, List<String> parameterTypeNames, List<Boolean> referenceTypes) {
-        for (VariableElement parameter : inner.getParameters()) {
-            String arg = parameter.asType().toString();
-            String result = extractSimpleType(arg);
-            parameterTypeNames.add(result);
-            referenceTypes.add((parameter.asType() instanceof ReferenceType));
-        }
-    }
-
-    public String jniNativeSignature(ExecutableElement method, String returnType, boolean isJni) {
-        StringBuilder sb = new StringBuilder("(");
-        // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
-        boolean first = true;
-        if (isJni) {
-            sb.append(NativeSimpleType.SINT64);
-            first = false;
-        }
-        for (VariableElement param : method.getParameters()) {
-            if (!first) {
-                sb.append(", ");
-            } else {
-                first = false;
-            }
-
-            // Override NFI type.
-            AnnotationMirror nfi = getAnnotation(param.asType(), nfiType);
-            if (nfi != null) {
-                AnnotationValue value = nfi.getElementValues().get(nfiTypeValueElement);
-                if (value != null) {
-                    sb.append(NativeSimpleType.valueOf(((String) value.getValue()).toUpperCase()));
-                } else {
-                    sb.append(classToType(param.asType().toString(), false));
-                }
-            } else {
-                sb.append(classToType(param.asType().toString(), false));
-            }
-        }
-        sb.append("): ").append(classToType(returnType, true));
-        return sb.toString();
     }
 
     @Override
@@ -206,14 +123,7 @@ public class VMImplProcessor extends EspressoProcessor {
         // Set up the different annotations, along with their values, that we will need.
         this.vmImpl = processingEnv.getElementUtils().getTypeElement(VM_IMPL);
         this.jniImpl = processingEnv.getElementUtils().getTypeElement(JNI_IMPL);
-        this.nfiType = processingEnv.getElementUtils().getTypeElement(NFI_TYPE);
-        for (Element e : nfiType.getEnclosedElements()) {
-            if (e.getKind() == ElementKind.METHOD) {
-                if (e.getSimpleName().contentEquals("value")) {
-                    this.nfiTypeValueElement = (ExecutableElement) e;
-                }
-            }
-        }
+        initNfiType();
         // Actual work
         for (Element e : env.getElementsAnnotatedWith(vmImpl)) {
             processElement(e);

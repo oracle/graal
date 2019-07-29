@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
