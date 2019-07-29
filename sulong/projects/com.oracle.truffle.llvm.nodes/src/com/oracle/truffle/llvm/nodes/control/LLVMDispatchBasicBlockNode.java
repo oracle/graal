@@ -34,8 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -45,7 +43,6 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -53,18 +50,16 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     private final FrameSlot exceptionValueSlot;
-    private final LLVMSourceLocation source;
     @Children private final LLVMBasicBlockNode[] bodyNodes;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] beforeBlockNuller;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] afterBlockNuller;
 
     public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot[][] beforeBlockNuller,
-                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation source) {
+                    FrameSlot[][] afterBlockNuller) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
         this.beforeBlockNuller = beforeBlockNuller;
         this.afterBlockNuller = afterBlockNuller;
-        this.source = source;
     }
 
     @Override
@@ -80,14 +75,17 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
             LLVMBasicBlockNode bb = bodyNodes[basicBlockIndex];
 
             // lazily insert the basic block into the AST
-            bb = bb.initialize();
+            bb.initialize();
+
+            // the newly inserted block may have been instrumented
+            bb = bodyNodes[basicBlockIndex];
 
             // execute all statements
             bb.execute(frame);
 
             // execute control flow node, write phis, null stack frame slots, and dispatch to
             // the correct successor block
-            LLVMControlFlowNode controlFlowNode = bb.termInstruction;
+            LLVMControlFlowNode controlFlowNode = bb.getTerminatingInstruction();
             if (controlFlowNode instanceof LLVMConditionalBranchNode) {
                 LLVMConditionalBranchNode conditionalBranchNode = (LLVMConditionalBranchNode) controlFlowNode;
                 boolean condition = conditionalBranchNode.executeCondition(frame);
@@ -240,7 +238,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
             } else if (controlFlowNode instanceof LLVMUnreachableNode) {
                 LLVMUnreachableNode unreachableNode = (LLVMUnreachableNode) controlFlowNode;
                 assert noPhisNecessary(unreachableNode);
-                unreachableNode.execute();
+                unreachableNode.execute(frame);
                 CompilerAsserts.neverPartOfCompilation();
                 throw new IllegalStateException("must not reach here");
             } else {
@@ -277,12 +275,12 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     }
 
     @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.RootBodyTag.class;
+    public boolean hasRootBodyTag() {
+        return true;
     }
 
     @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
+    public boolean hasStatementTag() {
+        return false;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,11 +34,9 @@ import java.util.List;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyBlockNode;
 import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyPrologueNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
@@ -46,14 +44,12 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
 
     @Child private LLVMInlineAssemblyPrologueNode prologue;
     @Child private LLVMInlineAssemblyBlockNode block;
-    private final LLVMSourceLocation source;
 
     private final LLVMExpressionNode result;
 
-    public LLVMInlineAssemblyRootNode(LLVMLanguage language, LLVMSourceLocation source, FrameDescriptor frameDescriptor,
+    public LLVMInlineAssemblyRootNode(LLVMLanguage language, FrameDescriptor frameDescriptor,
                     LLVMStatementNode[] statements, List<LLVMStatementNode> writeNodes, LLVMExpressionNode result) {
         super(language, frameDescriptor);
-        this.source = source;
         this.prologue = new LLVMInlineAssemblyPrologueNode(writeNodes);
         this.block = new LLVMInlineAssemblyBlockNode(statements);
         this.result = result;
@@ -64,14 +60,6 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
         // this is an artificial root node for an inline assembly block
         // we don't want this to show up in stack traces
         return true;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        if (source != null) {
-            return source.getSourceSection();
-        }
-        return null;
     }
 
     @Override

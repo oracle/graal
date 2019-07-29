@@ -30,25 +30,19 @@
 package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNode;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public final class LLVMFunctionRootNode extends LLVMExpressionNode {
 
-    private final LLVMSourceLocation source;
-
     @Children private final LLVMStatementNode[] copyArgumentsToFrame;
     @Child private LLVMUniquesRegionAllocNode uniquesRegionAllocNode;
     @Child private LLVMDispatchBasicBlockNode rootBody;
 
-    public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMSourceLocation source, LLVMStatementNode[] copyArgumentsToFrame, LLVMDispatchBasicBlockNode rootBody) {
+    public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMStatementNode[] copyArgumentsToFrame, LLVMDispatchBasicBlockNode rootBody) {
         this.uniquesRegionAllocNode = uniquesRegionAllocNode;
-        this.source = source;
         this.copyArgumentsToFrame = copyArgumentsToFrame;
         this.rootBody = rootBody;
     }
@@ -69,12 +63,12 @@ public final class LLVMFunctionRootNode extends LLVMExpressionNode {
     }
 
     @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.RootTag.class;
+    public boolean hasRootTag() {
+        return true;
     }
 
     @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
+    public boolean hasStatementTag() {
+        return false;
     }
 }

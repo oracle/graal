@@ -462,23 +462,23 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         // TODO (chaeubl): There is no doubt that not all of these intrinsics are valid as they use
         // double arithmetics to simulate floating arithmetics, which can change the precision.
         // Furthermore, it is possible that there are mismatches between Java and C semantics.
-        addFloatingPointMathFunction("sqrt", (args, language) -> LLVMSqrtNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("log", (args, language) -> LLVMLogNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("log2", (args, language) -> LLVMLog2NodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("log10", (args, language) -> LLVMLog10NodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("log1p", (args, language) -> LLVMLog1pNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("rint", (args, language) -> LLVMRintNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("ceil", (args, language) -> LLVMCeilNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("floor", (args, language) -> LLVMFloorNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("fabs", (args, language) -> LLVMFAbsNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("minnum", (args, language) -> LLVMMinnumNodeGen.create(args.get(1), args.get(2), null));
-        addFloatingPointMathFunction("maxnum", (args, language) -> LLVMMaxnumNodeGen.create(args.get(1), args.get(2), null));
-        addFloatingPointMathFunction("pow", (args, language) -> LLVMPowNodeGen.create(args.get(1), args.get(2), null));
-        addFloatingPointMathFunction("exp", (args, language) -> LLVMExpNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("exp2", (args, language) -> LLVMExp2NodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("expm1", (args, language) -> LLVMExpm1NodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("sin", (args, language) -> LLVMSinNodeGen.create(args.get(1), null));
-        addFloatingPointMathFunction("cos", (args, language) -> LLVMCosNodeGen.create(args.get(1), null));
+        addFloatingPointMathFunction("sqrt", (args, language) -> LLVMSqrtNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("log", (args, language) -> LLVMLogNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("log2", (args, language) -> LLVMLog2NodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("log10", (args, language) -> LLVMLog10NodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("log1p", (args, language) -> LLVMLog1pNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("rint", (args, language) -> LLVMRintNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("ceil", (args, language) -> LLVMCeilNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("floor", (args, language) -> LLVMFloorNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("fabs", (args, language) -> LLVMFAbsNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("minnum", (args, language) -> LLVMMinnumNodeGen.create(args.get(1), args.get(2)));
+        addFloatingPointMathFunction("maxnum", (args, language) -> LLVMMaxnumNodeGen.create(args.get(1), args.get(2)));
+        addFloatingPointMathFunction("pow", (args, language) -> LLVMPowNodeGen.create(args.get(1), args.get(2)));
+        addFloatingPointMathFunction("exp", (args, language) -> LLVMExpNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("exp2", (args, language) -> LLVMExp2NodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("expm1", (args, language) -> LLVMExpm1NodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("sin", (args, language) -> LLVMSinNodeGen.create(args.get(1)));
+        addFloatingPointMathFunction("cos", (args, language) -> LLVMCosNodeGen.create(args.get(1)));
         addFloatingPointMathFunction("tan", (args, language) -> LLVMTanNodeGen.create(args.get(1)));
         addFloatingPointMathFunction("atan2", (args, language) -> LLVMATan2NodeGen.create(args.get(1), args.get(2)));
         addFloatingPointMathFunction("asin", (args, language) -> LLVMASinNodeGen.create(args.get(1)));
@@ -490,7 +490,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         addFloatingPointMathFunction("ldexp", (args, language) -> LLVMLdexpNodeGen.create(args.get(1), args.get(2)));
         addFloatingPointMathFunction("modf", (args, language) -> LLVMModfNodeGen.create(args.get(1), args.get(2)));
         addFloatingPointMathFunction("fmod", (args, language) -> LLVMFmodNodeGen.create(args.get(1), args.get(2)));
-        addFloatingPointMathFunction("copysign", (args, language) -> LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args.get(1), args.get(2), null));
+        addFloatingPointMathFunction("copysign", (args, language) -> LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args.get(1), args.get(2)));
 
         addIntegerMathFunction("abs", (args, language) -> LLVMAbsNodeGen.create(args.get(1)));
     }

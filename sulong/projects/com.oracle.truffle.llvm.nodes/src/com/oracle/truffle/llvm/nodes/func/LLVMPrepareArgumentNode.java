@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
+package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-/**
- * A node to wrap an intrinsic node inlined in the AST, to give it a SourceLocation.
- */
-public class LLVMIntrinsicWrapperNode extends LLVMExpressionNode {
+abstract class LLVMPrepareArgumentNode extends LLVMNode {
 
-    private final LLVMSourceLocation sourceLocation;
-    @Child private LLVMExpressionNode intrinsic;
+    protected abstract Object executeWithTarget(Object value);
 
-    public LLVMIntrinsicWrapperNode(LLVMSourceLocation sourceLocation, LLVMExpressionNode intrinsic) {
-        this.sourceLocation = sourceLocation;
-        this.intrinsic = intrinsic;
+    @Specialization
+    protected LLVMPointer doPointer(LLVMPointer address) {
+        return address.copy();
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return intrinsic.executeGeneric(frame);
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return sourceLocation;
+    @Fallback
+    protected Object doOther(Object value) {
+        return value;
     }
 }
