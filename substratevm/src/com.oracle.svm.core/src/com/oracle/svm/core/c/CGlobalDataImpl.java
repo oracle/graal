@@ -60,4 +60,9 @@ public final class CGlobalDataImpl<T extends PointerBase> extends CGlobalData<T>
         this.bytesSupplier = bytesSupplier;
         this.sizeSupplier = sizeSupplier;
     }
+
+    @Override
+    public String toString() {
+        return "CGlobalData[symbol=" + symbolName + "]";
+    }
 }

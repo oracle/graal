@@ -110,7 +110,7 @@ public final class ForeignAccess {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     public static ForeignAccess createAccess(final StandardFactory factory, final Supplier<? extends RootNode> languageCheckSupplier) {
         if (languageCheckSupplier == null) {
@@ -969,6 +969,4 @@ public final class ForeignAccess {
             return (RootNode) rootNode.deepCopy();
         }
     }
-
-    @SuppressWarnings("unused") private static final InteropAccessor ACCESSOR = new InteropAccessor();
 }

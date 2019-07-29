@@ -48,6 +48,7 @@ import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
+import org.graalvm.libgraal.LibGraal;
 
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.JavaConstant;
@@ -101,7 +102,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     @SVMToHotSpot(AsJavaConstant)
     @Override
     public JavaConstant asJavaConstant() {
-        return runtime().unhand(JavaConstant.class, callAsJavaConstant(env(), getHandle()));
+        return LibGraal.unhand(runtime(), JavaConstant.class, callAsJavaConstant(env(), getHandle()));
     }
 
     @SVMToHotSpot(CreateStringSupplier)

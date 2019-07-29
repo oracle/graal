@@ -64,6 +64,7 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.services.Services;
 
 /**
  * Observes compilation events and uses {@link CFGPrinter} to produce a control flow graph for the
@@ -210,12 +211,14 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             } else if (object instanceof StructuredGraph) {
                 if (cfgPrinter.cfg == null) {
                     StructuredGraph graph = (StructuredGraph) object;
-                    cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
-                    cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
-                } else {
+                    ScheduleResult scheduleResult = GraalDebugHandlersFactory.tryGetSchedule(debug, graph);
+                    if (scheduleResult != null) {
+                        cfgPrinter.cfg = scheduleResult.getCFG();
+                    }
+                }
+                if (cfgPrinter.cfg != null) {
                     cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
                 }
-
             } else if (object instanceof CompilationResult) {
                 final CompilationResult compResult = (CompilationResult) object;
                 cfgPrinter.printMachineCode(disassemble(codeCache, compResult, null), message);
@@ -256,11 +259,19 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
         static {
             DisassemblerProvider selected = null;
+            String arch = Services.getSavedProperties().get("os.arch");
             for (DisassemblerProvider d : GraalServices.load(DisassemblerProvider.class)) {
                 String name = d.getName().toLowerCase();
-                if (name.contains("hcf") || name.contains("hexcodefile")) {
-                    selected = d;
-                    break;
+                if (arch.equals("aarch64")) {
+                    if (name.contains("hsdis-objdump")) {
+                        selected = d;
+                        break;
+                    }
+                } else {
+                    if (name.contains("hcf") || name.contains("hexcodefile")) {
+                        selected = d;
+                        break;
+                    }
                 }
             }
             if (selected == null) {

@@ -1,0 +1,8 @@
+Bundle-Name: GraalVM Core
+Bundle-Symbolic-Name: org.graalvm
+Bundle-Version: 1.0.1.0
+Bundle-ProvideCapability-edition="ee
+Bundle-ProvideCapability-release="candidate
+Bundle-ProvideCapability-version=V1.0.1.0
+
+

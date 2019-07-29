@@ -33,6 +33,7 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -40,6 +41,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -110,7 +112,7 @@ public final class ObjectGroupHistogram {
          * order in which types are prcessed matters.
          */
         processType(DynamicHub.class, "DynamicHub", true, null, ObjectGroupHistogram::filterDynamicHubField);
-        processObject(DynamicHubSupport.getReferenceMapEncoding(), "DynamicHub", true, null, null);
+        processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.getReferenceMapEncoding()), "DynamicHub", true, null, null);
         processObject(CodeInfoTable.getImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
 
         processObject(readGraalSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
@@ -155,9 +157,7 @@ public final class ObjectGroupHistogram {
         try {
             Class<?> graalSupportClass = Class.forName("com.oracle.svm.graal.GraalSupport");
             Object graalSupport = ImageSingletons.lookup(graalSupportClass);
-            Field field = graalSupportClass.getDeclaredField(name);
-            field.setAccessible(true);
-            return field.get(graalSupport);
+            return ReflectionUtil.readField(graalSupportClass, name, graalSupport);
         } catch (Throwable ex) {
             System.out.println("Warning: cannot read field from GraalSupport: " + name);
             return null;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,13 +31,13 @@ import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile;
+import java.nio.file.StandardOpenOption;
 
 public final class NFAExport {
 
@@ -67,8 +67,8 @@ public final class NFAExport {
     }
 
     @TruffleBoundary
-    public static void exportDot(NFA nfa, String path, boolean fullLabels, boolean mergeFinalStates) {
-        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
+    public static void exportDot(NFA nfa, TruffleFile path, boolean fullLabels, boolean mergeFinalStates) {
+        try (BufferedWriter writer = path.newBufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
             new NFAExport(nfa, writer, true, fullLabels, mergeFinalStates).exportDot();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -76,8 +76,8 @@ public final class NFAExport {
     }
 
     @TruffleBoundary
-    public static void exportDotReverse(NFA nfa, String path, boolean fullLabels, boolean mergeFinalStates) {
-        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
+    public static void exportDotReverse(NFA nfa, TruffleFile path, boolean fullLabels, boolean mergeFinalStates) {
+        try (BufferedWriter writer = path.newBufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
             new NFAExport(nfa, writer, false, fullLabels, mergeFinalStates).exportDot();
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -85,8 +85,8 @@ public final class NFAExport {
     }
 
     @TruffleBoundary
-    public static void exportLaTex(NFA nfa, String path, boolean fullLabels, boolean mergeFinalStates) {
-        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
+    public static void exportLaTex(NFA nfa, TruffleFile path, boolean fullLabels, boolean mergeFinalStates) {
+        try (BufferedWriter writer = path.newBufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
             new NFAExport(nfa, writer, true, fullLabels, mergeFinalStates).exportLaTex();
         } catch (IOException e) {
             throw new RuntimeException(e);

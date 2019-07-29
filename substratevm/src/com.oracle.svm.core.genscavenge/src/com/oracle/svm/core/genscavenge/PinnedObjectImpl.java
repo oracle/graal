@@ -25,7 +25,7 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
@@ -73,6 +73,11 @@ public class PinnedObjectImpl implements PinnedObject {
 
     @AutomaticFeature
     static class PinnedObjectFeature implements Feature {
+        @Override
+        public boolean isInConfiguration(IsInConfigurationAccess access) {
+            return HeapOptions.UseCardRememberedSetHeap.getValue();
+        }
+
         @Override
         public void afterRegistration(AfterRegistrationAccess access) {
             ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());

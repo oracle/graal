@@ -44,7 +44,7 @@ import com.oracle.svm.core.util.TimeUtils;
 public final class FeebleReferenceList<T> {
 
     /** The head of the list of FeebleReference<T>. */
-    private UninterruptibleUtils.AtomicReference<FeebleReference<? extends T>> head;
+    private final UninterruptibleUtils.AtomicReference<FeebleReference<? extends T>> head;
 
     /**
      * Notification of other threads that FeebleReferences might be available.
@@ -65,6 +65,11 @@ public final class FeebleReferenceList<T> {
     /** Constructor for subclasses. */
     private FeebleReferenceList() {
         head = new UninterruptibleUtils.AtomicReference<>(null);
+    }
+
+    /** Whether the list is empty at the time of the call. */
+    public boolean isEmpty() {
+        return getHead() == null;
     }
 
     /**
@@ -192,7 +197,7 @@ public final class FeebleReferenceList<T> {
      * Manipulations of head.
      */
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private FeebleReference<? extends T> getHead() {
         return head.get();
     }
@@ -266,12 +271,14 @@ public final class FeebleReferenceList<T> {
      * way. Similarly, I could add asserts about the thread state on the way out, but there is not
      * much I can do if things go wrong.
      */
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
     private static void awaitWithTransition() {
         CFunctionPrologueNode.cFunctionPrologue();
         awaitInNative();
         CFunctionEpilogueNode.cFunctionEpilogue();
     }
 
+    @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
     private static long awaitWithTransition(long waitNanos) {
         CFunctionPrologueNode.cFunctionPrologue();
         final long result = awaitInNative(waitNanos);

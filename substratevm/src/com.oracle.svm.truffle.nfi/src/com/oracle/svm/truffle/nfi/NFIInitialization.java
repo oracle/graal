@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import com.oracle.svm.truffle.nfi.libffi.LibFFI.ffi_type;
-import com.oracle.truffle.nfi.types.NativeSimpleType;
+import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class NFIInitialization {
 

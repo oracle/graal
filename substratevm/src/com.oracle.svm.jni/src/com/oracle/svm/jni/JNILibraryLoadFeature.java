@@ -30,7 +30,7 @@ import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_6;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_8;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;

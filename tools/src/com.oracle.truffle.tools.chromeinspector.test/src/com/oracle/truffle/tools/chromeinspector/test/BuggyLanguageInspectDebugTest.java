@@ -48,7 +48,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
-import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
 
 /**
@@ -90,22 +89,28 @@ public class BuggyLanguageInspectDebugTest {
 
     @Test
     public void testBuggyMetaToString() throws Exception {
+        class MetaObj extends ProxyInteropObject {
+
+            final int id;
+
+            MetaObj(int id) {
+                this.id = id;
+            }
+        }
         testBuggyCalls(new TestDebugBuggyLanguage() {
             @Override
             protected Object findMetaObject(ProxyLanguage.LanguageContext context, Object value) {
                 if (value instanceof Integer) {
-                    return "THROW" + value;
+                    return new MetaObj((Integer) value);
                 }
                 return Objects.toString(value);
             }
 
             @Override
             protected String toString(ProxyLanguage.LanguageContext c, Object value) {
-                if (value instanceof String) {
-                    String str = (String) value;
-                    if (str.startsWith("THROW")) {
-                        throwBug(Integer.parseInt(str.substring(5)));
-                    }
+                if (value instanceof MetaObj) {
+                    int id = ((MetaObj) value).id;
+                    throwBug(id);
                 }
                 return Objects.toString(value);
             }
@@ -202,7 +207,7 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         ProxyLanguage.setDelegate(language);
         Source source = Source.newBuilder(ProxyLanguage.ID, prefix + "1", "BuggyCall1.bug").build();
-        String sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String sourceURI = InspectorTester.getStringURI(source.getURI());
         String hash = new Script(0, null, DebuggerTester.getSourceImpl(source)).getHash();
         tester.eval(source);
         long id = tester.getContextId();
@@ -224,7 +229,7 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"result\":{},\"id\":8}\n"));
 
         source = Source.newBuilder(ProxyLanguage.ID, prefix + "2", "BuggyCall2.bug").build();
-        sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        sourceURI = InspectorTester.getStringURI(source.getURI());
         hash = new Script(0, null, DebuggerTester.getSourceImpl(source)).getHash();
         tester.eval(source);
         assertTrue(tester.compareReceivedMessages(
@@ -242,7 +247,7 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"result\":{},\"id\":11}\n"));
 
         source = Source.newBuilder(ProxyLanguage.ID, prefix + "3", "BuggyCall3.bug").build();
-        sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        sourceURI = InspectorTester.getStringURI(source.getURI());
         hash = new Script(0, null, DebuggerTester.getSourceImpl(source)).getHash();
         tester.eval(source);
         assertTrue(tester.compareReceivedMessages(
@@ -282,7 +287,7 @@ public class BuggyLanguageInspectDebugTest {
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
-                            "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
+                            "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
                                          "\"exceptionDetails\":{\"exception\":{\"description\":\"" + description + "\",\"type\":\"string\",\"value\":\"" + description + "\"}," +
                                                                "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
@@ -306,7 +311,7 @@ public class BuggyLanguageInspectDebugTest {
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"" + errNum + "\",\"type\":\"number\",\"value\":" + errNum + "},\"configurable\":true,\"writable\":true}," +
-                                                     "{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
+                                                     "{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]},\"id\":7}\n"));
             tester.sendMessage("{\"id\":8,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + (3 * errNum) + "\"}}");
             skipConsoleMessages(tester);
@@ -329,7 +334,7 @@ public class BuggyLanguageInspectDebugTest {
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             skipConsoleMessages(tester);
             assertTrue(tester.compareReceivedMessages(
-                            "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
+                            "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]," +
                                          "\"exceptionDetails\":{\"exception\":{\"description\":\"" + description + "\",\"type\":\"string\",\"value\":\"" + description + "\"}," +
                                                                "\"exceptionId\":" + errNum + ",\"executionContextId\":1,\"text\":\"Uncaught\"," +
@@ -346,7 +351,7 @@ public class BuggyLanguageInspectDebugTest {
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"" + errNum + "\",\"type\":\"number\",\"value\":" + errNum + "},\"configurable\":true,\"writable\":true}," +
-                                                     "{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
+                                                     "{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]},\"id\":7}\n"));
             tester.sendMessage("{\"id\":8,\"method\":\"Debugger.setVariableValue\",\"params\":{\"scopeNumber\":0,\"variableName\":\"a\",\"newValue\":{\"value\":1000},\"callFrameId\":\"0\"}}");
             // The protocol does not allow to provide an exception. It's consumed
@@ -366,7 +371,7 @@ public class BuggyLanguageInspectDebugTest {
             tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + objectId + "\"}}");
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"" + errNum + "\",\"type\":\"number\",\"value\":" + errNum + "},\"configurable\":true,\"writable\":true}," +
-                                                     "{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + " " + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
+                                                     "{\"isOwn\":true,\"enumerable\":true,\"name\":\"o\",\"value\":{\"description\":\"" + errObject + "\",\"className\":\"" + errObject + "\",\"type\":\"function\",\"objectId\":\"" + (3 * errNum) + "\"},\"configurable\":true,\"writable\":true}]," +
                                          "\"internalProperties\":[]},\"id\":7}\n"));
             tester.sendMessage("{\"id\":8,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"" + (3 * errNum) + "\"}}");
             skipConsoleMessages(tester);

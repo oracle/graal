@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 
 public class DeoptimizationSupport {
@@ -51,7 +52,8 @@ public class DeoptimizationSupport {
         return ImageSingletons.contains(DeoptimizationSupport.class);
     }
 
-    private static DeoptimizationSupport get() {
+    @Fold
+    static DeoptimizationSupport get() {
         return ImageSingletons.lookup(DeoptimizationSupport.class);
     }
 
@@ -67,6 +69,7 @@ public class DeoptimizationSupport {
     /**
      * Returns a pointer to the code of {@link Deoptimizer#deoptStub}.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CFunctionPointer getDeoptStubPointer() {
         return get().deoptStubPointer;
     }

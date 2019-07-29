@@ -59,7 +59,8 @@ import java.lang.reflect.Type;
  * {@code TypeLiteral<List<String>> list = new TypeLiteral<List<String>>() {};}
  *
  *
- * @since 1.0
+ * @since 19.0
+ * @see org.graalvm.polyglot.Value#as(TypeLiteral)
  */
 public abstract class TypeLiteral<T> {
 
@@ -73,7 +74,7 @@ public abstract class TypeLiteral<T> {
      * Clients create an empty anonymous subclass. Doing so embeds the type parameter in the
      * anonymous class's type hierarchy so we can reconstitute it at runtime despite erasure.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     protected TypeLiteral() {
@@ -129,7 +130,7 @@ public abstract class TypeLiteral<T> {
     /**
      * Returns the type literal including generic type information.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final Type getType() {
         return this.type;
@@ -138,14 +139,14 @@ public abstract class TypeLiteral<T> {
     /**
      * Returns the raw class type of the literal.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final Class<T> getRawType() {
         return rawType;
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public final boolean equals(Object obj) {
@@ -153,7 +154,7 @@ public abstract class TypeLiteral<T> {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public final int hashCode() {
@@ -161,7 +162,7 @@ public abstract class TypeLiteral<T> {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public final String toString() {

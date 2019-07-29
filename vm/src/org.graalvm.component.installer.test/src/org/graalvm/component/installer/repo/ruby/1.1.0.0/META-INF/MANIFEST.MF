@@ -1,0 +1,14 @@
+Bundle-Name: TruffleRuby
+Bundle-Symbolic-Name: org.graalvm.ruby
+Bundle-Version: 1.1.0.0
+Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=1.1.0.0
+ )(os_name=linux)(os_arch=amd64))"
+x-GraalVM-Polyglot-Part: True
+x-GraalVM-Working-Directories: jre/languages/ruby
+x-GraalVM-Message-PostInst: \nIMPORTANT NOTE:\n---------------\nThe Ruby
+  openssl C extension needs to be recompiled on your system to work with 
+ the installed libssl.\nFirst, make sure TruffleRuby's dependencies are i
+ nstalled, which are described at:\n  https://github.com/oracle/truffleru
+ by/blob/master/README.md#dependencies\nThen run the following command:\n
+         ${graalvm_home}/jre/languages/ruby/lib/truffle/post_install_hook
+ .sh

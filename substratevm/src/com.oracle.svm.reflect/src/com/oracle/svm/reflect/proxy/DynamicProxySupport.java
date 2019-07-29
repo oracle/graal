@@ -33,17 +33,18 @@ import java.util.Map;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.proxy.hosted.DynamicProxyFeature.Options;
 
 public class DynamicProxySupport implements DynamicProxyRegistry {
 
-    private static final String proxyConfigFilesOption = SubstrateOptionsParser.commandArgument(Options.DynamicProxyConfigurationFiles, "<comma-separated-config-files>");
-    private static final String proxyConfigResourcesOption = SubstrateOptionsParser.commandArgument(Options.DynamicProxyConfigurationResources, "<comma-separated-config-resources>");
+    private static final String proxyConfigFilesOption = SubstrateOptionsParser.commandArgument(ConfigurationFiles.Options.DynamicProxyConfigurationFiles, "<comma-separated-config-files>");
+    private static final String proxyConfigResourcesOption = SubstrateOptionsParser.commandArgument(ConfigurationFiles.Options.DynamicProxyConfigurationResources,
+                    "<comma-separated-config-resources>");
 
     static final class ProxyCacheKey {
 

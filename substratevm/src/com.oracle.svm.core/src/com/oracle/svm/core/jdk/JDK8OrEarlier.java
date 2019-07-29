@@ -31,6 +31,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 public class JDK8OrEarlier implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return JavaVersionUtil.Java8OrEarlier;
+        return JavaVersionUtil.JAVA_SPEC <= 8;
     }
 }

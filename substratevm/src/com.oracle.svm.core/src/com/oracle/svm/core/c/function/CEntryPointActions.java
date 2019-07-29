@@ -32,6 +32,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.JavaThreads;
 
 /**
  * Advanced entry and leave actions for entry point methods annotated with {@link CEntryPoint}.
@@ -48,9 +49,9 @@ public final class CEntryPointActions {
     }
 
     /**
-     * Creates a new isolate, then {@linkplain #enterAttachThread(Isolate) attaches} the current
-     * thread to the created isolate, creating a context for the thread in the isolate, and then
-     * enters that context before returning.
+     * Creates a new isolate, then {@linkplain #enterAttachThread attaches} the current thread to
+     * the created isolate, creating a context for the thread in the isolate, and then enters that
+     * context before returning.
      *
      * @param params initialization parameters.
      * @return 0 on success, otherwise non-zero.
@@ -62,13 +63,18 @@ public final class CEntryPointActions {
      * context. If the thread has already been attached, this does not cause the operation to fail.
      *
      * @param isolate an existing isolate.
+     * @param ensureJavaThread when set to true, the method ensures that the
+     *            {@link java.lang.Thread} object for the newly attached thread is created. If the
+     *            parameter is set to false, a later call to one of the
+     *            {@link JavaThreads#ensureJavaThread} methods early after the prologue must be used
+     *            to do the initialization manually.
      * @return 0 on success, otherwise non-zero.
      */
-    public static native int enterAttachThread(Isolate isolate);
+    public static native int enterAttachThread(Isolate isolate, boolean ensureJavaThread);
 
     /**
      * Enters an existing context for the current thread (for example, one created with
-     * {@link #enterAttachThread(Isolate)}).
+     * {@link #enterAttachThread}).
      *
      * @param thread existing context for the current thread.
      * @return 0 on success, otherwise non-zero.

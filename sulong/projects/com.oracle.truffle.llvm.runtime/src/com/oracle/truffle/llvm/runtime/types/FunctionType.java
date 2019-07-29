@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -99,12 +99,6 @@ public final class FunctionType extends Type {
     @Override
     public int getSize(DataLayout targetDataLayout) {
         return LLVMNode.ADDRESS_SIZE_IN_BYTES;
-    }
-
-    @Override
-    public Type shallowCopy() {
-        final FunctionType copy = new FunctionType(getReturnType(), argumentTypes, isVarargs);
-        return copy;
     }
 
     @Override

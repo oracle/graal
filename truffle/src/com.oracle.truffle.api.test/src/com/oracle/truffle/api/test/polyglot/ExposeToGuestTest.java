@@ -40,19 +40,34 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.Arrays;
+import java.util.function.Function;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.Export;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import org.junit.Test;
+
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class ExposeToGuestTest {
     @Test
@@ -60,9 +75,7 @@ public class ExposeToGuestTest {
         Context context = Context.create();
         Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
-        // assertPropertyUndefined("PublicValue isn't enough by default", readValue, new
-        // PublicValue());
-        Assert.assertEquals("Right now we allow access to public, that is likely to change however", 42, readValue.execute(new PublicValue()).asInt());
+        assertPropertyUndefined("PublicValue isn't enough by default", readValue, new PublicValue());
     }
 
     private static void assertPropertyUndefined(String msg, Value readValue, Object value) {
@@ -272,6 +285,377 @@ public class ExposeToGuestTest {
             }
         };
         return foo;
+    }
+
+    public static class FieldAccess {
+
+        public static Object staticField = "42";
+        public static final Object finalField = "42";
+
+        @Export public static Object exportedStaticField = "42";
+        @Export public static final Object exportedField = "42";
+    }
+
+    @Test
+    public void staticFieldAccessIsForbidden() throws InteropException {
+        Context.Builder builder = Context.newBuilder();
+        builder.allowHostClassLookup((c) -> c.endsWith("FieldAccess"));
+        Context c = builder.build();
+        c.initialize(ProxyLanguage.ID);
+        c.enter();
+        try {
+            Object hostLookup = ProxyLanguage.getCurrentContext().getEnv().lookupHostSymbol(FieldAccess.class.getName());
+            assertMember(hostLookup, "staticField", false, false);
+            assertMember(hostLookup, "finalField", false, false);
+            assertMember(hostLookup, "exportedStaticField", true, true);
+            assertMember(hostLookup, "exportedField", true, false);
+        } finally {
+            c.leave();
+            c.close();
+        }
+
+    }
+
+    private static void assertMember(Object object, String member, boolean readable, boolean modifiable) throws InteropException {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+        assertTrue(interop.hasMembers(object));
+        assertEquals(readable, interop.isMemberReadable(object, member));
+        assertEquals(modifiable, interop.isMemberModifiable(object, member));
+        assertFalse(interop.isMemberInsertable(object, member));
+        assertFalse(interop.isMemberRemovable(object, member));
+
+        if (readable) {
+            assertEquals("42", interop.readMember(object, member));
+        } else {
+            try {
+                interop.readMember(object, member);
+                fail();
+            } catch (UnknownIdentifierException e) {
+            }
+        }
+        if (modifiable) {
+            interop.writeMember(object, member, "42");
+        } else {
+            try {
+                interop.writeMember(object, member, "43");
+                fail();
+            } catch (UnknownIdentifierException e) {
+            }
+        }
+        try {
+            interop.removeMember(object, member);
+            fail();
+        } catch (UnsupportedMessageException e) {
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class AllowedConstructorAccess {
+
+        @HostAccess.Export
+        public AllowedConstructorAccess(String s) {
+        }
+
+        public AllowedConstructorAccess() {
+        }
+
+        AllowedConstructorAccess(int c) {
+        }
+
+    }
+
+    public static class DeniedConstructorAccess {
+
+        public DeniedConstructorAccess() {
+        }
+
+    }
+
+    @Test
+    public void staticConstructorAccessIsForbidden() throws InteropException {
+        Context.Builder builder = Context.newBuilder();
+        builder.allowHostClassLookup((c) -> c.endsWith("ConstructorAccess"));
+        Context c = builder.build();
+        c.initialize(ProxyLanguage.ID);
+        c.enter();
+        try {
+            Object allowed = ProxyLanguage.getCurrentContext().getEnv().lookupHostSymbol(AllowedConstructorAccess.class.getName());
+            InteropLibrary library = InteropLibrary.getFactory().getUncached();
+            assertTrue(library.isInstantiable(allowed));
+            try {
+                library.instantiate(allowed);
+                fail();
+            } catch (ArityException e) {
+            }
+            try {
+                library.instantiate(allowed, 42);
+                fail();
+            } catch (UnsupportedTypeException e) {
+            }
+            assertNotNull(library.instantiate(allowed, "asdf"));
+
+            Object denied = ProxyLanguage.getCurrentContext().getEnv().lookupHostSymbol(DeniedConstructorAccess.class.getName());
+            assertFalse(library.isInstantiable(denied));
+            try {
+                library.instantiate(denied);
+                fail();
+            } catch (UnsupportedMessageException e) {
+            }
+        } finally {
+            c.leave();
+            c.close();
+        }
+    }
+
+    interface EmptyInterface {
+    }
+
+    interface UnmarkedInterface {
+
+        Object exported(String arg);
+
+    }
+
+    @Implementable
+    interface MarkedInterface {
+
+        String exported(String arg);
+
+    }
+
+    @FunctionalInterface
+    interface MarkedFunctional {
+
+        int f();
+
+    }
+
+    interface UnmarkedFunctional {
+
+        int f();
+
+    }
+
+    public static class Impl {
+
+        @Export
+        public Object exported(Object arg) {
+            return arg;
+        }
+
+        @Export
+        public Object noArg() {
+            return 42;
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    public static class Overloaded {
+
+        @Export
+        public Object overloaded(MarkedFunctional arg) {
+            return "MarkedFunctional";
+        }
+
+        @Export
+        public Object overloaded(MarkedInterface arg) {
+            return "MarkedInterface";
+        }
+
+        @Export
+        public Object overloaded(String arg) {
+            return arg;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testProxyOverloads() {
+        HostAccess access = HostAccess.EXPLICIT;
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Overloaded());
+            Value arg = c.asValue(new Impl());
+            try {
+                v.invokeMember("overloaded", arg);
+                fail();
+            } catch (IllegalArgumentException e) {
+                // multiple overloads
+                assertTrue(e.getMessage(), e.getMessage().contains("Multiple applicable overloads"));
+            }
+            assertEquals("42", v.invokeMember("overloaded", "42").asString());
+        }
+
+        // disable interface proxies.
+        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Overloaded());
+            Value arg = c.asValue(new Impl());
+            try {
+                v.invokeMember("overloaded", arg);
+                fail();
+            } catch (IllegalArgumentException e) {
+                // multiple overloads
+                assertTrue(e.getMessage(), e.getMessage().contains("no applicable overload found"));
+            }
+            assertEquals("42", v.invokeMember("overloaded", "42").asString());
+        }
+
+        // disable only object proxies
+        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementationsAnnotatedBy(FunctionalInterface.class).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Overloaded());
+            Value arg = c.asValue(new Impl());
+            assertEquals("MarkedFunctional", v.invokeMember("overloaded", arg.getMember("noArg")).asString());
+            assertEquals("42", v.invokeMember("overloaded", "42").asString());
+        }
+
+        // disable only functional proxies
+        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementations(MarkedInterface.class).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Overloaded());
+            Value arg = c.asValue(new Impl());
+            assertEquals("MarkedInterface", v.invokeMember("overloaded", arg).asString());
+            assertEquals("42", v.invokeMember("overloaded", "42").asString());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testProxyExplicit() {
+        HostAccess access = HostAccess.EXPLICIT;
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Impl());
+            Value f = v.getMember("noArg");
+            assertEquals("42", v.as(MarkedInterface.class).exported("42"));
+            try {
+                v.as(EmptyInterface.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            try {
+                v.as(UnmarkedInterface.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+
+            assertEquals(42, f.as(MarkedFunctional.class).f());
+            try {
+                f.as(UnmarkedFunctional.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            assertEquals(42, f.as(Function.class).apply(null));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testProxyMarked() {
+        HostAccess access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).//
+                        allowImplementations(UnmarkedInterface.class).allowImplementations(UnmarkedFunctional.class).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Impl());
+            Value f = v.getMember("noArg");
+            assertEquals("42", v.as(UnmarkedInterface.class).exported("42"));
+            try {
+                v.as(EmptyInterface.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            try {
+                v.as(MarkedInterface.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+
+            assertEquals(42, f.as(UnmarkedFunctional.class).f());
+            try {
+                f.as(MarkedFunctional.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            assertEquals(42, f.as(Function.class).apply(null));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testProxyNone() {
+        HostAccess access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Impl());
+            Value f = v.getMember("exported");
+            try {
+                v.as(MarkedInterface.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            try {
+                v.as(EmptyInterface.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            try {
+                v.as(UnmarkedInterface.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            try {
+                f.as(MarkedFunctional.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            try {
+                f.as(UnmarkedFunctional.class);
+                fail();
+            } catch (ClassCastException e) {
+            }
+            assertEquals("42", f.as(Function.class).apply("42"));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testProxyManualAll() {
+        HostAccess access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowAllImplementations(true).build();
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Impl());
+            Value f = v.getMember("noArg");
+            assertEquals("42", v.as(MarkedInterface.class).exported("42"));
+            assertEquals("42", v.as(UnmarkedInterface.class).exported("42"));
+            assertNotNull(v.as(EmptyInterface.class));
+
+            assertEquals(42, f.as(MarkedFunctional.class).f());
+            assertEquals(42, f.as(UnmarkedFunctional.class).f());
+            assertEquals(42, f.as(Function.class).apply(null));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testProxyAll() {
+        HostAccess access = HostAccess.ALL;
+        try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
+            c.initialize(ProxyLanguage.ID);
+            Value v = c.asValue(new Impl());
+            Value f = v.getMember("noArg");
+            assertEquals("42", v.as(MarkedInterface.class).exported("42"));
+            assertEquals("42", v.as(UnmarkedInterface.class).exported("42"));
+            assertNotNull(v.as(EmptyInterface.class));
+
+            assertEquals(42, f.as(MarkedFunctional.class).f());
+            assertEquals(42, f.as(UnmarkedFunctional.class).f());
+            assertEquals(42, f.as(Function.class).apply(null));
+        }
     }
 
 }

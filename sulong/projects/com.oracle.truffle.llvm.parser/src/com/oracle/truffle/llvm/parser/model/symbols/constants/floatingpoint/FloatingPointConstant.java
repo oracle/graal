@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -47,16 +48,16 @@ public abstract class FloatingPointConstant extends AbstractConstant {
 
     public abstract String getStringValue();
 
-    public static FloatingPointConstant create(Type type, long[] bits) {
+    public static FloatingPointConstant create(Type type, RecordBuffer buffer) {
         switch (((PrimitiveType) type).getPrimitiveKind()) {
             case FLOAT:
-                return new FloatConstant(Float.intBitsToFloat((int) bits[0]));
+                return new FloatConstant(Float.intBitsToFloat(buffer.readInt()));
 
             case DOUBLE:
-                return new DoubleConstant(Double.longBitsToDouble(bits[0]));
+                return new DoubleConstant(Double.longBitsToDouble(buffer.read()));
 
             case X86_FP80:
-                return new X86FP80Constant(ByteBuffer.allocate(X86_FP80_BYTES).putLong(bits[0]).putShort((short) bits[1]).array());
+                return new X86FP80Constant(ByteBuffer.allocate(X86_FP80_BYTES).putLong(buffer.read()).putShort((short) buffer.read()).array());
 
             default:
                 throw new LLVMParserException("Unsupported Floating Point Type: " + type);

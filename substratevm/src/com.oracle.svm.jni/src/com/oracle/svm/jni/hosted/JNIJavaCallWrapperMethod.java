@@ -67,8 +67,8 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
-import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode.EnterAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
@@ -186,7 +186,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
 
         JavaKind vmThreadKind = metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind();
         ValueNode vmThread = kit.loadLocal(0, vmThreadKind);
-        kit.append(new CEntryPointEnterNode(EnterAction.Enter, vmThread));
+        kit.append(CEntryPointEnterNode.enter(vmThread));
 
         ResolvedJavaMethod invokeMethod = providers.getMetaAccess().lookupJavaMethod(reflectMethod);
         Signature invokeSignature = invokeMethod.getSignature();
@@ -339,7 +339,8 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 args.add(Pair.create(value, type));
                 javaIndex += loadKind.getSlotCount();
             }
-        } else if (callVariant == CallVariant.ARRAY) {
+            // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
+        } else if ((OS.getCurrent() == OS.WINDOWS && callVariant == CallVariant.VA_LIST) || callVariant == CallVariant.ARRAY) {
             ResolvedJavaType elementType = metaAccess.lookupJavaType(JNIValue.class);
             int elementSize = SizeOf.get(JNIValue.class);
             ValueNode array = kit.loadLocal(javaIndex, elementType.getJavaKind());

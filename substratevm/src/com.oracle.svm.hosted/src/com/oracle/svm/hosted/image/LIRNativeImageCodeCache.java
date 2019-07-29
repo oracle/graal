@@ -37,6 +37,8 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -49,7 +51,6 @@ import jdk.vm.ci.code.site.Reference;
 
 public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
-    public static final int CODE_ALIGNMENT = 16;
     private static final byte CODE_FILLER_BYTE = (byte) 0xCC;
 
     private int codeCacheSize;
@@ -82,7 +83,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 CompilationResult compilation = entry.getValue();
                 compilationsByStart.put(codeCacheSize, compilation);
                 method.setCodeAddressOffset(codeCacheSize);
-                codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), CODE_ALIGNMENT);
+                codeCacheSize = NumUtil.roundUp(codeCacheSize + compilation.getTargetCodeSize(), SubstrateOptions.codeAlignment());
             }
 
             buildRuntimeMetadata(MethodPointer.factory(firstMethod), WordFactory.unsigned(codeCacheSize));
@@ -97,7 +98,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
      * @param relocs a relocation map
      */
     @Override
-    public void patchMethods(RelocatableBuffer relocs, ObjectFile objectFile) {
+    @SuppressWarnings("try")
+    public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
 
         /*
          * Patch instructions which reference code or data by address.
@@ -154,7 +156,6 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     // Patch a PC-relative call.
                     // This code handles the case of section-local calls only.
                     int pcDisplacement = callTargetStart - (compStart + call.pcOffset);
-
                     patches.get(call.pcOffset).patch(call.pcOffset, pcDisplacement, compilation.getTargetCode());
                 }
             }
@@ -165,6 +166,11 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                  * read-only (.rodata) section.
                  */
                 patches.get(dataPatch.pcOffset).relocate(ref, relocs, compStart);
+            }
+            try (DebugContext.Scope ds = debug.scope("After Patching", method.asJavaMethod())) {
+                debug.dump(DebugContext.BASIC_LEVEL, compilation, "After patching");
+            } catch (Throwable e) {
+                throw VMError.shouldNotReachHere(e);
             }
         }
     }
@@ -185,7 +191,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             int codeSize = compilation.getTargetCodeSize();
             buffer.putBytes(compilation.getTargetCode(), 0, codeSize);
 
-            for (int i = codeSize; i < NumUtil.roundUp(codeSize, CODE_ALIGNMENT); i++) {
+            for (int i = codeSize; i < NumUtil.roundUp(codeSize, SubstrateOptions.codeAlignment()); i++) {
                 buffer.putByte(CODE_FILLER_BYTE);
             }
         }
@@ -196,9 +202,9 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     public NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
         return new NativeTextSectionImpl(buffer, objectFile, codeCache) {
             @Override
-            protected void defineMethodSymbol(String name, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
+            protected void defineMethodSymbol(String name, boolean global, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
                 final int size = result == null ? 0 : result.getTargetCodeSize();
-                objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, true);
+                objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
             }
         };
     }

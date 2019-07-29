@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot.replacements;
 import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.MinimalBulkZeroingSize;
 import static org.graalvm.compiler.core.common.calc.UnsignedMath.belowThan;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_VMCONFIG;
@@ -37,6 +38,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_STATE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
@@ -130,6 +132,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
+import org.graalvm.compiler.replacements.nodes.ZeroMemoryNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
@@ -209,14 +212,27 @@ public class NewObjectSnippets implements Snippets {
     }
 
     @Snippet
-    public static Object allocateInstance(@ConstantParameter long size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
-                    @ConstantParameter Register threadRegister, @ConstantParameter boolean constantSize, @ConstantParameter String typeContext,
+    public static Object allocateInstance(@ConstantParameter long size,
+                    KlassPointer hub,
+                    Word prototypeMarkWord,
+                    @ConstantParameter boolean fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter Register threadRegister,
+                    @ConstantParameter boolean constantSize,
+                    @ConstantParameter String typeContext,
                     @ConstantParameter Counters counters) {
-        return piCastToSnippetReplaceeStamp(allocateInstanceHelper(size, hub, prototypeMarkWord, fillContents, threadRegister, constantSize, typeContext, counters));
+        return piCastToSnippetReplaceeStamp(allocateInstanceHelper(size, hub, prototypeMarkWord, fillContents, emitMemoryBarrier, threadRegister, constantSize, typeContext, counters));
     }
 
-    public static Object allocateInstanceHelper(long size, KlassPointer hub, Word prototypeMarkWord, boolean fillContents,
-                    Register threadRegister, boolean constantSize, String typeContext, Counters counters) {
+    public static Object allocateInstanceHelper(long size,
+                    KlassPointer hub,
+                    Word prototypeMarkWord,
+                    boolean fillContents,
+                    boolean emitMemoryBarrier,
+                    Register threadRegister,
+                    boolean constantSize,
+                    String typeContext,
+                    Counters counters) {
         Object result;
         Word thread = registerAsWord(threadRegister);
         Word top = readTlabTop(thread);
@@ -225,7 +241,7 @@ public class NewObjectSnippets implements Snippets {
         if (useTLAB(INJECTED_VMCONFIG) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, false);
-            result = formatObject(hub, size, top, prototypeMarkWord, fillContents, constantSize, counters);
+            result = formatObject(hub, size, top, prototypeMarkWord, fillContents, emitMemoryBarrier, constantSize, counters);
         } else {
             Counters theCounters = counters;
             if (theCounters != null && theCounters.stub != null) {
@@ -252,18 +268,27 @@ public class NewObjectSnippets implements Snippets {
     private static native Object newInstanceOrNull(@ConstantNodeParameter ForeignCallDescriptor descriptor, KlassPointer hub);
 
     @Snippet
-    public static Object allocateInstancePIC(@ConstantParameter long size, KlassPointer hub, Word prototypeMarkWord, @ConstantParameter boolean fillContents,
-                    @ConstantParameter Register threadRegister, @ConstantParameter boolean constantSize, @ConstantParameter String typeContext,
+    public static Object allocateInstancePIC(@ConstantParameter long size,
+                    KlassPointer hub,
+                    Word prototypeMarkWord,
+                    @ConstantParameter boolean fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter Register threadRegister,
+                    @ConstantParameter boolean constantSize,
+                    @ConstantParameter String typeContext,
                     @ConstantParameter Counters counters) {
         // Klass must be initialized by the time the first instance is allocated, therefore we can
         // just load it from the corresponding cell and avoid the resolution check. We have to use a
         // fixed load though, to prevent it from floating above the initialization.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
-        return piCastToSnippetReplaceeStamp(allocateInstanceHelper(size, picHub, prototypeMarkWord, fillContents, threadRegister, constantSize, typeContext, counters));
+        return piCastToSnippetReplaceeStamp(allocateInstanceHelper(size, picHub, prototypeMarkWord, fillContents, emitMemoryBarrier, threadRegister, constantSize, typeContext, counters));
     }
 
     @Snippet
-    public static Object allocateInstanceDynamic(Class<?> type, Class<?> classClass, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
+    public static Object allocateInstanceDynamic(Class<?> type, Class<?> classClass,
+                    @ConstantParameter boolean fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter Register threadRegister,
                     @ConstantParameter Counters counters) {
         if (probability(SLOW_PATH_PROBABILITY, type == null)) {
             DeoptimizeNode.deopt(None, RuntimeConstraint);
@@ -274,10 +299,15 @@ public class NewObjectSnippets implements Snippets {
             DeoptimizeNode.deopt(None, RuntimeConstraint);
         }
 
-        return PiNode.piCastToSnippetReplaceeStamp(allocateInstanceDynamicHelper(type, fillContents, threadRegister, counters, nonNullType));
+        return PiNode.piCastToSnippetReplaceeStamp(allocateInstanceDynamicHelper(type, fillContents, emitMemoryBarrier, threadRegister, counters, nonNullType));
     }
 
-    private static Object allocateInstanceDynamicHelper(Class<?> type, boolean fillContents, Register threadRegister, Counters counters, Class<?> nonNullType) {
+    private static Object allocateInstanceDynamicHelper(Class<?> type,
+                    boolean fillContents,
+                    boolean emitMemoryBarrier,
+                    Register threadRegister,
+                    Counters counters,
+                    Class<?> nonNullType) {
         KlassPointer hub = ClassGetHubNode.readClass(nonNullType);
         if (probability(FAST_PATH_PROBABILITY, !hub.isNull())) {
             KlassPointer nonNullHub = ClassGetHubNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
@@ -296,7 +326,7 @@ public class NewObjectSnippets implements Snippets {
                      * FIXME(je,ds): we should actually pass typeContext instead of "" but late
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
                      */
-                    return allocateInstanceHelper(layoutHelper, nonNullHub, prototypeMarkWord, fillContents, threadRegister, false, "", counters);
+                    return allocateInstanceHelper(layoutHelper, nonNullHub, prototypeMarkWord, fillContents, emitMemoryBarrier, threadRegister, false, "", counters);
                 }
             } else {
                 DeoptimizeNode.deopt(None, RuntimeConstraint);
@@ -311,21 +341,41 @@ public class NewObjectSnippets implements Snippets {
     public static final int MAX_ARRAY_FAST_PATH_ALLOCATION_LENGTH = 0x00FFFFFF;
 
     @Snippet
-    public static Object allocatePrimitiveArrayPIC(KlassPointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
-                    @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext,
+    public static Object allocatePrimitiveArrayPIC(KlassPointer hub,
+                    int length,
+                    Word prototypeMarkWord,
+                    @ConstantParameter int headerSize,
+                    @ConstantParameter int log2ElementSize,
+                    @ConstantParameter boolean fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter Register threadRegister,
+                    @ConstantParameter boolean maybeUnroll,
+                    @ConstantParameter String typeContext,
+                    @ConstantParameter boolean useBulkZeroing,
                     @ConstantParameter Counters counters) {
         // Primitive array types are eagerly pre-resolved. We can use a floating load.
         KlassPointer picHub = LoadConstantIndirectlyNode.loadKlass(hub);
-        return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, counters);
+        return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents,
+                        emitMemoryBarrier, threadRegister, maybeUnroll, typeContext, useBulkZeroing, counters);
     }
 
     @Snippet
-    public static Object allocateArrayPIC(KlassPointer hub, int length, Word prototypeMarkWord, @ConstantParameter int headerSize, @ConstantParameter int log2ElementSize,
-                    @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister, @ConstantParameter boolean maybeUnroll, @ConstantParameter String typeContext,
+    public static Object allocateArrayPIC(KlassPointer hub,
+                    int length,
+                    Word prototypeMarkWord,
+                    @ConstantParameter int headerSize,
+                    @ConstantParameter int log2ElementSize,
+                    @ConstantParameter boolean fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter Register threadRegister,
+                    @ConstantParameter boolean maybeUnroll,
+                    @ConstantParameter String typeContext,
+                    @ConstantParameter boolean useBulkZeroing,
                     @ConstantParameter Counters counters) {
         // Array type would be resolved by dominating resolution.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
-        return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, maybeUnroll, typeContext, counters);
+        return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents,
+                        emitMemoryBarrier, threadRegister, maybeUnroll, typeContext, useBulkZeroing, counters);
     }
 
     @Snippet
@@ -335,9 +385,11 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter int headerSize,
                     @ConstantParameter int log2ElementSize,
                     @ConstantParameter boolean fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter Register threadRegister,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter String typeContext,
+                    @ConstantParameter boolean useBulkZeroing,
                     @ConstantParameter Counters counters) {
         Object result = allocateArrayImpl(hub,
                         length,
@@ -345,10 +397,10 @@ public class NewObjectSnippets implements Snippets {
                         headerSize,
                         log2ElementSize,
                         fillContents,
-                        threadRegister,
+                        emitMemoryBarrier, threadRegister,
                         maybeUnroll,
                         typeContext,
-
+                        useBulkZeroing,
                         counters);
         return piArrayCastToSnippetReplaceeStamp(verifyOop(result), length);
     }
@@ -362,8 +414,18 @@ public class NewObjectSnippets implements Snippets {
         return config.areNullAllocationStubsAvailable();
     }
 
-    private static Object allocateArrayImpl(KlassPointer hub, int length, Word prototypeMarkWord, int headerSize, int log2ElementSize, boolean fillContents, Register threadRegister,
-                    boolean maybeUnroll, String typeContext, Counters counters) {
+    private static Object allocateArrayImpl(KlassPointer hub,
+                    int length,
+                    Word prototypeMarkWord,
+                    int headerSize,
+                    int log2ElementSize,
+                    boolean fillContents,
+                    boolean emitMemoryBarrier,
+                    Register threadRegister,
+                    boolean maybeUnroll,
+                    String typeContext,
+                    boolean useBulkZeroing,
+                    Counters counters) {
         Object result;
         long allocationSize = arrayAllocationSize(length, headerSize, log2ElementSize);
         Word thread = registerAsWord(threadRegister);
@@ -378,7 +440,7 @@ public class NewObjectSnippets implements Snippets {
             if (theCounters != null && theCounters.arrayLoopInit != null) {
                 theCounters.arrayLoopInit.inc();
             }
-            result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents, maybeUnroll, counters);
+            result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents, emitMemoryBarrier, maybeUnroll, useBulkZeroing, counters);
         } else {
             result = newArrayStub(hub, length);
         }
@@ -435,15 +497,33 @@ public class NewObjectSnippets implements Snippets {
     public static native Object dynamicNewInstanceOrNull(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> elementType);
 
     @Snippet
-    public static Object allocateArrayDynamic(Class<?> elementType, Class<?> voidClass, int length, @ConstantParameter boolean fillContents, @ConstantParameter Register threadRegister,
-                    @ConstantParameter JavaKind knownElementKind, @ConstantParameter int knownLayoutHelper, Word prototypeMarkWord,
+    public static Object allocateArrayDynamic(Class<?> elementType,
+                    Class<?> voidClass,
+                    int length,
+                    @ConstantParameter boolean fillContents,
+                    @ConstantParameter boolean emitMemoryBarrier,
+                    @ConstantParameter Register threadRegister,
+                    @ConstantParameter JavaKind knownElementKind,
+                    @ConstantParameter int knownLayoutHelper,
+                    @ConstantParameter boolean useBulkZeroing,
+                    Word prototypeMarkWord,
                     @ConstantParameter Counters counters) {
-        Object result = allocateArrayDynamicImpl(elementType, voidClass, length, fillContents, threadRegister, knownElementKind, knownLayoutHelper, prototypeMarkWord, counters);
+        Object result = allocateArrayDynamicImpl(elementType, voidClass, length, fillContents, emitMemoryBarrier, threadRegister, knownElementKind,
+                        knownLayoutHelper, useBulkZeroing, prototypeMarkWord, counters);
         return result;
     }
 
-    private static Object allocateArrayDynamicImpl(Class<?> elementType, Class<?> voidClass, int length, boolean fillContents, Register threadRegister, JavaKind knownElementKind,
-                    int knownLayoutHelper, Word prototypeMarkWord, Counters counters) {
+    private static Object allocateArrayDynamicImpl(Class<?> elementType,
+                    Class<?> voidClass,
+                    int length,
+                    boolean fillContents,
+                    boolean emitMemoryBarrier,
+                    Register threadRegister,
+                    JavaKind knownElementKind,
+                    int knownLayoutHelper,
+                    boolean useBulkZeroing,
+                    Word prototypeMarkWord,
+                    Counters counters) {
         /*
          * We only need the dynamic check for void when we have no static information from
          * knownElementKind.
@@ -485,7 +565,8 @@ public class NewObjectSnippets implements Snippets {
         int headerSize = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
-        Object result = allocateArrayImpl(nonNullKlass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents, threadRegister, false, "dynamic type", counters);
+        Object result = allocateArrayImpl(nonNullKlass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents,
+                        emitMemoryBarrier, threadRegister, false, "dynamic type", useBulkZeroing, counters);
         return piArrayCastToSnippetReplaceeStamp(verifyOop(result), length);
     }
 
@@ -538,12 +619,15 @@ public class NewObjectSnippets implements Snippets {
      * @param constantSize is {@code size} known to be constant in the snippet
      * @param startOffset offset to begin zeroing. May not be word aligned.
      * @param manualUnroll maximally unroll zeroing
+     * @param useBulkZeroing apply bulk zeroing
      */
-    private static void zeroMemory(long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, Counters counters) {
-        fillMemory(0, size, memory, constantSize, startOffset, manualUnroll, counters);
+    private static void zeroMemory(long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll,
+                    boolean useBulkZeroing, Counters counters) {
+        fillMemory(0, size, memory, constantSize, startOffset, manualUnroll, useBulkZeroing, counters);
     }
 
-    private static void fillMemory(long value, long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, Counters counters) {
+    private static void fillMemory(long value, long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll,
+                    boolean useBulkZeroing, Counters counters) {
         ReplacementsUtil.runtimeAssert((size & 0x7) == 0, "unaligned object size");
         int offset = startOffset;
         if ((offset & 0x7) != 0) {
@@ -571,20 +655,32 @@ public class NewObjectSnippets implements Snippets {
         } else {
             // Use Word instead of int to avoid extension to long in generated code
             Word off = WordFactory.signed(offset);
-            if (constantSize && ((size - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
-                if (theCounters != null && theCounters.instanceSeqInit != null) {
-                    theCounters.instanceSeqInit.inc();
+            if (useBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, (size - offset) >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
+                if (theCounters != null && theCounters.instanceBulkInit != null) {
+                    theCounters.instanceBulkInit.inc();
                 }
-                explodeLoop();
+                ZeroMemoryNode.zero(memory.add(off), size - offset, LocationIdentity.init());
             } else {
-                if (theCounters != null && theCounters.instanceLoopInit != null) {
-                    theCounters.instanceLoopInit.inc();
+                if (constantSize && ((size - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
+                    if (theCounters != null && theCounters.instanceSeqInit != null) {
+                        theCounters.instanceSeqInit.inc();
+                    }
+                    explodeLoop();
+                } else {
+                    if (theCounters != null && theCounters.instanceLoopInit != null) {
+                        theCounters.instanceLoopInit.inc();
+                    }
                 }
-            }
-            for (; off.rawValue() < size; off = off.add(8)) {
-                memory.initializeLong(off, value, LocationIdentity.init());
+                for (; off.rawValue() < size; off = off.add(8)) {
+                    memory.initializeLong(off, value, LocationIdentity.init());
+                }
             }
         }
+    }
+
+    @Fold
+    static int getMinimalBulkZeroingSize(@InjectedParameter OptionValues optionValues) {
+        return MinimalBulkZeroingSize.getValue(optionValues);
     }
 
     /**
@@ -598,21 +694,30 @@ public class NewObjectSnippets implements Snippets {
      * @param manualUnroll maximally unroll zeroing
      */
     private static void fillWithGarbage(long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, Counters counters) {
-        fillMemory(0xfefefefefefefefeL, size, memory, constantSize, startOffset, manualUnroll, counters);
+        fillMemory(0xfefefefefefefefeL, size, memory, constantSize, startOffset, manualUnroll, false, counters);
     }
 
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    private static Object formatObject(KlassPointer hub, long size, Word memory, Word compileTimePrototypeMarkWord, boolean fillContents, boolean constantSize, Counters counters) {
+    private static Object formatObject(KlassPointer hub,
+                    long size,
+                    Word memory,
+                    Word compileTimePrototypeMarkWord,
+                    boolean fillContents,
+                    boolean emitMemoryBarrier,
+                    boolean constantSize,
+                    Counters counters) {
         Word prototypeMarkWord = useBiasedLocking(INJECTED_VMCONFIG) ? hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
-            zeroMemory(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, counters);
+            zeroMemory(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, false, counters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, counters);
         }
-        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
+        if (emitMemoryBarrier) {
+            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
+        }
         return memory.toObjectNonNull();
     }
 
@@ -631,7 +736,16 @@ public class NewObjectSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    private static Object formatArray(KlassPointer hub, long allocationSize, int length, int headerSize, Word memory, Word prototypeMarkWord, boolean fillContents, boolean maybeUnroll,
+    private static Object formatArray(KlassPointer hub,
+                    long allocationSize,
+                    int length,
+                    int headerSize,
+                    Word memory,
+                    Word prototypeMarkWord,
+                    boolean fillContents,
+                    boolean emitMemoryBarrier,
+                    boolean maybeUnroll,
+                    boolean useBulkZeroing,
                     Counters counters) {
         memory.writeInt(arrayLengthOffset(INJECTED_VMCONFIG), length, LocationIdentity.init());
         /*
@@ -640,11 +754,13 @@ public class NewObjectSnippets implements Snippets {
          */
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
-            zeroMemory(allocationSize, memory, false, headerSize, maybeUnroll, counters);
+            zeroMemory(allocationSize, memory, false, headerSize, maybeUnroll, useBulkZeroing, counters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, counters);
         }
-        MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
+        if (emitMemoryBarrier) {
+            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
+        }
         return memory.toObjectNonNull();
     }
 
@@ -654,21 +770,24 @@ public class NewObjectSnippets implements Snippets {
             Group newArray = factory.createSnippetCounterGroup("NewArray");
             instanceSeqInit = new SnippetCounter(newInstance, "tlabSeqInit", "TLAB alloc with unrolled zeroing");
             instanceLoopInit = new SnippetCounter(newInstance, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
+            instanceBulkInit = new SnippetCounter(newArray, "tlabBulkInit", "TLAB alloc with bulk zeroing");
             arrayLoopInit = new SnippetCounter(newArray, "tlabLoopInit", "TLAB alloc with zeroing in a loop");
             stub = new SnippetCounter(newInstance, "stub", "alloc and zeroing via stub");
         }
 
         final SnippetCounter instanceSeqInit;
         final SnippetCounter instanceLoopInit;
+        final SnippetCounter instanceBulkInit;
         final SnippetCounter arrayLoopInit;
         final SnippetCounter stub;
     }
 
     public static class Templates extends AbstractTemplates {
 
-        private final SnippetInfo allocateInstance = snippet(NewObjectSnippets.class, "allocateInstance", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
+        private final SnippetInfo allocateInstance = snippet(NewObjectSnippets.class, "allocateInstance", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION,
+                        PROTOTYPE_MARK_WORD_LOCATION);
         private final SnippetInfo allocateInstancePIC = snippet(NewObjectSnippets.class, "allocateInstancePIC", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
-                        TLAB_END_LOCATION);
+                        TLAB_END_LOCATION, PROTOTYPE_MARK_WORD_LOCATION);
         private final SnippetInfo allocateArray = snippet(NewObjectSnippets.class, "allocateArray", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         private final SnippetInfo allocateArrayPIC = snippet(NewObjectSnippets.class, "allocateArrayPIC", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         private final SnippetInfo allocatePrimitiveArrayPIC = snippet(NewObjectSnippets.class, "allocatePrimitiveArrayPIC", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
@@ -676,7 +795,7 @@ public class NewObjectSnippets implements Snippets {
         private final SnippetInfo allocateArrayDynamic = snippet(NewObjectSnippets.class, "allocateArrayDynamic", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
                         TLAB_END_LOCATION);
         private final SnippetInfo allocateInstanceDynamic = snippet(NewObjectSnippets.class, "allocateInstanceDynamic", MARK_WORD_LOCATION, HUB_WRITE_LOCATION, TLAB_TOP_LOCATION,
-                        TLAB_END_LOCATION);
+                        TLAB_END_LOCATION, PROTOTYPE_MARK_WORD_LOCATION, CLASS_STATE_LOCATION);
         private final SnippetInfo newmultiarray = snippet(NewObjectSnippets.class, "newmultiarray", TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         private final SnippetInfo newmultiarrayPIC = snippet(NewObjectSnippets.class, "newmultiarrayPIC", TLAB_TOP_LOCATION, TLAB_END_LOCATION);
         private final SnippetInfo verifyHeap = snippet(NewObjectSnippets.class, "verifyHeap");
@@ -707,6 +826,7 @@ public class NewObjectSnippets implements Snippets {
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
             args.addConst("fillContents", newInstanceNode.fillContents());
+            args.addConst("emitMemoryBarrier", newInstanceNode.emitMemoryBarrier());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("constantSize", true);
             args.addConst("typeContext", ProfileAllocations.getValue(localOptions) ? type.toJavaName(false) : "");
@@ -750,9 +870,11 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("headerSize", headerSize);
             args.addConst("log2ElementSize", log2ElementSize);
             args.addConst("fillContents", newArrayNode.fillContents());
+            args.addConst("emitMemoryBarrier", newArrayNode.emitMemoryBarrier());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("maybeUnroll", length.isConstant());
             args.addConst("typeContext", ProfileAllocations.getValue(localOptions) ? arrayType.toJavaName(false) : "");
+            args.addConst("useBulkZeroing", tool.getLowerer().supportBulkZeroing());
             args.addConst("counters", counters);
             SnippetTemplate template = template(newArrayNode, args);
             graph.getDebug().log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
@@ -766,6 +888,7 @@ public class NewObjectSnippets implements Snippets {
             assert classClass != null;
             args.add("classClass", classClass);
             args.addConst("fillContents", newInstanceNode.fillContents());
+            args.addConst("emitMemoryBarrier", newInstanceNode.emitMemoryBarrier());
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("counters", counters);
 
@@ -775,7 +898,7 @@ public class NewObjectSnippets implements Snippets {
 
         public void lower(DynamicNewArrayNode newArrayNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = newArrayNode.graph();
-            Arguments args = new Arguments(allocateArrayDynamic, newArrayNode.graph().getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("elementType", newArrayNode.getElementType());
             ValueNode voidClass = newArrayNode.getVoidClass();
             assert voidClass != null;
@@ -783,6 +906,7 @@ public class NewObjectSnippets implements Snippets {
             ValueNode length = newArrayNode.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.addConst("fillContents", newArrayNode.fillContents());
+            args.addConst("emitMemoryBarrier", newArrayNode.emitMemoryBarrier());
             args.addConst("threadRegister", registers.getThreadRegister());
             /*
              * We use Kind.Illegal as a marker value instead of null because constant snippet
@@ -794,6 +918,7 @@ public class NewObjectSnippets implements Snippets {
             } else {
                 args.addConst("knownLayoutHelper", 0);
             }
+            args.addConst("useBulkZeroing", tool.getLowerer().supportBulkZeroing());
             args.add("prototypeMarkWord", lookupArrayClass(tool, JavaKind.Object).prototypeMarkWord());
             args.addConst("counters", counters);
             SnippetTemplate template = template(newArrayNode, args);

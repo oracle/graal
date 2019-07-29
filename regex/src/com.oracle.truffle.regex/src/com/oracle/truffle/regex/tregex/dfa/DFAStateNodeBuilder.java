@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,9 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
@@ -156,6 +159,44 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
 
     public void setFinalStateSuccessor() {
         isFinalStateSuccessor = true;
+    }
+
+    /**
+     * Returns {@code true} iff the union of the
+     * {@link DFAStateTransitionBuilder#getMatcherBuilder()} of all transitions in this state is
+     * equal to {@link CharSet#getFull()}.
+     */
+    public boolean coversFullCharSpace(CompilationBuffer compilationBuffer) {
+        IntArrayBuffer indicesBuf = compilationBuffer.getIntRangesBuffer1();
+        indicesBuf.ensureCapacity(transitions.length);
+        int[] indices = indicesBuf.getBuffer();
+        Arrays.fill(indices, 0, transitions.length, 0);
+        int nextLo = Character.MIN_VALUE;
+        while (true) {
+            int i = findNextLo(indices, nextLo);
+            if (i < 0) {
+                return false;
+            }
+            CharSet mb = transitions[i].getMatcherBuilder();
+            if (mb.getHi(indices[i]) == Character.MAX_VALUE) {
+                return true;
+            }
+            nextLo = mb.getHi(indices[i]) + 1;
+            indices[i]++;
+        }
+    }
+
+    private int findNextLo(int[] indices, int findLo) {
+        for (int i = 0; i < transitions.length; i++) {
+            CharSet mb = transitions[i].getMatcherBuilder();
+            if (indices[i] == mb.size()) {
+                continue;
+            }
+            if (mb.getLo(indices[i]) == findLo) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public void addPrecedingTransition(DFACaptureGroupTransitionBuilder transitionBuilder) {

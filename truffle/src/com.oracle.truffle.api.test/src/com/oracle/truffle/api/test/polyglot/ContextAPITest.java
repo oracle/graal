@@ -48,6 +48,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -63,8 +64,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
-import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -85,8 +87,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
-import org.graalvm.polyglot.HostAccess;
-import org.junit.BeforeClass;
+import org.graalvm.polyglot.PolyglotAccess;
 
 public class ContextAPITest {
     private static HostAccess CONFIG;
@@ -217,11 +218,16 @@ public class ContextAPITest {
 
     @Test
     public void testExperimentalOptionException() {
-        Assume.assumeTrue(Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS")));
-
         ValueAssert.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
             assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
                             e.getMessage());
+        });
+    }
+
+    @Test
+    public void testImageBuildTimeOptionAtRuntime() {
+        ValueAssert.assertFails(() -> Context.newBuilder().option("image-build-time.DisablePrivileges", "createProcess").build(), IllegalArgumentException.class, e -> {
+            assertEquals("Image build-time option 'image-build-time.DisablePrivileges' cannot be set at runtime", e.getMessage());
         });
     }
 
@@ -598,7 +604,7 @@ public class ContextAPITest {
 
     @Test
     public void testTransferControlToOtherThreadWhileEntered() {
-        Context context = Context.newBuilder().allowHostAccess(CONFIG).build();
+        Context context = Context.newBuilder().allowHostAccess(CONFIG).allowPolyglotAccess(PolyglotAccess.ALL).build();
 
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
@@ -686,4 +692,26 @@ public class ContextAPITest {
             context.leave();
         }
     }
+
+    @Test
+    public void testTimeZone() {
+        ZoneId zone = ZoneId.of("UTC+1");
+        Context context = Context.newBuilder().timeZone(zone).build();
+        context.initialize(ProxyLanguage.ID);
+        context.enter();
+        assertEquals(zone, ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        context.leave();
+        context.close();
+    }
+
+    @Test
+    public void testDefaultTimeZone() {
+        Context context = Context.create();
+        context.initialize(ProxyLanguage.ID);
+        context.enter();
+        assertEquals(ZoneId.systemDefault(), ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        context.leave();
+        context.close();
+    }
+
 }

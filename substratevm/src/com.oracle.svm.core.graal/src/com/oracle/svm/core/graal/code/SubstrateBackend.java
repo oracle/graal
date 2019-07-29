@@ -30,9 +30,17 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase.AddressLowering;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
+import com.oracle.svm.core.stack.JavaFrameAnchor;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -40,8 +48,21 @@ import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class SubstrateBackend extends Backend {
+
+    private RuntimeConfiguration runtimeConfiguration;
+
     protected SubstrateBackend(Providers providers) {
         super(providers);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setRuntimeConfiguration(RuntimeConfiguration runtimeConfiguration) {
+        this.runtimeConfiguration = runtimeConfiguration;
+    }
+
+    public RuntimeConfiguration getRuntimeConfiguration() {
+        assert runtimeConfiguration != null : "Access before initialization";
+        return runtimeConfiguration;
     }
 
     @Override
@@ -67,7 +88,19 @@ public abstract class SubstrateBackend extends Backend {
         return new RegisterAllocationConfig(registerConfigNonNull, allocationRestrictedTo);
     }
 
-    public abstract AddressLowering newAddressLowering(CodeCacheProvider codeCache);
+    public static boolean hasJavaFrameAnchor(CallTargetNode callTarget) {
+        return getJavaFrameAnchor(callTarget) != null;
+    }
+
+    /**
+     * We are re-using the field {InvokeNode#classInit()} to store the {@link JavaFrameAnchor}, see
+     * {@link CFunctionSnippets#matchCallStructure}.
+     */
+    public static ValueNode getJavaFrameAnchor(CallTargetNode callTarget) {
+        return callTarget.invoke().classInit();
+    }
+
+    public abstract Phase newAddressLoweringPhase(CodeCacheProvider codeCache);
 
     public abstract CompilationResult createJNITrampolineMethod(ResolvedJavaMethod method, CompilationIdentifier identifier, RegisterValue methodIdArg, int offset);
 }

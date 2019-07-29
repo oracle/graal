@@ -138,3 +138,11 @@ For example:
 ## Use during Native Image Generation
 Reflection can be used without restrictions during native image generation, for example in static initializers.
 At this point, code can collect information about methods and fields and store them in own data structures, which are then reflection-free at run time.
+
+## Unsafe accesses
+The `Unsafe` class, although its use is discouraged, provides direct access to memory of Java objects. The `Unsafe.objectFieldOffset()` method provides the offset of a field within a Java object. This information is not available by default, but can be enabled with the `allowUnsafeAccess` attribute in the reflection configuration, for example:
+```
+"fields" : [ { "name" : "hash", "allowUnsafeAccess" : true }, ... ]
+```
+
+Note that offsets that are queried during native image generation can be different to the offsets at runtime.

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.util.List;
-
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.Node;
@@ -100,26 +98,6 @@ public final class TruffleStackTraceElement {
      */
     public Frame getFrame() {
         return frame;
-    }
-
-    /**
-     * @deprecated Use {@link TruffleStackTrace#getStackTrace(Throwable)} instead.
-     *
-     * @since 0.27
-     */
-    @Deprecated
-    public static List<TruffleStackTraceElement> getStackTrace(Throwable throwable) {
-        return TruffleStackTrace.getStackTrace(throwable);
-    }
-
-    /**
-     * @deprecated Use {@link TruffleStackTrace#fillIn(Throwable)} instead.
-     *
-     * @since 0.27
-     */
-    @Deprecated
-    public static void fillIn(Throwable throwable) {
-        TruffleStackTrace.fillIn(throwable);
     }
 
 }

@@ -24,121 +24,71 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import java.io.ByteArrayInputStream;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
+
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.OptionsEncoder;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
+import org.graalvm.libgraal.LibGraal;
+import org.graalvm.libgraal.LibGraalScope;
+import org.graalvm.libgraal.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.services.Services;
 
 /**
  * A {@link TruffleRuntime} that uses libgraal for compilation.
  */
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
-    /**
-     * Gets the id for the SVM isolate thread associated with the current thread. This method
-     * attaches the current thread to an SVM isolate thread first if necessary.
-     *
-     * @throws UnsatisfiedLinkError if libgraal is not {@linkplain #isAvailable() available}
-     */
-    static long getIsolateThreadId() {
-        return CURRENT_ISOLATE_THREAD.get();
-    }
-
-    private static final ThreadLocal<Long> CURRENT_ISOLATE_THREAD = new ThreadLocal<Long>() {
-        @Override
-        protected Long initialValue() {
-            if (initializationError != null) {
-                throw initializationError;
-            }
-            long isolateThread = HotSpotToSVMCalls.attachThread(isolateId);
-            return isolateThread;
-        }
-    };
-
-    /**
-     * Determines if libgraal can be linked.
-     */
-    static boolean isAvailable() {
-        return isolateId != 0L;
-    }
-
-    static final long isolateId = initializeLibgraal();
-    private static LinkageError initializationError;
-
     private final long handle;
 
+    @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
         HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+        runtime.registerNativeMethods(HotSpotToSVMCalls.class);
         MetaAccessProvider metaAccess = runtime.getHostJVMCIBackend().getMetaAccess();
         HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) metaAccess.lookupJavaType(getClass());
-        long classLoaderDelegate = runtime.translate(type);
-        handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThreadId(), this, classLoaderDelegate);
-    }
-
-    @Override
-    public HotSpotTruffleCompiler newTruffleCompiler() {
-        return new SVMHotSpotTruffleCompiler(HotSpotToSVMCalls.initializeCompiler(getIsolateThreadId(), handle));
-    }
-
-    @Override
-    protected String initLazyCompilerConfigurationName() {
-        return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThreadId());
-    }
-
-    /**
-     * Gets the isolate pointer for calls of libraal methods. This relies on SVM writes the
-     * {@code Isolate*} to {@code JNIInvokeInterface_.reserved0}.
-     *
-     * @throws UnsatisfiedLinkError if libgraal is not available
-     */
-    private static long initializeLibgraal() {
-        try {
-            // Initialize JVMCI to ensure JVMCI opens its packages to
-            // Graal otherwise the call to HotSpotJVMCIRuntime.runtime()
-            // below will fail on JDK9+.
-            Services.initializeJVMCI();
-
-            long[] nativeInterface = HotSpotJVMCIRuntime.runtime().registerNativeMethods(HotSpotToSVMCalls.class);
-            return nativeInterface[1];
-        } catch (UnsatisfiedLinkError e) {
-            initializationError = e;
-            return 0L;
-        } catch (NoSuchMethodError e) {
-            // The signature of HotSpotJVMCIRuntime.registerNativeMethods changed
-            // to support libgraal. JDKs that don't have full JVMCI support for
-            // libgraal will have the old signature.
-            initializationError = e;
-            return 0L;
+        try (LibGraalScope scope = new LibGraalScope(runtime)) {
+            long classLoaderDelegate = LibGraal.translate(runtime, type);
+            handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), this, classLoaderDelegate);
         }
     }
 
+    @SuppressWarnings("try")
+    @Override
+    public HotSpotTruffleCompiler newTruffleCompiler() {
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            return new SVMHotSpotTruffleCompiler(HotSpotToSVMCalls.initializeCompiler(getIsolateThread(), handle));
+        }
+    }
+
+    @SuppressWarnings("try")
+    @Override
+    protected String initLazyCompilerConfigurationName() {
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            return HotSpotToSVMCalls.getCompilerConfigurationFactoryName(getIsolateThread());
+        }
+    }
+
+    @SuppressWarnings("try")
     @Override
     protected Map<String, Object> createInitialOptions() {
-        byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThreadId(), handle);
-        return OptionsEncoder.decode(new ByteArrayInputStream(serializedOptions));
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            byte[] serializedOptions = HotSpotToSVMCalls.getInitialOptions(getIsolateThread(), handle);
+            return OptionsEncoder.decode(serializedOptions);
+        }
     }
 
+    @SuppressWarnings("try")
     @Override
     public void log(String message) {
-        HotSpotToSVMCalls.log(getIsolateThreadId(), message);
-    }
-
-    /**
-     * Clears JNI GlobalReferences to HotSpot objects held by object on SVM heap. NOTE: This method
-     * is called reflectively by Truffle tests.
-     */
-    @SuppressWarnings("unused")
-    private static void cleanNativeReferences() {
-        SVMObject.cleanHandles();
-        HotSpotToSVMCalls.cleanReferences(getIsolateThreadId());
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            HotSpotToSVMCalls.log(getIsolateThread(), message);
+        }
     }
 }

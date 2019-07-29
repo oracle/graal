@@ -27,7 +27,7 @@ package com.oracle.svm.core.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;

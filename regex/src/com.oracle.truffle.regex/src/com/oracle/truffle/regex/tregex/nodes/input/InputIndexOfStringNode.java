@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,12 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.RegexRootNode;
 
 public abstract class InputIndexOfStringNode extends Node {
 
@@ -54,6 +56,9 @@ public abstract class InputIndexOfStringNode extends Node {
             return -1;
         }
         for (int i = fromIndex; i <= maxIndex - match.length(); i++) {
+            if (CompilerDirectives.inInterpreter()) {
+                RegexRootNode.checkThreadInterrupted();
+            }
             if (regionMatchesNode.execute(input, match, i)) {
                 return i;
             }

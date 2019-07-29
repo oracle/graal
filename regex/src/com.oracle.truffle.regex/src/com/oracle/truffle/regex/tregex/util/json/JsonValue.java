@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,11 @@
 
 package com.oracle.truffle.regex.tregex.util.json;
 
+import com.oracle.truffle.api.TruffleFile;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 public abstract class JsonValue implements JsonConvertible {
 
@@ -38,8 +38,8 @@ public abstract class JsonValue implements JsonConvertible {
         return this;
     }
 
-    public void dump(String path) {
-        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(Paths.get(path)))) {
+    public void dump(TruffleFile path) {
+        try (PrintWriter writer = new PrintWriter(path.newBufferedWriter(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING))) {
             dump(writer, 0);
             writer.flush();
         } catch (IOException e) {

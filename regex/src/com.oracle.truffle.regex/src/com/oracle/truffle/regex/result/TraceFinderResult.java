@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,32 +26,19 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.regex.RegexObject;
 
-public final class TraceFinderResult extends RegexResult {
+public final class TraceFinderResult extends LazyResult {
 
-    private final int fromIndex;
-    private final int end;
     private final int[] indices;
     private final CallTarget traceFinderCallTarget;
     @CompilationFinal(dimensions = 1) private final PreCalculatedResultFactory[] preCalculatedResults;
     private boolean resultCalculated = false;
 
-    public TraceFinderResult(RegexObject regex, Object input, int fromIndex, int end, CallTarget traceFinderCallTarget, PreCalculatedResultFactory[] preCalculatedResults) {
-        super(regex, input, preCalculatedResults[0].getNumberOfGroups());
-        this.fromIndex = fromIndex;
-        this.end = end;
+    public TraceFinderResult(Object input, int fromIndex, int end, CallTarget traceFinderCallTarget, PreCalculatedResultFactory[] preCalculatedResults) {
+        super(input, fromIndex, end);
         this.indices = new int[preCalculatedResults[0].getNumberOfGroups() * 2];
         this.traceFinderCallTarget = traceFinderCallTarget;
         this.preCalculatedResults = preCalculatedResults;
-    }
-
-    public int getFromIndex() {
-        return fromIndex;
-    }
-
-    public int getEnd() {
-        return end;
     }
 
     public int[] getIndices() {

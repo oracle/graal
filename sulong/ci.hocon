@@ -1,4 +1,4 @@
-sulong-common: ${common} ${labsjdk8} {
+sulong-common: ${common} ${oraclejdk8} {
     setup: [
         [cd, "./sulong"]
     ]
@@ -11,7 +11,6 @@ sulong-gateCommon: ${sulong-common} {
 sulong-gateStyle: ${sulong-gateCommon} ${linux-amd64} ${eclipse} {
     packages: {
         ruby: "==2.1.0" # for mdl
-        llvm: "==3.8"
     }
 }
 
@@ -31,6 +30,9 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} {
     packages: {
         llvm: "==3.8"
     }
+    environment: {
+        NO_FEMBED_BITCODE: "true"
+    }
 }
 
 sulong-gateTest40-linux: ${sulong-gateTest-linux} {
@@ -42,6 +44,12 @@ sulong-gateTest40-linux: ${sulong-gateTest-linux} {
 sulong-gateTest60-linux: ${sulong-gateTest-linux} {
     packages: {
         llvm: "==6.0.1"
+    }
+}
+
+sulong-gateTest80-linux: ${sulong-gateTest-linux} {
+    packages: {
+        llvm: "==8.0.0"
     }
 }
 
@@ -78,18 +86,6 @@ sulong-ruby-downstream-test: {
     timelimit: "45:00"
 }
 
-sulong-python-downstream-test: {
-    packages: {
-        python: "==3.4.1"
-        gcc: "==4.9.1"
-        llvm: ">=4.0"
-    }
-    run: [
-        [mx, testdownstream, --repo, "https://github.com/graalvm/graalpython.git",
-         --mx-command, "--dynamicimports /sulong gate -B=--force-deprecation-as-warning --tags build,python-cpyext"]
-    ]
-}
-
 sulong-gate-asm-parser: ${sulong-gateCommon} ${linux-amd64} {
   run: [
     ["mx", "create-asm-parser"]
@@ -102,6 +98,7 @@ sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} ${sulong-weekly-
     run: [
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", gate, --tags, "build,sulongCoverage", --jacocout, html]
         [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graalvm.sulong", "-Dsonar.projectName=GraalVM - Sulong", --exclude-generated]
+        [mx, --jacoco-whitelist-package, com.oracle.truffle.llvm, --jacoco-exclude-annotation, "@GeneratedBy", coverage-upload]
     ]
     targets: [weekly]
     timelimit: "1:00:00"
@@ -111,19 +108,18 @@ builds += [
   ${sulong-gateStyle} { name: gate-sulong-style, run: [[mx, gate, --tags, "style"]] }
   ${sulong-gateStyle} ${jdt} { name: gate-sulong-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
   ${sulong-gate-asm-parser} { name: gate-sulong-asm-parser }
-  ${sulong-gateTest38-linux} { name: gate-sulong-misc0, run: [[mx, gate, --tags, "build,assembly,args,callback,vaargs"]] }
-  ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe"]] }
-  ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-parser, run: [[mx, gate, --tags, "build,parser"]] }
-  ${sulong-gateTest38-linux} { name: gate-sulong-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]], timelimit: "45:00" }
-  ${sulong-gateTest38-linux} { name: gate-sulong-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
-  ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
+  ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-misc, run: [[mx, gate, --tags, "build,sulongMisc"]] }
+  ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-parser, run: [[mx, gate, --tags, "build,parser"]] }
+  ${sulong-gateTest80-linux} { name: gate-sulong-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]], timelimit: "45:00" }
+  ${sulong-gateTest80-linux} { name: gate-sulong-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
+  ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
   ${sulong-gateTest38-linux} ${requireGCC} { name: gate-sulong-basic_v38, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest40-linux} ${requireGCC} { name: gate-sulong-basic_v40, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
   ${sulong-gateTest60-linux} ${requireGCC} { name: gate-sulong-basic_v60, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
-  ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+  ${sulong-gateTest80-linux} ${requireGCC} { name: gate-sulong-basic_v80, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm"]] }
+  ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm,toolchain"]] }
 
-  ${sulong-gateTest38-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
-  ${sulong-gateTest38-linux} ${sulong-python-downstream-test} { name: gate-sulong-python-downstream }
+  ${sulong-gateTest80-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
 
   ${sulong-coverage-linux} { name: weekly-sulong-coverage }
 ]

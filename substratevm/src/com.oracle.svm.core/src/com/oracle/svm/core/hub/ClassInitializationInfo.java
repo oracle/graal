@@ -56,7 +56,10 @@ public final class ClassInitializationInfo {
      * Singleton for classes that are already initialized during image building and do not need
      * class initialization at runtime.
      */
-    public static final ClassInitializationInfo INITIALIZED_INFO_SINGLETON = new ClassInitializationInfo();
+    public static final ClassInitializationInfo INITIALIZED_INFO_SINGLETON = new ClassInitializationInfo(InitState.FullyInitialized);
+
+    /** Singleton for classes that failed to link during image building. */
+    public static final ClassInitializationInfo FAILED_INFO_SINGLETON = new ClassInitializationInfo(InitState.InitializationError);
 
     enum InitState {
         /**
@@ -121,10 +124,10 @@ public final class ClassInitializationInfo {
     private Condition initCondition;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private ClassInitializationInfo() {
+    private ClassInitializationInfo(InitState initState) {
         this.classInitializer = null;
-        this.initState = InitState.FullyInitialized;
-        this.initLock = null;
+        this.initState = initState;
+        this.initLock = initState == InitState.FullyInitialized ? null : new ReentrantLock();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

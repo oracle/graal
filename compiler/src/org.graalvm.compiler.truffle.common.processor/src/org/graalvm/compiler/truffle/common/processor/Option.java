@@ -113,7 +113,7 @@ public class Option {
         option("TruffleMaximumRecursiveInlining")
             .type("Integer")
             .category("EXPERT")
-            .def("4")
+            .def("2")
             .help("Maximum level of recursive inlining"),
 
         option("TruffleSplitting")
@@ -209,11 +209,6 @@ public class Option {
             .type("Boolean")
             .category("INTERNAL")
             .def("true"),
-
-        option("TruffleUseFrameWithoutBoxing")
-            .type("Boolean")
-            .category("INTERNAL")
-            .def("true"), // COMPILER
 
         option("TraceTruffleCompilation")
             .type("Boolean")

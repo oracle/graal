@@ -25,14 +25,14 @@
 package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.NewInstance;
-import static com.oracle.svm.core.posix.headers.Dirent.closedir;
-import static com.oracle.svm.core.posix.headers.Dirent.opendir;
-import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
 import static com.oracle.svm.core.headers.Errno.EACCES;
 import static com.oracle.svm.core.headers.Errno.EEXIST;
 import static com.oracle.svm.core.headers.Errno.ENOENT;
 import static com.oracle.svm.core.headers.Errno.ENOTDIR;
 import static com.oracle.svm.core.headers.Errno.errno;
+import static com.oracle.svm.core.posix.headers.Dirent.closedir;
+import static com.oracle.svm.core.posix.headers.Dirent.opendir;
+import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_APPEND;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_CREAT;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_DSYNC;
@@ -83,11 +83,11 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileDescriptor;
-import java.io.FileNotFoundException;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
@@ -97,11 +97,14 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -113,6 +116,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
@@ -124,59 +129,16 @@ import com.oracle.svm.core.posix.headers.Statvfs.statvfs;
 import com.oracle.svm.core.posix.headers.Termios;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.jni.JNIRuntimeAccess;
-import org.graalvm.nativeimage.RuntimeClassInitialization;
-import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.Feature;
 
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
-@CLibrary("java")
+@CLibrary(value = "java", requireStatic = true)
 class PosixJavaIOSubstituteFeature implements Feature {
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        // Can't re-initialize the classes list below:
-        // Error: com.oracle.graal.pointsto.constraints.UnsupportedFeatureException: No instances
-        // are allowed in the image heap for a class
-        // that is initialized or reinitialized at image runtime: java.io.XXX.
-        //
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileDescriptor"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileInputStream"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.FileOutputStream"));
-        // RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.UnixFileSystem"));
-
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.io.RandomAccessFile"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.ZipFile"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Inflater"));
-        RuntimeClassInitialization.rerunClassInitialization(access.findClassByName("java.util.zip.Deflater"));
-    }
-
-    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-            JNIRuntimeAccess.register(java.lang.String.class);
-            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredConstructor(byte[].class, String.class));
-            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredMethod("getBytes", String.class));
-            JNIRuntimeAccess.register(java.io.File.class);
-            JNIRuntimeAccess.register(java.io.File.class.getDeclaredField("path"));
-            JNIRuntimeAccess.register(java.io.FileOutputStream.class);
-            JNIRuntimeAccess.register(java.io.FileOutputStream.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.FileInputStream.class);
-            JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.FileDescriptor.class);
-            JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
-            JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
-            JNIRuntimeAccess.register(java.io.IOException.class);
-            JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
-            JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
-        } catch (NoSuchFieldException | NoSuchMethodException e) {
-            VMError.shouldNotReachHere("PosixJavaIOSubstitutionFeature: Error registering class or method: ", e);
-        }
+        JNIRuntimeAccess.register(access.findClassByName("java.io.UnixFileSystem"));
     }
 }
 
@@ -610,23 +572,23 @@ final class Target_java_io_FileOutputStream {
 
     @Substitute
     protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
-        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
+        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), bytes, off, len, append);
     }
 
     @Substitute
     private void open(String name, boolean append) throws FileNotFoundException {
-        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
+        PosixUtils.fileOpen(name, SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), O_WRONLY() | O_CREAT() | (append ? O_APPEND() : O_TRUNC()));
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     private void close0() throws IOException {
-        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)));
+        PosixUtils.fileClose(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)));
     }
 
     @Substitute
     private void write(int b, boolean append) throws IOException {
-        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), b, append);
+        PosixUtils.writeSingle(SubstrateUtil.getFileDescriptor(SubstrateUtil.cast(this, FileOutputStream.class)), b, append);
     }
 }
 
@@ -780,7 +742,7 @@ final class Target_java_io_Console {
     // 050                           jboolean on) {
     @Substitute
     static boolean echo(boolean on) throws IOException {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             /* Initialize the echo shut down hook, once. */
             Util_java_io_Console_JDK8OrEarlier.addShutdownHook();
         }
@@ -876,7 +838,7 @@ class Util_java_io_Console_JDK8OrEarlier {
 }
 
 @TargetClass(java.io.FileInputStream.class)
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_FileInputStream_jni {
 
     @Alias
@@ -884,7 +846,7 @@ final class Target_java_io_FileInputStream_jni {
 }
 
 @TargetClass(java.io.RandomAccessFile.class)
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_RandomAccessFile_jni {
 
     @Alias
@@ -892,7 +854,7 @@ final class Target_java_io_RandomAccessFile_jni {
 }
 
 @TargetClass(java.io.FileDescriptor.class)
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_FileDescriptor_jni {
 
     @Alias
@@ -905,7 +867,7 @@ final class Target_java_io_FileDescriptor_jni {
 }
 
 @TargetClass(java.io.FileOutputStream.class)
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_FileOutputStream_jni {
 
     @Alias
@@ -913,21 +875,21 @@ final class Target_java_io_FileOutputStream_jni {
 }
 
 @TargetClass(className = "java.io.UnixFileSystem")
-@Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 final class Target_java_io_UnixFileSystem_jni {
 
     @Alias
     static native void initIDs();
 }
 
-@Platforms({Platform.LINUX.class, Platform.LINUX_JNI.class, Platform.DARWIN.class, Platform.DARWIN_JNI.class})
+@Platforms({Platform.LINUX.class, InternalPlatform.LINUX_JNI.class, Platform.DARWIN.class, InternalPlatform.DARWIN_JNI.class})
 public final class PosixJavaIOSubstitutions {
 
     /** Private constructor: No instances. */
     private PosixJavaIOSubstitutions() {
     }
 
-    @Platforms({Platform.LINUX_JNI.class, Platform.DARWIN_JNI.class})
+    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static boolean initIDs() {
         try {
             /*

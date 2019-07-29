@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
 
     private final URI uri;
     private final ConnectionWatcher connectionWatcher;
-    private final InspectServerSession iss;
+    private InspectServerSession iss;
     private MessageEndpoint inspectEndpoint;
 
     public WSInterceptorServer(URI uri, InspectServerSession iss, ConnectionWatcher connectionWatcher) {
@@ -48,6 +48,12 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
         this.connectionWatcher = connectionWatcher;
         this.iss = iss;
         iss.setMessageListener(this);
+    }
+
+    public void newSession(InspectServerSession newIss) {
+        this.iss.setMessageListener(null);
+        this.iss = newIss;
+        this.iss.setMessageListener(this);
     }
 
     public void opened(MessageEndpoint endpoint) {

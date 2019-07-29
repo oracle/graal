@@ -359,7 +359,7 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         }
 
         @SuppressWarnings("unused")
-        public String prepare4(String query, Concrete arg1, String arg2) {
+        public String prepare4(String query, Concrete arg1, int arg2) {
             return Concrete.class.getName();
         }
     }

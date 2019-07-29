@@ -75,6 +75,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -106,10 +107,6 @@ public class Inflation extends BigBang {
         genericInterfacesMap = new HashMap<>();
         annotatedInterfacesMap = new HashMap<>();
         interfacesEncodings = new HashMap<>();
-    }
-
-    public SVMAnalysisPolicy svmAnalysisPolicy() {
-        return (SVMAnalysisPolicy) super.analysisPolicy();
     }
 
     @Override
@@ -188,42 +185,49 @@ public class Inflation extends BigBang {
             /*
              * Support for Java enumerations.
              */
-            if (type.getSuperclass() != null && type.getSuperclass().equals(metaAccess.lookupJavaType(Enum.class)) && hub.getEnumConstantsShared() == null) {
-                /*
-                 * We want to retrieve the enum constant array that is maintained as a private
-                 * static field in the enumeration class. We do not want a copy because that would
-                 * mean we have the array twice in the native image: as the static field, and in the
-                 * enumConstant field of DynamicHub. The only way to get the original value is via a
-                 * reflective field access, and we even have to guess the field name.
-                 */
-                AnalysisField found = null;
-                for (AnalysisField f : type.getStaticFields()) {
-                    if (f.getName().endsWith("$VALUES")) {
-                        if (found != null) {
-                            /*
-                             * Enumeration has more than one static field with enumeration values.
-                             * Bailout and use Class.getEnumConstants() to get the value instead.
-                             */
-                            found = null;
-                            break;
-                        }
-                        found = f;
-                    }
-                }
-                Enum<?>[] enumConstants;
-                if (found == null) {
-                    /*
-                     * We could not find a unique $VALUES field, so we use the value returned by
-                     * Class.getEnumConstants(). This is not ideal since Class.getEnumConstants()
-                     * returns a copy of the array, so we will have two arrays with the same content
-                     * in the image heap, but it is better than failing image generation.
-                     */
-                    enumConstants = (Enum<?>[]) type.getJavaClass().getEnumConstants();
+            if (type.isEnum() && hub.shouldInitEnumConstants()) {
+                if (getHostVM().getClassInitializationSupport().shouldInitializeAtRuntime(type)) {
+                    hub.initEnumConstantsAtRuntime(type.getJavaClass());
                 } else {
-                    enumConstants = (Enum[]) SubstrateObjectConstant.asObject(getConstantReflectionProvider().readFieldValue(found, null));
-                    assert enumConstants != null;
+                    /*
+                     * We want to retrieve the enum constant array that is maintained as a private
+                     * static field in the enumeration class. We do not want a copy because that
+                     * would mean we have the array twice in the native image: as the static field,
+                     * and in the enumConstant field of DynamicHub. The only way to get the original
+                     * value is via a reflective field access, and we even have to guess the field
+                     * name.
+                     */
+                    AnalysisField found = null;
+                    for (AnalysisField f : type.getStaticFields()) {
+                        if (f.getName().endsWith("$VALUES")) {
+                            if (found != null) {
+                                /*
+                                 * Enumeration has more than one static field with enumeration
+                                 * values. Bailout and use Class.getEnumConstants() to get the value
+                                 * instead.
+                                 */
+                                found = null;
+                                break;
+                            }
+                            found = f;
+                        }
+                    }
+                    Enum<?>[] enumConstants;
+                    if (found == null) {
+                        /*
+                         * We could not find a unique $VALUES field, so we use the value returned by
+                         * Class.getEnumConstants(). This is not ideal since
+                         * Class.getEnumConstants() returns a copy of the array, so we will have two
+                         * arrays with the same content in the image heap, but it is better than
+                         * failing image generation.
+                         */
+                        enumConstants = (Enum<?>[]) type.getJavaClass().getEnumConstants();
+                    } else {
+                        enumConstants = (Enum[]) SubstrateObjectConstant.asObject(getConstantReflectionProvider().readFieldValue(found, null));
+                        assert enumConstants != null;
+                    }
+                    hub.initEnumConstants(enumConstants);
                 }
-                hub.setEnumConstants(enumConstants);
             }
         }
     }
@@ -281,6 +285,40 @@ public class Inflation extends BigBang {
         }
     }
 
+    /** Modified copy of {@link Arrays#equals(Object[], Object[])}. */
+    private static boolean shallowEquals(Object[] a, Object[] a2) {
+        if (a == a2) {
+            return true;
+        } else if (a == null || a2 == null) {
+            return false;
+        }
+        int length = a.length;
+        if (a2.length != length) {
+            return false;
+        }
+        for (int i = 0; i < length; i++) {
+            /* Modification: use reference equality. */
+            if (a[i] != a2[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Modified copy of {@link Arrays#hashCode(Object[])}. */
+    private static int shallowHashCode(Object[] a) {
+        if (a == null) {
+            return 0;
+        }
+        int result = 1;
+
+        for (Object element : a) {
+            /* Modification: use identity hash code. */
+            result = 31 * result + System.identityHashCode(element);
+        }
+        return result;
+    }
+
     class AnnotatedInterfacesEncodingKey {
         final AnnotatedType[] interfaces;
 
@@ -288,14 +326,22 @@ public class Inflation extends BigBang {
             this.interfaces = aInterfaces;
         }
 
+        /*
+         * JDK 12 introduced a broken implementation of hashCode() and equals() for the
+         * implementation classes of annotated types, leading to an infinite recursion. Tracked as
+         * JDK-8224012. As a workaround, we use shallow implementations that only depend on the
+         * identity hash code and reference equality. This is the same behavior as on JDK 8 and JDK
+         * 11 anyway.
+         */
+
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof AnnotatedInterfacesEncodingKey && Arrays.equals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
+            return obj instanceof AnnotatedInterfacesEncodingKey && shallowEquals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(interfaces);
+            return shallowHashCode(interfaces);
         }
     }
 
@@ -420,7 +466,7 @@ public class Inflation extends BigBang {
              * interfaces. We want to avoid duplicate arrays with the same content in the native
              * image heap.
              */
-            hub.setInterfacesEncoding(interfacesEncodings.computeIfAbsent(new InterfacesEncodingKey(aInterfaces), k -> k.createHubs()));
+            hub.setInterfacesEncoding(interfacesEncodings.computeIfAbsent(new InterfacesEncodingKey(aInterfaces), InterfacesEncodingKey::createHubs));
         }
     }
 
@@ -459,7 +505,7 @@ public class Inflation extends BigBang {
              * Use the annotation types, instead of the declared type, in the UnknownObjectField
              * annotated fields initialization.
              */
-            handleUnknownObjectField(field, aAnnotationTypes.toArray(new AnalysisType[aAnnotationTypes.size()]));
+            handleUnknownObjectField(field, aAnnotationTypes.toArray(new AnalysisType[0]));
 
         } else if (unknownPrimitiveField != null) {
             assert !Modifier.isFinal(field.getModifiers()) : "@UnknownPrimitiveField annotated field " + field.format("%H.%n") + " cannot be final";
@@ -573,7 +619,7 @@ public class Inflation extends BigBang {
             } else if (usedAnnotations.size() == 1) {
                 newEncoding = usedAnnotations.get(0);
             } else {
-                newEncoding = usedAnnotations.toArray(new Annotation[usedAnnotations.size()]);
+                newEncoding = usedAnnotations.toArray(new Annotation[0]);
             }
         }
 
@@ -605,6 +651,16 @@ public class Inflation extends BigBang {
         return annotationInterfaceType.isInstantiated() || annotationInterfaceType.isInTypeCheck();
     }
 
+    public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {
+        if (type instanceof AnalysisType) {
+            return ((AnalysisType) type).getWrappedWithoutResolve();
+        } else if (type instanceof HostedType) {
+            return ((HostedType) type).getWrapped().getWrappedWithoutResolve();
+        } else {
+            return type;
+        }
+    }
+
     @Override
     public boolean trackConcreteAnalysisObjects(AnalysisType type) {
         /*
@@ -629,26 +685,27 @@ public class Inflation extends BigBang {
 
     /**
      * Builds a pattern that checks if the tested string starts with any of the target prefixes,
-     * like so: {@code str1(.*)|str2(.*)|str3(.*)}.
+     * like so: {@code ^(str1(.*)|str2(.*)|str3(.*))}.
      */
     private static Pattern buildPrefixMatchPattern(String[] targetPrefixes) {
-        String patternStr = "";
+        StringBuilder patternStr = new StringBuilder("^(");
         for (int i = 0; i < targetPrefixes.length; i++) {
             String prefix = targetPrefixes[i];
-            patternStr += prefix;
-            patternStr += "(.*)";
+            patternStr.append(prefix);
+            patternStr.append("(.*)");
             if (i < targetPrefixes.length - 1) {
-                patternStr += "|";
+                patternStr.append("|");
             }
         }
-        return Pattern.compile(patternStr);
+        patternStr.append(')');
+        return Pattern.compile(patternStr.toString());
     }
 
     @Override
     public boolean isCallAllowed(BigBang bb, AnalysisMethod caller, AnalysisMethod callee, NodeSourcePosition srcPosition) {
-        String calleeName = callee.format("%H.%n");
+        String calleeName = callee.getQualifiedName();
         if (illegalCalleesPattern.matcher(calleeName).find()) {
-            String callerName = caller.format("%H.%n");
+            String callerName = caller.getQualifiedName();
             if (targetCallersPattern.matcher(callerName).find()) {
                 SuppressSVMWarnings suppress = caller.getAnnotation(SuppressSVMWarnings.class);
                 AnalysisType callerType = caller.getDeclaringClass();

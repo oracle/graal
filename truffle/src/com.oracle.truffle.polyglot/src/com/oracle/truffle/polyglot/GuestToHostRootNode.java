@@ -55,13 +55,13 @@ abstract class GuestToHostRootNode extends RootNode {
 
     private final String boundaryName;
 
-    static final CallInlined CALL_INLINED = VMAccessor.SPI.getCallInlined();
+    static final CallInlined CALL_INLINED = EngineAccessor.ACCESSOR.getCallInlined();
 
     protected GuestToHostRootNode(Class<?> targetType, String methodName) {
         super(null);
         this.boundaryName = targetType.getName() + "." + methodName;
         // this avoids a memory leak with the root node if it is shared globally
-        VMAccessor.NODES.makeSharableRoot(this);
+        EngineAccessor.NODES.makeSharableRoot(this);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -103,13 +103,13 @@ public final class InvokeInstruction extends ValueInstruction implements Invoke 
                     InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
         final InvokeInstruction inst = new InvokeInstruction(type, normalSuccessor, unwindSuccessor, paramAttr, arguments.length);
         inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
-        FunctionStart.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
+        Call.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
         return inst;
     }
 
     @Override
     public String toString() {
-        return String.format("%s -> %s : %s", FunctionStart.asString(target, arguments), normalSuccessor.getName(), unwindSuccessor.getName());
+        return String.format("%s -> %s : %s", Call.asString(target, arguments), normalSuccessor.getName(), unwindSuccessor.getName());
     }
 
     @Override

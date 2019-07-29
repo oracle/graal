@@ -1,0 +1,3 @@
+LICENSE_FASTR = jre/languages/R/LICENSE_FASTR
+bin/R = ../jre/bin/R
+jre/bin/R = ../languages/R/bin/R

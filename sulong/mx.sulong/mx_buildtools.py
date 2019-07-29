@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -122,7 +122,7 @@ class ClangCompiler(Tool):
 
     def getTool(self, inputFile):
         inputLanguage = ProgrammingLanguage.lookupFile(inputFile)
-        if inputLanguage == ProgrammingLanguage.C or inputLanguage == ProgrammingLanguage.OBJECTIVE_C:
+        if inputLanguage in (ProgrammingLanguage.C, ProgrammingLanguage.OBJECTIVE_C):
             return ClangCompiler.CLANG
         elif inputLanguage == ProgrammingLanguage.C_PLUS_PLUS:
             return ClangCompiler.CLANGXX
@@ -130,7 +130,7 @@ class ClangCompiler(Tool):
             raise Exception('Unsupported input language')
 
     def getImplicitArgs(self, tool, program):
-        if tool == ClangCompiler.CLANG or tool == ClangCompiler.CLANGXX:
+        if tool in (ClangCompiler.CLANG, ClangCompiler.CLANGXX):
             llvmVersion = mx_sulong.getLLVMVersion(program)
             # prevent clang 5 from adding the 'optnone' attribute which would stop us from using opt
             return mx_sulong.getLLVMExplicitArgs(llvmVersion)
@@ -266,7 +266,7 @@ def prepareMatchPattern(patterns):
     return re.compile('(%s)' % '|'.join(list(fnmatch.translate(p) for p in patterns)))
 
 def matches(path, pattern):
-    return pattern is not None and pattern.match(path) != None
+    return pattern is not None and pattern.match(path) is not None
 
 _env_flags = []
 if 'CPPFLAGS' in os.environ:

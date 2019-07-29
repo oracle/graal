@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,7 @@ public final class RegexSource implements JsonConvertible {
     public Source getSource() {
         if (source == null) {
             String text = toString();
-            source = Source.newBuilder(RegexLanguage.ID, text, text).name(text).mimeType(RegexLanguage.MIME_TYPE).build();
+            source = Source.newBuilder(RegexLanguage.ID, text, text).internal(true).name(text).mimeType(RegexLanguage.MIME_TYPE).build();
         }
         return source;
     }

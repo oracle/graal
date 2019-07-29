@@ -48,28 +48,14 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.util.Set;
 
 final class SourceAccessor extends Accessor {
 
     static final SourceAccessor ACCESSOR = new SourceAccessor();
 
-    protected SourceAccessor() {
-    }
-
-    @Override
-    protected SourceSupport sourceSupport() {
-        return new SourceSupportImpl();
-    }
-
-    @Override
-    protected LanguageSupport languageSupport() {
-        return super.languageSupport();
-    }
-
-    @Override
-    protected EngineSupport engineSupport() {
-        return super.engineSupport();
+    private SourceAccessor() {
     }
 
     static Collection<ClassLoader> allLoaders() {
@@ -78,6 +64,10 @@ final class SourceAccessor extends Accessor {
 
     static String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
         return ACCESSOR.languageSupport().getMimeType(file, validMimeTypes);
+    }
+
+    static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
+        return ACCESSOR.languageSupport().getEncoding(file, mimeType);
     }
 
     static Object getCurrentFileSystemContext() {
@@ -90,6 +80,10 @@ final class SourceAccessor extends Accessor {
 
     static TruffleFile getTruffleFile(String path, Object fileSystemContext) {
         return ACCESSOR.languageSupport().getTruffleFile(path, fileSystemContext);
+    }
+
+    static boolean isDefaultFileSystem(Object fileSystemContext) {
+        return ACCESSOR.languageSupport().isDefaultFileSystem(fileSystemContext);
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {

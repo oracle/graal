@@ -39,7 +39,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
@@ -52,7 +51,6 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaType;
@@ -108,7 +106,6 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     public CompileFunction createCustomCompileFunction() {
         return (debug, method, identifier, reason, config) -> {
             SubstrateBackend backend = config.getBackendForNormalMethod();
-            VMError.guarantee(backend.getTarget().arch instanceof AMD64, "currently only implemented on AMD64");
 
             // Determine register for jmethodID argument
             HostedProviders providers = (HostedProviders) config.getProviders();

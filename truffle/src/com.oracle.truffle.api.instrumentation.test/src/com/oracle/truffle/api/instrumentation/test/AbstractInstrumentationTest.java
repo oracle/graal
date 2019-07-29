@@ -206,7 +206,7 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
             return engineSupport();
         }
 
-        static TestAccessor ACCESSOR = new TestAccessor();
+        static final TestAccessor ACCESSOR = new TestAccessor();
 
     }
 }

@@ -46,8 +46,14 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 final class PolyglotReferences {
 
@@ -63,6 +69,7 @@ final class PolyglotReferences {
                     Assumption validIf0,
                     Assumption validIf1,
                     ContextReference<Object> fallback) {
+        assert !(fallback instanceof SingleContext);
         return new AssumeSingleContext(language, validIf0, validIf1, fallback);
     }
 
@@ -78,11 +85,69 @@ final class PolyglotReferences {
                     PolyglotLanguageInstance initValue,
                     Assumption validIf,
                     LanguageReference<TruffleLanguage<Object>> fallback) {
+        assert !(fallback instanceof SingleLanguage);
         return new AssumeSingleLanguage(language, initValue, validIf, fallback);
     }
 
     static LanguageReference<TruffleLanguage<Object>> createAlwaysMultiLanguage(PolyglotLanguage language) {
         return new MultiLanguageSupplier(language);
+    }
+
+    private static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
+        Exception e = new Exception();
+        StringBuilder stack = new StringBuilder();
+        Exception exceptionCreating = null;
+        try {
+            TruffleStackTrace.fillIn(e);
+            ContextPolicy prevPolicy = null;
+            for (TruffleStackTraceElement stackTrace : TruffleStackTrace.getStackTrace(e)) {
+                RootNode root = stackTrace.getTarget().getRootNode();
+                PolyglotEngineImpl engine = (PolyglotEngineImpl) EngineAccessor.NODES.getSourceVM(root);
+                if (engine != null && usedEngine != engine) {
+                    // different engine different assertion
+                    break;
+                }
+                PolyglotLanguageInstance instance = lookupLanguageInstance(root);
+                ContextPolicy policy = instance.getEffectiveContextPolicy(instance);
+
+                SourceSection sourceSection = null;
+                Node location = stackTrace.getLocation();
+                if (location != null) {
+                    sourceSection = location.getEncapsulatingSourceSection();
+                }
+                if (sourceSection == null) {
+                    sourceSection = root.getSourceSection();
+                }
+                if ((prevPolicy == ContextPolicy.EXCLUSIVE || policy == ContextPolicy.EXCLUSIVE) && prevPolicy != policy && prevPolicy != null) {
+                    stack.append(String.format("    <-- Likely Invalid Sharing --> %n"));
+                }
+                stack.append(String.format("  %-9s %s%n", policy, createJavaStackFrame(instance.language, root.getName(), sourceSection)));
+                prevPolicy = policy;
+            }
+        } catch (Exception ex) {
+            exceptionCreating = ex;
+        }
+        AssertionError error = new AssertionError(String.format("Invalid sharing of runtime values in AST nodes detected.Stack trace: %n%s", stack.toString()));
+        if (exceptionCreating != null) {
+            error.addSuppressed(exceptionCreating);
+        }
+        return error;
+    }
+
+    static StackTraceElement createJavaStackFrame(PolyglotLanguage language, String rootName, SourceSection sourceLocation) {
+        String declaringClass = "<" + language.getId() + ">";
+        String methodName = rootName == null ? "" : rootName;
+        String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
+        int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
+        return new StackTraceElement(declaringClass, methodName, fileName, startLine);
+    }
+
+    private static PolyglotLanguageInstance lookupLanguageInstance(RootNode root) {
+        TruffleLanguage<?> spi = EngineAccessor.NODES.getLanguage(root);
+        if (spi != null) {
+            return (PolyglotLanguageInstance) EngineAccessor.LANGUAGE.getLanguageInstance(spi);
+        }
+        return null;
     }
 
     private static final class SingleLanguage extends LanguageReference<TruffleLanguage<Object>> {
@@ -105,18 +170,27 @@ final class PolyglotReferences {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.spi = languageSpi = language.getCurrentLanguageContext().getLanguageInstance().spi;
             }
-            assert language.getConservativeLanguageReference().get() == languageSpi;
+            assert assertDirectLanguageAccess(this.language, languageSpi);
             return languageSpi;
+        }
+
+        private static boolean assertDirectLanguageAccess(PolyglotLanguage language, TruffleLanguage<Object> seenLanguage) {
+            TruffleLanguage<?> conservativeLanguage = language.getConservativeLanguageReference().get();
+            if (conservativeLanguage != seenLanguage) {
+                throw invalidSharingError(language.getEngine());
+            }
+            return true;
         }
 
     }
 
     private static final class SingleContext extends ContextReference<Object> {
 
-        private static final Object UNSET = new Object();
+        private final PolyglotLanguage language;
+        @CompilationFinal private volatile WeakReference<Object> languageContextImpl;
 
-        final PolyglotLanguage language;
-        @CompilationFinal private Object contextInstance = UNSET;
+        // only set if assertions are enabled
+        private volatile WeakReference<PolyglotLanguageContext> languageContext;
 
         SingleContext(PolyglotLanguage language) {
             this.language = language;
@@ -125,19 +199,57 @@ final class PolyglotReferences {
         @Override
         public Object get() {
             assert language.assertCorrectEngine();
-            Object context = this.contextInstance;
-            if (context == UNSET) {
+            WeakReference<Object> ref = languageContextImpl;
+            if (ref == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextInstance = context = language.getCurrentLanguageContext().getContextImpl();
+                PolyglotLanguageContext langContext = language.getCurrentLanguageContext();
+                assert setLanguageContext(langContext);
+                this.languageContextImpl = ref = new WeakReference<>(langContext.getContextImpl());
             }
-            assert language.getConservativeContextReference().get() == context;
+            Object context = ref.get();
+            assert checkContextCollected(context);
+            assert assertDirectContextAccess(context, this.languageContext);
             return context;
         }
+
+        private static boolean assertDirectContextAccess(Object seenContext, WeakReference<PolyglotLanguageContext> contextRef) {
+            if (contextRef == null) {
+                /*
+                 * This case may happen if the assertions were disabled during boot image generation
+                 * but were later enabled at runtime. See GR-14463.
+                 */
+                return true;
+            }
+            PolyglotLanguageContext context = contextRef.get();
+            if (context == null) {
+                throw invalidSharingError(null);
+            }
+            PolyglotContextImpl otherContext = PolyglotContextImpl.requireContext();
+            PolyglotLanguageContext otherLanguageContext = otherContext.getContext(context.language);
+            boolean valid = otherLanguageContext.getContextImpl() == seenContext;
+            if (!valid) {
+                throw invalidSharingError(context.getEngine());
+            }
+            return true;
+        }
+
+        private static boolean checkContextCollected(Object context) {
+            if (context == null) {
+                throw invalidSharingError(null);
+            }
+            return true;
+        }
+
+        private boolean setLanguageContext(PolyglotLanguageContext langContext) {
+            this.languageContext = new WeakReference<>(langContext);
+            return true;
+        }
+
     }
 
     private static final class AssumeSingleContext extends ContextReference<Object> {
 
-        private final WeakReference<ContextReference<Object>> singleContextReference;
+        private final SingleContext singleContextReference;
         private final ContextReference<Object> fallbackReference;
         private final Assumption validIf0;
         private final Assumption validIf1;
@@ -145,45 +257,39 @@ final class PolyglotReferences {
         AssumeSingleContext(PolyglotLanguage language, Assumption validIf0, Assumption validIf1, ContextReference<Object> fallback) {
             this.validIf0 = validIf0;
             this.validIf1 = validIf1;
-            this.singleContextReference = new WeakReference<>(createAlwaysSingleContext(language));
+            this.singleContextReference = (SingleContext) createAlwaysSingleContext(language);
             this.fallbackReference = fallback;
         }
 
         @Override
         public Object get() {
+            Object context;
             if (validIf0.isValid() && (validIf1 == null || validIf1.isValid())) {
-                ContextReference<Object> supplier = singleContextReference.get();
-                if (supplier != null) {
-                    Object result = supplier.get();
-                    assert fallbackReference.get() == result;
-                    return result;
-                }
+                context = singleContextReference.get();
+            } else {
+                context = fallbackReference.get();
             }
-            return fallbackReference.get();
+            assert fallbackReference.get() == context;
+            return context;
         }
     }
 
     private static final class AssumeSingleLanguage extends LanguageReference<TruffleLanguage<Object>> {
 
-        private final WeakReference<LanguageReference<TruffleLanguage<Object>>> singleLanguageReference;
+        private final LanguageReference<TruffleLanguage<Object>> singleLanguageReference;
         private final LanguageReference<TruffleLanguage<Object>> fallbackReference;
         private final Assumption singleLanguage;
 
         AssumeSingleLanguage(PolyglotLanguage language, PolyglotLanguageInstance initValue, Assumption singleContextAssumption, LanguageReference<TruffleLanguage<Object>> fallbackReference) {
             this.singleLanguage = singleContextAssumption;
-            this.singleLanguageReference = new WeakReference<>(createAlwaysSingleLanguage(language, initValue));
+            this.singleLanguageReference = createAlwaysSingleLanguage(language, initValue);
             this.fallbackReference = fallbackReference;
         }
 
         @Override
         public TruffleLanguage<Object> get() {
             if (singleLanguage.isValid()) {
-                LanguageReference<TruffleLanguage<Object>> supplier = singleLanguageReference.get();
-                if (supplier != null) {
-                    TruffleLanguage<Object> result = supplier.get();
-                    assert fallbackReference.get() == result;
-                    return result;
-                }
+                return singleLanguageReference.get();
             }
             return fallbackReference.get();
         }
@@ -201,7 +307,7 @@ final class PolyglotReferences {
         @Override
         public TruffleLanguage<Object> get() {
             assert language.assertCorrectEngine();
-            return PolyglotContextImpl.requireContext().getContext(language).getLanguageInstance().spi;
+            return PolyglotContextImpl.requireContextEntered(language.engine).getContext(language).getLanguageInstance().spi;
         }
     }
 
@@ -216,8 +322,8 @@ final class PolyglotReferences {
         @Override
         public Object get() {
             assert language.assertCorrectEngine();
-            return PolyglotContextImpl.requireContext().getContext(language).getContextImpl();
+            return PolyglotContextImpl.requireContextEntered(language.engine).getContextImpl(language);
         }
-
     }
+
 }

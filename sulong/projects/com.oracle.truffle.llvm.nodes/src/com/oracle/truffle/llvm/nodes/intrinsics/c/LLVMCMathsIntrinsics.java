@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNode;
@@ -44,7 +45,10 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMDoubleStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMFloatStoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -220,13 +224,31 @@ public abstract class LLVMCMathsIntrinsics {
     public abstract static class LLVMAbs extends LLVMIntrinsic {
 
         @Specialization
-        protected int doIntrinsic(int value) {
+        protected int doInt(int value) {
             return Math.abs(value);
         }
 
         @Specialization
-        protected long doIntrinsic(long value) {
+        protected long doLong(long value) {
             return Math.abs(value);
+        }
+
+        @Specialization
+        protected LLVMNativePointer doNative(LLVMNativePointer value) {
+            return LLVMNativePointer.create(doLong(value.asNative()));
+        }
+
+        @Specialization
+        protected LLVMManagedPointer doManaged(LLVMManagedPointer value,
+                        @Cached("createBinaryProfile()") ConditionProfile negated) {
+            if (negated.profile(value.getObject() instanceof LLVMNegatedForeignObject)) {
+                LLVMNegatedForeignObject obj = (LLVMNegatedForeignObject) value.getObject();
+                assert !(obj.getForeign() instanceof LLVMNegatedForeignObject);
+                return LLVMManagedPointer.create(obj.getForeign(), -value.getOffset());
+            } else {
+                // valid pointers are always positive
+                return value;
+            }
         }
     }
 

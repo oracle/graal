@@ -36,6 +36,7 @@ import java.io.PushbackInputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -371,6 +372,15 @@ public final class WebSocketServer extends NanoWSD implements InspectorWSConnect
                 sps.activeWS = null;
             }
             iss.sendClose();
+        }
+
+        @Override
+        public void close(WebSocketFrame.CloseCode code, String reason, boolean initiatedByRemote) throws IOException {
+            try {
+                super.close(code, reason, initiatedByRemote);
+            } catch (SocketException ex) {
+                // The socket is broken already.
+            }
         }
 
         @Override

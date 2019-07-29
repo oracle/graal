@@ -114,14 +114,12 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
                         @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
             LLVMContext ctx = ctxRef.get();
             Env env = ctx.getEnv();
-            LanguageInfo lang = env.getLanguages().get(id);
+            LanguageInfo lang = env.getPublicLanguages().get(id);
             if (lang == null) {
                 throw new LLVMPolyglotException(this, "Language '%s' not found.", id);
-            } else if (lang.isInternal()) {
-                throw new LLVMPolyglotException(this, "Access to internal language '%s' is not allowed.", id);
             }
             Source sourceObject = Source.newBuilder(id, code, "<eval>").build();
-            return ctx.getEnv().parse(sourceObject);
+            return ctx.getEnv().parsePublic(sourceObject);
         }
     }
 
@@ -135,7 +133,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
                 // never cache, since the file content could change between invocations
                 Env env = ctx.getEnv();
                 Source sourceObject = Source.newBuilder(id, env.getTruffleFile(filename)).build();
-                return env.parse(sourceObject);
+                return env.parsePublic(sourceObject);
             } catch (IOException ex) {
                 throw new LLVMPolyglotException(this, "Could not parse file %s (%s).", filename, ex.getMessage());
             }

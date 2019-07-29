@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.Java8OrEarlier;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
@@ -32,6 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -46,6 +46,7 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
@@ -89,7 +90,7 @@ public class LazyInitializationTest {
         List<String> vmCommandLine = getVMCommandLine();
         Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:+UseJVMCINativeLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));
         List<String> vmArgs = withoutDebuggerArguments(vmCommandLine);
-        vmArgs.add(Java8OrEarlier ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
+        vmArgs.add(JavaVersionUtil.JAVA_SPEC <= 8 ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
         vmArgs.add("-dsa");
         vmArgs.add("-da");
         vmArgs.add("-XX:-UseJVMCICompiler");
@@ -135,7 +136,7 @@ public class LazyInitializationTest {
      * Extracts the class name from a line of log output.
      */
     private static String extractClass(String line) {
-        if (Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             String traceClassLoadingPrefix = "[Loaded ";
             int index = line.indexOf(traceClassLoadingPrefix);
             if (index != -1) {
@@ -225,7 +226,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (cls.equals(jvmciVersionCheck)) {
+        if (cls.equals(jvmciVersionCheck) || Objects.equals(cls.getEnclosingClass(), jvmciVersionCheck)) {
             // The Graal initialization needs to check the JVMCI version.
             return true;
         }

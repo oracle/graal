@@ -55,6 +55,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
@@ -225,6 +227,7 @@ public final class Deoptimizer {
      * Checks if a physical stack frame (identified by the stack pointer) was deoptimized, and
      * returns the {@link DeoptimizedFrame} in that case.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DeoptimizedFrame checkDeoptimized(Pointer sourceSp) {
         CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
         /* A frame is deoptimized when the return address was patched to the deoptStub. */
@@ -275,13 +278,15 @@ public final class Deoptimizer {
     }
 
     /** Deoptimize a specific method on all thread stacks. */
+    @NeverInline("Starting a stack walk in the caller frame. " +
+                    "Note that we could start the stack frame also further down the stack, because VM operation frames never need deoptimization. " +
+                    "But we don't store stack frame information for the first frame we would need to process.")
     private static void deoptimizeInRangeOperation(CodePointer fromIp, CodePointer toIp, boolean deoptAll) {
         VMOperation.guaranteeInProgress("Deoptimizer.deoptimizeInRangeOperation, but not in VMOperation.");
         /* Handle my own thread specially, because I do not have a JavaFrameAnchor. */
         StackFrameVisitor currentThreadDeoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, CurrentIsolate.getCurrentThread());
         Pointer sp = KnownIntrinsics.readCallerStackPointer();
-        CodePointer ip = KnownIntrinsics.readReturnAddress();
-        JavaStackWalker.walkCurrentThread(sp, ip, currentThreadDeoptVisitor);
+        JavaStackWalker.walkCurrentThread(sp, currentThreadDeoptVisitor);
         /* If I am multi-threaded, deoptimize this method on all the other stacks. */
         if (SubstrateOptions.MultiThreaded.getValue()) {
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
@@ -298,10 +303,11 @@ public final class Deoptimizer {
     }
 
     private static StackFrameVisitor getStackFrameVisitor(Pointer fromIp, Pointer toIp, boolean deoptAll, IsolateThread thread) {
-        return (frameSp, frameIp, deoptFrame) -> {
+        return (frameSp, frameIp, codeInfo, deoptFrame) -> {
             Pointer ip = (Pointer) frameIp;
             if (deoptFrame == null && ((ip.aboveOrEqual(fromIp) && ip.belowThan(toIp)) || deoptAll)) {
-                Deoptimizer deoptimizer = new Deoptimizer(frameSp, CodeInfoTable.lookupCodeInfoQueryResult(frameIp));
+                CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, frameIp);
+                Deoptimizer deoptimizer = new Deoptimizer(frameSp, queryResult);
                 deoptimizer.deoptSourceFrame(frameIp, deoptAll, thread);
             }
             return true;
@@ -329,8 +335,9 @@ public final class Deoptimizer {
     private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread) {
         VMOperation.guaranteeInProgress("doDeoptimizeFrame");
         CodePointer returnAddress = FrameAccess.singleton().readReturnAddress(sourceSp);
-        CodeInfoQueryResult info = CodeInfoTable.lookupCodeInfoQueryResult(returnAddress);
-        Deoptimizer deoptimizer = new Deoptimizer(sourceSp, info);
+        CodeInfo info = CodeInfoTable.lookupCodeInfo(returnAddress);
+        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(info, returnAddress);
+        Deoptimizer deoptimizer = new Deoptimizer(sourceSp, queryResult);
         DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(returnAddress, ignoreNonDeoptimizable, currentThread);
         if (sourceFrame != null) {
             registerSpeculationFailure(sourceFrame.getSourceInstalledCode(), speculation);
@@ -424,7 +431,8 @@ public final class Deoptimizer {
         this.sourceChunk = sourceChunk;
         /* Lazily initialize constant values I can only get at run time. */
         if (deoptStubFrameSize == 0L) {
-            deoptStubFrameSize = CodeInfoTable.lookupTotalFrameSize(DeoptimizationSupport.getDeoptStubPointer());
+            CodeInfo info = CodeInfoTable.getImageCodeInfo();
+            deoptStubFrameSize = CodeInfoAccess.lookupTotalFrameSize(info, CodeInfoAccess.relativeIP(info, DeoptimizationSupport.getDeoptStubPointer()));
         }
     }
 
@@ -671,7 +679,7 @@ public final class Deoptimizer {
                      * the same object can be re-locked multiple times, we change the thread after
                      * all virtual frames have been reconstructed.
                      */
-                    ImageSingletons.lookup(MonitorSupport.class).setExclusiveOwnerThread(lockee, JavaThreads.singleton().createIfNotExisting(currentThread));
+                    ImageSingletons.lookup(MonitorSupport.class).setExclusiveOwnerThread(lockee, JavaThreads.fromVMThread(currentThread));
                 }
             }
         }
@@ -843,7 +851,7 @@ public final class Deoptimizer {
             Object lockee = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(valueConstant), Object.class);
             int lockeeIndex = TypeConversion.asS4(valueInfo.getData());
             assert lockee == materializedObjects[lockeeIndex];
-            MonitorSupport.monitorEnter(lockee);
+            MonitorSupport.monitorEnterWithoutBlockingCheck(lockee);
 
             if (relockedObjects == null) {
                 relockedObjects = new Object[sourceFrame.getVirtualObjects().length];

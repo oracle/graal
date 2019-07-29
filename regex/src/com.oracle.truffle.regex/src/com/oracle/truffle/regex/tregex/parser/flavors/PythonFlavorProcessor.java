@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.UnsupportedRegexException;
-import com.oracle.truffle.regex.chardata.CodePointRange;
-import com.oracle.truffle.regex.chardata.CodePointSet;
-import com.oracle.truffle.regex.chardata.UnicodeCharacterProperties;
-import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
 import java.math.BigInteger;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -44,13 +33,26 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.RangesAccumulator;
+import com.oracle.truffle.regex.charset.SortedListOfRanges;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+
 /**
  * Implements the parsing and translating of Python regular expressions to ECMAScript regular
  * expressions.
  * <p>
  * The implementation strives to be as close as possible to the behavior of the regex parser that
  * ships with Python 3.7, down to the wording of the error messages.
- * 
+ *
  * @see RegexFlavorProcessor
  */
 public final class PythonFlavorProcessor implements RegexFlavorProcessor {
@@ -63,7 +65,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Characters that are considered special in ECMAScript regex character classes.
      */
-    private static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS = CompilationFinalBitSet.valueOf('\\', ']', '-');
+    private static final CompilationFinalBitSet CHAR_CLASS_SYNTAX_CHARACTERS = CompilationFinalBitSet.valueOf('\\', ']', '-', '^');
 
     /**
      * Maps Python's predefined Unicode character classes (d, D, s, S, w, W) to equivalent
@@ -97,10 +99,8 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         UNICODE_CHAR_CLASS_REPLACEMENTS.put('D', "\\P{General_Category=Decimal_Number}");
 
         // \d and \D as CodePointSets (currently not needed, included for consistency)
-        CodePointSet decimals = UnicodeCharacterProperties.getProperty("General_Category=Decimal_Number");
-        CodePointSet nonDecimals = decimals.createInverse();
-        UNICODE_CHAR_CLASS_SETS.put('d', decimals);
-        UNICODE_CHAR_CLASS_SETS.put('D', nonDecimals);
+        UNICODE_CHAR_CLASS_SETS.put('d', UnicodeProperties.getProperty("General_Category=Decimal_Number"));
+        UNICODE_CHAR_CLASS_SETS.put('D', UnicodeProperties.getProperty("General_Category=Decimal_Number").createInverse());
 
         // Spaces: \s
         // Python accepts characters with either the Space_Separator General Category
@@ -116,8 +116,8 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // which is not possible in ECMAScript regular expressions. Therefore, we have to expand
         // the definition of the White_Space property, do the set subtraction and then list the
         // contents of the resulting set.
-        CodePointSet unicodeSpaces = UnicodeCharacterProperties.getProperty("White_Space");
-        CodePointSet spaces = unicodeSpaces.addRange(new CodePointRange('\u001c', '\u001f'));
+        CodePointSet unicodeSpaces = UnicodeProperties.getProperty("White_Space");
+        CodePointSet spaces = unicodeSpaces.union(CodePointSet.create('\u001c', '\u001f'));
         CodePointSet nonSpaces = spaces.createInverse();
         UNICODE_CHAR_CLASS_SETS.put('s', spaces);
         UNICODE_CHAR_CLASS_SETS.put('S', nonSpaces);
@@ -144,10 +144,10 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // Non-word characters: \W
         // Similarly as for \S, we will not be able to produce a replacement string for \W.
         // We will need to construct the set ourselves.
-        CodePointSet alpha = UnicodeCharacterProperties.getProperty("General_Category=Letter");
+        CodePointSet alpha = UnicodeProperties.getProperty("General_Category=Letter");
         CodePointSet numericExtras = CodePointSet.create(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
-        CodePointSet numeric = UnicodeCharacterProperties.getProperty("General_Category=Number").addSet(numericExtras);
-        CodePointSet wordChars = alpha.addSet(numeric).addRange(new CodePointRange('_'));
+        CodePointSet numeric = UnicodeProperties.getProperty("General_Category=Number").union(numericExtras);
+        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_', '_'));
         CodePointSet nonWordChars = wordChars.createInverse();
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
         UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
@@ -221,11 +221,11 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * The (slightly modified) version of the XID_Start Unicode property used to check names of
      * capture groups.
      */
-    private static final CodePointSet XID_START = UnicodeCharacterProperties.getProperty("XID_Start").copy().addRange(new CodePointRange('_'));
+    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_', '_'));
     /**
      * The XID_Continue Unicode character property.
      */
-    private static final CodePointSet XID_CONTINUE = UnicodeCharacterProperties.getProperty("XID_Continue");
+    private static final CodePointSet XID_CONTINUE = UnicodeProperties.getProperty("XID_Continue");
 
     /**
      * The source of the input pattern.
@@ -295,6 +295,8 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private TermCategory lastTerm;
 
+    private final RangesAccumulator<IntRangesBuffer> curCharClass = new RangesAccumulator<>(new IntRangesBuffer());
+
     @TruffleBoundary
     public PythonFlavorProcessor(RegexSource source, PythonREMode mode) {
         this.inPattern = source.getPattern();
@@ -309,6 +311,12 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         this.namedCaptureGroups = null;
         this.groups = 0;
         this.lastTerm = TermCategory.None;
+    }
+
+    @Override
+    public int getNumberOfCaptureGroups() {
+        // include capture group 0
+        return groups + 1;
     }
 
     @Override
@@ -445,7 +453,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Emits the argument into the output pattern <em>verbatim</em>. This is useful for syntax
      * characters or for prebaked snippets.
-     * 
+     *
      * @param snippet
      */
     private void emitSnippet(String snippet) {
@@ -458,7 +466,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * Emits the codepoint into the output pattern <em>verbatim</em>. This is a special case of
      * {@link #emitSnippet} that avoids going through the trouble of converting a code point to a
      * {@link String} in Java (i.e. no need for new String(Character.toChars(codepoint))).
-     * 
+     *
      * @param codepoint
      */
     private void emitRawCodepoint(int codepoint) {
@@ -500,14 +508,16 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     private void emitChar(int codepoint, boolean inCharClass) {
         if (!silent) {
             if (getLocalFlags().isIgnoreCase()) {
-                CodePointSet caseClosure = caseFold(CodePointSet.create(codepoint));
-                if (caseClosure.matchesSingleChar()) {
+                curCharClass.clear();
+                curCharClass.addRange(codepoint, codepoint);
+                caseFold();
+                if (curCharClass.get().matchesSingleChar()) {
                     emitCharNoCasing(codepoint, inCharClass);
                 } else if (inCharClass) {
-                    emitCharSetNoCasing(caseClosure);
+                    emitCharSetNoCasing();
                 } else {
                     emitSnippet("[");
-                    emitCharSetNoCasing(caseClosure);
+                    emitCharSetNoCasing();
                     emitSnippet("]");
                 }
             } else {
@@ -532,24 +542,29 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * Case-folding is performed if the IGNORECASE flag is set. Since a character class expression
      * is emitted, this is legal only when emitting a character class.
      */
-    private void emitCharSet(CodePointSet charSet) {
+    private void emitCharSet() {
         if (!silent) {
-            emitCharSetNoCasing(caseFold(charSet));
+            caseFold();
+            emitCharSetNoCasing();
         }
+    }
+
+    private void emitCharSetNoCasing() {
+        emitCharSetNoCasing(curCharClass.get());
     }
 
     /**
      * Like {@link #emitCharSet}, but it does not do any case-folding.
      */
-    private void emitCharSetNoCasing(CodePointSet charSet) {
+    private void emitCharSetNoCasing(SortedListOfRanges charSet) {
         if (!silent) {
-            for (CodePointRange range : charSet.getRanges()) {
-                if (range.isSingle()) {
-                    emitCharNoCasing(range.lo, true);
+            for (int i = 0; i < charSet.size(); i++) {
+                if (charSet.isSingle(i)) {
+                    emitCharNoCasing(charSet.getLo(i), true);
                 } else {
-                    emitCharNoCasing(range.lo, true);
+                    emitCharNoCasing(charSet.getLo(i), true);
                     emitSnippet("-");
-                    emitCharNoCasing(range.hi, true);
+                    emitCharNoCasing(charSet.getHi(i), true);
                 }
             }
         }
@@ -559,15 +574,15 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * If the IGNORECASE flag is set, this method returns its arguments closed on case-folding.
      * Otherwise, returns its argument.
      */
-    private CodePointSet caseFold(@SuppressWarnings("unused") CodePointSet charSet) {
+    private void caseFold() {
         if (!getLocalFlags().isIgnoreCase()) {
-            return charSet;
+            return;
         }
         if (getLocalFlags().isLocale()) {
             bailOut("locale-specific case folding is not supported");
         }
         CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
-        return CaseFoldTable.applyCaseFold(charSet, caseFolding);
+        CaseFoldTable.applyCaseFold(curCharClass, caseFolding);
     }
 
     /// Error reporting
@@ -786,7 +801,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * <li>\b (word boundary)</li>
      * <li>\B (word non-boundary)</li>
      * </ul>
-     * 
+     *
      * @return {@code true} iff an assertion escape was found
      */
     private boolean assertionEscape() {
@@ -831,7 +846,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * <li>\w (word characters)</li>
      * <li>\W (non-word characters)</li>
      * </ul>
-     * 
+     *
      * @param inCharClass whether or not this escape was found in (and is being emitted as part of)
      *            a character class
      * @return {@code true} iff a category escape was found
@@ -877,7 +892,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Tries to parse a backreference.
-     * 
+     *
      * @return {@code true} if a backreference was found
      */
     private boolean backreference() {
@@ -901,7 +916,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Verifies that making a backreference to a certain group is legal in the current context.
-     * 
+     *
      * @param groupNumber the index of the referred group
      * @param groupName the name of the group, for error reporting purposes
      * @throws RegexSyntaxException if the backreference is not valid
@@ -928,7 +943,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * <li>a hexadecimal escape sequence</li>
      * <li>a unicode escape sequence</li>
      * </ul>
-     * 
+     *
      * @param inCharClass whether the character escaped occurred in (and is being emitted as part
      *            of) a character class
      */
@@ -1059,6 +1074,9 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 ch = consumeChar();
                 switch (ch) {
                     case ']':
+                        if (lowerBound.isPresent()) {
+                            emitChar(lowerBound.get(), true);
+                        }
                         emitChar('-', true);
                         emitSnippet("]");
                         break classBody;
@@ -1071,7 +1089,9 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 if (!lowerBound.isPresent() || !upperBound.isPresent() || upperBound.get() < lowerBound.get()) {
                     throw syntaxErrorAtAbs("bad character range " + inPattern.substring(rangeStart, position), rangeStart);
                 }
-                emitCharSet(CodePointSet.create(new CodePointRange(lowerBound.get(), upperBound.get())));
+                curCharClass.clear();
+                curCharClass.addRange(lowerBound.get(), upperBound.get());
+                emitCharSet();
             } else if (lowerBound.isPresent()) {
                 emitChar(lowerBound.get(), true);
             }
@@ -1082,7 +1102,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * Like {@link #escape}, but restricted to the forms of escapes usable in character classes.
      * This includes character escapes and character class escapes, but not assertion escapes or
      * backreferences.
-     * 
+     *
      * @return {@code Optional.of(ch)} if the escape sequence was a character escape sequence for
      *         some character {@code ch}; {@code Optional.empty()} if it was a character class
      *         escape sequence
@@ -1109,7 +1129,6 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             } else if (match(",}")) {
                 // Python interprets A{,} as A*, whereas ECMAScript does not accept such a range
                 // quantifier.
-                quantifier('*');
                 emitSnippet("*");
             } else {
                 Optional<BigInteger> lowerBound = Optional.empty();
@@ -1136,7 +1155,15 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
                     throw syntaxErrorAtAbs("min repeat greater than max repeat", start);
                 }
-                emitSnippet(inPattern.substring(start, position));
+                if (lowerBound.isPresent()) {
+                    emitSnippet(inPattern.substring(start, position));
+                } else {
+                    // {,upperBound} is invalid in JS in unicode mode, but always valid in Python,
+                    // so we insert an explicit lower bound 0
+                    emitSnippet("{0,");
+                    assert inPattern.charAt(start) == '{' && inPattern.charAt(start + 1) == ',';
+                    emitSnippet(inPattern.substring(start + 2, position));
+                }
             }
         } else {
             emitRawCodepoint(ch);
@@ -1264,7 +1291,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Parses a group name terminated by the given character.
-     * 
+     *
      * @return the group name
      */
     private String parseGroupName(char terminator) {
@@ -1283,7 +1310,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Determines whether the given {@link String} is a valid name for a group.
-     * 
+     *
      * @return {@code true} if the argument is a valid group name
      */
     private static boolean checkGroupName(String groupName) {
@@ -1332,7 +1359,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * Parses a group, assuming that its opening parenthesis has already been parsed. Note that this
      * is used not only for ordinary capture groups, but also for named capture groups,
      * non-capturing groups or the contents of a local flags block.
-     * 
+     *
      * @param capturing whether or not we should emit a capturing group
      * @param optName the name of the group, if there is any, to be registered by the parser
      * @param start the position in the input pattern where the group starts, used for error
@@ -1370,7 +1397,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Parses a lookahead assertion, assuming that the opening parantheses and special characters
      * (either '(?=' or '(?!') have already been parsed.
-     * 
+     *
      * @param positive {@code true} if the assertion to be emitted is a positive lookahead assertion
      */
     private void lookahead(boolean positive) {
@@ -1534,7 +1561,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     /**
      * Parses a block with local flags, assuming that the opening parenthesis, the flags and the ':'
      * have been parsed.
-     * 
+     *
      * @param positiveFlags - the flags to be turned on in the block
      * @param negativeFlags - the flags to be turned off in the block
      * @param start - the position in {@link #inPattern} where the block started, for error

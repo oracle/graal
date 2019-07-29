@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -65,6 +66,8 @@ public abstract class SLImportBuiltin extends SLBuiltinNode {
             return arrays.readMember(context.getPolyglotBindings(), symbol);
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             return SLNull.SINGLETON;
+        } catch (SecurityException e) {
+            throw new SLException("No polyglot access allowed.", this);
         }
     }
 

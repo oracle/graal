@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes;
 
-import java.io.File;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -149,7 +147,7 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.StatementTag.class) {
             return hasStatementTag;
-        } else if (tag == StandardTags.RootTag.class) {
+        } else if (tag == StandardTags.RootTag.class || tag == StandardTags.RootBodyTag.class) {
             return hasRootTag;
         }
         return false;
@@ -172,7 +170,8 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
     }
 
     /**
-     * Marks this node as being a {@link StandardTags.RootTag} for instrumentation purposes.
+     * Marks this node as being a {@link StandardTags.RootTag} and {@link StandardTags.RootBodyTag}
+     * for instrumentation purposes.
      */
     public final void addRootTag() {
         hasRootTag = true;
@@ -205,7 +204,7 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
         if (section == null || section.getSource() == null) {
             return "<unknown source>";
         } else {
-            String sourceName = new File(section.getSource().getName()).getName();
+            String sourceName = section.getSource().getName();
             int startLine = section.getStartLine();
             return String.format("%s:%d%s", sourceName, startLine, estimated ? "~" : "");
         }

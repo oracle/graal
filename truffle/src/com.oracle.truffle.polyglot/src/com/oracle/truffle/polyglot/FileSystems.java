@@ -92,7 +92,7 @@ final class FileSystems {
     }
 
     static FileSystem newDefaultFileSystem() {
-        return FileSystems.newFileSystem(findDefaultFileSystemProvider());
+        return newFileSystem(findDefaultFileSystemProvider());
     }
 
     static FileSystem newDefaultFileSystem(Path userDir) {
@@ -115,7 +115,7 @@ final class FileSystems {
         return fileSystem != null && fileSystem.getClass() == DeniedIOFileSystem.class;
     }
 
-    static Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> newFileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
+    static Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> newFileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
         return new FileTypeDetectorsSupplier(languageCaches);
     }
 
@@ -949,7 +949,7 @@ final class FileSystems {
         }
     }
 
-    private static final class FileTypeDetectorsSupplier implements Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> {
+    private static final class FileTypeDetectorsSupplier implements Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> {
 
         private final Iterable<LanguageCache> languageCaches;
 
@@ -958,10 +958,22 @@ final class FileSystems {
         }
 
         @Override
-        public Iterable<? extends TruffleFile.FileTypeDetector> get() {
-            Collection<TruffleFile.FileTypeDetector> detectors = new ArrayList<>();
+        public Map<String, Collection<? extends TruffleFile.FileTypeDetector>> get() {
+            Map<String, Collection<? extends TruffleFile.FileTypeDetector>> detectors = new HashMap<>();
             for (LanguageCache cache : languageCaches) {
-                detectors.addAll(cache.getFileTypeDetectors());
+                for (String mimeType : cache.getMimeTypes()) {
+                    Collection<? extends TruffleFile.FileTypeDetector> languageDetectors = cache.getFileTypeDetectors();
+                    Collection<? extends TruffleFile.FileTypeDetector> mimeTypeDetectors = detectors.get(mimeType);
+                    if (mimeTypeDetectors != null) {
+                        if (!languageDetectors.isEmpty()) {
+                            Collection<TruffleFile.FileTypeDetector> mergedDetectors = new ArrayList<>(mimeTypeDetectors);
+                            mergedDetectors.addAll(languageDetectors);
+                            detectors.put(mimeType, mergedDetectors);
+                        }
+                    } else {
+                        detectors.put(mimeType, languageDetectors);
+                    }
+                }
             }
             return detectors;
         }

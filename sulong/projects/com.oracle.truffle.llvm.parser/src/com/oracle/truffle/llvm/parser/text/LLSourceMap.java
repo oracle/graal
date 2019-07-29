@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 final class LLSourceMap {
 
@@ -133,7 +134,8 @@ final class LLSourceMap {
         }
         if (!globals.isEmpty()) {
             for (String globalName : globals) {
-                final LLVMSymbol actualSymbol = moduleScope.get(globalName);
+                assert globalName.startsWith("@");
+                final LLVMSymbol actualSymbol = moduleScope.get(globalName.substring(1));
                 if (actualSymbol != null && actualSymbol.isGlobalVariable()) {
                     globalScope.addGlobal(actualSymbol.asGlobalVariable());
                 } else {
@@ -146,11 +148,11 @@ final class LLSourceMap {
     }
 
     Function getFunction(String name) {
-        return functions.get(name);
+        return functions.get(LLVMIdentifier.toGlobalIdentifier(name));
     }
 
     void clearFunction(Function function) {
-        functions.remove(function.getName());
+        functions.remove(LLVMIdentifier.toGlobalIdentifier(function.getName()));
     }
 
     Source getLLSource() {

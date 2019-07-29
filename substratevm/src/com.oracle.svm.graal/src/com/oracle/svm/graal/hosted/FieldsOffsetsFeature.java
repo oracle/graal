@@ -40,7 +40,7 @@ import org.graalvm.compiler.lir.CompositeValueClass;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;

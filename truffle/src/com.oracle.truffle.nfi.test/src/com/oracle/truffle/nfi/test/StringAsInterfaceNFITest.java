@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -69,16 +70,17 @@ public class StringAsInterfaceNFITest {
             return;
         }
 
-        CallTarget load = runWithPolyglot.getTruffleTestEnv().parse(Source.newBuilder("nfi", "default {\n" + //
+        CallTarget load = runWithPolyglot.getTruffleTestEnv().parseInternal(Source.newBuilder("nfi", "default {\n" + //
                         "  strdup(string):string;\n" + //
                         "  malloc(UINT32):pointer;\n" + //
                         "  free(pointer):void;\n" + //
                         "}", "(load default)" //
-        ).build());
+        ).internal(true).build());
         rawStdLib = (TruffleObject) load.call();
         stdlib = runWithPolyglot.getPolyglotContext().asValue(rawStdLib).as(StdLib.class);
     }
 
+    @Implementable
     interface StdLib {
         Object malloc(int size);
 
@@ -87,6 +89,7 @@ public class StringAsInterfaceNFITest {
         String strdup(String orig);
     }
 
+    @Implementable
     interface Strndup {
         String strndup(String orig, int len);
     }
@@ -124,10 +127,10 @@ public class StringAsInterfaceNFITest {
     @Test
     public void canViewDefaultLibraryAsAnotherInterface() {
         assumptions();
-        CallTarget load = runWithPolyglot.getTruffleTestEnv().parse(Source.newBuilder("nfi", "default {\n" + //
+        CallTarget load = runWithPolyglot.getTruffleTestEnv().parseInternal(Source.newBuilder("nfi", "default {\n" + //
                         "  strndup(string, UINT32):string;\n" + //
                         "}", "(load default)" //
-        ).build());
+        ).internal(true).build());
         Strndup second = runWithPolyglot.getPolyglotContext().asValue(load.call()).as(Strndup.class);
 
         String copy = stdlib.strdup("Hello World!");

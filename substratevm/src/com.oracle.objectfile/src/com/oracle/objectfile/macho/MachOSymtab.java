@@ -217,10 +217,6 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
             this.isCode = isCode;
         }
 
-        boolean isPrivateExtern() {
-            return privateExtern;
-        }
-
         boolean isExternal() {
             return privateExtern || extern;
         }
@@ -243,19 +239,8 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
         }
 
         public String getNameInObject() {
-            /*
-             * Mach-O symtabs are weird: exported symbols get prefixed by "_". We don't represent
-             * this in the 'name', because clients want to be oblivious to these format-specific
-             * peculiarities, i.e. to put in a symbol named "foo" and be able to retrieve it using
-             * "foo" later. Note also that the "_" is stripped away by Mac OS's dlsym(), so we can
-             * dlsym() "foo" just fine. It's only in the encoded object file that the underscore
-             * exists, so we hide it here.
-             */
-            if (isExternal()) {
-                return "_" + name;
-            } else {
-                return name;
-            }
+            /* On Mach-O symbols are prefixed with underscore */
+            return "_" + name;
         }
 
         @Override
@@ -285,11 +270,11 @@ public final class MachOSymtab extends MachOObjectFile.LinkEditElement implement
         }
 
         public boolean isLocal() {
-            return !extern && !privateExtern;
+            return !isGlobal();
         }
 
         public boolean isGlobal() {
-            return !isLocal();
+            return extern || privateExtern;
         }
 
         @Override

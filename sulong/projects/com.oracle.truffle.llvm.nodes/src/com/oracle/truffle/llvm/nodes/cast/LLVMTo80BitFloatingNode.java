@@ -36,7 +36,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMBitcastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMSignedCastToLLVM80BitFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMTo80BitFloatingNodeGen.LLVMUnsignedCastToLLVM80BitFloatNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMIVarBitLarge;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -105,7 +105,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVMIVarBit from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVMIVarBitLarge from) {
             return LLVM80BitFloat.fromBytesBigEndian(from.getBytes());
         }
     }
@@ -149,7 +149,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVMIVarBit from) {
+        protected LLVM80BitFloat doLLVM80BitFloatNode(LLVMIVarBitLarge from) {
             return LLVM80BitFloat.fromBytesBigEndian(from.getBytes());
         }
     }
@@ -168,7 +168,7 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat doIVarBit(LLVMIVarBit from) {
+        protected LLVM80BitFloat doIVarBit(LLVMIVarBitLarge from) {
             return LLVM80BitFloat.fromBytesBigEndian(from.getBytes());
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -45,15 +45,15 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <em>CharacterClassEscape</em> and <em>CharacterEscape</em> of the goal symbol <em>AtomEscape</em>
  * in the ECMAScript RegExp syntax.
  * <p>
- * Note that {@link CharacterClass} nodes and the {@link MatcherBuilder}s that they rely on can only
- * match characters from the Basic Multilingual Plane (and whose code point fits into 16-bit
- * integers). Any term which matches characters outside of the Basic Multilingual Plane is expanded
- * by {@link RegexParser} into a more complex expression which matches the individual code units
- * that would make up the UTF-16 encoding of those characters.
+ * Note that {@link CharacterClass} nodes and the {@link CharSet}s that they rely on can only match
+ * characters from the Basic Multilingual Plane (and whose code point fits into 16-bit integers).
+ * Any term which matches characters outside of the Basic Multilingual Plane is expanded by
+ * {@link RegexParser} into a more complex expression which matches the individual code units that
+ * would make up the UTF-16 encoding of those characters.
  */
 public class CharacterClass extends Term {
 
-    private MatcherBuilder matcherBuilder;
+    private CharSet matcherBuilder;
     // look-behind groups which might match the same character as this CharacterClass node
     private ASTNodeSet<Group> lookBehindEntries;
 
@@ -61,7 +61,7 @@ public class CharacterClass extends Term {
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
      * the {@code matcherBuilder}.
      */
-    CharacterClass(MatcherBuilder matcherBuilder) {
+    CharacterClass(CharSet matcherBuilder) {
         this.matcherBuilder = matcherBuilder;
     }
 
@@ -75,15 +75,20 @@ public class CharacterClass extends Term {
         return ast.register(new CharacterClass(this));
     }
 
+    @Override
+    public Sequence getParent() {
+        return (Sequence) super.getParent();
+    }
+
     /**
-     * Returns the {@link MatcherBuilder} representing the set of characters that can be matched by
-     * this {@link CharacterClass}.
+     * Returns the {@link CharSet} representing the set of characters that can be matched by this
+     * {@link CharacterClass}.
      */
-    public MatcherBuilder getMatcherBuilder() {
+    public CharSet getMatcherBuilder() {
         return matcherBuilder;
     }
 
-    public void setMatcherBuilder(MatcherBuilder matcherBuilder) {
+    public void setMatcherBuilder(CharSet matcherBuilder) {
         this.matcherBuilder = matcherBuilder;
     }
 

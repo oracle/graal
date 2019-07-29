@@ -77,8 +77,12 @@ public class JsonWriter implements AutoCloseable {
             char c = s.charAt(i);
             if (c == '"' || c == '\\') {
                 sb.append('\\');
+                sb.append(c);
+            } else if (c < 0x001F) {
+                sb.append(String.format("\\u%04x", (int) c));
+            } else {
+                sb.append(c);
             }
-            sb.append(c);
         }
         sb.append('"');
         writer.write(sb.toString());

@@ -109,6 +109,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecode;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaField;
@@ -140,6 +141,11 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
         return false;
     }
 
+    /**
+     * Keep test time down by only sampling a limited number of class files per jar.
+     */
+    private static final int CLASSES_PER_JAR = 250;
+
     @Test
     public void test() {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
@@ -148,7 +154,7 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
 
-        String propertyName = Java8OrEarlier ? "sun.boot.class.path" : "jdk.module.path";
+        String propertyName = JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.boot.class.path" : "jdk.module.path";
         String bootclasspath = System.getProperty(propertyName);
         Assert.assertNotNull("Cannot find value of " + propertyName, bootclasspath);
 
@@ -156,28 +162,33 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
             if (shouldProcess(path)) {
                 try {
                     final ZipFile zipFile = new ZipFile(new File(path));
+                    int index = 0;
+                    int step = zipFile.size() > CLASSES_PER_JAR ? zipFile.size() / CLASSES_PER_JAR : 1;
                     for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
                         final ZipEntry zipEntry = entry.nextElement();
-                        String name = zipEntry.getName();
-                        if (name.endsWith(".class") && !name.equals("module-info.class") && !name.startsWith("META-INF/versions/")) {
-                            String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                            if (isInNativeImage(className)) {
-                                /*
-                                 * Native image requires non-graalsdk classes to be present in the
-                                 * classpath.
-                                 */
-                                continue;
-                            }
-                            if (isGSON(className)) {
-                                /* uses old class format */
-                                continue;
-                            }
-                            try {
-                                checkClass(metaAccess, getSnippetReflection(), className);
-                            } catch (ClassNotFoundException e) {
-                                throw new AssertionError(e);
+                        if ((index % step) == 0) {
+                            String name = zipEntry.getName();
+                            if (name.endsWith(".class") && !name.equals("module-info.class") && !name.startsWith("META-INF/versions/")) {
+                                String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
+                                if (isInNativeImage(className)) {
+                                    /*
+                                     * Native image requires non-graalsdk classes to be present in
+                                     * the classpath.
+                                     */
+                                    continue;
+                                }
+                                if (isGSON(className)) {
+                                    /* uses old class format */
+                                    continue;
+                                }
+                                try {
+                                    checkClass(metaAccess, getSnippetReflection(), className);
+                                } catch (ClassNotFoundException e) {
+                                    throw new AssertionError(e);
+                                }
                             }
                         }
+                        index++;
                     }
                 } catch (IOException ex) {
                     Assert.fail(ex.toString());

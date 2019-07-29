@@ -69,6 +69,7 @@ import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.ClassInitializationInfo.ClassInitializerFunctionPointerHolder;
@@ -172,7 +173,8 @@ public class UniverseBuilder {
 
         String typeName = aType.getName();
 
-        assert SubstrateUtil.isBuildingLibgraal() || !typeName.contains("/hotspot/") || typeName.contains("/jtt/hotspot/") : "HotSpot object in image " + typeName;
+        assert SubstrateUtil.isBuildingLibgraal() || !typeName.contains("/hotspot/") || typeName.contains("/jtt/hotspot/") || typeName.contains("/hotspot/shared/") : "HotSpot object in image " +
+                        typeName;
         assert !typeName.contains("/analysis/meta/") : "Analysis meta object in image " + typeName;
         assert !typeName.contains("/hosted/meta/") : "Hosted meta object in image " + typeName;
 
@@ -1138,7 +1140,7 @@ public class UniverseBuilder {
     }
 
     private void buildHubs() {
-        ReferenceMapEncoder referenceMapEncoder = new ReferenceMapEncoder();
+        InstanceReferenceMapEncoder referenceMapEncoder = new InstanceReferenceMapEncoder();
         Map<HostedType, ReferenceMapEncoder.Input> referenceMaps = new HashMap<>();
         for (HostedType type : hUniverse.orderedTypes) {
             ReferenceMapEncoder.Input referenceMap = createReferenceMap(type);
@@ -1146,7 +1148,7 @@ public class UniverseBuilder {
             referenceMaps.put(type, referenceMap);
             referenceMapEncoder.add(referenceMap);
         }
-        ImageSingletons.lookup(DynamicHubSupport.class).setData(referenceMapEncoder.encodeAll(null));
+        ImageSingletons.lookup(DynamicHubSupport.class).setData(referenceMapEncoder.encodeAll());
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         for (HostedType type : hUniverse.orderedTypes) {
@@ -1161,7 +1163,7 @@ public class UniverseBuilder {
                     HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol);
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
-                    layoutHelper = LayoutEncoding.forArray(isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind), ol.getAlignment());
+                    layoutHelper = LayoutEncoding.forArray(isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
                 } else {
                     layoutHelper = LayoutEncoding.forInstance(ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
@@ -1170,7 +1172,7 @@ public class UniverseBuilder {
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
-                layoutHelper = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind), ol.getAlignment());
+                layoutHelper = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
                 hashCodeOffset = ol.getArrayHashCodeOffset();
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();

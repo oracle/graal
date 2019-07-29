@@ -25,7 +25,8 @@
 package com.oracle.svm.core.snippets;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.jdk.StackTraceBuilder;
+import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -36,8 +37,9 @@ import com.oracle.svm.core.util.VMError;
  * specification of Java bytecode.
  *
  * All methods in this class are an implementation detail that should not be observable by users,
- * therefore these methods are filtered in exception stack traces (see {@link StackTraceBuilder}).
+ * therefore these methods are filtered in exception stack traces (see {@link StackTraceUtils}).
  */
+@InternalVMMethod
 public class ImplicitExceptions {
     public static final String NO_STACK_MSG = "[no exception stack trace available because exception is thrown from code that must be allocation free]";
 
@@ -98,7 +100,7 @@ public class ImplicitExceptions {
     }
 
     private static void vmErrorIfImplicitExceptionsAreFatal() {
-        if (implicitExceptionsAreFatal.get() > 0) {
+        if (implicitExceptionsAreFatal.get() > 0 || SnippetRuntime.exceptionsAreFatal()) {
             throw VMError.shouldNotReachHere("Implicit exception thrown in code where such exceptions are fatal errors");
         }
     }
@@ -282,4 +284,9 @@ public class ImplicitExceptions {
     public static void throwNoSuchMethodError(String message) throws NoSuchMethodError {
         throw new NoSuchMethodError(message);
     }
+
+    public static void throwVerifyError() {
+        throw new VerifyError();
+    }
+
 }

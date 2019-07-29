@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import java.math.BigInteger;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
 
 public final class DwarfOpcode {
 
@@ -230,7 +230,7 @@ public final class DwarfOpcode {
     }
 
     public static BigInteger toIntegerSymbol(MDExpression exp) {
-        final LinkedList<BigInteger> dwStack = new LinkedList<>();
+        final ArrayDeque<BigInteger> dwStack = new ArrayDeque<>(4);
 
         int i = 0;
         while (i < exp.getElementCount()) {

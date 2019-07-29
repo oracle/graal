@@ -1,0 +1,105 @@
+#
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+BREAK 55 CONTINUE "@_Z9doReceiveIDv9_cEvT_"
+    OPEN_SCOPE partial
+        MEMBER structured "< 9 x i8 >" "%toInspect"
+            MEMBER int "i8" "[0]" "48"
+            MEMBER int "i8" "[1]" "49"
+            MEMBER int "i8" "[2]" "50"
+            MEMBER int "i8" "[3]" "51"
+            MEMBER int "i8" "[4]" "52"
+            MEMBER int "i8" "[5]" "53"
+            MEMBER int "i8" "[6]" "54"
+            MEMBER int "i8" "[7]" "55"
+            MEMBER int "i8" "[8]" "56"
+        END_MEMBERS
+
+
+BREAK 61 CONTINUE "@_Z9doReceiveIDv8_sEvT_"
+    OPEN_SCOPE partial
+        MEMBER structured "< 8 x i16 >" "%toInspect"
+            MEMBER int "i16" "[0]" "0"
+            MEMBER int "i16" "[1]" "1"
+            MEMBER int "i16" "[2]" "2"
+            MEMBER int "i16" "[3]" "3"
+            MEMBER int "i16" "[4]" "4"
+            MEMBER int "i16" "[5]" "5"
+            MEMBER int "i16" "[6]" "6"
+            MEMBER int "i16" "[7]" "7"
+        END_MEMBERS
+
+
+BREAK 69 CONTINUE "@_Z9doReceiveIDv7_iEvT_"
+    OPEN_SCOPE partial
+        MEMBER structured "< 7 x i32 >" "%toInspect"
+            MEMBER int "i32" "[0]" "0"
+            MEMBER int "i32" "[1]" "1"
+            MEMBER int "i32" "[2]" "2"
+            MEMBER int "i32" "[3]" "3"
+            MEMBER int "i32" "[4]" "4"
+            MEMBER int "i32" "[5]" "5"
+            MEMBER int "i32" "[6]" "6"
+        END_MEMBERS
+
+
+BREAK 78 CONTINUE "@_Z9doReceiveIDv6_lEvT_"
+    OPEN_SCOPE partial
+        MEMBER structured "< 6 x i64 >" "%toInspect"
+            MEMBER int "i64" "[0]" "0"
+            MEMBER int "i64" "[1]" "1"
+            MEMBER int "i64" "[2]" "2"
+            MEMBER int "i64" "[3]" "3"
+            MEMBER int "i64" "[4]" "4"
+            MEMBER int "i64" "[5]" "5"
+        END_MEMBERS
+
+
+BREAK 87 CONTINUE "@_Z9doReceiveIDv5_fEvT_"
+    OPEN_SCOPE partial
+        MEMBER structured "< 5 x float >" "%toInspect"
+            MEMBER float32 "float" "[0]" "0.0"
+            MEMBER float32 "float" "[1]" "1.1"
+            MEMBER float32 "float" "[2]" "2.2"
+            MEMBER float32 "float" "[3]" "3.3"
+            MEMBER float32 "float" "[4]" "4.4"
+        END_MEMBERS
+
+
+BREAK 96 CONTINUE "@_Z9doReceiveIDv4_dEvT_"
+    OPEN_SCOPE partial
+        MEMBER structured "< 4 x double >" "%toInspect"
+            MEMBER float64 "double" "[0]" "0.0"
+            MEMBER float64 "double" "[1]" "1.1"
+            MEMBER float64 "double" "[2]" "2.2"
+            MEMBER float64 "double" "[3]" "3.3"
+        END_MEMBERS
+
+

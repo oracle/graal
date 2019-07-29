@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.Feature;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -32,12 +34,13 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 @Platforms(Platform.WINDOWS.class)
@@ -46,9 +49,24 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
     @Override
     public String getExecutableName() {
         CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
-        Pointer hModule = WinBase.GetModuleHandleA(WordFactory.nullPointer());
+        WinBase.HMODULE hModule = WinBase.GetModuleHandleA(WordFactory.nullPointer());
         int result = WinBase.GetModuleFileNameA(hModule, path, WinBase.MAX_PATH);
         return result == 0 ? null : CTypeConversion.toJavaString(path);
+    }
+
+    @Override
+    public void exec(Path executable, String[] args) {
+        if (!Files.isExecutable(executable)) {
+            throw new RuntimeException("Path " + executable + " does not point to executable file");
+        }
+
+        try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
+                        CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args)) {
+            if (Process._execv(pathHolder.get(), argvHolder.get()) != 0) {
+                String msg = WindowsUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " failed");
+                throw new RuntimeException(msg);
+            }
+        }
     }
 
     @Override
@@ -57,7 +75,7 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
     }
 
     @Override
-    public long getProcessID(Process process) {
+    public long getProcessID(java.lang.Process process) {
         throw VMError.unimplemented();
     }
 
@@ -68,7 +86,15 @@ public class WindowsProcessPropertiesSupport implements ProcessPropertiesSupport
 
     @Override
     public String getObjectFile(CEntryPointLiteral<?> symbol) {
-        throw VMError.unimplemented();
+        WinBase.HMODULEPointer module = StackValue.get(WinBase.HMODULEPointer.class);
+        if (!WinBase.GetModuleHandleExA(WinBase.GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS() | WinBase.GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT(),
+                        symbol.getFunctionPointer(), module)) {
+            return null;
+        }
+
+        CCharPointer path = StackValue.get(WinBase.MAX_PATH, CCharPointer.class);
+        int result = WinBase.GetModuleFileNameA(module.read(), path, WinBase.MAX_PATH);
+        return result == 0 ? null : CTypeConversion.toJavaString(path);
     }
 
     @Override

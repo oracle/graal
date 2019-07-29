@@ -57,6 +57,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 
+import com.oracle.graal.pointsto.ObjectScanner.ReusableSet;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -384,8 +385,9 @@ public abstract class BigBang {
             }
 
             @Override
-            public DebugContext getDebug(OptionValues ignored, List<DebugHandlersFactory> factories) {
-                return DebugContext.DISABLED;
+            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
             }
         });
 
@@ -520,7 +522,8 @@ public abstract class BigBang {
 
             @Override
             public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
-                return DebugContext.DISABLED;
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
             }
         });
     }
@@ -590,13 +593,23 @@ public abstract class BigBang {
     public void checkUnsupportedSynchronization(AnalysisMethod method, int bci, AnalysisType aType) {
     }
 
-    @SuppressWarnings("try")
-    private void checkObjectGraph() {
-        // scan constants
-        ObjectScanner objectScanner = new AnalysisObjectScanner(this);
-        checkObjectGraph(objectScanner);
-        objectScanner.scanBootImageHeapRoots();
+    private ReusableSet scannedObjects = new ReusableSet();
 
+    @SuppressWarnings("try")
+    private void checkObjectGraph() throws InterruptedException {
+        scannedObjects.reset();
+        // scan constants
+        ObjectScanner objectScanner = new AnalysisObjectScanner(this, scannedObjects);
+        checkObjectGraph(objectScanner);
+        if (PointstoOptions.ScanObjectsParallel.getValue(options)) {
+            executor.start();
+            objectScanner.scanBootImageHeapRoots(executor);
+            executor.complete();
+            executor.shutdown();
+            executor.init(timing);
+        } else {
+            objectScanner.scanBootImageHeapRoots(null);
+        }
         AnalysisType.updateAssignableTypes(this);
     }
 

@@ -54,7 +54,7 @@ public final class ExceptionDetails {
         this.exceptionId = LAST_ID.incrementAndGet();
     }
 
-    public JSONObject createJSON(InspectorExecutionContext context) {
+    public JSONObject createJSON(InspectorExecutionContext context, boolean generatePreview) {
         JSONObject json = new JSONObject();
         json.put("exceptionId", exceptionId);
         if (debugException == null || debugException.getCatchLocation() != null) {
@@ -76,7 +76,12 @@ public final class ExceptionDetails {
             if (scriptId >= 0) {
                 json.put("scriptId", Integer.toString(scriptId));
             } else {
-                json.put("url", ScriptsHandler.getNiceStringFromURI(throwLocation.getSource().getURI()));
+                ScriptsHandler scriptsHandler = context.acquireScriptsHandler();
+                try {
+                    json.put("url", scriptsHandler.getSourceURL(throwLocation.getSource()));
+                } finally {
+                    context.releaseScriptsHandler();
+                }
             }
         }
         if (debugException != null) {
@@ -85,7 +90,7 @@ public final class ExceptionDetails {
         }
         DebugValue exceptionObject = (debugException != null) ? debugException.getExceptionObject() : null;
         if (exceptionObject != null) {
-            RemoteObject ro = context.createAndRegister(exceptionObject);
+            RemoteObject ro = context.createAndRegister(exceptionObject, generatePreview);
             json.put("exception", ro.toJSON());
         } else {
             JSONObject ex = new JSONObject();

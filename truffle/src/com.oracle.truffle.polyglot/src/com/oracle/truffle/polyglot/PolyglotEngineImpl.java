@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.INSTRUMENT;
-import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
+import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -63,6 +64,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
@@ -71,11 +73,15 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -87,6 +93,7 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -98,9 +105,8 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
-import java.util.function.Supplier;
 
-final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     /**
      * Context index for the host language.
@@ -108,10 +114,14 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
     static final int HOST_LANGUAGE_INDEX = 0;
     static final String HOST_LANGUAGE_ID = "host";
 
+    static final String OPTION_GROUP_ENGINE = "engine";
+    static final String OPTION_GROUP_LOG = "log";
+    static final String OPTION_GROUP_IMAGE_BUILD_TIME = "image-build-time";
+
     // also update list in LanguageRegistrationProcessor
     private static final Set<String> RESERVED_IDS = new HashSet<>(
-                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
-                                    PolyglotEngineOptions.OPTION_GROUP_LOG));
+                    Arrays.asList(HOST_LANGUAGE_ID, "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
+                                    OPTION_GROUP_ENGINE, OPTION_GROUP_LOG, OPTION_GROUP_IMAGE_BUILD_TIME));
 
     private static final Map<PolyglotEngineImpl, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
     private static volatile boolean shutdownHookInitialized = false;
@@ -147,6 +157,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
 
     PolyglotLanguage hostLanguage;
     final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per engine.");
+    final Assumption singleThread = Truffle.getRuntime().createAssumption("Single thread per engine.");
     final Assumption noInnerContexts = Truffle.getRuntime().createAssumption("No inner contexts.");
 
     volatile OptionDescriptors allOptions;
@@ -158,7 +169,10 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
     Map<String, Level> logLevels;    // effectively final
     private HostClassCache hostClassCache; // effectively final
     private volatile Object engineLoggers;
-    private volatile Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectorsSupplier;
+    private volatile Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier;
+
+    final CastUnsafe castUnsafe;
+    final int contextLength;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -178,10 +192,12 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         this.contextClassLoader = contextClassLoader;
         this.boundEngine = boundEngine;
         this.logHandler = logHandler;
+        this.castUnsafe = EngineAccessor.ACCESSOR.getCastUnsafe();
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
         this.idToInternalLanguageInfo = Collections.unmodifiableMap(languageInfos);
+        this.contextLength = idToLanguage.size() + 1 /* +1 for host language */;
 
         Map<String, InstrumentInfo> instrumentInfos = new LinkedHashMap<>();
         this.idToInstrument = Collections.unmodifiableMap(initializeInstruments(instrumentInfos));
@@ -201,7 +217,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         }
 
         OptionDescriptors engineOptionDescriptors = new PolyglotEngineOptionsOptionDescriptors();
-        OptionDescriptors compilerOptionDescriptors = VMAccessor.SPI.getCompilerOptions();
+        OptionDescriptors compilerOptionDescriptors = EngineAccessor.ACCESSOR.getCompilerOptions();
         this.engineOptions = OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
         this.engineOptionValues = new OptionValuesImpl(this, engineOptions);
 
@@ -338,9 +354,13 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
                 for (Object systemKey : properties.keySet()) {
                     String key = (String) systemKey;
                     if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
-                        String engineKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length(), key.length());
-                        if (!options.containsKey(engineKey)) {
-                            optionsWithSystemProperties.put(engineKey, System.getProperty(key));
+                        String optionKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length());
+                        // Context options override system properties options
+                        if (!options.containsKey(optionKey)) {
+                            // Image build time options are not set in runtime options
+                            if (!optionKey.startsWith(OPTION_GROUP_IMAGE_BUILD_TIME)) {
+                                optionsWithSystemProperties.put(optionKey, System.getProperty(key));
+                            }
                         }
                     }
                 }
@@ -373,12 +393,16 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
                 continue;
             }
 
-            if (group.equals(PolyglotImpl.OPTION_GROUP_ENGINE)) {
+            if (group.equals(OPTION_GROUP_ENGINE)) {
                 originalEngineOptions.put(key, value);
                 continue;
             }
 
-            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+            if (group.equals(OPTION_GROUP_IMAGE_BUILD_TIME)) {
+                throw new IllegalArgumentException("Image build-time option '" + key + "' cannot be set at runtime");
+            }
+
+            if (group.equals(OPTION_GROUP_LOG)) {
                 logOptions.put(parseLoggerName(key), Level.parse(value));
                 continue;
             }
@@ -391,7 +415,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
      * given options.
      */
     boolean isEngineGroup(String group) {
-        return idToPublicInstrument.containsKey(group) || group.equals(PolyglotImpl.OPTION_GROUP_ENGINE);
+        return idToPublicInstrument.containsKey(group) || group.equals(OPTION_GROUP_ENGINE);
     }
 
     static String parseOptionGroup(String key) {
@@ -421,37 +445,51 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         return this;
     }
 
-    PolyglotLanguage findLanguage(String languageId, String mimeType, boolean failIfNotFound) {
+    PolyglotLanguage findLanguage(PolyglotLanguageContext accessingLanguage, String languageId, String mimeType, boolean failIfNotFound, boolean allowInternalAndDependent) {
         assert languageId != null || mimeType != null : Objects.toString(languageId) + ", " + Objects.toString(mimeType);
-        if (languageId != null) {
-            PolyglotLanguage language = idToLanguage.get(languageId);
-            if (language != null) {
-                return language;
-            }
+
+        Map<String, LanguageInfo> languages;
+        if (accessingLanguage != null) {
+            languages = accessingLanguage.getAccessibleLanguages(allowInternalAndDependent);
+        } else {
+            assert allowInternalAndDependent : "non internal access is not yet supported for instrument lookups";
+            languages = this.idToInternalLanguageInfo;
         }
-        if (mimeType != null) {
+
+        LanguageInfo foundLanguage = null;
+        if (languageId != null) {
+            foundLanguage = languages.get(languageId);
+        }
+        if (mimeType != null && foundLanguage == null) {
             // we need to interpret mime types for compatibility.
-            PolyglotLanguage language = idToLanguage.get(mimeType);
-            if (language != null) {
-                return language;
-            }
-            for (PolyglotLanguage searchLanguage : idToLanguage.values()) {
-                if (searchLanguage.cache.getMimeTypes().contains(mimeType)) {
-                    return searchLanguage;
+            foundLanguage = languages.get(mimeType);
+            if (foundLanguage == null) {
+                for (LanguageInfo searchLanguage : languages.values()) {
+                    if (searchLanguage.getMimeTypes().contains(mimeType)) {
+                        foundLanguage = searchLanguage;
+                        break;
+                    }
                 }
             }
         }
+
+        assert allowInternalAndDependent || foundLanguage == null || (!foundLanguage.isInternal() && accessingLanguage.isPolyglotEvalAllowed(languageId));
+
+        if (foundLanguage != null) {
+            return (PolyglotLanguage) EngineAccessor.NODES.getEngineObject(foundLanguage);
+        }
+
         if (failIfNotFound) {
             if (languageId != null) {
                 Set<String> ids = new LinkedHashSet<>();
-                for (PolyglotLanguage language : idToLanguage.values()) {
-                    ids.add(language.cache.getId());
+                for (LanguageInfo language : languages.values()) {
+                    ids.add(language.getId());
                 }
                 throw new IllegalStateException("No language for id " + languageId + " found. Supported languages are: " + ids);
             } else {
                 Set<String> mimeTypes = new LinkedHashSet<>();
-                for (PolyglotLanguage language : idToLanguage.values()) {
-                    mimeTypes.addAll(language.cache.getMimeTypes());
+                for (LanguageInfo language : languages.values()) {
+                    mimeTypes.addAll(language.getMimeTypes());
                 }
                 throw new IllegalStateException("No language for MIME type " + mimeType + " found. Supported languages are: " + mimeTypes);
             }
@@ -463,7 +501,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
         Map<String, PolyglotInstrument> instruments = new LinkedHashMap<>();
         ClassLoader loader = getAPIAccess().useContextClassLoader() ? Thread.currentThread().getContextClassLoader() : null;
-        List<InstrumentCache> cachedInstruments = InstrumentCache.load(VMAccessor.allLoaders(), loader);
+        List<InstrumentCache> cachedInstruments = InstrumentCache.load(EngineAccessor.allLoaders(), loader);
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrument instrumentImpl = new PolyglotInstrument(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());
@@ -776,6 +814,7 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
                             stillRunning = true;
                         }
                     }
+                    context.checkSubProcessFinished();
                 } catch (Throwable e) {
                     if (!ignoreCloseFailure) {
                         throw e;
@@ -926,24 +965,21 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         ENGINES.clear();
     }
 
-    void assignHostAccess(HostAccess policy) {
+    void initializeHostAccess(HostAccess policy) {
         assert Thread.holdsLock(this);
-        HostAccess nonNullAccess = policy == null ? HostAccess.EXPLICIT : policy;
-        if (hostClassCache != null) {
-            if (!hostClassCache.checkHostAccess(nonNullAccess)) {
-                throw new IllegalStateException("Cannot share engine between contexts with different HostAccess");
-            }
+        assert policy != null;
+        HostClassCache cache = HostClassCache.findOrInitialize(getAPIAccess(), policy);
+        if (this.hostClassCache != null && this.hostClassCache != cache) {
+            throw new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
+                            "The host access configuration must be the same for all contexts of an engine. " +
+                            "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
         } else {
-            hostClassCache = HostClassCache.find(getAPIAccess(), nonNullAccess);
+            this.hostClassCache = cache;
         }
     }
 
     HostClassCache getHostClassCache() {
         return hostClassCache;
-    }
-
-    HostClassDesc findHostClassDesc(Class<?> clazz) {
-        return hostClassCache.forClass(clazz);
     }
 
     private static final class PolyglotShutDownHook implements Runnable {
@@ -1092,29 +1128,69 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         return Truffle.getRuntime().getName();
     }
 
+    private static final String DISABLE_PRIVILEGES_VALUE = ImageBuildTimeOptions.get(ImageBuildTimeOptions.DISABLE_PRIVILEGES_NAME);
+    private static final String[] DISABLED_PRIVILEGES = DISABLE_PRIVILEGES_VALUE.isEmpty() ? new String[0] : DISABLE_PRIVILEGES_VALUE.split(",");
+
+    // reflectively read from TruffleFeature
+    private static final boolean ALLOW_CREATE_PROCESS;
+    static final boolean ALLOW_ENVIRONMENT_ACCESS;
+    static final boolean ALLOW_IO;
+    static {
+        boolean createProcess = true;
+        boolean environmentAccess = true;
+        boolean io = true;
+
+        for (String privilege : DISABLED_PRIVILEGES) {
+            switch (privilege) {
+                case "createProcess":
+                    createProcess = false;
+                    break;
+                case "environmentAccess":
+                    environmentAccess = false;
+                    break;
+                case "io":
+                    io = false;
+                    break;
+                default:
+                    throw new Error("Invalid privilege name for " + ImageBuildTimeOptions.DISABLE_PRIVILEGES_NAME + ": " + privilege);
+            }
+        }
+
+        ALLOW_CREATE_PROCESS = createProcess;
+        ALLOW_ENVIRONMENT_ACCESS = environmentAccess;
+        ALLOW_IO = io;
+    }
+
     @Override
     @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
-                    HostAccess access,
-                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
-                    boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
-                    String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream) {
+                    HostAccess hostAccess,
+                    PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
+                    boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
+                    Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
+                    EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone) {
         checkState();
         if (boundEngine && preInitializedContext == null && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
                             "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
         }
 
-        assignHostAccess(access);
+        initializeHostAccess(hostAccess);
 
-        Set<String> allowedLanguages;
+        EconomicSet<String> allowedLanguages = EconomicSet.create();
         if (onlyLanguages.length == 0) {
-            allowedLanguages = getLanguages().keySet();
+            allowedLanguages.addAll(getLanguages().keySet());
         } else {
-            allowedLanguages = new HashSet<>(Arrays.asList(onlyLanguages));
+            allowedLanguages.addAll(Arrays.asList(onlyLanguages));
         }
+        getAPIAccess().validatePolyglotAccess(polyglotAccess, allowedLanguages);
         final FileSystem fs;
-        if (allowHostIO) {
+        if (!ALLOW_IO) {
+            if (fileSystem == null) {
+                throw new IllegalArgumentException("A FileSystem must be provided when the allowIO() privilege is removed at image build time");
+            }
+            fs = fileSystem;
+        } else if (allowHostIO) {
             fs = fileSystem != null ? fileSystem : FileSystems.newDefaultFileSystem();
         } else {
             fs = FileSystems.newNoIOFileSystem();
@@ -1141,9 +1217,24 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
 
         final InputStream useIn = configIn == null ? this.in : configIn;
 
+        final ProcessHandler useProcessHandler;
+        if (allowCreateProcess) {
+            if (!ALLOW_CREATE_PROCESS) {
+                throw new IllegalArgumentException("Cannot allowCreateProcess() because the privilege is removed at image build time");
+            }
+            useProcessHandler = processHandler != null ? processHandler : ProcessHandlers.newDefaultProcessHandler();
+        } else {
+            useProcessHandler = null;
+        }
+
+        if (!ALLOW_ENVIRONMENT_ACCESS && environmentAccess != EnvironmentAccess.NONE) {
+            throw new IllegalArgumentException("Cannot allow EnvironmentAccess because the privilege is removed at image build time");
+        }
+
         PolyglotContextConfig config = new PolyglotContextConfig(this, useOut, useErr, useIn,
-                        allowHostLookup, allowNativeAccess, allowCreateThread, allowHostClassLoading,
-                        allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, useHandler);
+                        allowHostLookup, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading,
+                        allowExperimentalOptions, classFilter, arguments, allowedLanguages, options, fs, useHandler, allowCreateProcess, useProcessHandler,
+                        environmentAccess, environment, zone);
 
         PolyglotContextImpl context = loadPreinitializedContext(config);
         if (context == null) {
@@ -1209,8 +1300,8 @@ final class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglo
         return engineLoggers;
     }
 
-    Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> getFileTypeDetectorsSupplier() {
-        Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> res = fileTypeDetectorsSupplier;
+    Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier() {
+        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> res = fileTypeDetectorsSupplier;
         if (res == null) {
             synchronized (this) {
                 res = fileTypeDetectorsSupplier;

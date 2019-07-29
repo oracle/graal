@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,9 +87,11 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
     protected void visit(Group group) {
         if (group.getParent() instanceof Sequence) {
             group.setMinPath(group.getParent().getMinPath());
+            group.setMaxPath(group.getParent().getMaxPath());
         } else {
             assert group.getParent() instanceof RegexASTSubtreeRootNode;
             group.setMinPath(0);
+            group.setMaxPath(0);
         }
     }
 
@@ -99,21 +101,28 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
             return;
         }
         int minPath = Integer.MAX_VALUE;
+        int maxPath = 0;
         boolean caret = true;
         boolean dollar = true;
+        boolean hasLoops = group.isLoop();
         for (Sequence s : group.getAlternatives()) {
             if (s.isDead()) {
                 continue;
             }
             caret &= s.startsWithCaret();
             dollar &= s.endsWithDollar();
+            hasLoops |= s.hasLoops();
             minPath = Math.min(minPath, s.getMinPath());
+            maxPath = Math.max(maxPath, s.getMaxPath());
         }
         group.setStartsWithCaret(caret);
         group.setEndsWithDollar(dollar);
+        group.setHasLoops(hasLoops);
         group.setMinPath(minPath);
+        group.setMaxPath(maxPath);
         if (group.getParent() instanceof Sequence) {
             group.getParent().setMinPath(minPath);
+            group.getParent().setMaxPath(maxPath);
         }
         if (group.getParent() != null) {
             if (caret) {
@@ -122,12 +131,16 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
             if (dollar) {
                 group.getParent().setEndsWithDollar();
             }
+            if (hasLoops) {
+                group.getParent().setHasLoops();
+            }
         }
     }
 
     @Override
     protected void visit(Sequence sequence) {
         sequence.setMinPath(sequence.getParent().getMinPath());
+        sequence.setMaxPath(sequence.getParent().getMaxPath());
     }
 
     @Override
@@ -157,6 +170,7 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
     @Override
     protected void visit(LookBehindAssertion assertion) {
         assertion.setMinPath(assertion.getParent().getMinPath());
+        assertion.setMaxPath(assertion.getParent().getMaxPath());
     }
 
     @Override
@@ -167,11 +181,15 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (assertion.endsWithDollar()) {
             assertion.getParent().setEndsWithDollar();
         }
+        if (assertion.hasLoops()) {
+            assertion.getParent().setHasLoops();
+        }
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
         assertion.setMinPath(assertion.getParent().getMinPath());
+        assertion.setMaxPath(assertion.getParent().getMaxPath());
     }
 
     @Override
@@ -182,11 +200,17 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (assertion.endsWithDollar()) {
             assertion.getParent().setEndsWithDollar();
         }
+        if (assertion.hasLoops()) {
+            assertion.getParent().setHasLoops();
+        }
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
         characterClass.getParent().incMinPath();
+        characterClass.getParent().incMaxPath();
+        characterClass.setMinPath(characterClass.getParent().getMinPath());
+        characterClass.setMaxPath(characterClass.getParent().getMaxPath());
     }
 
     @Override

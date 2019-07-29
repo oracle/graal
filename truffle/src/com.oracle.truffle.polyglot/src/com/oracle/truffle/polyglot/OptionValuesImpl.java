@@ -55,9 +55,6 @@ import org.graalvm.options.OptionValues;
 
 final class OptionValuesImpl implements OptionValues {
 
-    // Temporary to help languages transition, see GR-13740
-    private static final boolean CHECK_EXPERIMENTAL_OPTIONS = Boolean.parseBoolean(System.getenv("GRAALVM_CHECK_EXPERIMENTAL_OPTIONS"));
-
     private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
 
     // TODO is this too long? Make sure to update Engine#setUseSystemProperties javadoc.
@@ -139,7 +136,23 @@ final class OptionValuesImpl implements OptionValues {
 
     public void put(String key, String value, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = findDescriptor(key, allowExperimentalOptions);
-        values.put(descriptor.getKey(), descriptor.getKey().getType().convert(value));
+        OptionKey<?> optionKey = descriptor.getKey();
+        Object previousValue;
+        if (values.containsKey(optionKey)) {
+            previousValue = values.get(optionKey);
+        } else {
+            previousValue = optionKey.getDefaultValue();
+        }
+        String name = descriptor.getName();
+        String suffix = null;
+        if (descriptor.isOptionMap()) {
+            suffix = key.substring(name.length());
+            assert suffix.isEmpty() || suffix.startsWith(".");
+            if (suffix.startsWith(".")) {
+                suffix = suffix.substring(1);
+            }
+        }
+        values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {
@@ -170,6 +183,7 @@ final class OptionValuesImpl implements OptionValues {
         return (T) value;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public <T> void set(OptionKey<T> optionKey, T value) {
         optionKey.getType().validate(value);
@@ -186,7 +200,7 @@ final class OptionValuesImpl implements OptionValues {
         if (descriptor == null) {
             throw failNotFound(key);
         }
-        if (CHECK_EXPERIMENTAL_OPTIONS && !allowExperimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
+        if (!allowExperimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
             throw failExperimental(key);
         }
         return descriptor;

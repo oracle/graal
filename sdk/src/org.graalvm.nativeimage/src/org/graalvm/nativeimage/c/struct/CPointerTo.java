@@ -79,8 +79,8 @@ import org.graalvm.word.WordBase;
  * for the memory access. Two memory accesses with two different location identities are guaranteed
  * to not alias. The parameter cannot be used together with the {@link UniqueLocationIdentity}
  * annotation, which is another way of providing a location identity for the memory access.
- * 
- * @since 1.0
+ *
+ * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -93,7 +93,7 @@ public @interface CPointerTo {
      * Exactly one of the properties {@link #value()} and {@link CPointerTo#nameOfCType()} must be
      * specified.
      *
-     * @since 1.0
+     * @since 19.0
      */
     Class<? extends WordBase> value() default WordBase.class;
 
@@ -103,7 +103,7 @@ public @interface CPointerTo {
      * Exactly one of the properties {@link #value()} and {@link CPointerTo#nameOfCType()} must be
      * specified.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String nameOfCType() default "";
 }

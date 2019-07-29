@@ -40,8 +40,8 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.DARWIN_AMD64;
 import org.graalvm.nativeimage.Platform.LINUX_AMD64;
-import org.graalvm.nativeimage.Platform.DARWIN_JNI_AMD64;
-import org.graalvm.nativeimage.Platform.LINUX_JNI_AMD64;
+import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_JNI_AMD64;
+import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_JNI_AMD64;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;

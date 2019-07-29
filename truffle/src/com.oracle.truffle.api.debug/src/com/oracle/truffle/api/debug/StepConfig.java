@@ -211,7 +211,7 @@ public final class StepConfig {
          *
          * @param element the element to set the suspend anchor for
          * @param anchors a list of suspend anchors
-         * @since 1.0
+         * @since 19.0
          */
         public Builder suspendAnchors(SourceElement element, SuspendAnchor... anchors) {
             if (anchors.length == 0) {

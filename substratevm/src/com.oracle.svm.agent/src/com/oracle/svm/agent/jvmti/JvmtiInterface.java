@@ -29,11 +29,13 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeInterface;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -145,5 +147,77 @@ public interface JvmtiInterface extends PointerBase {
     interface GetMethodNameFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv env, JNIMethodId method, CCharPointerPointer namePtr, CCharPointerPointer signature, CCharPointerPointer genericPtr);
+    }
+
+    @CField("GetFieldDeclaringClass")
+    GetFieldDeclaringClassFunctionPointer GetFieldDeclaringClass();
+
+    interface GetFieldDeclaringClassFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv env, JNIObjectHandle klass, JNIFieldId method, WordPointer declaringClassPtr);
+    }
+
+    @CField("GetClassSignature")
+    GetClassSignatureFunctionPointer GetClassSignature();
+
+    interface GetClassSignatureFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, WordPointer signaturePtr, WordPointer genericPtr);
+    }
+
+    @CField("GetMethodModifiers")
+    GetMethodModifiersFunctionPointer GetMethodModifiers();
+
+    interface GetMethodModifiersFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIMethodId method, CIntPointer modifiersPtr);
+    }
+
+    @CField("GetFieldModifiers")
+    GetFieldModifiersFunctionPointer GetFieldModifiers();
+
+    interface GetFieldModifiersFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, JNIFieldId field, CIntPointer modifiersPtr);
+    }
+
+    @CField("GetImplementedInterfaces")
+    GetImplementedInterfacesFunctionPointer GetImplementedInterfaces();
+
+    interface GetImplementedInterfacesFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, CIntPointer interfaceCountPtr, WordPointer interfacesPtr);
+    }
+
+    @CField("GetFieldName")
+    GetFieldNameFunctionPointer GetFieldName();
+
+    interface GetFieldNameFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle klass, JNIFieldId field, CCharPointerPointer namePtr, CCharPointerPointer signaturePTr, CCharPointerPointer genericPtr);
+    }
+
+    @CField("ForceEarlyReturnObject")
+    ForceEarlyReturnObjectFunctionPointer ForceEarlyReturnObject();
+
+    interface ForceEarlyReturnObjectFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle thread, JNIObjectHandle value);
+    }
+
+    @CField("GetSystemProperty")
+    GetSystemPropertyFunctionPointer GetSystemProperty();
+
+    interface GetSystemPropertyFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, CCharPointer property, CCharPointerPointer valuePtr);
+    }
+
+    @CField("GetSystemProperties")
+    GetSystemPropertiesFunctionPointer GetSystemProperties();
+
+    interface GetSystemPropertiesFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer countPtr, WordPointer propertyPtr);
     }
 }

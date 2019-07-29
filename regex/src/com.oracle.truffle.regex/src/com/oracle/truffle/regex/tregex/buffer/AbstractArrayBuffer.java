@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,35 +29,35 @@ package com.oracle.truffle.regex.tregex.buffer;
  */
 public abstract class AbstractArrayBuffer {
 
-    int size;
+    int length;
 
     public void clear() {
-        size = 0;
+        length = 0;
     }
 
     public boolean isEmpty() {
-        return size == 0;
+        return length == 0;
     }
 
-    public int size() {
-        return size;
+    public int length() {
+        return length;
     }
 
-    public void setSize(int size) {
-        this.size = size;
+    public void setLength(int size) {
+        this.length = size;
     }
 
-    public void ensureCapacity(int newSize) {
-        if (getBufferSize() < newSize) {
-            int newBufferSize = getBufferSize() * 2;
-            while (newBufferSize < newSize) {
-                newBufferSize *= 2;
+    public void ensureCapacity(int newLength) {
+        if (getBufferLength() < newLength) {
+            int newBufferLength = getBufferLength() * 2;
+            while (newBufferLength < newLength) {
+                newBufferLength *= 2;
             }
-            grow(newBufferSize);
+            grow(newBufferLength);
         }
     }
 
-    abstract int getBufferSize();
+    abstract int getBufferLength();
 
-    abstract void grow(int newSize);
+    abstract void grow(int newLength);
 }

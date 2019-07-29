@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "name", type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
@@ -64,7 +65,7 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
             return toLLVM.executeWithTarget(ret);
         } catch (UnknownIdentifierException ex) {
             notFound.enter();
-            return null;
+            return LLVMNativePointer.createNull();
         } catch (UnsupportedMessageException ex) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMPolyglotException(this, ex.getMessage());

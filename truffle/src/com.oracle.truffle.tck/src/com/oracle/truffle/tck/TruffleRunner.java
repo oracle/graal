@@ -245,7 +245,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
 
         /**
          * @param contextBuilder a custom context builder
-         * @since 1.0
+         * @since 19.0
          */
         public RunWithPolyglotRule(Context.Builder contextBuilder) {
             this.contextBuilder = contextBuilder;

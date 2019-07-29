@@ -65,8 +65,8 @@ import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.tiers.PhaseContext;
 
 public abstract class LoopTransformations {
 
@@ -79,7 +79,7 @@ public abstract class LoopTransformations {
         loop.loopBegin().setLoopFrequency(Math.max(0.0, loop.loopBegin().loopFrequency() - 1));
     }
 
-    public static void fullUnroll(LoopEx loop, PhaseContext context, CanonicalizerPhase canonicalizer) {
+    public static void fullUnroll(LoopEx loop, CoreProviders context, CanonicalizerPhase canonicalizer) {
         // assert loop.isCounted(); //TODO (gd) strengthen : counted with known trip count
         LoopBeginNode loopBegin = loop.loopBegin();
         StructuredGraph graph = loopBegin.graph();
@@ -394,9 +394,14 @@ public abstract class LoopTransformations {
                         invariantValue = switchNode.value();
                         controls = new ArrayList<>();
                         controls.add(switchNode);
-                    } else if (switchNode.value() == invariantValue && firstSwitch.structureEquals(switchNode)) {
-                        // Only collect switches which test the same values in the same order
-                        controls.add(switchNode);
+                    } else if (switchNode.value() == invariantValue) {
+                        // Fortify: Suppress Null Dereference false positive
+                        assert firstSwitch != null;
+
+                        if (firstSwitch.structureEquals(switchNode)) {
+                            // Only collect switches which test the same values in the same order
+                            controls.add(switchNode);
+                        }
                     }
                 }
             }

@@ -28,57 +28,70 @@ package org.graalvm.compiler.truffle.runtime;
  * A cache that enables the Runtime options to be read without the lookup. This is intended to only
  * be used on performance critical paths.
  */
-class RuntimeOptionsCache {
+public class RuntimeOptionsCache {
 
-    private static boolean legacySplitting;
-    private static boolean splitting;
-    private static boolean splittingAllowForcedSplits;
-    private static boolean splittingDumpDecisions;
-    private static boolean splittingTraceEvents;
-    private static boolean traceSplittingSummary;
-    private static int splittingMaxCalleeSize;
-    private static int splittingMaxPropagationDepth;
+    private final boolean legacySplitting;
+    private final boolean splitting;
+    private final boolean splittingAllowForcedSplits;
+    private final boolean splittingDumpDecisions;
+    private final boolean splittingTraceEvents;
+    private final boolean traceSplittingSummary;
+    private final int splittingMaxCalleeSize;
+    private final int splittingMaxPropagationDepth;
+    private final double splittingGrowthLimit;
+    private final int splittingMaxNumberOfSplitNodes;
 
-    static void reinitialize() {
+    public RuntimeOptionsCache() {
+        // Splitting
+        splitting = TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Splitting) && TruffleRuntimeOptions.getValue(PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY;
         legacySplitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting);
-        splitting = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplitting);
         splittingAllowForcedSplits = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingAllowForcedSplits);
         splittingDumpDecisions = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingDumpDecisions);
         splittingMaxCalleeSize = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxCalleeSize);
         splittingMaxPropagationDepth = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxPropagationDepth);
         splittingTraceEvents = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingTraceEvents);
         traceSplittingSummary = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleTraceSplittingSummary);
+        splittingGrowthLimit = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit);
+        splittingMaxNumberOfSplitNodes = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes);
     }
 
-    static boolean isSplittingDumpDecisions() {
+    boolean isSplittingDumpDecisions() {
         return splittingDumpDecisions;
     }
 
-    static boolean isLegacySplitting() {
+    boolean isLegacySplitting() {
         return legacySplitting;
     }
 
-    static boolean isSplittingAllowForcedSplits() {
+    boolean isSplittingAllowForcedSplits() {
         return splittingAllowForcedSplits;
     }
 
-    static boolean isSplitting() {
+    boolean isSplitting() {
         return splitting;
     }
 
-    static boolean isSplittingTraceEvents() {
+    boolean isSplittingTraceEvents() {
         return splittingTraceEvents;
     }
 
-    static boolean isTraceSplittingSummary() {
+    boolean isTraceSplittingSummary() {
         return traceSplittingSummary;
     }
 
-    static int getSplittingMaxCalleeSize() {
+    int getSplittingMaxCalleeSize() {
         return splittingMaxCalleeSize;
     }
 
-    static int getSplittingMaxPropagationDepth() {
+    int getSplittingMaxPropagationDepth() {
         return splittingMaxPropagationDepth;
+    }
+
+    double getSplittingGrowthLimit() {
+        return splittingGrowthLimit;
+    }
+
+    int getSplittingMaxNumberOfSplitNodes() {
+        return splittingMaxNumberOfSplitNodes;
     }
 }

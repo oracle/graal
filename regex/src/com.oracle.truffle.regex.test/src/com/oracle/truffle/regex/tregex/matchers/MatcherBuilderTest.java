@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,32 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
+import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class MatcherBuilderTest {
 
-    private static MatcherBuilder single(char i) {
+    private static CharSet single(char i) {
         return range(i, i);
     }
 
-    private static MatcherBuilder range(char i, char j) {
-        return MatcherBuilder.create(i, j);
+    private static CharSet range(char i, char j) {
+        return CharSet.create(i, j);
     }
 
-    private static MatcherBuilder range(char[] i) {
+    private static CharSet range(char[] i) {
         Assert.assertEquals(i.length, 2);
         return range(i[0], i[1]);
     }
 
-    private static MatcherBuilder multi(char... values) {
+    private static CharSet multi(char... values) {
         assert (values.length & 1) == 0;
-        return MatcherBuilder.create(values);
+        return CharSet.create(values);
     }
 
-    private static String matchError(String errorMsg, MatcherBuilder m, char[] values) {
+    private static String matchError(String errorMsg, CharSet m, char[] values) {
         StringBuilder sb = new StringBuilder(errorMsg).append(": got ").append(m.toString()).append(", expected [ ");
         for (int i = 0; i < values.length; i += 2) {
             sb.append("[").append(values[i]).append("-").append(values[i + 1]).append("] ");
@@ -56,38 +57,38 @@ public class MatcherBuilderTest {
         return sb.append("]").toString();
     }
 
-    private static void checkMatch(String errorMsg, MatcherBuilder m, MatcherBuilder expected) {
+    private static void checkMatch(String errorMsg, CharSet m, CharSet expected) {
         checkMatch(errorMsg, m, expected.getRanges());
     }
 
-    private static void checkMatch(String errorMsg, MatcherBuilder m, char... values) {
+    private static void checkMatch(String errorMsg, CharSet m, char... values) {
         Assert.assertArrayEquals(matchError(errorMsg, m, values), values, m.getRanges());
     }
 
-    private static void checkContains(MatcherBuilder a, MatcherBuilder b, boolean expected) {
+    private static void checkContains(CharSet a, CharSet b, boolean expected) {
         boolean test = a.contains(b);
         Assert.assertEquals(a + ".contains(" + b + "): got " + test + ", expected " + expected, test, expected);
     }
 
-    private static void checkInverse(MatcherBuilder a, char... values) {
-        checkMatch("inverse(" + a + ")", a.createInverse(new CompilationBuffer()), values);
+    private static void checkInverse(CharSet a, char... values) {
+        checkMatch("inverse(" + a + ")", a.createInverse(), values);
     }
 
-    private static void checkIntersection(MatcherBuilder a, MatcherBuilder b, char... values) {
-        MatcherBuilder intersection = a.createIntersectionMatcher(b, new CompilationBuffer());
+    private static void checkIntersection(CharSet a, CharSet b, char... values) {
+        CharSet intersection = a.createIntersection(b, new CompilationBuffer());
         checkMatch("intersection(" + a + "," + b + ")", intersection, values);
-        MatcherBuilder[] result = new MatcherBuilder[3];
+        CharSet[] result = new CharSet[3];
         a.intersectAndSubtract(b, new CompilationBuffer(), result);
         checkMatch("intersectAndSubtract(" + a + "," + b + ")[0]", result[0], a.subtract(intersection, new CompilationBuffer()));
         checkMatch("intersectAndSubtract(" + a + "," + b + ")[1]", result[1], b.subtract(intersection, new CompilationBuffer()));
         checkMatch("intersectAndSubtract(" + a + "," + b + ")[2]", result[2], intersection);
     }
 
-    private static void checkSubtraction(MatcherBuilder a, MatcherBuilder b, char... values) {
+    private static void checkSubtraction(CharSet a, CharSet b, char... values) {
         checkMatch("subtraction(" + a + "," + b + ")", a.subtract(b, new CompilationBuffer()), values);
     }
 
-    private static void checkUnion(MatcherBuilder a, MatcherBuilder b, char... values) {
+    private static void checkUnion(CharSet a, CharSet b, char... values) {
         checkMatch("union(" + a + "," + b + ")", a.union(b, new CompilationBuffer()), values);
     }
 

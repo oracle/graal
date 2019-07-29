@@ -47,7 +47,7 @@ class PolymorphicSpecializeDump {
             Collections.reverse(toDump);
             PolymorphicSpecializeDump.PolymorphicSpecializeGraph graph = new PolymorphicSpecializeDump.PolymorphicSpecializeGraph(knownCallNodes, toDump);
             final GraphOutput<PolymorphicSpecializeGraph, ?> output = debugContext.buildOutput(
-                            GraphOutput.newBuilder(new PolymorphicSpecializeDump.PolymorphicSpecializeGraphStructure()).protocolVersion(6, 0));
+                            GraphOutput.newBuilder(new PolymorphicSpecializeDump.PolymorphicSpecializeGraphStructure()).protocolVersion(6, 1));
             output.beginGroup(graph, "Polymorphic Specialize [" + knownCallNodes.get(0).getCurrentCallTarget() + "]", "Polymorphic Specialize", null, 0, null);
             output.print(graph, null, 0, toDump.get(toDump.size() - 1).toString());
             output.endGroup();
@@ -121,6 +121,9 @@ class PolymorphicSpecializeDump {
                         dumpNode.edge = new DumpEdge(last);
                     }
                 } else {
+                    // Fortify: Suppress Null Dereference false positive
+                    assert last != null;
+
                     DumpNode n = makeNode(nodeChain.get(i));
                     last.edge = new DumpEdge(n);
                     last = n;

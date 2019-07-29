@@ -105,8 +105,8 @@ public final class CardTable {
         return isDirtyEntryAtIndexUnchecked(table, index);
     }
 
-    private static boolean isDirtyEntryAtIndexUnchecked(Pointer table, UnsignedWord index) {
-        return isDirtyEntry(readEntryAtIndex(table, index));
+    static boolean isDirtyEntryAtIndexUnchecked(Pointer table, UnsignedWord index) {
+        return isDirtyEntry(readEntryAtIndexUnchecked(table, index));
     }
 
     static boolean containsReferenceToYoungSpace(Object obj) {
@@ -201,8 +201,12 @@ public final class CardTable {
     }
 
     /** Read the entry in a table. */
+    private static int readEntryAtIndexUnchecked(Pointer table, UnsignedWord index) {
+        return table.readByte(indexToTableOffset(index));
+    }
+
     private static int readEntryAtIndex(Pointer table, UnsignedWord index) {
-        final int result = table.readByte(indexToTableOffset(index));
+        int result = readEntryAtIndexUnchecked(table, index);
         assert ((result == DIRTY_ENTRY) || (result == CLEAN_ENTRY)) : "Table entry out of range.";
         return result;
     }
@@ -371,32 +375,20 @@ public final class CardTable {
 
     protected static class ReferenceToYoungObjectVisitor implements ObjectVisitor {
 
-        /* Final state. */
         private final ReferenceToYoungObjectReferenceVisitor visitor;
 
         protected ReferenceToYoungObjectVisitor(ReferenceToYoungObjectReferenceVisitor visitor) {
-            super();
             this.visitor = visitor;
         }
 
         @Override
         public boolean visitObject(Object obj) {
             final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).newline();
-            if (!visitor.prologue()) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
-                witness.string("[[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).string("  fails prologue").string("]").newline();
-                return false;
-            }
-            trace.string("  past prologue; calling walkObject").newline();
+            visitor.reset();
+            trace.string("  calling walkObject").newline();
             if (!InteriorObjRefWalker.walkObject(obj, visitor)) {
                 final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
                 witness.string("[[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).string("  fails InteriorObjRefWalker.walkObject").string("]").newline();
-                return false;
-            }
-            trace.string("  past walkObject; calling epilogue").newline();
-            if (!visitor.epilogue()) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
-                witness.string("[[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).string("  fails prologue").string("]").newline();
                 return false;
             }
             trace.string("  visitor.getFound(): ").bool(visitor.found).string("  returns true").string("]").newline();
@@ -433,13 +425,10 @@ public final class CardTable {
         private boolean witnessForDebugging;
 
         ReferenceToYoungObjectReferenceVisitor() {
-            super();
         }
 
-        @Override
-        public boolean prologue() {
+        public void reset() {
             found = false;
-            return true;
         }
 
         @Override

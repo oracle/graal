@@ -44,11 +44,17 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -474,6 +480,134 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             env.registerService(this);
         }
 
+    }
+
+    @Test
+    public void testMultiThreadedLoadSource() throws InterruptedException {
+        testMultiThreadedSourceBindings(true);
+    }
+
+    @Test
+    public void testMultiThreadedExecuteSource() throws InterruptedException {
+        testMultiThreadedSourceBindings(false);
+    }
+
+    private void testMultiThreadedSourceBindings(boolean load) throws InterruptedException {
+        Engine testEngine = Engine.create();
+        int numInstrumentationThreads = 10;
+        int numExecutionThreads = 20;
+        Instrument instrument = testEngine.getInstruments().get(TestSourceListenerInstrument.ID);
+        TestSourceListenerInstrument testInstrument = instrument.lookup(TestSourceListenerInstrument.class);
+        InstrumentationThread[] instrumentationThreads = new InstrumentationThread[numInstrumentationThreads];
+        for (int i = 0; i < numInstrumentationThreads; i++) {
+            instrumentationThreads[i] = new InstrumentationThread(testInstrument.instrumentEnv, load, i);
+        }
+
+        Thread[] executionThreads = new Thread[numExecutionThreads];
+        int sourceNumDigits = Integer.toString(numExecutionThreads - 1).length();
+        for (int i = 0; i < numExecutionThreads; i++) {
+            final int fi = i;
+            executionThreads[i] = new Thread() {
+                @Override
+                public void run() {
+                    Context threadContext = Context.newBuilder().engine(testEngine).build();
+                    String code = "ROOT(DEFINE(f1, STATEMENT(EXPRESSION)), DEFINE(f2, STATEMENT)," +
+                                    "BLOCK(CALL(f1), CALL(f2)))";
+                    Source source = Source.newBuilder(InstrumentationTestLanguage.ID, code, sourceName(fi, sourceNumDigits)).buildLiteral();
+                    threadContext.eval(source);
+                }
+            };
+        }
+
+        int numExec1 = numExecutionThreads / 4;
+        for (int i = 0; i < numExec1; i++) {
+            executionThreads[i].start();
+            executionThreads[i].join();
+        }
+        int numInstr1 = numInstrumentationThreads / 4;
+        for (int i = 0; i < numInstr1; i++) {
+            instrumentationThreads[i].start();
+            instrumentationThreads[i].join();
+        }
+        for (int i = numInstr1; i < numInstrumentationThreads; i++) {
+            instrumentationThreads[i].start();
+        }
+        for (int i = numExec1; i < numExecutionThreads; i++) {
+            executionThreads[i].start();
+        }
+        for (int i = numInstr1; i < numInstrumentationThreads; i++) {
+            instrumentationThreads[i].join();
+        }
+        for (int i = numExec1; i < numExecutionThreads; i++) {
+            executionThreads[i].join();
+        }
+
+        for (int i = 0; i < numInstrumentationThreads; i++) {
+            List<com.oracle.truffle.api.source.Source> sourceList = instrumentationThreads[i].sources;
+            Assert.assertEquals("Instrument " + i + " : " + sourceList.toString(), numExecutionThreads, sourceList.size());
+            Set<String> names = new TreeSet<>();
+            for (int t = 0; t < numExecutionThreads; t++) {
+                names.add(sourceList.get(t).getName());
+            }
+            int t = 0;
+            for (String name : names) {
+                Assert.assertEquals(names.toString(), sourceName(t++, sourceNumDigits), name);
+            }
+        }
+    }
+
+    private static String sourceName(int n, int digits) {
+        String ns = Integer.toString(n);
+        while (ns.length() < digits) {
+            ns = "0" + ns;
+        }
+        return "source " + ns;
+    }
+
+    @TruffleInstrument.Registration(id = TestSourceListenerInstrument.ID, services = TestSourceListenerInstrument.class)
+    public static class TestSourceListenerInstrument extends TruffleInstrument {
+
+        static final String ID = "testSourceListenerInstrument";
+        Env instrumentEnv;
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(this);
+            this.instrumentEnv = env;
+        }
+
+    }
+
+    private class InstrumentationThread extends Thread {
+
+        private final TruffleInstrument.Env env;
+        private final boolean load;
+        private final List<com.oracle.truffle.api.source.Source> sources = Collections.synchronizedList(new ArrayList<>());
+
+        InstrumentationThread(TruffleInstrument.Env env, boolean load, int n) {
+            super("Instrumentation Thread " + n);
+            this.env = env;
+            this.load = load;
+        }
+
+        @Override
+        public void run() {
+            if (load) {
+                env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
+                    @Override
+                    public void onLoad(LoadSourceEvent event) {
+                        sources.add(event.getSource());
+                    }
+                }, true);
+            } else {
+                env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+                    @Override
+                    public void onExecute(ExecuteSourceEvent event) {
+                        sources.add(event.getSource());
+                    }
+                }, true);
+            }
+        }
     }
 
 }

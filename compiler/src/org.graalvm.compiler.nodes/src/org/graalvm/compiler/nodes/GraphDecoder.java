@@ -319,7 +319,7 @@ public class GraphDecoder {
         public static final NodeClass<ProxyPlaceholder> TYPE = NodeClass.create(ProxyPlaceholder.class);
 
         @Input ValueNode value;
-        @Input(InputType.Unchecked) Node proxyPoint;
+        @Input(InputType.Association) Node proxyPoint;
 
         public ProxyPlaceholder(ValueNode value, MergeNode proxyPoint) {
             super(TYPE, value.stamp(NodeView.DEFAULT));
@@ -878,33 +878,30 @@ public class GraphDecoder {
                 registerNode(outerScope, proxyOrderId, phiInput, true, false);
                 replacement = phiInput;
 
-            } else if (!merge.isPhiAtMerge(existing)) {
-                /* Now we have two different values, so we need to create a phi node. */
-                PhiNode phi;
-                if (proxy instanceof ValueProxyNode) {
-                    phi = graph.addWithoutUnique(new ValuePhiNode(proxy.stamp(NodeView.DEFAULT), merge));
-                } else if (proxy instanceof GuardProxyNode) {
-                    phi = graph.addWithoutUnique(new GuardPhiNode(merge));
-                } else {
-                    throw GraalError.shouldNotReachHere();
-                }
-                /* Add the inputs from all previous exits. */
-                for (int j = 0; j < merge.phiPredecessorCount() - 1; j++) {
-                    phi.addInput(existing);
-                }
-                /* Add the input from this exit. */
-                phi.addInput(phiInput);
-                registerNode(outerScope, proxyOrderId, phi, true, false);
-                replacement = phi;
-                phiCreated = true;
-
             } else {
-                /* Phi node has been created before, so just add the new input. */
-                PhiNode phi = (PhiNode) existing;
-                phi.addInput(phiInput);
-                replacement = phi;
-            }
+                // Fortify: Suppress Null Dereference false positive
+                assert merge != null;
 
+                if (!merge.isPhiAtMerge(existing)) {
+                    /* Now we have two different values, so we need to create a phi node. */
+                    PhiNode phi = proxy.createPhi(merge);
+                    /* Add the inputs from all previous exits. */
+                    for (int j = 0; j < merge.phiPredecessorCount() - 1; j++) {
+                        phi.addInput(existing);
+                    }
+                    /* Add the input from this exit. */
+                    phi.addInput(phiInput);
+                    registerNode(outerScope, proxyOrderId, phi, true, false);
+                    replacement = phi;
+                    phiCreated = true;
+
+                } else {
+                    /* Phi node has been created before, so just add the new input. */
+                    PhiNode phi = (PhiNode) existing;
+                    phi.addInput(phiInput);
+                    replacement = phi;
+                }
+            }
             proxy.replaceAtUsagesAndDelete(replacement);
         }
 
@@ -1332,6 +1329,11 @@ public class GraphDecoder {
      * @param methodScope The current method.
      */
     protected void cleanupGraph(MethodScope methodScope) {
+        for (MergeNode merge : graph.getNodes(MergeNode.TYPE)) {
+            for (ProxyPlaceholder placeholder : merge.usages().filter(ProxyPlaceholder.class).snapshot()) {
+                placeholder.replaceAndDelete(placeholder.value);
+            }
+        }
         assert verifyEdges();
     }
 
@@ -1814,6 +1816,7 @@ class LoopDetector implements Runnable {
             }
         }
         assert loopVariableIndex != -1;
+        assert explosionHeadValue != null;
 
         ValuePhiNode loopVariablePhi;
         SortedMap<Integer, AbstractBeginNode> dispatchTable = new TreeMap<>();

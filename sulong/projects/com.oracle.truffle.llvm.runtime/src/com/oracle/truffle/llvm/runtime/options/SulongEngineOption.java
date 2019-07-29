@@ -39,18 +39,20 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
-import org.graalvm.options.OptionStability;
 
 public final class SulongEngineOption {
 
     public static final String OPTION_ARRAY_SEPARATOR = ":";
 
     // @formatter:off
-    @Option(name = "llvm.stackSizeKB", category = OptionCategory.USER, help = "The stack size in KB.") public static final OptionKey<Integer> STACK_SIZE_KB = new OptionKey<>(81920);
+    @Option(name = "llvm.stackSize", category = OptionCategory.USER, stability = OptionStability.STABLE,
+            help = "The stack size, please end the input with one of: k, m, g, or t. (Note: the stack size will be in bytes if no appropriate suffix is give.)")
+            public static final OptionKey<String> STACK_SIZE = new OptionKey<>("81920k");
 
     public static final String LIBRARY_PATH_NAME = "llvm.libraryPath";
     @Option(name = LIBRARY_PATH_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
@@ -75,13 +77,17 @@ public final class SulongEngineOption {
     @Option(name = "llvm.printLifetimeAnalysisStats", category = OptionCategory.USER, help = "Prints the results of the lifetime analysis. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
     public static final OptionKey<String> PRINT_LIFE_TIME_ANALYSIS_STATS = new OptionKey<>(String.valueOf(false));
 
+    @Option(name = "llvm.debugLoader", category = OptionCategory.EXPERT, help = "Turns dynamic loader debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    public static final OptionKey<String> LD_DEBUG = new OptionKey<>(String.valueOf(false));
+
     @Option(name = "llvm.parseOnly", category = OptionCategory.EXPERT, help = "Only parses a bc file; execution is not possible.") //
     public static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
 
     @Option(name = "llvm.enableLVI", category = OptionCategory.EXPERT, help = "Enable source-level inspection of local variables.") //
     public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
 
-    @Option(name = "llvm.lazyParsing", category = OptionCategory.EXPERT, help = "Enable lazy parsing of LLVM bitcode files.") //
+    public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
+    @Option(name = LAZY_PARSING_NAME, category = OptionCategory.EXPERT, help = "Enable lazy parsing of LLVM bitcode files.") //
     public static final OptionKey<Boolean> LAZY_PARSING = new OptionKey<>(true);
 
     @Option(name = "llvm.llDebug", category = OptionCategory.EXPERT, help = "Enable IR-level debugging of LLVM bitcode files.") //
@@ -98,7 +104,7 @@ public final class SulongEngineOption {
 
     public static final String LIBRARIES_NAME = "llvm.libraries";
     @Option(name = LIBRARIES_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
-            help = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). " + //
+            help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " + //
                    "Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
     // @formatter:on

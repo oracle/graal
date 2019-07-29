@@ -194,8 +194,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             if (fileSystemContext != null) {
                 try {
-                    TruffleFile pathAbsolute = VMAccessor.LANGUAGE.getTruffleFile(path, fileSystemContext);
-                    TruffleFile pathBase = VMAccessor.LANGUAGE.getTruffleFile("", fileSystemContext).getAbsoluteFile();
+                    TruffleFile pathAbsolute = EngineAccessor.LANGUAGE.getTruffleFile(path, fileSystemContext);
+                    TruffleFile pathBase = EngineAccessor.LANGUAGE.getTruffleFile("", fileSystemContext).getAbsoluteFile();
                     TruffleFile pathRelative = pathBase.relativize(pathAbsolute);
                     b.append(pathRelative.getPath());
                 } catch (IllegalArgumentException | UnsupportedOperationException | SecurityException e) {

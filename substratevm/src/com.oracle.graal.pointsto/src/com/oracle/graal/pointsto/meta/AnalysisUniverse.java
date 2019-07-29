@@ -40,9 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -52,6 +50,7 @@ import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
@@ -535,7 +534,7 @@ public class AnalysisUniverse implements Universe {
         return destination;
     }
 
-    private void buildSubTypes() {
+    public void buildSubTypes() {
         Map<AnalysisType, Set<AnalysisType>> allSubTypes = new HashMap<>();
         AnalysisType objectType = null;
         for (AnalysisType type : getTypes()) {
@@ -567,21 +566,26 @@ public class AnalysisUniverse implements Universe {
     private void collectMethodImplementations(BigBang bb) {
         for (AnalysisMethod method : methods.values()) {
 
-            Set<AnalysisMethod> implementations = new HashSet<>();
-            if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-                if (method.isImplementationInvoked()) {
-                    implementations.add(method);
-                }
-            } else {
-                try {
-                    collectMethodImplementations(method, method.getDeclaringClass(), implementations);
-                } catch (UnsupportedFeatureException ex) {
-                    String message = String.format("Error while collecting implementations of %s : %s%n", method.format("%H.%n(%p)"), ex.getMessage());
-                    bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, null, ex.getCause());
-                }
-            }
+            Set<AnalysisMethod> implementations = getMethodImplementations(bb, method);
             method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
         }
+    }
+
+    public Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method) {
+        Set<AnalysisMethod> implementations = new HashSet<>();
+        if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
+            if (method.isImplementationInvoked()) {
+                implementations.add(method);
+            }
+        } else {
+            try {
+                collectMethodImplementations(method, method.getDeclaringClass(), implementations);
+            } catch (UnsupportedFeatureException ex) {
+                String message = String.format("Error while collecting implementations of %s : %s%n", method.format("%H.%n(%p)"), ex.getMessage());
+                bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, null, ex.getCause());
+            }
+        }
+        return implementations;
     }
 
     private boolean collectMethodImplementations(AnalysisMethod method, AnalysisType holder, Set<AnalysisMethod> implementations) {
@@ -624,16 +628,6 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
-    public OptionValues adjustCompilerOptions(OptionValues optionValues, ResolvedJavaMethod method) {
-        /*
-         * For the AnalysisUniverse we want to always disable the liveness analysis, since we want
-         * the points-to analysis to be as conservative as possible. We don't want the optimization
-         * level to affect the execution of the points-to analysis.
-         */
-        return new OptionValues(optionValues, GraalOptions.OptClearNonLiveLocals, false);
-    }
-
-    @Override
     public AnalysisType objectType() {
         return objectClass;
     }
@@ -647,6 +641,13 @@ public class AnalysisUniverse implements Universe {
     }
 
     public boolean platformSupported(AnnotatedElement element) {
+        if (element instanceof ResolvedJavaType) {
+            Package p = OriginalClassProvider.getJavaClass(getOriginalSnippetReflection(), (ResolvedJavaType) element).getPackage();
+            if (p != null && !platformSupported(p)) {
+                return false;
+            }
+        }
+
         Platforms platformsAnnotation = GuardedAnnotationAccess.getAnnotation(element, Platforms.class);
         if (platform == null || platformsAnnotation == null) {
             return true;

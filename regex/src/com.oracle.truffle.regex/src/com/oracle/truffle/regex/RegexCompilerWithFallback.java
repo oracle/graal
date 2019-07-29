@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,20 +34,20 @@ import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGE
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_COMPILER_FALLBACK;
 import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TOTAL_COMPILATION_TIME;
 
-public class RegexCompilerWithFallback extends RegexCompiler {
+public class RegexCompilerWithFallback implements RegexCompiler {
 
     private final RegexCompiler mainCompiler;
     private final RegexCompiler fallbackCompiler;
 
-    public RegexCompilerWithFallback(TruffleObject mainCompiler, TruffleObject fallbackCompiler) {
-        this.mainCompiler = ForeignRegexCompiler.importRegexCompiler(mainCompiler);
+    public RegexCompilerWithFallback(RegexCompiler mainCompiler, TruffleObject fallbackCompiler) {
+        this.mainCompiler = mainCompiler;
         this.fallbackCompiler = ForeignRegexCompiler.importRegexCompiler(fallbackCompiler);
     }
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public TruffleObject compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
-        TruffleObject regex;
+    public Object compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
+        Object regex;
         long elapsedTimeMain = 0;
         long elapsedTimeFallback = 0;
         DebugUtil.Timer timer = null;

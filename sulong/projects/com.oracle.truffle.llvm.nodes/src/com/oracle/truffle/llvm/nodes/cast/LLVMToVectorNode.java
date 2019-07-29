@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -143,7 +143,7 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
             assert from.getLength() == getVectorLength();
             final byte[] vector = new byte[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
-                vector[i] = (byte) (from.getValue(i) ? 1 : 0);
+                vector[i] = (byte) (from.getValue(i) ? 0xff : 0);
             }
             return LLVMI8Vector.create(vector);
         }

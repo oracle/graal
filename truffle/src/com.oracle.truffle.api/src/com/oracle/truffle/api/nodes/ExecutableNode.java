@@ -82,7 +82,7 @@ public abstract class ExecutableNode extends Node {
         CompilerAsserts.neverPartOfCompilation();
         this.language = language;
         if (this.language != null) {
-            this.sourceVM = Node.ACCESSOR.engineSupport().getVMFromLanguageObject(Node.ACCESSOR.languageSupport().getVMObject(this.language));
+            this.sourceVM = NodeAccessor.ACCESSOR.engineSupport().getVMFromLanguageObject(NodeAccessor.ACCESSOR.languageSupport().getVMObject(this.language));
         } else {
             this.sourceVM = getCurrentVM();
         }
@@ -92,7 +92,7 @@ public abstract class ExecutableNode extends Node {
     }
 
     private static Object getCurrentVM() {
-        EngineSupport engine = Node.ACCESSOR.engineSupport();
+        EngineSupport engine = NodeAccessor.ACCESSOR.engineSupport();
         if (engine != null) {
             return engine.getCurrentVM();
         } else {
@@ -119,7 +119,7 @@ public abstract class ExecutableNode extends Node {
      */
     public final LanguageInfo getLanguageInfo() {
         if (language != null) {
-            return Node.ACCESSOR.languageSupport().getLanguageInfo(language);
+            return NodeAccessor.ACCESSOR.languageSupport().getLanguageInfo(language);
         } else {
             return null;
         }
@@ -152,7 +152,7 @@ public abstract class ExecutableNode extends Node {
         return (C) spi;
     }
 
-    static class ReferenceCache {
+    static final class ReferenceCache {
 
         final Class<?> languageClass;
         final LanguageReference<?> languageReference;
@@ -163,9 +163,9 @@ public abstract class ExecutableNode extends Node {
         ReferenceCache(ExecutableNode executableNode, @SuppressWarnings("rawtypes") Class<? extends TruffleLanguage> languageClass, ReferenceCache next) {
             this.languageClass = languageClass;
             if (languageClass != null) {
-                this.languageReference = Node.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.sourceVM,
+                this.languageReference = NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.sourceVM,
                                 executableNode.language, languageClass);
-                this.contextReference = Node.ACCESSOR.engineSupport().lookupContextReference(executableNode.sourceVM,
+                this.contextReference = NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(executableNode.sourceVM,
                                 executableNode.language, languageClass);
             } else {
                 this.languageReference = null;
@@ -173,6 +173,7 @@ public abstract class ExecutableNode extends Node {
             }
             this.next = next;
         }
+
     }
 
     @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)

@@ -6,7 +6,7 @@ bench-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
     ${bench-jvmci.mx-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
 }
 
 bench-scala-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
@@ -17,10 +17,10 @@ bench-scala-dacapo-jfr: ${bench-common} ${default-heap} ${jfr-bench-notification
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
 }
 
-bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${large-heap} ${jfr-bench-notifications} {
+bench-specjvm2008-Single-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "specjvm2008"
   }
@@ -32,11 +32,14 @@ bench-specjvm2008-Single-jfr: ${bench-specjvm2008} ${large-heap} ${jfr-bench-not
   setup: ${bench-specjvm2008.setup} ${JFR.setup}
   teardown: [
     [rm, "-r", "${SPECJVM2008}/results"]
-  ] ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  ] ${JFR.teardown}
+  downloads: {
+    SPECJVM2008: { name: specjvm2008, version: "1.01" }
+  }
   timelimit: "3:30:00"
 }
 
-bench-specjbb2015-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifications} {
+bench-specjbb2015-jfr: ${bench-common} ${specjbb-large-heap} ${jfr-bench-notifications} {
   environment : {
     BENCH_SUITE : "specjbb2015"
   }
@@ -44,7 +47,7 @@ bench-specjbb2015-jfr: ${bench-common} ${large-heap} ${jfr-bench-notifications} 
     ${bench-jvmci.mx-specjbb2015} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
   downloads: {
     SPECJBB2015: { name: specjbb2015, version: "1.02" }
   }
@@ -59,9 +62,22 @@ bench-renaissance-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications
     ${bench-jvmci.mx-renaissance} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
+  timelimit: "2:30:00"
+}
+
+
+bench-renaissance-legacy-jfr: ${bench-common} ${default-heap} ${jfr-bench-notifications} {
+  environment : {
+    BENCH_SUITE : "renaissance-legacy"
+  }
+  run: [
+    ${bench-jvmci.mx-renaissance-legacy} ${bench-arguments} ${JFR.jvm-opts}
+  ]
+  setup: ${bench-common.setup} ${JFR.setup}
+  teardown: ${JFR.teardown}
   downloads: {
-    RENAISSANCE: { name: renaissance, version: "0.1" }
+    RENAISSANCE_LEGACY: { name: renaissance, version: "0.1" }
   }
   timelimit: "3:45:00"
 }
@@ -74,7 +90,7 @@ bench-spark-sql-perf-jfr: ${bench-common} ${default-heap} ${jfr-bench-notificati
     ${bench-jvmci.mx-spark-sql-perf} ${bench-arguments} ${JFR.jvm-opts}
   ]
   setup: ${bench-common.setup} ${JFR.setup}
-  teardown: ${JFR.teardown} # NOTE : Exclude branch-common to avoid polluting bench server with slower runs
+  teardown: ${JFR.teardown}
   downloads: {
     SPARK_SQL_PERF: { name: spark-sql-perf, version: "0.1" }
   }
@@ -97,10 +113,11 @@ x52.tmpfs10g-jfr : ${x52.default-jfr} {
 }
 
 builds += [
-  ${x52.tmpfs10g-jfr} ${bench-dacapo-jfr}                        ${labsjdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
-  ${x52.tmpfs10g-jfr} ${bench-scala-dacapo-jfr}                  ${labsjdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-specjvm2008-Single-jfr}             ${labsjdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-specjbb2015-jfr}                    ${labsjdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-renaissance-jfr}                    ${labsjdk8} { name: "bench-compiler-renaissance-linux-x52-jfr" }
-  ${x52.default-jfr} ${bench-spark-sql-perf-jfr}                 ${labsjdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
+  ${x52.tmpfs10g-jfr} ${bench-dacapo-jfr}                        ${oraclejdk8} { name: "bench-compiler-dacapo-linux-x52-jfr" }
+  ${x52.tmpfs10g-jfr} ${bench-scala-dacapo-jfr}                  ${oraclejdk8} { name: "bench-compiler-scala-dacapo-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-specjvm2008-Single-jfr}             ${oraclejdk8} { name: "bench-compiler-specjvm2008-Single-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-specjbb2015-jfr}                    ${oraclejdk8} { name: "bench-compiler-specjbb2015-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-renaissance-jfr}                    ${oraclejdk8} { name: "bench-compiler-renaissance-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-renaissance-legacy-jfr}             ${oraclejdk8} { name: "bench-compiler-renaissance-legacy-linux-x52-jfr" }
+  ${x52.default-jfr} ${bench-spark-sql-perf-jfr}                 ${oraclejdk8} { name: "bench-compiler-spark-sql-perf-linux-x52-jfr" }
 ]

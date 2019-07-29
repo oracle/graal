@@ -36,7 +36,6 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.PiArrayNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.PrefetchAllocateNode;
@@ -63,7 +62,7 @@ import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -78,7 +77,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.HeapPolicy;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
-import com.oracle.svm.core.genscavenge.PinnedAllocatorImpl;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
@@ -87,8 +85,6 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.DimensionsNode;
 import com.oracle.svm.core.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.graal.nodes.FormatObjectNode;
-import com.oracle.svm.core.graal.nodes.NewPinnedArrayNode;
-import com.oracle.svm.core.graal.nodes.NewPinnedInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewArrayNode;
 import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
@@ -99,7 +95,6 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -110,19 +105,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class AllocationSnippets extends SubstrateTemplates implements Snippets {
 
-    public static final Object[] ALLOCATION_LOCATION_IDENTITIES = new Object[]{ThreadLocalAllocation.TOP_IDENTITY, ThreadLocalAllocation.END_IDENTITY,
-                    AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD, PinnedAllocatorImpl.OPEN_PINNED_ALLOCATOR_IDENTITY};
+    public static final Object[] ALLOCATION_LOCATION_IDENTITIES = new Object[]{ThreadLocalAllocation.TOP_IDENTITY,
+                    ThreadLocalAllocation.END_IDENTITY, AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD};
 
     private static final SubstrateForeignCallDescriptor CHECK_DYNAMIC_HUB = SnippetRuntime.findForeignCall(AllocationSnippets.class, "checkDynamicHub", true);
     private static final SubstrateForeignCallDescriptor CHECK_ARRAY_HUB = SnippetRuntime.findForeignCall(AllocationSnippets.class, "checkArrayHub", true);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
     private static final SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewArray", true);
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(AllocationSnippets.class, "newMultiArray", true);
-    private static final SubstrateForeignCallDescriptor SLOW_NEW_PINNED_INSTANCE = SnippetRuntime.findForeignCall(PinnedAllocatorImpl.class, "slowPathNewInstance", true);
-    private static final SubstrateForeignCallDescriptor SLOW_NEW_PINNED_ARRAY = SnippetRuntime.findForeignCall(PinnedAllocatorImpl.class, "slowPathNewArray", true);
 
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CHECK_DYNAMIC_HUB, CHECK_ARRAY_HUB, SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY, NEW_MULTI_ARRAY,
-                    SLOW_NEW_PINNED_INSTANCE, SLOW_NEW_PINNED_ARRAY};
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CHECK_DYNAMIC_HUB, CHECK_ARRAY_HUB, SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY, NEW_MULTI_ARRAY};
 
     public static Object newInstance(DynamicHub hub, int encoding, @ConstantParameter boolean constantSize, @ConstantParameter boolean fillContents, AllocationCounter counter) {
         checkHub(hub);
@@ -201,28 +193,6 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         return newInstance(hub, hub.getLayoutEncoding(), false, fillContents, counter);
     }
 
-    @Snippet
-    public static Object newPinnedInstanceSnippet(PinnedAllocatorImpl pinnedAllocator, DynamicHub hub, @ConstantParameter int encoding, @ConstantParameter boolean fillContents,
-                    AllocationCounter counter) {
-
-        pinnedAllocator.ensureOpen();
-        UnsignedWord size = LayoutEncoding.getInstanceSize(encoding);
-        profileAllocation(size, counter);
-
-        Pointer memory = ThreadLocalAllocation.allocateMemory(ThreadLocalAllocation.pinnedTLAB.getAddress(), size);
-        Object result;
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
-            result = formatObjectImpl(memory, hub, size, true, fillContents, false);
-        } else {
-            result = callSlowNewPinnedInstance(SLOW_NEW_PINNED_INSTANCE, pinnedAllocator, DynamicHub.toClass(hub));
-        }
-
-        return PiNode.piCastToSnippetReplaceeStamp(result);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native Object callSlowNewPinnedInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, PinnedAllocatorImpl pinnedAllocator, Class<?> c);
-
     private static void profileAllocation(UnsignedWord size, AllocationCounter counter) {
         if (AllocationSite.Options.AllocationProfiling.getValue()) {
             counter.incrementCount();
@@ -283,32 +253,6 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         DynamicHub hub = getCheckedArrayHub(elementType);
         return fastNewArrayWithPiCast(hub, length, hub.getLayoutEncoding(), fillContents, counter);
     }
-
-    @Snippet
-    public static Object newPinnedArraySnippet(PinnedAllocatorImpl pinnedAllocator, DynamicHub hub, int length, @ConstantParameter int layoutEncoding, @ConstantParameter boolean fillContents,
-                    AllocationCounter counter) {
-
-        pinnedAllocator.ensureOpen();
-        UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
-        profileAllocation(size, counter);
-
-        Pointer memory = WordFactory.nullPointer();
-        if (size.belowOrEqual(HeapPolicy.getLargeArrayThreshold()) && length >= 0) {
-            memory = ThreadLocalAllocation.allocateMemory(ThreadLocalAllocation.pinnedTLAB.getAddress(), size);
-        }
-
-        Object result = null;
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
-            result = formatArrayImpl(memory, hub, length, layoutEncoding, size, fillContents, false, false);
-        } else {
-            result = callSlowNewPinnedArray(SLOW_NEW_PINNED_ARRAY, pinnedAllocator, DynamicHub.toClass(hub), length);
-        }
-
-        return PiArrayNode.piArrayCastToSnippetReplaceeStamp(result, length);
-    }
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    private static native Object callSlowNewPinnedArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, PinnedAllocatorImpl pinnedAllocator, Class<?> c, int length);
 
     @Snippet
     public static Object formatObjectSnippet(Word memory, DynamicHub hub, boolean rememberedSet) {
@@ -593,9 +537,6 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
         NewMultiArrayLowering newMultiArrayLowering = new NewMultiArrayLowering();
         lowerings.put(NewMultiArrayNode.class, newMultiArrayLowering);
 
-        lowerings.put(NewPinnedInstanceNode.class, new NewPinnedInstanceLowering());
-        lowerings.put(NewPinnedArrayNode.class, new NewPinnedArrayLowering());
-
         lowerings.put(FormatObjectNode.class, new FormatObjectLowering());
         lowerings.put(FormatArrayNode.class, new FormatArrayLowering());
 
@@ -701,47 +642,6 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             args.add("length", node.length());
             args.addConst("fillContents", node.fillContents());
             addCounterArgs(args, node, null);
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
-        }
-    }
-
-    protected class NewPinnedInstanceLowering implements NodeLoweringProvider<NewPinnedInstanceNode> {
-
-        private final SnippetInfo newPinnedInstance = snippet(AllocationSnippets.class, "newPinnedInstanceSnippet", ALLOCATION_LOCATION_IDENTITIES);
-
-        @Override
-        public void lower(NewPinnedInstanceNode node, LoweringTool tool) {
-            if (node.graph().getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
-                return;
-            }
-            SharedType type = (SharedType) node.instanceClass();
-            Arguments args = new Arguments(newPinnedInstance, node.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("pinnedAllocator", node.getPinnedAllocator());
-            args.add("hub", ConstantNode.forConstant(StampFactory.objectNonNull(), SubstrateObjectConstant.forObject(type.getHub()), providers.getMetaAccess(), node.graph()));
-            args.addConst("encoding", type.getHub().getLayoutEncoding());
-            args.addConst("fillContents", node.fillContents());
-            addCounterArgs(args, node, type);
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
-        }
-    }
-
-    protected class NewPinnedArrayLowering implements NodeLoweringProvider<NewPinnedArrayNode> {
-
-        private final SnippetInfo newPinnedArray = snippet(AllocationSnippets.class, "newPinnedArraySnippet", ALLOCATION_LOCATION_IDENTITIES);
-
-        @Override
-        public void lower(NewPinnedArrayNode node, LoweringTool tool) {
-            if (node.graph().getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
-                return;
-            }
-            SharedType type = (SharedType) node.elementType().getArrayClass();
-            Arguments args = new Arguments(newPinnedArray, node.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("pinnedAllocator", node.getPinnedAllocator());
-            args.add("hub", type.getHub());
-            args.add("length", node.length());
-            args.addConst("layoutEncoding", type.getHub().getLayoutEncoding());
-            args.addConst("fillContents", node.fillContents());
-            addCounterArgs(args, node, type);
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }

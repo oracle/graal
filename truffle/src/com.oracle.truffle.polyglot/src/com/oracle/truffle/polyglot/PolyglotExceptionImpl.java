@@ -126,7 +126,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
                 String language = truffleSource.getLanguage();
                 if (language == null) {
-                    PolyglotLanguage foundLanguage = languageContext.getEngine().findLanguage(language, truffleSource.getMimeType(), false);
+                    PolyglotLanguage foundLanguage = languageContext.getEngine().findLanguage(null, language, truffleSource.getMimeType(), false, true);
                     if (foundLanguage != null) {
                         language = foundLanguage.getId();
                     }
@@ -172,7 +172,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
 
         // late materialization of host frames. only needed if polyglot exceptions cross the
         // host boundary.
-        VMAccessor.LANGUAGE.materializeHostFrames(original);
+        EngineAccessor.LANGUAGE.materializeHostFrames(original);
     }
 
     @Override
@@ -349,7 +349,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         if (context == null) {
             return null;
         }
-        return VMAccessor.LANGUAGE.createFileSystemContext(context.config.fileSystem, context.engine.getFileTypeDetectorsSupplier());
+        return EngineAccessor.LANGUAGE.createFileSystemContext(context.config.fileSystem, context.engine.getFileTypeDetectorsSupplier());
     }
 
     /**
@@ -450,8 +450,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
                     cause = cause.getCause();
                 }
             }
-            if (VMAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
-                this.hostStack = VMAccessor.LANGUAGE.getInternalStackTraceElements(cause);
+            if (EngineAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
+                this.hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(cause);
             } else if (cause.getStackTrace() == null || cause.getStackTrace().length == 0) {
                 this.hostStack = impl.exception.getStackTrace();
             } else {
@@ -565,7 +565,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
         }
 
         static boolean isGuestCall(StackTraceElement element) {
-            return isLazyStackTraceElement(element) || VMAccessor.SPI.isGuestCallStackElement(element);
+            return isLazyStackTraceElement(element) || EngineAccessor.ACCESSOR.isGuestCallStackElement(element);
         }
 
         static boolean isHostToGuest(StackTraceElement element) {

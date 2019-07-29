@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -92,25 +91,25 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
         }
     }
 
-    public RegexResult createFromStart(RegexObject regex, Object input, int start) {
-        return createFromOffset(regex, input, start - indices[0]);
+    public RegexResult createFromStart(int start) {
+        return createFromOffset(start - indices[0]);
     }
 
-    public RegexResult createFromEnd(RegexObject regex, Object input, int end) {
-        return createFromOffset(regex, input, end - length);
+    public RegexResult createFromEnd(int end) {
+        return createFromOffset(end - length);
     }
 
     public int getNumberOfGroups() {
         return indices.length / 2;
     }
 
-    private RegexResult createFromOffset(RegexObject regex, Object input, int offset) {
+    private RegexResult createFromOffset(int offset) {
         if (indices.length == 2) {
-            return new SingleResult(regex, input, indices[0] + offset, indices[1] + offset);
+            return new SingleResult(indices[0] + offset, indices[1] + offset);
         }
         final int[] realIndices = new int[indices.length];
         applyOffset(realIndices, offset);
-        return new SingleIndexArrayResult(regex, input, realIndices);
+        return new SingleIndexArrayResult(realIndices);
     }
 
     public void applyRelativeToEnd(int[] target, int end) {

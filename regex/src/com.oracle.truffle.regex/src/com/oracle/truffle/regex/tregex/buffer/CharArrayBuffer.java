@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@ import java.util.Arrays;
  * <p>
  * Usage Example:
  * </p>
- * 
+ *
  * <pre>
  * CharArrayBuffer buf = new CharArrayBuffer();
  * List<char[]> results = new ArrayList<>();
@@ -48,14 +48,14 @@ import java.util.Arrays;
  */
 public class CharArrayBuffer extends AbstractArrayBuffer {
 
-    private char[] buf;
+    protected char[] buf;
 
     public CharArrayBuffer(int initialSize) {
         buf = new char[initialSize];
     }
 
     @Override
-    int getBufferSize() {
+    int getBufferLength() {
         return buf.length;
     }
 
@@ -69,13 +69,13 @@ public class CharArrayBuffer extends AbstractArrayBuffer {
     }
 
     public void add(char c) {
-        if (size == buf.length) {
-            grow(size * 2);
+        if (length == buf.length) {
+            grow(length * 2);
         }
-        buf[size++] = c;
+        buf[length++] = c;
     }
 
     public char[] toArray() {
-        return Arrays.copyOf(buf, size);
+        return Arrays.copyOf(buf, length);
     }
 }

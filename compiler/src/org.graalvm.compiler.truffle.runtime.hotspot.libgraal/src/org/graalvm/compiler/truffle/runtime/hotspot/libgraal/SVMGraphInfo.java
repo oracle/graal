@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.runtime.hotspot.libgraal.LibGraalTruffleRuntime.getIsolateThreadId;
+import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
@@ -32,19 +32,19 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 /**
  * Encapsulates a handle to a {@link GraphInfo} object in the SVM heap.
  */
-final class SVMGraphInfo extends SVMObject implements TruffleCompilerListener.GraphInfo {
+final class SVMGraphInfo extends SVMScopedHandle implements TruffleCompilerListener.GraphInfo {
 
     SVMGraphInfo(long handle) {
-        super(handle);
+        super(handle, SVMGraphInfo.class);
     }
 
     @Override
     public int getNodeCount() {
-        return HotSpotToSVMCalls.getNodeCount(getIsolateThreadId(), handle);
+        return HotSpotToSVMCalls.getNodeCount(getIsolateThread(), getHandle());
     }
 
     @Override
     public String[] getNodeTypes(boolean simpleNames) {
-        return HotSpotToSVMCalls.getNodeTypes(getIsolateThreadId(), handle, simpleNames);
+        return HotSpotToSVMCalls.getNodeTypes(getIsolateThread(), getHandle(), simpleNames);
     }
 }

@@ -44,10 +44,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Constructor;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.time.ZoneId;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -63,7 +65,6 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -79,6 +80,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -87,11 +89,19 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.List;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
+ * <p>
+ * All subclasses should be named "...Accessor" and should be top-level classes. They should have a
+ * private constructor and a singleton instance in a static field named ACCESSOR, under the
+ * "...Accessor" class. The implementation class "...Impl" extending "Accessor.<...>Support" should
+ * be a static class nested under the "...Accessor" class. This is important to avoid cycles during
+ * classloading and be able to initialize this class reliably.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "static-method"})
 public abstract class Accessor {
 
     @SuppressWarnings("all")
@@ -111,7 +121,7 @@ public abstract class Accessor {
         return SUPPORT.createUncachedIndirectCall();
     }
 
-    public abstract static class Nodes {
+    public abstract static class NodeSupport {
 
         public abstract boolean isInstrumentable(RootNode rootNode);
 
@@ -182,11 +192,6 @@ public abstract class Accessor {
     }
 
     public abstract static class EngineSupport {
-        public static final int EXECUTION_EVENT = 1;
-        public static final int SUSPENDED_EVENT = 2;
-
-        @SuppressWarnings("rawtypes")
-        public abstract Env findEnv(Object vm, Class<? extends TruffleLanguage> languageClass);
 
         public abstract Object getInstrumentationHandler(Object languageShared);
 
@@ -197,8 +202,6 @@ public abstract class Accessor {
         public abstract Object importSymbol(Object vmObject, Env env, String symbolName);
 
         public abstract boolean isMimeTypeSupported(Object languageShared, String mimeType);
-
-        public abstract void registerDebugger(Object vm, Object debugger);
 
         public abstract boolean isEvalRoot(RootNode target);
 
@@ -216,13 +219,11 @@ public abstract class Accessor {
 
         public abstract Object getCurrentVM();
 
-        public abstract CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames);
+        public abstract CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames, boolean allowInternal);
 
         public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
         public abstract Env getEnvForInstrument(LanguageInfo language);
-
-        public abstract Env getExistingEnvForInstrument(LanguageInfo language);
 
         public abstract LanguageInfo getObjectLanguage(Object obj, Object vmObject);
 
@@ -230,7 +231,9 @@ public abstract class Accessor {
 
         public abstract boolean isDisposed(Object vmInstance);
 
-        public abstract Map<String, LanguageInfo> getLanguages(Object vmInstance);
+        public abstract Map<String, LanguageInfo> getInternalLanguages(Object vmInstance);
+
+        public abstract Map<String, LanguageInfo> getPublicLanguages(Object vmInstance);
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object vmInstance);
 
@@ -304,10 +307,6 @@ public abstract class Accessor {
 
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
 
-        public abstract Object legacyTckEnter(Object vm);
-
-        public abstract void legacyTckLeave(Object vm, Object prev);
-
         public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
 
         public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
@@ -336,8 +335,6 @@ public abstract class Accessor {
 
         public abstract Object getCurrentOuterContext();
 
-        public abstract Env getLanguageEnv(Object languageContextVMObject, LanguageInfo otherLanguage);
-
         public abstract boolean isCharacterBasedSource(String language, String mimeType);
 
         public abstract Set<String> getValidMimeTypes(String language);
@@ -364,7 +361,30 @@ public abstract class Accessor {
 
         public abstract FileSystem getFileSystem(Object contextVMObject);
 
-        public abstract Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> getFileTypeDetectorsSupplier(Object contextVMObject);
+        public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object contextVMObject);
+
+        public abstract boolean isPolyglotEvalAllowed(Object vmObject);
+
+        public abstract boolean isPolyglotBindingsAccessAllowed(Object vmObject);
+
+        public abstract TruffleFile getTruffleFile(String path);
+
+        public abstract TruffleFile getTruffleFile(URI uri);
+
+        public abstract boolean isCreateProcessAllowed(Object polylgotLanguageContext);
+
+        public abstract Map<String, String> getProcessEnvironment(Object polyglotLanguageContext);
+
+        public abstract Process createSubProcess(Object polyglotLanguageContext, List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) throws IOException;
+
+        public abstract boolean hasDefaultProcessHandler(Object polyglotLanguageContext);
+
+        public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object vmObject, OutputStream stream);
+
+        public abstract boolean isIOAllowed();
+
+        public abstract ZoneId getTimeZone(Object vmObject);
     }
 
     public abstract static class LanguageSupport {
@@ -372,7 +392,7 @@ public abstract class Accessor {
         public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object languageVmObject, Object languageInstanceVMObject);
 
         public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors);
+                        String[] applicationArguments, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
 
         public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
 
@@ -385,8 +405,6 @@ public abstract class Accessor {
         public abstract Object evalInContext(Source source, Node node, MaterializedFrame frame);
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
-
-        public abstract Object languageGlobal(TruffleLanguage.Env env);
 
         public abstract void dispose(Env env);
 
@@ -416,8 +434,6 @@ public abstract class Accessor {
 
         public abstract Object getVMObject(InstrumentInfo info);
 
-        public abstract <S> S lookup(TruffleLanguage<?> languageEnsureInitialized, Class<S> type);
-
         public abstract boolean isContextInitialized(Env env);
 
         public abstract OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup);
@@ -439,7 +455,7 @@ public abstract class Accessor {
         public abstract Iterable<Scope> findTopScopes(Env env);
 
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors);
+                        FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
 
         public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
 
@@ -461,17 +477,27 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
-        public abstract Object createFileSystemContext(FileSystem fileSystem, Supplier<Iterable<? extends TruffleFile.FileTypeDetector>> fileTypeDetectors);
+        public abstract Object createFileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
 
         public abstract Object getCurrentFileSystemContext();
 
         public abstract String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException;
+
+        public abstract Charset getEncoding(TruffleFile file, String mimeType) throws IOException;
 
         public abstract Object getLanguageInstance(TruffleLanguage<?> language);
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
         public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
+
+        public abstract boolean isDefaultFileSystem(Object fileSystemContext);
+
+        public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+
+        public abstract TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+
+        public abstract SecurityException throwSecurityException(String message);
     }
 
     public abstract static class InstrumentSupport {
@@ -544,201 +570,119 @@ public abstract class Accessor {
 
     }
 
-    public abstract static class Frames {
+    public abstract static class FrameSupport {
         protected abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
         protected abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
     }
 
-    @CompilationFinal private static Accessor.LanguageSupport API;
-    @CompilationFinal private static Accessor.EngineSupport SPI;
-    private static Accessor.Nodes NODES;
-    private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
-    private static Accessor.DumpSupport DUMP;
-    private static Accessor.InteropSupport INTEROP;
-    private static Accessor.Frames FRAMES;
-    private static Accessor.SourceSupport SOURCE;
+    public abstract static class IOSupport {
+        public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
+    }
 
-    static {
-        TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
+    // A separate class to break the cycle such that Accessor can fully initialize
+    // before ...Accessor classes static initializers run, which call methods from Accessor.
+    private static class Constants {
 
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                return false;
+        private static final Accessor.LanguageSupport LANGUAGE;
+        private static final Accessor.NodeSupport NODES;
+        private static final Accessor.InstrumentSupport INSTRUMENT;
+        private static final Accessor.SourceSupport SOURCE;
+        private static final Accessor.InteropSupport INTEROP;
+        private static final Accessor.IOSupport IO;
+        private static final Accessor.FrameSupport FRAMES;
+        private static final Accessor.EngineSupport ENGINE;
+        private static final Accessor.DumpSupport DUMP;
+
+        static {
+            // Eager load all accessors so the above fields are all set and all methods are usable
+            LANGUAGE = loadSupport("com.oracle.truffle.api.LanguageAccessor$LanguageImpl");
+            NODES = loadSupport("com.oracle.truffle.api.nodes.NodeAccessor$AccessNodes");
+            INSTRUMENT = loadSupport("com.oracle.truffle.api.instrumentation.InstrumentAccessor$InstrumentImpl");
+            SOURCE = loadSupport("com.oracle.truffle.api.source.SourceAccessor$SourceSupportImpl");
+            INTEROP = loadSupport("com.oracle.truffle.api.interop.InteropAccessor$InteropImpl");
+            IO = loadSupport("com.oracle.truffle.api.io.IOAccessor$IOSupportImpl");
+            FRAMES = loadSupport("com.oracle.truffle.api.frame.FrameAccessor$FramesImpl");
+            ENGINE = loadSupport("com.oracle.truffle.polyglot.EngineAccessor$EngineImpl");
+            if (TruffleOptions.TraceASTJSON) {
+                DUMP = loadSupport("com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor$DumpImpl");
+            } else {
+                DUMP = null;
             }
+        }
 
-            @Override
-            protected Object createContext(TruffleLanguage.Env env) {
-                return null;
-            }
-
-        };
-        lng.hashCode();
-        new Node() {
-        }.getRootNode();
-
-        conditionallyInitDebugger();
-        conditionallyInitInterop();
-        conditionallyInitInstrumentation();
-        conditionallyInitSourceAccessor();
-        if (TruffleOptions.TraceASTJSON) {
+        @SuppressWarnings("unchecked")
+        private static <T> T loadSupport(String className) {
             try {
-                Class.forName("com.oracle.truffle.api.utilities.JSONHelper", true, Accessor.class.getClassLoader());
-            } catch (ClassNotFoundException ex) {
-                throw new IllegalStateException(ex);
-            }
-        }
-    }
-
-    @SuppressWarnings("all")
-    private static void conditionallyInitDebugger() throws IllegalStateException {
-        try {
-            Class.forName("com.oracle.truffle.api.debug.Debugger", true, Accessor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            boolean assertOn = false;
-            assert assertOn = true;
-            if (!assertOn) {
-                throw new IllegalStateException(ex);
-            }
-        }
-    }
-
-    @SuppressWarnings("all")
-    private static void conditionallyInitInstrumentation() throws IllegalStateException {
-        try {
-            Class.forName("com.oracle.truffle.api.instrumentation.InstrumentationHandler", true, Accessor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            boolean assertOn = false;
-            assert assertOn = true;
-            if (!assertOn) {
-                throw new IllegalStateException(ex);
-            }
-        }
-    }
-
-    @SuppressWarnings("all")
-    private static void conditionallyInitSourceAccessor() throws IllegalStateException {
-        try {
-            Class.forName("com.oracle.truffle.api.source.Source", true, Accessor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            boolean assertOn = false;
-            assert assertOn = true;
-            if (!assertOn) {
-                throw new IllegalStateException(ex);
-            }
-        }
-    }
-
-    @SuppressWarnings("all")
-    private static void conditionallyInitInterop() throws IllegalStateException {
-        try {
-            Class.forName("com.oracle.truffle.api.interop.ForeignAccess", true, Accessor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            boolean assertOn = false;
-            assert assertOn = true;
-            if (!assertOn) {
-                throw new IllegalStateException(ex);
+                Class<T> klass = (Class<T>) Class.forName(className, true, Accessor.class.getClassLoader());
+                Constructor<T> constructor = klass.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                return constructor.newInstance();
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(e);
             }
         }
     }
 
     protected Accessor() {
-        if (!this.getClass().getName().startsWith("com.oracle.truffle") && !this.getClass().getName().startsWith("com.oracle.truffle.tck")) {
-            throw new IllegalStateException();
-        }
-        String simpleName = this.getClass().getSimpleName();
-        if (simpleName.endsWith("API")) {
-            if (API != null) {
-                throw new IllegalStateException();
-            }
-            API = this.languageSupport();
-        } else if (simpleName.endsWith("Nodes")) {
-            if (NODES != null) {
-                throw new IllegalStateException();
-            }
-            NODES = this.nodes();
-        } else if (simpleName.endsWith("InstrumentHandler")) {
-            if (INSTRUMENTHANDLER != null) {
-                throw new IllegalStateException();
-            }
-            INSTRUMENTHANDLER = this.instrumentSupport();
-        } else if (simpleName.endsWith("Frames")) {
-            if (FRAMES != null) {
-                throw new IllegalStateException();
-            }
-            FRAMES = this.framesSupport();
-        } else if (simpleName.endsWith("SourceAccessor")) {
-            SOURCE = this.sourceSupport();
-        } else if (simpleName.endsWith("DumpAccessor")) {
-            DUMP = this.dumpSupport();
-        } else if (simpleName.endsWith("InteropAccessor")) {
-            INTEROP = this.interopSupport();
-        } else if (simpleName.endsWith("ScopeAccessor")) {
-            // O.K.
-        } else if (simpleName.endsWith("AccessorDebug")) {
-            // O.K.
-        } else if (simpleName.endsWith("TruffleTCKAccessor")) {
-            // O.K.
-        } else if (simpleName.endsWith("TestAccessor")) {
-            // O.K.
-        } else if (simpleName.endsWith("TestAPIAccessor")) {
-            // O.K.
-        } else {
-            assert simpleName.endsWith("VMAccessor");
-            SPI = this.engineSupport();
+        switch (this.getClass().getName()) {
+            case "com.oracle.truffle.api.LanguageAccessor":
+            case "com.oracle.truffle.api.nodes.NodeAccessor":
+            case "com.oracle.truffle.api.instrumentation.InstrumentAccessor":
+            case "com.oracle.truffle.api.source.SourceAccessor":
+            case "com.oracle.truffle.api.interop.InteropAccessor":
+            case "com.oracle.truffle.api.io.IOAccessor":
+            case "com.oracle.truffle.api.frame.FrameAccessor":
+            case "com.oracle.truffle.polyglot.EngineAccessor":
+            case "com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor":
+                // OK, classes initializing accessors
+                break;
+            case "com.oracle.truffle.api.debug.Debugger$AccessorDebug":
+            case "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor":
+            case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
+            case "com.oracle.truffle.api.test.polyglot.VirtualizedFileSystemTest$TestAPIAccessor":
+            case "com.oracle.truffle.api.impl.TVMCIAccessor":
+                // OK, classes allowed to use accessors
+                break;
+            default:
+                throw new IllegalStateException(this.getClass().getName());
         }
     }
 
-    protected Accessor.Nodes nodes() {
-        return NODES;
+    public final NodeSupport nodeSupport() {
+        return Constants.NODES;
     }
 
-    protected LanguageSupport languageSupport() {
-        return API;
+    public final LanguageSupport languageSupport() {
+        return Constants.LANGUAGE;
     }
 
-    protected DumpSupport dumpSupport() {
-        return DUMP;
+    public final DumpSupport dumpSupport() {
+        return Constants.DUMP;
     }
 
-    protected EngineSupport engineSupport() {
-        return SPI;
+    public final EngineSupport engineSupport() {
+        return Constants.ENGINE;
     }
 
-    protected InstrumentSupport instrumentSupport() {
-        return INSTRUMENTHANDLER;
+    public final InstrumentSupport instrumentSupport() {
+        return Constants.INSTRUMENT;
     }
 
-    protected InteropSupport interopSupport() {
-        return INTEROP;
+    public final InteropSupport interopSupport() {
+        return Constants.INTEROP;
     }
 
-    protected SourceSupport sourceSupport() {
-        return SOURCE;
+    public final SourceSupport sourceSupport() {
+        return Constants.SOURCE;
     }
 
-    static InstrumentSupport instrumentAccess() {
-        return INSTRUMENTHANDLER;
+    public final FrameSupport framesSupport() {
+        return Constants.FRAMES;
     }
 
-    static LanguageSupport languageAccess() {
-        return API;
-    }
-
-    static EngineSupport engineAccess() {
-        return SPI;
-    }
-
-    static Accessor.Nodes nodesAccess() {
-        return NODES;
-    }
-
-    protected Accessor.Frames framesSupport() {
-        return FRAMES;
-    }
-
-    static Accessor.Frames framesAccess() {
-        return FRAMES;
+    public final IOSupport ioSupport() {
+        return Constants.IO;
     }
 
     /**
@@ -765,6 +709,18 @@ public abstract class Accessor {
 
     }
 
+    public abstract static class CastUnsafe {
+
+        public abstract Object[] castArrayFixedLength(Object[] args, int length);
+
+        @SuppressWarnings({"unchecked"})
+        public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
+    }
+
+    protected CastUnsafe getCastUnsafe() {
+        return SUPPORT.getCastUnsafe();
+    }
+
     protected CallInlined getCallInlined() {
         return SUPPORT.getCallInlined();
     }
@@ -786,23 +742,14 @@ public abstract class Accessor {
         return SUPPORT.isGuestCallStackFrame(element);
     }
 
-    protected void initializeProfile(CallTarget target, Class<?>[] argmentTypes) {
-        SUPPORT.initializeProfile(target, argmentTypes);
+    protected void initializeProfile(CallTarget target, Class<?>[] argumentTypes) {
+        SUPPORT.initializeProfile(target, argumentTypes);
     }
 
     protected void onLoopCount(Node source, int iterations) {
         if (SUPPORT != null) {
             SUPPORT.onLoopCount(source, iterations);
         }
-    }
-
-    /*
-     * Do not remove: This is accessed reflectively in AccessorTest
-     */
-    static <T extends TruffleLanguage<?>> T findLanguageByClass(Object vm, Class<T> languageClass) {
-        Env env = SPI.findEnv(vm, languageClass);
-        TruffleLanguage<?> language = API.getLanguage(env);
-        return languageClass.cast(language);
     }
 
 }

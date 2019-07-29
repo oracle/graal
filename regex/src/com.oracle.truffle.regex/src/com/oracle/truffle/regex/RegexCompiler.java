@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,32 +24,9 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
 
 /**
- * {@link RegexCompiler} is an executable {@link TruffleObject} that compiles regular expressions
- * into {@link CompiledRegexObject}s or compatible {@link TruffleObject}s. It takes the following
- * arguments:
- * <ol>
- * <li>{@link String} {@code pattern}: the source of the regular expression to be compiled</li>
- * <li>{@link String} {@code flags} (optional): a textual representation of the flags to be passed
- * to the compiler (one letter per flag), see {@link RegexFlags} for the supported flags</li>
- * </ol>
- * Executing the {@link RegexCompiler} can also lead to the following exceptions:
- * <ul>
- * <li>{@link RegexSyntaxException}: if the input regular expression is malformed</li>
- * <li>{@link UnsupportedRegexException}: if the input regular expression cannot be compiled by this
- * compiler</li>
- * </ul>
- * <p>
  * {@link RegexCompiler}s are very similar to {@link RegexEngine}s. {@link RegexEngine}s produce
  * {@link RegexObject}s, which contain metadata about the compiled regular expression and lazy
  * access to a {@link CompiledRegexObject}s. When the {@link CompiledRegexObject} of a
@@ -60,37 +37,15 @@ import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
  * they are easier to provide by third-party RegExp engines. {@link RegexEngine}s exist because they
  * provide features that are desired by users of {@link RegexLanguage} (e.g. lazy compilation).
  */
-@ExportLibrary(InteropLibrary.class)
-public abstract class RegexCompiler implements RegexLanguageObject {
+public interface RegexCompiler {
 
     /**
      * Uses the compiler to try and compile the regular expression described in {@code source}.
      *
-     * @return a {@link CompiledRegexObject} or a compatible {@link TruffleObject}
+     * @return a {@link CompiledRegexObject} or a {@link TruffleObject} compatible to
+     *         {@link RegexObject}
      * @throws RegexSyntaxException if the engine discovers a syntax error in the regular expression
      * @throws UnsupportedRegexException if the regular expression is not supported by the engine
      */
-    public abstract TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException;
-
-    @ExportMessage
-    public boolean isExecutable() {
-        return true;
-    }
-
-    @ExportMessage
-    Object execute(Object[] args,
-                    @Cached ToStringNode patternToStringNode,
-                    @Cached ToStringNode flagsToStringNode) throws ArityException, UnsupportedTypeException {
-        if (!(args.length == 1 || args.length == 2)) {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(2, args.length);
-        }
-        String pattern = patternToStringNode.execute(args[0]);
-        String flags = "";
-        if (args.length == 2) {
-            flags = flagsToStringNode.execute(args[1]);
-        }
-        RegexSource regexSource = new RegexSource(pattern, flags);
-        return compile(regexSource);
-    }
+    Object compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException;
 }

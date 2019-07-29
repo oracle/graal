@@ -91,7 +91,7 @@ public class ComponentRegistryTest extends TestBase {
             ldr.loadSymlinks();
         }
 
-        fakeInfo = new ComponentInfo("org.graalvm.fake", "Fake component", "1.0");
+        fakeInfo = new ComponentInfo("org.graalvm.fake", "Fake component", "0.32");
         fakeInfo.addPaths(Arrays.asList(
                         "jre/bin/ruby",
                         "jre/languages/fake/nothing"));
@@ -99,15 +99,18 @@ public class ComponentRegistryTest extends TestBase {
     }
 
     private void registerAdditionalComponents() {
-        ComponentInfo tmp = new ComponentInfo("org.graalvm.foobar", "Test component 1", "1.0");
+        ComponentInfo tmp = new ComponentInfo("org.graalvm.foobar", "Test component 1", "0.32");
         mockStorage.installed.add(tmp);
 
-        tmp = new ComponentInfo("org.graalvm.clash", "Test component 2", "1.0");
+        tmp = new ComponentInfo("org.graalvm.clash", "Test component 2", "0.32");
         mockStorage.installed.add(tmp);
         tmp1 = tmp;
-        tmp = new ComponentInfo("org.github.clash", "Test component 3", "1.0");
+        tmp = new ComponentInfo("org.github.clash", "Test component 3", "0.32");
         mockStorage.installed.add(tmp);
         tmp2 = tmp;
+
+        tmp = new ComponentInfo("org.graalvm.Uppercase", "Test component 4", "0.32");
+        mockStorage.installed.add(tmp);
     }
 
     @After
@@ -280,4 +283,17 @@ public class ComponentRegistryTest extends TestBase {
         assertFalse(registry.isReplacedFilesChanged());
     }
 
+    @Test
+    public void testFindUppercaseIDComponent() throws Exception {
+        registerAdditionalComponents();
+        ComponentInfo ci = registry.findComponent("org.graalvm.Uppercase");
+        assertNotNull(ci);
+    }
+
+    @Test
+    public void testFindUppercaseIDComponentWithLowercaseExor() throws Exception {
+        registerAdditionalComponents();
+        ComponentInfo ci = registry.findComponent("org.graalvm.uppercase");
+        assertNotNull(ci);
+    }
 }

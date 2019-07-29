@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.graal.llvm.LLVMFeature.Options.IncludeLLVMDebugInfo;
+import static com.oracle.svm.core.graal.llvm.LLVMOptions.IncludeLLVMDebugInfo;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.util.Collections;
@@ -45,6 +45,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -64,8 +65,8 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
     }
 
     @Override
-    public AddressLoweringPhase.AddressLowering newAddressLowering(CodeCacheProvider codeCache) {
-        return new LLVMAddressLowering();
+    public Phase newAddressLoweringPhase(CodeCacheProvider codeCache) {
+        return new AddressLoweringPhase(new LLVMAddressLowering());
     }
 
     @Override
@@ -77,6 +78,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         LLVMIRBuilder builder = generator.getBuilder();
 
         builder.addMainFunction(generator.getLLVMFunctionType(method));
+        builder.setAttribute(builder.getMainFunction(), LLVM.LLVMAttributeFunctionIndex, "naked");
 
         LLVMBasicBlockRef block = builder.appendBasicBlock("main");
         builder.positionAtEnd(block);
@@ -84,7 +86,9 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         long startPatchpointId = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
         builder.buildStackmap(builder.constantLong(startPatchpointId));
 
-        builder.buildDebugtrap();
+        LLVM.LLVMValueRef methodBase = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
+        LLVM.LLVMValueRef jumpAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(offset));
+        builder.buildInlineJump(jumpAddress);
         builder.buildUnreachable();
 
         genResult.setModule(generator.getBuilder().getModule());
@@ -115,7 +119,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
 
     @Override
     public NodeLLVMBuilder newNodeLLVMBuilder(StructuredGraph graph, LLVMGenerator generator) {
-        return new SubstrateNodeLLVMBuilder(graph, generator);
+        return new SubstrateNodeLLVMBuilder(graph, generator, getRuntimeConfiguration());
     }
 
     @Override

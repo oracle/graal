@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,12 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.regex.RegexObject;
 
 public final class SingleIndexArrayResult extends RegexResult {
 
     @CompilationFinal(dimensions = 1) private final int[] indices;
 
-    public SingleIndexArrayResult(RegexObject regex, Object input, int[] indices) {
-        super(regex, input, indices.length / 2);
+    public SingleIndexArrayResult(int[] indices) {
         this.indices = indices;
     }
 

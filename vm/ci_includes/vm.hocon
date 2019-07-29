@@ -1,6 +1,50 @@
-vm_env: ce
 vm_java: ${openjdk8}
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr"
 custom_vm_linux: {}
 custom_vm_darwin: {}
+vm_profiles: []
+collect_profiles: []
+
+vm_setup: {
+  setup: [
+    [set-export, VM_ENV, ce]
+    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog.properties"]
+    [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce"]]
+    [cd, ${vm_subdir}]
+  ]
+}
+
+maven_base: ${linux-deploy} {
+  downloads: {
+    JAVA_HOME: ${jdks.openjdk11},
+    EXTRA_JAVA_HOMES: ${jdks.openjdk8}
+  }
+  mx_cmd_base: [mx, --dynamicimports, "/tools,/compiler,/graal-js"]
+  build: ${maven_base.mx_cmd_base} [build]
+  deploy: [mx, --suite, compiler, --suite, truffle, --suite, sdk, --suite, tools, --suite, regex, --suite, graal-js, --dynamicimports, "/tools,/compiler,/graal-js", "--disable-installables=true", maven-deploy, --all-distribution-types, --validate, full, --licenses, "UPL,MIT"]
+}
+
+builds += [
+  ${gate_vm_linux} {
+    run: [
+      [mx, build]
+      [mx, unittest, --suite, vm]
+    ]
+    name: gate-vm-unittest-linux-amd64
+  }
+  ${gate_vm_linux} ${maven_base} {
+    run: [
+      ${maven_base.build}
+      ${maven_base.deploy} [--dry-run, ${binaries-repository}]
+    ]
+    name: gate-vm-maven-dry-run-jdk11-linux-amd64
+  }
+  ${deploy_vm_linux} ${maven_base} {
+    run: [
+      ${maven_base.build}
+      ${maven_base.deploy} [${binaries-repository}]
+    ]
+    name: deploy-vm-maven-jdk11-linux-amd64
+  }
+]

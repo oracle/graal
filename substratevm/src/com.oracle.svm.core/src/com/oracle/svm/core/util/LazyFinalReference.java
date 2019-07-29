@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.util;
 
-import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
@@ -34,16 +33,16 @@ import sun.misc.Unsafe;
 // Checkstyle: resume
 
 /**
- * An object reference that is set lazily to the non-null reference returned by the provided
- * {@link Supplier}, in a thread-safe manner: {@link Supplier#get()} might be called more than once
- * from different threads, but {@link #get()} will always return the same non-null reference.
+ * An object reference that is set lazily to the reference returned by the provided {@link Supplier}
+ * in a thread-safe manner: {@link Supplier#get()} might be called more than once from different
+ * threads, but {@link #get()} will always return the same reference.
  */
 public final class LazyFinalReference<T> {
+    private static final Object UNINITIALIZED = new Object();
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     private static final long VALUE_OFFSET;
-
     static {
         try {
             VALUE_OFFSET = UNSAFE.objectFieldOffset(LazyFinalReference.class.getDeclaredField("value"));
@@ -58,7 +57,7 @@ public final class LazyFinalReference<T> {
      * Not required to be volatile because the value will be eventually consistent and inconsistency
      * is primitive to handle.
      */
-    private T value;
+    @SuppressWarnings("unchecked") private T value = (T) UNINITIALIZED;
 
     public LazyFinalReference(Supplier<T> supplier) {
         this.supplier = supplier;
@@ -67,18 +66,18 @@ public final class LazyFinalReference<T> {
     @SuppressWarnings("unchecked")
     public T get() {
         T v = value;
-        if (v == null) {
+        if (v == UNINITIALIZED) {
             // Try volatile read first in case of memory inconsistency to avoid Supplier call
             v = (T) UNSAFE.getObjectVolatile(this, VALUE_OFFSET);
-            if (v == null) {
-                T obj = Objects.requireNonNull(supplier.get());
+            if (v == UNINITIALIZED) {
+                T obj = supplier.get();
 
-                if (UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, null, v)) {
+                if (UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, UNINITIALIZED, obj)) {
                     v = obj;
                 } else {
                     v = (T) UNSAFE.getObjectVolatile(this, VALUE_OFFSET);
                 }
-                assert v != null;
+                assert v != UNINITIALIZED;
             }
         }
         return v;

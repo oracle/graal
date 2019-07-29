@@ -40,11 +40,11 @@
  */
 /*
  @ApiInfo(
- group="Graal SDK"
+ group="GraalVM SDK"
  )
  */
 /**
- * Input/Output support for the Graal-SDK polyglot API.
+ * Input/Output support for the GraalVM SDK polyglot API.
  * <p>
  * The {@link org.graalvm.polyglot.io.FileSystem} allows an embedder to virtualize Input/Output
  * operations done by the {@code TruffleLanguage}s. A custom
@@ -52,6 +52,6 @@
  * {@link org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)}
  * method.
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.polyglot.io;

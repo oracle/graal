@@ -37,7 +37,6 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -80,6 +79,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
+    final EngineData engineData;
 
     /** Information about when and how the call target should get compiled. */
     @CompilationFinal protected volatile OptimizedCompilationProfile compilationProfile;
@@ -93,6 +93,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile int cachedNonTrivialNodeCount = -1;
     private volatile SpeculationLog speculationLog;
     private volatile int callSitesKnown;
+
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
+                    SpeculationLog.class, "speculationLog");
 
     /**
      * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
@@ -131,10 +134,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
-        uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
-        RuntimeOptionsCache.reinitialize();
-        knownCallNodes = RuntimeOptionsCache.isLegacySplitting() ? null : new ArrayList<>(1);
-        runtime().getTvmci().setCallTarget(rootNode, this);
+        final GraalTVMCI tvmci = runtime().getTvmci();
+        engineData = tvmci.getEngineData(rootNode);
+        uninitializedNodeCount = tvmci.adoptChildrenAndCount(this.rootNode);
+        knownCallNodes = engineData.options.isLegacySplitting() ? null : new ArrayList<>(1);
+        tvmci.setCallTarget(rootNode, this);
     }
 
     public Assumption getNodeRewritingAssumption() {
@@ -331,6 +335,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert frame != null && this != null;
             if (CompilerDirectives.inInterpreter() && inCompiled) {
+                if (!isValid()) {
+                    getCompilationProfile().reportInvalidated();
+                }
                 notifyDeoptimized(frame);
             }
         }
@@ -479,14 +486,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * this call target. Note that this may differ from the speculation log
      * {@linkplain CompilableTruffleAST#getCompilationSpeculationLog() used for compilation}.
      */
-    public synchronized SpeculationLog getSpeculationLog() {
+    public SpeculationLog getSpeculationLog() {
         if (speculationLog == null) {
-            speculationLog = ((GraalTruffleRuntime) Truffle.getRuntime()).createSpeculationLog();
+            SPECULATION_LOG_UPDATER.compareAndSet(this, null, ((GraalTruffleRuntime) Truffle.getRuntime()).createSpeculationLog());
         }
         return speculationLog;
     }
 
-    synchronized void setSpeculationLog(SpeculationLog speculationLog) {
+    void setSpeculationLog(SpeculationLog speculationLog) {
         this.speculationLog = speculationLog;
     }
 
@@ -604,11 +611,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * Intrinsifiable compiler directive for creating a frame.
      */
     public static VirtualFrame createFrame(FrameDescriptor descriptor, Object[] args) {
-        if (LazyFrameBoxingQuery.useFrameWithoutBoxing) {
-            return new FrameWithoutBoxing(descriptor, args);
-        } else {
-            return new FrameWithBoxing(descriptor, args);
-        }
+        return new FrameWithoutBoxing(descriptor, args);
     }
 
     final void onLoopCount(int count) {
@@ -770,9 +773,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     void polymorphicSpecialize(Node source) {
-        assert !RuntimeOptionsCache.isLegacySplitting();
+        assert !engineData.options.isLegacySplitting();
         List<Node> toDump = null;
-        if (RuntimeOptionsCache.isSplittingDumpDecisions()) {
+        if (engineData.options.isSplittingDumpDecisions()) {
             toDump = new ArrayList<>();
             pullOutParentChain(source, toDump);
         }
@@ -787,7 +790,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             numberOfKnownCallNodes = knownCallNodes.size();
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
-        if (depth > RuntimeOptionsCache.getSplittingMaxPropagationDepth() || needsSplit || numberOfKnownCallNodes == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
+        if (depth > engineData.options.getSplittingMaxPropagationDepth() || needsSplit || numberOfKnownCallNodes == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
             logEarlyReturn(depth, numberOfKnownCallNodes);
             return needsSplit;
         }
@@ -796,7 +799,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 final RootNode callerRootNode = onlyCaller.getRootNode();
                 if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
                     final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-                    if (RuntimeOptionsCache.isSplittingDumpDecisions()) {
+                    if (engineData.options.isSplittingDumpDecisions()) {
                         pullOutParentChain(onlyCaller, toDump);
                     }
                     logPolymorphicEvent(depth, "One caller! Analysing parent.");
@@ -816,7 +819,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void logEarlyReturn(int depth, int numberOfKnownCallNodes) {
-        if (RuntimeOptionsCache.isSplittingTraceEvents()) {
+        if (engineData.options.isSplittingTraceEvents()) {
             logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + compilationProfile.getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
         }
     }
@@ -826,7 +829,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void logPolymorphicEvent(int depth, String message, Object arg) {
-        if (RuntimeOptionsCache.isSplittingTraceEvents()) {
+        if (engineData.options.isSplittingTraceEvents()) {
             final String indent = new String(new char[depth]).replace("\0", "  ");
             final String argString = (arg == null) ? "" : " " + arg;
             log(String.format(SPLIT_LOG_FORMAT, indent + message + argString, this.toString()));
@@ -834,7 +837,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void maybeDump(List<Node> toDump) {
-        if (RuntimeOptionsCache.isSplittingDumpDecisions()) {
+        if (engineData.options.isSplittingDumpDecisions()) {
             final List<OptimizedDirectCallNode> callers = new ArrayList<>();
             synchronized (this) {
                 for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {

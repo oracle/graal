@@ -49,7 +49,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
 /**
@@ -83,7 +82,7 @@ public abstract class Tag {
     public static Class<? extends Tag> findProvidedTag(LanguageInfo language, String tagId) {
         Objects.requireNonNull(language);
         Objects.requireNonNull(tagId);
-        EngineSupport engine = AccessorInstrumentHandler.engineAccess();
+        EngineSupport engine = InstrumentAccessor.engineAccess();
         if (engine == null) {
             return null;
         }

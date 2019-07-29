@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -55,27 +56,24 @@ import java.util.Collections;
  * regex = engine("(a|(b))c", "i")
  * assert(regex.pattern == "(a|(b))c")
  * assert(regex.flags.ignoreCase == true)
+ * assert(regex.groupCount == 3)
  *
  * result = regex.exec("xacy", 0)
  * assert(result.isMatch == true)
- * assert(result.input == "xacy")
- * assert(result.groupCount == 3)
- * assert([result.start[0], result.end[0]], [ 1,  3])
- * assert([result.start[1], result.end[1]], [ 1,  2])
- * assert([result.start[2], result.end[2]], [-1, -1])
+ * assertEquals([result.getStart(0), result.getEnd(0)], [ 1,  3])
+ * assertEquals([result.getStart(1), result.getEnd(1)], [ 1,  2])
+ * assertEquals([result.getStart(2), result.getEnd(2)], [-1, -1])
  *
  * result2 = regex.exec("xxx", 0)
  * assert(result2.isMatch == false)
- * assert(result2.input == null)
- * assert(result2.groupCount == 0)
- * assertThrows([result2.start[0], result2.end[0]], IndexOutOfBoundsException)
+ * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
  */
 
 @TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internal = true, interactive = false)
 @ProvidedTags(StandardTags.RootTag.class)
-public final class RegexLanguage extends TruffleLanguage<Void> {
+public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {
 
     public static final String NAME = "REGEX";
     public static final String ID = "regex";
@@ -89,23 +87,28 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
         RegexParser.validate(new RegexSource(pattern, flags));
     }
 
+    public static void validateRegex(RegexSource source) throws RegexSyntaxException {
+        RegexParser.validate(source);
+    }
+
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
         return getEngineBuilderCT;
     }
 
     @Override
-    protected Void createContext(Env env) {
-        return null;
+    protected RegexContext createContext(Env env) {
+        return new RegexContext(env);
     }
 
     @Override
-    protected boolean patchContext(Void context, Env newEnv) {
+    protected boolean patchContext(RegexContext context, Env newEnv) {
+        context.patchContext(newEnv);
         return true;
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(Void context) {
+    protected Iterable<Scope> findTopScopes(RegexContext context) {
         return Collections.emptySet();
     }
 
@@ -128,5 +131,25 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
+    }
+
+    public static RegexContext getCurrentContext() {
+        return getCurrentContext(RegexLanguage.class);
+    }
+
+    public static final class RegexContext {
+        @CompilerDirectives.CompilationFinal private Env env;
+
+        RegexContext(Env env) {
+            this.env = env;
+        }
+
+        void patchContext(Env patchedEnv) {
+            this.env = patchedEnv;
+        }
+
+        public Env getEnv() {
+            return env;
+        }
     }
 }

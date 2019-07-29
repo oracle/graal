@@ -47,10 +47,12 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
@@ -58,17 +60,19 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -79,7 +83,11 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
+import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase.SharedBytecodeParser;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -120,7 +128,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     private final AnnotationSubstitutionProcessor annotationSubstitutions;
     private final Map<ResolvedJavaField, ComputedValueField> fieldSubstitutions;
 
-    private final List<ResolvedJavaType> supressWarnings;
+    private final List<ResolvedJavaType> suppressWarnings;
 
     private ResolvedJavaMethod unsafeObjectFieldOffsetFieldMethod;
     private ResolvedJavaMethod unsafeObjectFieldOffsetClassStringMethod;
@@ -131,7 +139,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     private HashSet<ResolvedJavaMethod> neverInlineSet = new HashSet<>();
     private HashSet<ResolvedJavaMethod> noCheckedExceptionsSet = new HashSet<>();
 
-    private GraphBuilderPhase builderPhase;
+    private Plugins plugins;
 
     private SnippetReflectionProvider snippetReflection;
 
@@ -139,10 +147,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         this.snippetReflection = snippetReflection;
         this.annotationSubstitutions = annotationSubstitutions;
         this.fieldSubstitutions = new ConcurrentHashMap<>();
-        this.supressWarnings = new ArrayList<>();
+        this.suppressWarnings = new ArrayList<>();
     }
 
-    public void init(ImageClassLoader loader, MetaAccessProvider originalMetaAccess) {
+    public void init(ImageClassLoader loader, MetaAccessProvider originalMetaAccess, SVMHost hostVM) {
         ResolvedJavaMethod atomicIntegerFieldUpdaterNewUpdaterMethod;
         ResolvedJavaMethod atomicLongFieldUpdaterNewUpdaterMethod;
         ResolvedJavaMethod atomicReferenceFieldUpdaterNewUpdaterMethod;
@@ -163,7 +171,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             Class<?> unsafeClass;
 
             try {
-                if (JavaVersionUtil.Java8OrEarlier) {
+                if (JavaVersionUtil.JAVA_SPEC <= 8) {
                     unsafeClass = Class.forName("sun.misc.Unsafe");
                 } else {
                     unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
@@ -177,8 +185,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             noCheckedExceptionsSet.add(unsafeObjectFieldOffsetFieldMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
-            if (!JavaVersionUtil.Java8OrEarlier) {
-                /* JDK-9 introduced Unsafe.objectFieldOffset(Class, String). */
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
                 Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
                 unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
                 noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
@@ -230,19 +238,21 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          */
         StaticInitializerInlineInvokePlugin inlineInvokePlugin = new StaticInitializerInlineInvokePlugin(neverInlineSet);
 
-        Plugins plugins = new Plugins(new InvocationPlugins());
+        plugins = new Plugins(new InvocationPlugins());
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
+        plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
 
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), false, false);
-
-        builderPhase = new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins));
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, plugins.getInvocationPlugins(), hostVM, false, false);
 
         /*
          * Analyzing certain classes leads to false errors. We disable reporting for those classes
          * by default.
          */
         try {
-            supressWarnings.add(originalMetaAccess.lookupJavaType(Class.forName("sun.security.provider.ByteArrayAccess")));
+            suppressWarnings.add(originalMetaAccess.lookupJavaType(Class.forName("sun.security.provider.ByteArrayAccess")));
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                suppressWarnings.add(originalMetaAccess.lookupJavaType(Class.forName("jdk.internal.misc.InnocuousThread")));
+            }
         } catch (ClassNotFoundException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -295,14 +305,17 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (hostType.isArray()) {
             return;
         }
-
         /* Detect field offset computation in static initializers. */
         ResolvedJavaMethod clinit = hostType.getClassInitializer();
-        /*
-         * Even if clinit.hasBytecodes() returns true, clinit.getCode() can return null when the
-         * type fails to initialize due to verification issues triggered by missing types.
-         */
-        if (clinit != null && clinit.hasBytecodes() && clinit.getCode() != null) {
+
+        if (clinit != null && clinit.hasBytecodes()) {
+            /* The following directive links the class and makes clinit available. */
+            try {
+                hostType.getDeclaredConstructors();
+            } catch (NoClassDefFoundError | VerifyError t) {
+                /* This code should be non-intrusive so we just ignore. */
+                return;
+            }
             DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
             try (DebugContext.Scope s = debug.scope("Field offset computation", clinit)) {
                 StructuredGraph clinitGraph = getStaticInitializerGraph(clinit, options, debug);
@@ -325,6 +338,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 throw debug.handle(e);
             }
         }
+
     }
 
     /**
@@ -773,7 +787,6 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String substitutedFieldStr = substitutedField.format("%H.%n");
 
             String msg = "Info:" + substitutionKindStr + " substitution automatically registered for " + substitutedFieldStr + ", target element " + target + ".";
-
             System.out.println(msg);
         }
     }
@@ -868,7 +881,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     private boolean warningsAreWhiteListed(ResolvedJavaType type) {
-        return supressWarnings.contains(type);
+        return suppressWarnings.contains(type);
     }
 
     private ResolvedJavaType findSubstitutionType(ResolvedJavaType type) {
@@ -885,6 +898,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(clinit).build();
         HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
+        graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
+
+        GraphBuilderPhase.Instance builderPhase = new ClassInitializerGraphBuilderPhase(context, GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true),
+                        context.getOptimisticOptimizations());
         builderPhase.apply(graph, context);
 
         /*
@@ -932,6 +949,29 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             }
 
             return null;
+        }
+    }
+
+    static class ClassInitializerGraphBuilderPhase extends SharedGraphBuilderPhase {
+        ClassInitializerGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+            /*
+             * We do not want any word-type checking when parsing the class initializers, because we
+             * do not have the graph builder plugins for word types installed either. Passing null
+             * as the WordTypes disables the word type checks in the bytecode parser.
+             */
+            super(providers, graphBuilderConfig, optimisticOpts, null, null);
+        }
+
+        @Override
+        protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+            return new ClassInitializerBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+        }
+    }
+
+    static class ClassInitializerBytecodeParser extends SharedBytecodeParser {
+        ClassInitializerBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
+                        IntrinsicContext intrinsicContext) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, true);
         }
     }
 }

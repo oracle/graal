@@ -118,7 +118,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
  * }
  * </pre>
  *
- * @since 1.0
+ * @since 19.0
  */
 @GenerateLibrary
 public abstract class DynamicDispatchLibrary extends Library {
@@ -127,7 +127,7 @@ public abstract class DynamicDispatchLibrary extends Library {
      * Constructor for generated subclasses. Subclasses of this class are generated, do not extend
      * this class directly.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected DynamicDispatchLibrary() {
     }
@@ -137,7 +137,7 @@ public abstract class DynamicDispatchLibrary extends Library {
      * receiver. Returns <code>null</code> to indicate that the default dispatch of the library
      * should be used.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract
     public Class<?> dispatch(@SuppressWarnings("unused") Object receiver) {
@@ -149,7 +149,7 @@ public abstract class DynamicDispatchLibrary extends Library {
      * by dynamic dispatch implementer but is automatically implemented when implementing dynamic
      * dispatch.
      *
-     * @since 1.0
+     * @since 19.0
      */
     /*
      * Implementation Note: This message is known by the annotation processor directly. No need to
@@ -163,7 +163,7 @@ public abstract class DynamicDispatchLibrary extends Library {
     /**
      * Returns the library factory for {@link DynamicDispatchLibrary}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static LibraryFactory<DynamicDispatchLibrary> getFactory() {
         return FACTORY;
@@ -382,7 +382,6 @@ final class DynamicDispatchLibraryGen extends LibraryFactory<DynamicDispatchLibr
             }
         }
 
-        @TruffleBoundary
         @Override
         public boolean accepts(Object receiver_) {
             return true;

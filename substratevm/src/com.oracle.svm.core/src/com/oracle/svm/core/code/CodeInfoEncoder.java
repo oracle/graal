@@ -39,14 +39,16 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.PinnedAllocator;
-import com.oracle.svm.core.heap.ReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -100,18 +102,16 @@ public class CodeInfoEncoder {
         protected IPData next;
     }
 
-    private final PinnedAllocator allocator;
     private final TreeMap<Long, IPData> entries;
     private final FrameInfoEncoder frameInfoEncoder;
 
-    private byte[] codeInfoIndex;
-    private byte[] codeInfoEncodings;
-    private byte[] referenceMapEncoding;
+    private NonmovableArray<Byte> codeInfoIndex;
+    private NonmovableArray<Byte> codeInfoEncodings;
+    private NonmovableArray<Byte> referenceMapEncoding;
 
-    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization, PinnedAllocator allocator) {
-        this.allocator = allocator;
+    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization) {
         this.entries = new TreeMap<>();
-        this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization, allocator);
+        this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization);
     }
 
     public static int getEntryOffset(Infopoint infopoint) {
@@ -177,27 +177,24 @@ public class CodeInfoEncoder {
         return result;
     }
 
-    public void encodeAll() {
+    public void encodeAllAndInstall(CodeInfo target) {
         encodeReferenceMaps();
-        frameInfoEncoder.encodeAll();
+        frameInfoEncoder.encodeAllAndInstall(target);
         encodeIPData();
+
+        install(target);
     }
 
-    public void install(CodeInfoDecoder installTarget) {
-        installTarget.setData(codeInfoIndex, codeInfoEncodings, referenceMapEncoding, frameInfoEncoder.frameInfoEncodings, frameInfoEncoder.frameInfoObjectConstants,
-                        frameInfoEncoder.frameInfoSourceClasses, frameInfoEncoder.frameInfoSourceMethodNames, frameInfoEncoder.frameInfoNames);
-
-        ImageSingletons.lookup(Counters.class).frameInfoSize.add(
-                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Byte, frameInfoEncoder.frameInfoEncodings.length) +
-                                        ConfigurationValues.getObjectLayout().getArrayElementOffset(JavaKind.Object, frameInfoEncoder.frameInfoObjectConstants.length));
+    private void install(CodeInfo target) {
+        CodeInfoAccess.setCodeInfo(target, codeInfoIndex, codeInfoEncodings, referenceMapEncoding);
     }
 
     private void encodeReferenceMaps() {
-        ReferenceMapEncoder referenceMapEncoder = new ReferenceMapEncoder();
+        CodeReferenceMapEncoder referenceMapEncoder = new CodeReferenceMapEncoder();
         for (IPData data : entries.values()) {
             referenceMapEncoder.add(data.referenceMap);
         }
-        referenceMapEncoding = referenceMapEncoder.encodeAll(allocator);
+        referenceMapEncoding = referenceMapEncoder.encodeAll();
         for (IPData data : entries.values()) {
             data.referenceMapIndex = referenceMapEncoder.lookupEncoding(data.referenceMap);
         }
@@ -260,12 +257,10 @@ public class CodeInfoEncoder {
             writeDeoptFrameInfo(encodingBuffer, data, entryFlags);
         }
 
-        codeInfoIndex = indexBuffer.toArray(newByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten())));
-        codeInfoEncodings = encodingBuffer.toArray(newByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten())));
-    }
-
-    private byte[] newByteArray(int length) {
-        return allocator == null ? new byte[length] : (byte[]) allocator.newArray(byte.class, length);
+        codeInfoIndex = NonmovableArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
+        indexBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(codeInfoIndex));
+        codeInfoEncodings = NonmovableArrays.createByteArray(TypeConversion.asU4(encodingBuffer.getBytesWritten()));
+        encodingBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(codeInfoEncodings));
     }
 
     /**
@@ -384,26 +379,23 @@ public class CodeInfoEncoder {
         }
     }
 
-    public boolean verifyMethod(CompilationResult compilation, int compilationOffset) {
-        CodeInfoVerifier verifier = new CodeInfoVerifier();
-        install(verifier);
-        verifier.verifyMethod(compilation, compilationOffset);
+    public static boolean verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfo info) {
+        CodeInfoVerifier.verifyMethod(compilation, compilationOffset, info);
         return true;
     }
 }
 
-class CodeInfoVerifier extends CodeInfoDecoder {
-    protected void verifyMethod(CompilationResult compilation, int compilationOffset) {
+class CodeInfoVerifier {
+    static void verifyMethod(CompilationResult compilation, int compilationOffset, CodeInfo info) {
         for (int relativeIP = 0; relativeIP < compilation.getTargetCodeSize(); relativeIP++) {
             int totalIP = relativeIP + compilationOffset;
-            CodeInfoQueryResult codeInfo = new CodeInfoQueryResult();
-            lookupCodeInfo(totalIP, codeInfo);
-            assert codeInfo.isEntryPoint() || codeInfo.getTotalFrameSize() == compilation.getTotalFrameSize();
+            CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
+            CodeInfoAccess.lookupCodeInfo(info, totalIP, queryResult);
+            assert queryResult.isEntryPoint() || queryResult.getTotalFrameSize() == compilation.getTotalFrameSize();
 
-            assert codeInfo.isEntryPoint() || lookupTotalFrameSize(totalIP) == codeInfo.getTotalFrameSize();
-            assert lookupExceptionOffset(totalIP) == codeInfo.getExceptionOffset();
-            assert lookupReferenceMapIndex(totalIP) == codeInfo.getReferenceMapIndex();
-            assert getReferenceMapEncoding() == codeInfo.getReferenceMapEncoding();
+            assert queryResult.isEntryPoint() || CodeInfoAccess.lookupTotalFrameSize(info, totalIP) == queryResult.getTotalFrameSize();
+            assert CodeInfoAccess.lookupExceptionOffset(info, totalIP) == queryResult.getExceptionOffset();
+            assert CodeInfoAccess.lookupReferenceMapIndex(info, totalIP) == queryResult.getReferenceMapIndex();
         }
 
         for (Infopoint infopoint : compilation.getInfopoints()) {
@@ -411,17 +403,17 @@ class CodeInfoVerifier extends CodeInfoDecoder {
                 int offset = CodeInfoEncoder.getEntryOffset(infopoint);
                 if (offset >= 0) {
                     assert offset < compilation.getTargetCodeSize();
-                    CodeInfoQueryResult codeInfo = new CodeInfoQueryResult();
-                    lookupCodeInfo(offset + compilationOffset, codeInfo);
+                    CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
+                    CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    ReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), codeInfo.getReferenceMapEncoding(), codeInfo.getReferenceMapIndex(), visitor);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), CodeInfoAccess.getReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result);
 
-                    if (codeInfo.frameInfo != CodeInfoQueryResult.NO_FRAME_INFO) {
-                        verifyFrame(compilation, infopoint.debugInfo.frame(), codeInfo.frameInfo, new BitSet());
+                    if (queryResult.frameInfo != CodeInfoQueryResult.NO_FRAME_INFO) {
+                        verifyFrame(compilation, infopoint.debugInfo.frame(), queryResult.frameInfo, new BitSet());
                     }
                 }
             }
@@ -431,14 +423,14 @@ class CodeInfoVerifier extends CodeInfoDecoder {
             int offset = handler.pcOffset;
             assert offset >= 0 && offset < compilation.getTargetCodeSize();
 
-            long actual = lookupExceptionOffset(offset + compilationOffset);
+            long actual = CodeInfoAccess.lookupExceptionOffset(info, offset + compilationOffset);
             long expected = handler.handlerPos - handler.pcOffset;
             assert expected != 0;
             assert expected == actual;
         }
     }
 
-    private void verifyFrame(CompilationResult compilation, BytecodeFrame expectedFrame, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
+    private static void verifyFrame(CompilationResult compilation, BytecodeFrame expectedFrame, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         assert (expectedFrame == null) == (actualFrame == null);
         if (expectedFrame == null || !actualFrame.needLocalValues) {
             return;
@@ -460,7 +452,7 @@ class CodeInfoVerifier extends CodeInfoDecoder {
         }
     }
 
-    private void verifyValue(CompilationResult compilation, JavaValue expectedValue, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
+    private static void verifyValue(CompilationResult compilation, JavaValue expectedValue, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         if (ValueUtil.isIllegalJavaValue(expectedValue)) {
             assert actualValue.getType() == ValueType.Illegal;
 
@@ -489,7 +481,7 @@ class CodeInfoVerifier extends CodeInfoDecoder {
         }
     }
 
-    private void verifyVirtualObject(CompilationResult compilation, VirtualObject expectedObject, ValueInfo[] actualObject, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
+    private static void verifyVirtualObject(CompilationResult compilation, VirtualObject expectedObject, ValueInfo[] actualObject, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         if (visitedVirtualObjects.get(expectedObject.getId())) {
             return;
         }

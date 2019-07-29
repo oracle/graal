@@ -60,7 +60,7 @@ public final class AMD64FarReturnOp extends AMD64BlockEndOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        if (SubstrateOptions.UseStackBasePointer.getValue()) {
+        if (SubstrateOptions.PreserveFramePointer.getValue()) {
             /*
              * We need to properly restore RBP to the value that matches the frame of the new stack
              * pointer. Two options: 1) When RSP is not changing, we are jumping within the same

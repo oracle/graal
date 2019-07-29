@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,10 +40,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public final class LLVMThreadingStack {
     // we are not able to clean up a thread local properly, so we are using a map instead
     private final Map<Thread, LLVMStack> threadMap;
-    private final int stackSize;
+    private final long stackSize;
     private final Thread mainThread;
 
-    public LLVMThreadingStack(Thread mainTread, int stackSize) {
+    public LLVMThreadingStack(Thread mainTread, long stackSize) {
         this.mainThread = mainTread;
         this.stackSize = stackSize;
         this.threadMap = new HashMap<>();

@@ -67,11 +67,17 @@ public class ObjectLayout {
 
     private final int referenceSize;
     private final int alignmentMask;
+    private final int hubOffset;
 
     public ObjectLayout(SubstrateTargetDescription target) {
+        this(target, 0);
+    }
+
+    public ObjectLayout(SubstrateTargetDescription target, int hubOffset) {
         this.target = target;
         this.referenceSize = target.arch.getPlatformKind(JavaKind.Object).getSizeInBytes();
         this.alignmentMask = target.wordSize - 1;
+        this.hubOffset = hubOffset;
     }
 
     /** The minimum alignment of objects (instances and arrays). */
@@ -128,7 +134,7 @@ public class ObjectLayout {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getHubOffset() {
-        return 0;
+        return hubOffset;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -31,8 +31,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 
 public abstract class FrameAccess {
@@ -42,13 +45,19 @@ public abstract class FrameAccess {
         return ImageSingletons.lookup(FrameAccess.class);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract CodePointer readReturnAddress(Pointer sourceSp);
 
     public abstract void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress);
 
     @Fold
     public static int returnAddressSize() {
-        return ConfigurationValues.getTarget().arch.getReturnAddressSize();
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        if (arch instanceof AArch64) {
+            return 8;
+        } else {
+            return arch.getReturnAddressSize();
+        }
     }
 
     /**

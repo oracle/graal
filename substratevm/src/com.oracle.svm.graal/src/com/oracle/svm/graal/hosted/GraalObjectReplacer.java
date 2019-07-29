@@ -35,8 +35,8 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
-import org.graalvm.nativeimage.Feature.CompilationAccess;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -50,7 +50,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.Replaced;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateConstantFieldProvider;
@@ -133,7 +132,8 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         if (source instanceof MetaAccessProvider) {
             dest = sMetaAccess;
         } else if (source instanceof HotSpotJVMCIRuntime) {
-            throw VMError.shouldNotReachHere("HotSpotJVMCIRuntime should not appear in the image: " + source);
+            // Throw UnsupportedFeatureException since that provides better diagnostics
+            throw new UnsupportedFeatureException("HotSpotJVMCIRuntime should not appear in the image: " + source);
         } else if (source instanceof GraalRuntime) {
             dest = sGraalRuntime;
         } else if (source instanceof AnalysisConstantReflectionProvider) {

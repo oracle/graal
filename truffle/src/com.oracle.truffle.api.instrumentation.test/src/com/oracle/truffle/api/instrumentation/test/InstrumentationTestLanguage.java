@@ -72,6 +72,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -80,6 +81,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -99,7 +101,9 @@ import com.oracle.truffle.api.library.ExportMessage.Ignore;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
@@ -147,12 +151,11 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  * </p>
  */
-@Registration(id = InstrumentationTestLanguage.ID, name = InstrumentationTestLanguage.NAME, version = "2.0")
+@Registration(id = InstrumentationTestLanguage.ID, name = InstrumentationTestLanguage.NAME, version = "2.0", services = {SpecialService.class})
 @ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
-                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class,
+                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class,
                 StandardTags.TryBlockTag.class, BlockTag.class, ConstantTag.class})
-public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentContext>
-                implements SpecialService {
+public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentContext> {
 
     public static final String ID = "instrumentation-test-language";
     public static final String NAME = "Instrumentation Test Language";
@@ -183,14 +186,15 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     public static final Class<? extends Tag> LOOP = LoopTag.class;
     public static final Class<? extends Tag> STATEMENT = StandardTags.StatementTag.class;
     public static final Class<? extends Tag> CALL = StandardTags.CallTag.class;
+    public static final Class<? extends Tag> ROOT_BODY = StandardTags.RootBodyTag.class;
     public static final Class<? extends Tag> ROOT = StandardTags.RootTag.class;
     public static final Class<? extends Tag> BLOCK = BlockTag.class;
     public static final Class<? extends Tag> CONSTANT = ConstantTag.class;
     public static final Class<? extends Tag> TRY_CATCH = StandardTags.TryBlockTag.class;
 
-    public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT, CONSTANT, TRY_CATCH};
-    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT", "CONSTANT", "VARIABLE",
-                    "ARGUMENT", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION",
+    public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT_BODY, ROOT, CONSTANT, TRY_CATCH};
+    public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "CALL_WITH", "BLOCK", "ROOT_BODY", "ROOT", "CONSTANT",
+                    "VARIABLE", "ARGUMENT", "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION",
                     "TRY", "CATCH", "THROW", "UNEXPECTED_RESULT", "MULTIPLE"};
 
     // used to test that no getSourceSection calls happen in certain situations
@@ -198,11 +202,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     private final FunctionMetaObject functionMetaObject = new FunctionMetaObject();
 
     public InstrumentationTestLanguage() {
-    }
-
-    @Override
-    public String fileExtension() {
-        return FILENAME_EXTENSION;
     }
 
     /**
@@ -226,6 +225,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
             runInitAfterExec = (Boolean) envConfig.get("runInitAfterExec");
         }
+        env.registerService(new SpecialServiceImpl());
         return new InstrumentContext(env, initSource, runInitAfterExec);
     }
 
@@ -469,7 +469,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 case "CALL_WITH":
                     return new CallWithNode(idents[0], parseIdent(idents[1]), childArray);
                 case "LOOP":
-                    return new LoopNode(parseIdent(idents[0]), childArray);
+                    return new WhileLoopNode(parseIdent(idents[0]), childArray);
                 case "BLOCK":
                     return new BlockNode(childArray);
                 case "BLOCK_NO_SOURCE_SECTION":
@@ -478,6 +478,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     return new ExpressionNode(childArray);
                 case "ROOT":
                     return new FunctionRootNode(childArray);
+                case "ROOT_BODY":
+                    return new FunctionBodyNode(childArray);
                 case "STATEMENT":
                     return new StatementNode(childArray);
                 case "INTERNAL":
@@ -739,6 +741,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public boolean hasTag(Class<? extends Tag> tag) {
             if (tag == StandardTags.RootTag.class) {
                 return this instanceof FunctionRootNode;
+            } else if (tag == StandardTags.RootBodyTag.class) {
+                return this instanceof FunctionBodyNode || (this instanceof FunctionRootNode && !((FunctionRootNode) this).hasBodyNode);
             } else if (tag == StandardTags.CallTag.class) {
                 return this instanceof CallNode || this instanceof RecursiveCallNode || this instanceof CallWithNode;
             } else if (tag == StandardTags.StatementTag.class) {
@@ -748,7 +752,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             } else if (tag == StandardTags.TryBlockTag.class) {
                 return this instanceof TryNode;
             } else if (tag == LOOP) {
-                return this instanceof LoopNode;
+                return this instanceof WhileLoopNode;
             } else if (tag == BLOCK) {
                 return this instanceof BlockNode;
             } else if (tag == DEFINE) {
@@ -936,6 +940,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     case "ROOT":
                         resolvedTags.add(RootTag.class);
                         break;
+                    case "ROOT_BODY":
+                        resolvedTags.add(RootBodyTag.class);
+                        break;
                     default:
                         throw new IllegalArgumentException("Invalid tag " + tag);
                 }
@@ -1002,7 +1009,30 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     private static final class FunctionRootNode extends InstrumentedNode {
 
+        final boolean hasBodyNode;
+
         FunctionRootNode(BaseNode[] children) {
+            super(children);
+            hasBodyNode = hasBodyNode(children);
+        }
+
+        private static boolean hasBodyNode(BaseNode[] children) {
+            if (children == null) {
+                return false;
+            }
+            for (BaseNode node : children) {
+                if (node instanceof FunctionBodyNode ||
+                                node instanceof InstrumentedNode && hasBodyNode(((InstrumentedNode) node).children)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    private static final class FunctionBodyNode extends InstrumentedNode {
+
+        FunctionBodyNode(BaseNode[] children) {
             super(children);
         }
 
@@ -1553,34 +1583,103 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     }
 
-    static class LoopNode extends InstrumentedNode {
+    static final class WhileLoopNode extends InstrumentedNode {
 
-        private final int loopCount;
-        private final boolean infinite;
+        @Child private LoopNode loop;
 
-        LoopNode(Object loopCount, BaseNode[] children) {
-            super(children);
-            boolean inf = false;
-            if (loopCount instanceof Double) {
-                if (((Double) loopCount).isInfinite()) {
-                    inf = true;
-                }
-                this.loopCount = ((Double) loopCount).intValue();
-            } else if (loopCount instanceof Integer) {
-                this.loopCount = (int) loopCount;
-            } else {
-                throw new LanguageError("Invalid loop count " + loopCount);
+        @CompilationFinal FrameSlot loopIndexSlot;
+        @CompilationFinal FrameSlot loopResultSlot;
+
+        WhileLoopNode(Object loopCount, BaseNode[] children) {
+            this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, children));
+        }
+
+        FrameSlot getLoopIndex() {
+            if (loopIndexSlot == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopIndex" + getLoopDepth());
             }
-            this.infinite = inf;
+            return loopIndexSlot;
+        }
+
+        FrameSlot getResult() {
+            if (loopResultSlot == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                loopResultSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopResult" + getLoopDepth());
+            }
+            return loopResultSlot;
+        }
+
+        private int getLoopDepth() {
+            Node node = getParent();
+            int count = 0;
+            while (node != null) {
+                if (node instanceof WhileLoopNode) {
+                    count++;
+                }
+                node = node.getParent();
+            }
+            return count;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object returnValue = Null.INSTANCE;
-            for (int i = 0; infinite || i < loopCount; i++) {
-                returnValue = super.execute(frame);
+            frame.setObject(getResult(), Null.INSTANCE);
+            frame.setInt(getLoopIndex(), 0);
+            loop.executeLoop(frame);
+            try {
+                return frame.getObject(loopResultSlot);
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
             }
-            return returnValue;
+        }
+
+        final class LoopConditionNode extends InstrumentedNode implements RepeatingNode {
+
+            private final int loopCount;
+            private final boolean infinite;
+
+            @Children BaseNode[] children;
+
+            LoopConditionNode(Object loopCount, BaseNode[] children) {
+                super(children);
+                boolean inf = false;
+                if (loopCount instanceof Double) {
+                    if (((Double) loopCount).isInfinite()) {
+                        inf = true;
+                    }
+                    this.loopCount = ((Double) loopCount).intValue();
+                } else if (loopCount instanceof Integer) {
+                    this.loopCount = (int) loopCount;
+                } else {
+                    throw new LanguageError("Invalid loop count " + loopCount);
+                }
+                this.infinite = inf;
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return false;
+            }
+
+            public boolean executeRepeating(VirtualFrame frame) {
+                int i;
+                try {
+                    i = frame.getInt(loopIndexSlot);
+                } catch (FrameSlotTypeException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new AssertionError(e);
+                }
+                if (infinite || i < loopCount) {
+                    Object resultValue = super.execute(frame);
+                    frame.setInt(loopIndexSlot, i + 1);
+                    frame.setObject(loopResultSlot, resultValue);
+                    return true;
+                } else {
+                    return false;
+                }
+            }
         }
     }
 
@@ -1791,9 +1890,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class Null implements TruffleObject {
+    public static final class Null implements TruffleObject {
 
-        static final Null INSTANCE = new Null();
+        public static final Null INSTANCE = new Null();
 
         private Null() {
         }
@@ -1898,6 +1997,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     static class FunctionMetaObject implements TruffleObject {
 
+    }
+
+    public static final class SpecialServiceImpl implements SpecialService {
+        @Override
+        public String fileExtension() {
+            return FILENAME_EXTENSION;
+        }
     }
 }
 

@@ -65,6 +65,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext.ProcessCallback;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
@@ -172,7 +173,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
                         NodeChildren.class));
         addAnnotations(annotations, Arrays.asList(TypeSystem.class));
         addAnnotations(annotations, Arrays.asList(GenerateLibrary.class));
-        addAnnotations(annotations, Arrays.asList(ExportLibrary.class, ExportLibrary.Repeat.class));
+        addAnnotations(annotations, Arrays.asList(ExportLibrary.class, ExportMessage.class, ExportLibrary.Repeat.class));
         return annotations;
     }
 

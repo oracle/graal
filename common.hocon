@@ -1,20 +1,16 @@
 # overlay version
-overlay = a91034428f121e5bc501872343445e4339e95073
+overlay = 24a9cd249544a2c8b61e225aa1f02c85db569fc4
 
 # oraclejdk* are released OracleJDK binaries
-# labsjdk* are JDKs based on OracleJDK binaries
+# oraclejdk* are JDKs based on OracleJDK binaries
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 jdks: {
-  labsjdk8:      {name : labsjdk,   version : "8u202-jvmci-0.57", platformspecific: true}
-  openjdk8:      {name : openjdk,   version : "8u202-jvmci-0.57", platformspecific: true}
-  labsjdk8Debug: {name : labsjdk,   version : "8u202-jvmci-0.57-fastdebug", platformspecific: true}
-  oraclejdk11:   {name : oraclejdk, version : "11+28", platformspecific: true}
-  openjdk11:     {name : openjdk,   version : "11+28", platformspecific: true}
-
-  # Snapshot of http://hg.openjdk.java.net/jdk/jdk
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180808-073750", platformspecific: true}
-
+  oraclejdk8:      {name : oraclejdk, version : "8u221-jvmci-19.2-b02", platformspecific: true}
+  openjdk8:        {name : openjdk,   version : "8u222-jvmci-19.2-b02", platformspecific: true}
+  oraclejdk8Debug: {name : oraclejdk, version : "8u221-jvmci-19.2-b02-fastdebug", platformspecific: true}
+  oraclejdk11:     {name : oraclejdk, version : "11.0.3+12", platformspecific: true}
+  openjdk11:       {name : openjdk,   version : "11.0.3+7", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
@@ -31,8 +27,8 @@ download-hsdis : {
   ]
 }
 
-labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
-labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+oraclejdk8 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+oraclejdk8Debug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
 
 openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
@@ -99,6 +95,7 @@ linux-aarch64 : ${linux} {
 
 DEFAULT_HEAP_SIZE : "8G"
 LARGE_HEAP_SIZE : "31G"
+LARGE_YOUNG_GEN_SIZE : "27G"
 
 eclipse : {
   downloads : {
@@ -158,6 +155,7 @@ svm-common-linux-amd64: ${svm-common} ${linux-amd64} {
   packages: {
     make: ">=3.83"
     gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+    binutils: ">=2.30"
     ruby: ">=2.1.0"
     valgrind: ">=3.9.0"
   }
@@ -201,6 +199,6 @@ svm-common-windows: ${svm-common} ${windows-amd64} {
 
 svm-common-sulong: {
   packages: {
-    llvm: "==3.8"
+    llvm: "==6.0.1"
   }
 }

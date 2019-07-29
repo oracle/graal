@@ -70,16 +70,16 @@ public class HostedReplacements extends SubstrateReplacements {
     private final SubstrateReplacements aReplacements;
 
     public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders anaylysisProviders,
-                    BytecodeProvider bytecodeProvider, OptionValues options) {
-        super(options, providers, snippetReflection, bytecodeProvider, target, null);
+                    BytecodeProvider bytecodeProvider) {
+        super(providers, snippetReflection, bytecodeProvider, target, null);
         this.hUniverse = hUniverse;
         this.aReplacements = (SubstrateReplacements) anaylysisProviders.getReplacements();
     }
 
     @Override
-    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
+    public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         /* We must have the snippet already available in the analysis replacements. */
-        assert aReplacements.getSnippet(((HostedMethod) method).wrapped, null, null, trackNodeSourcePosition, null) != null;
+        assert aReplacements.getSnippet(((HostedMethod) method).wrapped, null, null, trackNodeSourcePosition, null, options) != null;
     }
 
     @Override

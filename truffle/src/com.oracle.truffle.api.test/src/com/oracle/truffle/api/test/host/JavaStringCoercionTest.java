@@ -41,19 +41,17 @@
 package com.oracle.truffle.api.test.host;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
-import org.junit.After;
+import org.graalvm.polyglot.HostAccess;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -63,49 +61,36 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.test.examples.TargetMappings;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class JavaStringCoercionTest {
+public class JavaStringCoercionTest extends AbstractPolyglotTest {
 
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
-    private Context context;
-    private Env env;
 
     @Before
     public void before() {
-        context = Context.newBuilder().allowAllAccess(true).build();
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected LanguageContext createContext(Env contextEnv) {
-                env = contextEnv;
-                return super.createContext(contextEnv);
-            }
+        HostAccess access = TargetMappings.enableStringCoercions(HostAccess.newBuilder().allowPublicAccess(true)).build();
+        setupEnv(Context.newBuilder().allowHostAccess(access).allowAllAccess(true).build(),
+                        ProxyLanguage.setDelegate(new ProxyLanguage() {
 
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                if (object instanceof UnboxableArrayObject) {
-                    return true;
-                }
-                return super.isObjectOfLanguage(object);
-            }
+                            @Override
+                            protected boolean isObjectOfLanguage(Object object) {
+                                if (object instanceof UnboxableArrayObject) {
+                                    return true;
+                                }
+                                return super.isObjectOfLanguage(object);
+                            }
 
-            @Override
-            protected String toString(LanguageContext c, Object value) {
-                if (value instanceof UnboxableArrayObject) {
-                    return "UnboxableArray";
-                }
-                return super.toString(c, value);
-            }
-        });
-        context.initialize(ProxyLanguage.ID);
-        context.enter();
-        assertNotNull(env);
-    }
-
-    @After
-    public void after() {
-        context.leave();
-        context.close();
+                            @Override
+                            protected String toString(LanguageContext c, Object value) {
+                                if (value instanceof UnboxableArrayObject) {
+                                    return "UnboxableArray";
+                                }
+                                return super.toString(c, value);
+                            }
+                        }));
     }
 
     public static class StringConsumer1 {
@@ -126,21 +111,21 @@ public class JavaStringCoercionTest {
 
     @Test
     public void testStringCoercionSingleMethod() throws InteropException {
-        TruffleObject api = (TruffleObject) env.asGuestValue(new StringConsumer1());
+        TruffleObject api = (TruffleObject) languageEnv.asGuestValue(new StringConsumer1());
         testStringCoercion(api);
     }
 
     @Test
     public void testStringCoercionOverloadedMethod() throws InteropException {
-        TruffleObject api = (TruffleObject) env.asGuestValue(new StringConsumer2());
+        TruffleObject api = (TruffleObject) languageEnv.asGuestValue(new StringConsumer2());
         testStringCoercion(api);
     }
 
     @Test
     public void testPreferWrappingToStringCoercion() throws InteropException {
-        TruffleObject api = (TruffleObject) env.asGuestValue(new StringConsumer2());
+        TruffleObject api = (TruffleObject) languageEnv.asGuestValue(new StringConsumer2());
         Object list = call(api, new UnboxableArrayObject(4));
-        assertEquals("UnboxableArray(4):[0, 1, 2, 3]", list);
+        assertEquals("4", list);
     }
 
     private static void testStringCoercion(TruffleObject api) throws InteropException {
@@ -244,7 +229,7 @@ public class JavaStringCoercionTest {
     @Test
     public void testStringToPrimitiveSingleMethod() throws InteropException {
         for (Object consumer : new Object[]{new IntConsumer(), new IntegerConsumer()}) {
-            TruffleObject api = (TruffleObject) env.asGuestValue(consumer);
+            TruffleObject api = (TruffleObject) languageEnv.asGuestValue(consumer);
             assertEquals(42, call(api, "42"));
             assertEquals(42, call(api, "+42"));
             assertEquals(-42, call(api, "-42"));
@@ -260,7 +245,7 @@ public class JavaStringCoercionTest {
     @Test
     public void testStringToPrimitiveOverloadedMethod() throws InteropException {
         for (Object consumer : new Object[]{new PrimitiveConsumer(), new BoxedPrimitiveConsumer()}) {
-            TruffleObject api = (TruffleObject) env.asGuestValue(consumer);
+            TruffleObject api = (TruffleObject) languageEnv.asGuestValue(consumer);
             assertEquals(2147483648L, call(api, "2147483648"));
             assertEquals(42, call(api, "42"));
             assertEquals(42, call(api, "+42"));
@@ -285,9 +270,9 @@ public class JavaStringCoercionTest {
 
     @Test
     public void testStringToPrimitiveLowPriority() throws InteropException {
-        TruffleObject api = (TruffleObject) env.asGuestValue(new ObjectOrIntConsumer());
+        TruffleObject api = (TruffleObject) languageEnv.asGuestValue(new ObjectOrIntConsumer());
         // String to int conversion would be possible, but Object overload has higher priority.
-        assertEquals("42", call(api, "42"));
+        assertEquals(42, call(api, "42"));
     }
 
     static final class NotCoercibleObject implements TruffleObject {

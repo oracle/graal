@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -151,7 +150,7 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         if (LLVMManagedPointer.isInstance(currentValue)) {
             final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(currentValue);
-            final TruffleObject target = managedPointer.getObject();
+            final Object target = managedPointer.getObject();
 
             String targetString;
             if (target instanceof LLVMFunctionDescriptor) {
@@ -411,6 +410,9 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
     private static final class Pointer extends LLVMDebugObject {
 
+        private static final String[] SAFE_DEREFERENCE_KEYS = new String[]{"<target>"};
+        private static final String[] FOREIGN_KEYS = new String[]{"<foreign>", "<offset>"};
+
         private final LLVMSourcePointerType pointerType;
 
         Pointer(LLVMDebugValue value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
@@ -424,21 +426,66 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
             }
         }
 
+        private boolean isPointerToForeign() {
+            if (value.isManagedPointer()) {
+                Object base = value.getManagedPointerBase();
+                return base instanceof LLVMTypedForeignObject;
+            } else {
+                return false;
+            }
+        }
+
         @Override
         public String[] getKeysSafe() {
+            if (pointerType != null && !pointerType.isReference() && (value.isAlwaysSafeToDereference(offset) || pointerType.isSafeToDereference())) {
+                return SAFE_DEREFERENCE_KEYS;
+            } else if (isPointerToForeign()) {
+                return FOREIGN_KEYS;
+            }
             final LLVMDebugObject target = dereference();
             return target == null ? NO_KEYS : target.getKeys();
         }
 
         @Override
         public Object getMemberSafe(String identifier) {
-            final LLVMDebugObject target = dereference();
-            return target == null ? "Cannot dereference pointer!" : target.getMember(identifier);
+            if (FOREIGN_KEYS[0].equals(identifier)) {
+                Object base = value.getManagedPointerBase();
+                if (base instanceof LLVMTypedForeignObject) {
+                    return ((LLVMTypedForeignObject) base).getForeign();
+                } else {
+                    return "Cannot get foreign base pointer!";
+                }
+
+            } else if (FOREIGN_KEYS[1].equals(identifier)) {
+                return value.getManagedPointerOffset();
+
+            } else {
+                final LLVMDebugObject target = dereference();
+                if (target == null) {
+                    return "Cannot dereference pointer!";
+                }
+
+                if (SAFE_DEREFERENCE_KEYS[0].equals(identifier)) {
+                    assert pointerType != null;
+                    assert !pointerType.isReference();
+                    assert value.isAlwaysSafeToDereference(offset) || pointerType.isSafeToDereference();
+                    return target;
+                } else {
+                    return target.getMember(identifier);
+                }
+            }
         }
 
         @Override
         protected Object getValueSafe() {
-            if (pointerType == null || !pointerType.isReference()) {
+            if (isPointerToForeign()) {
+                long o = offset + value.getManagedPointerOffset();
+                if (o == 0) {
+                    return "<foreign>";
+                } else {
+                    return String.format("<foreign> + %d byte", o);
+                }
+            } else if (pointerType == null || !pointerType.isReference()) {
                 return value.readAddress(offset);
             } else {
                 final LLVMDebugObject target = dereference();

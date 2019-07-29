@@ -33,16 +33,6 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
  * that Pointer is *not* a pointer to an Object, but a Pointer to an object reference.
  */
 public interface ObjectReferenceVisitor {
-
-    /**
-     * Called before any Object references are visited.
-     *
-     * @return true if visiting should continue, false if visiting should stop.
-     */
-    default boolean prologue() {
-        return true;
-    }
-
     /**
      * Visit an Object reference.
      *
@@ -64,13 +54,5 @@ public interface ObjectReferenceVisitor {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
     default boolean visitObjectReferenceInline(Pointer objRef, @SuppressWarnings("unused") int innerOffset, boolean compressed) {
         return visitObjectReference(objRef, compressed);
-    }
-
-    /**
-     * Called after all Object references have been visited. If visiting terminates because a
-     * visitor returned false, this method might not be called.
-     */
-    default boolean epilogue() {
-        return true;
     }
 }

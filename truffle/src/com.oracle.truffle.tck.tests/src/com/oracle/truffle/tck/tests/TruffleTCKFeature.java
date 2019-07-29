@@ -58,8 +58,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -100,6 +100,7 @@ public class TruffleTCKFeature implements Feature {
     private static void registerJavaHostLanguageProvider() throws NoSuchMethodException {
         RuntimeReflection.register(Supplier.class.getDeclaredMethod("get"));
         RuntimeReflection.register(Function.class.getDeclaredMethod("apply", Object.class));
+        RuntimeReflection.register(Object.class.getDeclaredConstructor());
     }
 
     private static void registerTCKTest(BeforeAnalysisAccess access, String testClassFqn) {

@@ -146,9 +146,6 @@ public class AllocationFreeList<T extends AllocationFreeList.Element<T>> {
     /**
      * An element of a AllocationFreeList has slots for the next element in the list, so
      * singly-linked lists can be assembled without allocation.
-     * <p>
-     * Elements may be allocated by pinned allocation, which *does not* run any constructor, so the
-     * only thing I can count on is "zeroed" storage.
      *
      * The lifecycle of an Element is:
      * <ul>

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -55,7 +54,7 @@ public abstract class LLVMTruffleReleaseHandle extends LLVMIntrinsic {
     }
 
     @Fallback
-    protected TruffleObject doFail(Object handle) {
+    protected Object doFail(Object handle) {
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException(handle + " not supported.");
     }

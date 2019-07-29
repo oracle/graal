@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,7 @@ import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class CallInstruction extends ValueInstruction implements FunctionStart {
+public final class CallInstruction extends ValueInstruction implements Call {
 
     private SymbolImpl target;
 
@@ -95,12 +95,12 @@ public final class CallInstruction extends ValueInstruction implements FunctionS
     public static CallInstruction fromSymbols(IRScope scope, Type type, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
         final CallInstruction inst = new CallInstruction(type, paramAttr, arguments.length);
         inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
-        FunctionStart.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
+        Call.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
         return inst;
     }
 
     @Override
     public String toString() {
-        return FunctionStart.asString(target, arguments);
+        return Call.asString(target, arguments);
     }
 }

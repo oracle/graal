@@ -43,7 +43,7 @@ final class AgentIsolate {
                         "Failed to enter (or attach to) the global isolate in the current thread.");
 
         static void enter() {
-            int code = CEntryPointActions.enterAttachThread(GLOBAL_ISOLATE.get().read());
+            int code = CEntryPointActions.enterAttachThread(GLOBAL_ISOLATE.get().read(), true);
             if (code != 0) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

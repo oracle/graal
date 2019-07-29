@@ -36,6 +36,7 @@ import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -63,13 +64,12 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
         legacySplittingScope.close();
     }
 
-    private final FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
-
     @Test
     @SuppressWarnings("try")
     public void testDefaultStrategyStabilises() {
-        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
-                        fallbackSplitInfo.getSplitLimit() + 1000)) {
+        try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes, 1000);
+                        Context c = Context.create()) {
+            c.enter();
             createDummyTargetsToBoostGrowingSplitLimit();
             class InnerRootNode extends SplittableRootNode {
                 OptimizedCallTarget target;
@@ -181,6 +181,7 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
             // OUTSIDE <split> MID
             // MID <split> INNER
             Assert.assertEquals("Not the right number of splits.", baseSplitCount + 13, listener.splitCount);
+            c.leave();
         }
     }
 
@@ -255,8 +256,10 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
     }
 
     @Test
+    @Ignore("Does not work with per engine cache.")
     @SuppressWarnings("try")
     public void testMaxLimitForTargetsOutsideEngine() {
+        FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
         final int expectedIncreaseInNodes = 10;
         try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         fallbackSplitInfo.getSplitCount() + expectedIncreaseInNodes)) {
@@ -279,7 +282,9 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
 
     @Test
     @SuppressWarnings("try")
+    @Ignore("Does not work with per engine cache.")
     public void testGrowingLimitForTargetsOutsideEngine() {
+        FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
         final int expectedGrowingSplits = (int) (2 * TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleSplittingGrowthLimit));
         final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new DummyRootNode());
         final OptimizedCallTarget outer = (OptimizedCallTarget) runtime.createCallTarget(new CallsInnerAndSwapsCallNode(inner));
@@ -306,8 +311,6 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
     public static class SplitTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = "SplitTestLanguage";
 
-        private final RootCallTarget callTarget = runtime.createCallTarget(new CallsInnerAndSwapsCallNode(runtime.createCallTarget(new DummyRootNode())));
-
         @Override
         protected Env createContext(Env env) {
             return env;
@@ -321,7 +324,7 @@ public class LegacySplittingStrategyTest extends AbstractSplittingStrategyTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             if (request.getSource().getCharacters().equals("exec")) {
-                return callTarget;
+                return runtime.createCallTarget(new CallsInnerAndSwapsCallNode(runtime.createCallTarget(new DummyRootNode())));
             } else if (request.getSource().getCharacters().toString().startsWith("new")) {
                 return runtime.createCallTarget(new DummyRootNode());
             } else {

@@ -55,6 +55,10 @@ public abstract class ImageSingletonsSupport {
         support = imageSingletonsSupport;
     }
 
+    public static boolean isInstalled() {
+        return support != null;
+    }
+
     public static ImageSingletonsSupport get() {
         checkInstalled();
         return support;

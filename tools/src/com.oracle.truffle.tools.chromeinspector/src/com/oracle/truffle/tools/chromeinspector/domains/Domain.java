@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import com.oracle.truffle.tools.chromeinspector.events.EventHandler;
 public abstract class Domain {
 
     protected EventHandler eventHandler;
+    private boolean enabled;
 
     protected Domain() {
     }
@@ -37,4 +38,25 @@ public abstract class Domain {
         this.eventHandler = eventHandler;
     }
 
+    protected abstract void doEnable();
+
+    protected abstract void doDisable();
+
+    public final void enable() {
+        if (!enabled) {
+            enabled = true;
+            doEnable();
+        }
+    }
+
+    public final void disable() {
+        if (enabled) {
+            enabled = false;
+            doDisable();
+        }
+    }
+
+    public final boolean isEnabled() {
+        return enabled;
+    }
 }

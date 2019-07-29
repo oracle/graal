@@ -33,12 +33,11 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -56,14 +55,12 @@ public class LLVMGlobalRootNode extends RootNode {
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
-    private final ContextReference<LLVMContext> ctxRef;
 
     public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunctionDescriptor mainFunctionDescriptor, CallTarget startFunction, String applicationPath) {
         super(language, descriptor);
         this.startFunction = Truffle.getRuntime().createDirectCallNode(startFunction);
         this.mainFunctionType = getMainFunctionType(mainFunctionDescriptor);
         this.applicationPath = applicationPath;
-        this.ctxRef = language.getContextReference();
     }
 
     @Override
@@ -80,7 +77,7 @@ public class LLVMGlobalRootNode extends RootNode {
     private Object executeWithoutFrame() {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
-                TruffleObject appPath = (TruffleObject) ctxRef.get().getEnv().asGuestValue(applicationPath.getBytes());
+                Object appPath = new LLVMArgumentBuffer(applicationPath);
                 LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(appPath));
                 Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj};
                 Object result = startFunction.call(realArgs);
@@ -92,7 +89,7 @@ public class LLVMGlobalRootNode extends RootNode {
                 // cleanup was already done
                 context.setCleanupNecessary(false);
                 context.awaitThreadTermination();
-                return e.getReturnCode();
+                return e.getExitStatus();
             } finally {
                 // if not done already, we want at least call a shutdown command
                 getContext().shutdownThreads();

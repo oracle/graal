@@ -1,0 +1,38 @@
+bench_vm_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${common_vm_linux} { # repeat 'common_vm_linux' to override packages loaded by 'svm-common-linux'
+  resultFile: results.json
+  setup: ${common_vm.setup} [
+    [mx, --strip-jars, --no-sources, --env, "${VM_ENV}", build]
+  ]
+  on_success: [
+    [bench-uploader.py, ${bench_vm_linux_base.resultFile}]
+  ]
+  logs: [${bench_vm_linux_base.resultFile}]
+  capabilities: [no_frequency_scaling, tmpfs25g, x52, linux, amd64]
+}
+
+bench_js_octane_linux: ${bench_vm_linux_base} {
+  cmd_base:  [mx, --strip-jars, --no-sources, --env, "${VM_ENV}", --dynamicimports, js-benchmarks, benchmark, --results-file, ${bench_vm_linux_base.resultFile}]
+  config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}"]
+  cmd: ${bench_js_octane_linux.cmd_base} ["octane:*", --] ${bench_js_octane_linux.config_base}
+  setup: ${bench_vm_linux_base.setup} [
+    [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/js-benchmarks.git"], ../../js-benchmarks]
+  ]
+  timelimit: "1:00:00"
+}
+
+builds += [
+  ${bench_vm_linux} ${bench_js_octane_linux} {
+    run: [
+      ${bench_js_octane_linux.cmd} ["--jvm-config=native"]
+    ]
+    name: bench-vm-js-linux
+    timelimit: "1:30:00"
+  }
+  ${bench_vm_linux} ${bench_js_octane_linux} {
+    run: [
+      ${bench_js_octane_linux.cmd} ["--jvm-config=jvm"]
+    ]
+    name: bench-vm-js-jvm-linux
+    timelimit: "1:30:00"
+  }
+]

@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleOptions;
 
 final class ContextThreadLocal extends ThreadLocal<Object> {
 
@@ -68,9 +67,17 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
     public boolean isSet() {
         if (singleThread.isValid()) {
             boolean set = firstContext != null;
-            return (TruffleOptions.AOT ? currentThread() : Thread.currentThread()) == firstThread && set;
+            return Thread.currentThread() == firstThread && set;
         } else {
             return getTL() != null;
+        }
+    }
+
+    public Object getNoThreadCheck() {
+        if (singleThread.isValid()) {
+            return firstContext;
+        } else {
+            return getTL();
         }
     }
 
@@ -78,7 +85,7 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
     public Object get() {
         Object context;
         if (singleThread.isValid()) {
-            if ((TruffleOptions.AOT ? currentThread() : Thread.currentThread()) == firstThread) {
+            if (Thread.currentThread() == firstThread) {
                 context = firstContext;
             } else {
                 CompilerDirectives.transferToInterpreter();
@@ -90,11 +97,6 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
         return context;
     }
 
-    @TruffleBoundary
-    static Thread currentThread() {
-        return Thread.currentThread();
-    }
-
     @Override
     public void set(Object value) {
         setReturnParent(value);
@@ -103,7 +105,7 @@ final class ContextThreadLocal extends ThreadLocal<Object> {
     Object setReturnParent(Object value) {
         if (singleThread.isValid()) {
             Object prev;
-            if ((TruffleOptions.AOT ? currentThread() : Thread.currentThread()) == firstThread) {
+            if (Thread.currentThread() == firstThread) {
                 prev = this.firstContext;
                 this.firstContext = (PolyglotContextImpl) value;
             } else {

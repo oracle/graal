@@ -31,7 +31,8 @@ import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.DependencyException;
-import org.graalvm.component.installer.FailedOperationException;
+import org.graalvm.component.installer.IncompatibleException;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
@@ -79,7 +80,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(TEST_CATALOG_URL, u);
 
         downloader = new RemoteCatalogDownloader(this, this, new URL(TEST_CATALOG_URL));
-        this.registry = downloader.get();
+        this.registry = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
     }
 
     /**
@@ -99,18 +100,21 @@ public class CatalogInstallTest extends CommandTestBase {
             }
         });
 
-        exception.expect(FailedOperationException.class);
+        exception.expect(IncompatibleException.class);
         exception.expectMessage("REMOTE_UnsupportedGraalVersion");
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
-        InstallCommand cmd = new InstallCommand();
-        cmd.init(this, withBundle(InstallCommand.class));
+        textParams.add("ruby");
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable.iterator().next();
     }
 
     /**
      * Checks that mismatched version is rejected based on catalog metadata, and the component URL
      * is not opened at all.
+     * 
+     * Because of versioning support, the "ruby" will not be even identifier as available, as it
+     * requires an incompatible graalvm version.
      */
     @Test
     public void testRejectMetaDontDownloadPackage() throws Exception {
@@ -120,18 +124,20 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), new URLConnection(rubyURL) {
             @Override
             public void connect() throws IOException {
-                throw new UnsupportedOperationException("Should not be touched");
+                throw new UnsupportedOperationException(
+                                "Should not be touched");
             }
         });
 
         exception.expect(DependencyException.Mismatch.class);
-        exception.expectMessage("VERIFY_Dependency_Failed");
+        exception.expectMessage("VERIFY_ObsoleteGraalVM");
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this, registry, downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
-        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.init(this,
+                        withBundle(InstallCommand.class));
         cmd.execute();
     }
 
@@ -143,7 +149,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this, withBundle(InstallCommand.class));
@@ -165,7 +171,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this, withBundle(InstallCommand.class));

@@ -34,7 +34,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,14 +42,15 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.EnterCreateIsolatePrologue;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
@@ -60,6 +60,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.Architecture;
 
+@InternalVMMethod
 public class JavaMainWrapper {
 
     /* C runtime argument count and argument vector */
@@ -113,22 +114,16 @@ public class JavaMainWrapper {
         }
     }
 
-    private static final Thread preallocatedThread;
-    static {
-        preallocatedThread = new Thread("main");
-        preallocatedThread.setDaemon(false);
-    }
-
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterCreateIsolatePrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
     public static int run(int paramArgc, CCharPointerPointer paramArgv) throws Exception {
-        JavaThreads.singleton().assignJavaThread(preallocatedThread, true);
-
         JavaMainWrapper.argc = paramArgc;
         JavaMainWrapper.argv = paramArgv;
 
         Architecture imageArchitecture = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
-        AMD64CPUFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
+        CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
+        cpuFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
+
         String[] args = SubstrateUtil.getArgs(paramArgc, paramArgv);
         args = RuntimeOptionParser.parseAndConsumeAllOptions(args);
         mainArgs = args;

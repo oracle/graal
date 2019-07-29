@@ -53,6 +53,9 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -530,6 +533,50 @@ public class CachedLibraryTest extends AbstractLibraryTest {
             return arg;
         }
 
+    }
+
+    public abstract static class TestBoundaryAndVirtualFrame1 extends Node {
+
+        public abstract Object execute(VirtualFrame frame, Object arg);
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "3")
+        String doDefault(VirtualFrame frame, Object arg, @CachedLibrary("arg") SomethingLibrary interop) {
+            return null;
+        }
+    }
+
+    public abstract static class TestBoundaryAndVirtualFrame2 extends Node {
+
+        public abstract Object execute(VirtualFrame frame, Object arg);
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "3")
+        String doDefault(Object arg, @CachedLibrary("arg") SomethingLibrary interop) {
+            return null;
+        }
+    }
+
+    public abstract static class TestBoundaryAndFrame extends Node {
+
+        public abstract Object execute(Frame frame, Object arg);
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "3")
+        String doDefault(Frame frame, Object arg, @CachedLibrary("arg") SomethingLibrary interop) {
+            return null;
+        }
+    }
+
+    public abstract static class TestBoundaryAndMaterializedFrame extends Node {
+
+        public abstract Object execute(MaterializedFrame frame, Object arg);
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "3")
+        String doDefault(MaterializedFrame frame, Object arg, @CachedLibrary("arg") SomethingLibrary interop) {
+            return null;
+        }
     }
 
     @GenerateLibrary

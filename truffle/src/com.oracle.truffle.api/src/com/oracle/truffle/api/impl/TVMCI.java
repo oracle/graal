@@ -53,6 +53,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.impl.Accessor.CallInlined;
 import com.oracle.truffle.api.impl.Accessor.CallProfiled;
+import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -85,7 +86,7 @@ public abstract class TVMCI {
          * @param testName the name of the unit test
          * @return a context object
          *
-         * @since 1.0
+         * @since 19.0
          */
         protected abstract C createTestContext(String testName);
 
@@ -146,14 +147,14 @@ public abstract class TVMCI {
      * @since 0.15
      */
     protected void onLoad(RootNode rootNode) {
-        InstrumentSupport support = Accessor.instrumentAccess();
+        InstrumentSupport support = TVMCIAccessor.instrumentAccess();
         if (support != null) {
             support.onLoad(rootNode);
         }
     }
 
     protected void setCallTarget(RootNode root, RootCallTarget callTarget) {
-        Accessor.nodesAccess().setCallTarget(root, callTarget);
+        TVMCIAccessor.nodesAccess().setCallTarget(root, callTarget);
     }
 
     /**
@@ -163,7 +164,7 @@ public abstract class TVMCI {
      * @since 0.12
      */
     protected void onFirstExecution(RootNode rootNode) {
-        final Accessor.InstrumentSupport accessor = Accessor.instrumentAccess();
+        final Accessor.InstrumentSupport accessor = TVMCIAccessor.instrumentAccess();
         if (accessor != null) {
             accessor.onFirstExecution(rootNode);
         }
@@ -175,7 +176,7 @@ public abstract class TVMCI {
      * @since 0.14
      */
     protected void markFrameMaterializeCalled(FrameDescriptor descriptor) {
-        Accessor.framesAccess().markMaterializeCalled(descriptor);
+        TVMCIAccessor.framesAccess().markMaterializeCalled(descriptor);
     }
 
     /**
@@ -184,7 +185,7 @@ public abstract class TVMCI {
      * @since 0.14
      */
     protected boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
-        return Accessor.framesAccess().getMaterializeCalled(descriptor);
+        return TVMCIAccessor.framesAccess().getMaterializeCalled(descriptor);
     }
 
     /**
@@ -193,11 +194,11 @@ public abstract class TVMCI {
      * @since 0.24
      */
     protected boolean isCloneUninitializedSupported(RootNode root) {
-        return Accessor.nodesAccess().isCloneUninitializedSupported(root);
+        return TVMCIAccessor.nodesAccess().isCloneUninitializedSupported(root);
     }
 
     protected void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) {
-        final Accessor.LanguageSupport language = Accessor.languageAccess();
+        final Accessor.LanguageSupport language = TVMCIAccessor.languageAccess();
         if (language != null) {
             language.onThrowable(callNode, root, e, frame);
         }
@@ -209,11 +210,11 @@ public abstract class TVMCI {
      * @since 0.24
      */
     protected RootNode cloneUninitialized(RootNode root) {
-        return Accessor.nodesAccess().cloneUninitialized(root);
+        return TVMCIAccessor.nodesAccess().cloneUninitialized(root);
     }
 
     protected int adoptChildrenAndCount(RootNode root) {
-        return Accessor.nodesAccess().adoptChildrenAndCount(root);
+        return TVMCIAccessor.nodesAccess().adoptChildrenAndCount(root);
     }
 
     /**
@@ -233,7 +234,7 @@ public abstract class TVMCI {
      * @since 0.27
      */
     protected OptionValues getCompilerOptionValues(RootNode rootNode) {
-        EngineSupport engine = Accessor.engineAccess();
+        EngineSupport engine = TVMCIAccessor.engineAccess();
         return engine != null ? engine.getCompilerOptionValues(rootNode) : null;
     }
 
@@ -287,8 +288,8 @@ public abstract class TVMCI {
 
     protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
         Objects.requireNonNull(constructor);
-        final Accessor.Nodes nodesAccess = Accessor.nodesAccess();
-        final EngineSupport engineAccess = Accessor.engineAccess();
+        final Accessor.NodeSupport nodesAccess = TVMCIAccessor.nodesAccess();
+        final EngineSupport engineAccess = TVMCIAccessor.engineAccess();
         if (rootNode != null && nodesAccess != null && engineAccess != null) {
             final Object sourceVM = nodesAccess.getSourceVM(rootNode);
             if (sourceVM != null) {
@@ -327,6 +328,10 @@ public abstract class TVMCI {
     }
 
     protected CallProfiled getCallProfiled() {
+        return null;
+    }
+
+    protected CastUnsafe getCastUnsafe() {
         return null;
     }
 

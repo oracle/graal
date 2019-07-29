@@ -273,26 +273,28 @@
   [n]
   (format "0x%04x" n))
 
+(defn show-hex6
+  "Prints a number in hexadecimal format. Hexadecimal is the conventional base
+  in which to write down values of Unicode code points. Also, it is the same
+  base as was used in the original case fold table, meaning we can keep the diff
+  after updating the table minimal."
+  [n]
+  (format "0x%06x" n))
+
 (defn show-classes
   "Renders the CHARACTER_SET_TABLE in Java code. The CHARACTER_SET_TABLE
   contains the definitions of codepoint equivalence classes that are used in
   directMapping (:kind :class) entries of the case fold table."
   [classes]
-  (let [header      "    private static final ArrayList<TreeSet<CodePointRange>> CHARACTER_SET_TABLE = new ArrayList<>(Arrays.asList(\n"
+  (let [header      "    private static final CodePointSet[] CHARACTER_SET_TABLE = new CodePointSet[]{\n"
         item-prefix "                    "
         item-sep    ",\n"
-        footer      "));\n"
+        footer      "};\n"
         show-class  (fn [class]
                       (let [range-sep      ", "
                             show-range     (fn [range]
-                                             (if (= (:lo range) (:hi range))
-                                               (str "new CodePointRange(" (show-hex (:lo range)) ")")
-                                               (str "new CodePointRange(" (show-hex (:lo range)) ", " (show-hex (:hi range)) ")")))
-                            show-codepoint (fn [codepoint]
-                                             (show-hex codepoint))]
-                        (if (every? #(= (:lo %) (:hi %)) class)
-                          (str "rangeSet(" (apply str (interpose ", " (map (comp show-codepoint :lo) class))) ")")
-                          (str "rangeSet(" (apply str (interpose ", " (map show-range class))) ")"))))
+                                               (str (show-hex (:lo range)) ", " (show-hex (:hi range)) ))]
+                        (str "rangeSet(" (apply str (interpose ", " (map show-range class))) ")")))
         body        (apply str (interpose item-sep (map #(str item-prefix (show-class %)) classes)))]
     (str header body footer)))
 
@@ -300,27 +302,30 @@
   "Renders a case fold table with name `table-name`. This is the main product of
   this script."
   [entries table-name]
-  (let [header               (str "    private static final CaseFoldTableEntry[] " table-name " = new CaseFoldTableEntry[]{\n")
+  (let [header               (str "    private static final CaseFoldTableImpl " table-name " = new CaseFoldTableImpl(new int[]{\n")
         item-prefix          "                    "
         item-sep             ",\n"
-        footer               "\n    };\n"
+        footer               "\n    });\n"
         method-name-and-args (fn [entry]
                                (case (:kind entry)
-                                 :delta       (if (> (:delta entry) 0)
-                                                {:method-name "deltaPositive"
-                                                 :args        [(:lo entry) (:hi entry) (:delta entry)]}
-                                                {:method-name "deltaNegative"
-                                                 :args        [(:lo entry) (:hi entry) (- (:delta entry))]})
-                                 :alternating {:method-name (if (:aligned entry)
-                                                              "alternatingAL"
-                                                              "alternatingUL")
-                                               :args        [(:lo entry) (:hi entry)]}
-                                 :class       {:method-name "directMapping"
-                                               :args        [(:lo entry) (:hi entry) (:class-id entry)]}))
+                                 :delta       {:lo          (:lo entry) 
+                                               :hi          (:hi entry) 
+                                               :method-name "INTEGER_OFFSET"
+                                               :arg         (:delta entry)}
+                                 :alternating {:lo          (:lo entry) 
+                                               :hi          (:hi entry)
+                                               :method-name (if (:aligned entry)
+                                                              "ALTERNATING_AL"
+                                                              "ALTERNATING_UL")
+                                               :arg         0 }
+                                 :class       {:lo          (:lo entry) 
+                                               :hi          (:hi entry)
+                                               :method-name "DIRECT_MAPPING"
+                                               :arg         (:class-id entry)}))
         show-entry           (fn [entry]
-                               (let [{:keys [method-name args]} (method-name-and-args entry)
+                               (let [{:keys [lo hi method-name arg]} (method-name-and-args entry)
                                      arg-sep                    ", "]
-                                 (str method-name "(" (apply str (interpose arg-sep (map show-hex args))) ")")))
+                                 (str (show-hex6 lo) ", " (show-hex6 hi) ", " method-name ", " arg)))
         body                 (apply str (interpose item-sep (map #(str item-prefix (show-entry %)) entries)))]
     (str header body footer)))
 

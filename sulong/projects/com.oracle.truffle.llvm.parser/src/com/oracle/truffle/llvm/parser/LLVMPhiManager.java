@@ -29,24 +29,22 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
-import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-public final class LLVMPhiManager implements ModelVisitor {
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
+import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+
+public final class LLVMPhiManager {
 
     private LLVMPhiManager() {
     }
@@ -89,11 +87,11 @@ public final class LLVMPhiManager implements ModelVisitor {
 
         private final InstructionBlock block;
 
-        private final ValueSymbol phi;
+        private final PhiInstruction phi;
 
         private final SymbolImpl value;
 
-        private Phi(InstructionBlock block, ValueSymbol phi, SymbolImpl value) {
+        private Phi(InstructionBlock block, PhiInstruction phi, SymbolImpl value) {
             this.block = block;
             this.phi = phi;
             this.value = value;
@@ -103,7 +101,7 @@ public final class LLVMPhiManager implements ModelVisitor {
             return block;
         }
 
-        public ValueSymbol getPhiValue() {
+        public PhiInstruction getPhiValue() {
             return phi;
         }
 

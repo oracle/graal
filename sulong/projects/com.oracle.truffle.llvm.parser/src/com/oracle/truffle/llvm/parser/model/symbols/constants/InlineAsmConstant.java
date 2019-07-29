@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class InlineAsmConstant extends AbstractConstant {
@@ -91,27 +92,26 @@ public final class InlineAsmConstant extends AbstractConstant {
     public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 
-    public static InlineAsmConstant generate(Type type, long[] args) {
-        int argIndex = 0;
+    public static InlineAsmConstant createFromData(Type type, RecordBuffer buffer) {
 
-        final int flags = (int) args[argIndex++];
+        final int flags = buffer.readInt();
         final boolean hasSideEffects = (flags & 0x1) == 0x1;
         final boolean stackAlign = (flags & 0x2) == 0x2;
         final long asmDialect = flags >> 2;
 
-        int expressionStringLength = (int) args[argIndex++];
+        int expressionStringLength = buffer.readInt();
         final StringBuilder asmExpressionBuilder = new StringBuilder(expressionStringLength + 2);
         asmExpressionBuilder.append(DELIMITER);
         while (expressionStringLength-- > 0) {
-            asmExpressionBuilder.append((char) args[argIndex++]);
+            asmExpressionBuilder.append((char) buffer.read());
         }
         asmExpressionBuilder.append(DELIMITER);
 
-        int flagsStringLength = (int) args[argIndex++];
+        int flagsStringLength = buffer.readInt();
         final StringBuilder asmFlagsBuilder = new StringBuilder(flagsStringLength + 2);
         asmFlagsBuilder.append(DELIMITER);
         while (flagsStringLength-- > 0) {
-            asmFlagsBuilder.append((char) args[argIndex++]);
+            asmFlagsBuilder.append((char) buffer.read());
         }
         asmFlagsBuilder.append(DELIMITER);
 

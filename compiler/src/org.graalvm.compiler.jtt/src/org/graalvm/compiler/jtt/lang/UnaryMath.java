@@ -26,18 +26,19 @@ package org.graalvm.compiler.jtt.lang;
 
 import org.graalvm.compiler.jtt.JTTTest;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class UnaryMath extends JTTTest {
 
-    private static final long STEP = Long.MAX_VALUE / 1_000_000;
+    private static final long STEP = Long.MAX_VALUE / 100_000;
 
     /**
      * Tests a unary {@link Math} method on a wide range of values.
      */
     void testManyValues(OptionValues options, ResolvedJavaMethod method) throws AssertionError {
-        if (!Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
             /*
              * GR-8276: Allow for variance on JVMCI > 8 until a JVMCI version that includes
              * https://github.com/graalvm/graal-jvmci-8/commit/

@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -156,6 +155,11 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 return new BigInteger(Long.toUnsignedString(result));
             }
         }
+
+        @Override
+        public Object computeAddress(long bitOffset) {
+            return new Pointer(LLVMNativePointer.create(value)).computeAddress(bitOffset);
+        }
     }
 
     static final class IVarBit extends LLDBConstant {
@@ -202,12 +206,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 }
             }
 
-            if (signed) {
-                return result.asBigInteger();
-
-            } else {
-                return result.asUnsignedBigInteger();
-            }
+            return result.getDebugValue(signed);
         }
 
         @Override
@@ -321,7 +320,27 @@ abstract class LLDBConstant implements LLVMDebugValue {
 
         @Override
         public boolean isAlwaysSafeToDereference(long bitOffset) {
-            return LLDBSupport.pointsToObjectAccess(pointer);
+            if (LLDBSupport.isNestedManagedPointer(pointer) || LLDBSupport.pointsToObjectAccess(pointer)) {
+                return true;
+            }
+
+            if (pointer.isNull()) {
+                return false;
+            }
+
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(pointer);
+
+                // this is somewhat lazy, but saves us from actually handling these cases
+                if (bitOffset != 0L || managedPointer.getOffset() != 0L) {
+                    return false;
+                }
+
+                final Object target = managedPointer.getObject();
+                return LLVMManagedPointer.isInstance(target);
+            }
+
+            return bitOffset == 0L && pointer.getExportType() != null;
         }
 
         @Override
@@ -336,7 +355,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
         @Override
         public Object asInteropValue() {
             if (isInteropValue()) {
-                TruffleObject foreign = null;
+                Object foreign = null;
 
                 if (LLVMNativePointer.isInstance(pointer)) {
                     foreign = LLVMLanguage.getLLVMContextReference().get().getManagedObjectForHandle(LLVMNativePointer.cast(pointer));
@@ -355,12 +374,49 @@ abstract class LLDBConstant implements LLVMDebugValue {
         @Override
         @TruffleBoundary
         public boolean isInteropValue() {
-            if (LLVMNativePointer.isInstance(pointer)) {
+            if (pointer.isNull()) {
+                return false;
+
+            } else if (LLVMNativePointer.isInstance(pointer)) {
                 return LLVMLanguage.getLLVMContextReference().get().isHandle(LLVMNativePointer.cast(pointer));
+
             } else if (LLVMManagedPointer.isInstance(pointer)) {
-                return !LLDBSupport.pointsToObjectAccess(pointer);
+                final Object target = LLVMManagedPointer.cast(pointer).getObject();
+
+                if (LLVMPointer.isInstance(target)) {
+                    return false;
+
+                } else if (LLDBSupport.pointsToObjectAccess(pointer)) {
+                    return false;
+
+                } else {
+                    return !(target instanceof LLVMTypedForeignObject);
+                }
             } else {
                 throw new IllegalStateException("Unsupported Pointer: " + pointer);
+            }
+        }
+
+        @Override
+        public boolean isManagedPointer() {
+            return LLVMManagedPointer.isInstance(pointer);
+        }
+
+        @Override
+        public Object getManagedPointerBase() {
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                return LLVMManagedPointer.cast(pointer).getObject();
+            } else {
+                return null;
+            }
+        }
+
+        @Override
+        public long getManagedPointerOffset() {
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                return LLVMManagedPointer.cast(pointer).getOffset();
+            } else {
+                return 0;
             }
         }
     }
