@@ -132,7 +132,7 @@
   },
 
   local jdk8_gate_linux             = base.jdk8 + base.gate   + base.linux,
-  local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.weekly + base.linux + base.eclipse + base.jdt,
+  local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate   + base.linux + base.eclipse + base.jdt,
   local jdk8_weekly_linux           = base.jdk8 + base.weekly + base.linux,
 
   builds: [
