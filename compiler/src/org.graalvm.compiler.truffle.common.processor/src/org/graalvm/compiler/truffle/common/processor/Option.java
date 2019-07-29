@@ -322,7 +322,7 @@ public class Option {
             .type("Boolean")
             .category("USER")
             .def("false")
-            .help("Whether to use multiple Truffle compilation tiers by default.")
+            .help("Whether to use multiple Truffle compilation tiers by default."),
     };
     // @formatter:on
 
