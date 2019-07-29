@@ -1,3 +1,18 @@
+# Version 19.3.0
+
+New features:
+
+* Added `mx extract-bitcode` command for extracting embedded bitcode.
+  Usage: `mx extract-bitcode inputFile.so outputFile.bc`, where `inputFile` can
+  be can be a file of any supported format such as wrapped bitcode or ELF/Mach-O
+  with an embedded bitcode sections.
+
+Improvements:
+
+* Clang and other LLVM tools are no longer required to be installed for building
+  the GraalVM LLVM runtime. Instead, the LLVM distribution bundled with the
+  [Toolchain](docs/TOOLCHAIN.md) is used.
+
 # Version 19.2.0
 
 New features:
