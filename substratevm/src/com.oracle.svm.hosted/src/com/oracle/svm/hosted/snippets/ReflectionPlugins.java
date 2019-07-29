@@ -29,11 +29,15 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -167,6 +171,13 @@ public class ReflectionPlugins {
             }
         });
 
+        r.register1("getDeclaredFields", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processGetFields(b, targetMethod, receiver, snippetReflection, true, analysis, hosted);
+            }
+        });
+
         r.register2("getField", Receiver.class, String.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode name) {
@@ -251,6 +262,58 @@ public class ReflectionPlugins {
                     return false;
                 }
                 throwNoSuchFieldException(b, targetMethod, target);
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * If the declaring class of the field references missing classes a
+                 * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                 */
+                Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoClassDefFoundErrorMethod);
+                if (intrinsic == null) {
+                    return false;
+                }
+                throwNoClassDefFoundError(b, targetMethod, e.getMessage());
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean processGetFields(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                                           SnippetReflectionProvider snippetReflection, boolean declared, boolean analysis, boolean hosted) {
+        if (receiver.isConstant()) {
+            Class<?> clazz = snippetReflection.asObject(Class.class, receiver.get().asJavaConstant());
+
+            String target = clazz.getTypeName() + ".getDeclaredFields()";
+            try {
+                Field[] fields = declared ? clazz.getDeclaredFields() : clazz.getFields();
+                if (fields.length == 0) {
+                    return false;
+                }
+                Set<Field> intrinsic = new HashSet<>();
+                for (int i = 0; i < fields.length; ++i) {
+                    Field each = null;
+                    if ( analysis) {
+                        if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+                            ResolvedJavaField annotated = b.getMetaAccess().lookupJavaField(fields[i]);
+                            if (annotated == null || !annotated.isAnnotationPresent(Delete.class)) {
+                                each = fields[i];
+                            }
+                        } else {
+                            each = fields[i];
+                        }
+                        if (each != null) {
+                            intrinsic.add(each);
+                        }
+                    }
+                }
+                Field[] intrinsicArray = null;
+                if (analysis) {
+                    intrinsicArray = intrinsic.toArray(new Field[intrinsic.size()]);
+                    ImageSingletons.lookup(ReflectionPluginRegistry.class).add(toAnalysisMethod(b.getMethod()), b.bci(), intrinsicArray);
+                } else {
+                    intrinsicArray = ImageSingletons.lookup(ReflectionPluginRegistry.class).get(toAnalysisMethod(b.getMethod()), b.bci());
+                }
+                pushConstant(b, targetMethod, snippetReflection.forObject(intrinsicArray), target);
             } catch (NoClassDefFoundError e) {
                 /*
                  * If the declaring class of the field references missing classes a
