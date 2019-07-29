@@ -52,7 +52,7 @@ suite = {
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "javaCompliance": "1.8+",
-            "checkstyle" : "com.oracle.truffle.espresso",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.launcher": {
@@ -63,52 +63,39 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "javaCompliance": "1.8+",
-            "checkstyle" : "com.oracle.truffle.espresso.launcher",
+            "checkstyle": "com.oracle.truffle.espresso.launcher",
         },
 
         "com.oracle.truffle.espresso.playground": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "jniHeaders": True,
-            "dependencies": [
-            ],
             "javaCompliance": "1.8+",
         },
 
         "com.oracle.truffle.espresso.playground.native": {
             "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "results": [
-                "bin/<lib:playground>",
-            ],
+            "native": "shared_lib",
+            "deliverable": "playground",
+            "platformDependent": True,
+            "use_jdk_headers": True,
             "buildDependencies": [
                 "com.oracle.truffle.espresso.playground",
             ],
-            "buildEnv": {
-                "TARGET": "bin/<lib:playground>",
-                "CPPFLAGS": "-I<jnigen:com.oracle.truffle.espresso.playground>",
-                "OS": "<os>",
-            },
+            "cflags": ["-Wall", "-Werror"],
         },
 
         # Native library for Espresso native interface
         "com.oracle.truffle.espresso.native": {
             "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "results": [
-                "bin/<lib:nespresso>",
-            ],
+            "native": "shared_lib",
+            "deliverable": "nespresso",
+            "platformDependent": True,
+            "use_jdk_headers": True,
             "buildDependencies": [
-                "com.oracle.truffle.espresso",
+                "truffle:TRUFFLE_NFI_NATIVE",
             ],
-            "buildEnv": {
-                "TARGET": "bin/<lib:nespresso>",
-                "LIBFFI_SRC": "<path:LIBFFI>",
-                "CPPFLAGS": "-I<path:TRUFFLE_NFI_NATIVE>/include",
-                "OS": "<os>",
-            },
+            "cflags": ["-Wall", "-Werror"],
         },
 
         "com.oracle.truffle.espresso.test": {
@@ -126,40 +113,48 @@ suite = {
 
         # Native library for tests
         "com.oracle.truffle.espresso.test.native": {
-            "testProject" : True,
+            "testProject": True,
             "subDir": "src",
-            "native": True,
-            "vpath": True,
-            "results": [
-                "bin/<lib:nativetest>",
-            ],
+            "native": "shared_lib",
+            "deliverable": "nativetest",
+            "use_jdk_headers": True,
             "buildDependencies": [
                 "com.oracle.truffle.espresso.test",
             ],
-            "buildEnv": {
-                "TARGET": "bin/<lib:nativetest>",
-                "CPPFLAGS": "-I<jnigen:com.oracle.truffle.espresso.test>",
-                "OS": "<os>",
-            },
+            "cflags": ["-Wall", "-Werror"],
         },
 
         # libjvm Espresso implementation
         "com.oracle.truffle.espresso.mokapot": {
             "subDir": "src",
-            "native": True,
-            "vpath": True,
+            "native": "shared_lib",
+            "deliverable": "mokapot",
             "platformDependent": True,
-            "results": [
-                "bin/<lib:mokapot>",
-            ],
+            "use_jdk_headers": True,
             "buildDependencies": [
-                "com.oracle.truffle.espresso",
+                "truffle:TRUFFLE_NFI_NATIVE",
             ],
-            "buildEnv": {
-                "TARGET": "bin/<lib:mokapot>",
-                "LIBFFI_SRC": "<path:LIBFFI>",
-                "CPPFLAGS": "-I<path:TRUFFLE_NFI_NATIVE>/include",
-                "OS": "<os>",
+            "cflags": ["-Wall", "-Werror"],
+            "os_arch": {
+                "darwin": {
+                    "<others>": {
+                        "ldflags": [
+                            "-Wl,-install_name,@rpath/libjvm.dylib",
+                            "-Wl,-rpath,@loader_path/.",
+                            "-Wl,-rpath,@loader_path/..",
+                            "-Wl,-current_version,1.0.0",
+                            "-Wl,-compatibility_version,1.0.0"
+                        ],
+                    },
+                },
+                "linux": {
+                    "<others>": {
+                        "ldflags": [
+                            "-Wl,-soname,libjvm.so",
+                            "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
+                        ],
+                    },
+                },
             },
         },
     },
@@ -193,12 +188,11 @@ suite = {
                 "mx:JUNIT",
             ],
             "javaProperties": {
-                "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/bin/<lib:nativetest>",
+                "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/<lib:nativetest>",
                 "espresso.test.SingletonContext": "true",
             },
             "testDistribution": True,
         },
-
 
         "ESPRESSO_LAUNCHER": {
             "subDir": "src",
@@ -225,9 +219,11 @@ suite = {
                     "file:mx.espresso/reflectconfig.json",
                 ],
                 "lib/": [
-                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/bin/<lib:mokapot>",
-                    "dependency:espresso:com.oracle.truffle.espresso.native/bin/<lib:nespresso>"
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:mokapot>",
+                    "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>"
                 ],
+                # On MacOS -install_name (Linux's -soname counterpart) is not enough to fool the dynamic linker.
+                "lib/<lib:jvm>": "link:<lib:mokapot>",
             },
         },
 
@@ -236,11 +232,9 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.playground"
             ],
-            "distDependencies": [
-            ],
             "description": "Espresso experiments",
             "javaProperties": {
-                "playground.library": "<path:ESPRESSO_PLAYGROUND_NATIVE>/bin/<lib:playground>"
+                "playground.library": "<path:ESPRESSO_PLAYGROUND_NATIVE>/<lib:playground>"
             },
         },
 
@@ -269,6 +263,5 @@ suite = {
             "testDistribution": True,
             "maven": False,
         },
-
     }
 }

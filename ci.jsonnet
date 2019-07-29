@@ -131,6 +131,7 @@
       run_espresso_native(true, hello_world_args),
   },
 
+  local jdk8_gate_darwin            = base.jdk8 + base.gate   + base.darwin,
   local jdk8_gate_linux             = base.jdk8 + base.gate   + base.linux,
   local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate   + base.linux + base.eclipse + base.jdt,
   local jdk8_weekly_linux           = base.jdk8 + base.weekly + base.linux,
@@ -149,5 +150,8 @@
 
     jdk8_gate_linux             + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-linux-amd64'},
     jdk8_gate_linux             + gate_espresso_svm_ee                                                  + {name: 'espresso-svm-ee-hello-world-linux-amd64'},
+
+    jdk8_gate_darwin            + gate_espresso_svm                                                     + {name: 'espresso-svm-hello-world-darwin-amd64'},
+    jdk8_gate_darwin            + gate_espresso_svm_ee                                                  + {name: 'espresso-svm-ee-hello-world-darwin-amd64'},
   ],
 }
