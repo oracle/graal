@@ -181,7 +181,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         PlatformKind kind = target().arch.getLargestStorableKind(register.getRegisterCategory());
         if (kind.getVectorLength() > 1) {
             // we don't use vector registers, so there is no need to save them
-            kind = AArch64Kind.QWORD;
+            kind = AArch64Kind.DOUBLE;
         }
         return getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(kind));
     }
