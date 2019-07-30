@@ -1015,7 +1015,7 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     private static int getConditionalBranchImm(int imm21) {
-        assert NumUtil.isSignedNbit(21, imm21) && (imm21 & 0x3) == 0 : "Immediate has to be 21bit signed number and word aligned";
+        assert NumUtil.isSignedNbit(21, imm21) && (imm21 & 0x3) == 0 : String.format("Immediate has to be 21bit signed number and word aligned got value 0x%x", imm21);
         int imm = (imm21 & NumUtil.getNbitNumberInt(21)) >> 2;
         return imm << ConditionalBranchImmOffset;
     }
