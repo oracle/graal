@@ -282,6 +282,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         ConstantContextSensitiveObject uConstant = new ConstantContextSensitiveObject(bb, this, null);
         if (UNIQUE_CONSTANT_UPDATER.compareAndSet(this, null, uConstant)) {
             constantObjectsCache.values().stream().forEach(constantObject -> {
+                /*
+                 * The order of the two lines below matters: setting the merged flag first, before
+                 * doing the actual merging, ensures that concurrent updates to the flow are still
+                 * merged correctly.
+                 */
                 constantObject.setMergedWithUniqueConstantObject();
                 constantObject.mergeInstanceFieldsFlows(bb, uniqueConstant);
             });

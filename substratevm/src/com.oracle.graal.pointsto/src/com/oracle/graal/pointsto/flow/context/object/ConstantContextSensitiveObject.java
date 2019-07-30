@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow.context.object;
 
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,7 +46,21 @@ public class ConstantContextSensitiveObject extends ContextSensitiveAnalysisObje
 
     /**
      * Has this object been merged into the per-type unique constant object
-     * {@link AnalysisType.uniqueConstant}.
+     * AnalysisType.uniqueConstant.
+     * 
+     * The volatile flag is necessary to ensure that fields discovered while the merging operation
+     * is in progress also get properly merged. Consider this situation:
+     *
+     * Thread 1: marks {@code constantObject} as merged by calling
+     * {@code constantObject.setMergedWithUniqueConstantObject()} which sets
+     * {@code constantObject.mergedWithUniqueConstant} to {@code true}.
+     *
+     * Thread 2: calls {@code constantObject.getInstanceFieldFlow(AnalysisField field)} with a newly
+     * discovered field triggering the creation of a new {@code fieldTypeStore}. The new field type
+     * flows need to be merged with the type's unique constant. However, without the
+     * {@code volatile} flag it is possible that Thread 2 sees the old, {@code false}, value of
+     * {@code constantObject.mergedWithUniqueConstant}, thus the new field type flows never get
+     * merged.
      */
     private volatile boolean mergedWithUniqueConstant;
 
