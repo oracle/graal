@@ -42,7 +42,12 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_ABS;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_ADD;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_CEIL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_CONST;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_CONVERT_I32_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_CONVERT_I32_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_CONVERT_I64_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_CONVERT_I64_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_COPYSIGN;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_DEMOTE_F64;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_DIV;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_EQ;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_FLOOR;
@@ -57,6 +62,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_MUL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NEAREST;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_NEG;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_REINTERPRET_I32;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_SQRT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_STORE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F32_SUB;
@@ -65,6 +71,10 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_ABS;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_ADD;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_CEIL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_CONST;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_CONVERT_I32_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_CONVERT_I32_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_CONVERT_I64_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_CONVERT_I64_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_COPYSIGN;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_DIV;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_EQ;
@@ -80,6 +90,8 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_MUL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NEAREST;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_NEG;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_PROMOTE_F32;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_REINTERPRET_I64;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_SQRT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_STORE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.F64_SUB;
@@ -112,6 +124,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_MUL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_NE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_OR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_POPCNT;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_REINTERPRET_F32;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_REM_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_REM_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_ROTL;
@@ -123,6 +136,11 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_STORE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_STORE_16;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_STORE_8;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_SUB;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_TRUNC_F32_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_TRUNC_F32_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_TRUNC_F64_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_TRUNC_F64_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_WRAP_I64;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I32_XOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_ADD;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_AND;
@@ -133,6 +151,8 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_DIV_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_DIV_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_EQ;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_EQZ;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_EXTEND_I32_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_EXTEND_I32_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_GE_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_GE_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_GT_S;
@@ -152,6 +172,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_MUL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_NE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_OR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_POPCNT;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_REINTERPRET_F64;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_REM_S;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_REM_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_ROTL;
@@ -164,6 +185,10 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_16
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_32;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_STORE_8;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_SUB;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_TRUNC_F32_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_TRUNC_F32_U;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_TRUNC_F64_S;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_TRUNC_F64_U;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.I64_XOR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.IF;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_GET;
@@ -179,6 +204,8 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int startOffset;
@@ -1646,6 +1673,101 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double y = popAsDouble(frame, stackPointer);
                     pushDouble(frame, stackPointer, Math.copySign(y, x));
                     stackPointer++;
+                    break;
+                }
+                case I32_WRAP_I64: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    pushInt(frame, stackPointer, (int) (x % 0x8000_0000));
+                    stackPointer++;
+                    break;
+                }
+                case I32_TRUNC_F32_S:
+                case I32_TRUNC_F32_U: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    pushInt(frame, stackPointer, (int) x);
+                    stackPointer++;
+                    break;
+                }
+                case I32_TRUNC_F64_S:
+                case I32_TRUNC_F64_U: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    pushInt(frame, stackPointer, (int) x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_EXTEND_I32_S: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    push(frame, stackPointer, x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_EXTEND_I32_U: {
+                    break;
+                }
+                case I64_TRUNC_F32_S:
+                case I64_TRUNC_F32_U: {
+                    stackPointer--;
+                    float x = popAsFloat(frame, stackPointer);
+                    push(frame, stackPointer, (long) x);
+                    stackPointer++;
+                    break;
+                }
+                case I64_TRUNC_F64_S:
+                case I64_TRUNC_F64_U: {
+                    stackPointer--;
+                    double x = popAsDouble(frame, stackPointer);
+                    push(frame, stackPointer, (long) x);
+                    stackPointer++;
+                    break;
+                }
+                case F32_CONVERT_I32_S:
+                case F32_CONVERT_I32_U: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    pushFloat(frame, stackPointer, (float) x);
+                    stackPointer++;
+                    break;
+                }
+                case F32_CONVERT_I64_S:
+                case F32_CONVERT_I64_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    pushFloat(frame, stackPointer, (float) x);
+                    stackPointer++;
+                    break;
+                }
+                case F32_DEMOTE_F64: {
+                    throw new NotImplementedException();
+                }
+                case F64_CONVERT_I32_S:
+                case F64_CONVERT_I32_U: {
+                    stackPointer--;
+                    int x = popInt(frame, stackPointer);
+                    pushDouble(frame, stackPointer, (double) x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_CONVERT_I64_S:
+                case F64_CONVERT_I64_U: {
+                    stackPointer--;
+                    long x = pop(frame, stackPointer);
+                    pushDouble(frame, stackPointer, (double) x);
+                    stackPointer++;
+                    break;
+                }
+                case F64_PROMOTE_F32: {
+                    throw new NotImplementedException();
+                }
+                case I32_REINTERPRET_F32:
+                case I64_REINTERPRET_F64:
+                case F32_REINTERPRET_I32:
+                case F64_REINTERPRET_I64: {
+                    // As we don't store type information for the frame slots (everything is stored as raw bits in a long,
+                    // and interpreted appropriately upon access), we don't need to do anything for these instructions.
                     break;
                 }
                 default:
