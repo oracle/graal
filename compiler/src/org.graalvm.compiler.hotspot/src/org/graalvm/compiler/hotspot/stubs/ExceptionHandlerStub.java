@@ -71,16 +71,6 @@ public class ExceptionHandlerStub extends SnippetStub {
         super("exceptionHandler", options, providers, linkage);
     }
 
-    /**
-     * This stub is called when returning to a method to handle an exception thrown by a callee. It
-     * is not used for routing implicit exceptions. Therefore, it does not need to save any
-     * registers as HotSpot uses a caller save convention.
-     */
-    @Override
-    public boolean preservesRegisters() {
-        return false;
-    }
-
     @Override
     protected Object getConstantParameterValue(int index, String name) {
         if (index == 2) {

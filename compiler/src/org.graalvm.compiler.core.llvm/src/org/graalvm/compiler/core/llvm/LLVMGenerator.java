@@ -995,12 +995,17 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public StandardOp.SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         throw unimplemented();
     }
 
     @Override
-    public StandardOp.SaveRegistersOp createZapRegisters() {
+    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters) {
+        throw unimplemented();
+    }
+
+    @Override
+    public StandardOp.ZapRegistersOp createZapRegisters() {
         throw unimplemented();
     }
 

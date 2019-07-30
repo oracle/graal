@@ -25,9 +25,9 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.Arrays;
 
@@ -70,7 +70,7 @@ public class AArch64RestoreRegistersOp extends AArch64LIRInstruction {
     }
 
     protected Register[] getSavedRegisters() {
-        return save.savedRegisters;
+        return save.getSavedRegisters();
     }
 
     protected void restoreRegister(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, StackSlot input) {

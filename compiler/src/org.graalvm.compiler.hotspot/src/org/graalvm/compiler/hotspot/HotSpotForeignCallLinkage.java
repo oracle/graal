@@ -24,12 +24,12 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import jdk.vm.ci.meta.InvokeTarget;
-
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.word.LocationIdentity;
+
+import jdk.vm.ci.meta.InvokeTarget;
 
 /**
  * The details required to link a HotSpot runtime or stub call.
@@ -42,8 +42,8 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
      * {@linkplain ForeignCallLinkage#getTemporaries() temporary} registers.
      */
     enum RegisterEffect {
-        DESTROYS_REGISTERS,
-        PRESERVES_REGISTERS
+        DESTROYS_ALL_CALLER_SAVE_REGISTERS,
+        COMPUTES_REGISTERS_KILLED
     }
 
     /**

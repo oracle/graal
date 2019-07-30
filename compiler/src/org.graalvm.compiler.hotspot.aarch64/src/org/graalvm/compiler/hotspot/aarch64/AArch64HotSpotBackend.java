@@ -284,8 +284,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         }
 
         if (stub != null) {
-            EconomicSet<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
-            updateStub(stub, destroyedCallerRegisters, gen.getCalleeSaveInfo(), frameMap);
+            updateStub(stub, gen, frameMap);
         }
         return crb;
     }

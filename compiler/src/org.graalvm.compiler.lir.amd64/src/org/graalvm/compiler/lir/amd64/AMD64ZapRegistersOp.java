@@ -24,26 +24,21 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import static org.graalvm.compiler.lir.amd64.AMD64SaveRegistersOp.prune;
-
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
+import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.lir.framemap.FrameMap;
 
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Writes well known garbage values to registers.
  */
 @Opcode("ZAP_REGISTER")
-public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements SaveRegistersOp {
+public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements StandardOp.ZapRegistersOp {
     public static final LIRInstructionClass<AMD64ZapRegistersOp> TYPE = LIRInstructionClass.create(AMD64ZapRegistersOp.class);
 
     /**
@@ -70,20 +65,5 @@ public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements Sa
                 AMD64Move.const2reg(crb, masm, reg, zapValues[i], AMD64Kind.QWORD);
             }
         }
-    }
-
-    @Override
-    public boolean supportsRemove() {
-        return true;
-    }
-
-    @Override
-    public int remove(EconomicSet<Register> doNotSave) {
-        return prune(doNotSave, zappedRegisters);
-    }
-
-    @Override
-    public RegisterSaveLayout getMap(FrameMap frameMap) {
-        return new RegisterSaveLayout(new Register[0], new int[0]);
     }
 }

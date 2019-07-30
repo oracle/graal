@@ -219,8 +219,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         }
 
         if (stub != null) {
-            EconomicSet<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
-            updateStub(stub, destroyedCallerRegisters, gen.getCalleeSaveInfo(), frameMap);
+            updateStub(stub, gen, frameMap);
         }
 
         return crb;
