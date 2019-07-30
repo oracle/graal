@@ -71,7 +71,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     public void testProcessCreationDenied() throws Exception {
         Path javaExecutable = getJavaExecutable();
         Assume.assumeNotNull(javaExecutable);
-        setupEnv(Context.newBuilder().build());
+        setupEnv(Context.newBuilder().allowIO(true).build());
         try {
             languageEnv.newProcessBuilder(javaExecutable.toString()).start();
             Assert.fail("SecurityException expected.");
@@ -85,7 +85,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     public void testProcessCreationAllowed() throws Exception {
         Path javaExecutable = getJavaExecutable();
         Assume.assumeNotNull(javaExecutable);
-        setupEnv(Context.newBuilder().allowCreateProcess(true).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowCreateProcess(true).build());
         Process p = languageEnv.newProcessBuilder(javaExecutable.toString()).start();
         if (!p.waitFor(5, TimeUnit.SECONDS)) {
             p.destroy();
@@ -147,7 +147,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     @Test
     public void testCustomHandlerProcessCreationDenied() throws Exception {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().processHandler(testHandler).build());
+        setupEnv(Context.newBuilder().allowIO(true).processHandler(testHandler).build());
         try {
             languageEnv.newProcessBuilder("process").start();
             Assert.fail("SecurityException expected.");
@@ -160,7 +160,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     @Test
     public void testCustomHandlerProcessCreationAllowed() throws Exception {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).build());
         languageEnv.newProcessBuilder("process").start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
@@ -171,7 +171,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     @Test
     public void testCommands() throws Exception {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).build());
         languageEnv.newProcessBuilder("process", "param1", "param2").start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
@@ -193,7 +193,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         MockProcessHandler testHandler = new MockProcessHandler();
         setupEnv(Context.newBuilder().allowCreateProcess(true).allowIO(true).processHandler(testHandler).build());
         String workdirPath = Paths.get("/workdir").toString();
-        TruffleFile workDir = languageEnv.getTruffleFile(workdirPath);
+        TruffleFile workDir = languageEnv.getPublicTruffleFile(workdirPath);
         languageEnv.newProcessBuilder("process").directory(workDir).start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);
@@ -247,7 +247,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
         MockProcessHandler testHandler = new MockProcessHandler();
-        Context.Builder builder = Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        Context.Builder builder = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
         for (int i = 0; i < envKeyValuePairs.length; i += 2) {
             builder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
@@ -262,7 +262,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
         MockProcessHandler testHandler = new MockProcessHandler();
-        Context.Builder contextBuilder = Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        Context.Builder contextBuilder = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
         for (int i = 0; i < envKeyValuePairs.length; i += 2) {
             contextBuilder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
@@ -279,7 +279,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
         MockProcessHandler testHandler = new MockProcessHandler();
-        Context.Builder contextBuilder = Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        Context.Builder contextBuilder = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
         for (int i = 0; i < envKeyValuePairs.length; i += 2) {
             contextBuilder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
@@ -304,7 +304,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
             throw new IllegalArgumentException("The envKeyValuePairs length must be even");
         }
         MockProcessHandler testHandler = new MockProcessHandler();
-        Context.Builder contextBuilder = Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
+        Context.Builder contextBuilder = Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).allowEnvironmentAccess(envAccess);
         for (int i = 0; i < envKeyValuePairs.length; i += 2) {
             contextBuilder.environment(envKeyValuePairs[i], envKeyValuePairs[i + 1]);
         }
@@ -320,7 +320,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
     @Test
     public void testRedirects() throws Exception {
         MockProcessHandler testHandler = new MockProcessHandler();
-        setupEnv(Context.newBuilder().allowCreateProcess(true).processHandler(testHandler).build());
+        setupEnv(Context.newBuilder().allowIO(true).allowCreateProcess(true).processHandler(testHandler).build());
         languageEnv.newProcessBuilder("process").start();
         ProcessHandler.ProcessCommand command = testHandler.getAndCleanLastCommand();
         Assert.assertNotNull(command);

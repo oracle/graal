@@ -1001,7 +1001,7 @@ public class SLInspectDebugTest {
         Context context = Context.newBuilder().allowIO(true).build();
         context.initialize("sl");
         context.enter();
-        TruffleFile truffleFile = SLLanguage.getCurrentContext().getEnv().getTruffleFile(file.toPath().toString());
+        TruffleFile truffleFile = SLLanguage.getCurrentContext().getEnv().getPublicTruffleFile(file.toPath().toString());
         com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", truffleFile).build();
 
         tester = InspectorTester.start(false);

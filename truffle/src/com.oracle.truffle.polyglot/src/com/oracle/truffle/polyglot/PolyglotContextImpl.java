@@ -1227,6 +1227,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     static PolyglotContextImpl preInitialize(final PolyglotEngineImpl engine) {
         final FileSystems.PreInitializeContextFileSystem fs = new FileSystems.PreInitializeContextFileSystem();
+        final FileSystems.PreInitializeContextFileSystem internalFs = new FileSystems.PreInitializeContextFileSystem();
         EconomicSet<String> allowedLanguages = EconomicSet.create();
         allowedLanguages.addAll(engine.getLanguages().keySet());
         final PolyglotContextConfig config = new PolyglotContextConfig(engine,
@@ -1243,7 +1244,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         Collections.emptyMap(),
                         allowedLanguages,
                         Collections.emptyMap(),
-                        fs, engine.logHandler, false, null,
+                        fs, internalFs, engine.logHandler, false, null,
                         EnvironmentAccess.INHERIT, null, null);
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         try {
@@ -1289,6 +1290,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             return context;
         } finally {
             fs.onPreInitializeContextEnd();
+            internalFs.onPreInitializeContextEnd();
             FileSystems.resetDefaultFileSystemProvider();
             if (!config.logLevels.isEmpty()) {
                 EngineAccessor.LANGUAGE.configureLoggers(context, null, getAllLoggers(engine));

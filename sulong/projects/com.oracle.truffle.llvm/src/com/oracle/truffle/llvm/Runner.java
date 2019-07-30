@@ -652,7 +652,7 @@ final class Runner {
         }
 
         Path path = lib.getPath();
-        TruffleFile file = context.getEnv().getTruffleFile(path.toUri());
+        TruffleFile file = context.getEnv().getInternalTruffleFile(path.toUri());
         Source source;
         try {
             source = Source.newBuilder("llvm", file).internal(lib.isInternal()).build();

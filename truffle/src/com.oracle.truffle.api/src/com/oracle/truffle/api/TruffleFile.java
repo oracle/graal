@@ -266,6 +266,10 @@ public final class TruffleFile {
         return normalizedPath;
     }
 
+    FileSystem getSPIFileSystem() {
+        return fileSystemContext.fileSystem;
+    }
+
     /**
      * Tests existence of a file.
      *
