@@ -356,17 +356,20 @@ public class BinaryReader extends BinaryStreamReader {
 
     private void readCodeSection() {
         int numCodeEntries = readVectorLength();
-        for (int entry = 0; entry < numCodeEntries; entry++) {
+        WasmRootNode[] rootNodes = new WasmRootNode[numCodeEntries];
+        for (int entry = 0; entry != numCodeEntries; ++entry) {
+            rootNodes[entry] = createCodeEntry(entry);
+        }
+        for (int entry = 0; entry != numCodeEntries; ++entry) {
             int codeEntrySize = readUnsignedInt32();
             int startOffset = offset;
             // TODO: Offset the entry by the number of already parsed code entries
-            readCodeEntry(entry);
+            readCodeEntry(entry, rootNodes[entry]);
             Assert.assertEquals(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entry));
         }
     }
 
-    private void readCodeEntry(int funcIndex) {
-        /* Read code entry (function) locals. */
+    private WasmRootNode createCodeEntry(int funcIndex) {
         WasmCodeEntry codeEntry = new WasmCodeEntry(funcIndex, data);
         wasmModule.symbolTable().function(funcIndex).setCodeEntry(codeEntry);
 
@@ -379,22 +382,26 @@ public class BinaryReader extends BinaryStreamReader {
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         wasmModule.symbolTable().function(funcIndex).setCallTarget(callTarget);
 
+        return rootNode;
+    }
+
+    private void readCodeEntry(int funcIndex, WasmRootNode rootNode) {
         /* Initialise the code entry local variables (which contain the parameters and the locals). */
         initCodeEntryLocals(funcIndex);
 
         /* Read (parse) and abstractly interpret the code entry */
         byte returnTypeId = wasmModule.symbolTable().function(funcIndex).returnType();
         ExecutionState state = new ExecutionState();
-        WasmBlockNode bodyBlock = readBlock(codeEntry, state, returnTypeId);
+        WasmBlockNode bodyBlock = readBlock(rootNode.codeEntry(), state, returnTypeId);
         rootNode.setBody(bodyBlock);
 
         /* Push a frame slot to the frame descriptor for every local. */
-        codeEntry.initLocalSlots(rootNode.getFrameDescriptor());
+        rootNode.codeEntry().initLocalSlots(rootNode.getFrameDescriptor());
 
         /* Initialize the Truffle-related components required for execution. */
-        codeEntry.setByteConstants(state.byteConstants());
-        codeEntry.setIntConstants(state.intConstants());
-        codeEntry.initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
+        rootNode.codeEntry().setByteConstants(state.byteConstants());
+        rootNode.codeEntry().setIntConstants(state.intConstants());
+        rootNode.codeEntry().initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
     }
 
     private ByteArrayList readCodeEntryLocals() {
