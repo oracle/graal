@@ -1340,7 +1340,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
                     // Can happen in old classfiles that calls j.l.Object on interfaces.
                     invoke = InvokeVirtualNodeGen.create(resolutionSeed);
-                } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet())) {
+                } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
                     invoke = new InvokeSpecialNode(resolutionSeed);
                 } else {
                     // @formatter:off
@@ -1622,7 +1622,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     private StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
-            CompilerDirectives.transferToInterpreter();
             // TODO(peterssen): Profile whether null was hit or not.
             Meta meta = getMethod().getContext().getMeta();
             if (DEBUG_GENERAL) {
@@ -1633,20 +1632,18 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         return value;
     }
 
-    private static int checkNonZero(int value) {
+    private int checkNonZero(int value) {
         if (value != 0) {
             return value;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArithmeticException.class, "/ by zero");
+        throw getMeta().throwExWithMessage(ArithmeticException.class, "/ by zero");
     }
 
-    private static long checkNonZero(long value) {
+    private long checkNonZero(long value) {
         if (value != 0L) {
             return value;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(ArithmeticException.class, "/ by zero");
+        throw getMeta().throwExWithMessage(ArithmeticException.class, "/ by zero");
     }
 
     // endregion Misc. checks
