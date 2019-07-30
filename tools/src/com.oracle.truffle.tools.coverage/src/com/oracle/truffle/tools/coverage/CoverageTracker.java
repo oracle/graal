@@ -71,7 +71,7 @@ public class CoverageTracker implements AutoCloseable {
         closed = true;
     }
 
-    public synchronized void addLoadedStatement(SourceSection sourceSection) {
+    private synchronized void addLoadedStatement(SourceSection sourceSection) {
         coverage.addLoadedStatement(sourceSection);
     }
 
