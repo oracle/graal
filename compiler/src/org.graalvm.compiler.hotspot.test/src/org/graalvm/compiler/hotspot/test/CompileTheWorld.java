@@ -841,6 +841,7 @@ public final class CompileTheWorld {
             } catch (InterruptedException e) {
             }
         }
+        threadPool.shutdown();
         threadPool = null;
 
         long elapsedTime = System.currentTimeMillis() - start;
