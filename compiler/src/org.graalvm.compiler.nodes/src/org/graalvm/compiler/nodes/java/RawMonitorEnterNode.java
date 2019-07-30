@@ -64,7 +64,7 @@ public final class RawMonitorEnterNode extends AccessMonitorNode implements Virt
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 

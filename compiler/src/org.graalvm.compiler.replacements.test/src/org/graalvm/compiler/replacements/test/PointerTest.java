@@ -149,7 +149,7 @@ public class PointerTest extends SnippetsTest {
         Assert.assertEquals(graph.getParameter(0), cast.getInput());
         Assert.assertEquals(target.wordJavaKind, cast.stamp(NodeView.DEFAULT).getStackKind());
 
-        Assert.assertEquals(locationIdentity, write.getLocationIdentity());
+        Assert.assertEquals(locationIdentity, write.getKilledLocationIdentity());
 
         if (indexConvert) {
             SignExtendNode convert = (SignExtendNode) address.getOffset();

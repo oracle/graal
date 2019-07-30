@@ -91,7 +91,7 @@ public final class CFunctionPrologueNode extends FixedWithNextNode implements Lo
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 

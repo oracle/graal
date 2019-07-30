@@ -166,9 +166,9 @@ public class FloatingReadPhase extends Phase {
 
     protected void processNode(FixedNode node, EconomicSet<LocationIdentity> currentState) {
         if (node instanceof MemoryCheckpoint.Single) {
-            processIdentity(currentState, ((MemoryCheckpoint.Single) node).getLocationIdentity());
+            processIdentity(currentState, ((MemoryCheckpoint.Single) node).getKilledLocationIdentity());
         } else if (node instanceof MemoryCheckpoint.Multi) {
-            for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getLocationIdentities()) {
+            for (LocationIdentity identity : ((MemoryCheckpoint.Multi) node).getKilledLocationIdentities()) {
                 processIdentity(currentState, identity);
             }
         }
@@ -312,7 +312,8 @@ public class FloatingReadPhase extends Phase {
 
             if (createFloatingReads && node instanceof FloatableAccessNode) {
                 processFloatable((FloatableAccessNode) node, state);
-            } else if (node instanceof MemoryCheckpoint.Single) {
+            }
+            if (node instanceof MemoryCheckpoint.Single) {
                 processCheckpoint((MemoryCheckpoint.Single) node, state);
             } else if (node instanceof MemoryCheckpoint.Multi) {
                 processCheckpoint((MemoryCheckpoint.Multi) node, state);
@@ -355,11 +356,11 @@ public class FloatingReadPhase extends Phase {
         }
 
         private static void processCheckpoint(MemoryCheckpoint.Single checkpoint, MemoryMapImpl state) {
-            processIdentity(checkpoint.getLocationIdentity(), checkpoint, state);
+            processIdentity(checkpoint.getKilledLocationIdentity(), checkpoint, state);
         }
 
         private static void processCheckpoint(MemoryCheckpoint.Multi checkpoint, MemoryMapImpl state) {
-            for (LocationIdentity identity : checkpoint.getLocationIdentities()) {
+            for (LocationIdentity identity : checkpoint.getKilledLocationIdentities()) {
                 processIdentity(identity, checkpoint, state);
             }
         }
@@ -405,7 +406,7 @@ public class FloatingReadPhase extends Phase {
                  * side it needs to choose by putting in the location identity on both successors.
                  */
                 InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) node.predecessor();
-                result.lastMemorySnapshot.put(invoke.getLocationIdentity(), (MemoryCheckpoint) node);
+                result.lastMemorySnapshot.put(invoke.getKilledLocationIdentity(), (MemoryCheckpoint) node);
             }
             return result;
         }

@@ -310,9 +310,9 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
                  */
                 boolean isAny = false;
                 if (n instanceof MemoryCheckpoint.Single) {
-                    isAny = ((MemoryCheckpoint.Single) n).getLocationIdentity().isAny();
+                    isAny = ((MemoryCheckpoint.Single) n).getKilledLocationIdentity().isAny();
                 } else {
-                    for (LocationIdentity ident : ((MemoryCheckpoint.Multi) n).getLocationIdentities()) {
+                    for (LocationIdentity ident : ((MemoryCheckpoint.Multi) n).getKilledLocationIdentities()) {
                         if (ident.isAny()) {
                             isAny = true;
                         }

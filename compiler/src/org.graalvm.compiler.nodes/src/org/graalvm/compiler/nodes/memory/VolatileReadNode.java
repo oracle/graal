@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,50 +23,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.nodes.aot;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
+package org.graalvm.compiler.nodes.memory;
 
-import org.graalvm.word.LocationIdentity;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.word.LocationIdentity;
 
-@NodeInfo(cycles = CYCLES_4, size = SIZE_16, allowedUsageTypes = {InputType.Memory})
-public class ResolveDynamicConstantNode extends DeoptimizingFixedWithNextNode implements Lowerable, MemoryCheckpoint.Single {
-    public static final NodeClass<ResolveDynamicConstantNode> TYPE = NodeClass.create(ResolveDynamicConstantNode.class);
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-    @Input ValueNode value;
+@NodeInfo(nameTemplate = "Read#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
+public class VolatileReadNode extends ReadNode implements MemoryCheckpoint.Single {
+    public static final NodeClass<VolatileReadNode> TYPE = NodeClass.create(VolatileReadNode.class);
 
-    public ResolveDynamicConstantNode(Stamp valueStamp, ValueNode value) {
-        super(TYPE, valueStamp);
-        this.value = value;
+    public VolatileReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
+        super(TYPE, address, location, stamp, null, barrierType, false, null);
+        assert GraalOptions.LateMembars.getValue(address.getOptions());
     }
 
-    public ValueNode value() {
-        return value;
+    @SuppressWarnings("try")
+    @Override
+    public FloatingAccessNode asFloatingNode() {
+        throw new RuntimeException();
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
+    public boolean canFloat() {
+        return false;
     }
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
+    }
+
+    @Override
+    public boolean canNullCheck() {
+        return false;
     }
 
 }

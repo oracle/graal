@@ -60,7 +60,7 @@ public final class DeoptEntryNode extends DeoptProxyAnchorNode implements Deopti
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 }
