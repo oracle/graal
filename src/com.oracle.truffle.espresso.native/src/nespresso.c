@@ -1,5 +1,4 @@
 #include <jni.h>
-#include <ffi.h>
 #include <trufflenfi.h>
 #include <stdlib.h>
 #include <string.h>
