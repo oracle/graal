@@ -924,64 +924,65 @@ public class CompileQueue {
             System.out.println("Compiling " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
         }
 
-        SubstrateBackend backend = config.lookupBackend(method);
+        try {
+            SubstrateBackend backend = config.lookupBackend(method);
 
-        StructuredGraph graph = method.compilationInfo.graph;
-        assert graph != null : method;
-        /* Operate on a copy, to keep the original graph intact for later inlining. */
-        graph = graph.copyWithIdentifier(compilationIdentifier, debug);
+            StructuredGraph graph = method.compilationInfo.graph;
+            assert graph != null : method;
+            /* Operate on a copy, to keep the original graph intact for later inlining. */
+            graph = graph.copyWithIdentifier(compilationIdentifier, debug);
 
-        /* Check that graph is in good shape before compilation. */
-        assert GraphOrder.assertSchedulableGraph(graph);
+            /* Check that graph is in good shape before compilation. */
+            assert GraphOrder.assertSchedulableGraph(graph);
 
-        try (DebugContext.Scope s = debug.scope("Compiling", graph, method, this)) {
+            try (DebugContext.Scope s = debug.scope("Compiling", graph, method, this)) {
 
-            if (deoptimizeAll && method.compilationInfo.canDeoptForTesting) {
-                insertDeoptTests(method, graph);
-            }
-            method.compilationInfo.numNodesBeforeCompilation = graph.getNodeCount();
-            method.compilationInfo.numDeoptEntryPoints = graph.getNodes().filter(DeoptEntryNode.class).count();
-            method.compilationInfo.numDuringCallEntryPoints = graph.getNodes(MethodCallTargetNode.TYPE).snapshot().stream()
-                            .map(MethodCallTargetNode::invoke)
-                            .filter(invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), true, false))
-                            .count();
+                if (deoptimizeAll && method.compilationInfo.canDeoptForTesting) {
+                    insertDeoptTests(method, graph);
+                }
+                method.compilationInfo.numNodesBeforeCompilation = graph.getNodeCount();
+                method.compilationInfo.numDeoptEntryPoints = graph.getNodes().filter(DeoptEntryNode.class).count();
+                method.compilationInfo.numDuringCallEntryPoints = graph.getNodes(MethodCallTargetNode.TYPE).snapshot().stream()
+                                .map(MethodCallTargetNode::invoke)
+                                .filter(invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), true, false))
+                                .count();
 
-            Suites suites = method.compilationInfo.isDeoptTarget() ? deoptTargetSuites : regularSuites;
-            LIRSuites lirSuites = method.compilationInfo.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
+                Suites suites = method.compilationInfo.isDeoptTarget() ? deoptTargetSuites : regularSuites;
+                LIRSuites lirSuites = method.compilationInfo.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
 
-            CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
+                CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.format("%H.%n(%p)"));
 
-            try (Indent indent = debug.logAndIndent("compile %s", method)) {
-                GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
-                                new HostedCompilationResultBuilderFactory(), false);
-            }
-            method.getProfilingInfo().setCompilerIRSize(StructuredGraph.class, method.compilationInfo.graph.getNodeCount());
-            method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();
+                try (Indent indent = debug.logAndIndent("compile %s", method)) {
+                    GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
+                                    new HostedCompilationResultBuilderFactory(), false);
+                }
+                method.getProfilingInfo().setCompilerIRSize(StructuredGraph.class, method.compilationInfo.graph.getNodeCount());
+                method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();
 
-            if (method.compilationInfo.isDeoptTarget()) {
-                assert verifyDeoptTarget(method, result);
-            }
-            for (Infopoint infopoint : result.getInfopoints()) {
-                if (infopoint instanceof Call) {
-                    Call call = (Call) infopoint;
-                    HostedMethod callTarget = (HostedMethod) call.target;
-                    if (call.direct) {
-                        ensureCompiled(callTarget, new DirectCallReason(method, reason));
-                    } else if (callTarget != null && callTarget.getImplementations() != null) {
-                        for (HostedMethod impl : callTarget.getImplementations()) {
-                            ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
+                if (method.compilationInfo.isDeoptTarget()) {
+                    assert verifyDeoptTarget(method, result);
+                }
+                for (Infopoint infopoint : result.getInfopoints()) {
+                    if (infopoint instanceof Call) {
+                        Call call = (Call) infopoint;
+                        HostedMethod callTarget = (HostedMethod) call.target;
+                        if (call.direct) {
+                            ensureCompiled(callTarget, new DirectCallReason(method, reason));
+                        } else if (callTarget != null && callTarget.getImplementations() != null) {
+                            for (HostedMethod impl : callTarget.getImplementations()) {
+                                ensureCompiled(impl, new VirtualCallReason(method, callTarget, reason));
+                            }
                         }
                     }
                 }
+
+                /* Shrink resulting code array to minimum size, to reduze memory footprint. */
+                if (result.getTargetCode().length > result.getTargetCodeSize()) {
+                    result.setTargetCode(Arrays.copyOf(result.getTargetCode(), result.getTargetCodeSize()), result.getTargetCodeSize());
+                }
+
+                return result;
             }
-
-            /* Shrink resulting code array to minimum size, to reduze memory footprint. */
-            if (result.getTargetCode().length > result.getTargetCodeSize()) {
-                result.setTargetCode(Arrays.copyOf(result.getTargetCode(), result.getTargetCodeSize()), result.getTargetCodeSize());
-            }
-
-            return result;
-
         } catch (Throwable ex) {
             GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
             error.addContext("method: " + method.format("%r %H.%n(%p)") + "  [" + reason + "]");
