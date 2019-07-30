@@ -898,4 +898,4 @@ BIN_NUMBER : '0b' BIN_DIGIT+;
 HEX_NUMBER : '0x' HEX_DIGIT+;
 NUMBER : '-'? DIGIT+;
 
-WS : ' '+ -> skip;
+WS : ( ' ' | '\t' )+ -> skip;
