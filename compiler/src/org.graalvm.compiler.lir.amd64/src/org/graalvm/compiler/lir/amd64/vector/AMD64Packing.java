@@ -187,14 +187,14 @@ public final class AMD64Packing {
         }
     }
 
-    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, Register scratch) {
+    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, AMD64Kind srcKind, Register scratch) {
         if (isRegister(src)) {
-            reg2addr(crb, masm, (AMD64Kind) src.getPlatformKind(), dst, asRegister(src));
+            reg2addr(crb, masm, srcKind, dst, asRegister(src));
         } else if (isStackSlot(src)) {
-            addr2reg(crb, masm, (AMD64Kind) src.getPlatformKind(), scratch, (AMD64Address) crb.asAddress(src));
-            reg2addr(crb, masm, (AMD64Kind) src.getPlatformKind(), dst, scratch);
+            addr2reg(crb, masm, srcKind, scratch, (AMD64Address) crb.asAddress(src));
+            reg2addr(crb, masm, srcKind, dst, scratch);
         } else if (isJavaConstant(src)) {
-            const2addr(crb, masm, (AMD64Kind) src.getPlatformKind(), dst, asJavaConstant(src));
+            const2addr(crb, masm, srcKind, dst, asJavaConstant(src));
         }
     }
 
@@ -376,7 +376,7 @@ public final class AMD64Packing {
             int offset = 0;
             for (AllocatableValue value : values) {
                 AMD64Address target = new AMD64Address(rsp, offset);
-                move(crb, masm, target, value, asRegister(scratch));
+                move(crb, masm, target, value, scalarKind, asRegister(scratch));
                 offset += scalarKind.getSizeInBytes();
             }
 
