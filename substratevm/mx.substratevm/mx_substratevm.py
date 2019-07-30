@@ -152,6 +152,10 @@ java_base_opens_packages = [
     'java.base/javax.crypto',
     # Reflective access to java.util.Bits.words.
     'java.base/java.util',
+    # Reflective access to java.util.concurrent.atomic.AtomicIntegerFieldUpdater$AtomicIntegerFieldUpdaterImpl.tclass.
+    'java.base/java.util.concurrent.atomic',
+    # Reflective access to sun.security.x509.OIDMap.nameMap
+    'java.base/sun.security.x509',
     'java.base/jdk.internal.logger',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(java_base_opens_packages))
 
