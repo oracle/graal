@@ -30,13 +30,14 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.instrumentation.LLVMNodeObject;
-import org.graalvm.collections.EconomicMap;
+import com.oracle.truffle.llvm.runtime.instrumentation.LLVMNodeObjectProvider;
 
 public final class LLVMNodeSourceDescriptor {
 
@@ -49,7 +50,7 @@ public final class LLVMNodeSourceDescriptor {
 
     @CompilationFinal private LLVMSourceLocation sourceLocation;
     @CompilationFinal(dimensions = 1) private Class<? extends Tag>[] tags;
-    @CompilationFinal private EconomicMap<String, Object> nodeObjectEntries;
+    @CompilationFinal private Object nodeObject;
 
     public LLVMSourceLocation getSourceLocation() {
         return sourceLocation;
@@ -78,7 +79,20 @@ public final class LLVMNodeSourceDescriptor {
     }
 
     public Object getNodeObject() {
-        return LLVMNodeObject.create(nodeObjectEntries);
+        if (nodeObject instanceof LLVMNodeObjectProvider) {
+            createNodeObject();
+        }
+        return nodeObject;
+    }
+
+    @TruffleBoundary
+    private void createNodeObject() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        synchronized (this) {
+            while (nodeObject instanceof LLVMNodeObjectProvider) {
+                nodeObject = ((LLVMNodeObjectProvider) nodeObject).createNodeObject();
+            }
+        }
     }
 
     public void setSourceLocation(LLVMSourceLocation sourceLocation) {
@@ -91,8 +105,8 @@ public final class LLVMNodeSourceDescriptor {
         this.tags = tags;
     }
 
-    public void setNodeObjectEntries(EconomicMap<String, Object> nodeObject) {
+    public void setNodeObjectProvider(LLVMNodeObjectProvider nodeObjectProvider) {
         CompilerAsserts.neverPartOfCompilation();
-        this.nodeObjectEntries = nodeObject;
+        this.nodeObject = nodeObjectProvider;
     }
 }
