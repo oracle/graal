@@ -300,6 +300,7 @@ public final class AMD64Packing {
             final int sizeInBytes = valcount * scalarKind.getSizeInBytes();
 
             final AMD64Address outputAddress = result.toAddress();
+            // TODO: support XMM-only platforms
             if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
                 masm.vmovdqu(outputAddress, asRegister(input));
             } else {
