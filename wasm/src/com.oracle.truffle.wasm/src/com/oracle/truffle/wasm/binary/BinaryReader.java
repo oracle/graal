@@ -196,6 +196,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.LOOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.MEMORY_GROW;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.MEMORY_SIZE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 import static com.oracle.truffle.wasm.binary.constants.Sections.CODE;
 import static com.oracle.truffle.wasm.binary.constants.Sections.CUSTOM;
@@ -512,6 +513,11 @@ public class BinaryReader extends BinaryStreamReader {
                 }
                 case DROP:
                     state.pop();
+                    break;
+                case SELECT:
+                    // Pop three values from the stack: the condition and the values to select between.
+                    state.pop(3);
+                    state.push();
                     break;
                 case LOCAL_GET: {
                     int localIndex = readLocalIndex(bytesConsumed);

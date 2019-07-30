@@ -196,6 +196,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_SET;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_TEE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -382,6 +383,17 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case DROP: {
                     stackPointer--;
                     pop(frame, stackPointer);
+                    break;
+                }
+                case SELECT: {
+                    stackPointer--;
+                    int cond = popInt(frame, stackPointer);
+                    stackPointer--;
+                    long val2 = pop(frame, stackPointer);
+                    stackPointer--;
+                    long val1 = pop(frame, stackPointer);
+                    push(frame, stackPointer, cond != 0 ? val1 : val2);
+                    stackPointer++;
                     break;
                 }
                 case LOCAL_GET: {

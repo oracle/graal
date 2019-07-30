@@ -48,8 +48,8 @@ public final class Instructions {
     public static final int CALL = 0x10;
     public static final int CALL_INDIRECT = 0x11;
 
-
     public static final int DROP = 0x1A;
+    public static final int SELECT = 0x1B;
 
     public static final int LOCAL_GET = 0x20;
     public static final int LOCAL_SET = 0x21;
