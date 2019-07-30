@@ -168,7 +168,6 @@ public class LLVMIRBuilder {
         LLVM.LLVMTypeRef wrapperType = prependArguments(calleeType, rawPointerType(), typeOf(callee));
         LLVMValueRef transitionWrapper = addFunction(LLVMUtils.JNI_WRAPPER_PREFIX + intrinsicType(calleeType), wrapperType);
         LLVM.LLVMSetLinkage(transitionWrapper, LLVM.LLVMLinkOnceAnyLinkage);
-        setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "noinline");
 
         LLVM.LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
@@ -185,6 +184,7 @@ public class LLVMIRBuilder {
         }
         LLVMValueRef target = getParam(transitionWrapper, 1);
         LLVMValueRef ret = buildCall(target, args);
+        setCallSiteAttribute(ret, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
 
         if (isVoidType(getReturnType(calleeType))) {
             buildRetVoid();

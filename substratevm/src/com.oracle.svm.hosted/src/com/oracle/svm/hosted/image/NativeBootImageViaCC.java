@@ -128,6 +128,11 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
+
+            if ("aarch64".equals(System.getProperty("svm.targetArch")) || "arm64".equals(System.getProperty("svm.targetArch"))) {
+                additionalPreOptions.add("-arch");
+                additionalPreOptions.add("arm64");
+            }
         }
 
         @Override
