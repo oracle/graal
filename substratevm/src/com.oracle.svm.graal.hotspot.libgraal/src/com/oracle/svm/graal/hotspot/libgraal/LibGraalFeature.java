@@ -114,6 +114,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 
 public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
 
@@ -560,6 +561,10 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalRuntime", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
+
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "org.graalvm.compiler.hotspot.management.libgraal.HotSpotGraalManagement", isFinal = true)
+    private static HotSpotGraalManagementRegistration AOT_INJECTED_MANAGEMENT;
+
     @Substitute
     private static void shutdownLibGraal() {
         VMRuntime.shutdown();

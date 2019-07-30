@@ -2397,6 +2397,15 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_LIBGRAAL_JNI": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.libgraal.jni",
+      ],
+      "maven": False,
+      "javaCompliance" : "8+",
+    },
+
     "GRAAL_TRUFFLE_COMPILER_LIBGRAAL": {
       "subDir" : "src",
       "dependencies" : [
@@ -2408,6 +2417,7 @@ suite = {
 
       "distDependencies" : [
         "GRAAL",
+        "GRAAL_LIBGRAAL_JNI",
       ],
       "maven": False,
       "javaCompliance" : "8+",
@@ -2618,6 +2628,20 @@ suite = {
         "JVMCI_HOTSPOT",
       ],
       "maven": False,
+    },
+
+    "GRAAL_MANAGEMENT_LIBGRAAL": {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot.management.libgraal",
+      ],
+
+      "distDependencies" : [
+        "GRAAL_MANAGEMENT",
+        "GRAAL_LIBGRAAL_JNI",
+      ],
+      "maven": False,
+      "javaCompliance" : "8+",
     },
 
     "JAOTC" : {
