@@ -1290,6 +1290,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             return context;
         } finally {
             fs.onPreInitializeContextEnd();
+            internalFs.onPreInitializeContextEnd();
             FileSystems.resetDefaultFileSystemProvider();
             if (!config.logLevels.isEmpty()) {
                 EngineAccessor.LANGUAGE.configureLoggers(context, null, getAllLoggers(engine));
