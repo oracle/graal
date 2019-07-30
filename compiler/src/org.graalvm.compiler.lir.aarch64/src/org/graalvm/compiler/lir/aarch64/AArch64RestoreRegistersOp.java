@@ -35,6 +35,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
@@ -45,7 +46,7 @@ import jdk.vm.ci.meta.AllocatableValue;
  * Restores registers from stack slots.
  */
 @Opcode("RESTORE_REGISTER")
-public class AArch64RestoreRegistersOp extends AArch64LIRInstruction {
+public class AArch64RestoreRegistersOp extends AArch64LIRInstruction implements StandardOp.RestoreRegistersOp {
     public static final LIRInstructionClass<AArch64RestoreRegistersOp> TYPE = LIRInstructionClass.create(AArch64RestoreRegistersOp.class);
 
     /**
