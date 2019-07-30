@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -39,9 +37,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
  * An statement node is a node that returns no result.
  */
 @GenerateWrapper
-public abstract class LLVMStatementNode extends LLVMNode implements LLVMInstrumentableNode {
-
-    @CompilerDirectives.CompilationFinal private LLVMNodeSourceDescriptor sourceDescriptor = null;
+public abstract class LLVMStatementNode extends LLVMInstrumentableNode {
 
     public static final LLVMStatementNode[] NO_STATEMENTS = {};
 
@@ -49,42 +45,6 @@ public abstract class LLVMStatementNode extends LLVMNode implements LLVMInstrume
 
     public String getSourceDescription() {
         return getRootNode().getName();
-    }
-
-    @Override
-    public LLVMNodeSourceDescriptor getSourceDescriptor() {
-        return sourceDescriptor;
-    }
-
-    @Override
-    public LLVMNodeSourceDescriptor getOrCreateSourceDescriptor() {
-        if (sourceDescriptor == null) {
-            setSourceDescriptor(new LLVMNodeSourceDescriptor());
-        }
-        return sourceDescriptor;
-    }
-
-    @Override
-    public void setSourceDescriptor(LLVMNodeSourceDescriptor sourceDescriptor) {
-        // the source descriptor should only be set in the parser, and should only be modified
-        // before this node is first executed
-        CompilerAsserts.neverPartOfCompilation();
-        this.sourceDescriptor = sourceDescriptor;
-    }
-
-    @Override
-    public boolean hasRootTag() {
-        return false;
-    }
-
-    @Override
-    public boolean hasCallTag() {
-        return false;
-    }
-
-    @Override
-    public boolean hasStatementTag() {
-        return true;
     }
 
     @Override

@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -72,7 +74,11 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     }
 
     @Override
-    public boolean hasCallTag() {
-        return true;
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == StandardTags.CallTag.class || tag == StandardTags.StatementTag.class) {
+            return hasSourceLocation();
+        } else {
+            return super.hasTag(tag);
+        }
     }
 }

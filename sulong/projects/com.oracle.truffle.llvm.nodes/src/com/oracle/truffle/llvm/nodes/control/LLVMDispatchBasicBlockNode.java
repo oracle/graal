@@ -34,6 +34,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -275,12 +277,13 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     }
 
     @Override
-    public boolean hasRootBodyTag() {
-        return true;
-    }
-
-    @Override
-    public boolean hasStatementTag() {
-        return false;
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == StandardTags.StatementTag.class) {
+            return false;
+        } else if (tag == StandardTags.RootBodyTag.class) {
+            return hasSourceLocation();
+        } else {
+            return super.hasTag(tag);
+        }
     }
 }

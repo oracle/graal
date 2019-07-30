@@ -29,12 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
-public abstract class LLVMControlFlowNode extends LLVMNode implements LLVMInstrumentableNode {
-
-    @CompilationFinal private LLVMNodeSourceDescriptor sourceDescriptor = null;
+public abstract class LLVMControlFlowNode extends LLVMInstrumentableNode {
 
     public LLVMControlFlowNode() {
     }
@@ -45,31 +40,5 @@ public abstract class LLVMControlFlowNode extends LLVMNode implements LLVMInstru
 
     public boolean needsBranchProfiling() {
         return getSuccessorCount() > 1;
-    }
-
-    @Override
-    public LLVMNodeSourceDescriptor getSourceDescriptor() {
-        return sourceDescriptor;
-    }
-
-    @Override
-    public LLVMNodeSourceDescriptor getOrCreateSourceDescriptor() {
-        if (sourceDescriptor == null) {
-            setSourceDescriptor(new LLVMNodeSourceDescriptor());
-        }
-        return sourceDescriptor;
-    }
-
-    @Override
-    public void setSourceDescriptor(LLVMNodeSourceDescriptor sourceDescriptor) {
-        // the source descriptor should only be set in the parser, and should only be modified
-        // before this node is first executed
-        CompilerAsserts.neverPartOfCompilation();
-        this.sourceDescriptor = sourceDescriptor;
-    }
-
-    @Override
-    public boolean hasStatementTag() {
-        return true;
     }
 }

@@ -35,6 +35,8 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNode;
@@ -196,8 +198,12 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     }
 
     @Override
-    public boolean hasCallTag() {
-        return true;
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == StandardTags.CallTag.class || tag == StandardTags.StatementTag.class) {
+            return hasSourceLocation();
+        } else {
+            return super.hasTag(tag);
+        }
     }
 
     public static final class LLVMSubstitutionInvokeNode extends LLVMInvokeNodeImpl {
