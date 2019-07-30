@@ -28,6 +28,7 @@ import java.lang.reflect.InvocationTargetException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -298,6 +299,16 @@ public final class Meta implements ContextAccess {
         AssertionStatusDirectives_packages = AssertionStatusDirectives.lookupField(Name.packages, Type.String_array);
         AssertionStatusDirectives_packageEnabled = AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         AssertionStatusDirectives_deflt = AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
+
+        // Initialize boxing call targets:
+        // Boolean_valueOf_CallTarget = DirectCallNode.create(Boolean_valueOf.getCallTarget());
+        // Byte_valueOf_CallTarget = DirectCallNode.create(Byte_valueOf.getCallTarget());
+        // Character_valueOf_CallTarget = DirectCallNode.create(Character_valueOf.getCallTarget());
+        // Short_valueOf_CallTarget = DirectCallNode.create(Short_valueOf.getCallTarget());
+        // Float_valueOf_CallTarget = DirectCallNode.create(Float_valueOf.getCallTarget());
+        // Integer_valueOf_CallTarget = DirectCallNode.create(Integer_valueOf.getCallTarget());
+        // Double_valueOf_CallTarget = DirectCallNode.create(Double_valueOf.getCallTarget());
+        // Long_valueOf_CallTarget = DirectCallNode.create(Long_valueOf.getCallTarget());
     }
 
     public final ObjectKlass Object;
@@ -946,35 +957,52 @@ public final class Meta implements ContextAccess {
 
     // region Guest
 
+// public final DirectCallNode Boolean_valueOf_CallTarget;
+// public final DirectCallNode Byte_valueOf_CallTarget;
+// public final DirectCallNode Character_valueOf_CallTarget;
+// public final DirectCallNode Short_valueOf_CallTarget;
+// public final DirectCallNode Float_valueOf_CallTarget;
+// public final DirectCallNode Integer_valueOf_CallTarget;
+// public final DirectCallNode Double_valueOf_CallTarget;
+// public final DirectCallNode Long_valueOf_CallTarget;
+
     public @Host(Boolean.class) StaticObject boxBoolean(boolean value) {
+// return (StaticObject) Boolean_valueOf_CallTarget.call(value);
         return (StaticObject) Boolean_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Byte.class) StaticObject boxByte(byte value) {
+// return (StaticObject) Byte_valueOf_CallTarget.call(value);
         return (StaticObject) Byte_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Character.class) StaticObject boxCharacter(char value) {
+// return (StaticObject) Character_valueOf_CallTarget.call(value);
         return (StaticObject) Character_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Short.class) StaticObject boxShort(short value) {
+// return (StaticObject) Short_valueOf_CallTarget.call(value);
         return (StaticObject) Short_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Float.class) StaticObject boxFloat(float value) {
+// return (StaticObject) Float_valueOf_CallTarget.call(value);
         return (StaticObject) Float_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Integer.class) StaticObject boxInteger(int value) {
+// return (StaticObject) Integer_valueOf_CallTarget.call(value);
         return (StaticObject) Integer_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Double.class) StaticObject boxDouble(double value) {
+// return (StaticObject) Double_valueOf_CallTarget.call(value);
         return (StaticObject) Double_valueOf.invokeDirect(null, value);
     }
 
     public @Host(Long.class) StaticObject boxLong(long value) {
+// return (StaticObject) Long_valueOf_CallTarget.call(value);
         return (StaticObject) Long_valueOf.invokeDirect(null, value);
     }
 

@@ -1,32 +1,39 @@
 package com.oracle.truffle.espresso.jni;
 
+import com.oracle.truffle.espresso.meta.Meta;
+
 public abstract class JniSubstitutor {
-    private final String methodName;
-    private final String jniNativeSignature;
-    private final int parameterCount;
-    private final String returnType;
 
-    public JniSubstitutor(String methodName, String jniNativeSignature, int parameterCount, String returnType) {
-        this.methodName = methodName;
-        this.jniNativeSignature = jniNativeSignature;
-        this.parameterCount = parameterCount;
-        this.returnType = returnType;
-    }
+    public abstract static class Factory {
+        public abstract JniSubstitutor create(Meta meta);
 
-    public final String methodName() {
-        return methodName;
-    }
+        private final String methodName;
+        private final String jniNativeSignature;
+        private final int parameterCount;
+        private final String returnType;
 
-    public final String jniNativeSignature() {
-        return jniNativeSignature;
-    }
+        public Factory(String methodName, String jniNativeSignature, int parameterCount, String returnType) {
+            this.methodName = methodName;
+            this.jniNativeSignature = jniNativeSignature;
+            this.parameterCount = parameterCount;
+            this.returnType = returnType;
+        }
 
-    public final int getParameterCount() {
-        return parameterCount;
-    }
+        public final String methodName() {
+            return methodName;
+        }
 
-    public final String returnType() {
-        return returnType;
+        public final String jniNativeSignature() {
+            return jniNativeSignature;
+        }
+
+        public final int getParameterCount() {
+            return parameterCount;
+        }
+
+        public final String returnType() {
+            return returnType;
+        }
     }
 
     public abstract Object invoke(JniEnv env, Object[] args);

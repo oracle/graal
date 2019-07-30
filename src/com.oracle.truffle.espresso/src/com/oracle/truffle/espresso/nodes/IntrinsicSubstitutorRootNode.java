@@ -31,9 +31,9 @@ import com.oracle.truffle.espresso.substitutions.Substitutor;
 public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
     private final Substitutor substitution;
 
-    public IntrinsicSubstitutorRootNode(Substitutor sub, Method method) {
+    public IntrinsicSubstitutorRootNode(Substitutor.Factory factory, Method method) {
         super(method);
-        this.substitution = sub;
+        this.substitution = factory.create(method.getMeta());
     }
 
     @Override

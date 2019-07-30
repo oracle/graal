@@ -1,38 +1,45 @@
 package com.oracle.truffle.espresso.vm;
 
+import com.oracle.truffle.espresso.meta.Meta;
+
 public abstract class VMSubstitutor {
-    private final String methodName;
-    private final String jniNativeSignature;
-    private final int parameterCount;
-    private final String returnType;
-    private final boolean isJni;
 
-    VMSubstitutor(String methodName, String jniNativeSignature, int parameterCount, String returnType, boolean isJni) {
-        this.methodName = methodName;
-        this.jniNativeSignature = jniNativeSignature;
-        this.parameterCount = parameterCount;
-        this.returnType = returnType;
-        this.isJni = isJni;
-    }
+    public abstract static class Factory {
+        public abstract VMSubstitutor create(Meta meta);
 
-    public String methodName() {
-        return methodName;
-    }
+        private final String methodName;
+        private final String jniNativeSignature;
+        private final int parameterCount;
+        private final String returnType;
+        private final boolean isJni;
 
-    public String jniNativeSignature() {
-        return jniNativeSignature;
-    }
+        Factory(String methodName, String jniNativeSignature, int parameterCount, String returnType, boolean isJni) {
+            this.methodName = methodName;
+            this.jniNativeSignature = jniNativeSignature;
+            this.parameterCount = parameterCount;
+            this.returnType = returnType;
+            this.isJni = isJni;
+        }
 
-    public int parameterCount() {
-        return parameterCount;
-    }
+        public String methodName() {
+            return methodName;
+        }
 
-    public String returnType() {
-        return returnType;
-    }
+        public String jniNativeSignature() {
+            return jniNativeSignature;
+        }
 
-    public boolean isJni() {
-        return isJni;
+        public int parameterCount() {
+            return parameterCount;
+        }
+
+        public String returnType() {
+            return returnType;
+        }
+
+        public boolean isJni() {
+            return isJni;
+        }
     }
 
     public abstract Object invoke(VM vm, Object[] args);

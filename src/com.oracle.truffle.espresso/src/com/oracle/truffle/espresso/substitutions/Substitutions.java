@@ -114,7 +114,7 @@ public final class Substitutions implements ContextAccess {
     private final ConcurrentHashMap<MethodRef, EspressoRootNodeFactory> runtimeSubstitutions = new ConcurrentHashMap<>();
 
     static {
-        for (Substitutor substitutor : SubstitutorCollector.getInstance()) {
+        for (Substitutor.Factory substitutor : SubstitutorCollector.getCollector()) {
             registerStaticSubstitution(substitutor);
         }
     }
@@ -169,7 +169,7 @@ public final class Substitutions implements ContextAccess {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerStaticSubstitution(Substitutor substitutor) {
+    private static void registerStaticSubstitution(Substitutor.Factory substitutor) {
         assert substitutor.substitutionClassName().startsWith("Target_");
         List<Symbol<Type>> parameterTypes = new ArrayList<>();
         for (int i = substitutor.hasReceiver() ? 1 : 0; i < substitutor.parameterTypes().length; i++) {
@@ -179,7 +179,7 @@ public final class Substitutions implements ContextAccess {
         Symbol<Type> returnType = StaticSymbols.putType(substitutor.returnType());
         Symbol<Type> classType = StaticSymbols.putType("L" + substitutor.substitutionClassName().substring("Target_".length()).replace('_', '/') + ";");
         Symbol<Name> methodName = StaticSymbols.putName(substitutor.getMethodName());
-        Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(new Symbol[0]));
+        Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY));
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method espressoMethod) {

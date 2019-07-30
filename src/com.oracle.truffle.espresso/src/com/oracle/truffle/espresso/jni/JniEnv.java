@@ -38,12 +38,18 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -64,6 +70,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.GuestCall;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -101,10 +108,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private final TruffleObject popLong;
     private final TruffleObject popObject;
 
-    private static final Map<String, JniSubstitutor> jniMethods = buildJniMethods();
+    private static final Map<String, JniSubstitutor.Factory> jniMethods = buildJniMethods();
 
     private final WeakHandles<Field> fieldIds = new WeakHandles<>();
     private final WeakHandles<Method> methodIds = new WeakHandles<>();
+
+    Method getMethod(long handle) {
+        return methodIds.getObject(handle);
+    }
 
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
@@ -131,20 +142,26 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         threadLocalPendingException.set(ex);
     }
 
-    public Callback jniMethodWrapper(JniSubstitutor m) {
-        return new Callback(m.getParameterCount() + 1, new Callback.Function() {
+    public Callback jniMethodWrapper(JniSubstitutor.Factory factory) {
+        return new Callback(factory.getParameterCount() + 1, new Callback.Function() {
+            @CompilerDirectives.CompilationFinal private JniSubstitutor subst = null;
+
             @Override
             @TruffleBoundary
             public Object call(Object... args) {
-                assert (long) args[0] == JniEnv.this.getNativePointer() : "Calling " + m + " from alien JniEnv";
+                assert (long) args[0] == JniEnv.this.getNativePointer() : "Calling " + factory + " from alien JniEnv";
                 try {
                     // Substitute raw pointer by proper `this` reference.
-                    // System.err.print("Call DEFINED method: " + m.getName() +
+                    // System.err.print("Call DEFINED method: " + factory.getName() +
                     // Arrays.toString(shiftedArgs));
-                    return m.invoke(JniEnv.this, args);
+                    if (subst == null) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        subst = factory.create(getMeta());
+                    }
+                    return subst.invoke(JniEnv.this, args);
                 } catch (EspressoException targetEx) {
                     setPendingException(targetEx.getException());
-                    return defaultValue(m.returnType());
+                    return defaultValue(factory.returnType());
                 } catch (RuntimeException targetEx) {
                     throw targetEx;
                 } catch (Throwable targetEx) {
@@ -158,7 +175,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private static final int LOOKUP_JNI_IMPL_PARAMETER_COUNT = 1;
 
     public TruffleObject lookupJniImpl(String methodName) {
-        JniSubstitutor m = jniMethods.get(methodName);
+        JniSubstitutor.Factory m = jniMethods.get(methodName);
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
@@ -318,6 +335,34 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return args;
     }
 
+    public Object[] popVarArgsWithReceiver(long varargsPtr, StaticObject receiver, final Symbol<Type>[] signature) {
+        VarArgs varargs = new VarArgsImpl(varargsPtr);
+        int paramCount = Signatures.parameterCount(signature, false) + 1;
+        Object[] args = new Object[paramCount];
+        args[0] = receiver;
+        for (int i = 1; i < paramCount; ++i) {
+            JavaKind kind = Signatures.parameterKind(signature, i);
+            // @formatter:off
+            // Checkstyle: stop
+            switch (kind) {
+                case Boolean : args[i] = varargs.popBoolean();   break;
+                case Byte    : args[i] = varargs.popByte();      break;
+                case Short   : args[i] = varargs.popShort();     break;
+                case Char    : args[i] = varargs.popChar();      break;
+                case Int     : args[i] = varargs.popInt();       break;
+                case Float   : args[i] = varargs.popFloat();     break;
+                case Long    : args[i] = varargs.popLong();      break;
+                case Double  : args[i] = varargs.popDouble();    break;
+                case Object  : args[i] = varargs.popObject();    break;
+                default:
+                    throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
+            }
+            // @formatter:on
+            // Checkstyle: resume
+        }
+        return args;
+    }
+
     public VarArgs varargs(long nativePointer) {
         return new VarArgsImpl(nativePointer);
     }
@@ -367,9 +412,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
     }
 
-    private static Map<String, JniSubstitutor> buildJniMethods() {
-        Map<String, JniSubstitutor> map = new HashMap<>();
-        for (JniSubstitutor method : JniCollector.getInstance()) {
+    private static Map<String, JniSubstitutor.Factory> buildJniMethods() {
+        Map<String, JniSubstitutor.Factory> map = new HashMap<>();
+        for (JniSubstitutor.Factory method : JniCollector.getCollector()) {
             assert !map.containsKey(method.methodName()) : "JniImpl for " + method.methodName() + " already exists";
             map.put(method.methodName(), method);
         }
@@ -448,11 +493,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @return the length of the Java string.
      */
     @JniImpl
-    public int GetStringLength(@Host(String.class) StaticObject string) {
+    public static int GetStringLength(@Host(String.class) StaticObject string,
+                    @GuestCall DirectCallNode String_length) {
         if (StaticObject.isNull(string)) {
             return 0;
         }
-        return (int) getMeta().String_length.invokeDirect(string);
+        return (int) String_length.call(string);
     }
 
     // region Get*ID
@@ -1408,10 +1454,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * @throws OutOfMemoryError if the system runs out of memory.
      */
     @JniImpl
-    public StaticObject FindClass(String name) {
+    public StaticObject FindClass(String name,
+                    @GuestCall DirectCallNode Class_forName_String) {
         StaticObject internalName = getMeta().toGuestString(name);
         assert getMeta().Class_forName_String.isStatic();
-        return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);
+        return (StaticObject) Class_forName_String.call(internalName);
     }
 
     /**

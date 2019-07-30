@@ -88,6 +88,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
             List<String> espressoTypes = new ArrayList<>();
             List<Boolean> referenceTypes = new ArrayList<>();
             getEspressoTypes(jniMethod, espressoTypes, referenceTypes);
+            List<String> guestCalls = getGuestCalls(jniMethod);
             // Spawn the name of the Substitutor we will create.
             String substitutorName = getSubstitutorClassName(className, targetMethodName, espressoTypes);
             if (!classes.contains(substitutorName)) {
@@ -104,6 +105,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
                                 className,
                                 targetMethodName,
                                 espressoTypes,
+                                guestCalls,
                                 helper);
                 commitSubstitution(jniMethod, substitutorName, classFile);
             }
@@ -135,7 +137,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     }
 
     @Override
-    String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    String generateImports(String className, String targetMethodName, List<String> parameterTypeName, List<String> guestCalls, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
         str.append(IMPORT_JNI_ENV);
@@ -153,22 +155,21 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     }
 
     @Override
-    String generateConstructor(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, List<String> guestCalls, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
-        str.append(TAB_1).append("private ").append(className).append("() {\n");
-        str.append(TAB_2).append("super(\n");
-        str.append(TAB_3).append(generateString(targetMethodName)).append(",\n");
-        str.append(TAB_3).append(generateString(h.jniNativeSignature)).append(",\n");
-        str.append(TAB_3).append(parameterTypeName.size()).append(",\n");
-        str.append(TAB_3).append(generateString(h.returnType)).append("\n");
-        str.append(TAB_2).append(");\n");
-        str.append(TAB_1).append("}\n");
+        str.append(TAB_3).append("super(\n");
+        str.append(TAB_4).append(generateString(targetMethodName)).append(",\n");
+        str.append(TAB_4).append(generateString(h.jniNativeSignature)).append(",\n");
+        str.append(TAB_4).append(parameterTypeName.size()).append(",\n");
+        str.append(TAB_4).append(generateString(h.returnType)).append("\n");
+        str.append(TAB_3).append(");\n");
+        str.append(TAB_2).append("}\n");
         return str.toString();
     }
 
     @Override
-    String generateInvoke(String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
+    String generateInvoke(String className, String targetMethodName, List<String> parameterTypes, List<String> guestCalls, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
         str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
@@ -179,18 +180,18 @@ public class JniImplProcessor extends IntrinsicsProcessor {
         }
         switch (h.returnType) {
             case "char":
-                str.append(TAB_2).append("return ").append("(short) ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic));
+                str.append(TAB_2).append("return ").append("(short) ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls));
                 break;
             case "boolean":
-                str.append(TAB_2).append("boolean b = ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic));
+                str.append(TAB_2).append("boolean b = ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls));
                 str.append(TAB_2).append("return b ? (byte) 1 : (byte) 0;\n");
                 break;
             case "void":
-                str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic));
+                str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls));
                 str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
                 break;
             default:
-                str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic));
+                str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, guestCalls));
         }
         str.append(TAB_1).append("}\n");
         str.append("}");

@@ -28,6 +28,7 @@ import java.security.PrivilegedAction;
 import java.security.PrivilegedExceptionAction;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Method;
@@ -60,14 +61,16 @@ public final class Target_java_security_AccessController {
     }
 
     @Substitution(methodName = "doPrivileged")
-    public static @Host(Object.class) StaticObject doPrivileged_PrivilegedExceptionAction(@Host(PrivilegedExceptionAction.class) StaticObject action) {
-        return doPrivileged_PrivilegedExceptionAction_AccessControlContext(action, StaticObject.NULL);
+    public static @Host(Object.class) StaticObject doPrivileged_PrivilegedExceptionAction(@Host(PrivilegedExceptionAction.class) StaticObject action,
+                    @GuestCall DirectCallNode PrivilegedActionException_init_Exception) {
+        return doPrivileged_PrivilegedExceptionAction_AccessControlContext(action, StaticObject.NULL, PrivilegedActionException_init_Exception);
     }
 
     @Substitution(methodName = "doPrivileged")
     public static @Host(Object.class) StaticObject doPrivileged_PrivilegedExceptionAction_AccessControlContext(
                     @Host(PrivilegedExceptionAction.class) StaticObject action,
-                    @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context) {
+                    @SuppressWarnings("unused") @Host(AccessControlContext.class) StaticObject context,
+                    @GuestCall DirectCallNode PrivilegedActionException_init_Exception) {
         Method run = null;
         try {
             run = action.getKlass().lookupMethod(Name.run, Signature.Object);
@@ -81,7 +84,7 @@ public final class Target_java_security_AccessController {
             if (meta.Exception.isAssignableFrom(e.getException().getKlass()) &&
                             !meta.RuntimeException.isAssignableFrom(e.getException().getKlass())) {
                 StaticObject wrapper = meta.PrivilegedActionException.allocateInstance();
-                meta.PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getException());
+                PrivilegedActionException_init_Exception.call(wrapper, e.getException());
                 throw new EspressoException(wrapper);
             }
             throw e;
