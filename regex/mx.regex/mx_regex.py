@@ -46,6 +46,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     dir_name='regex',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['regex:TREGEX'],
     support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
 ))

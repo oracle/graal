@@ -781,6 +781,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     short_name='svm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['GraalVM compiler'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -817,6 +818,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['SubstrateVM', 'nil'],
     support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk.LauncherConfig(
@@ -858,6 +860,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     installable_id='native-image',
     license_files=['LICENSE_NATIVEIMAGE.txt'],
     third_party_license_files=[],
+    dependencies=[],
     support_distributions=['substratevm:NATIVE_IMAGE_LICENSE_GRAALVM_SUPPORT'],
     installable=True,
     priority=1,
@@ -870,6 +873,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     dir_name='svm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['SubstrateVM'],
     builder_jar_distributions=[
         'substratevm:SVM_LLVM',
         'compiler:GRAAL_LLVM',
@@ -887,6 +891,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     dir_name='polyglot',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['SubstrateVM'],
     jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
     support_distributions=[
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",
@@ -914,6 +919,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
     dir_name='junit',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['SubstrateVM'],
     builder_jar_distributions=['mx:JUNIT_TOOL', 'mx:JUNIT', 'mx:HAMCREST'],
     support_distributions=['substratevm:NATIVE_IMAGE_JUNIT_SUPPORT'],
 ))
@@ -926,6 +932,7 @@ if 'LIBGRAAL' in os.environ:
         dir_name=False,
         license_files=[],
         third_party_license_files=[],
+        dependencies=['SubstrateVM'],
         jar_distributions=[],
         builder_jar_distributions=[],
         support_distributions=[],

@@ -190,7 +190,8 @@ class GraalVmComponent(object):
                  dir_name=None, launcher_configs=None, library_configs=None, provided_executables=None,
                  polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False,
-                 boot_jars=None, priority=None, installable=False, post_install_msg=None, installable_id=None):
+                 boot_jars=None, priority=None, installable=False, post_install_msg=None, installable_id=None,
+                 dependencies=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -198,6 +199,7 @@ class GraalVmComponent(object):
         :param str | None | False dir_name: the directory name in which this component lives. If `None`, the `short_name` is used. If `False`, files are copied to the root-dir for the component type.
         :param installable: Produce a distribution installable via `gu`
         :param post_install_msg: Post-installation message to be printed
+        :param list[str] dependencies: a list of component names
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type provided_executables: list[str]
@@ -216,12 +218,16 @@ class GraalVmComponent(object):
         :type installable_id: str
         :type post_install_msg: str
         """
+        if dependencies is None:
+            mx.logv('Component {} does not specify dependencies'.format(name))
+
         self.suite = suite
         self.name = name
         self.short_name = short_name
         self.dir_name = dir_name if dir_name is not None else short_name
         self.license_files = license_files
         self.third_party_license_files = third_party_license_files
+        self.dependency_names = dependencies or []
         self.provided_executables = provided_executables or []
         self.polyglot_lib_build_args = polyglot_lib_build_args or []
         self.polyglot_lib_jar_dependencies = polyglot_lib_jar_dependencies or []
@@ -254,6 +260,8 @@ class GraalVmComponent(object):
     def __str__(self):
         return "{} ({})".format(self.name, self.dir_name)
 
+    def direct_dependencies(self):
+        return [graalvm_component_by_name(name) for name in self.dependency_names]
 
 class GraalVmTruffleComponent(GraalVmComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, truffle_jars,
@@ -312,8 +320,8 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
         assert isinstance(self.jvmci_jars, list)
 
 
-_graalvm_components = dict()
-
+_graalvm_components = dict() # By short_name
+_graalvm_components_by_name = dict()
 
 def register_graalvm_component(component):
     """
@@ -334,11 +342,23 @@ def register_graalvm_component(component):
             mx.abort('Suites \'{}\' and \'{}\' are registering a component with the same short name (\'{}\') and priority (\'{}\')'.format(_prev.suite.name, component.suite.name, _prev.short_name, _prev.priority))
         elif _prev.priority < component.priority:
             _graalvm_components[component.short_name] = component
+            del _graalvm_components_by_name[_prev.name]
+            _graalvm_components_by_name[component.name] = component
             _log_ignored_component(component, _prev)
         else:
             _log_ignored_component(_prev, component)
     else:
         _graalvm_components[component.short_name] = component
+        _graalvm_components_by_name[component.name] = component
+
+
+def graalvm_component_by_name(name):
+    if name in _graalvm_components:
+        return _graalvm_components[name]
+    elif name in _graalvm_components_by_name:
+        return _graalvm_components_by_name[name]
+    else:
+        raise Exception("Unknown component: {}".format(name))
 
 
 def graalvm_components(opt_limit_to_suite=False):

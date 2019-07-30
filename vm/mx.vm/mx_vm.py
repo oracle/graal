@@ -94,6 +94,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     dir_name='installer',
     license_files=[],
     third_party_license_files=[],
+    dependencies=[],
     jar_distributions=['vm:INSTALLER'],
     support_distributions=['vm:INSTALLER_GRAALVM_SUPPORT'],
     launcher_configs=[
@@ -117,6 +118,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     dir_name='.',
     license_files=['LICENSE.txt'],
     third_party_license_files=['3rd_party_licenses.txt'],
+    dependencies=[],
     support_distributions=['vm:VM_GRAALVM_SUPPORT']
 ))
 
