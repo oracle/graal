@@ -171,9 +171,9 @@ public class SymbolTable {
     }
 
     public void allocateFunction(WasmLanguage language, int functionIndex, int typeIndex) {
-        ensureFunctionTypeCapacity(typeIndex);
+        ensureFunctionTypeCapacity(functionIndex);
         functionTypes[numFunctions] = new WasmFunction(this, language, functionIndex, typeIndex);
-        ++numFunctions;
+        numFunctions++;
     }
 
     public void markFunctionAsExported(String exportName, int functionIndex) {
