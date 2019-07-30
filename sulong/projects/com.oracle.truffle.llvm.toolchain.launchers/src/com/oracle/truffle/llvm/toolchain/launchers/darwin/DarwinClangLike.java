@@ -27,20 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.toolchain.launchers;
-
-import static com.oracle.truffle.llvm.toolchain.launchers.common.Driver.OS;
+package com.oracle.truffle.llvm.toolchain.launchers.darwin;
 
 import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
-import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinClangLike;
 
-public final class ClangXX {
+import java.io.InputStream;
+import java.io.OutputStream;
 
-    public static void main(String[] args) {
-        if (OS.getCurrent() == OS.DARWIN) {
-            DarwinClangLike.runClangXX(args);
-        } else {
-            ClangLike.runClangXX(args);
-        }
+public class DarwinClangLike extends ClangLike {
+
+    protected DarwinClangLike(String[] args, boolean cxx, OS os, String platform) {
+        super(args, cxx, os, platform);
+    }
+
+    public static void runClangXX(String[] args) {
+        new DarwinClangLike(args, true, OS.getCurrent(), NATIVE_PLATFORM).run();
+    }
+
+    public static void runClang(String[] args) {
+        new DarwinClangLike(args, false, OS.getCurrent(), NATIVE_PLATFORM).run();
+    }
+
+    @Override
+    protected ProcessBuilder setupRedirects(ProcessBuilder pb) {
+        return DarwinLinker.setupRedirectsInternal(pb);
+    }
+
+    @Override
+    protected void processIO(InputStream inputStream, OutputStream outputStream, InputStream errorStream) {
+        DarwinLinker.processIO(errorStream);
     }
 }

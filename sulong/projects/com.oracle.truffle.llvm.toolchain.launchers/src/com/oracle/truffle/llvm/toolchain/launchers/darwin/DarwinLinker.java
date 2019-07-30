@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.darwin;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,5 +60,36 @@ public final class DarwinLinker extends Driver {
         sulongArgs.add("-fembed-bitcode");
         sulongArgs.add("-Wl," + String.join(",", getLinkerFlags(this)));
         runDriver(sulongArgs, Arrays.asList(args), false, false, false);
+    }
+
+    @Override
+    protected ProcessBuilder setupRedirects(ProcessBuilder pb) {
+        return setupRedirectsInternal(pb);
+    }
+
+    @Override
+    protected void processIO(InputStream inputStream, OutputStream outputStream, InputStream errorStream) {
+        processIO(errorStream);
+    }
+
+    static ProcessBuilder setupRedirectsInternal(ProcessBuilder pb) {
+        return pb.redirectInput(ProcessBuilder.Redirect.INHERIT).//
+                        redirectOutput(ProcessBuilder.Redirect.INHERIT).//
+                        redirectError(ProcessBuilder.Redirect.PIPE);
+    }
+
+    static void processIO(InputStream errorStream) {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream));
+        reader.lines().filter(DarwinLinker::keepLine).forEachOrdered(System.err::println);
+    }
+
+    static boolean keepLine(String s) {
+        /*
+         * The darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle
+         * section. However, it does include the bundle if linked with -flto, although it still
+         * issues the warning below. Until there is a better option, we will just swallow the
+         * warning. (GR-15723)
+         */
+        return !s.contains("warning: all bitcode will be dropped because");
     }
 }
