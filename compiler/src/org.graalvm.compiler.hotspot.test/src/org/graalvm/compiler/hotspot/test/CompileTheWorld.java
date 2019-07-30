@@ -831,9 +831,11 @@ public final class CompileTheWorld {
             startThreads();
         }
         int wakeups = 0;
-        while (threadPool.getCompletedTaskCount() != threadPool.getTaskCount()) {
+        long lastCompletedTaskCount = 0;
+        for (long completedTaskCount = threadPool.getCompletedTaskCount(); completedTaskCount != threadPool.getTaskCount(); completedTaskCount = threadPool.getCompletedTaskCount()) {
             if (wakeups % 15 == 0) {
-                TTY.println("CompileTheWorld : Waiting for " + (threadPool.getTaskCount() - threadPool.getCompletedTaskCount()) + " compiles");
+                TTY.printf("CompileTheWorld : Waiting for %d compiles, just completed %d compiles%n", threadPool.getTaskCount() - completedTaskCount, completedTaskCount - lastCompletedTaskCount);
+                lastCompletedTaskCount = completedTaskCount;
             }
             try {
                 threadPool.awaitTermination(1, TimeUnit.SECONDS);
