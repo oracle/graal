@@ -241,7 +241,7 @@ public final class AMD64Packing {
                 for (int i = 0; i < valcount;) {
                     AMD64Kind movKind = scalarKind;
                     int movSize = movKind.getSizeInBytes();
-                    while (i + (movSize / scalarKind.getSizeInBytes()) * 2 < valcount && movSize < 8) {
+                    while (i + (movSize / scalarKind.getSizeInBytes()) * 2 <= valcount && movSize < 8) {
                         AMD64Kind prev = movKind;
                         movKind = twice(movKind);
                         movSize = movKind.getSizeInBytes();
@@ -316,7 +316,7 @@ public final class AMD64Packing {
                 for (int i = 0; i < valcount;) {
                     AMD64Kind movKind = scalarKind;
                     int movSize = movKind.getSizeInBytes();
-                    while (i + (movSize / scalarKind.getSizeInBytes()) * 2 < valcount && movSize < 8) {
+                    while (i + (movSize / scalarKind.getSizeInBytes()) * 2 <= valcount && movSize < 8) {
                         final AMD64Kind prev = movKind;
                         movKind = twice(movKind);
                         movSize = movKind.getSizeInBytes();
