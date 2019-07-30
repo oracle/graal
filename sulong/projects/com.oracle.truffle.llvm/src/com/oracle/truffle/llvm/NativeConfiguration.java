@@ -29,23 +29,25 @@
  */
 package com.oracle.truffle.llvm;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.ToolchainConfig;
-import org.graalvm.options.OptionDescriptor;
-
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
-import com.oracle.truffle.llvm.parser.factories.BasicSystemContextExtension;
-import com.oracle.truffle.llvm.runtime.Configuration;
+import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
+import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
+import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
@@ -53,19 +55,14 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public final class NativeConfiguration implements Configuration {
 
-    @Override
-    public boolean isActive(TruffleLanguage.Env env) {
-        return true;
-    }
+    private final Loader loader;
+    private final LLVMIntrinsicProvider intrinsicProvider;
+    private final PlatformCapability platformCapability;
 
-    @Override
-    public int getPriority() {
-        return 0;
-    }
-
-    @Override
-    public List<OptionDescriptor> getOptionDescriptors() {
-        return SulongEngineOption.describeOptions();
+    NativeConfiguration(LLVMLanguage language, Key key) {
+        loader = new DefaultLoader();
+        intrinsicProvider = new BasicIntrinsicsProvider(language);
+        platformCapability = new BasicPlatformCapability(key.loadCxxLibraries);
     }
 
     @Override
@@ -74,15 +71,8 @@ public final class NativeConfiguration implements Configuration {
     }
 
     @Override
-    public Loader createLoader() {
-        return new DefaultLoader();
-    }
-
-    @Override
-    public List<ContextExtension> createContextExtensions(TruffleLanguage.Env env, LLVMLanguage language) {
+    public List<ContextExtension> createContextExtensions(TruffleLanguage.Env env) {
         List<ContextExtension> result = new ArrayList<>();
-        result.add(new BasicIntrinsicsProvider(language));
-        result.add(new BasicSystemContextExtension(env));
         if (env.getOptions().get(SulongEngineOption.ENABLE_NFI)) {
             result.add(new NFIContextExtension(env));
         }
@@ -91,13 +81,19 @@ public final class NativeConfiguration implements Configuration {
 
     @Override
     @SuppressWarnings("deprecation")
-    public <E> E getCapability(Class<E> type) {
+    public <C extends LLVMCapability> C getCapability(Class<C> type) {
         if (type == LLVMMemory.class) {
             return type.cast(LLVMNativeMemory.getInstance());
         } else if (type == UnsafeArrayAccess.class) {
             return type.cast(UnsafeArrayAccess.getInstance());
         } else if (type == ToolchainConfig.class) {
             return type.cast(NativeToolchainConfig.getInstance());
+        } else if (type == Loader.class) {
+            return type.cast(loader);
+        } else if (type == LLVMIntrinsicProvider.class) {
+            return type.cast(intrinsicProvider);
+        } else if (type == PlatformCapability.class) {
+            return type.cast(platformCapability);
         }
         return null;
     }

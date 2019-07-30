@@ -138,7 +138,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangSt
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
-import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -150,17 +149,12 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  * native code. The intrinsic is also preferred over LLVM bitcode that is part of a Sulong-internal
  * library.
  */
-public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextExtension {
+public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     private final ExternalLibrary library = ExternalLibrary.internal("SulongIntrinsics", false);
 
     @Override
     public ExternalLibrary getLibrary() {
         return library;
-    }
-
-    @Override
-    public Class<?> extensionClass() {
-        return LLVMIntrinsicProvider.class;
     }
 
     @Override
@@ -390,10 +384,10 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
         add("polyglot_set_array_element", (args, language, types) -> LLVMPolyglotSetArrayElementNodeGen.create(types, args.get(1), args.get(2), args.get(3)));
 
-        add("polyglot_get_member", (args, language) -> LLVMPolyglotGetMemberNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
+        add("polyglot_get_member", (args, language) -> LLVMPolyglotGetMemberNodeGen.create(language.getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
 
         add("polyglot_get_array_element",
-                        (args, language) -> LLVMPolyglotGetArrayElementNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
+                        (args, language) -> LLVMPolyglotGetArrayElementNodeGen.create(language.getNodeFactory().createForeignToLLVM(POINTER), args.get(1), args.get(2)));
 
         add("polyglot_remove_member", (args, language) -> LLVMPolyglotRemoveMemberNodeGen.create(args.get(1), args.get(2)));
 
@@ -413,7 +407,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
                                         args.get(1)));
 
         add("polyglot_invoke",
-                        (args, language, types) -> LLVMPolyglotInvokeNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createForeignToLLVM(POINTER), argumentsArray(args, 3, args.size() - 3),
+                        (args, language, types) -> LLVMPolyglotInvokeNodeGen.create(language.getNodeFactory().createForeignToLLVM(POINTER), argumentsArray(args, 3, args.size() - 3),
                                         Arrays.copyOfRange(types, 3, types.length),
                                         args.get(1), args.get(2)));
 
@@ -511,11 +505,11 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
 
     private static void registerMemoryFunctionIntrinsics() {
         add("malloc", (args, language) -> LLVMMallocNodeGen.create(args.get(1)));
-        add("calloc", (args, language) -> LLVMCallocNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createMemSet(), args.get(1), args.get(2)));
+        add("calloc", (args, language) -> LLVMCallocNodeGen.create(language.getNodeFactory().createMemSet(), args.get(1), args.get(2)));
         add("realloc", (args, language) -> LLVMReallocNodeGen.create(args.get(1), args.get(2)));
         add("free", (args, language) -> LLVMFreeNodeGen.create(args.get(1)));
-        add("memset", "__memset_chk", (args, language) -> LLVMLibcMemsetNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createMemSet(), args.get(1), args.get(2), args.get(3)));
-        add("memcpy", "__memcpy_chk", (args, language) -> LLVMLibcMemcpyNodeGen.create(LLVMLanguage.getLanguage().getNodeFactory().createMemMove(), args.get(1), args.get(2), args.get(3)));
+        add("memset", "__memset_chk", (args, language) -> LLVMLibcMemsetNodeGen.create(language.getNodeFactory().createMemSet(), args.get(1), args.get(2), args.get(3)));
+        add("memcpy", "__memcpy_chk", (args, language) -> LLVMLibcMemcpyNodeGen.create(language.getNodeFactory().createMemMove(), args.get(1), args.get(2), args.get(3)));
     }
 
     private static void registerExceptionIntrinsics() {

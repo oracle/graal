@@ -34,10 +34,11 @@ import java.util.function.LongBinaryOperator;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public abstract class LLVMMemory {
+public abstract class LLVMMemory implements LLVMCapability {
 
     /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode} instead. */
     @Deprecated

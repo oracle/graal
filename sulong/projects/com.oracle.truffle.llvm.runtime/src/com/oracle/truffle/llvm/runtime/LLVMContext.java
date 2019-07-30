@@ -189,7 +189,7 @@ public final class LLVMContext {
         this.interopTypeRegistry = new LLVMInteropType.InteropTypeRegistry();
         this.sourceContext = new LLVMSourceContext();
 
-        this.internalLibraryNames = Collections.unmodifiableList(Arrays.asList(language.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries()));
+        this.internalLibraryNames = Collections.unmodifiableList(Arrays.asList(language.getCapability(PlatformCapability.class).getSulongDefaultLibraries()));
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
         this.globalScope = new LLVMScope();
@@ -252,7 +252,7 @@ public final class LLVMContext {
             ext.initialize();
         }
         if (languageHome != null) {
-            SystemContextExtension sysContextExt = language.getContextExtension(SystemContextExtension.class);
+            PlatformCapability sysContextExt = language.getCapability(PlatformCapability.class);
             internalLibraryPath = Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath());
             // add internal library location also to the external library lookup path
             addLibraryPath(internalLibraryPath.toString());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,21 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.config;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.llvm.runtime.ContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
+import java.util.List;
 
-public interface LLVMIntrinsicProvider extends LLVMCapability {
+public interface Configuration {
 
-    boolean isIntrinsified(String name);
+    NodeFactory createNodeFactory(LLVMContext context);
 
-    RootCallTarget generateIntrinsicTarget(String name, Type[] argTypes);
+    /**
+     * Context extensions encapsulate optional functionality that has a state and which therefore
+     * needs to live on the context-level. This function will be called once per context, at context
+     * initialization time.
+     */
+    List<ContextExtension> createContextExtensions(Env env);
 
-    LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type[] argTypes);
-
-    ExternalLibrary getLibrary();
+    /**
+     * Capabilities encapsulate functionality that is stateless, or has just static state that is
+     * not context specific and doesn't change at runtime. Repeated calls to this function with the
+     * same argument should always return the same object instance. The return value should be
+     * constant or a final field of the configuration.
+     */
+    <C extends LLVMCapability> C getCapability(Class<C> type);
 }

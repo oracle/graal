@@ -47,6 +47,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.llvm.runtime.config.Configuration;
+import com.oracle.truffle.llvm.runtime.config.Configurations;
+import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
@@ -87,7 +90,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private NodeFactory nodeFactory;
     @CompilationFinal private List<ContextExtension> contextExtensions;
 
-    public abstract static class Loader {
+    public abstract static class Loader implements LLVMCapability {
 
         public abstract CallTarget load(LLVMContext context, Source source);
     }
@@ -104,7 +107,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return contextExtensions;
     }
 
-    public <T> T getContextExtension(Class<T> type) {
+    public <T extends ContextExtension> T getContextExtension(Class<T> type) {
         T result = getContextExtensionOrNull(type);
         if (result != null) {
             return result;
@@ -112,7 +115,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         throw new IllegalStateException("No context extension for: " + type);
     }
 
-    public <T> T getContextExtensionOrNull(Class<T> type) {
+    public <T extends ContextExtension> T getContextExtensionOrNull(Class<T> type) {
         CompilerAsserts.neverPartOfCompilation();
         for (ContextExtension ce : contextExtensions) {
             if (ce.extensionClass() == type) {
@@ -131,12 +134,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     private @CompilationFinal Configuration activeConfiguration = null;
-    private @CompilationFinal Loader loader;
 
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
 
-    public <E> E getCapability(Class<E> type) {
-        return activeConfiguration.getCapability(type);
+    public <C extends LLVMCapability> C getCapability(Class<C> type) {
+        CompilerAsserts.partialEvaluationConstant(type);
+        C ret = activeConfiguration.getCapability(type);
+        CompilerAsserts.partialEvaluationConstant(ret);
+        return ret;
     }
 
     public final String getLLVMLanguageHome() {
@@ -146,12 +151,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected LLVMContext createContext(Env env) {
         if (activeConfiguration == null) {
-            activeConfiguration = Configurations.findActiveConfiguration(env);
-            loader = activeConfiguration.createLoader();
+            activeConfiguration = Configurations.createConfiguration(this, env.getOptions());
         }
 
         env.registerService(new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this));
-        this.contextExtensions = activeConfiguration.createContextExtensions(env, this);
+        this.contextExtensions = activeConfiguration.createContextExtensions(env);
 
         LLVMContext context = new LLVMContext(this, env, getLanguageHome());
         this.nodeFactory = activeConfiguration.createNodeFactory(context);
@@ -178,7 +182,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     protected CallTarget parse(ParsingRequest request) {
         Source source = request.getSource();
         LLVMContext context = getContextReference().get();
-        return loader.load(context, source);
+        return getCapability(Loader.class).load(context, source);
     }
 
     @Override

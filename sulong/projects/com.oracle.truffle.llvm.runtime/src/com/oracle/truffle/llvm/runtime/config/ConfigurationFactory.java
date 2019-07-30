@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.config;
 
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import java.util.List;
 
-import java.nio.file.Path;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionValues;
 
-public abstract class SystemContextExtension implements ContextExtension {
+public interface ConfigurationFactory<KEY> {
 
-    public abstract Path getSulongLibrariesPath();
+    /**
+     * If two factories say they are active, the one with the higher priority wins.
+     */
+    int getPriority();
 
-    public abstract String[] getSulongDefaultLibraries();
+    /**
+     * Parse the configuration specific options. This method should return a non-null value if the
+     * given {@link OptionValues} indicate that this configuration is active. The object should
+     * contain all information necessary to create the runtime {@link Configuration} object.
+     */
+    KEY parseOptions(OptionValues options);
 
-    public abstract LLVMSyscallOperationNode createSyscallNode(long index);
+    /**
+     * Create a runtime {@link Configuration} object. This method will be called exactly once for
+     * every {@link LLVMLanguage} instance, during context creation. It will be passed the KEY
+     * returned from {@link #parseOptions}.
+     *
+     * The engine may decide to share code between different contexts with options that produce the
+     * same KEY value. In that case, there is a single shared {@link LLVMLanguage} instance, and
+     * {@link #createConfiguration} is only called once, for the first context.
+     */
+    Configuration createConfiguration(LLVMLanguage language, KEY key);
 
-    @Override
-    public final Class<?> extensionClass() {
-        return SystemContextExtension.class;
-    }
+    List<OptionDescriptor> getOptionDescriptors();
 }

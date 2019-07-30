@@ -27,39 +27,63 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm;
 
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
+import com.oracle.truffle.llvm.NativeConfigurationFactory.Key;
 import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
 
-public interface Configuration {
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.config.Configuration;
+import com.oracle.truffle.llvm.runtime.config.ConfigurationFactory;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import org.graalvm.options.OptionValues;
 
-    boolean isActive(Env env);
+public final class NativeConfigurationFactory implements ConfigurationFactory<Key> {
 
-    /**
-     * If two configurations say they are active, the one with the higher priority wins.
-     */
-    int getPriority();
+    public static final class Key {
 
-    List<OptionDescriptor> getOptionDescriptors();
+        final boolean loadCxxLibraries;
 
-    NodeFactory createNodeFactory(LLVMContext context);
+        public Key(OptionValues options) {
+            this.loadCxxLibraries = options.get(SulongEngineOption.LOAD_CXX_LIBRARIES);
+        }
 
-    Loader createLoader();
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof Key)) {
+                return false;
+            }
+            Key other = (Key) o;
+            return this.loadCxxLibraries == other.loadCxxLibraries;
+        }
 
-    /**
-     * Context extensions encapsulate optional functionality that has a state and which therefore
-     * needs to live on the context-level.
-     */
-    List<ContextExtension> createContextExtensions(Env env, LLVMLanguage language);
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 71 * hash + (this.loadCxxLibraries ? 1 : 0);
+            return hash;
+        }
+    }
 
-    /**
-     * Capabilities encapsulate functionality that is stateless so that it can live on the
-     * language-level.
-     */
-    <E> E getCapability(Class<E> type);
+    @Override
+    public Key parseOptions(OptionValues options) {
+        return new Key(options);
+    }
 
+    @Override
+    public int getPriority() {
+        return 0;
+    }
+
+    @Override
+    public List<OptionDescriptor> getOptionDescriptors() {
+        return SulongEngineOption.describeOptions();
+    }
+
+    @Override
+    public Configuration createConfiguration(LLVMLanguage language, Key key) {
+        return new NativeConfiguration(language, key);
+    }
 }

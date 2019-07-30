@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,19 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public interface LLVMIntrinsicProvider extends LLVMCapability {
+import java.nio.file.Path;
 
-    boolean isIntrinsified(String name);
+public abstract class PlatformCapability implements LLVMCapability {
 
-    RootCallTarget generateIntrinsicTarget(String name, Type[] argTypes);
+    public abstract Path getSulongLibrariesPath();
 
-    LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type[] argTypes);
+    public abstract String[] getSulongDefaultLibraries();
 
-    ExternalLibrary getLibrary();
+    public abstract LLVMSyscallOperationNode createSyscallNode(long index);
 }

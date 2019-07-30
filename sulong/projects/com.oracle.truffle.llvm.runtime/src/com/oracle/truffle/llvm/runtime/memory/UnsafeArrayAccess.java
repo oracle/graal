@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 
 import sun.misc.Unsafe;
 
@@ -47,7 +48,7 @@ import sun.misc.Unsafe;
  * be initialized at image build time.
  */
 @SuppressWarnings("static-method")
-public final class UnsafeArrayAccess {
+public final class UnsafeArrayAccess implements LLVMCapability {
     private static final Unsafe unsafe = getUnsafe();
 
     private static final UnsafeArrayAccess INSTANCE = new UnsafeArrayAccess();
