@@ -98,11 +98,20 @@ public abstract class ClassRegistry implements ContextAccess {
     public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes, Symbol<Type> instigator) {
 
         Meta meta = getMeta();
-        if (classes.containsKey(type)) {
+        if (type != null && classes.containsKey(type)) {
             throw meta.throwExWithMessage(LinkageError.class, "Class " + type + " already defined in the BCL");
         }
 
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), type.toString(), null, context);
+        String strType = null;
+        if (type != null) {
+            strType = type.toString();
+        }
+
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
+
+        if (type == null) {
+            type = parserKlass.getType();
+        }
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 

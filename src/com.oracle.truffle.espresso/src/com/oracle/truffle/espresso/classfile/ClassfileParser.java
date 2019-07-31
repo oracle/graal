@@ -229,7 +229,7 @@ public final class ClassfileParser {
 
         // Update className which could be null previously
         // to reflect the name in the constant pool
-        // className = TypeDescriptor.slashified(typeDescriptor.toJavaName());
+        className = "L" + pool.classAt(thisKlassIndex).getName(pool).toString() + ";";
 
         // Checks if name in class file matches requested name
         if (requestedClassName != null && !requestedClassName.equals(className)) {
