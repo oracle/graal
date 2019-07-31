@@ -78,7 +78,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
             // From ARMv8-A architecture reference manual D12.2.35 Data Cache Zero ID register:
             // A valid ZVA length should be a power-of-2 value in [4, 2048]
             assert (CodeUtil.isPowerOf2(zvaLength) && 4 <= zvaLength && zvaLength <= 2048);
-            emitZeroMemoryWithDc(masm, base, size);
+            emitZeroMemoryWithDc(masm, base, size, zvaLength);
         } else {
             // Use store pair instructions (STP) to zero memory as a fallback.
             emitZeroMemoryWithStp(masm, base, size);
@@ -91,8 +91,9 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
      * @param masm the AArch64 macro assembler.
      * @param base base an 8-byte aligned address of the memory chunk to be zeroed.
      * @param size size of the memory chunk to be zeroed, in bytes, must be multiple of 8.
+     * @param zvaLength the ZVA length info of current AArch64 CPU.
      */
-    private void emitZeroMemoryWithDc(AArch64MacroAssembler masm, Register base, Register size) {
+    private static void emitZeroMemoryWithDc(AArch64MacroAssembler masm, Register base, Register size, int zvaLength) {
         Label preLoop = new Label();
         Label zvaLoop = new Label();
         Label postLoop = new Label();
@@ -149,7 +150,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
      * @param base base an 8-byte aligned address of the memory chunk to be zeroed.
      * @param size size of the memory chunk to be zeroed, in bytes, must be multiple of 8.
      */
-    private void emitZeroMemoryWithStp(AArch64MacroAssembler masm, Register base, Register size) {
+    private static void emitZeroMemoryWithStp(AArch64MacroAssembler masm, Register base, Register size) {
         Label loop = new Label();
         Label tail = new Label();
         Label done = new Label();

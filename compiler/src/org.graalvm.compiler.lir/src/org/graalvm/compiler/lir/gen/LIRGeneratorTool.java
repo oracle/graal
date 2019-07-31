@@ -354,6 +354,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         return emitMove(StackSlot.get(getLIRKind(wordStamp), -returnAddressSize, true));
     }
 
+    @SuppressWarnings("unused")
     default void emitZeroMemory(Value address, Value length) {
         throw GraalError.unimplemented("Bulk zeroing is not implemented on this architecture");
     }
