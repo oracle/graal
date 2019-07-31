@@ -57,6 +57,7 @@ public interface InliningPolicy {
     default void afterExpand(CallNode callNode) {
     }
 
+    @SuppressWarnings("unused")
     default void run(CallTree tree) {
     }
 }
