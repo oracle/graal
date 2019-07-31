@@ -2402,6 +2402,9 @@ suite = {
       "dependencies" : [
         "org.graalvm.libgraal.jni",
       ],
+      "distDependencies" : [
+        "sdk:GRAAL_SDK",
+      ],
       "maven": False,
       "javaCompliance" : "8+",
     },

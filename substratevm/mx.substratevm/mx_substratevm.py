@@ -982,6 +982,7 @@ if 'LIBGRAAL' in os.environ:
                 jvm_library=True,
                 jar_distributions=[
                     'substratevm:GRAAL_HOTSPOT_LIBRARY',
+                    'compiler:GRAAL_LIBGRAAL_JNI',
                     'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL',
                     'compiler:GRAAL_MANAGEMENT_LIBGRAAL',
                 ],
