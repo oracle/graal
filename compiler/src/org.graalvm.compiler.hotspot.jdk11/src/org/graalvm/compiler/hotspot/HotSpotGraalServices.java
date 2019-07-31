@@ -24,29 +24,104 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.util.Objects;
+
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotMetaData;
+import jdk.vm.ci.services.Services;
 
 /**
- * JDK 11 version of {@code HotSpotGraalServices}.
+ * LabsJDK 11 version of {@code HotSpotGraalServices}.
  */
 public class HotSpotGraalServices {
 
+    private static final MethodHandle metaDataImplicitExceptionBytes;
+    private static final MethodHandle runtimeExitHotSpot;
+    private static final MethodHandle scopeOpenLocalScope;
+    private static final MethodHandle scopeEnterGlobalScope;
+
+    static {
+        MethodHandle implicitExceptionBytes = null;
+        MethodHandle exitHotSpot = null;
+        MethodHandle enterGlobalScope = null;
+        MethodHandle openLocalScope = null;
+        boolean firstFound = false;
+        try {
+            Class<?> scopeClass = Class.forName("jdk.vm.ci.hotspot.HotSpotObjectConstantScope");
+            enterGlobalScope = MethodHandles.lookup().unreflect(scopeClass.getDeclaredMethod("enterGlobalScope"));
+            firstFound = true;
+            openLocalScope = MethodHandles.lookup().unreflect(scopeClass.getDeclaredMethod("openLocalScope", Object.class));
+            implicitExceptionBytes = MethodHandles.lookup().unreflect(HotSpotMetaData.class.getDeclaredMethod("implicitExceptionBytes"));
+            exitHotSpot = MethodHandles.lookup().unreflect(HotSpotJVMCIRuntime.class.getDeclaredMethod("exitHotSpot", Integer.TYPE));
+        } catch (Exception e) {
+            // If the very first method is unavailable assume nothing is available. Otherwise only
+            // some are missing so complain about it.
+            if (firstFound) {
+                throw new InternalError("some methods are unavailable", e);
+            }
+        }
+        metaDataImplicitExceptionBytes = implicitExceptionBytes;
+        runtimeExitHotSpot = exitHotSpot;
+        scopeOpenLocalScope = openLocalScope;
+        scopeEnterGlobalScope = enterGlobalScope;
+        assert (implicitExceptionBytes != null) == (exitHotSpot != null);
+        assert (implicitExceptionBytes != null) == (openLocalScope != null);
+        assert (implicitExceptionBytes != null) == (enterGlobalScope != null);
+    }
+
+    /**
+     * Get the implicit exceptions section of a {@code HotSpotMetaData} if it exists.
+     */
     @SuppressWarnings("unused")
     public static byte[] getImplicitExceptionBytes(HotSpotMetaData metaData) {
-        // Only supported by JDK13
-        return null;
+        if (metaDataImplicitExceptionBytes == null) {
+            return null;
+        }
+        try {
+            return (byte[]) metaDataImplicitExceptionBytes.invoke(metaData);
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
     }
 
     public static CompilationContext enterGlobalCompilationContext() {
-        return null;
+        if (scopeEnterGlobalScope != null) {
+            try {
+                AutoCloseable impl = (AutoCloseable) scopeEnterGlobalScope.invoke();
+                return impl == null ? null : new CompilationContext(impl);
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        } else {
+            return null;
+        }
     }
 
     @SuppressWarnings("unused")
     public static CompilationContext openLocalCompilationContext(Object description) {
-        return null;
+        if (scopeOpenLocalScope != null) {
+            try {
+                AutoCloseable impl = (AutoCloseable) scopeOpenLocalScope.invoke(Objects.requireNonNull(description));
+                return impl == null ? null : new CompilationContext(impl);
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        } else {
+            return null;
+        }
     }
 
     public static void exit(int status) {
-        System.exit(status);
+        if (Services.IS_IN_NATIVE_IMAGE) {
+            try {
+                runtimeExitHotSpot.invoke(status);
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        } else {
+            System.exit(status);
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,13 @@
  * questions.
  */
 package org.graalvm.compiler.hotspot;
+
+import static jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory.CompilationLevelAdjustment.None;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -53,14 +60,47 @@ class IsGraalPredicate extends IsGraalPredicateBase {
         graalModule = HotSpotGraalCompilerFactory.class.getModule();
     }
 
+    static final MethodHandle runtimeExcludeFromJVMCICompilation;
+
+    static {
+        MethodHandle excludeFromJVMCICompilation = null;
+        try {
+            excludeFromJVMCICompilation = MethodHandles.lookup().unreflect(HotSpotJVMCIRuntime.class.getDeclaredMethod("excludeFromJVMCICompilation", Module[].class));
+        } catch (Exception e) {
+            // excludeFromJVMCICompilation not available
+        }
+        runtimeExcludeFromJVMCICompilation = excludeFromJVMCICompilation;
+    }
+
     @Override
     void onCompilerConfigurationFactorySelection(HotSpotJVMCIRuntime runtime, CompilerConfigurationFactory factory) {
         compilerConfigurationModule = factory.getClass().getModule();
+        if (runtimeExcludeFromJVMCICompilation != null) {
+            try {
+                runtimeExcludeFromJVMCICompilation.invoke(HotSpotJVMCIRuntime.runtime(), jvmciModule, graalModule, compilerConfigurationModule);
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
     }
 
     @Override
     boolean apply(Class<?> declaringClass) {
-        Module module = declaringClass.getModule();
-        return jvmciModule == module || graalModule == module || compilerConfigurationModule == module;
+        if (runtimeExcludeFromJVMCICompilation != null) {
+            throw GraalError.shouldNotReachHere();
+        } else {
+            Module module = declaringClass.getModule();
+            return jvmciModule == module || graalModule == module || compilerConfigurationModule == module;
+        }
     }
+
+    @Override
+    HotSpotJVMCICompilerFactory.CompilationLevelAdjustment getCompilationLevelAdjustment() {
+        if (runtimeExcludeFromJVMCICompilation != null) {
+            return None;
+        } else {
+            return super.getCompilationLevelAdjustment();
+        }
+    }
+
 }

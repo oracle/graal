@@ -24,7 +24,7 @@
  */
 
 /**
- * JDK 11 and later versioned overlay for the {@code jdk.internal.vm.compiler.management} module.
+ * LabsJDK 11 versioned overlay for the {@code jdk.internal.vm.compiler.management} module.
  * This cannot be used in JDK 10 where {@code jdk.internal.vm.compiler.management} is a
  * non-upgradeable module.
  */
