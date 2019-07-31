@@ -862,8 +862,7 @@ class SvmSupport(object):
         return self._debug_supported
 
 
-def _get_svm_support(fatalIfMissing=False):
-    """:type fatalIfMissing: bool"""
+def _get_svm_support():
     return SvmSupport()
 
 
@@ -2108,7 +2107,7 @@ def has_svm_launcher(component, fatalIfMissing=False):
     :rtype: bool
     """
     component = get_component(component, fatalIfMissing) if isinstance(component, str) else component
-    result = _get_svm_support(fatalIfMissing).is_supported() and not _has_forced_launchers(component) and bool(component.launcher_configs)
+    result = _get_svm_support().is_supported() and not _has_forced_launchers(component) and bool(component.launcher_configs)
     if fatalIfMissing and not result:
         hint = None
         if _has_forced_launchers(component):
