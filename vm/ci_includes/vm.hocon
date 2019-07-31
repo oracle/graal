@@ -47,4 +47,39 @@ builds += [
     ]
     name: deploy-vm-maven-jdk11-linux-amd64
   }
+  # The following builders can be used to deploy CE builds intended for externally publication
+  ${full_vm_build_linux} ${linux-deploy} ${vm_linux} {
+    run: [
+      [set-export, SNAPSHOT_CATALOG, "http://www.graalvm.org/catalog/ce"]
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_vm}
+      ${notify-nexus-deploy}
+    ]
+    logs: ${common_vm.logs}
+    timelimit: "1:30:00"
+    name: deploy-vm-base-ext-catalog-linux-amd64
+    targets: []
+  }
+  ${full_vm_build_darwin} ${darwin-deploy} ${vm_darwin} {
+    run: ${collect_profiles} [
+      [set-export, SNAPSHOT_CATALOG, "http://www.graalvm.org/catalog/ce"]
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_vm}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:45:00"
+    name: deploy-vm-base-ext-catalog-darwin-amd64
+    targets: []
+  }
+  ${full_vm_build_linux} ${linux-deploy} ${vm_linux} {
+    run: [
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju", build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju"] ${maven_deploy_vm}
+      ${notify-nexus-deploy}
+    ]
+    timelimit: "1:30:00"
+    name: deploy-vm-ext-installable-linux-amd64
+    targets: []
+  }
+  # no gu on windows atm
 ]
