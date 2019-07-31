@@ -28,8 +28,10 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 
 import java.lang.ref.WeakReference;
 
+import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
@@ -50,6 +52,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.InlineEverythingPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
+import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -156,17 +159,18 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
     static Container con = new Container();
 
     /**
-     * Expected 4 barriers for the Serial GC and 9 for G1 (1 ref + 4 pre + 4 post). In this test, we
-     * load the correct offset of the WeakReference object so naturally we assert the presence of
-     * the pre barrier.
+     * Expected 0 barrier for the Serial GC and 1 for G1. In this test, we load the correct offset
+     * of the WeakReference object so naturally we assert the presence of the pre barrier.
      */
     @Test
     public void test5() throws Exception {
         testHelper("test5Snippet", config.useG1GC ? 1 : 0);
     }
 
+    private static final boolean useCompressedOops = ((HotSpotBackend) Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend()).getRuntime().getVMConfig().useCompressedOops;
+
     public Object test5Snippet() {
-        return UNSAFE.getObject(wr, config.useCompressedOops ? 12L : 16L);
+        return UNSAFE.getObject(wr, useCompressedOops ? 12L : 16L);
     }
 
     /**
