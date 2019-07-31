@@ -327,6 +327,13 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return extractSimpleType(method.getReturnType().toString());
     }
 
+    static void appendInvocationMetaInformation(StringBuilder str, List<String> guestCalls, boolean hasMetaInjection, boolean first) {
+        str.append(getGuestCallsForInvoke(guestCalls, first));
+        if (hasMetaInjection) {
+            injectMeta(str, first);
+        }
+    }
+
     // Commits a single substitution.
     void commitSubstitution(Element method, String substitutorName, String classFile) {
         try {

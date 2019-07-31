@@ -999,35 +999,27 @@ public final class VM extends NativeEnv implements ContextAccess {
     private StaticObject guestBox(Object elem) {
         if (elem instanceof Integer) {
             return (StaticObject) getMeta().Integer_valueOf.invokeDirect(null, (int) elem);
-// return (StaticObject) getMeta().Integer_valueOf_CallTarget.call((int) elem);
         }
         if (elem instanceof Boolean) {
             return (StaticObject) getMeta().Boolean_valueOf.invokeDirect(null, (boolean) elem);
-// return (StaticObject) getMeta().Boolean_valueOf_CallTarget.call((boolean) elem);
         }
         if (elem instanceof Byte) {
             return (StaticObject) getMeta().Byte_valueOf.invokeDirect(null, (byte) elem);
-// return (StaticObject) getMeta().Byte_valueOf_CallTarget.call((byte) elem);
         }
         if (elem instanceof Character) {
             return (StaticObject) getMeta().Character_valueOf.invokeDirect(null, (char) elem);
-// return (StaticObject) getMeta().Character_valueOf_CallTarget.call((char) elem);
         }
         if (elem instanceof Short) {
             return (StaticObject) getMeta().Short_valueOf.invokeDirect(null, (short) elem);
-// return (StaticObject) getMeta().Short_valueOf_CallTarget.call((short) elem);
         }
         if (elem instanceof Float) {
             return (StaticObject) getMeta().Float_valueOf.invokeDirect(null, (float) elem);
-// return (StaticObject) getMeta().Float_valueOf_CallTarget.call((float) elem);
         }
         if (elem instanceof Double) {
             return (StaticObject) getMeta().Double_valueOf.invokeDirect(null, (double) elem);
-// return (StaticObject) getMeta().Double_valueOf_CallTarget.call((double) elem);
         }
         if (elem instanceof Long) {
             return (StaticObject) getMeta().Long_valueOf.invokeDirect(null, (long) elem);
-// return (StaticObject) getMeta().Long_valueOf_CallTarget.call((long) elem);
         }
 
         throw EspressoError.shouldNotReachHere("Not a boxed type " + elem);
