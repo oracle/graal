@@ -942,13 +942,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ] + _suite.toolchain.get_launcher_configs()
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=_suite,
     name='LLVM.org toolchain',
     short_name='llp',
     installable=True,
     installable_id='llvm-toolchain',
-    dir_name='jre/lib/llvm',
+    dir_name='llvm',
     license_files=[],
     third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
     support_distributions=['sulong:SULONG_LLVM_ORG']
