@@ -480,7 +480,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _launcher_dest = _component_base + GraalVmLauncher.get_launcher_destination(_launcher_config, stage1)
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1), _component)
-                if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and GraalVmNativeImage.is_svm_debug_supported():
+                if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and _get_svm_support().is_debug_supported():
                     _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/*.debug', _component)
                     if _include_sources():
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + GraalVmLauncher.launcher_project_name(_launcher_config, stage1) + '/sources', _component)
@@ -1222,18 +1222,13 @@ class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
     def debug_file(self):
         if not self.is_native():
             return None
-        if GraalVmNativeImage.is_svm_debug_supported() and mx.get_os() == 'linux':
+        if _get_svm_support().is_debug_supported() and mx.get_os() == 'linux':
             return join(self.get_output_base(), self.name, self.native_image_name + '.debug')
         return None
 
     @property
     def native_image_name(self):
         return basename(self.native_image_config.destination)
-
-    @staticmethod
-    def is_svm_debug_supported():
-        svm_support = _get_svm_support()
-        return svm_support.is_supported() and svm_support.is_debug_supported()
 
     def output_file(self):
         return join(self.get_output_base(), self.name, self.native_image_name)
