@@ -886,7 +886,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=suite,
-    name='Polyglot.Native',
+    name='Polyglot Native API',
     short_name='polynative',
     dir_name='polyglot',
     license_files=[],
