@@ -2151,24 +2151,22 @@ def get_component(name, fatalIfMissing=False, stage1=False):
     return None
 
 
-def has_component(name, fatalIfMissing=False, stage1=False):
+def has_component(name, stage1=False):
     """
     :type name: str
-    :type fatalIfMissing: bool
     :type stage1: bool
     :rtype: bool
     """
-    return get_component(name, fatalIfMissing=fatalIfMissing, stage1=stage1) is not None
+    return get_component(name, fatalIfMissing=False, stage1=stage1) is not None
 
 
-def has_components(names, fatalIfMissing=False, stage1=False):
+def has_components(names, stage1=False):
     """
     :type names: list[str]
-    :type fatalIfMissing: bool
     :type stage1: bool
     :rtype: bool
     """
-    return all((has_component(name, fatalIfMissing=fatalIfMissing, stage1=stage1) for name in names))
+    return all((has_component(name, stage1=stage1) for name in names))
 
 
 def graalvm_output():
