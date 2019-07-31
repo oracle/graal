@@ -81,6 +81,7 @@ Otherwise, it creates bash launchers for the languages and for `polyglot`, and d
 
 To override the default behavior, the `vm` suite defines the following `mx` arguments:
 ```
+  --native-images=...           Comma-separated list of launchers and libraries (syntax: lib:polyglot) to build with Native Image.
   --disable-libpolyglot         Disable the 'polyglot' library project
   --disable-polyglot            Disable the 'polyglot' launcher project
   --force-bash-launchers=...    Force the use of bash launchers instead of native images.
@@ -88,6 +89,7 @@ To override the default behavior, the `vm` suite defines the following `mx` argu
 ```
 And the following environment variables:
 ```
+  NATIVE_IMAGES                 Same as '--native-images'
   DISABLE_LIBPOLYGLOT           Same as '--disable-libpolyglot'
   DISABLE_POLYGLOT              Same as '--disable-polyglot'
   FORCE_BASH_LAUNCHERS          Same as '--force-bash-launchers'

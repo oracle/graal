@@ -1316,7 +1316,7 @@ class GraalVmLauncher(_with_metaclass(ABCMeta, GraalVmNativeImage)):
 
     @staticmethod
     def is_launcher_native(native_image_config, stage1=False):
-        return _get_svm_support().is_supported() and not _force_bash_launchers(native_image_config, stage1 or None)
+        return _get_svm_support().is_supported() and not stage1 and not _force_bash_launchers(native_image_config)
 
     @staticmethod
     def get_launcher_destination(config, stage1):
@@ -2375,6 +2375,7 @@ mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'p
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
                                                                'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
 mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-H:-AOTInline\' and with \'-ea\'.')
+mx.add_argument('--native-images', action='store', help='Comma-separated list of launchers and libraries (syntax: lib:polyglot) to build with Native Image.')
 mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images.'
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
 mx.add_argument('--skip-libraries', action='store', help='Do not build native images for these libraries.'
@@ -2447,39 +2448,47 @@ def _with_polyglot_launcher_project():
     return not (mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'))
 
 
-def _force_bash_launchers(launcher, forced=None):
+def _force_bash_launchers(launcher):
     """
     :type launcher: str | mx_sdk.AbstractNativeImageConfig
-    :type forced: bool | None | str | list[str]
     """
-    if forced is None:
-        forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false'))
-    if isinstance(forced, bool):
-        return forced
-    if isinstance(forced, str):
-        forced = forced.split(',')
     if isinstance(launcher, mx_sdk.AbstractNativeImageConfig):
         launcher = launcher.destination
     launcher = remove_exe_suffix(launcher, require_suffix=False)
     launcher_name = basename(launcher)
-    return launcher_name in forced
+
+    only = mx.get_opts().native_images or mx.get_env('NATIVE_IMAGES', None)
+    if only:
+        only = [lib for lib in only.split(',') if not lib.startswith('lib:')]
+        if launcher_name not in only:
+            return True
+
+    forced = _str_to_bool(mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS', 'false'))
+    if isinstance(forced, bool):
+        return forced
+    else:
+        return launcher_name in forced.split(',')
 
 
-def _skip_libraries(library, skipped=None):
+def _skip_libraries(library):
     """
     :type library: str | mx_sdk.AbstractNativeImageConfig
-    :type skipped: bool | None | str | list[str]
     """
-    if skipped is None:
-        skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false'))
-    if isinstance(skipped, bool):
-        return skipped
-    if isinstance(skipped, str):
-        skipped = skipped.split(',')
     if isinstance(library, mx_sdk.AbstractNativeImageConfig):
         library = library.destination
     library_name = remove_lib_prefix_suffix(basename(library), require_suffix_prefix=False)
-    return library_name in skipped
+
+    only = mx.get_opts().native_images or mx.get_env('NATIVE_IMAGES', None)
+    if only:
+        only = [lib[4:] for lib in only.split(',') if lib.startswith('lib:')]
+        if library_name not in only:
+            return True
+
+    skipped = _str_to_bool(mx.get_opts().skip_libraries or mx.get_env('SKIP_LIBRARIES', 'false'))
+    if isinstance(skipped, bool):
+        return skipped
+    else:
+        return library_name in skipped.split(',')
 
 
 def _disable_installable(component):
@@ -2494,10 +2503,10 @@ def _disable_installable(component):
     return component in disabled
 
 
-def _has_forced_launchers(component, forced=None):
+def _has_forced_launchers(component):
     """:type component: mx_sdk.GraalVmComponent"""
     for launcher_config in _get_launcher_configs(component):
-        if _force_bash_launchers(launcher_config, forced):
+        if _force_bash_launchers(launcher_config):
             return True
     return False
 
