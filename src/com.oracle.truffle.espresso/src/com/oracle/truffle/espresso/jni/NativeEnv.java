@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -101,6 +102,7 @@ public abstract class NativeEnv {
         }
     }
 
+    @CompilerDirectives.TruffleBoundary
     protected static ByteBuffer directByteBuffer(long address, long capacity) {
         ByteBuffer buffer = null;
         try {
@@ -112,6 +114,7 @@ public abstract class NativeEnv {
         return buffer;
     }
 
+    @CompilerDirectives.TruffleBoundary
     protected static long byteBufferAddress(ByteBuffer byteBuffer) {
         try {
             return (long) addressField.get(byteBuffer);

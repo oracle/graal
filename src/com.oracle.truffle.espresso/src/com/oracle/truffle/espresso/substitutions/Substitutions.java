@@ -186,21 +186,21 @@ public final class Substitutions implements ContextAccess {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerStaticSubstitution(Substitutor.Factory substitutor) {
-        assert substitutor.substitutionClassName().startsWith("Target_");
+    private static void registerStaticSubstitution(Substitutor.Factory substitutorFactory) {
+        assert substitutorFactory.substitutionClassName().startsWith("Target_");
         List<Symbol<Type>> parameterTypes = new ArrayList<>();
-        for (int i = substitutor.hasReceiver() ? 1 : 0; i < substitutor.parameterTypes().length; i++) {
-            String type = substitutor.parameterTypes()[i];
+        for (int i = substitutorFactory.hasReceiver() ? 1 : 0; i < substitutorFactory.parameterTypes().length; i++) {
+            String type = substitutorFactory.parameterTypes()[i];
             parameterTypes.add(StaticSymbols.putType(type));
         }
-        Symbol<Type> returnType = StaticSymbols.putType(substitutor.returnType());
-        Symbol<Type> classType = StaticSymbols.putType("L" + substitutor.substitutionClassName().substring("Target_".length()).replace('_', '/') + ";");
-        Symbol<Name> methodName = StaticSymbols.putName(substitutor.getMethodName());
+        Symbol<Type> returnType = StaticSymbols.putType(substitutorFactory.returnType());
+        Symbol<Type> classType = StaticSymbols.putType("L" + substitutorFactory.substitutionClassName().substring("Target_".length()).replace('_', '/') + ";");
+        Symbol<Name> methodName = StaticSymbols.putName(substitutorFactory.getMethodName());
         Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY));
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method espressoMethod) {
-                return new EspressoRootNode(espressoMethod, new IntrinsicSubstitutorRootNode(substitutor, espressoMethod));
+                return new EspressoRootNode(espressoMethod, new IntrinsicSubstitutorRootNode(substitutorFactory, espressoMethod));
             }
         };
         registerStaticSubstitution(classType, methodName, signature, factory, true);

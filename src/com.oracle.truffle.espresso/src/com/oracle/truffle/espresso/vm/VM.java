@@ -51,6 +51,7 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -291,7 +292,6 @@ public final class VM extends NativeEnv implements ContextAccess {
             @CompilerDirectives.CompilationFinal private VMSubstitutor subst = null;
 
             @Override
-            @CompilerDirectives.TruffleBoundary
             public Object call(Object... args) {
                 boolean isJni = m.isJni();
                 try {
@@ -418,6 +418,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      */
     @SuppressWarnings("unused")
     @VmImpl
+    @TruffleBoundary
     public int GetEnv(long vmPtr_, long envPtr, int version) {
         // TODO(peterssen): Check the thread is attached, and that the VM pointer matches.
         LongBuffer buf = directByteBuffer(envPtr, 1, JavaKind.Long).asLongBuffer();

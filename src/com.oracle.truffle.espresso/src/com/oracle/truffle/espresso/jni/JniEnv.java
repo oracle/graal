@@ -142,7 +142,6 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             @CompilerDirectives.CompilationFinal private JniSubstitutor subst = null;
 
             @Override
-            @TruffleBoundary
             public Object call(Object... args) {
                 assert (long) args[0] == JniEnv.this.getNativePointer() : "Calling " + factory + " from alien JniEnv";
                 try {
@@ -1397,6 +1396,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
+    @TruffleBoundary
     public Object NewObjectVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Klass klass = clazz.getMirrorKlass();
         Method method = methodIds.getObject(methodHandle);
