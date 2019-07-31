@@ -94,6 +94,7 @@ import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapRegistersOp;
 import org.graalvm.compiler.lir.amd64.AMD64ZapStackOp;
+import org.graalvm.compiler.lir.amd64.AMD64ZeroMemoryOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.lir.hashing.Hasher;
@@ -673,5 +674,12 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitSpeculationFence() {
         append(new AMD64LFenceOp());
+    }
+
+    @Override
+    public void emitZeroMemory(Value address, Value length) {
+        RegisterValue lengthReg = AMD64.rcx.asValue(length.getValueKind());
+        emitMove(lengthReg, length);
+        append(new AMD64ZeroMemoryOp(asAddressValue(address), lengthReg));
     }
 }
