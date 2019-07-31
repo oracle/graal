@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.snippets;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -185,10 +186,24 @@ public class ReflectionPlugins {
             }
         });
 
+        r.register1("getFields", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processGetFields(b, targetMethod, receiver, snippetReflection, false, analysis, hosted);
+            }
+        });
+
         r.register3("getDeclaredMethod", Receiver.class, String.class, Class[].class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode name, ValueNode parameterTypes) {
                 return processGetMethod(b, targetMethod, receiver, name, parameterTypes, annotationSubstitutions, snippetReflection, true, analysis, hosted);
+            }
+        });
+
+        r.register1("getDeclaredMethods", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processGetMethods(b, targetMethod, receiver, snippetReflection, true, analysis, hosted);
             }
         });
 
@@ -199,6 +214,13 @@ public class ReflectionPlugins {
             }
         });
 
+        r.register1("getMethods", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processGetMethods(b, targetMethod, receiver, snippetReflection, false, analysis, hosted);
+            }
+        });
+
         r.register2("getDeclaredConstructor", Receiver.class, Class[].class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode parameterTypes) {
@@ -206,10 +228,24 @@ public class ReflectionPlugins {
             }
         });
 
+        r.register1("getDeclaredConstructors", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processGetConstructors(b, targetMethod, receiver, snippetReflection, true, analysis, hosted);
+            }
+        });
+
         r.register2("getConstructor", Receiver.class, Class[].class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode parameterTypes) {
                 return processGetConstructor(b, targetMethod, receiver, parameterTypes, snippetReflection, annotationSubstitutions, false, analysis, hosted);
+            }
+        });
+
+        r.register1("getConstructors", Receiver.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                return processGetConstructors(b, targetMethod, receiver, snippetReflection, false, analysis, hosted);
             }
         });
     }
@@ -282,38 +318,14 @@ public class ReflectionPlugins {
                                            SnippetReflectionProvider snippetReflection, boolean declared, boolean analysis, boolean hosted) {
         if (receiver.isConstant()) {
             Class<?> clazz = snippetReflection.asObject(Class.class, receiver.get().asJavaConstant());
-
-            String target = clazz.getTypeName() + ".getDeclaredFields()";
+            String target = clazz.getTypeName() + ( declared ? ".getDeclaredFields()" : ".getFields()");
             try {
                 Field[] fields = declared ? clazz.getDeclaredFields() : clazz.getFields();
-                if (fields.length == 0) {
+                Field[] intrinsic = getIntrinsicArray(analysis, hosted, b, fields);
+                if (intrinsic == null) {
                     return false;
                 }
-                Set<Field> intrinsic = new HashSet<>();
-                for (int i = 0; i < fields.length; ++i) {
-                    Field each = null;
-                    if ( analysis) {
-                        if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-                            ResolvedJavaField annotated = b.getMetaAccess().lookupJavaField(fields[i]);
-                            if (annotated == null || !annotated.isAnnotationPresent(Delete.class)) {
-                                each = fields[i];
-                            }
-                        } else {
-                            each = fields[i];
-                        }
-                        if (each != null) {
-                            intrinsic.add(each);
-                        }
-                    }
-                }
-                Field[] intrinsicArray = null;
-                if (analysis) {
-                    intrinsicArray = intrinsic.toArray(new Field[intrinsic.size()]);
-                    ImageSingletons.lookup(ReflectionPluginRegistry.class).add(toAnalysisMethod(b.getMethod()), b.bci(), intrinsicArray);
-                } else {
-                    intrinsicArray = ImageSingletons.lookup(ReflectionPluginRegistry.class).get(toAnalysisMethod(b.getMethod()), b.bci());
-                }
-                pushConstant(b, targetMethod, snippetReflection.forObject(intrinsicArray), target);
+                pushConstant(b, targetMethod, snippetReflection.forObject(intrinsic), target);
             } catch (NoClassDefFoundError e) {
                 /*
                  * If the declaring class of the field references missing classes a
@@ -372,6 +384,34 @@ public class ReflectionPlugins {
         return false;
     }
 
+    private static boolean processGetMethods(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                                            SnippetReflectionProvider snippetReflection, boolean declared, boolean analysis, boolean hosted) {
+        if (receiver.isConstant()) {
+            Class<?> clazz = snippetReflection.asObject(Class.class, receiver.get().asJavaConstant());
+            String target = clazz.getTypeName() + ( declared ? ".getDeclaredMethods()" : ".getMethods()");
+            try {
+                Method[] methods = declared ? clazz.getDeclaredMethods() : clazz.getMethods();
+                Method[] intrinsic = getIntrinsicArray(analysis, hosted, b, methods);
+                if (intrinsic == null) {
+                    return false;
+                }
+                pushConstant(b, targetMethod, snippetReflection.forObject(intrinsic), target);
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * If the declaring class of the field references missing classes a
+                 * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                 */
+                Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoClassDefFoundErrorMethod);
+                if (intrinsic == null) {
+                    return false;
+                }
+                throwNoClassDefFoundError(b, targetMethod, e.getMessage());
+            }
+            return true;
+        }
+        return false;
+    }
+
     private static boolean processGetConstructor(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
                     Receiver receiver, ValueNode parameterTypes,
                     SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, boolean declared,
@@ -414,6 +454,34 @@ public class ReflectionPlugins {
         return false;
     }
 
+    private static boolean processGetConstructors(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                                             SnippetReflectionProvider snippetReflection, boolean declared, boolean analysis, boolean hosted) {
+        if (receiver.isConstant()) {
+            Class<?> clazz = snippetReflection.asObject(Class.class, receiver.get().asJavaConstant());
+            String target = clazz.getTypeName() + ( declared ? ".getDeclaredConstructors()" : ".getConstructors()");
+            try {
+                Constructor[] constructors = declared ? clazz.getDeclaredConstructors() : clazz.getConstructors();
+                Constructor[] intrinsic = getIntrinsicArray(analysis, hosted, b, constructors);
+                if (intrinsic == null) {
+                    return false;
+                }
+                pushConstant(b, targetMethod, snippetReflection.forObject(intrinsic), target);
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * If the declaring class of the field references missing classes a
+                 * `NoClassDefFoundError` can be thrown. We intrinsify `it here.
+                 */
+                Method intrinsic = getIntrinsic(analysis, hosted, b, ExceptionSynthesizer.throwNoClassDefFoundErrorMethod);
+                if (intrinsic == null) {
+                    return false;
+                }
+                throwNoClassDefFoundError(b, targetMethod, e.getMessage());
+            }
+            return true;
+        }
+        return false;
+    }
+
     /**
      * This method checks if the element should be intrinsified and returns the cached intrinsic
      * element if found. Caching intrinsic elements during analysis and reusing the same element
@@ -445,6 +513,38 @@ public class ReflectionPlugins {
             /* We are during analysis, we should intrinsify and cache the intrinsified object. */
             ImageSingletons.lookup(ReflectionPluginRegistry.class).add(toAnalysisMethod(context.getMethod()), context.bci(), element);
             return element;
+        }
+        /* We are during compilation, we only intrinsify if intrinsified during analysis. */
+        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(toAnalysisMethod(context.getMethod()), context.bci());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T[] getIntrinsicArray(boolean analysis, boolean hosted, GraphBuilderContext context, T[] elements) {
+        if (!hosted) {
+            /* We are analyzing the static initializers and should always intrinsify. */
+            return elements;
+        }
+        if (analysis) {
+            Set<T> set = new HashSet<>();
+            for (T element : elements) {
+                if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+                    AnnotatedElement annotated = null;
+                    if (element instanceof Executable) {
+                        annotated = context.getMetaAccess().lookupJavaMethod((Executable) element);
+                    } else if (element instanceof Field) {
+                        annotated = context.getMetaAccess().lookupJavaField((Field) element);
+                    }
+                    if (annotated != null && annotated.isAnnotationPresent(Delete.class)) {
+                        /* Should not intrinsify. Will fail during the reflective lookup at runtime. */
+                        continue;
+                    }
+                }
+                set.add(element);
+            }
+            T[] array = set.toArray((T[]) Array.newInstance(elements.getClass().getComponentType(), set.size()));
+            /* We are during analysis, we should intrinsify and cache the intrinsified object. */
+            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(toAnalysisMethod(context.getMethod()), context.bci(), array);
+            return array;
         }
         /* We are during compilation, we only intrinsify if intrinsified during analysis. */
         return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(toAnalysisMethod(context.getMethod()), context.bci());
