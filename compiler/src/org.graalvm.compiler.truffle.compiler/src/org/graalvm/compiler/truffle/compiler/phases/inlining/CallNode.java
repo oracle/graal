@@ -111,9 +111,8 @@ public class CallNode extends Node {
     }
 
     /**
-     * Returnes a fully expanded and partially evaluated CallNode to be used as a root of a
+     * Returns a fully expanded and partially evaluated CallNode to be used as a root of a
      * callTree.
-     *
      */
     static CallNode makeRoot(CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
         Objects.requireNonNull(callTree);
@@ -121,7 +120,7 @@ public class CallNode extends Node {
         Objects.requireNonNull(ir);
         final CallNode root = new CallNode(callTree, null, truffleAST, ir, 1, policy);
         root.data = policy.newCallNodeData(root);
-        assert root.state == State.Cutoff : "Cannot expand a non-cutoff node. Not is " + root.state;
+        assert root.state == State.Cutoff : "Cannot expand a non-cutoff node. State is " + root.state;
         root.addChildren();
         root.partiallyEvaluateRoot();
         policy.afterExpand(root);

@@ -40,11 +40,12 @@ public class CallTree extends Graph {
     final GraphManager graphManager;
     int expanded = 1;
     int inlined = 1;
+    TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
 
     CallTree(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
         super(ir.getOptions(), ir.getDebug());
         graphManager = new GraphManager(ir, partialEvaluator, callNodeProvider);
-        // Should be kept as last cal in constructor, as this is an argument.
+        // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(this, truffleAST, ir, policy);
     }
 
@@ -64,8 +65,6 @@ public class CallTree extends Graph {
         return graphManager;
     }
 
-    TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-
     public void trace() {
         if (TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TraceTruffleInlining)) {
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
@@ -78,8 +77,8 @@ public class CallTree extends Graph {
         if (depth != 0) {
             runtime.logEvent(depth, node.getState().toString(), node.getName(), node.getStringProperties());
         }
-        // TODO this for loop should be guarded with
-        // if (node.getState() == CallNode.State.Inlined) {
+        // TODO: This for loop should be guarded with:
+        //  if (node.getState() == CallNode.State.Inlined) {
         for (CallNode child : node.getChildren()) {
             traceRecursive(child, depth + 1);
         }
