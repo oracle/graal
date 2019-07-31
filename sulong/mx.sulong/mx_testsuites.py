@@ -86,7 +86,7 @@ class SulongTestSuiteBuildTask(mx.NativeBuildTask):
             self.subject._is_needs_rebuild_call = False
 
 
-class SulongTestSuite(mx.NativeProject):
+class SulongTestSuite(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, **args):
         d = os.path.join(suite.dir, subDir) # use common Makefile for all test suites
@@ -275,7 +275,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         return env
 
 
-class GlobNativeProject(mx.NativeProject):
+class GlobNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
         projectDir = args.pop('dir', None)
         if projectDir:
