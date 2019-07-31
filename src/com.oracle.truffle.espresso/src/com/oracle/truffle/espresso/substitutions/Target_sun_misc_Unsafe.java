@@ -27,7 +27,7 @@ import java.lang.reflect.Array;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -64,6 +64,7 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject defineAnonymousClass(
                     @Host(Unsafe.class) StaticObject self,
@@ -216,6 +217,7 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Class.class) StaticObject defineClass(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(String.class) StaticObject name,
                     @Host(byte[].class) StaticObject guestBuf, int offset, int len, @Host(ClassLoader.class) StaticObject loader,
@@ -223,7 +225,7 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Protection domain is ignored.
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        return EspressoLanguage.getCurrentContext().getRegistries().defineKlass(self.getKlass().getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader).mirror();
+        return self.getKlass().getMeta().getRegistries().defineKlass(self.getKlass().getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader).mirror();
     }
 
     // region compareAndSwap*
@@ -897,6 +899,7 @@ public final class Target_sun_misc_Unsafe {
      * Allocate an instance but do not run any constructor. Initializes the class if it has not yet
      * been.
      */
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Class.class) StaticObject clazz) { // throws
         // InstantiationException;

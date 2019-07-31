@@ -27,6 +27,7 @@ import java.security.AccessControlContext;
 import java.security.PrivilegedAction;
 import java.security.PrivilegedExceptionAction;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Method;
@@ -86,7 +87,7 @@ public final class Target_java_security_AccessController {
             throw e;
 
         } catch (Exception e) {
-            e.printStackTrace();
+            CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
         }
     }

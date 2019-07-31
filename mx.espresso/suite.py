@@ -43,6 +43,7 @@ suite = {
     # ------------- projects
 
     "projects": {
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -50,9 +51,18 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],
-            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.processor": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso.processor",
         },
 
         "com.oracle.truffle.espresso.launcher": {
@@ -207,6 +217,17 @@ suite = {
             "license": "UPL",
             "description": "Espresso launcher using the polyglot API.",
             "allowsJavadocWarnings": True,
+        },
+
+        "ESPRESSO_PROCESSOR": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.processor",
+            ],
+            "distDependencies": [],
+            "license": "UPL",
+            "description": "Espresso annotation processor.",
+            "maven": False,
         },
 
         "ESPRESSO_SUPPORT": {

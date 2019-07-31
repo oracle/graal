@@ -23,8 +23,6 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -40,15 +38,56 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.IntrinsicReflectionRootNode;
+import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
  * Substitutions/intrinsics for Espresso.
+ * <p>
+ * Some substitutions are statically defined, others runtime-dependent. The static ones are
+ * collected by Espresso's annotation processor, and registered in the generated class
+ * {@link com.oracle.truffle.espresso.substitutions.SubstitutorCollector}. Iterating over the
+ * collection in this class allows to register them directly, and assign to each of them a node,
+ * which will dispatch them directly, without the need for reflection. In practice, this allows
+ * inlining.
+ * <p>
+ * To register a substitution in Espresso:
+ * <li>Create a class annotated with {@link EspressoSubstitutions}. Its name must be the fully
+ * qualified name of the substituted class, to which is prepended "Target_" and each "." is replaced
+ * by a "_". For example, java.lang.Class becomes Target_java_lang_Class. Keep the "$" in case you
+ * want to substitute an inner class.
+ * <li>For each substituted method of the class, create a method in the "Target_" class. This method
+ * should be annotated with {@link Substitution}. If the method is an instance method, it must be
+ * annotated with {@link Substitution#hasReceiver()} = true
+ * <li>If the method has a primitive signature, the signature of the substitution should be the
+ * same, save for a potential receiver. If there are reference types in the signature, Simply put a
+ * StaticObject type instead, but annotate the argument with {@link Host}. This must be done for
+ * EVERY reference argument, even the receiver.
+ * <li>If the class of the reference argument is public, (/ex {@link Class}), you can simply put @
+ * {@link Host}({@link Class}.class) in the annotation. If the class is private, you have to put
+ * {@link Host}(typeName() = ...), where "..." is the internal name of the class (ie: the qualified
+ * name, where all "." are replaced with "/", an "L" is prepended, and a ";" is appended. /ex:
+ * java.lang.Class becomes Ljava/lang/Class;.)
+ * <li>The name of the method in the substitution can be the same as the substitution target, and it
+ * will work out. Note that it might happen that a class overloads a method, and since types gets
+ * "erased" in the substitution, it is not possible to give the same name to both. If that happens,
+ * you can use the {@link Substitution#methodName()} value. For example, in {@link java.util.Arrays}
+ * , the toString(... array) method is overloaded with every primitive array type. In that case you
+ * can write in the substitution
  *
- * Some substitutions are statically defined, others runtime-dependent. The static-ones are
- * initialized in the static initializer; which allows using MethodHandles instead of reflection in
- * SVM.
+ * <pre>
+ * {@literal @}Substitution(methodName = "toString")
+ * public static @Host(String.class) StaticObject toString_byte(@Host(byte[].class) StaticObject array) {
+ *     ...
+ * }
+ *
+ * {@literal @}Substitution(methodName = "toString")
+ * public static @Host(String.class) StaticObject toString_int(@Host(int[].class) StaticObject array) {
+ *     ...
+ * }
+ * </pre>
+ *
+ * and so on so forth.
  */
 public final class Substitutions implements ContextAccess {
 
@@ -74,30 +113,9 @@ public final class Substitutions implements ContextAccess {
 
     private final ConcurrentHashMap<MethodRef, EspressoRootNodeFactory> runtimeSubstitutions = new ConcurrentHashMap<>();
 
-    private static final List<Class<?>> ESPRESSO_SUBSTITUTIONS = Collections.unmodifiableList(Arrays.asList(
-                    Target_java_lang_Class.class,
-                    Target_java_lang_ClassLoader.class,
-                    Target_java_lang_Object.class,
-                    Target_java_lang_System.class,
-                    Target_java_lang_Thread.class,
-                    Target_java_lang_ref_Finalizer$FinalizerThread.class,
-                    Target_java_lang_ref_Reference$ReferenceHandler.class,
-                    Target_java_lang_reflect_Array.class,
-                    Target_java_security_AccessController.class,
-                    Target_sun_awt_SunToolkit.class,
-                    Target_sun_misc_Perf.class,
-                    Target_sun_misc_Signal.class,
-                    Target_sun_misc_Unsafe.class,
-                    Target_sun_misc_URLClassPath.class,
-                    Target_sun_misc_VM.class,
-                    Target_sun_reflect_NativeConstructorAccessorImpl.class,
-                    Target_sun_reflect_NativeMethodAccessorImpl.class,
-                    Target_java_lang_invoke_MethodHandleNatives.class,
-                    Target_com_oracle_truffle_espresso_InternalUtils.class));
-
     static {
-        for (Class<?> clazz : ESPRESSO_SUBSTITUTIONS) {
-            registerStaticSubstitutions(clazz);
+        for (Substitutor substitutor : SubstitutorCollector.getInstance()) {
+            registerStaticSubstitution(substitutor);
         }
     }
 
@@ -151,81 +169,24 @@ public final class Substitutions implements ContextAccess {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerStaticSubstitutions(Class<?> clazz) {
-        int registered = 0;
-
-        Symbol<Type> classType;
-        Class<?> annotatedClass = clazz.getAnnotation(EspressoSubstitutions.class).value();
-        if (annotatedClass == EspressoSubstitutions.class) {
-            // Target class is derived from class name by simple substitution
-            // e.g. Target_java_lang_System becomes java.lang.System
-            assert clazz.getSimpleName().startsWith("Target_");
-            classType = StaticSymbols.putType("L" + clazz.getSimpleName().substring("Target_".length()).replace('_', '/') + ";");
-        } else {
-            throw EspressoError.shouldNotReachHere("Substitutions class must be decorated with @" + EspressoSubstitutions.class.getName());
+    private static void registerStaticSubstitution(Substitutor substitutor) {
+        assert substitutor.substitutionClassName().startsWith("Target_");
+        List<Symbol<Type>> parameterTypes = new ArrayList<>();
+        for (int i = substitutor.hasReceiver() ? 1 : 0; i < substitutor.parameterTypes().length; i++) {
+            String type = substitutor.parameterTypes()[i];
+            parameterTypes.add(StaticSymbols.putType(type));
         }
-
-        for (java.lang.reflect.Method method : clazz.getDeclaredMethods()) {
-            Substitution substitution = method.getAnnotation(Substitution.class);
-            if (substitution == null) {
-                continue;
+        Symbol<Type> returnType = StaticSymbols.putType(substitutor.returnType());
+        Symbol<Type> classType = StaticSymbols.putType("L" + substitutor.substitutionClassName().substring("Target_".length()).replace('_', '/') + ";");
+        Symbol<Name> methodName = StaticSymbols.putName(substitutor.getMethodName());
+        Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(new Symbol[0]));
+        EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
+            @Override
+            public EspressoRootNode spawnNode(Method espressoMethod) {
+                return new EspressoRootNode(espressoMethod, new IntrinsicSubstitutorRootNode(substitutor, espressoMethod));
             }
-
-            final EspressoRootNodeFactory factory;
-            factory = new EspressoRootNodeFactory() {
-                @Override
-                public EspressoRootNode spawnNode(Method espressoMethod) {
-                    return new EspressoRootNode(espressoMethod, new IntrinsicReflectionRootNode(method, espressoMethod));
-                }
-            };
-
-            java.lang.reflect.Parameter[] parameters = method.getParameters();
-
-            List<Symbol<Type>> parameterTypes = new ArrayList<>();
-
-            for (int i = substitution.hasReceiver() ? 1 : 0; i < parameters.length; i++) {
-                java.lang.reflect.Parameter parameter = parameters[i];
-                Symbol<Type> parameterType;
-                Host annotatedType = parameter.getAnnotatedType().getAnnotation(Host.class);
-                if (annotatedType != null) {
-                    Class<?> guestType = annotatedType.value();
-                    if (guestType == Host.class) {
-                        parameterType = StaticSymbols.putType(annotatedType.typeName());
-                    } else {
-                        parameterType = StaticSymbols.putType(guestType);
-                    }
-                } else {
-                    parameterType = StaticSymbols.putType(parameter.getType());
-                }
-                parameterTypes.add(parameterType);
-            }
-
-            Host annotatedReturnType = method.getAnnotatedReturnType().getAnnotation(Host.class);
-            Symbol<Type> returnType;
-            if (annotatedReturnType != null) {
-                Class<?> guestType = annotatedReturnType.value();
-                if (guestType == Host.class) {
-                    returnType = StaticSymbols.putType(annotatedReturnType.typeName());
-                } else {
-                    returnType = StaticSymbols.putType(guestType);
-                }
-            } else {
-                returnType = StaticSymbols.putType(method.getReturnType());
-            }
-
-            String methodName = substitution.methodName();
-            if (methodName.length() == 0) {
-                methodName = method.getName();
-            }
-
-            ++registered;
-            registerStaticSubstitution(classType,
-                            StaticSymbols.putName(methodName),
-                            StaticSymbols.putSignature(returnType, parameterTypes.toArray(new Symbol[parameterTypes.size()])),
-                            factory,
-                            true);
-        }
-        assert registered > 0 : "No substitutions found in " + clazz;
+        };
+        registerStaticSubstitution(classType, methodName, signature, factory, true);
     }
 
     private static void registerStaticSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {

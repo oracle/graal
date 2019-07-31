@@ -334,6 +334,8 @@ public final class Symbol<T> extends ByteSequence {
         // MethodAccessorImpl is not public.
         public static final Symbol<Type> MethodAccessorImpl = StaticSymbols.putType("Lsun/reflect/MethodAccessorImpl;");
 
+        public static final Symbol<Type> sun_reflect_ConstantPool = StaticSymbols.putType(sun.reflect.ConstantPool.class);
+
         public static final Symbol<Type> Serializable = StaticSymbols.putType(java.io.Serializable.class);
         public static final Symbol<Type> ByteBuffer = StaticSymbols.putType(java.nio.ByteBuffer.class);
         public static final Symbol<Type> PrivilegedActionException = StaticSymbols.putType(java.security.PrivilegedActionException.class);

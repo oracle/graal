@@ -120,22 +120,22 @@ public abstract class NativeEnv {
         }
     }
 
-    protected static Object defaultValue(Class<?> returnType) {
-        if (returnType == boolean.class)
+    protected static Object defaultValue(String returnType) {
+        if (returnType.equals("boolean"))
             return false;
-        if (returnType == byte.class)
+        if (returnType.equals("byte"))
             return (byte) 0;
-        if (returnType == char.class)
+        if (returnType.equals("char"))
             return (char) 0;
-        if (returnType == short.class)
+        if (returnType.equals("short"))
             return (short) 0;
-        if (returnType == int.class)
+        if (returnType.equals("int"))
             return 0;
-        if (returnType == float.class)
+        if (returnType.equals("float"))
             return 0.0F;
-        if (returnType == double.class)
+        if (returnType.equals("double"))
             return 0.0;
-        if (returnType == long.class)
+        if (returnType.equals("long"))
             return 0L;
         return StaticObject.NULL;
     }

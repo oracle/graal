@@ -32,7 +32,7 @@ public final class Target_java_lang_ref_Finalizer$FinalizerThread {
 
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
-    static public void run(@Host(typeName = "Thread") StaticObject self) {
+    static public void run(@Host(Thread.class) StaticObject self) {
         /* nop */
     }
 }

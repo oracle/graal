@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.jni;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
@@ -103,7 +101,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     private final TruffleObject popLong;
     private final TruffleObject popObject;
 
-    private static final Map<String, java.lang.reflect.Method> jniMethods = buildJniMethods();
+    private static final Map<String, JniSubstitutor> jniMethods = buildJniMethods();
 
     private final WeakHandles<Field> fieldIds = new WeakHandles<>();
     private final WeakHandles<Method> methodIds = new WeakHandles<>();
@@ -133,105 +131,34 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         threadLocalPendingException.set(ex);
     }
 
-    public Callback jniMethodWrapper(java.lang.reflect.Method m) {
+    public Callback jniMethodWrapper(JniSubstitutor m) {
         return new Callback(m.getParameterCount() + 1, new Callback.Function() {
             @Override
             @TruffleBoundary
             public Object call(Object... args) {
                 assert (long) args[0] == JniEnv.this.getNativePointer() : "Calling " + m + " from alien JniEnv";
-                Object[] shiftedArgs = Arrays.copyOfRange(args, 1, args.length);
-
-                Class<?>[] params = m.getParameterTypes();
-
-                for (int i = 0; i < shiftedArgs.length; ++i) {
-                    // FIXME(peterssen): Espresso should accept interop null objects, since it
-                    // doesn't
-                    // we must convert to Espresso null.
-                    // FIXME(peterssen): Also, do use proper nodes.
-                    if (shiftedArgs[i] instanceof TruffleObject) {
-                        if (InteropLibrary.getFactory().getUncached().isNull(shiftedArgs[i])) {
-                            if (params[i] == StaticObject.class) {
-                                shiftedArgs[i] = StaticObject.NULL;
-                            } else {
-                                shiftedArgs[i] = null;
-                            }
-                        }
-                    } else {
-                        // TruffleNFI pass booleans as byte, do the proper conversion.
-                        if (params[i] == boolean.class) {
-                            shiftedArgs[i] = ((byte) shiftedArgs[i]) != 0;
-                        }
-                        // TruffleNFI pass chars as short
-                        if (params[i] == char.class) {
-                            shiftedArgs[i] = (char) (short) shiftedArgs[i];
-                        }
-                    }
-                }
-                assert args.length - 1 == shiftedArgs.length;
                 try {
                     // Substitute raw pointer by proper `this` reference.
                     // System.err.print("Call DEFINED method: " + m.getName() +
                     // Arrays.toString(shiftedArgs));
-                    Object ret = m.invoke(JniEnv.this, shiftedArgs);
-
-                    if (ret instanceof Boolean) {
-                        return (boolean) ret ? (byte) 1 : (byte) 0;
-                    }
-
-                    if (ret instanceof Character) {
-                        return (short) (char) ret;
-                    }
-
-                    if (ret == null && !m.getReturnType().isPrimitive()) {
-                        throw EspressoError.shouldNotReachHere("Cannot return host null, only Espresso NULL");
-                    }
-
-                    if (ret == null && m.getReturnType() == void.class) {
-                        // Cannot return host null to TruffleNFI.
-                        ret = StaticObject.NULL;
-                    }
-
-                    // System.err.println(" -> " + ret);
-
-                    return ret;
-                } catch (InvocationTargetException e) {
-                    Throwable targetEx = e.getTargetException();
-                    if (targetEx instanceof EspressoException) {
-                        setPendingException(((EspressoException) targetEx).getException());
-                        return defaultValue(m.getReturnType());
-                    } else if (targetEx instanceof RuntimeException) {
-                        throw (RuntimeException) targetEx;
-                    }
+                    return m.invoke(JniEnv.this, args);
+                } catch (EspressoException targetEx) {
+                    setPendingException(targetEx.getException());
+                    return defaultValue(m.returnType());
+                } catch (RuntimeException targetEx) {
+                    throw targetEx;
+                } catch (Throwable targetEx) {
                     // FIXME(peterssen): Handle VME exceptions back to guest.
                     throw EspressoError.shouldNotReachHere(targetEx);
-                } catch (IllegalAccessException e) {
-                    throw EspressoError.shouldNotReachHere(e);
                 }
             }
         });
     }
 
-    public static String jniNativeSignature(java.lang.reflect.Method method) {
-        StringBuilder sb = new StringBuilder("(");
-        // Prepend JNIEnv* . The raw pointer will be substituted by the proper `this` reference.
-        sb.append(NativeSimpleType.SINT64);
-        for (Parameter param : method.getParameters()) {
-            sb.append(", ");
-
-            // Override NFI type.
-            NFIType nfiType = param.getAnnotatedType().getAnnotation(NFIType.class);
-            if (nfiType != null) {
-                sb.append(NativeSimpleType.valueOf(nfiType.value().toUpperCase()));
-            } else {
-                sb.append(classToType(param.getType(), false));
-            }
-        }
-        sb.append("): ").append(classToType(method.getReturnType(), true));
-        return sb.toString();
-    }
+    private static final int LOOKUP_JNI_IMPL_PARAMETER_COUNT = 1;
 
     public TruffleObject lookupJniImpl(String methodName) {
-        java.lang.reflect.Method m = jniMethods.get(methodName);
+        JniSubstitutor m = jniMethods.get(methodName);
         try {
             // Dummy placeholder for unimplemented/unknown methods.
             if (m == null) {
@@ -247,7 +174,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                                 }));
             }
 
-            String signature = jniNativeSignature(m);
+            String signature = m.jniNativeSignature();
             Callback target = jniMethodWrapper(m);
             return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(dupClosureRefAndCast(signature), target);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
@@ -419,7 +346,20 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             popLong = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_long", "(sint64): sint64");
             popObject = NativeLibrary.lookupAndBind(nespressoLibrary, "pop_object", "(sint64): object");
 
-            Callback lookupJniImplCallback = Callback.wrapInstanceMethod(this, "lookupJniImpl", String.class);
+            Callback lookupJniImplCallback = new Callback(LOOKUP_JNI_IMPL_PARAMETER_COUNT, new Callback.Function() {
+                @Override
+                public Object call(Object... args) {
+                    try {
+                        return JniEnv.this.lookupJniImpl((String) args[0]);
+                    } catch (ClassCastException e) {
+                        throw EspressoError.shouldNotReachHere(e);
+                    } catch (RuntimeException e) {
+                        throw e;
+                    } catch (Throwable e) {
+                        throw EspressoError.shouldNotReachHere(e);
+                    }
+                }
+            });
             this.jniEnvPtr = (long) InteropLibrary.getFactory().getUncached().execute(initializeNativeContext, lookupJniImplCallback);
             assert this.jniEnvPtr != 0;
         } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
@@ -427,15 +367,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         }
     }
 
-    private static Map<String, java.lang.reflect.Method> buildJniMethods() {
-        Map<String, java.lang.reflect.Method> map = new HashMap<>();
-        java.lang.reflect.Method[] declaredMethods = JniEnv.class.getDeclaredMethods();
-        for (java.lang.reflect.Method method : declaredMethods) {
-            JniImpl jniImpl = method.getAnnotation(JniImpl.class);
-            if (jniImpl != null) {
-                assert !map.containsKey(method.getName()) : "JniImpl for " + method + " already exists";
-                map.put(method.getName(), method);
-            }
+    private static Map<String, JniSubstitutor> buildJniMethods() {
+        Map<String, JniSubstitutor> map = new HashMap<>();
+        for (JniSubstitutor method : JniCollector.getInstance()) {
+            assert !map.containsKey(method.methodName()) : "JniImpl for " + method.methodName() + " already exists";
+            map.put(method.methodName(), method);
         }
         return Collections.unmodifiableMap(map);
     }
@@ -540,6 +476,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public long GetFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
+        assert name != null && type != null;
         Klass klass = clazz.getMirrorKlass();
         klass.safeInitialize();
         Field field = null;
@@ -579,6 +516,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
+        assert name != null && type != null;
         Klass klass = clazz.getMirrorKlass();
         klass.safeInitialize();
         Field field = null;
@@ -619,6 +557,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public long GetMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
+        assert name != null && signature != null;
         Klass klass = clazz.getMirrorKlass();
         klass.safeInitialize();
         Method method = null;
@@ -655,6 +594,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public long GetStaticMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
+        assert name != null && signature != null;
         Klass klass = clazz.getMirrorKlass();
         klass.safeInitialize();
         Method method = null;
@@ -1720,6 +1660,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public int RegisterNative(@Host(Class.class) StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
+        assert name != null && signature != null;
         Symbol<Type> classType = clazz.getMirrorKlass().getType();
 
         Symbol<Signature> sig = getSignatures().getOrCreateValidSignature(signature);
