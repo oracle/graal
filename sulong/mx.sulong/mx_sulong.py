@@ -886,7 +886,7 @@ class ToolchainConfig(object):
                 ],
                 is_main_launcher=False,
                 default_symlinks=False,
-                links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)],
+                links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)[1:]],
             ) for tool in self._supported_tools()
         ]
 
