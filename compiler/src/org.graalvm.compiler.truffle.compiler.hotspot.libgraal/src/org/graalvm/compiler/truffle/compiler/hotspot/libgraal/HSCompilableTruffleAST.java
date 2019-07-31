@@ -43,8 +43,10 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.cre
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
@@ -136,6 +138,21 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
         return res;
     }
 
+    @Override
+    public int getNonTrivialNodeCount() {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public TruffleCallNode[] getCallNodes() {
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public int getCallCount() {
+        throw GraalError.unimplemented();
+    }
+
     private volatile String cachedString;
 
     @SVMToHotSpot(CompilableToString)
@@ -169,5 +186,23 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     public boolean isValid() {
         error();
         return false;
+    }
+
+    @Override
+    public void cancelInstalledTask() {
+        // TODO
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public boolean isSameOrSplit(CompilableTruffleAST ast) {
+        // TODO
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public int getKnownCallSiteCount() {
+        // TODO
+        throw GraalError.unimplemented();
     }
 }

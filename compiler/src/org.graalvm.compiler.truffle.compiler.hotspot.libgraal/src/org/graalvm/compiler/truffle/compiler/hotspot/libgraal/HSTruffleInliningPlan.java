@@ -53,6 +53,8 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.cre
 
 import java.net.URI;
 
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
@@ -85,6 +87,12 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
             return null;
         }
         return new HSDecision(scope, res);
+    }
+
+    @Override
+    public TruffleCallNode findCallNode(JavaConstant callNode) {
+        // TODO: Implement.
+        throw GraalError.unimplemented();
     }
 
     @SVMToHotSpot(GetPosition)

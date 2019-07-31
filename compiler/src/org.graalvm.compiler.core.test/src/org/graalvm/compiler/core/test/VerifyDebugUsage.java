@@ -150,7 +150,8 @@ public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$ValidDumpUsagePhase.run",
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$InvalidConcatDumpUsagePhase.run",
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$InvalidDumpUsagePhase.run",
-                    "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode"));
+                    "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode",
+                    "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dump"));
 
     /**
      * The set of methods allowed to call a {@code Debug.dump(...)} method with the {@code level}
