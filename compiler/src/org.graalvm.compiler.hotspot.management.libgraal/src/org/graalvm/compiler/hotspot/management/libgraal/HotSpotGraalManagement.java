@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,21 +52,22 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 @ServiceProvider(HotSpotGraalManagementRegistration.class)
 public final class HotSpotGraalManagement implements HotSpotGraalManagementRegistration {
 
+    private static final byte[] HS_DELEGATE_CLASS = null;
+
     private HotSpotGraalRuntimeMBean bean;
     private volatile boolean needsRegistration = true;
     HotSpotGraalManagement nextDeferred;
 
     public HotSpotGraalManagement() {
-        System.out.println("Created management: " + getClass().getName());
     }
 
     @Override
     public void initialize(HotSpotGraalRuntime runtime) {
-        System.out.println("Initialized management");
         if (bean == null) {
             if (runtime.getManagement() != this) {
                 throw new IllegalArgumentException("Cannot initialize a second management object for runtime " + runtime.getName());
             }
+            defineMXBeanInRuntime();
         } else if (bean.getRuntime() != runtime) {
             throw new IllegalArgumentException("Cannot change the runtime a management interface is associated with");
         }
@@ -82,6 +83,10 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
             return null;
         }
         return bean.getObjectName();
+    }
+
+    private void defineMXBeanInRuntime() {
+        System.out.println("HS_DELEGATE_CLASS: " + HS_DELEGATE_CLASS);
     }
 
 //    static final class RegistrationThread extends Thread {

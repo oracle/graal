@@ -194,6 +194,9 @@ public final class JNI {
         @CField("FindClass")
         FindClass getFindClass();
 
+        @CField("DefineClass")
+        DefineClass getDefineClass();
+
         @CField("IsSameObject")
         IsSameObject getIsSameObject();
 
@@ -326,6 +329,11 @@ public final class JNI {
     public interface FindClass extends CFunctionPointer {
         @InvokeCFunctionPointer
         JClass call(JNIEnv env, CCharPointer name);
+    }
+
+    public interface DefineClass extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JClass call(JNIEnv env, CCharPointer name, JObject loader, CCharPointer buf, long bufLen);
     }
 
     public interface GetArrayLength extends CFunctionPointer {
