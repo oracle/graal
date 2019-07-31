@@ -44,5 +44,5 @@ builds += [
 
   # Linux AArch64
   ${gateTest}                            ${gateLinuxAArch64} {name: "gate-compiler-test-11-linux-aarch64",                   timelimit: "1:50:00"}
-  ${gateTestCTWWeekly}                   ${gateLinuxAArch64} {name: "gate-test-compiler-ctw-11-linux-aarch64",               timelimit: "1:50:00"}
+  ${gateTestCTW}                         ${gateLinuxAArch64} {name: "gate-test-compiler-ctw-11-linux-aarch64",               timelimit: "1:50:00"}
 ]
