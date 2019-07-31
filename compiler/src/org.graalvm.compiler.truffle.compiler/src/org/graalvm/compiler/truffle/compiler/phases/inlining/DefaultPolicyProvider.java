@@ -31,18 +31,14 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 public class DefaultPolicyProvider extends InliningPolicyProvider {
 
     private static final int PRIORITY = 0;
+    private static final String NAME = "Default";
 
     public DefaultPolicyProvider() {
-        super(PRIORITY);
+        super(PRIORITY, NAME);
     }
 
     @Override
     public InliningPolicy get(OptionValues optionValues) {
         return new DefaultPolicy(optionValues);
-    }
-
-    @Override
-    public int getPriority() {
-        return PRIORITY;
     }
 }

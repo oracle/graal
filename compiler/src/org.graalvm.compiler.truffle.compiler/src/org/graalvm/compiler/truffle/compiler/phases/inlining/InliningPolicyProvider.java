@@ -28,9 +28,11 @@ import org.graalvm.compiler.options.OptionValues;
 
 public abstract class InliningPolicyProvider implements Comparable<InliningPolicyProvider> {
     private final int priority;
+    private final String name;
 
-    protected InliningPolicyProvider(int priority) {
+    protected InliningPolicyProvider(int priority, String name) {
         this.priority = priority;
+        this.name = name;
     }
 
     public abstract InliningPolicy get(OptionValues optionValues);
@@ -40,5 +42,11 @@ public abstract class InliningPolicyProvider implements Comparable<InliningPolic
         return Integer.compare(o.priority, priority);
     }
 
-    public abstract int getPriority();
+    public int getPriority() {
+        return priority;
+    }
+
+    public String getName() {
+        return name;
+    }
 }
