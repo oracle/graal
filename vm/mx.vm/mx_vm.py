@@ -129,12 +129,41 @@ _registered_graalvm_components = {}
 
 def registered_graalvm_components(stage1=False):
     if stage1 not in _registered_graalvm_components:
+        components_include_list = _components_include_list()
+        if components_include_list is None:
+            components_include_list = mx_sdk.graalvm_components()
+
         excluded = _excluded_components()
-        components = [component for component in mx_sdk.graalvm_components() if (component.name not in excluded and component.short_name not in excluded) or (stage1 and component.short_name in ('ni', 'niee', 'nil'))]
-        if not any((component.short_name == 'svm' for component in mx_sdk.graalvm_components())):
+        components_to_build = []
+
+        def is_excluded(component):
+            return component.name in excluded or component.short_name in excluded
+
+        def add_dependencies(dependencies, excludes=True):
+            components = dependencies[:]
+            while components:
+                component = components.pop(0)
+                if component not in components_to_build and not (excludes and is_excluded(component)):
+                    components_to_build.append(component)
+                    components.extend(component.direct_dependencies())
+
+        # Expand dependencies
+        add_dependencies(components_include_list, excludes=True)
+
+        # If we are going to build native launchers or libraries, i.e., if SubstrateVM is included,
+        # we need native-image in stage1 to build them, even if the Native Image component is excluded.
+        if stage1:
+            if any(component.short_name == 'svmee' for component in components_to_build):
+                add_dependencies([mx_sdk.graalvm_component_by_name('niee')], excludes=False)
+            elif any(component.short_name == 'svm' for component in components_to_build):
+                add_dependencies([mx_sdk.graalvm_component_by_name('ni')], excludes=False)
+
+        if not any(component.short_name == 'svm' for component in components_to_build):
             # SVM is not included, remove GraalVMSvmMacros
-            components = [component for component in components if not isinstance(component, mx_sdk.GraalVMSvmMacro)]
-        _registered_graalvm_components[stage1] = components
+            components_to_build = [component for component in components_to_build if not isinstance(component, mx_sdk.GraalVMSvmMacro)]
+
+        mx.logv('Components: {}'.format([c.name for c in components_to_build]))
+        _registered_graalvm_components[stage1] = components_to_build
     return _registered_graalvm_components[stage1]
 
 
@@ -2339,6 +2368,7 @@ def graalvm_vm_name(graalvm_dist, jdk):
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate_body)
+mx.add_argument('--components', action='store', help='Comma-separated list of component names to build. Only those components and their dependencies are built.')
 mx.add_argument('--exclude-components', action='store', help='Comma-separated list of component names to be excluded from the build.')
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project.')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project.')
@@ -2376,6 +2406,11 @@ else:
 def _debug_images():
     return mx.get_opts().debug_images or _env_var_to_bool('DEBUG_IMAGES')
 
+def _components_include_list():
+    included = mx.get_opts().components or mx.get_env('COMPONENTS', None)
+    if included is None:
+        return None
+    return [mx_sdk.graalvm_component_by_name(name) for name in included.split(',')]
 
 def _excluded_components():
     excluded = mx.get_opts().exclude_components or mx.get_env('EXCLUDE_COMPONENTS', '')
