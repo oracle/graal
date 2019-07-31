@@ -289,6 +289,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         svm_component = get_component('svm', stage1=True)
 
         def _add_native_image_macro(image_config, component=None):
+            # Add the macros if SubstrateVM is included, as images could be created later with an installable Native Image
             if svm_component and (component is None or has_component(component.short_name, stage1=False)):
                 # create macro to build this launcher
                 _macro_dir = _get_component_type_base(svm_component) + svm_component.dir_name + '/macros/' + GraalVmNativeProperties.macro_name(image_config) + '/'
@@ -1980,7 +1981,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     register_distribution(get_final_graalvm_distribution())
     with_debuginfo.append(get_final_graalvm_distribution())
 
-    with_svm = _get_svm_support().is_supported()
+    # Add the macros if SubstrateVM is included, as images could be created later with an installable Native Image
+    with_svm = has_component('svm')
     names = set()
     short_names = set()
     needs_stage1 = False
