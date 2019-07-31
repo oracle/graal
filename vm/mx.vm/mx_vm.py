@@ -1167,8 +1167,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def build(self):
         jdk = _get_jdk()
-        import mx_compiler # If we get here, the compiler suite has been imported
-        mx_compiler.jlink_graaljdk(jdk, self.subject.output_directory(), self.subject.deps)
+        mx_sdk.jlink_new_jdk(jdk, self.subject.output_directory(), self.subject.deps)
 
     def needsBuild(self, newestInput):
         sup = super(GraalVmJImageBuildTask, self).needsBuild(newestInput)
@@ -2000,7 +1999,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     needs_stage1 = False
     installables = {}
     jvmci_jars = []
-    boot_jars = ['sdk:GRAAL_SDK', 'vm:LOCATOR']
+    boot_jars = ['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API', 'vm:LOCATOR']
 
     for component in registered_graalvm_components(stage1=False):
         if component.name in names:

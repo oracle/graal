@@ -53,6 +53,8 @@ from mx_unittest import unittest
 from mx_javamodules import as_java_module
 from mx_updategraalinopenjdk import updategraalinopenjdk
 from mx_renamegraalpackages import renamegraalpackages
+from mx_sdk import jdk_enables_jvmci_by_default, jlink_new_jdk
+
 import mx_jaotc
 
 import mx_graal_benchmark # pylint: disable=unused-import
@@ -960,7 +962,7 @@ def sl(args):
 
 def java_base_unittest(args):
     """tests whether the Graal compiler runs on a JDK with a minimal set of modules"""
-    
+
     global _graaljdk_override
     try:
         # Remove GRAAL_MANAGEMENT from the module path as it
@@ -971,7 +973,7 @@ def java_base_unittest(args):
         root_module_names = base_modules + compiler_modules
         graaljdk_dir, _ = _update_graaljdk(jdk, root_module_names=root_module_names)
         _graaljdk_override = mx.JDKConfig(graaljdk_dir)
-        
+
         if mx_gate.Task.verbose:
             extra_args = ['--verbose', '--enable-timing']
         else:
@@ -1032,57 +1034,6 @@ def create_archive(srcdir, arcpath, prefix):
     arc.close()
 
 
-def _jdk_enables_jvmci_by_default(jdk):
-    """
-    Gets the default value for the EnableJVMCI VM option in `jdk`.
-    """
-    if not hasattr(jdk, '.enables_jvmci_by_default'):
-        out = mx.LinesOutputCapture()
-        mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=len)
-        setattr(jdk, '.enables_jvmci_by_default', any('EnableJVMCI' in line and 'true' in line for line in out.lines))
-    return getattr(jdk, '.enables_jvmci_by_default')    
-    
-def jlink_graaljdk(jdk, dst_jdk_dir, module_dists, root_module_names=None):
-    """
-    Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with the Graal modules and
-    their dependencies added to the JDK jimage, replacing any existing modules of the same name.
-    
-    :param JDKConfig jdk: source JDK
-    :param str dst_jdk_dir: path to use for jlink --output option
-    :param list module_dists: list of JARDistributions defining modules
-    :param list root_module_names: list of strings naming the module root set for the new JDK image.
-                     The named modules must either be in `module_dists` or in `jdk`. If None, then
-                     the root set will be all the modules in ``module_dists` and `jdk`.
-    
-    """
-    jimage = join(jdk.home, 'lib', 'modules')
-    if not os.path.isfile(jimage):
-        mx.abort('Cannot make a Graal JDK based on ' + jdk.home + ' since ' + jimage + ' is missing')
-
-    modules = [as_java_module(dist, jdk) for dist in module_dists]
-    all_modules = set(list(jdk.get_modules()) + modules)
-
-    jlink = [mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))]
-    if _jdk_enables_jvmci_by_default(jdk):
-        # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
-        jlink.append('-J-XX:-EnableJVMCI')
-    if root_module_names is not None:
-        all_module_names = frozenset((m.name for m in all_modules))
-        missing = frozenset(root_module_names) - all_module_names
-        if missing:
-            mx.abort('Invalid module(s): {}.\nAvailable modules: {}'.format(','.join(missing), ','.join(sorted(all_module_names))))
-        jlink.append('--add-modules=' + ','.join(root_module_names))
-    else:
-        jlink.append('--add-modules=' + ','.join(sorted([m.name for m in all_modules])))    
-    jlink.append('--module-path=' + os.pathsep.join((m.jarpath for m in modules)))
-    jlink.append('--output=' + dst_jdk_dir)
-    mx.run(jlink)
-
-    jvmci_dir = mx.ensure_dir_exists(join(dst_jdk_dir, 'lib', 'jvmci'))
-    with open(join(jvmci_dir, 'native-image-modules.list'), 'w') as fp:
-        print('# The modules in the JDK whose resources native-image needs to process', file=fp)
-        for m in modules:
-            print(m.name, file=fp)
 
 def makegraaljdk_cli(args):
     """make a JDK with Graal as the default top level JIT"""
@@ -1102,18 +1053,18 @@ def makegraaljdk_cli(args):
     if exists(dst_jdk_dir):
         if args.force:
             shutil.rmtree(dst_jdk_dir)
-    
+
     _, updated = _update_graaljdk(jdk, dst_jdk_dir)
     dst_jdk = mx.JDKConfig(dst_jdk_dir)
     if not updated:
         mx.log(dst_jdk_dir + ' is already up to date')
-    
+
     if args.license:
         shutil.copy(args.license, join(dst_jdk_dir, 'LICENSE'))
     if args.bootstrap:
         map_files = [j + '.map' for j in _graal_config().jars if exists(j + '.map')]
         with StdoutUnstripping(args=[], out=None, err=None, mapFiles=map_files) as u:
-            select_graal = [] if _jdk_enables_jvmci_by_default(dst_jdk) else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
+            select_graal = [] if jdk_enables_jvmci_by_default(dst_jdk) else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
             mx.run([dst_jdk.java] + select_graal + ['-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
     if args.archive:
         mx.log('Archiving {}'.format(args.archive))
@@ -1122,14 +1073,14 @@ def makegraaljdk_cli(args):
 def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
     """
     Creates or updates a GraalJDK in `dst_jdk_dir` from `src_jdk`.
-    
+
     :param str dst_jdk_dir: path where GraalJDK is (to be) located. If None, then a path name is
                             derived based on _graalvm_components and `root_module_names`.
     :param list root_module_names: names of modules in the root set for the new JDK image. If None,
                             the root set is derived from _graalvm_components.
     :return: a tuple containing the path where the GraalJDK is located and a boolean denoting whether
                             the GraalJDK was update/created (True) or was already up to date (False)
-    
+
     """
     if dst_jdk_dir is None:
         graaljdks_dir = mx.ensure_dir_exists(join(_suite.get_output_root(platformDependent=True), 'graaljdks'))
@@ -1137,12 +1088,18 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
         if root_module_names:
             jdk_suffix = jdk_suffix + '-' + hashlib.sha1(','.join(root_module_names)).hexdigest()
         dst_jdk_dir = join(graaljdks_dir, 'jdk{}-{}'.format(src_jdk.javaCompliance, jdk_suffix))
-    
+        if dst_jdk_dir == src_jdk.home:
+            # Avoid overwriting source JDK
+            dst_jdk_dir = dst_jdk_dir + '_new'
+    else:
+        if dst_jdk_dir == src_jdk.home:
+            mx.abort("Cannot overwrite source JDK: {}".format(src_jdk))
+
     jvmci_release_file = mx.TimeStampFile(join(dst_jdk_dir, 'release.jvmci'))
     newer = [e for e in _graal_config().jars if jvmci_release_file.isOlderThan(e)]
     if not newer:
         return dst_jdk_dir, False
-    
+
     def _update_file(src, dst):
         if mx.TimeStampFile(dst).isOlderThan(mx.TimeStampFile(src)):
             mx.log('Copying {} to {}'.format(src, dst))
@@ -1156,24 +1113,23 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
 
         boot_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'boot'))
         truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
-        jvmci_dir = join(jre_dir, 'lib', 'jvmci')
-        mx.ensure_dir_exists(jvmci_dir)
-    
+        jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
+
         for src_jar in _graal_config().jvmci_jars:
             _update_file(src_jar, join(jvmci_dir, basename(src_jar)))
         for src_jar in _graal_config().boot_jars:
             dst_dir = truffle_dir if basename(src_jar) == 'truffle-api.jar' else boot_dir
             _update_file(src_jar, join(dst_dir, basename(src_jar)))
-    
+
     else:
         module_dists = _graal_config().dists
         _check_using_latest_jars(module_dists)
         if exists(dst_jdk_dir):
             shutil.rmtree(dst_jdk_dir)
         mx.log('Updating/creating {} from {} since {} is older than {}'.format(dst_jdk_dir, src_jdk.home, jvmci_release_file, mx.TimeStampFile(newer[0])))
-        jlink_graaljdk(jdk, dst_jdk_dir, module_dists, root_module_names)
+        jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names)
         jre_dir = dst_jdk_dir
-        jvmci_dir = join(jre_dir, 'lib', 'jvmci')
+        jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
 
     with open(join(jvmci_dir, 'compiler-name'), 'w') as fp:
         print('graal', file=fp)
@@ -1229,12 +1185,12 @@ def add_compiler_component(component):
 class GraalConfig:
     """
     The distributions and jars that together comprise the set of classes implementing the Graal compiler.
-    """    
+    """
     def __init__(self, graalvm_components):
         self.jvmci_dists = [mx.distribution(e) for component in graalvm_components for e in component.jvmci_jars]
         self.boot_dists = [mx.distribution(e) for component in graalvm_components for e in component.boot_jars]
         self.dists = self.jvmci_dists + self.boot_dists
-        
+
         self.jvmci_jars = [d.classpath_repr() for d in self.jvmci_dists]
         self.boot_jars = [d.classpath_repr() for d in self.boot_dists]
         self.jars = self.jvmci_jars + self.boot_jars

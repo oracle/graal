@@ -45,9 +45,12 @@ import mx
 import mx_gate
 import mx_subst
 import datetime
+import os
 
 from mx_gate import Task
 from mx_unittest import unittest
+from os.path import join, exists, isfile, isdir
+from mx_javamodules import as_java_module
 
 def _with_metaclass(meta, *bases):
     """Create a base class with a metaclass."""
@@ -397,6 +400,83 @@ def graalvm_components(opt_limit_to_suite=False):
     else:
         return list(_graalvm_components.values())
 
+def jdk_enables_jvmci_by_default(jdk):
+    """
+    Gets the default value for the EnableJVMCI VM option in `jdk`.
+    """
+    if not hasattr(jdk, '.enables_jvmci_by_default'):
+        out = mx.LinesOutputCapture()
+        sink = lambda x: x
+        mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
+        setattr(jdk, '.enables_jvmci_by_default', any('EnableJVMCI' in line and 'true' in line for line in out.lines))
+    return getattr(jdk, '.enables_jvmci_by_default')
+
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None):
+    """
+    Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
+    their dependencies added to the JDK image, replacing any existing modules of the same name.
+
+    :param JDKConfig jdk: source JDK
+    :param str dst_jdk_dir: path to use for the jlink --output option
+    :param list module_dists: list of distributions defining modules
+    :param list root_module_names: list of strings naming the module root set for the new JDK image.
+                     The named modules must either be in `module_dists` or in `jdk`. If None, then
+                     the root set will be all the modules in ``module_dists` and `jdk`.
+
+    """
+    if jdk.javaCompliance < '9':
+        mx.abort('Cannot derive a new JDK from ' + jdk.home + ' with jlink since it is not JDK 9 or later')
+
+    exploded_java_base_module = join(jdk.home, 'modules', 'java.base')
+    if exists(exploded_java_base_module):
+        mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since it appears to be a developer build with exploded modules')
+
+    jimage = join(jdk.home, 'lib', 'modules')
+    jmods = join(jdk.home, 'jmods')
+    if not isfile(jimage):
+        mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jimage + ' is missing or is not an ordinary file')
+    if not isdir(jmods):
+        mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods + ' is missing or is not a directory')
+
+    modules = [as_java_module(dist, jdk) for dist in module_dists]
+    all_module_names = frozenset([m.name for m in jdk.get_modules()] + [m.name for m in modules])
+
+    jlink = [mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))]
+    if jdk_enables_jvmci_by_default(jdk):
+        # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
+        jlink.append('-J-XX:-EnableJVMCI')
+    if root_module_names is not None:
+        missing = frozenset(root_module_names) - all_module_names
+        if missing:
+            mx.abort('Invalid module(s): {}.\nAvailable modules: {}'.format(','.join(missing), ','.join(sorted(all_module_names))))
+        jlink.append('--add-modules=' + ','.join(root_module_names))
+    else:
+        jlink.append('--add-modules=' + ','.join(sorted(all_module_names)))
+    module_path = jmods
+    if module_dists:
+        module_path = os.pathsep.join((m.jarpath for m in modules))  + os.pathsep + module_path
+    jlink.append('--module-path=' + module_path)
+    jlink.append('--output=' + dst_jdk_dir)
+
+    # These options are inspired by how OpenJDK runs jlink to produce the final runtime image.
+    jlink.extend(['-J-XX:+UseSerialGC', '-J-Xms32M', '-J-Xmx512M', '-J-XX:TieredStopAtLevel=1'])
+    jlink.append('-J-Dlink.debug=true')
+    jlink.append('--dedup-legal-notices=error-if-not-same-content')
+    jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+
+    # TODO: investigate the options below used by OpenJDK to see if they should be used:
+    # --release-info: this allow extra properties to be written to the <jdk>/release file
+    # --order-resources: specifies order of resources in generated lib/modules file.
+    #       This is apparently not so important if a CDS archive is available.
+    # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
+    #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
+    mx.run(jlink)
+
+    # Create CDS archive (https://openjdk.java.net/jeps/341).
+    out = mx.OutputCapture()
+    if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
+        mx.log(out.data)
+        mx.abort('Error generating CDS shared archive')
 
 mx.update_commands(_suite, {
     'javadoc': [javadoc, '[SL args|@VM options]'],
