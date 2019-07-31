@@ -26,8 +26,6 @@ package com.oracle.truffle.espresso.substitutions;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import sun.misc.Perf;
@@ -66,8 +64,7 @@ public final class Target_sun_misc_Perf {
     @Substitution(hasReceiver = true)
     public static @Host(ByteBuffer.class) StaticObject createLong(Object self, @Host(String.class) StaticObject name, int variability, int units, long value,
                     @GuestCall DirectCallNode ByteBuffer_wrap) {
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        return (StaticObject) ByteBuffer_wrap.call(null, StaticObject.wrap(ByteUtils.longToBytes(value)));
+        return (StaticObject) ByteBuffer_wrap.call(StaticObject.wrap(ByteUtils.longToBytes(value)));
     }
 
     @Substitution

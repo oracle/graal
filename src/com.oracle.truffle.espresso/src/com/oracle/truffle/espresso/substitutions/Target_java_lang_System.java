@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
@@ -42,7 +42,7 @@ public final class Target_java_lang_System {
     }
 
     @Substitution
-    public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+    public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length, @InjectMeta Meta meta) {
         arraycopyCount.inc();
         try {
             // Mimics hotspot implementation.
@@ -90,7 +90,7 @@ public final class Target_java_lang_System {
             }
         } catch (NullPointerException | ArrayStoreException | IndexOutOfBoundsException e) {
             // Should catch NPE if src or dest is null, and ArrayStoreException.
-            throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+            throw meta.throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
 }

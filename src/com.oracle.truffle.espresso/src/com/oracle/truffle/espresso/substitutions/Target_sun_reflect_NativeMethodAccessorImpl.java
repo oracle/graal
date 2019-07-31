@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.reflect.InvocationTargetException;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -224,8 +223,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
      */
     @Substitution
     public static @Host(Object.class) StaticObject invoke0(@Host(java.lang.reflect.Method.class) StaticObject guestMethod, @Host(Object.class) StaticObject receiver,
-                    @Host(Object[].class) StaticObject args) {
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+                    @Host(Object[].class) StaticObject args, @InjectMeta Meta meta) {
         StaticObject curMethod = guestMethod;
 
         Method reflectedMethod = null;

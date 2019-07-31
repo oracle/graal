@@ -949,7 +949,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 }
             } catch (VirtualMachineError e) {
                 // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
-                Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+                Meta meta = getMeta();
                 StaticObject ex = meta.initEx(e.getClass());
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 ExceptionHandler[] handlers = getMethod().getExceptionHandlers();

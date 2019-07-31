@@ -39,7 +39,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
 
     void getEspressoTypes(ExecutableElement inner, List<String> parameterTypeNames, List<Boolean> referenceTypes) {
         for (VariableElement parameter : inner.getParameters()) {
-            if (getAnnotation(parameter.asType(), guestCall) == null) {
+            if (isActualParameter(parameter)) {
                 String arg = parameter.asType().toString();
                 String result = extractSimpleType(arg);
                 parameterTypeNames.add(result);
@@ -57,23 +57,25 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
             first = false;
         }
         for (VariableElement param : method.getParameters()) {
-            if (!first) {
-                sb.append(", ");
-            } else {
-                first = false;
-            }
+            if (isActualParameter(param)) {
+                if (!first) {
+                    sb.append(", ");
+                } else {
+                    first = false;
+                }
 
-            // Override NFI type.
-            AnnotationMirror nfi = getAnnotation(param.asType(), nfiType);
-            if (nfi != null) {
-                AnnotationValue value = nfi.getElementValues().get(nfiTypeValueElement);
-                if (value != null) {
-                    sb.append(NativeSimpleType.valueOf(((String) value.getValue()).toUpperCase()));
+                // Override NFI type.
+                AnnotationMirror nfi = getAnnotation(param.asType(), nfiType);
+                if (nfi != null) {
+                    AnnotationValue value = nfi.getElementValues().get(nfiTypeValueElement);
+                    if (value != null) {
+                        sb.append(NativeSimpleType.valueOf(((String) value.getValue()).toUpperCase()));
+                    } else {
+                        sb.append(classToType(param.asType().toString(), false));
+                    }
                 } else {
                     sb.append(classToType(param.asType().toString(), false));
                 }
-            } else {
-                sb.append(classToType(param.asType().toString(), false));
             }
         }
         sb.append("): ").append(classToType(returnType, true));
@@ -96,7 +98,7 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         }
     }
 
-    String extractInvocation(String className, String methodName, int nParameters, boolean isStatic, List<String> guestCalls) {
+    String extractInvocation(String className, String methodName, int nParameters, boolean isStatic, List<String> guestCalls, boolean hasMetaInjection) {
         StringBuilder str = new StringBuilder();
         if (isStatic) {
             str.append(className).append(".").append(methodName).append("(");
@@ -107,6 +109,9 @@ public abstract class IntrinsicsProcessor extends EspressoProcessor {
         for (int i = 0; i < nParameters; i++) {
             first = checkFirst(str, first);
             str.append(ARG_NAME).append(i);
+        }
+        if (hasMetaInjection) {
+            injectMeta(str, first);
         }
         str.append(getGuestCallsForInvoke(guestCalls, first));
         str.append(");\n");

@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
@@ -64,11 +63,11 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution
-    public static boolean desiredAssertionStatus0(@Host(Class.class) StaticObject clazz) {
+    public static boolean desiredAssertionStatus0(@Host(Class.class) StaticObject clazz, @InjectMeta Meta meta) {
         if (StaticObject.isNull(clazz.getMirrorKlass().getDefiningClassLoader())) {
-            return EspressoOptions.EnableSystemAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
+            return EspressoOptions.EnableSystemAssertions.getValue(meta.getContext().getEnv().getOptions());
         }
-        return EspressoOptions.EnableAssertions.getValue(EspressoLanguage.getCurrentContext().getEnv().getOptions());
+        return EspressoOptions.EnableAssertions.getValue(meta.getContext().getEnv().getOptions());
     }
 
     // TODO(peterssen): Remove substitution, use JVM_FindClassFromCaller.
@@ -77,11 +76,11 @@ public final class Target_java_lang_Class {
                     @Host(String.class) StaticObject name,
                     boolean initialize,
                     @Host(ClassLoader.class) StaticObject loader,
-                    @SuppressWarnings("unused") @Host(Class.class) StaticObject caller) {
+                    @SuppressWarnings("unused") @Host(Class.class) StaticObject caller,
+                    @InjectMeta Meta meta) {
 
         assert loader != null;
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        Meta meta = context.getMeta();
+        EspressoContext context = meta.getContext();
         if (StaticObject.isNull(name)) {
             throw meta.throwExWithMessage(meta.NullPointerException, name);
         }
@@ -424,9 +423,7 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(Object[].class) StaticObject getEnclosingMethod0(@Host(Class.class) StaticObject self) {
-
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
+    public static @Host(Object[].class) StaticObject getEnclosingMethod0(@Host(Class.class) StaticObject self, @InjectMeta Meta meta) {
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (self.getMirrorKlass() instanceof ObjectKlass) {
             ObjectKlass klass = (ObjectKlass) self.getMirrorKlass();
