@@ -1045,7 +1045,7 @@ public class SymbolicSnippetEncoder {
         public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
             // Fold is always deferred but NodeIntrinsics may have to wait if all their arguments
             // aren't constant yet.
-            return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
+            return plugin.isGeneratedFromFoldOrNodeIntrinsic();
         }
 
         @Override

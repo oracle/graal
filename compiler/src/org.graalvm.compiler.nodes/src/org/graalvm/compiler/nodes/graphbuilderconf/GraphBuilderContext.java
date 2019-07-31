@@ -258,6 +258,13 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
+     * Determines if a graph builder plugin is enabled under current context.
+     */
+    default boolean isPluginEnabled(GraphBuilderPlugin plugin) {
+        return parsingIntrinsic() || !(plugin instanceof GeneratedInvocationPlugin && ((GeneratedInvocationPlugin) plugin).isGeneratedFromFoldOrNodeIntrinsic());
+    }
+
+    /**
      * Gets the intrinsic of the current parsing context or {@code null} if not
      * {@link #parsingIntrinsic() parsing an intrinsic}.
      */

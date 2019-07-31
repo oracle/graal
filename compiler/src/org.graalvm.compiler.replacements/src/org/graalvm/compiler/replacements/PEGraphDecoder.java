@@ -301,7 +301,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          */
         @Override
         public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
-            return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
+            return plugin.isGeneratedFromFoldOrNodeIntrinsic();
         }
 
         @Override

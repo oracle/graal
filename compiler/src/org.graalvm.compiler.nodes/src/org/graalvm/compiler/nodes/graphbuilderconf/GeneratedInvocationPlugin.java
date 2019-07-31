@@ -109,4 +109,8 @@ public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
             throw new GraalError(e);
         }
     }
+
+    public final boolean isGeneratedFromFoldOrNodeIntrinsic() {
+        return getSource().equals(Fold.class) || getSource().equals(NodeIntrinsic.class);
+    }
 }

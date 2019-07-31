@@ -28,18 +28,14 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 
 import java.lang.ref.WeakReference;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
 import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
@@ -54,7 +50,6 @@ import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.InlineEverythingPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -170,20 +165,8 @@ public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
         testHelper("test5Snippet", config.useG1GC ? 1 : 0);
     }
 
-    @Override
-    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        NodeIntrinsicPluginFactory.InjectionProvider injection = new NodeIntrinsificationProvider(getMetaAccess(), getSnippetReflection(), getProviders().getForeignCalls(), null);
-        new PluginFactory_WriteBarrierAdditionTest().registerPlugins(invocationPlugins, injection);
-        super.registerInvocationPlugins(invocationPlugins);
-    }
-
-    @Fold
-    public static boolean useCompressedOops(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useCompressedOops;
-    }
-
-    public static Object test5Snippet() throws Exception {
-        return UNSAFE.getObject(wr, useCompressedOops(GraalHotSpotVMConfigBase.INJECTED_VMCONFIG) ? 12L : 16L);
+    public Object test5Snippet() {
+        return UNSAFE.getObject(wr, config.useCompressedOops ? 12L : 16L);
     }
 
     /**

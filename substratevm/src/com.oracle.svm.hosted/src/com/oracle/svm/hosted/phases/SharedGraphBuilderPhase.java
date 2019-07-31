@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -330,6 +331,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 SubstrateObjectConstant sValue = (SubstrateObjectConstant) node.asJavaConstant();
                 sValue.setRoot(targetMethod);
             }
+        }
+
+        @Override
+        public boolean isPluginEnabled(GraphBuilderPlugin plugin) {
+            return true;
         }
     }
 }

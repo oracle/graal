@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
+import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,6 +56,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
@@ -66,9 +68,9 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -194,6 +196,9 @@ public class SubstrateReplacements extends ReplacementsImpl {
             StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).trackNodeSourcePosition(trackNodeSourcePosition).setIsSubstitution(true).build();
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
                             null, null) {
+
+                private IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
+
                 @Override
                 protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider,
                                 boolean isSubstitution, boolean track) {
@@ -203,6 +208,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
                     } else {
                         throw VMError.shouldNotReachHere(method.format("%H.%n(%p)"));
                     }
+                }
+
+                @Override
+                public IntrinsicContext getIntrinsic() {
+                    return intrinsic;
                 }
             };
 
