@@ -271,15 +271,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     //   after the loop end (break out of the loop).
                     // - A value equal to 0 indicates that we need to branch to the beginning of the loop (repeat loop).
                     //   This is handled internally by Truffle and the executing loop should never return 0 here.
-                    //   The call may still return 0, if the current loop is the branch target of a further nested block.
-                    //   In that case, since the continuation of a loop block is the beginning of the loop, we need to
-                    //   start executing a new version of the loop again.
                     // - A value larger than 0 indicates that we need to branch to a level "shallower" than the current
                     //   loop block (break out of the loop and even further).
-                    int unwindCounter;
-                    do {
-                        unwindCounter = loopNode.execute(context, frame);
-                    } while (unwindCounter == 0);
+                    int unwindCounter = loopNode.execute(context, frame);
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
                     }
@@ -294,7 +288,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     WasmNode ifNode = nestedControlTable[nestedControlOffset];
                     stackPointer--;
                     int unwindCounter = ifNode.execute(context, frame);
-                    if (unwindCounter > 1) {
+                    if (unwindCounter > 0) {
                         return unwindCounter - 1;
                     }
                     nestedControlOffset++;
