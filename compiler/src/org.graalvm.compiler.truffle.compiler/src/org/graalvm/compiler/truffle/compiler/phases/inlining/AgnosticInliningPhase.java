@@ -45,6 +45,7 @@ public class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     private final CallNodeProvider callNodeProvider;
     private final CompilableTruffleAST compilableTruffleAST;
     private static final InliningPolicyProvider POLICY_PROVIDER;
+
     // Set the POLICY_PROVIDER to the highest priority one.
     static {
         final Iterable<InliningPolicyProvider> services = GraalServices.load(InliningPolicyProvider.class);
@@ -62,7 +63,7 @@ public class AgnosticInliningPhase extends BasePhase<CoreProviders> {
                 return provider;
             }
         }
-        throw new IllegalStateException("No inlining policy provider with provided priorit: " + priority);
+        throw new IllegalStateException("No inlining policy provider with the provided priority: " + priority);
     }
 
     private static InliningPolicyProvider maxPriorityProvider(ArrayList<InliningPolicyProvider> providers) {
@@ -82,8 +83,7 @@ public class AgnosticInliningPhase extends BasePhase<CoreProviders> {
             return;
         }
         InliningPolicy policy = POLICY_PROVIDER.get(graph.getOptions());
-        policy.setTree(new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy));
-        policy.run();
+        policy.run(new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy));
     }
 
     static ResolvedJavaMethod findRequiredMethod(ResolvedJavaType declaringClass, ResolvedJavaMethod[] methods, String name, String descriptor) {

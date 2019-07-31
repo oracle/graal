@@ -115,7 +115,7 @@ public class Option {
             .type("Integer")
             .category("EXPERT")
             .def("-1")
-            .help("Explicitly pick a inlining policy by priority. Highest priority chosen by default."),
+            .help("Explicitly pick an inlining policy by priority. Highest priority chosen by default."),
 
         option("TruffleInliningExpansionBaseBudget")
             .type("Integer")

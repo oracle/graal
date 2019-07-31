@@ -33,7 +33,6 @@ import java.util.List;
 public class DefaultPolicy implements InliningPolicy {
 
     private final OptionValues optionValues;
-    private CallTree tree;
     private int expandedCount = 0;
 
     public DefaultPolicy(OptionValues optionValues) {
@@ -46,14 +45,9 @@ public class DefaultPolicy implements InliningPolicy {
     }
 
     @Override
-    public void setTree(CallTree tree) {
-        this.tree = tree;
-    }
-
-    @Override
-    public void run() {
+    public void run(CallTree tree) {
         while (expandedCount <= SharedTruffleCompilerOptions.TruffleInliningExpansionBaseBudget.getValue(optionValues)) {
-            final CallNode highestFrequencyNode = getNodeToExpand();
+            final CallNode highestFrequencyNode = getNodeToExpand(tree);
             if (highestFrequencyNode != null) {
                 highestFrequencyNode.expand();
             } else {
@@ -61,7 +55,7 @@ public class DefaultPolicy implements InliningPolicy {
             }
         }
         while (tree.getRoot().getIR().getNodeCount() <= SharedTruffleCompilerOptions.TruffleInliningInliningBaseBudget.getValue(optionValues)) {
-            final CallNode highestFrequencyNode = getNodeToInline();
+            final CallNode highestFrequencyNode = getNodeToInline(tree);
             if (highestFrequencyNode != null) {
                 highestFrequencyNode.inline();
             } else {
@@ -71,14 +65,14 @@ public class DefaultPolicy implements InliningPolicy {
         tree.trace();
     }
 
-    private CallNode getNodeToInline() {
+    private CallNode getNodeToInline(CallTree tree) {
         List<CallNode> edge = new ArrayList<>();
         gatherEdge(tree.getRoot(), edge, CallNode.State.Expanded, CallNode.State.Inlined, null);
         edge.sort((o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency()));
         return edge.size() > 0 ? edge.get(0) : null;
     }
 
-    private CallNode getNodeToExpand() {
+    private CallNode getNodeToExpand(CallTree tree) {
         List<CallNode> edge = new ArrayList<>();
         gatherEdge(tree.getRoot(), edge, CallNode.State.Cutoff, CallNode.State.Expanded, CallNode.State.Inlined);
         edge.sort((o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency()));
