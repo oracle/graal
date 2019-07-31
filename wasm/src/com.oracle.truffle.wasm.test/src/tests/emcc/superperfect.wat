@@ -53,7 +53,6 @@
 ;; $ wasm2wat superperfect.wasm > superperfect.wat
 ;;
 (module
-(module
   (type (;0;) (func (result i32)))
   (type (;1;) (func (param i32) (result i32)))
   (func (;0;) (type 0) (result i32)
