@@ -323,6 +323,12 @@ public class Option {
             .help("Print information for inlining for each compilation.")
             .deprecatedBy("TraceInlining"),
 
+        option("TraceTruffleInliningDetails")
+            .type("Boolean")
+            .category("INTERNAL")
+            .def("false")
+            .help("Print detailed information for inlining (i.e. the entire explored call tree)."),
+
         option("TraceTruffleSplitting")
             .type("Boolean")
             .category("INTERNAL")
