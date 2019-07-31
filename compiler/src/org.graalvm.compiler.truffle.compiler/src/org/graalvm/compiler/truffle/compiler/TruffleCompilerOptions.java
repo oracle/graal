@@ -86,7 +86,7 @@ public final class TruffleCompilerOptions {
     public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
 
     @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.")
-    public static final OptionKey<Integer> TruffleMaximumGraalNodeCount = new OptionKey<>(300000);
+    public static final OptionKey<Integer> TruffleMaximumGraalNodeCount = new OptionKey<>(400000);
 
     @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.")
     public static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(150000);
