@@ -621,6 +621,11 @@ public final class VM extends NativeEnv implements ContextAccess {
             System.err.println("JVM_FindLibraryEntry from default/global namespace (0): " + name);
             return 0L;
         }
+        // TODO(peterssen): Workaround for MacOS flags: RTLD_DEFAULT...
+        if (-6 < libHandle && libHandle < 0) {
+            System.err.println("JVM_FindLibraryEntry with unsupported flag/handle/namespace (" + libHandle + "): " + name);
+            return 0L;
+        }
         try {
             TruffleObject function = NativeLibrary.lookup(handle2Lib.get(libHandle), name);
             long handle = InteropLibrary.getFactory().getUncached().asPointer(function);

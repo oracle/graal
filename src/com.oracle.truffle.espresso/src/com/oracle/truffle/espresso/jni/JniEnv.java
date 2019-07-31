@@ -522,6 +522,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public long GetFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
+        assert name != null && type != null;
         Klass klass = clazz.getMirrorKlass();
         klass.safeInitialize();
         Field field = null;
@@ -561,6 +562,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
+        assert name != null && type != null;
         Klass klass = clazz.getMirrorKlass();
         klass.safeInitialize();
         Field field = null;
@@ -601,6 +603,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public long GetMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
+        assert name != null && signature != null;
         Klass klass = clazz.getMirrorKlass();
         klass.safeInitialize();
         Method method = null;
@@ -637,6 +640,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public long GetStaticMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
+        assert name != null && signature != null;
         Klass klass = clazz.getMirrorKlass();
         klass.safeInitialize();
         Method method = null;
@@ -1703,6 +1707,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public int RegisterNative(@Host(Class.class) StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
+        assert name != null && signature != null;
         Symbol<Type> classType = clazz.getMirrorKlass().getType();
 
         Symbol<Signature> sig = getSignatures().getOrCreateValidSignature(signature);
