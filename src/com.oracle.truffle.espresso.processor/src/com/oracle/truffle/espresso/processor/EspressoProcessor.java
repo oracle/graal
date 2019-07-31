@@ -227,6 +227,8 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return false;
     }
 
+    // Utility Methods
+
     static AnnotationMirror getAnnotation(TypeMirror e, TypeElement type) {
         for (AnnotationMirror annotationMirror : e.getAnnotationMirrors()) {
             if (annotationMirror.getAnnotationType().asElement().equals(type)) {
@@ -256,6 +258,13 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return b1 && b2;
     }
 
+    static boolean checkFirst(StringBuilder str, boolean first) {
+        if (!first) {
+            str.append(", ");
+        }
+        return false;
+    }
+
     private void initCollector() {
         this.collector = new StringBuilder();
         collector.append(COPYRIGHT);
@@ -268,11 +277,11 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         collector.append(TAB_1).append("static {\n");
     }
 
-    final String getSubstitutorQualifiedName(String substitutorName) {
+    private String getSubstitutorQualifiedName(String substitutorName) {
         return SUBSTITUTION_PACKAGE + "." + substitutorName;
     }
 
-    static StringBuilder signatureSuffixBuilder(List<String> parameterTypes) {
+    private static StringBuilder signatureSuffixBuilder(List<String> parameterTypes) {
         StringBuilder str = new StringBuilder();
         str.append("_").append(parameterTypes.size());
         return str;
@@ -284,7 +293,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return str.toString();
     }
 
-    void addSubstitutor(StringBuilder str, String substitutorName) {
+    private void addSubstitutor(StringBuilder str, String substitutorName) {
         str.append(TAB_2).append(COLLECTOR_INSTANCE_NAME).append(".add(").append(substitutorName).append(".").append(FACTORY_GETTER).append("()").append(");\n");
     }
 
@@ -347,7 +356,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     @SuppressWarnings("unused")
-    static String generateGeneratedBy(String className, String targetMethodName, List<String> parameterTypes, List<String> guestCalls, boolean hasMetaInjection) {
+    private static String generateGeneratedBy(String className, String targetMethodName, List<String> parameterTypes, List<String> guestCalls, boolean hasMetaInjection) {
         StringBuilder str = new StringBuilder();
         str.append("/**\n * ").append(GENERATED_BY).append("{").append(AT_LINK).append(className).append("#").append(targetMethodName).append("(");
         boolean first = true;
@@ -382,14 +391,14 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      */
     // Checkstyle: resume
     // @formatter:on
-    static String generateInstance(String substitutorName, String instanceName, String instanceClass) {
+    private static String generateInstance(String substitutorName, String instanceName, String instanceClass) {
         StringBuilder str = new StringBuilder();
         str.append(TAB_1).append(PRIVATE_STATIC_FINAL).append(" ").append(instanceClass).append(" ").append(instanceName);
         str.append(" = new ").append(substitutorName).append("();\n");
         return str.toString();
     }
 
-    String generateFactory(String className, String targetMethodName, List<String> parameterTypeName, List<String> guestCalls, boolean hasMetaInjection, SubstitutionHelper helper) {
+    private String generateFactory(String className, String targetMethodName, List<String> parameterTypeName, List<String> guestCalls, boolean hasMetaInjection, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         str.append(TAB_1).append(PUBLIC_STATIC_FINAL_CLASS).append(FACTORY).append(" extends ").append(SUBSTITUTOR).append(".").append(FACTORY).append(" {\n");
         str.append(TAB_2).append("private ").append(FACTORY).append("() {\n");
@@ -405,6 +414,69 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return str.toString();
     }
 
+    static private String generateInstanceFields(List<String> guestCalls, boolean hasMetaInjection) {
+        if (guestCalls.isEmpty() && !hasMetaInjection) {
+            return "";
+        }
+        StringBuilder str = new StringBuilder();
+        for (String call : guestCalls) {
+            str.append(TAB_1).append(PRIVATE_FINAL).append(" ").append(DIRECT_CALL_NODE).append(" ").append(call).append(";\n");
+        }
+        if (hasMetaInjection) {
+            str.append(TAB_1).append(PRIVATE_FINAL).append(" ").append(META_ARG).append(";\n");
+        }
+        return str.toString();
+    }
+
+    private static String generateGuestCalls(List<String> guestCalls) {
+        if (guestCalls.isEmpty()) {
+            return "";
+        }
+        StringBuilder str = new StringBuilder();
+        for (String call : guestCalls) {
+            str.append("\n").append(TAB_2).append(call).append(" = ").append(DIRECT_CALL_NODE).append(".").append(CREATE).append("(");
+            str.append(META_VAR).append(".").append(call).append(".").append("getCallTarget").append("());");
+        }
+        return str.toString();
+    }
+
+    List<String> getGuestCalls(ExecutableElement method) {
+        ArrayList<String> guestCalls = new ArrayList<>();
+        for (VariableElement param : method.getParameters()) {
+            if (getAnnotation(param.asType(), guestCall) != null) {
+                guestCalls.add(param.getSimpleName().toString());
+            }
+        }
+        return guestCalls;
+    }
+
+    static String getGuestCallsForInvoke(List<String> guestCalls, boolean wasFirst) {
+        StringBuilder str = new StringBuilder();
+        boolean first = wasFirst;
+        for (String call : guestCalls) {
+            first = checkFirst(str, first);
+            str.append("\n");
+            str.append(TAB_3).append(call);
+        }
+        return str.toString();
+    }
+
+    private static String generateConstructor(String substitutorName, List<String> guestCalls, boolean hasMetaInjection) {
+        StringBuilder str = new StringBuilder();
+        str.append(TAB_1).append("private ").append(substitutorName).append("(").append(META_ARG).append(") {");
+        str.append(generateGuestCalls(guestCalls)).append("\n");
+        if (hasMetaInjection) {
+            str.append(TAB_2).append(SET_META).append("\n");
+        }
+        str.append(TAB_1).append("}\n");
+        return str.toString();
+    }
+
+    static void injectMeta(StringBuilder str, boolean first) {
+        checkFirst(str, first);
+        str.append(META_VAR);
+    }
+
     // @formatter:off
     // Checkstyle: stop
     /**
@@ -418,7 +490,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      */
     // Checkstyle: resume
     // @formatter:on
-    static String generateGetter(String instanceName, String className, String getterName) {
+    private static String generateGetter(String instanceName, String className, String getterName) {
         StringBuilder str = new StringBuilder();
         str.append(TAB_1).append(PUBLIC_STATIC_FINAL).append(" ").append(className).append(" ").append(getterName).append("() {\n");
         str.append(TAB_2).append("return ").append(instanceName).append(";\n");
@@ -432,8 +504,8 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * @param className The name of the class where the substituted method is found.
      * @param targetMethodName The name of the substituted method.
      * @param parameterTypeName The list of *Host* parameter types of the substituted method.
-     * @param guestCalls
-     * @param hasMetaInjection
+     * @param guestCalls The list of called guest method in the substitution
+     * @param hasMetaInjection Whether this substitution needs the meta injected
      * @param helper A helper structure.
      * @return The string forming the substitutor.
      */
@@ -472,75 +544,5 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
         // End
         return classFile.toString();
-    }
-
-    static private String generateInstanceFields(List<String> guestCalls, boolean hasMetaInjection) {
-        if (guestCalls.isEmpty() && !hasMetaInjection) {
-            return "";
-        }
-        StringBuilder str = new StringBuilder();
-        for (String call : guestCalls) {
-            str.append(TAB_1).append(PRIVATE_FINAL).append(" ").append(DIRECT_CALL_NODE).append(" ").append(call).append(";\n");
-        }
-        if (hasMetaInjection) {
-            str.append(TAB_1).append(PRIVATE_FINAL).append(" ").append(META_ARG).append(";\n");
-        }
-        return str.toString();
-    }
-
-    static String generateGuestCalls(List<String> guestCalls) {
-        if (guestCalls.isEmpty()) {
-            return "";
-        }
-        StringBuilder str = new StringBuilder();
-        for (String call : guestCalls) {
-            str.append("\n").append(TAB_2).append(call).append(" = ").append(DIRECT_CALL_NODE).append(".").append(CREATE).append("(");
-            str.append(META_VAR).append(".").append(call).append(".").append("getCallTarget").append("());");
-        }
-        return str.toString();
-    }
-
-    List<String> getGuestCalls(ExecutableElement method) {
-        ArrayList<String> guestCalls = new ArrayList<>();
-        for (VariableElement param : method.getParameters()) {
-            if (getAnnotation(param.asType(), guestCall) != null) {
-                guestCalls.add(param.getSimpleName().toString());
-            }
-        }
-        return guestCalls;
-    }
-
-    static boolean checkFirst(StringBuilder str, boolean first) {
-        if (!first) {
-            str.append(", ");
-        }
-        return false;
-    }
-
-    static String getGuestCallsForInvoke(List<String> guestCalls, boolean wasFirst) {
-        StringBuilder str = new StringBuilder();
-        boolean first = wasFirst;
-        for (String call : guestCalls) {
-            first = checkFirst(str, first);
-            str.append("\n");
-            str.append(TAB_3).append(call);
-        }
-        return str.toString();
-    }
-
-    private static String generateConstructor(String substitutorName, List<String> guestCalls, boolean hasMetaInjection) {
-        StringBuilder str = new StringBuilder();
-        str.append(TAB_1).append("private ").append(substitutorName).append("(").append(META_ARG).append(") {");
-        str.append(generateGuestCalls(guestCalls)).append("\n");
-        if (hasMetaInjection) {
-            str.append(TAB_2).append(SET_META).append("\n");
-        }
-        str.append(TAB_1).append("}\n");
-        return str.toString();
-    }
-
-    static void injectMeta(StringBuilder str, boolean first) {
-        checkFirst(str, first);
-        str.append(META_VAR);
     }
 }
