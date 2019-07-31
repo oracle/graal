@@ -629,11 +629,12 @@ def _get_graalvm_configuration(base_name, stage1=False):
         components = registered_graalvm_components(stage1)
         components_set = set([c.short_name for c in components])
 
-        if _with_polyglot_lib_project() and _get_svm_support().is_supported():
+        if has_svm_polyglot_lib():
             components_set.add('libpoly')
             with_lib_polyglot = True
         else:
             with_lib_polyglot = False
+
         if _with_polyglot_launcher_project():
             with_polyglot_launcher = True
             components_set.add('poly')
@@ -641,6 +642,7 @@ def _get_graalvm_configuration(base_name, stage1=False):
                 components_set.add('bpolyglot')
         else:
             with_polyglot_launcher = False
+
         if stage1:
             components_set.add('stage1')
         else:
@@ -1843,10 +1845,15 @@ def get_standalone_distribution(comp_dir_name):
         mx.abort('No standalones available. Did you forget to dynamically import a component?')
 
 
+def has_svm_polyglot_lib():
+    if not _get_svm_support().is_supported() or not _with_polyglot_lib_project():
+        return False
+    return any(c.has_polyglot_lib_entrypoints for c in registered_graalvm_components(stage1=False))
+
 def get_lib_polyglot_project():
     global _lib_polyglot_project
     if _lib_polyglot_project == 'uninitialized':
-        if not _get_svm_support().is_supported() or not _with_polyglot_lib_project():
+        if not has_svm_polyglot_lib():
             _lib_polyglot_project = None
         else:
             polyglot_lib_build_args = []
@@ -1861,26 +1868,24 @@ def get_lib_polyglot_project():
                 polyglot_lib_jar_dependencies += component.polyglot_lib_jar_dependencies
                 polyglot_lib_build_dependencies += component.polyglot_lib_build_dependencies
 
-            if not has_polyglot_lib_entrypoints:
-                _lib_polyglot_project = None
-            else:
-                lib_polyglot_config = mx_sdk.LibraryConfig(
-                    destination="<lib:polyglot>",
-                    jar_distributions=polyglot_lib_jar_dependencies,
-                    build_args=[
-                        "-H:+IncludeAllTimeZones",
-                        "-Dgraalvm.libpolyglot=true",
-                        "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>",
-                        "--tool:all",
-                    ] + polyglot_lib_build_args,
-                    is_polyglot=True,
-                )
-                _lib_polyglot_project = GraalVmLibrary(None, GraalVmNativeImage.project_name(lib_polyglot_config), [], lib_polyglot_config)
+            assert has_polyglot_lib_entrypoints
+            lib_polyglot_config = mx_sdk.LibraryConfig(
+                destination="<lib:polyglot>",
+                jar_distributions=polyglot_lib_jar_dependencies,
+                build_args=[
+                    "-H:+IncludeAllTimeZones",
+                    "-Dgraalvm.libpolyglot=true",
+                    "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>",
+                    "--tool:all",
+                ] + polyglot_lib_build_args,
+                is_polyglot=True,
+            )
+            _lib_polyglot_project = GraalVmLibrary(None, GraalVmNativeImage.project_name(lib_polyglot_config), [], lib_polyglot_config)
 
-                if polyglot_lib_build_dependencies:
-                    if not hasattr(_lib_polyglot_project, 'buildDependencies'):
-                        _lib_polyglot_project.buildDependencies = []
-                    _lib_polyglot_project.buildDependencies += polyglot_lib_build_dependencies
+            if polyglot_lib_build_dependencies:
+                if not hasattr(_lib_polyglot_project, 'buildDependencies'):
+                    _lib_polyglot_project.buildDependencies = []
+                _lib_polyglot_project.buildDependencies += polyglot_lib_build_dependencies
     return _lib_polyglot_project
 
 
@@ -2095,10 +2100,6 @@ def has_svm_launchers(components, fatalIfMissing=False):
     :rtype: bool
     """
     return all((has_svm_launcher(component, fatalIfMissing=fatalIfMissing) for component in components))
-
-
-def has_svm_polyglot_lib():
-    return _get_svm_support().is_supported() and _with_polyglot_lib_project()
 
 
 def get_native_image_locations(name, image_name):
