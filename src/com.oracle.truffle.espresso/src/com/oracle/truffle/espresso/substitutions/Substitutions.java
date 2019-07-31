@@ -217,7 +217,7 @@ public final class Substitutions implements ContextAccess {
     public void registerRuntimeSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {
         MethodRef key = new MethodRef(type, methodName, signature);
 
-        EspressoError.warnIf(STATIC_SUBSTITUTIONS.containsKey(key), "Runtime substitution shadowed by static one " + key);
+        EspressoError.warnIf(STATIC_SUBSTITUTIONS.containsKey(key), String.format("Runtime substitution shadowed by static one %s", key));
 
         if (throwIfPresent && runtimeSubstitutions.containsKey(key)) {
             throw EspressoError.shouldNotReachHere("substitution already registered" + key);

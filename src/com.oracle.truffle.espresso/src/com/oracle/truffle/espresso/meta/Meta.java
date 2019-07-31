@@ -652,6 +652,11 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
+    public EspressoException throwExFromHost(Throwable e) {
+        throw throwExWithMessage(e.getClass(), e.getMessage());
+    }
+
+    @TruffleBoundary
     public EspressoException throwExWithMessage(java.lang.Class<?> clazz, String message) {
         throw new EspressoException(initExWithMessage(clazz, message));
     }
