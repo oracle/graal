@@ -281,7 +281,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
         if (tag == StandardTags.StatementTag.class) {
             return false;
         } else if (tag == StandardTags.RootBodyTag.class) {
-            return hasSourceLocation();
+            return isSourceInstrumentationEnabled();
         } else {
             return super.hasTag(tag);
         }

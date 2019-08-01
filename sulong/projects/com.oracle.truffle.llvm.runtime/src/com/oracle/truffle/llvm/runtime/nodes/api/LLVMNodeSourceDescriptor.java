@@ -30,14 +30,9 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.instrumentation.LLVMNodeObjectProvider;
 
 public final class LLVMNodeSourceDescriptor {
 
@@ -48,9 +43,8 @@ public final class LLVMNodeSourceDescriptor {
         DEFAULT_SOURCE_SECTION = source.createUnavailableSection();
     }
 
-    @CompilationFinal private LLVMSourceLocation sourceLocation;
-    @CompilationFinal(dimensions = 1) private Class<? extends Tag>[] tags;
-    @CompilationFinal private Object nodeObject;
+    private LLVMSourceLocation sourceLocation;
+    private boolean enableStandardTags;
 
     public LLVMSourceLocation getSourceLocation() {
         return sourceLocation;
@@ -63,36 +57,8 @@ public final class LLVMNodeSourceDescriptor {
         return sourceLocation.getSourceSection();
     }
 
-    public Class<? extends Tag>[] getTags() {
-        return tags;
-    }
-
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tags != null) {
-            for (Class<? extends Tag> providedTag : tags) {
-                if (tag == providedTag) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public Object getNodeObject() {
-        if (nodeObject instanceof LLVMNodeObjectProvider) {
-            createNodeObject();
-        }
-        return nodeObject;
-    }
-
-    @TruffleBoundary
-    private void createNodeObject() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        synchronized (this) {
-            while (nodeObject instanceof LLVMNodeObjectProvider) {
-                nodeObject = ((LLVMNodeObjectProvider) nodeObject).createNodeObject();
-            }
-        }
+    public boolean isSourceInstrumentationEnabled() {
+        return enableStandardTags && sourceLocation != null;
     }
 
     public void setSourceLocation(LLVMSourceLocation sourceLocation) {
@@ -100,13 +66,8 @@ public final class LLVMNodeSourceDescriptor {
         this.sourceLocation = sourceLocation;
     }
 
-    public void setTags(Class<? extends Tag>[] tags) {
+    public void setEnableStandardTags(boolean enableStandardTags) {
         CompilerAsserts.neverPartOfCompilation();
-        this.tags = tags;
-    }
-
-    public void setNodeObjectProvider(LLVMNodeObjectProvider nodeObjectProvider) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.nodeObject = nodeObjectProvider;
+        this.enableStandardTags = enableStandardTags;
     }
 }

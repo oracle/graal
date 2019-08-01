@@ -1689,8 +1689,10 @@ public class BasicNodeFactory implements NodeFactory {
         LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller,
                         afterBlockNuller);
         body.getOrCreateSourceDescriptor().setSourceLocation(location);
+        body.getOrCreateSourceDescriptor().setEnableStandardTags(true);
         final LLVMFunctionRootNode functionRoot = new LLVMFunctionRootNode(uniquesRegionAllocNode, copyArgumentsToFrame, body);
         functionRoot.getOrCreateSourceDescriptor().setSourceLocation(location);
+        functionRoot.getOrCreateSourceDescriptor().setEnableStandardTags(true);
         return functionRoot;
     }
 

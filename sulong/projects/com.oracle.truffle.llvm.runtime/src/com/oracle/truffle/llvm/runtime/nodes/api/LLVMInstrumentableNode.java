@@ -83,17 +83,18 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     }
 
     /**
-     * Describes whether this node has source-level debug information attached. Individual nodes can
-     * use this to determine whether they should provide any of the {@link StandardTags}. Per
-     * default, all nodes for which this method returns {@code true} provide the
+     * Describes whether this node has source-level debug information attached and should be
+     * considered a source-level entity for instrumentation. Individual nodes can use this to
+     * determine whether they should provide any of the {@link StandardTags}. Per default, all nodes
+     * for which this method returns {@code true} provide the
      * {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag}. Individual nodes
      * can implement {@link InstrumentableNode#hasTag(Class)} to change this.
      *
-     * @return whether this node has an associated
-     *         {@link com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation}
+     * @return whether this node both provides a valid {@link SourceSection} and should be
+     *         considered for source-level instrumentation
      */
-    protected boolean hasSourceLocation() {
-        return sourceDescriptor != null && sourceDescriptor.getSourceLocation() != null;
+    protected boolean isSourceInstrumentationEnabled() {
+        return sourceDescriptor != null && sourceDescriptor.isSourceInstrumentationEnabled();
     }
 
     /**
@@ -107,10 +108,8 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     }
 
     /**
-     * This implementation of {@link InstrumentableNode#hasTag(Class)} delegates to
-     * {@link LLVMNodeSourceDescriptor#hasTag(Class)} if it has an attached source descriptor. If
-     * this node {@link LLVMInstrumentableNode#hasSourceLocation() has an attached source location},
-     * this function also considers the node to be tagged with
+     * If this node {@link LLVMInstrumentableNode#isSourceInstrumentationEnabled() is enabled for
+     * source-level instrumentatipon}, this function considers the node to be tagged with
      * {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag}.
      *
      * @param tag class of a tag {@link com.oracle.truffle.api.instrumentation.ProvidedTags
@@ -121,16 +120,9 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.StatementTag.class) {
-            return hasSourceLocation();
-        } else if (sourceDescriptor != null) {
-            return sourceDescriptor.hasTag(tag);
+            return isSourceInstrumentationEnabled();
         } else {
             return false;
         }
-    }
-
-    @Override
-    public Object getNodeObject() {
-        return sourceDescriptor != null ? sourceDescriptor.getNodeObject() : null;
     }
 }

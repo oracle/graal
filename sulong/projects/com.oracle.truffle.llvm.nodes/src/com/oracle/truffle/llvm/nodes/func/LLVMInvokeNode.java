@@ -200,7 +200,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.CallTag.class || tag == StandardTags.StatementTag.class) {
-            return hasSourceLocation();
+            return isSourceInstrumentationEnabled();
         } else {
             return super.hasTag(tag);
         }
