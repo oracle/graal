@@ -460,8 +460,8 @@ public class ReflectionPlugins {
             Class<?> clazz = snippetReflection.asObject(Class.class, receiver.get().asJavaConstant());
             String target = clazz.getTypeName() + ( declared ? ".getDeclaredConstructors()" : ".getConstructors()");
             try {
-                Constructor[] constructors = declared ? clazz.getDeclaredConstructors() : clazz.getConstructors();
-                Constructor[] intrinsic = getIntrinsicArray(analysis, hosted, b, constructors);
+                Constructor<?>[] constructors = declared ? clazz.getDeclaredConstructors() : clazz.getConstructors();
+                Constructor<?>[] intrinsic = getIntrinsicArray(analysis, hosted, b, constructors);
                 if (intrinsic == null) {
                     return false;
                 }
