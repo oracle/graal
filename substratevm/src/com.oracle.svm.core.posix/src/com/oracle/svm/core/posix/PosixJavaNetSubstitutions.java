@@ -50,14 +50,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 
-import com.oracle.svm.core.posix.headers.linux.LinuxIn;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -65,8 +63,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -83,7 +79,6 @@ import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.JavaNetNetworkInterface.PlatformSupport;
 import com.oracle.svm.core.posix.headers.Fcntl;
@@ -96,76 +91,9 @@ import com.oracle.svm.core.posix.headers.NetinetIn;
 import com.oracle.svm.core.posix.headers.Poll;
 import com.oracle.svm.core.posix.headers.Socket;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.linux.LinuxIn;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
-
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-@AutomaticFeature
-@CLibrary(value = "net", requireStatic = true)
-class PosixJavaNetSubstitutionsFeature implements Feature {
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-            JNIRuntimeAccess.register(access.findClassByName("java.net.InetAddress").getDeclaredMethod("anyLocalAddress"));
-
-            JNIRuntimeAccess.register(access.findClassByName("java.net.InetAddressContainer"));
-            JNIRuntimeAccess.register(access.findClassByName("java.net.InetAddressContainer").getDeclaredField("addr"));
-
-            JNIRuntimeAccess.register(access.findClassByName("java.net.InetSocketAddress"));
-            JNIRuntimeAccess.register(access.findClassByName("java.net.InetSocketAddress").getDeclaredConstructor(InetAddress.class, int.class));
-
-            /* Linux/Darwin specific classes */
-            JNIRuntimeAccess.register(access.findClassByName("java.net.SocketInputStream"));
-            JNIRuntimeAccess.register(access.findClassByName("java.net.SocketOutputStream"));
-
-            JNIRuntimeAccess.register(access.findClassByName("java.net.DatagramSocketImpl"));
-
-            JNIRuntimeAccess.register(access.findClassByName("java.lang.Integer").getDeclaredField("value"));
-
-            JNIRuntimeAccess.register(access.findClassByName("java.lang.Boolean").getDeclaredMethod("getBoolean", String.class));
-
-            RuntimeReflection.register(access.findClassByName("java.net.InetAddressImpl"));
-            RuntimeReflection.register(access.findClassByName("[Ljava.net.NetworkInterface;"));
-            RuntimeReflection.register(access.findClassByName("[Ljava.net.InterfaceAddress;"));
-
-            RuntimeReflection.register(access.findClassByName("java.net.Inet4AddressImpl"));
-            RuntimeReflection.register(access.findClassByName("java.net.Inet6AddressImpl"));
-            RuntimeReflection.registerForReflectiveInstantiation(access.findClassByName("java.net.Inet4AddressImpl"));
-            RuntimeReflection.registerForReflectiveInstantiation(access.findClassByName("java.net.Inet6AddressImpl"));
-
-        } catch (Exception e) {
-            VMError.shouldNotReachHere("PosixJavaNetSubstitutionsFeature: Error registering class or method: ", e);
-        }
-    }
-}
-
-@TargetClass(className = "java.net.NetworkInterface")
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-final class Target_java_net_NetworkInterface_jni {
-
-    @Alias
-    static native void init();
-}
-
-@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
-public final class PosixJavaNetSubstitutions {
-
-    /** Private constructor: No instances. */
-    private PosixJavaNetSubstitutions() {
-    }
-
-    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-    public static boolean initIDs() {
-        try {
-            System.loadLibrary("net");
-        } catch (UnsatisfiedLinkError e) {
-            VMError.shouldNotReachHere("System.loadLibrary failed ", e);
-        }
-        Target_java_net_NetworkInterface_jni.init();
-        return true;
-    }
-}
 
 /* { Allow names with non-standard names: Checkstyle: stop */
 @TargetClass(className = "java.net.PlainDatagramSocketImpl", onlyWith = JDK11OrEarlier.class)
