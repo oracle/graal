@@ -57,8 +57,14 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 public final class Support {
 
+    public static boolean isInitialized() {
+        boolean initialized = jvmtiEnv.isNonNull();
+        assert initialized == jniFunctions.isNonNull() && initialized == (handles != null);
+        return initialized;
+    }
+
     public static void initialize(JvmtiEnv jvmti, JNIEnvironment localJni) {
-        VMError.guarantee(jvmtiEnv.isNull() && jniFunctions.isNull() && handles == null);
+        VMError.guarantee(!isInitialized());
 
         WordPointer functionsPtr = StackValue.get(WordPointer.class);
         check(jvmti.getFunctions().GetJNIFunctionTable().invoke(jvmti, functionsPtr));
