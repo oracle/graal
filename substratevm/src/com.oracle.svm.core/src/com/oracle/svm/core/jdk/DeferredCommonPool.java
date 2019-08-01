@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.concurrent;
+package com.oracle.svm.core.jdk;
 
 import java.util.Collection;
 import java.util.List;
