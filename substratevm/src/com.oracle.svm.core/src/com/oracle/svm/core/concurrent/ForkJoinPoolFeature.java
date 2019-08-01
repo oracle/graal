@@ -26,7 +26,6 @@ package com.oracle.svm.core.concurrent;
 
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
