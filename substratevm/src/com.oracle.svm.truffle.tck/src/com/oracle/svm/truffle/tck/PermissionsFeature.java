@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.checker.permissions;
+package com.oracle.svm.truffle.tck;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -92,8 +92,7 @@ public class PermissionsFeature implements Feature {
     static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            boolean res = ImageSingletons.contains(PermissionsFeature.class);
-            return res;
+            return ImageSingletons.contains(PermissionsFeature.class);
         }
     }
 
@@ -113,11 +112,6 @@ public class PermissionsFeature implements Feature {
     private Set<String> languagePackages;
     private Set<String> excludedPackages;
     private Set<AnalysisMethod> whiteList;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return true;
-    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -185,14 +179,6 @@ public class PermissionsFeature implements Feature {
         }
     }
 
-    @Override
-    public void cleanup() {
-        reportFilePath = null;
-        languagePackages = null;
-        excludedPackages = null;
-        whiteList = null;
-    }
-
     private Map<AnalysisMethod, Set<AnalysisMethod>> callGraph(
                     BigBang bigbang,
                     Set<AnalysisMethod> targets,
@@ -218,16 +204,16 @@ public class PermissionsFeature implements Feature {
                     Map<AnalysisMethod, Set<AnalysisMethod>> visited,
                     Deque<AnalysisMethod> path,
                     DebugContext debugContext) {
-        MethodName mn = MethodName.forMethod(m);
+        String mName = getMethodName(m);
         path.addFirst(m);
         try {
             boolean vote = false;
-            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mn.getMethodName());
+            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
             for (InvokeTypeFlow invoke : m.getTypeFlow().getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
                     Set<AnalysisMethod> parents = visited.get(callee);
-                    MethodName calleeName = MethodName.forMethod(callee);
-                    debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName.getMethodName(), parents == null);
+                    String calleeName = getMethodName(callee);
+                    debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
                     if (parents == null) {
                         parents = new HashSet<>();
                         visited.put(callee, parents);
@@ -238,22 +224,22 @@ public class PermissionsFeature implements Feature {
                         boolean add = callGraphImpl(callee, targets, visited, path, debugContext);
                         if (add) {
                             parents.add(m);
-                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName.getMethodName(), mn.getMethodName());
+                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
                         }
                         vote |= add;
                     } else if (isBacktraceOverLanguage(callee, path) != Boolean.FALSE) {
                         parents.add(m);
-                        debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName.getMethodName(), mn.getMethodName());
+                        debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
                         vote |= true;
                     } else {
                         vote |= true;
                         if (debugContext.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
-                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName.getMethodName(), mn.getMethodName());
+                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName, mName);
                         }
                     }
                 }
             }
-            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Exited method: %s.", mn.getMethodName());
+            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Exited method: %s.", mName);
             return vote;
         } finally {
             path.removeFirst();
@@ -269,7 +255,7 @@ public class PermissionsFeature implements Feature {
             if (method.equals(pe)) {
                 return false;
             }
-            if (isLanguageClass(MethodName.forMethod(pe))) {
+            if (isLanguageClass(pe)) {
                 return true;
             }
         }
@@ -290,11 +276,10 @@ public class PermissionsFeature implements Feature {
         if (useNoReports >= maxReports) {
             return useNoReports;
         }
-        MethodName methodName = MethodName.forMethod(m);
-        if (isCompilerClass(methodName)) {
+        if (isCompilerClass(m)) {
             return useNoReports;
         }
-        if (isExcludedClass(methodName)) {
+        if (isExcludedClass(m)) {
             return useNoReports;
         }
         if (!visited.contains(m)) {
@@ -305,7 +290,7 @@ public class PermissionsFeature implements Feature {
                     if (!callers.isEmpty()) {
                         useNoReports = printCallGraphs(out, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
-                } else if (isLanguageClass(methodName)) {
+                } else if (isLanguageClass(m)) {
                     StringBuilder builder = new StringBuilder();
                     for (AnalysisMethod call : visited) {
                         builder.append(call.asStackTraceElement(0)).append('\n');
@@ -314,9 +299,8 @@ public class PermissionsFeature implements Feature {
                     useNoReports++;
                 } else {
                     nextCaller: for (AnalysisMethod caller : callers) {
-                        MethodName callerName = MethodName.forMethod(caller);
                         for (CallGraphFilter filter : contextFilters) {
-                            if (filter.test(methodName, callerName, visited)) {
+                            if (filter.test(m, caller, visited)) {
                                 continue nextCaller;
                             }
                         }
@@ -330,19 +314,19 @@ public class PermissionsFeature implements Feature {
         return useNoReports;
     }
 
-    private boolean isLanguageClass(MethodName methodName) {
-        return isClassInPackage(methodName.getClassName(), languagePackages);
+    private boolean isLanguageClass(AnalysisMethod method) {
+        return isClassInPackage(getClassName(method), languagePackages);
     }
 
-    private static boolean isCompilerClass(MethodName methodName) {
-        return isClassInPackage(methodName.getClassName(), compilerPkgs);
+    private static boolean isCompilerClass(AnalysisMethod method) {
+        return isClassInPackage(getClassName(method), compilerPkgs);
     }
 
-    private boolean isExcludedClass(MethodName methodName) {
-        if (isClassInPackage(methodName.getClassName(), excludedPackages)) {
+    private boolean isExcludedClass(AnalysisMethod method) {
+        if (isClassInPackage(getClassName(method), excludedPackages)) {
             return true;
         }
-        return whiteList.contains(methodName.getMethod());
+        return whiteList.contains(method);
     }
 
     private static boolean isClassInPackage(String javaName, Collection<? extends String> packages) {
@@ -372,44 +356,16 @@ public class PermissionsFeature implements Feature {
         return result;
     }
 
-    private static final class MethodName {
-        private final AnalysisMethod method;
-        private String methodName;
-        private String className;
+    private static String getMethodName(AnalysisMethod method) {
+        return method.format("%H.%n(%p)");
+    }
 
-        private MethodName(AnalysisMethod method) {
-            this.method = method;
-        }
-
-        AnalysisMethod getMethod() {
-            return method;
-        }
-
-        String getMethodName() {
-            if (methodName == null) {
-                try {
-                    methodName = method.format("%H.%n(%p)");
-                } catch (Throwable t) {
-                    t.printStackTrace();
-                }
-            }
-            return methodName;
-        }
-
-        String getClassName() {
-            if (className == null) {
-                className = method.getDeclaringClass().toJavaName();
-            }
-            return className;
-        }
-
-        static MethodName forMethod(AnalysisMethod method) {
-            return new MethodName(method);
-        }
+    private static String getClassName(AnalysisMethod method) {
+        return method.getDeclaringClass().toJavaName();
     }
 
     private interface CallGraphFilter {
-        boolean test(MethodName method, MethodName caller, LinkedHashSet<AnalysisMethod> trace);
+        boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace);
     }
 
     private static final class SafeInterruptRecognizer implements CallGraphFilter {
@@ -431,10 +387,10 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(MethodName method, MethodName caller, LinkedHashSet<AnalysisMethod> trace) {
+        public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
             Boolean res = null;
-            if (threadInterrupt.equals(method.getMethod())) {
-                StructuredGraph graph = caller.getMethod().getTypeFlow().getGraph();
+            if (threadInterrupt.equals(method)) {
+                StructuredGraph graph = caller.getTypeFlow().getGraph();
                 for (Invoke invoke : graph.getInvokes()) {
                     if (threadInterrupt.equals(invoke.callTarget().targetMethod())) {
                         ValueNode node = invoke.getReceiver();
@@ -462,8 +418,8 @@ public class PermissionsFeature implements Feature {
         }
 
         @Override
-        public boolean test(MethodName method, MethodName caller, LinkedHashSet<AnalysisMethod> trace) {
-            return this.dopriviledged.contains(method.getMethod()) && !isLanguageClass(caller);
+        public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
+            return this.dopriviledged.contains(method) && !isLanguageClass(caller);
         }
     }
 

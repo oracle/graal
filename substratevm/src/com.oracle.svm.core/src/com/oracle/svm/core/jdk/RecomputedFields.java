@@ -55,6 +55,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -348,6 +349,15 @@ class AtomicFieldUpdaterFeature implements Feature {
     }
 }
 
+@AutomaticFeature
+class InnocuousForkJoinWorkerThreadFeature implements Feature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
+                        "innocuousThreadGroup must be initialized at run time");
+    }
+}
+
 @TargetClass(java.util.concurrent.ForkJoinPool.class)
 @SuppressWarnings("unused") //
 final class Target_java_util_concurrent_ForkJoinPool {
@@ -521,36 +531,6 @@ class ExchangerABASEComputer implements RecomputeFieldValue.CustomFieldValueComp
         }
 
         return abase;
-    }
-}
-
-@TargetClass(className = "java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread")
-final class Target_java_util_concurrent_ForkJoinWorkerThread_InnocuousForkJoinWorkerThread {
-
-    @Alias @InjectAccessors(ThreadGroupAccessor.class) private static ThreadGroup innocuousThreadGroup;
-
-    @Alias
-    static ThreadGroup createThreadGroup() {
-        return null;
-    }
-
-    static final class ThreadGroupAccessor {
-
-        private static volatile ThreadGroup injectedInnocuousThreadGroup;
-
-        static ThreadGroup get() {
-            ThreadGroup res = injectedInnocuousThreadGroup;
-            if (res == null) {
-                synchronized (ThreadGroupAccessor.class) {
-                    res = injectedInnocuousThreadGroup;
-                    if (res == null) {
-                        res = Target_java_util_concurrent_ForkJoinWorkerThread_InnocuousForkJoinWorkerThread.createThreadGroup();
-                        injectedInnocuousThreadGroup = res;
-                    }
-                }
-            }
-            return res;
-        }
     }
 }
 

@@ -736,7 +736,7 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
-        "com.oracle.svm.truffle.checker" : {
+        "com.oracle.svm.truffle.tck" : {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -775,7 +775,6 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
                 "com.oracle.svm.reflect",
-                "com.oracle.svm.truffle.checker",
             ],
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
@@ -1044,6 +1043,14 @@ suite = {
                 "compiler:GRAAL_LLVM"
             ],
             "maven" : False,
-        }
+        },
+
+        "SVM_TRUFFLE_TCK" : {
+            "subDir" : "src",
+            "description" : "Truffle TCK",
+            "dependencies" : ["com.oracle.svm.truffle.tck"],
+            "distDependencies" : ["SVM"],
+            "maven" : True,
+        },
     },
 }
