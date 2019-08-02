@@ -44,8 +44,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -57,35 +57,34 @@ import com.oracle.truffle.sl.nodes.SLStatementNode;
 public final class SLBlockNode extends SLStatementNode {
 
     /**
-     * The array of child nodes. The annotation {@link com.oracle.truffle.api.nodes.Node.Children
-     * Children} informs Truffle that the field contains multiple children. It is a Truffle
-     * requirement that the field is {@code final} and an array of nodes.
+     * The block of child nodes. Using the block node allows Truffle to split the block into
+     * multiple groups for compilation if the method is too big.
+     *
+     * Normally the annotation {@link com.oracle.truffle.api.nodes.Node.Children Children} would be
+     * used to use an array of nodes that informs Truffle that the field contains multiple children.
      */
-    @Children private final SLStatementNode[] bodyNodes;
+    @Child private BlockNode<SLStatementNode> block;
 
     public SLBlockNode(SLStatementNode[] bodyNodes) {
-        this.bodyNodes = bodyNodes;
+        this.block = bodyNodes.length > 0 ? BlockNode.create(bodyNodes) : null;
     }
 
     /**
-     * Execute all child statements. The annotation {@link ExplodeLoop} triggers full unrolling of
-     * the loop during compilation. This allows the {@link SLStatementNode#executeVoid} method of
-     * all children to be inlined.
+     * Execute all block statements. The block node makes sure that {@link ExplodeLoop full
+     * unrolling} of the loop is triggered during compilation. This allows the
+     * {@link SLStatementNode#executeVoid} method of all children to be inlined.
      */
     @Override
-    @ExplodeLoop
     public void executeVoid(VirtualFrame frame) {
-        /*
-         * This assertion illustrates that the array length is really a constant during compilation.
-         */
-        CompilerAsserts.compilationConstant(bodyNodes.length);
-
-        for (SLStatementNode statement : bodyNodes) {
-            statement.executeVoid(frame);
+        if (this.block != null) {
+            this.block.executeVoid(frame);
         }
     }
 
     public List<SLStatementNode> getStatements() {
-        return Collections.unmodifiableList(Arrays.asList(bodyNodes));
+        if (block == null) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(Arrays.asList(block.getElements()));
     }
 }
