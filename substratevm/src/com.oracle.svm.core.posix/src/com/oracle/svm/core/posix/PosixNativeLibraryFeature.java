@@ -68,7 +68,10 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
             if (!PosixJavaLangSubstitutions.initIDs()) {
                 return false;
             }
-            if (!PosixJavaNetSubstitutions.initIDs()) {
+
+            try {
+                System.loadLibrary("net");
+            } catch (UnsatisfiedLinkError e) {
                 return false;
             }
         }
