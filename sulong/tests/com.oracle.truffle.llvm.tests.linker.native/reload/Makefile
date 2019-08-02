@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,29 +29,27 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-CLANG?=clang
-CLANGXX?=clang++
-LLVM_AS?=llvm-as
-OPT?=opt
-FC?=gfortran
+default: reload/ref.bc
 
-CFLAGS+= $(SUITE_CFLAGS)
-CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
-CPPFLAGS+= $(SUITE_CPPFLAGS)
-LDFLAGS+= $(SUITE_LDFLAGS)
+reload/libA$(SO_EXT): reload/a.c reload/Makefile
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -o $@ $<
 
-.PHONY: default
-default:
+reload/libB$(SO_EXT): reload/b.c reload/Makefile reload/libC$(SO_EXT)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN) -Lreload -lC -o $@ $<
 
-ifeq ($(OS), darwin)
-SO_EXT=.dylib
-ORIGIN_TOKEN='@loader_path'
-SO_LDFLAGS=-Wl,-install_name,@rpath/$(notdir $@)
-else
-SO_EXT=.so
-ORIGIN_TOKEN='$$ORIGIN'
-endif
+reload/libC$(SO_EXT): reload/c.c reload/Makefile reload/libA$(SO_EXT)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(SO_LDFLAGS) -fPIC -shared -rpath $(ORIGIN_TOKEN)/../reload -Lreload -lA -o $@ $<
 
-include $(SRC_DIR)/linker/Makefile
-include $(SRC_DIR)/rpath/Makefile
-include $(SRC_DIR)/reload/Makefile
+reload/libD$(SO_EXT): reload/libA$(SO_EXT) reload/Makefile
+	@rm -rf $@
+	$(QUIETLY) ln -s $(notdir $<) $@
+
+reload/ref.out: reload/main.c reload/Makefile reload/libA$(SO_EXT) reload/libB$(SO_EXT) reload/libD$(SO_EXT)
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -rpath $(ORIGIN_TOKEN) -Lreload -lA -lB -lD -o $@ $<
+
+%.bc: %.out
+	$(QUIETLY) cp $< $@

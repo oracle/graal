@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.elf.ElfFile;
@@ -56,12 +57,12 @@ public final class MachOLibraryLocator extends LibraryLocator {
     private static final String RPATH_PATTERN = "@rpath";
 
     @Override
-    public Path locateLibrary(LLVMContext context, String lib, Object reason) {
+    public TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
         Path libPath = Paths.get(lib);
         if (libPath.isAbsolute()) {
             return DefaultLibraryLocator.locateAbsolute(context, lib, libPath);
         }
-        Path path = DefaultLibraryLocator.locateGlobal(context, lib);
+        TruffleFile path = DefaultLibraryLocator.locateGlobal(context, lib);
         if (path != null) {
             return path;
         }
@@ -73,14 +74,13 @@ public final class MachOLibraryLocator extends LibraryLocator {
             for (String p : rPaths) {
                 Path absPath = Paths.get(p, subLib);
                 traceTry(context, absPath);
-                if (context.getEnv().getInternalTruffleFile(absPath.toUri()).exists()) {
-                    return absPath;
+                TruffleFile file = context.getEnv().getInternalTruffleFile(absPath.toUri());
+                if (file.exists()) {
+                    return file;
                 }
             }
         }
-
-        traceTry(context, libPath);
-        return libPath;
+        return null;
     }
 
 }

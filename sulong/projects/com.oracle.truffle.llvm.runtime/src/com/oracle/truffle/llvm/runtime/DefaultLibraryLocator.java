@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 
 import java.nio.file.Path;
@@ -46,39 +47,35 @@ public final class DefaultLibraryLocator extends LibraryLocator {
     }
 
     @Override
-    public Path locateLibrary(LLVMContext context, String lib, Object reason) {
+    public TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
         Path libPath = Paths.get(lib);
         if (libPath.isAbsolute()) {
             return locateAbsolute(context, lib, libPath);
         }
-        Path absPath = locateGlobal(context, lib);
-        if (absPath != null) {
-            return absPath;
-        }
-
-        traceTry(context, libPath);
-        return libPath;
+        return locateGlobal(context, lib);
     }
 
-    public static Path locateGlobal(LLVMContext context, String lib) {
+    public static TruffleFile locateGlobal(LLVMContext context, String lib) {
         // search global paths
         List<Path> libraryPaths = context.getLibraryPaths();
         traceSearchPath(context, libraryPaths);
         for (Path p : libraryPaths) {
             Path absPath = Paths.get(p.toString(), lib);
             traceTry(context, absPath);
-            if (context.getEnv().getInternalTruffleFile(absPath.toUri()).exists()) {
-                return absPath;
+            TruffleFile file = context.getEnv().getInternalTruffleFile(absPath.toUri());
+            if (file.exists()) {
+                return file;
             }
         }
         return null;
     }
 
-    public static Path locateAbsolute(LLVMContext context, String lib, Path libPath) {
+    public static TruffleFile locateAbsolute(LLVMContext context, String lib, Path libPath) {
         assert libPath.isAbsolute();
         traceTry(context, libPath);
-        if (context.getEnv().getInternalTruffleFile(libPath.toUri()).exists()) {
-            return libPath;
+        TruffleFile file = context.getEnv().getInternalTruffleFile(libPath.toUri());
+        if (file.exists()) {
+            return file;
         } else {
             throw new LLVMLinkerException(String.format("Library \"%s\" does not exist.", lib));
         }

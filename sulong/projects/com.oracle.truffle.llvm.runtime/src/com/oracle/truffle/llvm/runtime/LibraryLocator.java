@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.io.PrintStream;
-import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 
 /**
  * Encapsulates logic for locating libraries.
@@ -41,7 +41,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 public abstract class LibraryLocator {
 
     @CompilerDirectives.TruffleBoundary
-    public Path locate(LLVMContext context, String lib, Object reason) {
+    public final TruffleFile locate(LLVMContext context, String lib, Object reason) {
         if (context != null && context.ldDebugEnabled()) {
             LibraryLocator.traceLoader(context, "\n");
         }
@@ -49,7 +49,7 @@ public abstract class LibraryLocator {
         return locateLibrary(context, lib, reason);
     }
 
-    protected abstract Path locateLibrary(LLVMContext context, String lib, Object reason);
+    protected abstract TruffleFile locateLibrary(LLVMContext context, String lib, Object reason);
 
     public static void traceFind(LLVMContext context, Object lib, Object reason) {
         if (context != null && context.ldDebugEnabled()) {
@@ -60,6 +60,12 @@ public abstract class LibraryLocator {
     public static void traceTry(LLVMContext context, Object file) {
         if (context != null && context.ldDebugEnabled()) {
             traceLoader(context, "  trying file=%s\n", file);
+        }
+    }
+
+    public static void traceDelegateNative(LLVMContext context, Object file) {
+        if (context != null && context.ldDebugEnabled()) {
+            traceLoader(context, "  delegating to native=%s\n", file);
         }
     }
 

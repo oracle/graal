@@ -47,7 +47,8 @@ static bool check_error(JNIEnv *env, int ret) {
   }
 }
 
-JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_startCapturing(JNIEnv *env, jclass self, jint stdFd, jstring filename) {
+JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_startCapturing(JNIEnv *env, jclass self, jint stdFd,
+                                                                                                  jstring filename) {
   const char *path = env->GetStringUTFChars(filename, NULL);
 
   int fd = open(path, O_WRONLY);
@@ -74,7 +75,8 @@ JNIEXPORT jint JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutp
   return oldFd;
 }
 
-JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_stopCapturing(JNIEnv *env, jclass self, jint oldStdOut, jint oldStdErr) {
+JNIEXPORT void JNICALL Java_com_oracle_truffle_llvm_tests_pipe_CaptureNativeOutput_stopCapturing(JNIEnv *env, jclass self, jint oldStdOut,
+                                                                                                 jint oldStdErr) {
   if (check_error(env, fflush(stdout))) {
     return;
   }

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -442,7 +443,7 @@ public final class LLVMContext {
     public ExternalLibrary addInternalLibrary(String lib, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
         Path path = locateInternalLibrary(lib);
-        return addExternalLibrary(ExternalLibrary.internal(path, isNative));
+        return getOrAddExternalLibrary(ExternalLibrary.internal(path, isNative));
     }
 
     @TruffleBoundary
@@ -470,9 +471,34 @@ public final class LLVMContext {
             // Disallow loading internal libraries explicitly.
             return null;
         }
-        Path path = locator.locate(this, lib, reason);
-        ExternalLibrary newLib = ExternalLibrary.external(path, isNative);
-        ExternalLibrary existingLib = addExternalLibrary(newLib);
+        TruffleFile tf = locator.locate(this, lib, reason);
+        ExternalLibrary newLib;
+        if (tf == null) {
+            // Unable to locate the library -> will go to native
+            Path path = Paths.get(lib);
+            LibraryLocator.traceDelegateNative(this, path);
+            newLib = ExternalLibrary.external(path, isNative);
+        } else {
+            newLib = ExternalLibrary.external(tf, isNative);
+        }
+        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
+        if (existingLib == newLib) {
+            return newLib;
+        }
+        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
+        return null;
+    }
+
+    /**
+     * @return null if already loaded
+     */
+    public ExternalLibrary addExternalLibrary(ExternalLibrary newLib) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (isInternalLibrary(newLib.name)) {
+            // Disallow loading internal libraries explicitly.
+            return null;
+        }
+        ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
         if (existingLib == newLib) {
             return newLib;
         }
@@ -489,7 +515,7 @@ public final class LLVMContext {
         return false;
     }
 
-    private ExternalLibrary addExternalLibrary(ExternalLibrary externalLib) {
+    private ExternalLibrary getOrAddExternalLibrary(ExternalLibrary externalLib) {
         synchronized (externalLibrariesLock) {
             int index = externalLibraries.indexOf(externalLib);
             if (index >= 0) {
@@ -785,6 +811,7 @@ public final class LLVMContext {
 
         private final String name;
         private final Path path;
+        private final TruffleFile file;
 
         @CompilationFinal private boolean isNative;
         private final boolean isInternal;
@@ -805,6 +832,10 @@ public final class LLVMContext {
             return new ExternalLibrary(path, isNative, true);
         }
 
+        public static ExternalLibrary external(TruffleFile file, boolean isNative) {
+            return new ExternalLibrary(file, isNative, false);
+        }
+
         public ExternalLibrary(String name, boolean isNative, boolean isInternal) {
             this(name, null, isNative, isInternal);
         }
@@ -813,11 +844,40 @@ public final class LLVMContext {
             this(extractName(path), path, isNative, isInternal);
         }
 
+        private static TruffleFile getCanonicalFile(TruffleFile file) {
+            try {
+                return file.getCanonicalFile();
+            } catch (IOException e) {
+                /*
+                 * This should never happen since we've already proven existence of the file, but
+                 * better safe than sorry.
+                 */
+                return file;
+            }
+        }
+
+        public ExternalLibrary(TruffleFile file, boolean isNative, boolean isInternal) {
+            this.path = Paths.get(file.getPath());
+            this.name = extractName(path);
+            this.isNative = isNative;
+            this.isInternal = isInternal;
+            this.file = getCanonicalFile(file);
+        }
+
         private ExternalLibrary(String name, Path path, boolean isNative, boolean isInternal) {
             this.name = name;
             this.path = path;
             this.isNative = isNative;
             this.isInternal = isInternal;
+            this.file = null;
+        }
+
+        public boolean hasFile() {
+            return file != null;
+        }
+
+        public TruffleFile getFile() {
+            return file;
         }
 
         public Path getPath() {
@@ -846,6 +906,10 @@ public final class LLVMContext {
                 return true;
             } else if (obj instanceof ExternalLibrary) {
                 ExternalLibrary other = (ExternalLibrary) obj;
+                if (file != null) {
+                    // If we have a canonical file already, the file is authoritative.
+                    return file.equals(other.file);
+                }
                 return name.equals(other.name) && Objects.equals(path, other.path);
             }
             return false;

@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -56,11 +57,19 @@ public final class SulongSuite extends BaseSuiteHarness {
     public static Collection<Object[]> data() {
         Path suitesPath = new File(TestOptions.TEST_SUITE_PATH).toPath();
         try (Stream<Path> files = Files.walk(suitesPath)) {
-            Stream<Path> destDirs = files.filter(path -> path.endsWith("ref.out")).map(Path::getParent);
+            Stream<Path> destDirs = files.filter(SulongSuite::isReference).map(Path::getParent);
             return destDirs.map(testPath -> new Object[]{testPath, suitesPath.relativize(testPath).toString()}).collect(Collectors.toList());
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }
+    }
+
+    private static boolean isReference(Path path) {
+        return path.endsWith("ref.out") && (!IS_MAC || pathStream(path).noneMatch(p -> p.endsWith("ref.out.dSYM")));
+    }
+
+    private static Stream<Path> pathStream(Path path) {
+        return StreamSupport.stream(path.spliterator(), false);
     }
 
     @Override

@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,8 +44,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
-import com.oracle.truffle.llvm.parser.binary.BinaryParser;
-import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -71,6 +68,8 @@ import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.StackManager;
+import com.oracle.truffle.llvm.parser.binary.BinaryParser;
+import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
@@ -145,17 +144,12 @@ final class Runner {
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
     CallTarget parse(Source source) {
-        ParserInput input = getParserData(source);
-        return parse(source, input.bytes, input.library);
-    }
-
-    private static ParserInput getParserData(Source source) {
         ByteSequence bytes;
         ExternalLibrary library;
         if (source.hasBytes()) {
             bytes = source.getBytes();
             if (source.getPath() != null) {
-                library = new ExternalLibrary(Paths.get(source.getPath()), false, source.isInternal());
+                library = new ExternalLibrary(context.getEnv().getInternalTruffleFile(source.getPath()), false, source.isInternal());
             } else {
                 library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
             }
@@ -171,7 +165,7 @@ final class Runner {
         } else {
             throw new LLVMParserException("Should not reach here: Source is neither char-based nor byte-based!");
         }
-        return new ParserInput(bytes, library);
+        return parse(source, bytes, library);
     }
 
     private static class LoadModulesNode extends RootNode {
@@ -642,7 +636,7 @@ final class Runner {
     }
 
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib) {
-        if (lib.getPath() == null || !lib.getPath().toFile().isFile()) {
+        if (lib.hasFile() && !lib.getFile().isRegularFile() || lib.getPath() == null || !lib.getPath().toFile().isFile()) {
             if (!lib.isNative()) {
                 throw new LLVMParserException("'" + lib.getPath() + "' is not a file or does not exist.");
             } else {
@@ -650,14 +644,12 @@ final class Runner {
                 return null;
             }
         }
-
-        Path path = lib.getPath();
-        TruffleFile file = context.getEnv().getInternalTruffleFile(path.toUri());
+        TruffleFile file = lib.hasFile() ? lib.getFile() : context.getEnv().getInternalTruffleFile(lib.getPath().toUri());
         Source source;
         try {
             source = Source.newBuilder("llvm", file).internal(lib.isInternal()).build();
         } catch (IOException | SecurityException | OutOfMemoryError ex) {
-            throw new LLVMParserException("Error reading file " + path + ".");
+            throw new LLVMParserException("Error reading file " + lib.getPath() + ".");
         }
         return parse(parserResults, dependencyQueue, source, lib, source.getBytes());
     }
@@ -669,6 +661,7 @@ final class Runner {
             ModelModule module = new ModelModule();
             LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
             library.setIsNative(false);
+            context.addExternalLibrary(library);
             context.addLibraryPaths(binaryParserResult.getLibraryPaths());
             List<String> libraries = binaryParserResult.getLibraries();
             for (String lib : libraries) {
@@ -1105,16 +1098,6 @@ final class Runner {
         private InitializationOrder(List<LLVMParserResult> sulongLibraries, List<LLVMParserResult> otherLibraries) {
             this.sulongLibraries = sulongLibraries;
             this.otherLibraries = otherLibraries;
-        }
-    }
-
-    private static final class ParserInput {
-        private final ByteSequence bytes;
-        private final ExternalLibrary library;
-
-        private ParserInput(ByteSequence bytes, ExternalLibrary library) {
-            this.bytes = bytes;
-            this.library = library;
         }
     }
 }
