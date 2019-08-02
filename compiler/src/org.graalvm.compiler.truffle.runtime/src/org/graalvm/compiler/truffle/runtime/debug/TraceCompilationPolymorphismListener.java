@@ -32,9 +32,8 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -47,21 +46,21 @@ public final class TraceCompilationPolymorphismListener extends AbstractGraalTru
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleCompilationPolymorphism)) {
-            runtime.addListener(new TraceCompilationPolymorphismListener(runtime));
-        }
+        runtime.addListener(new TraceCompilationPolymorphismListener(runtime));
     }
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
-        for (Node node : target.nodeIterable(inliningDecision)) {
-            if (node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)) {
-                NodeCost cost = node.getCost();
-                Map<String, Object> props = new LinkedHashMap<>();
-                props.put("simpleName", node.getClass().getSimpleName());
-                props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
-                String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
-                runtime.logEvent(0, msg, node.toString(), props);
+        if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationPolymorphism)) {
+            for (Node node : target.nodeIterable(inliningDecision)) {
+                if (node != null && (node.getCost() == NodeCost.MEGAMORPHIC || node.getCost() == NodeCost.POLYMORPHIC)) {
+                    NodeCost cost = node.getCost();
+                    Map<String, Object> props = new LinkedHashMap<>();
+                    props.put("simpleName", node.getClass().getSimpleName());
+                    props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
+                    String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
+                    runtime.logEvent(0, msg, node.toString(), props);
+                }
             }
         }
     }

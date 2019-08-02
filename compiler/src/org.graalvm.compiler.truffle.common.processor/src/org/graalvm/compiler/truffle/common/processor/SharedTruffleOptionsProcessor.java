@@ -107,20 +107,25 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 out.println(" * and re-build. For Eclipse, this means restarting the IDE given");
                 out.println(" * that an annotation processor is not reloaded when the jar");
                 out.println(" * containing the annotation processor is updated.");
+                out.println(" *");
+                out.println(" * GENERATED CONTENT - DO NOT EDIT");
+                out.println(" * GeneratedBy: " + getClass().getName());
+                out.println(" * SpecifiedBy: " + Option.class.getName());
                 out.println(" */");
-                out.println("// GENERATED CONTENT - DO NOT EDIT");
-                out.println("// GeneratedBy: " + getClass().getName());
-                out.println("// SpecifiedBy: " + Option.class.getName());
                 out.println("public abstract class " + className + " {");
 
                 for (Option option : Option.options) {
                     String defaultValue = option.defaultValue;
+
+                    String deprecatedByText = null;
+                    if (option.deprecatedBy != null) {
+                        deprecatedByText = "Deprecated by " + linkIfRuntime(isRuntime, "org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions#" + option.deprecatedBy) + ".";
+                    }
+
                     if (isRuntime) {
-                        if (option.javadocExtra != null) {
+                        if (deprecatedByText != null) {
                             out.printf("    /**\n");
-                            for (String line : option.javadocExtra) {
-                                out.printf("     * %s\n", line);
-                            }
+                            out.printf("     * %s\n", deprecatedByText);
                             out.printf("     */\n");
                         }
                         String help;
@@ -159,11 +164,9 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         }
                         out.printf("     * OptionType: %s\n", optionType);
 
-                        if (option.javadocExtra != null) {
+                        if (deprecatedByText != null) {
                             out.printf("     *\n");
-                            for (String line : option.javadocExtra) {
-                                out.printf("     * %s\n", line);
-                            }
+                            out.printf("     * %s\n", deprecatedByText);
                         }
                         out.printf("     */\n");
 
@@ -182,5 +185,13 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
             }
         }
         return true;
+    }
+
+    private static String linkIfRuntime(boolean isRuntime, String className) {
+        if (isRuntime) {
+            return "{@link " + className + "}";
+        } else {
+            return className;
+        }
     }
 }

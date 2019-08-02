@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler.substitutions;
 import static java.lang.Character.toUpperCase;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIntrinsifyFrameAccess;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -75,9 +76,6 @@ import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -111,11 +109,6 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * Provides {@link InvocationPlugin}s for Truffle classes.
  */
 public class TruffleGraphBuilderPlugins {
-
-    public static class Options {
-        @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)//
-        public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
-    }
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
                     KnownTruffleTypes types) {
@@ -440,7 +433,7 @@ public class TruffleGraphBuilderPlugins {
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
 
-        if (TruffleCompilerOptions.getValue(Options.TruffleIntrinsifyFrameAccess)) {
+        if (TruffleCompilerOptions.getValue(TruffleIntrinsifyFrameAccess)) {
             registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
             registerFrameAccessors(r, JavaKind.Long, constantReflection, types);
             registerFrameAccessors(r, JavaKind.Int, constantReflection, types);
@@ -554,7 +547,7 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode frame = receiver.get();
-                if (TruffleCompilerOptions.getValue(Options.TruffleIntrinsifyFrameAccess) && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
+                if (TruffleCompilerOptions.getValue(TruffleIntrinsifyFrameAccess) && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
                     Speculation speculation = b.getGraph().getSpeculationLog().speculate(((NewFrameNode) frame).getIntrinsifyAccessorsSpeculation());
                     b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.RuntimeConstraint, speculation));
                     return true;

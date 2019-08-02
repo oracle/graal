@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleCompilationAST;
-
 import java.util.List;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
@@ -33,9 +31,9 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
@@ -50,15 +48,15 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilationAST)) {
-            runtime.addListener(new TraceASTCompilationListener(runtime));
-        }
+        runtime.addListener(new TraceASTCompilationListener(runtime));
     }
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
-        runtime.logEvent(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
-        printCompactTree(target, inliningDecision);
+        if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationAST)) {
+            runtime.logEvent(0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision));
+            printCompactTree(target, inliningDecision);
+        }
     }
 
     private void printCompactTree(OptimizedCallTarget target, TruffleInlining inliningDecision) {

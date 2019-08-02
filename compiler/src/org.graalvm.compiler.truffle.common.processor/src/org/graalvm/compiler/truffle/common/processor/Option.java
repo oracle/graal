@@ -39,260 +39,286 @@ public class Option {
             .category("INTERNAL")
             .def("null")
             .help("Restrict compilation to comma-separated list of includes (or excludes prefixed with tilde).",
-                  "EBNF format of argument value:  CompileOnly = Element, { ',', Element } ;"),
+                  "EBNF format of argument value:  CompileOnly = Element, { ',', Element } ;")
+            .deprecatedBy("CompileOnly"),
 
         option("TruffleCompilation")
             .type("Boolean")
             .category("INTERNAL")
             .def("true")
-            .help("Enable or disable truffle compilation."),
+            .help("Enable or disable truffle compilation.")
+            .deprecatedBy("Compilation"),
 
         option("TruffleCompileImmediately")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Compile immediately to test truffle compiler"),
+            .help("Compile immediately to test truffle compiler")
+            .deprecatedBy("CompileImmediately"),
 
         option("TruffleCompilationThreshold")
             .type("Integer")
             .category("USER")
             .def("1000")
             .help("Compile call target when call count exceeds this threshold.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
+            .deprecatedBy("CompilationThreshold"),
 
         option("TruffleFirstTierCompilationThreshold")
             .type("Integer")
             .category("EXPERT")
             .def("100")
             .help("Compile call target in the first tier when call count exceeds this threshold.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.CompilationThreshold} instead."),
+            .deprecatedBy("FirstTierCompilationThreshold"),
 
         option("TruffleFirstTierMinInvokeThreshold")
             .type("Integer")
             .category("EXPERT")
             .def("1")
-            .help("Minimum number of calls before a call target is compiled in the first tier."),
-
-        option("TruffleTimeThreshold")
-            .type("Integer")
-            .category("USER")
-            .def("50000")
-            .help("Defines the maximum timespan in milliseconds that is required for a call target to be queued for compilation.")
-            .javadocExtra("Deprecated: Use {@code PolyglotCompilerOptions.QueueTimeThreshold} instead."),
+            .help("Minimum number of calls before a call target is compiled in the first tier.")
+            .deprecatedBy("FirstTierMinInvokeThreshold"),
 
         option("TruffleMinInvokeThreshold")
             .type("Integer")
             .category("EXPERT")
             .def("3")
-            .help("Minimum number of calls before a call target is compiled"),
+            .help("Minimum number of calls before a call target is compiled")
+            .deprecatedBy("MinInvokeThreshold"),
 
         option("TruffleInvalidationReprofileCount")
             .type("Integer")
             .category("EXPERT")
             .def("3")
-            .help("Delay compilation after an invalidation to allow for reprofiling"),
+            .help("Delay compilation after an invalidation to allow for reprofiling")
+            .deprecatedBy("InvalidationReprofileCount"),
 
         option("TruffleReplaceReprofileCount")
             .type("Integer")
             .category("EXPERT")
             .def("3")
-            .help("Delay compilation after a node replacement"),
+            .help("Delay compilation after a node replacement")
+            .deprecatedBy("ReplaceReprofileCount"),
 
         option("TruffleFunctionInlining")
             .type("Boolean")
             .category("INTERNAL")
             .def("true")
-            .help("Enable automatic inlining of call targets"), // COMPILER
+            .help("Enable automatic inlining of call targets")
+            .deprecatedBy("Inlining"), // COMPILER
 
         option("TruffleInliningMaxCallerSize")
             .type("Integer")
             .category("EXPERT")
             .def("2250")
-            .help("Stop inlining if caller's cumulative tree size would exceed this limit"),
+            .help("Stop inlining if caller's cumulative tree size would exceed this limit")
+            .deprecatedBy("InliningNodeBudget"),
 
         option("TruffleMaximumRecursiveInlining")
             .type("Integer")
             .category("EXPERT")
             .def("2")
-            .help("Maximum level of recursive inlining"),
+            .help("Maximum level of recursive inlining")
+            .deprecatedBy("InliningRecursionDepth"),
 
         option("TruffleSplitting")
             .type("Boolean")
             .category("EXPERT")
             .def("true")
-            .help("Enable call target splitting"),
+            .help("Enable call target splitting")
+            .deprecatedBy("Splitting"),
 
         option("TruffleOSR")
             .type("Boolean")
             .category("INTERNAL")
             .def("true")
-            .help("Enable on stack replacement for Truffle loops."),
+            .help("Enable on stack replacement for Truffle loops.")
+            .deprecatedBy("OSR"),
 
         option("TruffleOSRCompilationThreshold")
             .type("Integer")
             .category("INTERNAL")
             .def("100000")
-            .help("Number of loop iterations until on-stack-replacement compilation is triggered."),
+            .help("Number of loop iterations until on-stack-replacement compilation is triggered.")
+            .deprecatedBy("OSRCompilationThreshold"),
 
         option("TruffleSplittingMaxCalleeSize")
             .type("Integer")
             .category("INTERNAL")
             .def("100")
-            .help("Disable call target splitting if tree size exceeds this limit"),
+            .help("Disable call target splitting if tree size exceeds this limit")
+            .deprecatedBy("SplittingMaxCalleeSize"),
 
         option("TruffleSplittingGrowthLimit")
             .type("Double")
             .category("INTERNAL")
             .def("1.5")
-            .help("Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count"),
+            .help("Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count")
+            .deprecatedBy("SplittingGrowthLimit"),
 
         option("TruffleSplittingMaxNumberOfSplitNodes")
             .type("Integer")
             .category("INTERNAL")
             .def("500_000")
-            .help("Disable call target splitting if number of nodes created by splitting exceeds this limit"),
+            .help("Disable call target splitting if number of nodes created by splitting exceeds this limit")
+            .deprecatedBy("SplittingMaxNumberOfSplitNodes"),
 
         option("TruffleSplittingMaxPropagationDepth")
             .type("Integer")
             .category("INTERNAL")
             .def("5")
-            .help("Propagate info about a polymorphic specialize through maximum this many call targets"),
+            .help("Propagate info about a polymorphic specialize through maximum this many call targets")
+            .deprecatedBy("SplittingMaxPropagationDepth"),
 
         option("TruffleLegacySplitting")
             .type("Boolean")
             .category("EXPERT")
             .def("false")
-            .help("Use legacy splitting heuristic. This option will be removed."),
+            .help("Use legacy splitting heuristic. This option will be removed.")
+            .deprecatedBy("LegacySplitting"),
 
         option("TruffleTraceSplittingSummary")
             .type("Boolean")
             .category("EXPERT")
             .def("false")
-            .help("Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown"),
+            .help("Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown")
+            .deprecatedBy("TraceSplittingSummary"),
 
         option("TruffleSplittingTraceEvents")
             .type("Boolean")
             .category("EXPERT")
             .def("false")
-            .help("Trace details of splitting events and decisions."),
+            .help("Trace details of splitting events and decisions.")
+            .deprecatedBy("SplittingTraceEvents"),
 
         option("TruffleSplittingDumpDecisions")
             .type("Boolean")
             .category("EXPERT")
             .def("false")
-            .help("Dumps to IGV information on polymorphic events"),
+            .help("Dumps to IGV information on polymorphic events")
+            .deprecatedBy("SplittingDumpDecisions"),
 
         option("TruffleSplittingAllowForcedSplits")
             .type("Boolean")
             .category("EXPERT")
             .def("true")
-            .help("Should forced splits be allowed."),
+            .help("Should forced splits be allowed.")
+            .deprecatedBy("SplittingAllowForcedSplits"),
 
         option("TruffleBackgroundCompilation")
             .type("Boolean")
             .category("EXPERT")
             .def("true")
-            .help("Enable asynchronous truffle compilation in background thread"),
+            .help("Enable asynchronous truffle compilation in background thread")
+            .deprecatedBy("BackgroundCompilation"),
 
         option("TruffleCompilerThreads")
             .type("Integer")
             .category("EXPERT")
             .def("0")
-            .help("Manually set the number of compiler threads"),
+            .help("Manually set the number of compiler threads")
+            .deprecatedBy("CompilerThreads"),
 
         option("TruffleReturnTypeSpeculation")
             .type("Boolean")
             .category("INTERNAL")
-            .def("true"),
+            .def("true")
+            .deprecatedBy("ReturnTypeSpeculation"),
 
         option("TruffleArgumentTypeSpeculation")
             .type("Boolean")
             .category("INTERNAL")
-            .def("true"),
+            .def("true")
+            .deprecatedBy("ArgumentTypeSpeculation"),
 
         option("TraceTruffleCompilation")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print information for compilation results"),
+            .help("Print information for compilation results")
+            .deprecatedBy("TraceCompilation"),
 
         option("TraceTruffleCompilationDetails")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print information for compilation queuing"),
+            .help("Print information for compilation queuing")
+            .deprecatedBy("TraceCompilationDetails"),
 
         option("TraceTruffleCompilationPolymorphism")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print all polymorphic and generic nodes after each compilation"),
+            .help("Print all polymorphic and generic nodes after each compilation")
+            .deprecatedBy("TraceCompilationPolymorphism"),
 
         option("TraceTruffleCompilationAST")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print the entire AST after each compilation"),
+            .help("Print the entire AST after each compilation")
+            .deprecatedBy("TraceCompilationAST"),
 
         option("TraceTruffleCompilationCallTree")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print the inlined call tree for each compiled method"),
-
-        option("TraceTruffleExpansionSource")
-            .type("Boolean")
-            .category("INTERNAL")
-            .def("false")
-            .help("Print source sections for printed expansion trees"),
+            .help("Print the inlined call tree for each compiled method")
+            .deprecatedBy("TraceCompilationCallTree"),
 
         option("TruffleCompilationExceptionsAreFatal")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Treat compilation exceptions as fatal exceptions that will exit the application"), // COMPILER
+            .help("Treat compilation exceptions as fatal exceptions that will exit the application")
+            .deprecatedBy("PerformanceWarningsAreFatal"), // COMPILER
 
         option("TrufflePerformanceWarningsAreFatal")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Treat performance warnings as fatal occurrences that will exit the applications"), // COMPILER
+            .help("Treat performance warnings as fatal occurrences that will exit the applications")
+            .deprecatedBy("CompilationExceptionsAreFatal"), // COMPILER
 
         option("TruffleCompilationExceptionsArePrinted")
             .type("Boolean")
             .category("INTERNAL")
             .def("true")
-            .help("Prints the exception stack trace for compilation exceptions"),
+            .help("Prints the exception stack trace for compilation exceptions")
+            .deprecatedBy("CompilationExceptionsArePrinted"),
 
         option("TruffleCompilationExceptionsAreThrown")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Treat compilation exceptions as thrown runtime exceptions"),
+            .help("Treat compilation exceptions as thrown runtime exceptions")
+            .deprecatedBy("CompilationExceptionsAreThrown"),
 
         option("TraceTruffleInlining")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print information for inlining for each compilation."),
+            .help("Print information for inlining for each compilation.")
+            .deprecatedBy("TraceInlining"),
 
         option("TraceTruffleSplitting")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print information for each splitted call site."),
+            .help("Print information for each splitted call site.")
+            .deprecatedBy("TraceSplitting"),
 
         option("TraceTruffleAssumptions")
             .type("Boolean")
             .category("INTERNAL")
             .def("false")
-            .help("Print stack trace on assumption invalidation"),
+            .help("Print stack trace on assumption invalidation")
+            .deprecatedBy("TraceAssumptions"),
 
         option("TraceTruffleStackTraceLimit")
             .type("Integer")
             .category("INTERNAL")
             .def("20")
-            .help("Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions"), // COMPILER
+            .help("Number of stack trace elements printed by TraceTruffleTransferToInterpreter and TraceTruffleAssumptions")
+            .deprecatedBy("TraceStackTraceLimit"), // COMPILER
 
         option("TruffleCompilationStatistics")
             .type("Boolean")
@@ -320,9 +346,10 @@ public class Option {
 
         option("TruffleMultiTier")
             .type("Boolean")
-            .category("USER")
+            .category("EXPERT")
             .def("false")
-            .help("Whether to use multiple Truffle compilation tiers by default."),
+            .help("Whether to use multiple Truffle compilation tiers by default.")
+            .deprecatedBy("MultiTier"),
     };
     // @formatter:on
 
@@ -331,7 +358,7 @@ public class Option {
     String type;
     String defaultValue;
     String[] help = {""};
-    String[] javadocExtra;
+    String deprecatedBy;
 
     Option name(String value) {
         name = value;
@@ -358,8 +385,8 @@ public class Option {
         return this;
     }
 
-    Option javadocExtra(String... lines) {
-        javadocExtra = lines;
+    Option deprecatedBy(String replacement) {
+        deprecatedBy = replacement;
         return this;
     }
 

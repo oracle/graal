@@ -90,6 +90,9 @@ public final class TruffleCompilerOptions {
 
     @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.")
     public static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(400000);
+
+    @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
     // @formatter:on
 
     private TruffleCompilerOptions() {
@@ -152,6 +155,10 @@ public final class TruffleCompilerOptions {
             outer = Lazy.overrideScope.get();
             options = new OptionValues(outer == null ? getInitialOptions() : outer.options, overrides);
             Lazy.overrideScope.set(this);
+        }
+
+        public OptionValues getOptions() {
+            return options;
         }
 
         @Override

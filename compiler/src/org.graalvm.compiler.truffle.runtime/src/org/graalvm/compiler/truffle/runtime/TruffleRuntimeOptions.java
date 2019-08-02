@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -93,18 +92,22 @@ public final class TruffleRuntimeOptions {
         return scope != null ? scope.options : null;
     }
 
-    public static Map<String, Object> asMap(OptionValues values) {
-        if (values == null) {
-            return Collections.emptyMap();
-        }
-        final Map<String, Object> m = new HashMap<>();
+    /**
+     * Get Truffle-related compilation options as a Map to be passed to the compiler. Some
+     * Truffle-like options are converted into Graal compiler options.
+     */
+    public static Map<String, Object> getOptionsForCompiler() {
+        final OptionValues values = getOptions();
+        final Map<String, Object> map = new HashMap<>();
+
         for (OptionDescriptor desc : values.getDescriptors()) {
             final OptionKey<?> key = desc.getKey();
             if (values.hasBeenSet(key)) {
-                m.put(desc.getName(), values.get(key));
+                map.put(desc.getName(), values.get(key));
             }
         }
-        return m;
+
+        return map;
     }
 
     public static class TruffleRuntimeOptionsOverrideScope implements AutoCloseable {
@@ -161,14 +164,25 @@ public final class TruffleRuntimeOptions {
     /**
      * Determines whether an exception during a Truffle compilation should result in calling
      * {@link System#exit(int)}.
+     *
+     * @param target
      */
-    public static boolean areTruffleCompilationExceptionsFatal() {
+    public static boolean areTruffleCompilationExceptionsFatal(OptimizedCallTarget target) {
         /*
          * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled but
          * respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
          */
-        boolean truffleCompilationExceptionsAreFatal = getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal);
-        assert SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal.hasBeenSet(TruffleRuntimeOptions.getOptions()) || (truffleCompilationExceptionsAreFatal = true) == true;
-        return truffleCompilationExceptionsAreFatal || TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal);
+        boolean compilationExceptionsAreFatal = target.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal);
+        boolean performanceWarningsAreFatal = target.getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal);
+
+        if (!target.getOptionValues().hasBeenSet(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
+            boolean assertOn = false;
+            assert (assertOn = true) == true;
+            if (assertOn) {
+                return true;
+            }
+        }
+
+        return compilationExceptionsAreFatal || performanceWarningsAreFatal;
     }
 }

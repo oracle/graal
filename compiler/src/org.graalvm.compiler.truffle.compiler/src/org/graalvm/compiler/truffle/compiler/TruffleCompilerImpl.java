@@ -37,6 +37,7 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.Truff
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getValue;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.overrideOptions;
 
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -221,14 +222,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
     @SuppressWarnings("try")
     @Override
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
-        try (TruffleOptionsOverrideScope s = withOptions(options)) {
-            DebugContext debugContext;
+        try (TruffleOptionsOverrideScope optionsScope = overrideOptions(options)) {
+            final DebugContext debugContext;
+            final OptionValues optionValues = optionsScope.getOptions();
             if (compilation == null) {
-                debugContext = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+                debugContext = DebugContext.create(optionValues, DebugHandlersFactory.LOADER);
             } else {
                 TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
                 CompilableTruffleAST compilable = ident.getCompilable();
-                debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
+                debugContext = createDebugContext(optionValues, ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
             }
             return new TruffleDebugContextImpl(debugContext);
         }
@@ -242,15 +244,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         }
     }
 
-    /**
-     * Opens a scope that overrides the default Truffle compiler options with values from
-     * {@code optionsMap} if it is not empty. Otherwise no scope is opened and {@code null} is
-     * returned.
-     */
-    private static TruffleOptionsOverrideScope withOptions(final Map<String, Object> optionsMap) {
-        return optionsMap.isEmpty() ? null : TruffleCompilerOptions.overrideOptions(optionsMap);
-    }
-
     @Override
     @SuppressWarnings("try")
     public final void doCompile(TruffleDebugContext truffleDebug,
@@ -260,28 +253,50 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     TruffleCompilationTask task,
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
-        try (TruffleOptionsOverrideScope optionsScope = withOptions(optionsMap)) {
+
+        try (TruffleOptionsOverrideScope optionsScope = overrideOptions(optionsMap)) {
             TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
             CompilableTruffleAST compilable = compilationId.getCompilable();
-            final OptionValues optionValues = TruffleCompilerOptions.getOptions();
+            final OptionValues optionValues = optionsScope.getOptions();
+
             boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
-            final DebugContext graalDebug = usingCallersDebug ? ((TruffleDebugContextImpl) truffleDebug).debugContext
-                            : createDebugContext(optionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
-            try (DebugContext debugToClose = usingCallersDebug ? null : graalDebug;
-                            DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
-                final TruffleCompilerListener listener = inListener == null ? null : new TruffleCompilerListenerPair(new TraceCompilationFailureListener(), inListener);
-                new TruffleCompilationWrapper(
-                                getDebugOutputDirectory(),
-                                getCompilationProblemsPerAction(),
-                                compilable,
-                                task == null ? null : new CancellableTruffleCompilationTask(task),
-                                inliningPlan,
-                                compilationId,
-                                listener).run(graalDebug);
-            } catch (Throwable e) {
-                notifyCompilableOfFailure(compilable, e);
+            if (usingCallersDebug) {
+                final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
+
+                try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
+                    actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, callerDebug);
+                } catch (Throwable e) {
+                    notifyCompilableOfFailure(compilable, e);
+                }
+            } else {
+                try (DebugContext graalDebug = createDebugContext(optionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
+                                DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
+                    actuallyCompile(inliningPlan, task, inListener, compilationId, compilable, graalDebug);
+                } catch (Throwable e) {
+                    notifyCompilableOfFailure(compilable, e);
+                }
             }
+
         }
+    }
+
+    private void actuallyCompile(TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener inListener, TruffleCompilationIdentifier compilationId,
+                    CompilableTruffleAST compilable, DebugContext graalDebug) {
+        final TruffleCompilerListener listener;
+        if (inListener == null) {
+            listener = null;
+        } else {
+            listener = new TruffleCompilerListenerPair(new TraceCompilationFailureListener(), inListener);
+        }
+        final TruffleCompilationWrapper truffleCompilationWrapper = new TruffleCompilationWrapper(
+                        getDebugOutputDirectory(),
+                        getCompilationProblemsPerAction(),
+                        compilable,
+                        task == null ? null : new CancellableTruffleCompilationTask(task),
+                        inliningPlan,
+                        compilationId,
+                        listener);
+        truffleCompilationWrapper.run(graalDebug);
     }
 
     /**
@@ -426,10 +441,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     CompilationIdentifier compilationId,
                     CancellableTruffleCompilationTask task,
                     TruffleCompilerListener listener) {
-        final CompilationPrinter printer = CompilationPrinter.begin(TruffleCompilerOptions.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
+        final CompilationPrinter printer = CompilationPrinter.begin(debug.getOptions(), compilationId, new TruffleDebugJavaMethod(compilable), INVOCATION_ENTRY_BCI);
         StructuredGraph graph = null;
 
-        try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(TruffleCompilerOptions.getOptions())) {
+        try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite();
 
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
@@ -469,14 +484,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                 listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout);
             }
             throw t;
-        }
-    }
-
-    static void notifyListenerOfFailure(final CompilableTruffleAST compilable, TruffleCompilerListener listener, Throwable t) {
-        if (listener != null) {
-            BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
-            boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-            listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout);
         }
     }
 

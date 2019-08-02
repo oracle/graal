@@ -53,6 +53,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -254,8 +255,6 @@ public abstract class Accessor {
 
         public abstract Object getVMFromLanguageObject(Object engineObject);
 
-        public abstract OptionValues getCompilerOptionValues(RootNode rootNode);
-
         public abstract Object lookupHostSymbol(Object vmObject, Env env, String symbolName);
 
         public abstract Object asHostSymbol(Object vmObject, Class<?> symbolClass);
@@ -308,7 +307,7 @@ public abstract class Accessor {
 
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
 
-        public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
+        public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Function<OptionValues, T> constructor);
 
         public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
 

@@ -25,13 +25,9 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilation;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getValue;
 
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
@@ -68,7 +64,6 @@ import org.graalvm.compiler.truffle.runtime.debug.TraceCompilationPolymorphismLi
 import org.graalvm.compiler.truffle.runtime.debug.TraceInliningListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceSplittingListener;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.Assumption;
@@ -210,8 +205,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public TruffleInlining createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
-        TruffleInliningPolicy policy = task != null && task.isLastTier() ? TruffleInliningPolicy.getInliningPolicy() : TruffleInliningPolicy.getNoInliningPolicy();
-        return new TruffleInlining((OptimizedCallTarget) compilable, policy);
+        final OptimizedCallTarget sourceTarget = (OptimizedCallTarget) compilable;
+        final TruffleInliningPolicy policy;
+        if (task != null && task.isLastTier() && sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining)) {
+            policy = TruffleInliningPolicy.getInliningPolicy();
+        } else {
+            policy = TruffleInliningPolicy.getNoInliningPolicy();
+        }
+        return new TruffleInlining(sourceTarget, policy);
     }
 
     @Override
@@ -582,13 +583,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @SuppressFBWarnings(value = "", justification = "Cache that does not need to use equals to compare.")
     final boolean acceptForCompilation(RootNode rootNode) {
-        if (!getValue(TruffleCompilation)) {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
+        if (!callTarget.getOptionValue(PolyglotCompilerOptions.Compilation)) {
             return false;
         }
-        String includesExcludes = getValue(TruffleCompileOnly);
+        String includesExcludes = callTarget.getOptionValue(PolyglotCompilerOptions.CompileOnly);
         if (includesExcludes != null) {
             if (cachedIncludesExcludes != includesExcludes) {
-                parseCompileOnly();
+                parseCompileOnly(includesExcludes);
                 this.cachedIncludesExcludes = includesExcludes;
             }
 
@@ -615,11 +617,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return true;
     }
 
-    protected void parseCompileOnly() {
+    protected void parseCompileOnly(String includesExcludes) {
         ArrayList<String> includesList = new ArrayList<>();
         ArrayList<String> excludesList = new ArrayList<>();
 
-        String[] items = getValue(TruffleCompileOnly).split(",");
+        String[] items = includesExcludes.split(",");
         for (String item : items) {
             if (item.startsWith("~")) {
                 excludesList.add(item.substring(1));
@@ -698,10 +700,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @SuppressWarnings("try")
-    protected void doCompile(OptionValues options, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
+    protected void doCompile(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         TruffleCompiler compiler = getTruffleCompiler();
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
-            final Map<String, Object> optionsMap = TruffleRuntimeOptions.asMap(options);
+            final Map<String, Object> optionsMap = TruffleRuntimeOptions.getOptionsForCompiler();
             try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
                 doCompile(debug, compilation, optionsMap, callTarget, task);
             } catch (RuntimeException | Error e) {
@@ -757,7 +759,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             try {
                 uninterruptibleWaitForCompilation(task);
             } catch (ExecutionException e) {
-                if (TruffleRuntimeOptions.getValue(TruffleCompilationExceptionsAreThrown) && !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
+                if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown) &&
+                                !(e.getCause() instanceof BailoutException && !((BailoutException) e.getCause()).isPermanent())) {
                     throw new RuntimeException(e.getCause());
                 } else {
                     if (assertionsEnabled()) {
