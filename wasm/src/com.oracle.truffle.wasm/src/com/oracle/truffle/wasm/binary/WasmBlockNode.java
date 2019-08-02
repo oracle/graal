@@ -274,6 +274,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // - A value larger than 0 indicates that we need to branch to a level "shallower" than the current
                     //   loop block (break out of the loop and even further).
                     int unwindCounter = loopNode.execute(context, frame);
+                    assert unwindCounter != 0;
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
                     }
