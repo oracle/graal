@@ -88,11 +88,22 @@ public final class ImageSingletons {
 
     /**
      * Checks if a singleton is in the registry. The key must be a compile time constant, so that
-     * the call to this method can be replaced with the constant {@code true} of {@code false}.
+     * the call to this method can be replaced with the constant {@code true} or {@code false}.
+     * <p>
+     * The method returns {@code false} since 19.3.0 when not used in the context of a native image.
+     * As such it is safe to write:
+     *
+     * {@codesnippet org.graalvm.nativeimage.ImageSingletonsTest}
+     *
+     * and let such code run fine in the context of {@link ImageInfo#inImageCode() native image} as
+     * well as outside of it.
      *
      * @since 19.0
      */
     public static boolean contains(Class<?> key) {
+        if (!ImageInfo.inImageCode()) {
+            return false;
+        }
         return ImageSingletonsSupport.get().contains(key);
     }
 
