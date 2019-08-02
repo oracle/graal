@@ -28,6 +28,7 @@ import static com.oracle.svm.agent.Support.check;
 import static com.oracle.svm.agent.Support.checkJni;
 import static com.oracle.svm.agent.Support.fromCString;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_THREAD_END;
+import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_DEATH;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_INIT;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_VM_START;
 import static com.oracle.svm.agent.jvmti.JvmtiEventMode.JVMTI_ENABLE;
@@ -230,6 +231,7 @@ public final class Agent {
         JvmtiEventCallbacks callbacks = UnmanagedMemory.calloc(SizeOf.get(JvmtiEventCallbacks.class));
         callbacks.setVMInit(onVMInitLiteral.getFunctionPointer());
         callbacks.setVMStart(onVMStartLiteral.getFunctionPointer());
+        callbacks.setVMDeath(onVMDeathLiteral.getFunctionPointer());
         callbacks.setThreadEnd(onThreadEndLiteral.getFunctionPointer());
 
         accessAdvisor = new AccessAdvisor();
@@ -279,6 +281,7 @@ public final class Agent {
 
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_START, nullHandle()));
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullHandle()));
+        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_DEATH, nullHandle()));
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JVMTI_ENABLE, JVMTI_EVENT_THREAD_END, nullHandle()));
         return 0;
     }
@@ -437,6 +440,15 @@ public final class Agent {
         }
     }
 
+    @CEntryPoint
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    public static void onVMDeath(@SuppressWarnings("unused") JvmtiEnv jvmti, @SuppressWarnings("unused") JNIEnvironment jni) {
+        accessAdvisor.setInLivePhase(false);
+        if (traceWriter != null) {
+            traceWriter.tracePhaseChange("dead");
+        }
+    }
+
     @CEntryPoint(name = "Agent_OnUnload")
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
     public static void onUnload(@SuppressWarnings("unused") JNIJavaVM vm) {
@@ -511,6 +523,8 @@ public final class Agent {
     private static final CEntryPointLiteral<CFunctionPointer> onVMInitLiteral = CEntryPointLiteral.create(Agent.class, "onVMInit", JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class);
 
     private static final CEntryPointLiteral<CFunctionPointer> onVMStartLiteral = CEntryPointLiteral.create(Agent.class, "onVMStart", JvmtiEnv.class, JNIEnvironment.class);
+
+    private static final CEntryPointLiteral<CFunctionPointer> onVMDeathLiteral = CEntryPointLiteral.create(Agent.class, "onVMDeath", JvmtiEnv.class, JNIEnvironment.class);
 
     private static final CEntryPointLiteral<CFunctionPointer> onThreadEndLiteral = CEntryPointLiteral.create(Agent.class, "onThreadEnd", JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class);
 
