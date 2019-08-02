@@ -95,6 +95,10 @@ import com.oracle.svm.core.posix.headers.linux.LinuxIn;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 
+/** Dummy class to have a class with the file's name. */
+public final class PosixJavaNetSubstitutions {
+}
+
 /* { Allow names with non-standard names: Checkstyle: stop */
 @TargetClass(className = "java.net.PlainDatagramSocketImpl", onlyWith = JDK11OrEarlier.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
