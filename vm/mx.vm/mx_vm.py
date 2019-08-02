@@ -835,7 +835,7 @@ def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
 
 class SvmSupport(object):
     def __init__(self):
-        self._svm_supported = has_component('ni', stage1=True)
+        self._svm_supported = has_component('svm', stage1=True)
         self._debug_supported = self._svm_supported and has_component('svmee', stage1=True)
         self._pgo_supported = self._svm_supported and has_component('svmee', stage1=True)
 
