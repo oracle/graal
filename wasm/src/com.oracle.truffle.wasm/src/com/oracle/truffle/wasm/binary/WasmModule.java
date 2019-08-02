@@ -67,7 +67,7 @@ public class WasmModule implements TruffleObject {
          */
         @CompilationFinal(dimensions = 1) private boolean[] globalMut;
 
-        private static boolean initialized = false;
+        private boolean initialized = false;
 
         private ModuleGlobals() {
         }
