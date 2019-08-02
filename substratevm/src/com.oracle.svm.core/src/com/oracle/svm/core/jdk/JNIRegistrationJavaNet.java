@@ -135,6 +135,15 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                                 method(a, "sun.net.ExtendedOptionsImpl", "init"));
             }
         }
+        if (isWindows()) {
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainDatagramSocketImplInit,
+                            method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
+            a.registerReachabilityHandler(registerNetworkInterfaceInit,
+                            method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
+
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
+                            method(a, "java.net.DualStackPlainSocketImpl", "initIDs"));
+        }
     }
 
     private static void registerInitInetAddressIDs(DuringAnalysisAccess a) {
@@ -165,12 +174,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
         JNIRuntimeAccess.register(clazz(a, "java.net.Inet6Address$Inet6AddressHolder"));
         JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address$Inet6AddressHolder", "ipaddress", "scope_id", "scope_id_set", "scope_ifname"));
-
-        if (isWindows()) {
-            JNIRuntimeAccess.register(clazz(a, "java.net.DualStackPlainDatagramSocketImpl"));
-            JNIRuntimeAccess.register(fields(a, "java.net.TwoStacksPlainDatagramSocketImpl", "fd1", "fduse", "lastfd"));
-            JNIRuntimeAccess.register(fields(a, "java.net.TwoStacksPlainSocketImpl", "fd1", "lastfd"));
-        }
     }
 
     private static void registerNetworkInterfaceInit(DuringAnalysisAccess a) {
@@ -204,6 +207,11 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
         JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainDatagramSocketImpl", "timeout", "trafficClass", "connected", "connectedAddress", "connectedPort"));
         JNIRuntimeAccess.register(fields(a, "java.net.DatagramSocketImpl", "fd", "localPort"));
+
+        if (isWindows()) {
+            JNIRuntimeAccess.register(clazz(a, "java.net.DualStackPlainDatagramSocketImpl"));
+            JNIRuntimeAccess.register(fields(a, "java.net.TwoStacksPlainDatagramSocketImpl", "fd1", "fduse", "lastfd"));
+        }
     }
 
     private static void registerPlainSocketImplInitProto(DuringAnalysisAccess a) {
@@ -211,6 +219,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainSocketImpl", "timeout", "trafficClass"));
         if (isPosix()) {
             JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainSocketImpl", "fdLock", "closePending"));
+        }
+        if (isWindows()) {
+            JNIRuntimeAccess.register(fields(a, "java.net.TwoStacksPlainSocketImpl", "fd1", "lastfd"));
         }
         JNIRuntimeAccess.register(clazz(a, "java.net.SocketInputStream"));
         JNIRuntimeAccess.register(clazz(a, "java.net.SocketOutputStream"));
