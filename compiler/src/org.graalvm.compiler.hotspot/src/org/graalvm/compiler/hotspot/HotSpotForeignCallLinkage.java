@@ -132,6 +132,8 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
 
     void setCompiledStub(Stub stub);
 
+    RegisterEffect getEffect();
+
     /**
      * Determines if this is a call to a compiled {@linkplain Stub stub}.
      */

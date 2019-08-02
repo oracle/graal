@@ -430,7 +430,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @param gen the result to examine
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
-    protected final EconomicSet<Register> gatherDestroyedCallerRegisters(HotSpotLIRGenerationResult gen) {
+    private EconomicSet<Register> gatherDestroyedCallerRegisters(HotSpotLIRGenerationResult gen) {
         LIR lir = gen.getLIR();
         final EconomicSet<Register> preservedRegisters = EconomicSet.create(Equivalence.IDENTITY);
         final EconomicSet<Register> destroyedRegisters = EconomicSet.create(Equivalence.IDENTITY);
