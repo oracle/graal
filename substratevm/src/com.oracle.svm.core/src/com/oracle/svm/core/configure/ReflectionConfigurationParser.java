@@ -46,7 +46,6 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private final ReflectionConfigurationParserDelegate<T> delegate;
     private final boolean allowIncompleteClasspath;
 
-
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
         this(delegate, false);
     }
