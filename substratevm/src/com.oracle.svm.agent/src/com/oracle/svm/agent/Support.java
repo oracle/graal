@@ -85,13 +85,13 @@ public final class Support {
 
     static String getSystemProperty(JvmtiEnv jvmti, String propertyName) {
         try (CCharPointerHolder propertyKey = toCString(propertyName)) {
+            String propertyValue = null;
             CCharPointerPointer propertyValuePtr = StackValue.get(CCharPointerPointer.class);
-            check(jvmti.getFunctions().GetSystemProperty().invoke(jvmti, propertyKey.get(), propertyValuePtr));
-            String propertyValue = fromCString(propertyValuePtr.read());
-            check(jvmti.getFunctions().Deallocate().invoke(jvmti, propertyValuePtr.read()));
+            if (jvmti.getFunctions().GetSystemProperty().invoke(jvmti, propertyKey.get(), propertyValuePtr) == JvmtiError.JVMTI_ERROR_NONE) {
+                propertyValue = fromCString(propertyValuePtr.read());
+                check(jvmti.getFunctions().Deallocate().invoke(jvmti, propertyValuePtr.read()));
+            }
             return propertyValue;
-        } catch (Throwable t) {
-            return null;
         }
     }
 
