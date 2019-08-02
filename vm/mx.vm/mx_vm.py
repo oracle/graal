@@ -122,6 +122,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     support_distributions=['vm:VM_GRAALVM_SUPPORT']
 ))
 
+default_components = ['gvm']
+
 graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
 _registered_graalvm_components = {}
@@ -148,6 +150,7 @@ def registered_graalvm_components(stage1=False):
                     components.extend(component.direct_dependencies())
 
         # Expand dependencies
+        add_dependencies([mx_sdk.graalvm_component_by_name(name) for name in default_components], excludes=True)
         add_dependencies(components_include_list, excludes=True)
 
         # If we are going to build native launchers or libraries, i.e., if SubstrateVM is included,
