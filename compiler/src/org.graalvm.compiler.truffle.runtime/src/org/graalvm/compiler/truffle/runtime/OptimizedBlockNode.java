@@ -611,9 +611,9 @@ public final class OptimizedBlockNode<T extends Node & VoidElement> extends Bloc
             element = elementParent;
             elementParent = elementParent.getParent();
         }
-        assert elementParent == this;
         if (elementParent != this) {
             // could not find element, should not happen
+            assert false;
             return false;
         }
 
@@ -630,9 +630,9 @@ public final class OptimizedBlockNode<T extends Node & VoidElement> extends Bloc
                 break;
             }
         }
-        assert elementIndex != -1;
         if (elementIndex == -1) {
             // could not find element, should not happen
+            assert false;
             return false;
         }
         assert elementIndex < getElements().length;
