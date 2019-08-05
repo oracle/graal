@@ -26,6 +26,9 @@ package com.oracle.truffle.tools.coverage;
 
 import static com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -36,11 +39,11 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
-import com.oracle.truffle.tools.coverage.impl.RootCoverageNode;
-import com.oracle.truffle.tools.coverage.impl.StatementCoverageNode;
+import com.oracle.truffle.tools.coverage.impl.CoverageNode;
 
 public class CoverageTracker implements AutoCloseable {
 
@@ -58,9 +61,7 @@ public class CoverageTracker implements AutoCloseable {
             f = DEFAULT_FILTER;
         }
         final Instrumenter instrumenter = env.getInstrumenter();
-        instrumentStatements(f, instrumenter);
-        instrumentRoots(f, instrumenter);
-        coverage = new Coverage();
+        instrument(f, instrumenter);
     }
 
     public synchronized void endTracking() {
@@ -69,6 +70,10 @@ public class CoverageTracker implements AutoCloseable {
         }
         tracking = false;
         disposeBindings();
+    }
+
+    public Coverage getCoverage() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -90,90 +95,47 @@ public class CoverageTracker implements AutoCloseable {
 
         });
     }
+
     private final Env env;
     private boolean tracking;
     private boolean closed;
-    private EventBinding<LoadSourceSectionListener> loadedStatementBinding;
-    private EventBinding<ExecutionEventNodeFactory> execStatementBinding;
-
-    private EventBinding<LoadSourceSectionListener> loadedRootBinding;
-
-    private EventBinding<ExecutionEventNodeFactory> execRootBinding;
-
-    private Coverage coverage;
-
-    private synchronized void addLoadedStatement(SourceSection sourceSection) {
-        coverage.addLoadedStatement(sourceSection);
-    }
-
-    private synchronized void addLoadedRoot(SourceSection rootSection) {
-        coverage.addLoadedRoot(rootSection);
-    }
-
-    public synchronized void addCoveredStatement(SourceSection sourceSection) {
-        coverage.addCoveredStatement(sourceSection);
-    }
-
-    public synchronized void addCoveredRoot(SourceSection rootSection) {
-        coverage.addCoveredRoot(rootSection);
-    }
-    public synchronized Coverage getCoverage() {
-        return coverage.readOnlyCopy();
-    }
+    private EventBinding<LoadSourceSectionListener> loadedBinding;
+    private EventBinding<ExecutionEventNodeFactory> coveredBinding;
+    private final List<SourceSection> loadedSections = new ArrayList<>();
+    private final List<Node> loadedNodes = new ArrayList<>();
+    final List<SourceSection> covered = new ArrayList<>();
+    private final List<Node> coveredNodes = new ArrayList<>();
 
     private CoverageTracker(Env env) {
         this.env = env;
     }
 
-    private void instrumentRoots(SourceSectionFilter f, Instrumenter instrumenter) {
-        final SourceSectionFilter rootFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).and(f).build();
-        loadedRootBinding = instrumenter.attachLoadSourceSectionListener(rootFilter, new LoadSourceSectionListener() {
+    private void instrument(SourceSectionFilter f, Instrumenter instrumenter) {
+        loadedBinding = instrumenter.attachLoadSourceSectionListener(f, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
-                CoverageTracker.this.addLoadedRoot(event.getSourceSection());
+                loadedSections.add(event.getSourceSection());
+                loadedNodes.add(event.getNode());
             }
         }, false);
-        execRootBinding = instrumenter.attachExecutionEventFactory(rootFilter, new ExecutionEventNodeFactory() {
+        coveredBinding = instrumenter.attachExecutionEventFactory(f, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
-                return new RootCoverageNode(CoverageTracker.this, context.getInstrumentedSourceSection());
-            }
-        });
-    }
+                return new CoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode()) {
 
-    private void instrumentStatements(SourceSectionFilter f, Instrumenter instrumenter) {
-        final SourceSectionFilter statementFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).and(f).build();
-        loadedStatementBinding = instrumenter.attachLoadSourceSectionListener(statementFilter, new LoadSourceSectionListener() {
-            @Override
-            public void onLoad(LoadSourceSectionEvent event) {
-                CoverageTracker.this.addLoadedStatement(event.getSourceSection());
-            }
-        }, false);
-        execStatementBinding = instrumenter.attachExecutionEventFactory(statementFilter, new ExecutionEventNodeFactory() {
-            @Override
-            public ExecutionEventNode create(EventContext context) {
-                return new StatementCoverageNode(CoverageTracker.this, context.getInstrumentedSourceSection());
+                    @Override
+                    protected void notifyTracker() {
+                        covered.add(sourceSection);
+                        coveredNodes.add(instrumentedNode);
+                    }
+                };
             }
         });
+
     }
 
     private void disposeBindings() {
-        if (loadedStatementBinding != null) {
-            loadedStatementBinding.dispose();
-            loadedStatementBinding = null;
-        }
-        if (execStatementBinding != null) {
-            execStatementBinding.dispose();
-            execStatementBinding = null;
-        }
-        if (loadedRootBinding != null) {
-            loadedRootBinding.dispose();
-            loadedRootBinding = null;
-        }
-        if (execRootBinding != null) {
-            execRootBinding.dispose();
-            execRootBinding = null;
-        }
+        loadedBinding.dispose();
+        coveredBinding.dispose();
     }
-
 }

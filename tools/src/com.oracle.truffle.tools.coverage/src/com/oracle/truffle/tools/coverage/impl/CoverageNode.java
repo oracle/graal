@@ -27,14 +27,17 @@ package com.oracle.truffle.tools.coverage.impl;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.tools.coverage.CoverageTracker;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class CoverageNode extends ExecutionEventNode {
-    protected final CoverageTracker tracker;
+    protected final SourceSection sourceSection;
+    protected final Node instrumentedNode;
     @CompilerDirectives.CompilationFinal private boolean covered;
 
-    public CoverageNode(CoverageTracker tracker) {
-        this.tracker = tracker;
+    public CoverageNode(SourceSection sourceSection, Node instrumentedNode) {
+        this.sourceSection = sourceSection;
+        this.instrumentedNode = instrumentedNode;
     }
 
     @Override
