@@ -56,6 +56,8 @@ import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
+import com.oracle.truffle.api.nodes.BlockNode;
+import com.oracle.truffle.api.nodes.BlockNode.VoidElement;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -326,6 +328,10 @@ public abstract class TVMCI {
 
     protected CastUnsafe getCastUnsafe() {
         return null;
+    }
+
+    protected <T extends Node & VoidElement> BlockNode<T> createBlockNode(T[] elements) {
+        return new DefaultBlockNode<>(elements);
     }
 
 }
