@@ -35,6 +35,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import com.oracle.truffle.tools.coverage.SourceCoverage;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -229,8 +230,19 @@ public class CoverageInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (enabled) {
-            final OptionValues options = env.getOptions();
-            CoverageCLI.handleOutput(chooseOutputStream(env, OUTPUT_FILE), tracker.getCoverage(), OUTPUT.getValue(options));
+            PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+            SourceCoverage[] coverage = tracker.getCoverage();
+            switch (OUTPUT.getValue(env.getOptions())) {
+                case HISTOGRAM:
+                    new CoverageCLI(out, coverage).printHistogramOutput();
+                    break;
+                case LINES:
+                    new CoverageCLI(out, coverage).printLinesOutput();
+                    break;
+                case JSON:
+                    new JSONPrinter(out, coverage).print();
+                    break;
+            }
             tracker.close();
         }
     }
