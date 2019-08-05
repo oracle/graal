@@ -44,6 +44,41 @@ import com.oracle.truffle.tools.coverage.impl.StatementCoverageNode;
 
 public class CoverageTracker implements AutoCloseable {
 
+    public synchronized void startTracking(SourceSectionFilter filter) {
+        if (closed) {
+            throw new IllegalStateException("Coverage Tracker is closed");
+        }
+        if (tracking) {
+            throw new IllegalStateException("Coverage Tracker is already tracking");
+        }
+        assert Thread.holdsLock(this);
+        tracking = true;
+        SourceSectionFilter f = filter;
+        if (f == null) {
+            f = DEFAULT_FILTER;
+        }
+        final Instrumenter instrumenter = env.getInstrumenter();
+        instrumentStatements(f, instrumenter);
+        instrumentRoots(f, instrumenter);
+        coverage = new Coverage();
+    }
+
+    public synchronized void endTracking() {
+        if (!tracking) {
+            throw new IllegalStateException("Coverage tracker is not tracking");
+        }
+        tracking = false;
+        disposeBindings();
+    }
+
+    @Override
+    public synchronized void close() {
+        closed = true;
+        if (tracking) {
+            endTracking();
+        }
+    }
+
     private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().includeInternal(false).build();
 
     static {
@@ -55,21 +90,17 @@ public class CoverageTracker implements AutoCloseable {
 
         });
     }
-
     private final Env env;
-    private SourceSectionFilter filter;
     private boolean tracking;
     private boolean closed;
     private EventBinding<LoadSourceSectionListener> loadedStatementBinding;
     private EventBinding<ExecutionEventNodeFactory> execStatementBinding;
-    private EventBinding<LoadSourceSectionListener> loadedRootBinding;
-    private EventBinding<ExecutionEventNodeFactory> execRootBinding;
-    private Coverage coverage;
 
-    @Override
-    public void close() {
-        closed = true;
-    }
+    private EventBinding<LoadSourceSectionListener> loadedRootBinding;
+
+    private EventBinding<ExecutionEventNodeFactory> execRootBinding;
+
+    private Coverage coverage;
 
     private synchronized void addLoadedStatement(SourceSection sourceSection) {
         coverage.addLoadedStatement(sourceSection);
@@ -86,49 +117,12 @@ public class CoverageTracker implements AutoCloseable {
     public synchronized void addCoveredRoot(SourceSection rootSection) {
         coverage.addCoveredRoot(rootSection);
     }
-
     public synchronized Coverage getCoverage() {
         return coverage.readOnlyCopy();
     }
 
-    public enum Mode {
-        STATEMENTS,
-        ROOTS
-
-    }
-
-    public CoverageTracker(Env env) {
+    private CoverageTracker(Env env) {
         this.env = env;
-    }
-
-    public void setFilter(SourceSectionFilter filter) {
-        this.filter = filter;
-    }
-
-    public synchronized void setTracking(boolean tracking) {
-        if (closed) {
-            throw new IllegalStateException("Coverage Tracer is already closed");
-        }
-        if (this.tracking != tracking) {
-            this.tracking = tracking;
-            resetTracking();
-        }
-    }
-
-    private void resetTracking() {
-        assert Thread.holdsLock(this);
-        disposeBindings();
-        if (!tracking || closed) {
-            return;
-        }
-        SourceSectionFilter f = this.filter;
-        if (f == null) {
-            f = DEFAULT_FILTER;
-        }
-        final Instrumenter instrumenter = env.getInstrumenter();
-        instrumentStatements(f, instrumenter);
-        instrumentRoots(f, instrumenter);
-        coverage = new Coverage();
     }
 
     private void instrumentRoots(SourceSectionFilter f, Instrumenter instrumenter) {
