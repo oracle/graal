@@ -29,16 +29,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.RootCoverage;
 import com.oracle.truffle.tools.coverage.SourceCoverage;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 
 final class CoverageCLI {
 
@@ -64,99 +59,20 @@ final class CoverageCLI {
             final String path = sourceCoverage.getSource().getPath();
             printLine();
             printSummaryHeader();
-            out.println(String.format(format, path, statementCoverage(sourceCoverage), lineCoverage(sourceCoverage), rootCoverage(sourceCoverage)));
+            final LineCoverage lineCoverage = new LineCoverage(sourceCoverage);
+            out.println(String.format(format, path, statementCoverage(sourceCoverage), lineCoverage(lineCoverage), rootCoverage(sourceCoverage)));
             out.println();
-            printLinesOfSource(sourceCoverage);
+            printLinesOfSource(sourceCoverage.getSource(), lineCoverage);
         }
         printLine();
     }
 
-    private static Set<Integer> nonCoveredLineNumbers(SourceCoverage sourceCoverage) {
-        Set<SourceSection> nonCoveredSections = loadedSourceSections(sourceCoverage);
-        nonCoveredSections.removeAll(coveredSourceSections(sourceCoverage));
-        return statementsToLineNumbers(nonCoveredSections);
-    }
-
-    private static Set<SourceSection> coveredSourceSections(SourceCoverage sourceCoverage) {
-        Set<SourceSection> sourceSections = new HashSet<>();
-        for (RootCoverage root : sourceCoverage.getRoots()) {
-            sourceSections.addAll(Arrays.asList(root.getCoveredStatements()));
-        }
-        return sourceSections;
-    }
-
-    private static Set<SourceSection> loadedSourceSections(SourceCoverage sourceCoverage) {
-        Set<SourceSection> sourceSections = new HashSet<>();
-        for (RootCoverage root : sourceCoverage.getRoots()) {
-            sourceSections.addAll(Arrays.asList(root.getLoadedStatements()));
-        }
-        return sourceSections;
-    }
-
-    private static Set<Integer> loadedLineNumbers(SourceCoverage sourceCoverage) {
-        return statementsToLineNumbers(loadedSourceSections(sourceCoverage));
-    }
-
-    private static Set<Integer> coveredLineNumbers(SourceCoverage source) {
-        return statementsToLineNumbers(coveredSourceSections(source));
-    }
-
-    private static Set<Integer> statementsToLineNumbers(Set<SourceSection> sourceSections) {
-        Set<Integer> lines = new HashSet<>();
-        for (SourceSection ss : sourceSections) {
-            for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
-                lines.add(i);
-            }
-        }
-        return lines;
-    }
-
-    private void printLinesOfSource(SourceCoverage sourceCoverage) {
-        Set<Integer> nonCoveredLineNumbers = nonCoveredLineNumbers(sourceCoverage);
-        Set<Integer> loadedLineNumbers = loadedLineNumbers(sourceCoverage);
-        Set<Integer> coveredLineNumbers = coveredLineNumbers(sourceCoverage);
-        Set<Integer> nonCoveredRootLineNumbers = nonCoveredRootLineNumbers(sourceCoverage);
-        Set<Integer> loadedRootLineNumbers = loadedRootLineNumbers(sourceCoverage);
-        Set<Integer> coveredRootLineNumbers = coveredRootLineNumbers(sourceCoverage);
-        final Source source = sourceCoverage.getSource();
+    private void printLinesOfSource(Source source, LineCoverage lineCoverage) {
         for (int i = 1; i <= source.getLineCount(); i++) {
-            char covered = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, coveredLineNumbers, i, 'p', '-', '+');
-            char rootCovered = getCoverageCharacter(nonCoveredRootLineNumbers,
-                            loadedRootLineNumbers, coveredRootLineNumbers, i, '!', '!', ' ');
+            char covered = lineCoverage.getStatementCoverageCharacter(i);
+            char rootCovered = lineCoverage.getRootCoverageCharacter(i);
             out.println(String.format("%s%s %s", covered, rootCovered, source.getCharacters(i)));
         }
-    }
-
-    private Set<Integer> nonCoveredRootLineNumbers(SourceCoverage sourceCoverage) {
-        final HashSet<SourceSection> sections = loadedRootSections(sourceCoverage);
-        sections.removeAll(coveredRootSections(sourceCoverage));
-        return statementsToLineNumbers(sections);
-    }
-
-    private Set<Integer> coveredRootLineNumbers(SourceCoverage sourceCoverage) {
-        return statementsToLineNumbers(coveredRootSections(sourceCoverage));
-    }
-
-    private HashSet<SourceSection> coveredRootSections(SourceCoverage sourceCoverage) {
-        final HashSet<SourceSection> sections = new HashSet<>();
-        for (RootCoverage rootCoverage : sourceCoverage.getRoots()) {
-            if (rootCoverage.isCovered()) {
-                sections.add(rootCoverage.getSourceSection());
-            }
-        }
-        return sections;
-    }
-
-    private Set<Integer> loadedRootLineNumbers(SourceCoverage sourceCoverage) {
-        return statementsToLineNumbers(loadedRootSections(sourceCoverage));
-    }
-
-    private HashSet<SourceSection> loadedRootSections(SourceCoverage sourceCoverage) {
-        final HashSet<SourceSection> sections = new HashSet<>();
-        for (RootCoverage rootCoverage : sourceCoverage.getRoots()) {
-            sections.add(rootCoverage.getSourceSection());
-        }
-        return sections;
     }
 
     private void printLinesLegend() {
@@ -168,17 +84,6 @@ final class CoverageCLI {
         out.println("  ! indicates the line is part of a root that was NOT covered during execution");
     }
 
-    private static char getCoverageCharacter(Set<Integer> nonCoveredLineNumbers, Set<Integer> loadedLineNumbers, Set<Integer> coveredLineNumbers, int i, char partly, char not, char yes) {
-        if (loadedLineNumbers.contains(i)) {
-            if (coveredLineNumbers.contains(i) && nonCoveredLineNumbers.contains(i)) {
-                return partly;
-            }
-            return nonCoveredLineNumbers.contains(i) ? not : yes;
-        } else {
-            return ' ';
-        }
-    }
-
     void printHistogramOutput() {
         printLine();
         out.println("Code coverage histogram.");
@@ -188,7 +93,10 @@ final class CoverageCLI {
         printLine();
         for (SourceCoverage sourceCoverage : coverage) {
             final String path = sourceCoverage.getSource().getPath();
-            final String line = String.format(format, path, statementCoverage(sourceCoverage), lineCoverage(sourceCoverage), rootCoverage(sourceCoverage));
+            final String line = String.format(format, path,
+                            statementCoverage(sourceCoverage),
+                            lineCoverage(new LineCoverage(sourceCoverage, false)),
+                            rootCoverage(sourceCoverage));
             out.println(line);
         }
         printLine();
@@ -256,11 +164,8 @@ final class CoverageCLI {
         return percentFormat(100 * (double) covered / coverage.getRoots().length);
     }
 
-    private static String lineCoverage(SourceCoverage sourceCoverage) {
-        final int loadedSize = loadedLineNumbers(sourceCoverage).size();
-        final int coveredSize = nonCoveredLineNumbers(sourceCoverage).size();
-        final double coverage = ((double) loadedSize - coveredSize) / loadedSize;
-        return percentFormat(100 * coverage);
+    private static String lineCoverage(LineCoverage lineCoverage) {
+        return percentFormat(100 * lineCoverage.getCoverage());
     }
 
 }
