@@ -223,8 +223,8 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
     }
 
     private Object registerRoot(ExternalLibrary lib, FunctionType newFunctionType, DecoratedRoot decoratedRoot) {
-        LLVMFunctionDescriptor wrappedFunction = LLVMFunctionDescriptor.createDescriptor(getContext(), "<wrapper>", newFunctionType, -1);
-        wrappedFunction.define(lib, new LLVMIRFunction(Truffle.getRuntime().createCallTarget(decoratedRoot), null));
+        LLVMIRFunction function = new LLVMIRFunction(Truffle.getRuntime().createCallTarget(decoratedRoot), null);
+        LLVMFunctionDescriptor wrappedFunction = new LLVMFunctionDescriptor(getContext(), "<wrapper>", newFunctionType, -1, function, lib);
         return LLVMManagedPointer.create(wrappedFunction);
     }
 
