@@ -467,7 +467,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
             if (node instanceof SafepointCheckNode) {
                 append(new AArch64DecrementingSafepointCheckOp());
-                append(new AArch64ControlFlow.BranchOp(AArch64Assembler.ConditionFlag.EQ, trueSuccessor, falseSuccessor, trueSuccessorProbability));
+                append(new AArch64ControlFlow.BranchOp(AArch64Assembler.ConditionFlag.LE, trueSuccessor, falseSuccessor, trueSuccessorProbability));
             } else {
                 super.emitBranch(node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
             }

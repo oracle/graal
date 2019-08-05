@@ -104,16 +104,15 @@ import com.oracle.svm.core.util.VMError;
  * <p>
  * {@link ThreadingSupportFeature} implements an optional per-thread timer on top of the safepoint
  * mechanism. For that purpose, a safepoint check is actually implemented as a decrement of
- * {@link #safepointRequested} with a zero check that triggers a call to
+ * {@link #safepointRequested} with a <= 0 check that triggers a call to
  * {@link #slowPathSafepointCheck}. If a timer is registered and the slow path determines that that
  * timer has expired, a timer callback is executed and {@link #safepointRequested} is reset with a
  * value that estimates the number of safepoint checks during the intended timer interval. When an
- * actual safepoint is requested, the master overwrites each slave's {@link #safepointRequested}
- * with {@link SafepointRequestValues#ENTER} so it becomes 0 on the next decrement. When no timer is
- * active on a thread, its {@link #safepointRequested} value is reset to
- * {@link SafepointRequestValues#RESET}. Because {@link #safepointRequested} still eventually
- * decrements to 0, threads can very infrequently call {@link #slowPathSafepointCheck} without
- * cause.
+ * actual safepoint is requested, the master does an arithmetic negation of each slave's
+ * {@link #safepointRequested} value. When no timer is active on a thread, its
+ * {@link #safepointRequested} value is reset to {@link SafepointRequestValues#RESET}. Because
+ * {@link #safepointRequested} still eventually decrements to 0, threads can very infrequently call
+ * {@link #slowPathSafepointCheck} without cause.
  *
  * @see SafepointCheckNode
  */
@@ -260,11 +259,22 @@ public final class Safepoint {
 
     /** Specific values for {@link #safepointRequested}. */
     public interface SafepointRequestValues {
-        int RESET = 0xffffffff;
+        int RESET = Integer.MAX_VALUE;
         int ENTER = 1;
     }
 
-    /** Per-thread variable for safepoint requests. */
+    /**
+     * Per-thread counter for safepoint requests. It can have one of the following values:
+     * <ul>
+     * <li>value > 0: remaining number of safepoint checks before the safepoint slowpath code is
+     * executed.</li>
+     * <li>value == 0: the safepoint slowpath code will be executed. If the counter is 0, we know
+     * that the thread that owns the counter decremented it to 0 in the safepoint fast path (i.e.,
+     * there is no other way that the counter can reach 0).</li>
+     * <li>value < 0: another thread requested a safepoint by doing an arithmetic negation on the
+     * value.</li>
+     * </ul>
+     */
     static final FastThreadLocalInt safepointRequested = FastThreadLocalFactory.createInt();
 
     /**
@@ -278,6 +288,7 @@ public final class Safepoint {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void setSafepointRequested(IsolateThread vmThread, int value) {
         assert CurrentIsolate.getCurrentThread().isNull() || VMOperationControl.mayExecuteVmOperations();
+        assert value >= 0;
         safepointRequested.setVolatile(vmThread, value);
     }
 
@@ -288,30 +299,13 @@ public final class Safepoint {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void setSafepointRequested(int value) {
-        int oldValue;
-        do {
-            // the update to safepointRequestedValueBeforeSafepoint must be visible before the
-            // update to safepointRequested
-            oldValue = safepointRequested.getVolatile();
-            safepointRequestedValueBeforeSafepoint.setVolatile(0);
-        } while (!safepointRequested.compareAndSet(oldValue, value));
+        assert value >= 0;
+        safepointRequested.setVolatile(value);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static int getSafepointRequested(IsolateThread vmThread) {
-        return safepointRequested.get(vmThread); // need not be volatile
-    }
-
-    static final FastThreadLocalInt safepointRequestedValueBeforeSafepoint = FastThreadLocalFactory.createInt();
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void setSafepointRequestedValueBeforeSafepoint(IsolateThread vmThread, int value) {
-        safepointRequestedValueBeforeSafepoint.setVolatile(vmThread, value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static int getSafepointRequestedValueBeforeSafepoint(IsolateThread vmThread) {
-        return safepointRequestedValueBeforeSafepoint.get(vmThread);
+        return safepointRequested.getVolatile(vmThread);
     }
 
     /**
@@ -506,21 +500,43 @@ public final class Safepoint {
         }
 
         /**
-         * This method tries to request a safepoint for a thread. The other thread can either honor
-         * or ignore the request. If the other thread honors the request, then the old value of
-         * {@link Safepoint#safepointRequested} is stored in
-         * {@link Safepoint#safepointRequestedValueBeforeSafepoint}.
+         * Request a safepoint by doing an atomic arithmetic negation of
+         * {@link Safepoint#safepointRequested}. As a side effect, this also preserves the old value
+         * before a safepoint was requested. Requesting a safepoint does not guarantee that the
+         * other thread will honor that request. It can also decide to ignore it (usually due to
+         * race conditions that can't be avoided for performance reasons).
          */
-        static void requestSafepoint(IsolateThread vmThread) {
-            int oldValue;
+        private static void requestSafepoint(IsolateThread vmThread) {
+            int value;
             do {
-                // the update to safepointRequestedValueBeforeSafepoint must be visible before the
-                // update to safepointRequested
-                oldValue = safepointRequested.getVolatile(vmThread);
-                safepointRequestedValueBeforeSafepoint.setVolatile(vmThread, oldValue);
-            } while (!safepointRequested.compareAndSet(vmThread, oldValue, SafepointRequestValues.ENTER));
+                value = safepointRequested.getVolatile(vmThread);
+                assert value >= 0 : "the value can only be negative if a safepoint was requested";
+            } while (!safepointRequested.compareAndSet(vmThread, value, -value));
 
             Statistics.incRequested();
+        }
+
+        /**
+         * Restores the {@link Safepoint#safepointRequested} value to the value before the safepoint
+         * was requested. For threads that do a native-to-Java transition, it could happen that they
+         * freeze at the transition, even though their {@link Safepoint#safepointRequested} counter
+         * was not negated.
+         */
+        private static void restoreSafepointRequestedValue(IsolateThread vmThread) {
+            int value = getSafepointRequested(vmThread);
+            if (value < 0) {
+                /*
+                 * After requesting a safepoint, the slave thread typically executed one more
+                 * decrement operation before it realized that a safepoint was requested. This only
+                 * does not happen in rare cases (e.g., when a safepoint is requested when the
+                 * safepointRequested value is already 0). The code below always assumes that this
+                 * decrement operation was executed and modifies the value accordingly.
+                 */
+                int newValue = -(value + 2);
+                assert newValue >= -2 && newValue < Integer.MAX_VALUE : "overflow";
+                newValue = newValue < 0 ? 0 : newValue;
+                setSafepointRequested(vmThread, newValue);
+            }
         }
 
         /** Wait for there to be no threads (except myself) still waiting to reach a safepoint. */
@@ -549,7 +565,7 @@ public final class Safepoint {
                         switch (status) {
                             case VMThreads.StatusSupport.STATUS_IN_JAVA: {
                                 /* Re-request the safepoint in case of a lost update. */
-                                if (Integer.compareUnsigned(getSafepointRequested(vmThread), SafepointRequestValues.ENTER) > 0 && !VMThreads.StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
+                                if (getSafepointRequested(vmThread) > 0 && !VMThreads.StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
                                     requestSafepoint(vmThread);
                                 }
                                 notAtSafepoint += 1;
@@ -610,14 +626,12 @@ public final class Safepoint {
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
             // Set all the thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (!isMyself(vmThread)) {
+                if (!isMyself(vmThread) && !VMThreads.StatusSupport.isStatusIgnoreSafepoints(vmThread)) {
                     if (trace.isEnabled()) {
                         trace.string("  vmThread status: ").string(VMThreads.StatusSupport.getStatusString(vmThread));
                     }
 
-                    /* Reset the safepointRequested values to the values before the safepoint. */
-                    setSafepointRequested(vmThread, getSafepointRequestedValueBeforeSafepoint(vmThread));
-                    setSafepointRequestedValueBeforeSafepoint(vmThread, 0);
+                    restoreSafepointRequestedValue(vmThread);
 
                     /*
                      * Release the thread back to native code. Most threads will transition from
@@ -626,7 +640,6 @@ public final class Safepoint {
                      * mutex putting themselves back in native code again.
                      */
                     VMThreads.StatusSupport.setStatusNative(vmThread);
-
                     Statistics.incReleased();
                     if (trace.isEnabled()) {
                         trace.string("  ->  ").string(VMThreads.StatusSupport.getStatusString(vmThread)).newline();

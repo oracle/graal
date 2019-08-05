@@ -52,6 +52,6 @@ public class AMD64DecrementingSafepointCheckOp extends AMD64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         assert SubstrateOptions.MultiThreaded.getValue();
         SubstrateRegisterConfig threadRegister = (SubstrateRegisterConfig) crb.codeCache.getRegisterConfig();
-        masm.decrementl(new AMD64Address(threadRegister.getThreadRegister(), Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())), 1);
+        masm.subl(new AMD64Address(threadRegister.getThreadRegister(), Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())), 1);
     }
 }

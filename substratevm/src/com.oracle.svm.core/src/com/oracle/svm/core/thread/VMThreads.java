@@ -243,7 +243,6 @@ public abstract class VMThreads {
         /* Set initial values for safepointRequested before making the thread visible. */
         assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
         Safepoint.setSafepointRequested(thread, Safepoint.SafepointRequestValues.RESET);
-        Safepoint.setSafepointRequestedValueBeforeSafepoint(thread, 0);
 
         /*
          * Manipulating the VMThread list requires the lock, but the IsolateThread is not set up
