@@ -270,8 +270,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     public CharacterClass register(CharacterClass characterClass) {
         nodeCount.inc();
-        if (!characterClass.getMatcherBuilder().matchesSingleChar()) {
-            if (!characterClass.getMatcherBuilder().matches2CharsWith1BitDifference()) {
+        if (!characterClass.getCharSet().matchesSingleChar()) {
+            if (!characterClass.getCharSet().matches2CharsWith1BitDifference()) {
                 properties.unsetCharClassesCanBeMatchedWithMask();
             }
             properties.setCharClasses();

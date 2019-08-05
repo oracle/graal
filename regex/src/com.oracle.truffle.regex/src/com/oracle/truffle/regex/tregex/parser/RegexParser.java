@@ -177,7 +177,7 @@ public final class RegexParser {
         int maxPath = 0;
         for (int i = 0; i < terms.size(); i++) {
             Term t = terms.get(i);
-            if (t instanceof CharacterClass && (((CharacterClass) t).getMatcherBuilder().matchesSingleChar() || ((CharacterClass) t).getMatcherBuilder().matches2CharsWith1BitDifference())) {
+            if (t instanceof CharacterClass && (((CharacterClass) t).getCharSet().matchesSingleChar() || ((CharacterClass) t).getCharSet().matches2CharsWith1BitDifference())) {
                 if (literalStart < 0) {
                     literalStart = i;
                 }
@@ -677,7 +677,7 @@ public final class RegexParser {
             if (prevSequence.isSingleCharClass()) {
                 CharacterClass prevCC = (CharacterClass) prevSequence.getFirstTerm();
                 CharacterClass curCC = (CharacterClass) curSequence.getFirstTerm();
-                prevCC.setMatcherBuilder(prevCC.getMatcherBuilder().union(curCC.getMatcherBuilder()));
+                prevCC.setCharSet(prevCC.getCharSet().union(curCC.getCharSet()));
                 curSequence.removeLastTerm();
                 if (options.isDumpAutomata()) {
                     // set source section to cover both char classes and the "|" in between

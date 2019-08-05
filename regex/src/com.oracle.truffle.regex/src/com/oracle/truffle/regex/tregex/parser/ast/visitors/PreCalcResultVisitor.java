@@ -127,7 +127,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     protected void visit(CharacterClass characterClass) {
         if (extractLiteral) {
             if (mask == null) {
-                literal[index] = (char) characterClass.getMatcherBuilder().getLo(0);
+                literal[index] = (char) characterClass.getCharSet().getLo(0);
             } else {
                 characterClass.extractSingleChar(literal, mask, index);
             }

@@ -54,7 +54,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 public class CharacterClass extends Term {
 
-    private CharSet matcherBuilder;
+    private CharSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
     private ASTNodeSet<Group> lookBehindEntries;
 
@@ -62,16 +62,16 @@ public class CharacterClass extends Term {
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
      * the {@code matcherBuilder}.
      */
-    CharacterClass(CharSet matcherBuilder) {
-        this.matcherBuilder = matcherBuilder;
-        if (matcherBuilder.matchesNothing()) {
+    CharacterClass(CharSet charSet) {
+        this.charSet = charSet;
+        if (charSet.matchesNothing()) {
             markAsDead();
         }
     }
 
     private CharacterClass(CharacterClass copy) {
         super(copy);
-        matcherBuilder = copy.matcherBuilder;
+        charSet = copy.charSet;
     }
 
     @Override
@@ -88,12 +88,12 @@ public class CharacterClass extends Term {
      * Returns the {@link CharSet} representing the set of characters that can be matched by this
      * {@link CharacterClass}.
      */
-    public CharSet getMatcherBuilder() {
-        return matcherBuilder;
+    public CharSet getCharSet() {
+        return charSet;
     }
 
-    public void setMatcherBuilder(CharSet matcherBuilder) {
-        this.matcherBuilder = matcherBuilder;
+    public void setCharSet(CharSet charSet) {
+        this.charSet = charSet;
     }
 
     public void addLookBehindEntry(RegexAST ast, Group lookBehindEntry) {
@@ -120,7 +120,7 @@ public class CharacterClass extends Term {
     }
 
     public void extractSingleChar(CharArrayBuffer literal, CharArrayBuffer mask) {
-        CharSet c = matcherBuilder;
+        CharSet c = charSet;
         char c1 = (char) c.getLo(0);
         if (c.matches2CharsWith1BitDifference()) {
             int c2 = c.size() == 1 ? c.getHi(0) : c.getLo(1);
@@ -134,7 +134,7 @@ public class CharacterClass extends Term {
     }
 
     public void extractSingleChar(char[] literal, char[] mask, int i) {
-        CharSet c = matcherBuilder;
+        CharSet c = charSet;
         char c1 = (char) c.getLo(0);
         if (c.matches2CharsWith1BitDifference()) {
             int c2 = c.size() == 1 ? c.getHi(0) : c.getLo(1);
@@ -149,13 +149,13 @@ public class CharacterClass extends Term {
 
     @Override
     public String toString() {
-        return matcherBuilder.toString();
+        return charSet.toString();
     }
 
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        final JsonObject json = toJson("CharacterClass").append(Json.prop("matcherBuilder", matcherBuilder));
+        final JsonObject json = toJson("CharacterClass").append(Json.prop("charSet", charSet));
         if (lookBehindEntries != null) {
             json.append(Json.prop("lookBehindEntries", lookBehindEntries.stream().map(RegexASTNode::astNodeId).collect(Collectors.toList())));
         }

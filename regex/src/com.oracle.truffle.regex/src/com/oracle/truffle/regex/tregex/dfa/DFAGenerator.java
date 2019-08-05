@@ -678,8 +678,10 @@ public final class DFAGenerator implements JsonConvertible {
             mask.ensureCapacity(literalEnd - literalStart);
             boolean hasMask = false;
             for (int i = literalStart; i < literalEnd; i++) {
-                ((CharacterClass) rootSeq.getTerms().get(i)).extractSingleChar(literal, mask);
-                hasMask |= ((CharacterClass) rootSeq.getTerms().get(i)).getMatcherBuilder().matches2CharsWith1BitDifference();
+                CharacterClass cc = (CharacterClass) rootSeq.getTerms().get(i);
+                assert cc.getCharSet().matchesSingleChar() || cc.getCharSet().matches2CharsWith1BitDifference();
+                cc.extractSingleChar(literal, mask);
+                hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
             }
             registerStateReplacement(unanchoredInitialState.getId(), new DFAFindInnerLiteralStateNode(unanchoredInitialState.getId(),
                             new short[]{literalLastDFAState.getId()}, new String(literal.toArray()), hasMask ? new String(mask.toArray()) : null, prefixMatcher));
@@ -693,7 +695,7 @@ public final class DFAGenerator implements JsonConvertible {
         NFAStateSet curState = entryStates[0].getNfaTransitionSet().getTargetStateSet().copy();
         NFAStateSet nextState = new NFAStateSet(nfa);
         for (int i = literalStart; i < literalEnd; i++) {
-            CharSet c = ((CharacterClass) rootSeq.getTerms().get(i)).getMatcherBuilder();
+            CharSet c = ((CharacterClass) rootSeq.getTerms().get(i)).getCharSet();
             for (NFAState s : curState) {
                 for (NFAStateTransition t : s.getNext()) {
                     if (i == literalStart && !prefixNFAStates.contains(t.getTarget())) {
