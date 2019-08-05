@@ -230,7 +230,7 @@ public class CoverageInstrument extends TruffleInstrument {
     protected void onDispose(Env env) {
         if (enabled) {
             final OptionValues options = env.getOptions();
-            CoverageCLI.handleOutput(chooseOutputStream(env, OUTPUT_FILE), tracker.getLegacyCoverage(), OUTPUT.getValue(options));
+            CoverageCLI.handleOutput(chooseOutputStream(env, OUTPUT_FILE), tracker.getCoverage(), OUTPUT.getValue(options));
             tracker.close();
         }
     }

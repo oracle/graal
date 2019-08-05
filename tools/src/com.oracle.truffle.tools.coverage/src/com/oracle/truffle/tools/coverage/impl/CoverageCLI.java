@@ -26,34 +26,38 @@ package com.oracle.truffle.tools.coverage.impl;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.coverage.Coverage;
+import com.oracle.truffle.tools.coverage.RootCoverage;
+import com.oracle.truffle.tools.coverage.SourceCoverage;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 final class CoverageCLI {
 
     private final PrintStream out;
-    private final Map<Source, Coverage.PerSource> histogram;
     private final String format;
     private final String summaryHeader;
     private final int summaryHeaderLen;
+    private final SourceCoverage[] coverage;
 
-    private CoverageCLI(PrintStream out, Coverage coverage) {
+    private CoverageCLI(PrintStream out, SourceCoverage[] coverage) {
         this.out = out;
-        histogram = coverage.getCoverage();
-        format = getHistogramLineFormat(histogram);
+        this.coverage = coverage;
+        sortCoverage();
+        format = getHistogramLineFormat(coverage);
         summaryHeader = String.format(format, "Path", "Statements", "Lines", "Roots");
         summaryHeaderLen = summaryHeader.length();
     }
 
-    static void handleOutput(PrintStream out, Coverage coverage, CoverageInstrument.Output output) {
+    static void handleOutput(PrintStream out, SourceCoverage[] coverage, CoverageInstrument.Output output) {
         switch (output) {
             case HISTOGRAM:
                 new CoverageCLI(out, coverage).printHistogramOutput();
@@ -67,39 +71,36 @@ final class CoverageCLI {
         }
     }
 
-    private static void printJson(PrintStream out, Coverage coverage) {
-        JSONObject output = new JSONObject();
-        final Map<Source, Coverage.PerSource> sourceMap = coverage.getCoverage();
-        for (Map.Entry<Source, Coverage.PerSource> entry : sourceMap.entrySet()) {
-            final Coverage.PerSource perSource = entry.getValue();
-            final JSONObject perSourceJson = new JSONObject();
-            perSourceJson.put("loaded_statements", statementsJson(perSource.getLoadedStatements()));
-            perSourceJson.put("covered_statements", statementsJson(perSource.getCoveredStatements()));
-            perSourceJson.put("loaded_roots", statementsJson(perSource.getLoadedRoots()));
-            perSourceJson.put("covered_roots", statementsJson(perSource.getCoveredRoots()));
-            perSourceJson.put("summary", jsonSummary(perSource));
-            output.put(entry.getKey().getPath(), perSourceJson);
+    private static void printJson(PrintStream out, SourceCoverage[] coverage) {
+        JSONArray output = new JSONArray();
+        for (SourceCoverage sourceCoverage: coverage) {
+            final JSONObject sourceJson = new JSONObject();
+            sourceJson.put("path", sourceCoverage.getSource().getPath());
+            final JSONArray rootsJson = new JSONArray();
+            for (RootCoverage rootCoverage : sourceCoverage.getRoots()) {
+                JSONObject rootJson = new JSONObject();
+                rootJson.put("loaded_statements", statementsJson(rootCoverage.getLoadedStatements()));
+                rootJson.put("covered_statements", statementsJson(rootCoverage.getCoveredStatements()));
+                rootJson.put("covered", rootCoverage.isCovered());
+                rootJson.put("source_section", sourceSectionJson(rootCoverage.getSourceSection()));
+                rootJson.put("name", rootCoverage.getName());
+                rootsJson.put(rootJson);
+            }
+            sourceJson.put("roots", rootsJson);
+            output.put(sourceJson);
         }
         out.println(output.toString());
     }
 
-    private static JSONObject jsonSummary(Coverage.PerSource perSource) {
-        JSONObject summary = new JSONObject();
-        summary.put("statement_coverage", perSource.statementCoverage());
-        summary.put("root_coverage", perSource.rootCoverage());
-        summary.put("line_coverage", perSource.lineCoverage());
-        return summary;
-    }
-
-    private static JSONArray statementsJson(Set<SourceSection> statements) {
+    private static JSONArray statementsJson(SourceSection[] statements) {
         final JSONArray array = new JSONArray();
         for (SourceSection statement : statements) {
-            array.put(sourseSectionJson(statement));
+            array.put(sourceSectionJson(statement));
         }
         return array;
     }
 
-    private static JSONObject sourseSectionJson(SourceSection statement) {
+    private static JSONObject sourceSectionJson(SourceSection statement) {
         JSONObject sourceSection = new JSONObject();
         sourceSection.put("characters", statement.getCharacters());
         sourceSection.put("start_line", statement.getStartLine());
@@ -115,32 +116,103 @@ final class CoverageCLI {
     private void printLinesOutput() {
         printLine();
         printLinesLegend();
-        final List<Source> sources = sortedKeys();
-        for (Source source : sources) {
-            final String path = source.getPath();
-            final Coverage.PerSource value = histogram.get(source);
+        for (SourceCoverage sourceCoverage : coverage) {
+            final String path = sourceCoverage.getSource().getPath();
             printLine();
             printSummaryHeader();
-            out.println(String.format(format, path, statementCoverage(value), lineCoverage(value), rootCoverage(value)));
-            out.println("");
-            printLinesOfSource(source);
+            out.println(String.format(format, path, statementCoverage(sourceCoverage), lineCoverage(sourceCoverage), rootCoverage(sourceCoverage)));
+            out.println();
+            printLinesOfSource(sourceCoverage);
         }
         printLine();
     }
 
-    private void printLinesOfSource(Source source) {
-        Coverage.PerSource perSource = histogram.get(source);
-        Set<Integer> nonCoveredLineNumbers = perSource.nonCoveredLineNumbers();
-        Set<Integer> loadedLineNumbers = perSource.loadedLineNumbers();
-        Set<Integer> coveredLineNumbers = perSource.coveredLineNumbers();
-        Set<Integer> nonCoveredRootLineNumbers = perSource.nonCoveredRootLineNumbers();
-        Set<Integer> loadedRootLineNumbers = perSource.loadedRootLineNumbers();
-        Set<Integer> coveredRootLineNumbers = perSource.coveredRootLineNumbers();
+    private static Set<Integer> nonCoveredLineNumbers(SourceCoverage sourceCoverage) {
+        Set<SourceSection> nonCoveredSections = loadedSourceSections(sourceCoverage);
+        nonCoveredSections.removeAll(coveredSourceSections(sourceCoverage));
+        return statementsToLineNumbers(nonCoveredSections);
+    }
+
+    private static Set<SourceSection> coveredSourceSections(SourceCoverage sourceCoverage) {
+        Set<SourceSection> sourceSections = new HashSet<>();
+        for (RootCoverage root : sourceCoverage.getRoots()) {
+            sourceSections.addAll(Arrays.asList(root.getCoveredStatements()));
+        }
+        return sourceSections;
+    }
+
+    private static Set<SourceSection> loadedSourceSections(SourceCoverage sourceCoverage) {
+        Set<SourceSection> sourceSections = new HashSet<>();
+        for (RootCoverage root : sourceCoverage.getRoots()) {
+            sourceSections.addAll(Arrays.asList(root.getLoadedStatements()));
+        }
+        return sourceSections;
+    }
+
+    private static Set<Integer> loadedLineNumbers(SourceCoverage sourceCoverage) {
+        return statementsToLineNumbers(loadedSourceSections(sourceCoverage));
+    }
+
+    private static Set<Integer> coveredLineNumbers(SourceCoverage source) {
+        return statementsToLineNumbers(coveredSourceSections(source));
+    }
+
+    private static Set<Integer> statementsToLineNumbers(Set<SourceSection> sourceSections) {
+        Set<Integer> lines = new HashSet<>();
+        for (SourceSection ss : sourceSections) {
+            for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
+                lines.add(i);
+            }
+        }
+        return lines;
+    }
+
+    private void printLinesOfSource(SourceCoverage sourceCoverage) {
+        Set<Integer> nonCoveredLineNumbers = nonCoveredLineNumbers(sourceCoverage);
+        Set<Integer> loadedLineNumbers = loadedLineNumbers(sourceCoverage);
+        Set<Integer> coveredLineNumbers = coveredLineNumbers(sourceCoverage);
+        Set<Integer> nonCoveredRootLineNumbers = nonCoveredRootLineNumbers(sourceCoverage);
+        Set<Integer> loadedRootLineNumbers = loadedRootLineNumbers(sourceCoverage);
+        Set<Integer> coveredRootLineNumbers = coveredRootLineNumbers(sourceCoverage);
+        final Source source = sourceCoverage.getSource();
         for (int i = 1; i <= source.getLineCount(); i++) {
             char covered = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, coveredLineNumbers, i, 'p', '-', '+');
-            char rootCovered = getCoverageCharacter(nonCoveredRootLineNumbers, loadedRootLineNumbers, coveredRootLineNumbers, i, '!', '!', ' ');
+            char rootCovered = getCoverageCharacter(nonCoveredRootLineNumbers,
+                            loadedRootLineNumbers, coveredRootLineNumbers, i, '!', '!', ' ');
             out.println(String.format("%s%s %s", covered, rootCovered, source.getCharacters(i)));
         }
+    }
+
+    private Set<Integer> nonCoveredRootLineNumbers(SourceCoverage sourceCoverage) {
+        final HashSet<SourceSection> sections = loadedRootSections(sourceCoverage);
+        sections.removeAll(coveredRootSections(sourceCoverage));
+        return statementsToLineNumbers(sections);
+    }
+
+    private Set<Integer> coveredRootLineNumbers(SourceCoverage sourceCoverage) {
+        return statementsToLineNumbers(coveredRootSections(sourceCoverage));
+    }
+
+    private HashSet<SourceSection> coveredRootSections(SourceCoverage sourceCoverage) {
+        final HashSet<SourceSection> sections = new HashSet<>();
+        for (RootCoverage rootCoverage : sourceCoverage.getRoots()) {
+            if (rootCoverage.isCovered()) {
+                sections.add(rootCoverage.getSourceSection());
+            }
+        }
+        return sections;
+    }
+
+    private Set<Integer> loadedRootLineNumbers(SourceCoverage sourceCoverage) {
+        return statementsToLineNumbers(loadedRootSections(sourceCoverage));
+    }
+
+    private HashSet<SourceSection> loadedRootSections(SourceCoverage sourceCoverage) {
+        final HashSet<SourceSection> sections = new HashSet<>();
+        for (RootCoverage rootCoverage : sourceCoverage.getRoots()) {
+            sections.add(rootCoverage.getSourceSection());
+        }
+        return sections;
     }
 
     private void printLinesLegend() {
@@ -170,13 +242,21 @@ final class CoverageCLI {
         printLine();
         printSummaryHeader();
         printLine();
-        for (Source source : sortedKeys()) {
-            final String path = source.getPath();
-            final Coverage.PerSource value = histogram.get(source);
-            final String line = String.format(format, path, statementCoverage(value), lineCoverage(value), rootCoverage(value));
+        for (SourceCoverage sourceCoverage : coverage) {
+            final String path = sourceCoverage.getSource().getPath();
+            final String line = String.format(format, path, statementCoverage(sourceCoverage), lineCoverage(sourceCoverage), rootCoverage(sourceCoverage));
             out.println(line);
         }
         printLine();
+    }
+
+    private void sortCoverage() {
+        Arrays.sort(coverage, new Comparator<SourceCoverage>() {
+            @Override
+            public int compare(SourceCoverage o1, SourceCoverage o2) {
+                return o1.getSource().getPath().compareTo(o2.getSource().getPath());
+            }
+        });
     }
 
     private void printSummaryHeader() {
@@ -189,37 +269,54 @@ final class CoverageCLI {
 
     private List<Source> sortedKeys() {
         final List<Source> sorted = new ArrayList<>();
-        sorted.addAll(histogram.keySet());
+        for (SourceCoverage sourceCoverage : coverage) {
+            sorted.add(sourceCoverage.getSource());
+        }
         sorted.removeIf(source -> source.getPath() == null);
         Collections.sort(sorted, (o1, o2) -> o2.getPath().compareTo(o1.getPath()));
         return sorted;
     }
 
-    private static String getHistogramLineFormat(Map<Source, Coverage.PerSource> histogram) {
-        int maxPathLenght = 10;
-        for (Source source : histogram.keySet()) {
-            final String path = source.getPath();
+    private static String getHistogramLineFormat(SourceCoverage[] coverage) {
+        int maxPathLength = 10;
+        for (SourceCoverage source : coverage) {
+            final String path = source.getSource().getPath();
             if (path != null) {
-                maxPathLenght = Math.max(maxPathLenght, path.length());
+                maxPathLength = Math.max(maxPathLength, path.length());
             }
         }
-        return " %-" + maxPathLenght + "s |  %10s |  %7s |  %7s ";
+        return " %-" + maxPathLength + "s |  %10s |  %7s |  %7s ";
     }
 
     private static String percentFormat(double val) {
         return String.format("%.2f%%", val);
     }
 
-    private static String statementCoverage(Coverage.PerSource coverage) {
-        return percentFormat(100 * coverage.statementCoverage());
+    private static String statementCoverage(SourceCoverage coverage) {
+        int loaded = 0;
+        int covered = 0;
+        for (RootCoverage root : coverage.getRoots()) {
+            loaded += root.getLoadedStatements().length;
+            covered += root.getCoveredStatements().length;
+        }
+        return percentFormat(100 * (double) covered / loaded);
     }
 
-    private static String rootCoverage(Coverage.PerSource coverage) {
-        return percentFormat(100 * coverage.rootCoverage());
+    private static String rootCoverage(SourceCoverage coverage) {
+        int covered = 0;
+        for (RootCoverage root : coverage.getRoots()) {
+            if (root.isCovered()) {
+                covered++;
+            }
+        }
+        return percentFormat(100 * (double) covered / coverage.getRoots().length);
     }
 
-    private static String lineCoverage(Coverage.PerSource coverage) {
-        return percentFormat(100 * coverage.lineCoverage());
+    private static String lineCoverage(SourceCoverage sourceCoverage) {
+        final int loadedSize = loadedLineNumbers(sourceCoverage).size();
+        final int coveredSize = nonCoveredLineNumbers(sourceCoverage).size();
+        final double coverage = ((double) loadedSize - coveredSize) / loadedSize;
+        return percentFormat(100 * coverage);
     }
 
 }
