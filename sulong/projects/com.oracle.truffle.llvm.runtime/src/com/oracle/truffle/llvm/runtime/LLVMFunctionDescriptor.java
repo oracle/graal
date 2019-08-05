@@ -275,13 +275,6 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         }
     }
 
-    static final class NullFunction extends Function {
-        @Override
-        TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
-            return LLVMNativePointer.createNull();
-        }
-    }
-
     private void setFunction(Function newFunction) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         synchronized (this) {
