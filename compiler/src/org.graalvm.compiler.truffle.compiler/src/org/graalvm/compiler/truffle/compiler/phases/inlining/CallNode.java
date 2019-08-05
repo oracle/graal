@@ -111,8 +111,7 @@ public class CallNode extends Node {
     }
 
     /**
-     * Returns a fully expanded and partially evaluated CallNode to be used as a root of a
-     * callTree.
+     * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
      */
     static CallNode makeRoot(CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
         Objects.requireNonNull(callTree);
