@@ -65,8 +65,7 @@ public class CoverageTracker implements AutoCloseable {
             f = DEFAULT_FILTER;
         }
         final Instrumenter instrumenter = env.getInstrumenter();
-        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).tagIs(StandardTags.StatementTag.class);
-        instrument(builder.build(), instrumenter);
+        instrument(filter, instrumenter);
     }
 
     public synchronized void endTracking() {
@@ -200,7 +199,7 @@ public class CoverageTracker implements AutoCloseable {
     }
 
     private void instrument(SourceSectionFilter f, Instrumenter instrumenter) {
-        f = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.StatementTag.class).build();
+        f = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.StatementTag.class).and(f).build();
         loadedBinding = instrumenter.attachLoadSourceSectionListener(f, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
