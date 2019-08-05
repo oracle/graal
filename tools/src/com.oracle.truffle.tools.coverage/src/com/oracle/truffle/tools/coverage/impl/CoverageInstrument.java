@@ -52,18 +52,35 @@ import com.oracle.truffle.tools.coverage.CoverageTracker;
 @Registration(id = CoverageInstrument.ID, name = "Code Coverage", version = CoverageInstrument.VERSION, services = CoverageTracker.class)
 public class CoverageInstrument extends TruffleInstrument {
 
+    public static CoverageTracker getTracker(Engine engine) {
+        Instrument instrument = engine.getInstruments().get(ID);
+        if (instrument == null) {
+            throw new IllegalStateException("Sampler is not installed.");
+        }
+        return instrument.lookup(CoverageTracker.class);
+    }
+
+    public static void setFactory(Function<Env, CoverageTracker> factory) {
+        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.coverage")) {
+            throw new IllegalArgumentException("Wrong factory: " + factory);
+        }
+        CoverageInstrument.factory = factory;
+    }
+
     public static final String ID = "codecoverage";
+
     static final String VERSION = "0.1.0";
     private CoverageTracker tracker;
+
     private static Function<Env, CoverageTracker> factory;
     private Boolean enabled;
-
     enum Output {
         HISTOGRAM,
         LINES,
-        JSON,
-    }
 
+        JSON,
+
+    }
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
                     new Function<String, Output>() {
                         @Override
@@ -77,6 +94,7 @@ public class CoverageInstrument extends TruffleInstrument {
                     });
 
     // TODO: following should be a shared lib for tools.
+
     static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
                     new Function<String, Object[]>() {
                         @Override
@@ -144,8 +162,7 @@ public class CoverageInstrument extends TruffleInstrument {
         s.append('$');
         return s.toString();
     }
-
-    static boolean testWildcardExpressions(String value, Object[] fileFilters) {
+    private static boolean testWildcardExpressions(String value, Object[] fileFilters) {
         if (fileFilters == null || fileFilters.length == 0) {
             return true;
         }
@@ -169,29 +186,30 @@ public class CoverageInstrument extends TruffleInstrument {
     }
 
     // @formatter:off
+
     @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
-    @Option(name = "Output", help = "", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "Output", help = "", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
-
-    @Option(name = "TrackInternal", help = "Track internal elements (default:false).", category = OptionCategory.INTERNAL) //
+    @Option(name = "TrackInternal", help = "Track internal elements (default:false).", category = OptionCategory.INTERNAL)
     static final OptionKey<Boolean> TRACK_INTERNAL = new OptionKey<>(false);
 
-    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
+
     // @formatter:on
 
     @Override
@@ -214,7 +232,7 @@ public class CoverageInstrument extends TruffleInstrument {
         }
     }
 
-    protected static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
+    private static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
         try {
             if (option.hasBeenSet(env.getOptions())) {
                 final String outputPath = option.getValue(env.getOptions());
@@ -249,13 +267,6 @@ public class CoverageInstrument extends TruffleInstrument {
         return builder.build();
     }
 
-    public static void setFactory(Function<Env, CoverageTracker> factory) {
-        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.coverage")) {
-            throw new IllegalArgumentException("Wrong factory: " + factory);
-        }
-        CoverageInstrument.factory = factory;
-    }
-
     @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new CoverageInstrumentOptionDescriptors();
@@ -269,14 +280,6 @@ public class CoverageInstrument extends TruffleInstrument {
             // Can not happen
             throw new AssertionError();
         }
-    }
-
-    public static CoverageTracker getTracker(Engine engine) {
-        Instrument instrument = engine.getInstruments().get(ID);
-        if (instrument == null) {
-            throw new IllegalStateException("Sampler is not installed.");
-        }
-        return instrument.lookup(CoverageTracker.class);
     }
 
 }
