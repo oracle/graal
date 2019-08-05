@@ -27,11 +27,15 @@ package org.graalvm.compiler.replacements.test;
 import org.junit.Test;
 
 public class StringIndexOfTest extends StringIndexOfTestBase {
+
+    public StringIndexOfTest(String sourceString, String constantString) {
+        super(sourceString, constantString);
+    }
+
     /*
      * These test definitions could live in the superclass except that the mx junit individual test
      * runner can't find tests in superclasses.
      */
-
     @Override
     @Test
     public void testStringIndexOfConstant() {
