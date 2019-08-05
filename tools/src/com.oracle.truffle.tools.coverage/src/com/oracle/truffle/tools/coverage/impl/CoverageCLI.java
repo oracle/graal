@@ -66,51 +66,9 @@ final class CoverageCLI {
                 new CoverageCLI(out, coverage).printLinesOutput();
                 break;
             case JSON:
-                printJson(out, coverage);
+                new JSONPrinter(out, coverage).print();
                 break;
         }
-    }
-
-    private static void printJson(PrintStream out, SourceCoverage[] coverage) {
-        JSONArray output = new JSONArray();
-        for (SourceCoverage sourceCoverage: coverage) {
-            final JSONObject sourceJson = new JSONObject();
-            sourceJson.put("path", sourceCoverage.getSource().getPath());
-            final JSONArray rootsJson = new JSONArray();
-            for (RootCoverage rootCoverage : sourceCoverage.getRoots()) {
-                JSONObject rootJson = new JSONObject();
-                rootJson.put("loaded_statements", statementsJson(rootCoverage.getLoadedStatements()));
-                rootJson.put("covered_statements", statementsJson(rootCoverage.getCoveredStatements()));
-                rootJson.put("covered", rootCoverage.isCovered());
-                rootJson.put("source_section", sourceSectionJson(rootCoverage.getSourceSection()));
-                rootJson.put("name", rootCoverage.getName());
-                rootsJson.put(rootJson);
-            }
-            sourceJson.put("roots", rootsJson);
-            output.put(sourceJson);
-        }
-        out.println(output.toString());
-    }
-
-    private static JSONArray statementsJson(SourceSection[] statements) {
-        final JSONArray array = new JSONArray();
-        for (SourceSection statement : statements) {
-            array.put(sourceSectionJson(statement));
-        }
-        return array;
-    }
-
-    private static JSONObject sourceSectionJson(SourceSection statement) {
-        JSONObject sourceSection = new JSONObject();
-        sourceSection.put("characters", statement.getCharacters());
-        sourceSection.put("start_line", statement.getStartLine());
-        sourceSection.put("end_line", statement.getEndLine());
-        sourceSection.put("start_column", statement.getStartColumn());
-        sourceSection.put("end_column", statement.getEndColumn());
-        sourceSection.put("char_index", statement.getCharIndex());
-        sourceSection.put("char_end_index", statement.getCharEndIndex());
-        sourceSection.put("char_lenght", statement.getCharLength());
-        return sourceSection;
     }
 
     private void printLinesOutput() {
