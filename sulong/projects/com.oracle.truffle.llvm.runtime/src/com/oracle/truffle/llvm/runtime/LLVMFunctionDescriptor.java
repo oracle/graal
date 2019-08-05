@@ -316,7 +316,8 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     }
 
     public boolean isLLVMIRFunction() {
-        return getFunction() instanceof LLVMIRFunction || getFunction() instanceof LazyLLVMIRFunction;
+        final Function function = getFunction();
+        return function instanceof LLVMIRFunction || function instanceof LazyLLVMIRFunction;
     }
 
     public boolean isIntrinsicFunction() {
