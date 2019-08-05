@@ -29,7 +29,6 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
@@ -72,9 +71,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
                 return null;
             }
         });
-        try (TruffleCompilerOptions.TruffleOptionsOverrideScope performanceWarningsAreFatalScope = TruffleCompilerOptions.overrideOptions(
-                        SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, false);
-                        TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumInlineNodeCount, 10)) {
+        try (TruffleCompilerOptions.TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleMaximumInlineNodeCount, 10)) {
             RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNode);
             final Object[] arguments = {1};
             partialEval((OptimizedCallTarget) target, arguments, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
