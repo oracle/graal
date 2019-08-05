@@ -409,6 +409,8 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     private String generateFactory(String className, String targetMethodName, List<String> parameterTypeName, List<String> guestCalls, boolean hasMetaInjection, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
+        str.append(TAB_1).append(PRIVATE_STATIC_FINAL).append(" ").append(FACTORY).append(" ").append(FACTORY_INSTANCE);
+        str.append(" = new ").append(FACTORY).append("();").append("\n\n");
         str.append(TAB_1).append(PUBLIC_STATIC_FINAL_CLASS).append(FACTORY).append(" extends ").append(SUBSTITUTOR).append(".").append(FACTORY).append(" {\n");
         str.append(TAB_2).append("private ").append(FACTORY).append("() {\n");
         str.append(generateFactoryConstructorBody(className, targetMethodName, parameterTypeName, guestCalls, hasMetaInjection, helper)).append("\n");
@@ -418,8 +420,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         str.append(TAB_3).append("return new ").append(className).append("(").append(META_VAR).append(");\n");
         str.append(TAB_2).append("}\n");
         str.append(TAB_1).append("}\n");
-        str.append(TAB_1).append(PRIVATE_STATIC_FINAL).append(" ").append(FACTORY).append(" ").append(FACTORY_INSTANCE);
-        str.append(" = new ").append(FACTORY).append("();");
         return str.toString();
     }
 
@@ -539,11 +539,11 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         classFile.append(generateFactory(substitutorName, targetMethodName, parameterTypeName, guestCalls, hasMetaInjection, helper)).append("\n");
 
         // Instance variables
-        classFile.append(generateInstanceFields(guestCalls, hasMetaInjection)).append("\n\n");
+        classFile.append(generateInstanceFields(guestCalls, hasMetaInjection)).append("\n");
 
         // Constructor
         classFile.append(TAB_1).append(SUPPRESS_UNUSED).append("\n");
-        classFile.append(generateConstructor(substitutorName, guestCalls, hasMetaInjection));
+        classFile.append(generateConstructor(substitutorName, guestCalls, hasMetaInjection)).append("\n");
 
         // Getter
         classFile.append(generateGetter(FACTORY_INSTANCE, FACTORY, FACTORY_GETTER)).append("\n");
