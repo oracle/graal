@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.coverage;
 import static com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -35,11 +36,14 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
@@ -61,7 +65,8 @@ public class CoverageTracker implements AutoCloseable {
             f = DEFAULT_FILTER;
         }
         final Instrumenter instrumenter = env.getInstrumenter();
-        instrument(f, instrumenter);
+        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).tagIs(StandardTags.StatementTag.class);
+        instrument(builder.build(), instrumenter);
     }
 
     public synchronized void endTracking() {
@@ -72,8 +77,92 @@ public class CoverageTracker implements AutoCloseable {
         disposeBindings();
     }
 
-    public Coverage getCoverage() {
+    public Coverage getLegacyCoverage() {
         throw new UnsupportedOperationException();
+    }
+
+    public synchronized SourceCoverage[] getCoverage() {
+        assert loadedSections.size() == loadedNodes.size();
+        assert coveredSections.size() == coveredNodes.size();
+        Map<Source, Map<RootNode, RootData>> mapping = makeMapping();
+        SourceCoverage[] coverage = new SourceCoverage[mapping.size()];
+        int i = 0;
+        for (Map.Entry<Source, Map<RootNode, RootData>> entry : mapping.entrySet()) {
+            coverage[i++] = new SourceCoverage(entry.getKey(), getRootCoverage(entry.getValue()));
+        }
+        return coverage;
+    }
+
+    private static RootCoverage[] getRootCoverage(Map<RootNode, RootData> perRootData) {
+        RootCoverage[] rootCoverage = new RootCoverage[perRootData.size()];
+        int i = 0;
+        for (Map.Entry<RootNode, RootData> entry : perRootData.entrySet()) {
+            final RootData rootData = entry.getValue();
+            rootCoverage[i++] = new RootCoverage(
+                            rootData.loadedStatements.toArray(new SourceSection[0]),
+                            rootData.coveredStatements.toArray(new SourceSection[0]),
+                            rootData.covered, rootData.sourceSection, entry.getKey().getName());
+        }
+        return rootCoverage;
+    }
+
+    private static class RootData {
+
+        private final SourceSection sourceSection;
+        private boolean covered;
+        private final List<SourceSection> loadedStatements = new ArrayList<>();
+        private final List<SourceSection> coveredStatements = new ArrayList<>();
+
+        RootData(SourceSection sourceSection) {
+            this.sourceSection = sourceSection;
+        }
+
+    }
+
+    private Map<Source, Map<RootNode, RootData>> makeMapping() {
+        Map<Source, Map<RootNode, RootData>> sourceCoverage = new HashMap<>();
+        processLoaded(sourceCoverage);
+        processCovered(sourceCoverage);
+        return sourceCoverage;
+    }
+
+    private void processLoaded(Map<Source, Map<RootNode, RootData>> sourceCoverage) {
+        for (int i = 0; i < loadedSections.size(); i++) {
+            final SourceSection section = loadedSections.get(i);
+            final Source source = section.getSource();
+            final Map<RootNode, RootData> perRootData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
+            final Node node = loadedNodes.get(i);
+            final InstrumentableNode instrumentableNode = (InstrumentableNode) node;
+            if (instrumentableNode.hasTag(StandardTags.RootTag.class)) {
+                perRootData.put(node.getRootNode(), new RootData(section));
+                continue;
+            }
+            if (instrumentableNode.hasTag(StandardTags.StatementTag.class)) {
+                final RootData rootData = perRootData.get(node.getRootNode());
+                rootData.loadedStatements.add(section);
+                continue;
+            }
+            throw new IllegalStateException("Found a node without adequate tag: " + instrumentableNode);
+        }
+    }
+
+    private void processCovered(Map<Source, Map<RootNode, RootData>> mapping) {
+        for (int i = 0; i < coveredSections.size(); i++) {
+            final SourceSection section = coveredSections.get(i);
+            final Source source = section.getSource();
+            final Node node = coveredNodes.get(i);
+            final RootData rootData = mapping.get(source).get(node.getRootNode());
+            final InstrumentableNode instrumentableNode = (InstrumentableNode) node;
+            if (instrumentableNode.hasTag(StandardTags.RootTag.class)) {
+                rootData.covered = true;
+                continue;
+            }
+            if (instrumentableNode.hasTag(StandardTags.StatementTag.class)) {
+                rootData.coveredStatements.add(section);
+                continue;
+            }
+            throw new IllegalStateException("Found a node without adequate tag: " + instrumentableNode);
+        }
     }
 
     @Override
@@ -103,7 +192,7 @@ public class CoverageTracker implements AutoCloseable {
     private EventBinding<ExecutionEventNodeFactory> coveredBinding;
     private final List<SourceSection> loadedSections = new ArrayList<>();
     private final List<Node> loadedNodes = new ArrayList<>();
-    final List<SourceSection> covered = new ArrayList<>();
+    final List<SourceSection> coveredSections = new ArrayList<>();
     private final List<Node> coveredNodes = new ArrayList<>();
 
     private CoverageTracker(Env env) {
@@ -111,6 +200,7 @@ public class CoverageTracker implements AutoCloseable {
     }
 
     private void instrument(SourceSectionFilter f, Instrumenter instrumenter) {
+        f = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.StatementTag.class).build();
         loadedBinding = instrumenter.attachLoadSourceSectionListener(f, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
@@ -125,7 +215,7 @@ public class CoverageTracker implements AutoCloseable {
 
                     @Override
                     protected void notifyTracker() {
-                        covered.add(sourceSection);
+                        coveredSections.add(sourceSection);
                         coveredNodes.add(instrumentedNode);
                     }
                 };

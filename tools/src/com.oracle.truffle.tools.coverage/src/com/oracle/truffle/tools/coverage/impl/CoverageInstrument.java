@@ -74,6 +74,7 @@ public class CoverageInstrument extends TruffleInstrument {
 
     private static Function<Env, CoverageTracker> factory;
     private Boolean enabled;
+
     enum Output {
         HISTOGRAM,
         LINES,
@@ -81,6 +82,7 @@ public class CoverageInstrument extends TruffleInstrument {
         JSON,
 
     }
+
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
                     new Function<String, Output>() {
                         @Override
@@ -162,6 +164,7 @@ public class CoverageInstrument extends TruffleInstrument {
         s.append('$');
         return s.toString();
     }
+
     private static boolean testWildcardExpressions(String value, Object[] fileFilters) {
         if (fileFilters == null || fileFilters.length == 0) {
             return true;
@@ -227,7 +230,7 @@ public class CoverageInstrument extends TruffleInstrument {
     protected void onDispose(Env env) {
         if (enabled) {
             final OptionValues options = env.getOptions();
-            CoverageCLI.handleOutput(chooseOutputStream(env, OUTPUT_FILE), tracker.getCoverage(), OUTPUT.getValue(options));
+            CoverageCLI.handleOutput(chooseOutputStream(env, OUTPUT_FILE), tracker.getLegacyCoverage(), OUTPUT.getValue(options));
             tracker.close();
         }
     }
