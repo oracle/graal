@@ -33,6 +33,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -70,10 +71,20 @@ public final class OptimizedBlockNode<T extends Node & VoidElement> extends Bloc
         super(elements);
     }
 
-    private static void handleElementException(VirtualFrame frame, ElementExceptionHandler exceptionHandler, int index, Throwable ex) {
+    void handleElementException(VirtualFrame frame, ElementExceptionHandler exceptionHandler, int index, Throwable ex) {
         if (exceptionHandler != null) {
-            exceptionHandler.onBlockElementException(frame, ex, index);
+            if (exceptionHandlerClass == ElementExceptionHandler.class) {
+                // no profile available so we need to do a boundary call
+                boundaryOnBlockElement(frame.materialize(), exceptionHandler, index, ex);
+            } else {
+                exceptionHandler.onBlockElementException(frame, ex, index);
+            }
         }
+    }
+
+    @TruffleBoundary
+    private static void boundaryOnBlockElement(MaterializedFrame frame, ElementExceptionHandler exceptionHandler, int index, Throwable ex) {
+        exceptionHandler.onBlockElementException(frame, ex, index);
     }
 
     @Override
@@ -777,7 +788,7 @@ public final class OptimizedBlockNode<T extends Node & VoidElement> extends Bloc
                     try {
                         elements[i].executeVoid(outerFrame);
                     } catch (Throwable ex) {
-                        handleElementException(frame, eh, i, ex);
+                        block.handleElementException(frame, eh, i, ex);
                         throw ex;
                     }
                 }
@@ -790,7 +801,7 @@ public final class OptimizedBlockNode<T extends Node & VoidElement> extends Bloc
                     return null;
                 }
             } catch (Throwable ex) {
-                handleElementException(frame, eh, lastIndex, ex);
+                block.handleElementException(frame, eh, lastIndex, ex);
                 throw ex;
             }
         }

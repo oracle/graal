@@ -89,8 +89,8 @@ public class OptimizedBlockNodeTest {
             setup(groupSize);
             OptimizedBlockNode<TestElement> block = createBlock(groupSize + 1, 1);
             OptimizedCallTarget target = createTest(block);
-            target.call();
             assertNull(block.getPartialBlocks());
+            target.call();
             target.compile(true);
 
             // should not trigger and block compilation
@@ -122,8 +122,7 @@ public class OptimizedBlockNodeTest {
             assertFalse(partialBlocks.getBlockTargets()[0].isValid());
             assertTrue(partialBlocks.getBlockTargets()[1].isValid());
             assertEquals(groupSize, target.call());
-            assertFalse(target.isValid());
-            assertFalse(partialBlocks.getBlockTargets()[0].isValid());
+            // 0 or 1 might be compiled or not
             assertTrue(partialBlocks.getBlockTargets()[1].isValid());
 
             // test partial recompilation
@@ -214,7 +213,6 @@ public class OptimizedBlockNodeTest {
         assertFalse(target.isValid());
         assertFalse(partialBlocks.getBlockTargets()[0].isValid());
         assertTrue(partialBlocks.getBlockTargets()[1].isValid());
-        assertFalse(partialBlocks.getBlockTargets()[2].isValid());
         assertEquals(expectedResult, target.call());
 
         target.compile(true);
