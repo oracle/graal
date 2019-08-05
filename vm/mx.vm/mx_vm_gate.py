@@ -35,7 +35,7 @@ import tempfile
 from mx_gate import Task
 
 from os import environ, listdir
-from os.path import join, exists, dirname, isdir, getsize
+from os.path import join, exists, dirname, isdir, isfile, getsize
 from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
 
@@ -225,7 +225,7 @@ def _svm_truffle_tck(native_image, svm, language, language_macro_option, languag
         if language_exclude_files:
             options.append('-H:TruffleLanguagePermissionsExcludeFiles={}'.format(','.join(language_exclude_files))),
         native_image(options)
-        if getsize(report_file.name) > 0:
+        if isfile(report_file.name) and getsize(report_file.name) > 0:
             message = "Failed: Language {} performs following privileged calls:\n\n".format(language)
             with open(report_file.name, "r") as f:
                 for line in f.readlines():

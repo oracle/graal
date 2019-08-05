@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle.tck;
 
+import static com.oracle.graal.pointsto.reports.ReportUtils.report;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -37,14 +39,12 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import java.io.FileDescriptor;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.security.Permission;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
@@ -53,6 +53,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -143,6 +144,11 @@ public class PermissionsFeature implements Feature {
     @Override
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
+        try {
+            Files.deleteIfExists(reportFilePath);
+        } catch (IOException ioe) {
+            throw UserError.abort("Cannot delete existing report file " + reportFilePath + ".");
+        }
         FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         DebugContext debugContext = accessImpl.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope(getClass().getSimpleName())) {
@@ -159,21 +165,32 @@ public class PermissionsFeature implements Feature {
             Set<AnalysisMethod> importantMethods = findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check"));
             if (!importantMethods.isEmpty()) {
                 Map<AnalysisMethod, Set<AnalysisMethod>> cg = callGraph(bigbang, importantMethods, debugContext);
-                try (PrintWriter out = new PrintWriter(
-                                new OutputStreamWriter(Files.newOutputStream(reportFilePath, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), "UTF-8"))) {
-                    Set<CallGraphFilter> contextFilters = new HashSet<>();
-                    Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang));
-                    for (AnalysisMethod importantMethod : importantMethods) {
-                        if (cg.containsKey(importantMethod)) {
-                            printCallGraphs(out, importantMethod,
-                                            Options.TruffleLanguagePermissionsMaxStackTraceDepth.getValue(),
-                                            Options.TruffleLanguagePermissionsMaxReports.getValue(),
-                                            cg, contextFilters,
-                                            new LinkedHashSet<>(), 1, 0);
-                        }
+                List<List<AnalysisMethod>> report = new ArrayList<>();
+                Set<CallGraphFilter> contextFilters = new HashSet<>();
+                Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang));
+                for (AnalysisMethod importantMethod : importantMethods) {
+                    if (cg.containsKey(importantMethod)) {
+                        printCallGraphs(report, importantMethod,
+                                        Options.TruffleLanguagePermissionsMaxStackTraceDepth.getValue(),
+                                        Options.TruffleLanguagePermissionsMaxReports.getValue(),
+                                        cg, contextFilters,
+                                        new LinkedHashSet<>(), 1, 0);
                     }
-                } catch (IOException ioe) {
-                    throw UserError.abort("Cannot write permissions log file due to: " + ioe.getMessage());
+                }
+                if (!report.isEmpty()) {
+                    report(
+                                    "detected privileged calls originated in language packages ",
+                                    reportFilePath,
+                                    (pw) -> {
+                                        StringBuilder builder = new StringBuilder();
+                                        for (List<AnalysisMethod> callPath : report) {
+                                            for (AnalysisMethod call : callPath) {
+                                                builder.append(call.asStackTraceElement(0)).append('\n');
+                                            }
+                                            builder.append('\n');
+                                        }
+                                        pw.print(builder);
+                                    });
                 }
             }
         }
@@ -263,7 +280,7 @@ public class PermissionsFeature implements Feature {
     }
 
     private int printCallGraphs(
-                    PrintWriter out,
+                    List<List<AnalysisMethod>> report,
                     AnalysisMethod m,
                     int maxDepth,
                     int maxReports,
@@ -288,14 +305,11 @@ public class PermissionsFeature implements Feature {
                 Set<AnalysisMethod> callers = callGraph.get(m);
                 if (depth > maxDepth) {
                     if (!callers.isEmpty()) {
-                        useNoReports = printCallGraphs(out, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
+                        useNoReports = printCallGraphs(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
                 } else if (isLanguageClass(m)) {
-                    StringBuilder builder = new StringBuilder();
-                    for (AnalysisMethod call : visited) {
-                        builder.append(call.asStackTraceElement(0)).append('\n');
-                    }
-                    out.println(builder);
+                    List<AnalysisMethod> callPath = new ArrayList<>(visited);
+                    report.add(callPath);
                     useNoReports++;
                 } else {
                     nextCaller: for (AnalysisMethod caller : callers) {
@@ -304,7 +318,7 @@ public class PermissionsFeature implements Feature {
                                 continue nextCaller;
                             }
                         }
-                        useNoReports = printCallGraphs(out, caller, maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
+                        useNoReports = printCallGraphs(report, caller, maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
                 }
             } finally {

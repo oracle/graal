@@ -63,11 +63,34 @@ public class ReportUtils {
      * @param reporter a consumer that writes to a PrintWriter
      */
     public static void report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+        String timeStamp = LocalDateTime.now().format(formatter);
+        Path reportDir = Paths.get(path);
+        String fileName = name + "_" + timeStamp + "." + extension;
+        reportImpl(description, reportDir, fileName, reporter);
+    }
+
+    /**
+     * Print a report in the file given by {@code file} parameter. If the {@code file} is relative
+     * it's resolved to the working directory.
+     *
+     * @param description the description of the report
+     * @param file the path (relative to the working directory if the argument represents a relative
+     *            path) to file to store a report into.
+     * @param reporter a consumer that writes to a PrintWriter
+     */
+    public static void report(String description, Path file, Consumer<PrintWriter> reporter) {
+        Path folder = file.getParent();
+        if (folder == null) {
+            throw new IllegalArgumentException("File must be valid file name");
+        }
+        reportImpl(description, folder, file.getFileName().toString(), reporter);
+    }
+
+    private static void reportImpl(String description, Path folder, String fileName, Consumer<PrintWriter> reporter) {
         try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
-            String timeStamp = LocalDateTime.now().format(formatter);
-            Path reportDir = Files.createDirectories(Paths.get(path));
-            Path file = reportDir.resolve(name + "_" + timeStamp + "." + extension);
+            Path reportDir = Files.createDirectories(folder);
+            Path file = reportDir.resolve(fileName);
             Files.deleteIfExists(file);
 
             try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
