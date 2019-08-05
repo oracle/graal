@@ -676,7 +676,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    @SuppressWarnings("try")
     protected void doCompile(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         List<OptimizedCallTarget> blockCompilations = OptimizedBlockNode.preparePartialBlockCompilations(callTarget);
         for (OptimizedCallTarget blockTarget : blockCompilations) {
@@ -688,6 +687,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         compileImpl(callTarget, task);
     }
 
+    @SuppressWarnings("try")
     private void compileImpl(OptimizedCallTarget callTarget, TruffleCompilationTask task) {
         TruffleCompiler compiler = getTruffleCompiler();
         try (TruffleCompilation compilation = compiler.openCompilation(callTarget)) {
