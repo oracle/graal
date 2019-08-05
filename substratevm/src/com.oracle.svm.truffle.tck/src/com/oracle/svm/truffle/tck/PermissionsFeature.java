@@ -70,6 +70,19 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+/**
+ * A Truffle TCK {@code Feature} detecting privileged calls done by Truffle language. The
+ * {@code PermissionsFeature} finds calls of privileged methods originating in Truffle language. The
+ * calls going through {@code Truffle} library, GraalVM SDK or compiler are treated as safe calls
+ * and are not reported.
+ * <p>
+ * To execute the {@code PermissionsFeature} you need to enable it using
+ * {@code --features=com.oracle.svm.truffle.tck.PermissionsFeature} native-image option, specify
+ * report file using {@code -H:TruffleLanguagePermissionsReportFile} option and specify the language
+ * packages by {@code -H:TruffleLanguagePermissionsLanguagePackages} option. You also need to
+ * disable folding of {@code System.getSecurityManager} using {@code -H:-FoldSecurityManagerGetter}
+ * option.
+ */
 public class PermissionsFeature implements Feature {
 
     private static final String CONFIG = "truffle-language-permissions-config.json";
@@ -87,9 +100,12 @@ public class PermissionsFeature implements Feature {
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxStackTraceDepth = new HostedOptionKey<>(
                         20);
 
-        @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxReports = new HostedOptionKey<>(100);
+        @Option(help = "Maximal number of reports.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxReports = new HostedOptionKey<>(100);
     }
 
+    /**
+     * Predicate to enable substitutions needed by the {@link PermissionsFeature}.
+     */
     static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
@@ -97,6 +113,9 @@ public class PermissionsFeature implements Feature {
         }
     }
 
+    /**
+     * List of safe packages.
+     */
     private static final Set<String> compilerPkgs;
     static {
         compilerPkgs = new HashSet<>();
@@ -109,9 +128,21 @@ public class PermissionsFeature implements Feature {
         compilerPkgs.add("com.oracle.truffle.tools.");
     }
 
+    /**
+     * Path to store report into.
+     */
     private Path reportFilePath;
+    /**
+     * List of language packages including nested packages.
+     */
     private Set<String> languagePackages;
+    /**
+     * Packages to exclude from the check.
+     */
     private Set<String> excludedPackages;
+    /**
+     * Methods which are allowed to do privileged calls without being reported.
+     */
     private Set<AnalysisMethod> whiteList;
 
     @Override
@@ -170,7 +201,7 @@ public class PermissionsFeature implements Feature {
                 Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang));
                 for (AnalysisMethod importantMethod : importantMethods) {
                     if (cg.containsKey(importantMethod)) {
-                        printCallGraphs(report, importantMethod,
+                        collectViolations(report, importantMethod,
                                         Options.TruffleLanguagePermissionsMaxStackTraceDepth.getValue(),
                                         Options.TruffleLanguagePermissionsMaxReports.getValue(),
                                         cg, contextFilters,
@@ -196,6 +227,15 @@ public class PermissionsFeature implements Feature {
         }
     }
 
+    /**
+     * Creates an inverted call graph for methods given by {@code targets} parameter. For each
+     * called method in {@code targets} or transitive caller of {@code targets} the resulting
+     * {@code Map} contains an entry holding all direct callers of the method in the entry value.
+     *
+     * @param bigbang the {@link BigBang}
+     * @param targets the target methods to build call graph for
+     * @param debugContext the {@link DebugContext}
+     */
     private Map<AnalysisMethod, Set<AnalysisMethod>> callGraph(
                     BigBang bigbang,
                     Set<AnalysisMethod> targets,
@@ -263,6 +303,15 @@ public class PermissionsFeature implements Feature {
         }
     }
 
+    /**
+     * Checks if the method is a back trace crossing language boundary.
+     *
+     * @param method the {@link AnalysisMethod} to check
+     * @param path the current call path
+     * @return {@code null} if the method is not a recursive call, {@code false} if the method is a
+     *         recursive call which does not cross language boundary, {@code true} if the method is
+     *         a recursive call crossing the language boundary.
+     */
     private Boolean isBacktraceOverLanguage(AnalysisMethod method, Deque<AnalysisMethod> path) {
         if (!path.contains(method)) {
             return null;
@@ -279,8 +328,21 @@ public class PermissionsFeature implements Feature {
         throw new IllegalStateException();
     }
 
-    private int printCallGraphs(
-                    List<List<AnalysisMethod>> report,
+    /**
+     * Collects the calls of privileged methods originated in Truffle language.
+     *
+     * @param report the list to collect violations into
+     * @param m currently processed method
+     * @param maxDepth maximal call trace depth
+     * @param maxReports maximal number of reports
+     * @param callGraph call graph obtained from
+     *            {@link PermissionsFeature#callGraph(com.oracle.graal.pointsto.BigBang, java.util.Set, org.graalvm.compiler.debug.DebugContext)}
+     * @param contextFilters filters removing known valid calls
+     * @param visited visited methods
+     * @param depth current depth
+     */
+    private int collectViolations(
+                    List<? super List<AnalysisMethod>> report,
                     AnalysisMethod m,
                     int maxDepth,
                     int maxReports,
@@ -305,7 +367,7 @@ public class PermissionsFeature implements Feature {
                 Set<AnalysisMethod> callers = callGraph.get(m);
                 if (depth > maxDepth) {
                     if (!callers.isEmpty()) {
-                        useNoReports = printCallGraphs(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
+                        useNoReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
                 } else if (isLanguageClass(m)) {
                     List<AnalysisMethod> callPath = new ArrayList<>(visited);
@@ -318,7 +380,7 @@ public class PermissionsFeature implements Feature {
                                 continue nextCaller;
                             }
                         }
-                        useNoReports = printCallGraphs(report, caller, maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
+                        useNoReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
                 }
             } finally {
@@ -328,14 +390,30 @@ public class PermissionsFeature implements Feature {
         return useNoReports;
     }
 
+    /**
+     * Tests if the given {@link AnalysisMethod} is from language class.
+     *
+     * @param method the {@link AnalysisMethod} to check
+     */
     private boolean isLanguageClass(AnalysisMethod method) {
         return isClassInPackage(getClassName(method), languagePackages);
     }
 
+    /**
+     * Tests if the given {@link AnalysisMethod} is from Truffle library, GraalVM SDK or compiler
+     * package.
+     *
+     * @param method the {@link AnalysisMethod} to check
+     */
     private static boolean isCompilerClass(AnalysisMethod method) {
         return isClassInPackage(getClassName(method), compilerPkgs);
     }
 
+    /**
+     * Tests if the given {@link AnalysisMethod} is excluded by white list.
+     *
+     * @param method the {@link AnalysisMethod} to check
+     */
     private boolean isExcludedClass(AnalysisMethod method) {
         if (isClassInPackage(getClassName(method), excludedPackages)) {
             return true;
@@ -343,6 +421,13 @@ public class PermissionsFeature implements Feature {
         return whiteList.contains(method);
     }
 
+    /**
+     * Tests if a class of given name transitively belongs to some package given by {@code packages}
+     * parameter.
+     *
+     * @param javaName the {@link AnalysisMethod} to check
+     * @param packages the list of packages
+     */
     private static boolean isClassInPackage(String javaName, Collection<? extends String> packages) {
         for (String pkg : packages) {
             if (javaName.startsWith(pkg)) {
@@ -352,6 +437,14 @@ public class PermissionsFeature implements Feature {
         return false;
     }
 
+    /**
+     * Finds methods declared in {@code owner} class using {@code filter} predicate.
+     *
+     * @param bigBang the {@link BigBang}
+     * @param owner the class which methods should be listed
+     * @param filter the predicate filtering methods declared in {@code owner}
+     * @return the methods accepted by {@code filter}
+     */
     private static Set<AnalysisMethod> findMethods(BigBang bigBang, Class<?> owner, Predicate<ResolvedJavaMethod> filter) {
         AnalysisType clazz = bigBang.forClass(owner);
         if (clazz != null) {
@@ -360,6 +453,14 @@ public class PermissionsFeature implements Feature {
         return Collections.emptySet();
     }
 
+    /**
+     * Finds methods declared in {@code owner} {@link AnalysisType} using {@code filter} predicate.
+     *
+     * @param bigBang the {@link BigBang}
+     * @param owner the {@link AnalysisType} which methods should be listed
+     * @param filter the predicate filtering methods declared in {@code owner}
+     * @return the methods accepted by {@code filter}
+     */
     static Set<AnalysisMethod> findMethods(BigBang bigBang, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
         Set<AnalysisMethod> result = new HashSet<>();
         for (ResolvedJavaMethod m : owner.getWrappedWithoutResolve().getDeclaredMethods()) {
@@ -370,18 +471,34 @@ public class PermissionsFeature implements Feature {
         return result;
     }
 
+    /**
+     * Returns a method name in the format: {@code ownerFQN.name(parameters)}.
+     *
+     * @param method to create a name for
+     */
     private static String getMethodName(AnalysisMethod method) {
         return method.format("%H.%n(%p)");
     }
 
+    /**
+     * Returns a fully qualified name of the {@code method} owner.
+     *
+     * @param method to obtain an owner name for
+     */
     private static String getClassName(AnalysisMethod method) {
         return method.getDeclaringClass().toJavaName();
     }
 
+    /**
+     * Filter to filter out known valid calls, included by points to analysis, from the report.
+     */
     private interface CallGraphFilter {
         boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace);
     }
 
+    /**
+     * Filters out {@link Thread#interrupt()} calls done on {@link Thread#currentThread()}.
+     */
     private static final class SafeInterruptRecognizer implements CallGraphFilter {
 
         private final ResolvedJavaMethod threadInterrupt;
@@ -423,6 +540,9 @@ public class PermissionsFeature implements Feature {
         }
     }
 
+    /**
+     * Filters out {@code AccessController#doPrivileged} calls not done by the language.
+     */
     private final class SafePrivilegedRecognizer implements CallGraphFilter {
 
         private final Set<AnalysisMethod> dopriviledged;
@@ -437,6 +557,9 @@ public class PermissionsFeature implements Feature {
         }
     }
 
+    /**
+     * Options facade for a resource containing the JRE white list.
+     */
     private static final class ResourceAsOptionDecorator extends HostedOptionKey<String[]> {
 
         ResourceAsOptionDecorator(String defaultValue) {
