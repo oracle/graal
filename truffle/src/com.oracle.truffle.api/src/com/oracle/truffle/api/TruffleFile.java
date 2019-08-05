@@ -97,7 +97,6 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.polyglot.TypeLiteral;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -181,9 +180,7 @@ public final class TruffleFile {
      *
      * @since 19.0
      */
-    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<>(AttributeGroup.POSIX, "permissions",
-                    new TypeLiteral<Set<PosixFilePermission>>() {
-                    });
+    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<Set<PosixFilePermission>>(AttributeGroup.POSIX, Set.class, "permissions");
 
     /**
      * The file's mode containing the protection and file type bits. Supported only by UNIX native
@@ -1655,10 +1652,11 @@ public final class TruffleFile {
             this.clazz = clazz;
         }
 
-        AttributeDescriptor(AttributeGroup group, String name, TypeLiteral<T> typeLiteral) {
+        @SuppressWarnings("unchecked")
+        AttributeDescriptor(AttributeGroup group, Class<?> rawType, String name) {
             this.group = group;
+            this.clazz = (Class<T>) rawType;
             this.name = name;
-            this.clazz = typeLiteral.getRawType();
         }
 
         /**
