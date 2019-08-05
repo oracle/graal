@@ -76,10 +76,6 @@ public class CoverageTracker implements AutoCloseable {
         disposeBindings();
     }
 
-    public Coverage getLegacyCoverage() {
-        throw new UnsupportedOperationException();
-    }
-
     public synchronized SourceCoverage[] getCoverage() {
         assert loadedSections.size() == loadedNodes.size();
         assert coveredSections.size() == coveredNodes.size();
