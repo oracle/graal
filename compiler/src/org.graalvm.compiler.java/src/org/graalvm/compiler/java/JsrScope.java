@@ -24,8 +24,16 @@
  */
 package org.graalvm.compiler.java;
 
-public class JsrScope {
+import org.graalvm.compiler.bytecode.Bytecodes;
 
+/**
+ * Represents a subroutine entered via {@link Bytecodes#JSR} and exited via {@link Bytecodes#RET}.
+ */
+public final class JsrScope {
+
+    /**
+     * The scope outside of any JSR/RET subroutine.
+     */
     public static final JsrScope EMPTY_SCOPE = new JsrScope();
 
     private final char returnAddress;
@@ -33,13 +41,11 @@ public class JsrScope {
     private final JsrScope parent;
 
     private JsrScope(int returnBci, JsrScope parent) {
-        assert returnBci == 0 || parent != null;
         this.returnAddress = (char) returnBci;
-        assert this.returnAddress == returnBci;
         this.parent = parent;
     }
 
-    public JsrScope() {
+    private JsrScope() {
         this.returnAddress = 0;
         this.parent = null;
     }
@@ -48,35 +54,64 @@ public class JsrScope {
         return returnAddress;
     }
 
+    /**
+     * Enters a new subroutine from the current scope represented by this object.
+     *
+     * @param returnBci the bytecode address returned to when leaving the new scope
+     * @return an object representing the newly entered scope
+     */
     public JsrScope push(int returnBci) {
-        assert returnBci != 0;
-        JsrScope res = new JsrScope(returnBci, this);
-        // System.out.printf("push(%d) onto %s -> %s%n", returnBci, this, res);
-        return res;
+        if (returnBci == 0) {
+            throw new IllegalArgumentException("A bytecode subroutine cannot have a return address of 0");
+        }
+        if (returnBci < 1 || returnBci > 0xFFFF) {
+            throw new IllegalArgumentException("Bytecode subroutine return address cannot be encoded as a char: " + returnBci);
+        }
+        return new JsrScope(returnBci, this);
     }
 
+    /**
+     * Determines if this is the scope outside of any JSR/RET subroutine.
+     */
     public boolean isEmpty() {
         return returnAddress == 0;
     }
 
+    /**
+     * Gets the ancestry of this scope starting with the {@link #returnAddress} of this scope's most
+     * distant ancestor and ending with the {@link #returnAddress} of this object.
+     *
+     * @return a String where each character is a 16-bit BCI. This value can be converted to an
+     *         {@code int[]} with {@code value.chars().toArray()}.
+     */
+    public String getAncestry() {
+        StringBuilder sb = new StringBuilder();
+        for (JsrScope s = this; s != null; s = s.parent) {
+            if (!s.isEmpty()) {
+                sb.append(s.returnAddress);
+            }
+        }
+        return sb.reverse().toString();
+    }
+
+    /**
+     * Determines if the {@linkplain #getAncestry() ancestry} of this scope is a prefix of the
+     * ancestry of {@code other}.
+     */
     public boolean isPrefixOf(JsrScope other) {
         if (isEmpty()) {
             return true;
         }
-        JsrScope myAncestor = this;
-        JsrScope otherAncestor = other;
-        while (myAncestor != null) {
-            if (otherAncestor == null) {
-                return false;
-            }
-            if (myAncestor.returnAddress != otherAncestor.returnAddress) {
-                return false;
-            }
-            myAncestor = myAncestor.parent;
-        }
-        return true;
+        String ancestry = getAncestry();
+        String otherAncestry = other.getAncestry();
+        return otherAncestry.startsWith(ancestry);
     }
 
+    /**
+     * Gets this scope's parent.
+     *
+     * @return this scope's parent or {@link #EMPTY_SCOPE} if this is the {@link #EMPTY_SCOPE}
+     */
     public JsrScope pop() {
         if (isEmpty()) {
             return this;
@@ -123,6 +158,7 @@ public class JsrScope {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+
         for (JsrScope ancestor = this; ancestor != null; ancestor = ancestor.parent) {
             if (!ancestor.isEmpty()) {
                 if (sb.length() != 0) {
