@@ -28,42 +28,71 @@ public class JsrScope {
 
     public static final JsrScope EMPTY_SCOPE = new JsrScope();
 
-    private final long scope;
+    private final char returnAddress;
 
-    private JsrScope(long scope) {
-        this.scope = scope;
+    private final JsrScope parent;
+
+    private JsrScope(int returnBci, JsrScope parent) {
+        assert returnBci == 0 || parent != null;
+        this.returnAddress = (char) returnBci;
+        assert this.returnAddress == returnBci;
+        this.parent = parent;
     }
 
     public JsrScope() {
-        this.scope = 0;
+        this.returnAddress = 0;
+        this.parent = null;
     }
 
     public int nextReturnAddress() {
-        return (int) (scope & 0xffff);
+        return returnAddress;
     }
 
-    public JsrScope push(int jsrReturnBci) {
-        if ((scope & 0xffff000000000000L) != 0) {
-            throw new JsrNotSupportedBailout("only four jsr nesting levels are supported");
-        }
-        return new JsrScope((scope << 16) | jsrReturnBci);
+    public JsrScope push(int returnBci) {
+        assert returnBci != 0;
+        JsrScope res = new JsrScope(returnBci, this);
+        // System.out.printf("push(%d) onto %s -> %s%n", returnBci, this, res);
+        return res;
     }
 
     public boolean isEmpty() {
-        return scope == 0;
+        return returnAddress == 0;
     }
 
     public boolean isPrefixOf(JsrScope other) {
-        return (scope & other.scope) == scope;
+        if (isEmpty()) {
+            return true;
+        }
+        JsrScope myAncestor = this;
+        JsrScope otherAncestor = other;
+        while (myAncestor != null) {
+            if (otherAncestor == null) {
+                return false;
+            }
+            if (myAncestor.returnAddress != otherAncestor.returnAddress) {
+                return false;
+            }
+            myAncestor = myAncestor.parent;
+        }
+        return true;
     }
 
     public JsrScope pop() {
-        return new JsrScope(scope >>> 16);
+        if (isEmpty()) {
+            return this;
+        }
+        return parent;
     }
 
     @Override
     public int hashCode() {
-        return (int) (scope ^ (scope >>> 32));
+        int hc = returnAddress;
+        JsrScope ancestor = parent;
+        while (ancestor != null) {
+            hc = hc ^ ancestor.returnAddress;
+            ancestor = ancestor.parent;
+        }
+        return hc;
     }
 
     @Override
@@ -71,19 +100,37 @@ public class JsrScope {
         if (this == obj) {
             return true;
         }
-        return obj != null && getClass() == obj.getClass() && scope == ((JsrScope) obj).scope;
+        if (obj != null && getClass() == obj.getClass()) {
+            JsrScope ancestor = this;
+            JsrScope otherAncestor = (JsrScope) obj;
+            while (ancestor != null) {
+                if (otherAncestor == null) {
+                    return false;
+                }
+                if (otherAncestor.returnAddress != ancestor.returnAddress) {
+                    return false;
+                }
+                ancestor = ancestor.parent;
+                otherAncestor = otherAncestor.parent;
+            }
+            if (otherAncestor == null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        long tmp = scope;
-        sb.append(" [");
-        while (tmp != 0) {
-            sb.append(", ").append(tmp & 0xffff);
-            tmp = tmp >>> 16;
+        for (JsrScope ancestor = this; ancestor != null; ancestor = ancestor.parent) {
+            if (!ancestor.isEmpty()) {
+                if (sb.length() != 0) {
+                    sb.append(", ");
+                }
+                sb.append((int) ancestor.returnAddress);
+            }
         }
-        sb.append(']');
-        return sb.toString();
+        return "[" + sb + "]";
     }
 }
