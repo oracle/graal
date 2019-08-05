@@ -29,6 +29,7 @@ package com.oracle.svm.core.jdk;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
@@ -36,7 +37,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Locale;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -52,14 +56,181 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+@TargetClass(java.net.URLStreamHandler.class)
+final class Target_java_net_URLStreamHandler {
+
+    @Alias
+    protected native void parseURL(URL u, String spec, int start, int limit);
+}
+
 @TargetClass(java.net.URL.class)
 final class Target_java_net_URL {
 
     @Delete private static Hashtable<?, ?> handlers;
 
+    @Alias
+    private native void checkSpecifyHandler(SecurityManager sm);
+
+    @Alias
+    private native boolean isValidProtocol(String proto);
+
+    @Alias transient Target_java_net_URLStreamHandler handler;
+
+    @Alias private String protocol;
+
+    @Alias private String host;
+
+    @Alias private int port;
+
+    @Alias private String file;
+
+    @Alias private transient String query;
+
+    @Alias private String authority;
+
+    @Alias private transient String path;
+
+    @Alias private transient String userInfo;
+
+    @Alias private String ref;
+
     @Substitute
     private static URLStreamHandler getURLStreamHandler(String protocol) {
         return JavaNetSubstitutions.getURLStreamHandler(protocol);
+    }
+
+    @Substitute
+    Target_java_net_URL(Target_java_net_URL context, String spec, Target_java_net_URLStreamHandler handlerParam)
+                    throws MalformedURLException {
+        String original = spec;
+        int i;
+        int limit;
+        int c;
+        int start = 0;
+        String newProtocol = null;
+        boolean aRef = false;
+        boolean isRelative = false;
+        // to avoid checkstyle whinging about parameter assignment later on,
+        // even though that's exactly what the original JDK code does.
+        Target_java_net_URLStreamHandler handlerTmp = handlerParam;
+
+        // Check for permission to specify a handler
+        if (handlerTmp != null) {
+            SecurityManager sm = System.getSecurityManager();
+            if (sm != null) {
+                checkSpecifyHandler(sm);
+            }
+        }
+
+        try {
+            limit = spec.length();
+            while ((limit > 0) && (spec.charAt(limit - 1) <= ' ')) {
+                limit--;        // eliminate trailing whitespace
+            }
+            while ((start < limit) && (spec.charAt(start) <= ' ')) {
+                start++;        // eliminate leading whitespace
+            }
+
+            if (spec.regionMatches(true, start, "url:", 0, 4)) {
+                start += 4;
+            }
+            if (start < spec.length() && spec.charAt(start) == '#') {
+                /*
+                 * we're assuming this is a ref relative to the context URL. This means protocols
+                 * cannot start w/ '#', but we must parse ref URL's like: "hello:there" w/ a ':' in
+                 * them.
+                 */
+                aRef = true;
+            }
+            for (i = start; !aRef && (i < limit) &&
+                            ((c = spec.charAt(i)) != '/'); i++) {
+                if (c == ':') {
+                    String s = JavaNetSubstitutions.toLowerCase(spec.substring(start, i));
+                    if (isValidProtocol(s)) {
+                        newProtocol = s;
+                        start = i + 1;
+                    }
+                    break;
+                }
+            }
+
+            // Only use our context if the protocols match.
+            protocol = newProtocol;
+            if ((context != null) && ((newProtocol == null) ||
+                            newProtocol.equalsIgnoreCase(context.protocol))) {
+                // inherit the protocol handler from the context
+                // if not specified to the constructor
+                if (handlerTmp == null) {
+                    handlerTmp = context.handler;
+                }
+
+                // If the context is a hierarchical URL scheme and the spec
+                // contains a matching scheme then maintain backwards
+                // compatibility and treat it as if the spec didn't contain
+                // the scheme; see 5.2.3 of RFC2396
+                if (context.path != null && context.path.startsWith("/")) {
+                    newProtocol = null;
+                }
+
+                if (newProtocol == null) {
+                    protocol = context.protocol;
+                    authority = context.authority;
+                    userInfo = context.userInfo;
+                    host = context.host;
+                    port = context.port;
+                    file = context.file;
+                    path = context.path;
+                    isRelative = true;
+                }
+            }
+
+            if (protocol == null) {
+                throw new MalformedURLException("no protocol: " + original);
+            }
+
+            // Get the protocol handler if not specified or the protocol
+            // of the context could not be used
+            if (handlerTmp == null &&
+                            (handlerTmp = SubstrateUtil.cast(getURLStreamHandler(protocol), Target_java_net_URLStreamHandler.class)) == null) {
+                if (JavaNetSubstitutions.onDemandProtocols.contains(protocol)) {
+                    JavaNetSubstitutions.unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
+                                    " is supported but not enabled by default. It must be enabled by adding the " + JavaNetSubstitutions.enableProtocolsOption + protocol +
+                                    " option to the native-image command.");
+                } else {
+                    JavaNetSubstitutions.unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
+                                    " is not tested and might not work as expected. It can be enabled by adding the " + JavaNetSubstitutions.enableProtocolsOption + protocol +
+                                    " option to the native-image command.");
+                }
+            }
+
+            this.handler = handlerTmp;
+
+            i = spec.indexOf('#', start);
+            if (i >= 0) {
+                ref = spec.substring(i + 1, limit);
+                limit = i;
+            }
+
+            /*
+             * Handle special case inheritance of query and fragment implied by RFC2396 section
+             * 5.2.2.
+             */
+            if (isRelative && start == limit) {
+                query = context.query;
+                if (ref == null) {
+                    ref = context.ref;
+                }
+            }
+
+            handlerTmp.parseURL(URL.class.cast(this), spec, start, limit);
+
+        } catch (MalformedURLException e) {
+            throw e;
+        } catch (Exception e) {
+            MalformedURLException exception = new MalformedURLException(e.getMessage());
+            exception.initCause(e);
+            throw exception;
+        }
     }
 }
 
@@ -151,19 +322,7 @@ public final class JavaNetSubstitutions {
     }
 
     static URLStreamHandler getURLStreamHandler(String protocol) {
-        URLStreamHandler result = URLProtocolsSupport.get(protocol);
-        if (result == null) {
-            if (onDemandProtocols.contains(protocol)) {
-                unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
-                                " is supported but not enabled by default. It must be enabled by adding the " + enableProtocolsOption + protocol +
-                                " option to the native-image command.");
-            } else {
-                unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
-                                " is not tested and might not work as expected. It can be enabled by adding the " + enableProtocolsOption + protocol +
-                                " option to the native-image command.");
-            }
-        }
-        return result;
+        return URLProtocolsSupport.get(protocol);
     }
 
     static URLStreamHandler createResourcesURLStreamHandler() {
@@ -192,12 +351,20 @@ public final class JavaNetSubstitutions {
         };
     }
 
-    private static void unsupported(String message) {
-        throw VMError.unsupportedFeature(message);
+    static void unsupported(String message) throws MalformedURLException {
+        throw new MalformedURLException(message);
     }
 
     static String supportedProtocols() {
         return "Supported URL protocols enabled by default: " + String.join(",", JavaNetSubstitutions.defaultProtocols) +
                         ". Supported URL protocols available on demand: " + String.join(",", JavaNetSubstitutions.onDemandProtocols) + ".";
+    }
+
+    static String toLowerCase(String protocol) {
+        if (protocol.equals("jrt") || protocol.equals("file") || protocol.equals("jar")) {
+            return protocol;
+        } else {
+            return protocol.toLowerCase(Locale.ROOT);
+        }
     }
 }
