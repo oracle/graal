@@ -30,7 +30,7 @@ import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.meta.Value.ILLEGAL;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.JUMP_ADDRESS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.REEXECUTABLE_ONLY_AFTER_EXCEPTION;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.LEAF;
 import static org.graalvm.compiler.hotspot.replacements.CRC32CSubstitutions.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.hotspot.replacements.CRC32Substitutions.UPDATE_BYTES_CRC32;
@@ -76,8 +76,9 @@ public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsP
         RegisterValue exception = r0.asValue(LIRKind.reference(word));
         RegisterValue exceptionPc = r3.asValue(LIRKind.value(word));
         CallingConvention exceptionCc = new CallingConvention(0, ILLEGAL, exception, exceptionPc);
-        register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER, 0L, COMPUTES_REGISTERS_KILLED, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, exceptionCc, null, any()));
-        register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, COMPUTES_REGISTERS_KILLED, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, exceptionCc, null,
+        register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER, 0L, DESTROYS_ALL_CALLER_SAVE_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, exceptionCc, null, any()));
+        register(new HotSpotForeignCallLinkageImpl(HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, LEAF, REEXECUTABLE_ONLY_AFTER_EXCEPTION, exceptionCc,
+                        null,
                         any()));
 
         // These stubs do callee saving

@@ -430,7 +430,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
      * @param gen the result to examine
      * @return the registers that are defined by or used as temps for any instruction in {@code lir}
      */
-    protected final EconomicSet<Register> gatherDestroyedCallerRegisters(HotSpotLIRGenerationResult gen) {
+    private EconomicSet<Register> gatherDestroyedCallerRegisters(HotSpotLIRGenerationResult gen) {
         LIR lir = gen.getLIR();
         final EconomicSet<Register> preservedRegisters = EconomicSet.create(Equivalence.IDENTITY);
         final EconomicSet<Register> destroyedRegisters = EconomicSet.create(Equivalence.IDENTITY);
@@ -505,6 +505,16 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     protected void updateStub(Stub stub, HotSpotLIRGenerationResult gen, FrameMap frameMap) {
         EconomicSet<Register> destroyedRegisters = gatherDestroyedCallerRegisters(gen);
         EconomicMap<LIRFrameState, SaveRegistersOp> calleeSaveInfo = gen.getCalleeSaveInfo();
+
+        if (stub.getLinkage().needsDebugInfo() && calleeSaveInfo.isEmpty()) {
+            // This call is a safepoint but no register saving was done so we must ensure that all
+            // registers appear to be killed. The Native ABI may allow caller save registers but
+            // for HotSpot they must be described in a RegisterMap so they are accessible.
+            for (Register r : frameMap.getRegisterConfig().getCallerSaveRegisters()) {
+                destroyedRegisters.add(r);
+            }
+        }
+
         stub.initDestroyedCallerRegisters(destroyedRegisters);
 
         MapCursor<LIRFrameState, SaveRegistersOp> cursor = calleeSaveInfo.getEntries();

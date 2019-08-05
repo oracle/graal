@@ -70,6 +70,7 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.WRONG_METHOD_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.REEXECUTABLE_ONLY_AFTER_EXCEPTION;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.LEAF;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.LEAF_NO_VZERO;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
@@ -316,17 +317,25 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         }
 
         link(new ExceptionHandlerStub(options, providers, foreignCalls.get(EXCEPTION_HANDLER)));
-        link(new UnwindExceptionToCallerStub(options, providers, registerStubCall(UNWIND_EXCEPTION_TO_CALLER, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any())));
-        link(new VerifyOopStub(options, providers, registerStubCall(VERIFY_OOP, LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS)));
+        link(new UnwindExceptionToCallerStub(options, providers,
+                        registerStubCall(UNWIND_EXCEPTION_TO_CALLER, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new VerifyOopStub(options, providers, registerStubCall(VERIFY_OOP, LEAF_NO_VZERO, REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, NO_LOCATIONS)));
 
         EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> exceptionRuntimeCalls = DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls;
-        link(new ArrayStoreExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.ARRAY_STORE), SAFEPOINT, REEXECUTABLE, any())));
-        link(new ClassCastExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.CLASS_CAST), SAFEPOINT, REEXECUTABLE, any())));
-        link(new NullPointerExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NULL_POINTER), SAFEPOINT, REEXECUTABLE, any())));
-        link(new OutOfBoundsExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.OUT_OF_BOUNDS), SAFEPOINT, REEXECUTABLE, any())));
-        link(new DivisionByZeroExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.DIVISION_BY_ZERO), SAFEPOINT, REEXECUTABLE, any())));
-        link(new IntegerExactOverflowExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW), SAFEPOINT, REEXECUTABLE, any())));
-        link(new LongExactOverflowExceptionStub(options, providers, registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.LONG_EXACT_OVERFLOW), SAFEPOINT, REEXECUTABLE, any())));
+        link(new ArrayStoreExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.ARRAY_STORE), SAFEPOINT, REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new ClassCastExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.CLASS_CAST), SAFEPOINT, REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new NullPointerExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NULL_POINTER), SAFEPOINT, REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new OutOfBoundsExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.OUT_OF_BOUNDS), SAFEPOINT, REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new DivisionByZeroExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.DIVISION_BY_ZERO), SAFEPOINT, REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new IntegerExactOverflowExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW), SAFEPOINT, REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+        link(new LongExactOverflowExceptionStub(options, providers,
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.LONG_EXACT_OVERFLOW), SAFEPOINT, REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
 
         linkForeignCall(options, providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, MARK_WORD_LOCATION);
         linkForeignCall(options, providers, REGISTER_FINALIZER, c.registerFinalizerAddress, PREPEND_THREAD, SAFEPOINT, REEXECUTABLE_ONLY_AFTER_EXCEPTION, any());

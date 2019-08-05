@@ -299,7 +299,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
              * machine instruction actually zeros _all_ XMM registers which is fine since we know
              * that their upper half is not used.
              */
-            append(new AMD64VZeroUpper(arguments));
+            append(new AMD64VZeroUpper(arguments, getRegisterConfig()));
         }
         super.emitForeignCallOp(linkage, result, arguments, temps, info);
     }

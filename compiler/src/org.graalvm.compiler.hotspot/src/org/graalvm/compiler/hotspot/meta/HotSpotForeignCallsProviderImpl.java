@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
 
@@ -115,13 +114,14 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
                     ForeignCallDescriptor descriptor,
                     Transition transition,
                     Reexecutability reexecutability,
+                    RegisterEffect effect,
                     LocationIdentity... killedLocations) {
         return register(HotSpotForeignCallLinkageImpl.create(metaAccess,
                         codeCache,
                         wordTypes,
                         this,
                         descriptor,
-                        0L, COMPUTES_REGISTERS_KILLED,
+                        0L, effect,
                         JavaCall,
                         JavaCallee,
                         transition,
