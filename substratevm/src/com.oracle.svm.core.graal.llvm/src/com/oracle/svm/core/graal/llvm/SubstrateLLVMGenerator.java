@@ -28,12 +28,16 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
+import org.graalvm.compiler.core.llvm.LLVMIRBuilder;
 import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMKindTool;
 import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMVariable;
 import org.graalvm.compiler.lir.Variable;
@@ -44,12 +48,14 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 
@@ -72,17 +78,34 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     private LLVMValueRef[] registerStackSlots = new LLVMValueRef[LLVMFeature.SPECIAL_REGISTER_COUNT];
 
     private final boolean isEntryPoint;
+    private List<String> aliases;
     private final boolean canModifySpecialRegisters;
 
     SubstrateLLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
-        super(providers, generationResult, method, new SubstrateLLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context, shouldTrackPointers(method)),
+        super(providers, generationResult, method, new LLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context, shouldTrackPointers(method)),
                         new LLVMKindTool(context), debugLevel);
         this.isEntryPoint = isEntryPoint(method);
         this.canModifySpecialRegisters = canModifySpecialRegisters(method);
+
+        aliases = new ArrayList<>();
+        if (isEntryPoint) {
+            aliases.add(SubstrateUtil.mangleName(builder.getFunctionName()));
+
+            CEntryPointData entryPointData = (CEntryPointData) ((HostedMethod) method).getWrapped().getEntryPointData();
+            String entryPointSymbolName = entryPointData.getSymbolName();
+            assert !entryPointSymbolName.isEmpty();
+            if (entryPointData.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
+                aliases.add(entryPointSymbolName);
+            }
+        }
     }
 
     boolean isEntryPoint() {
         return isEntryPoint;
+    }
+
+    List<String> getAliases() {
+        return aliases;
     }
 
     private static boolean shouldTrackPointers(ResolvedJavaMethod method) {

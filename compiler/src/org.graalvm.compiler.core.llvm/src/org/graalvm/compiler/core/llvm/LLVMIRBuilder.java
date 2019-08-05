@@ -62,7 +62,7 @@ public class LLVMIRBuilder {
     private final boolean trackPointers;
     private LLVMValueRef gcRegisterFunction;
 
-    protected LLVMIRBuilder(String functionName, LLVMContextRef context, boolean trackPointers) {
+    public LLVMIRBuilder(String functionName, LLVMContextRef context, boolean trackPointers) {
         this.context = context;
         this.functionName = functionName;
         this.trackPointers = trackPointers;
@@ -113,6 +113,10 @@ public class LLVMIRBuilder {
 
     public LLVMValueRef getMainFunction() {
         return function;
+    }
+
+    public void addAlias(String alias) {
+        LLVM.LLVMAddAlias(getModule(), LLVM.LLVMTypeOf(getMainFunction()), getMainFunction(), alias);
     }
 
     private static void setLinkage(LLVMValueRef global, int linkage) {
