@@ -236,7 +236,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             LLVMContext context = descriptor.getContext();
             NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
             LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-            assert intrinsicProvider == null || !intrinsicProvider.isIntrinsified(descriptor.getName());
+            assert !intrinsicProvider.isIntrinsified(descriptor.getName());
             if (nfiContextExtension != null) {
                 NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
                 if (nativeFunction != null) {
@@ -352,7 +352,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     }
 
     public void define(LLVMIntrinsicProvider intrinsicProvider) {
-        assert intrinsicProvider != null && intrinsicProvider.isIntrinsified(name);
+        assert intrinsicProvider.isIntrinsified(name);
         Intrinsic intrinsification = new Intrinsic(intrinsicProvider, name);
         define(intrinsicProvider.getLibrary(), new LLVMFunctionDescriptor.IntrinsicFunction(intrinsification), true);
     }

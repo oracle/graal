@@ -739,7 +739,7 @@ final class Runner {
     }
 
     private static void bindUnresolvedFunction(LLVMContext ctx, LLVMFunctionDescriptor function, NFIContextExtension nfiContextExtension, LLVMIntrinsicProvider intrinsicProvider) {
-        if (intrinsicProvider != null && intrinsicProvider.isIntrinsified(function.getName())) {
+        if (intrinsicProvider.isIntrinsified(function.getName())) {
             function.define(intrinsicProvider);
         } else if (nfiContextExtension != null) {
             NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(ctx, function.getName());
@@ -1056,18 +1056,16 @@ final class Runner {
 
     private void overrideSulongLibraryFunctionsWithIntrinsics(List<LLVMParserResult> sulongLibraries) {
         LLVMIntrinsicProvider intrinsicProvider = language.getCapability(LLVMIntrinsicProvider.class);
-        if (intrinsicProvider != null) {
-            for (LLVMParserResult parserResult : sulongLibraries) {
-                for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
-                    if (symbol.isFunction() && intrinsicProvider.isIntrinsified(symbol.getName())) {
-                        if (symbol instanceof LLVMAlias) {
-                            throw new UnsupportedOperationException("Replacing an alias with an intrinsic is not supported at the moment");
-                        } else if (symbol instanceof LLVMFunctionDescriptor) {
-                            LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
-                            function.define(intrinsicProvider);
-                        } else {
-                            throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
-                        }
+        for (LLVMParserResult parserResult : sulongLibraries) {
+            for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
+                if (symbol.isFunction() && intrinsicProvider.isIntrinsified(symbol.getName())) {
+                    if (symbol instanceof LLVMAlias) {
+                        throw new UnsupportedOperationException("Replacing an alias with an intrinsic is not supported at the moment");
+                    } else if (symbol instanceof LLVMFunctionDescriptor) {
+                        LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
+                        function.define(intrinsicProvider);
+                    } else {
+                        throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
                     }
                 }
             }
