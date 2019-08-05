@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
@@ -53,9 +54,15 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
         super(TYPE, x, y);
     }
 
-    @Override
-    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
-        NodeView view = NodeView.from(tool);
+    public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {
+        LogicNode value = canonical(x, y, view);
+        if (value != null) {
+            return value;
+        }
+        return new IntegerTestNode(x, y);
+    }
+
+    private static LogicNode canonical(ValueNode forX, ValueNode forY, NodeView view) {
         if (forX.isConstant() && forY.isConstant()) {
             return LogicConstantNode.forBoolean((forX.asJavaConstant().asLong() & forY.asJavaConstant().asLong()) == 0);
         }
@@ -68,7 +75,13 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
                 return LogicConstantNode.contradiction();
             }
         }
-        return this;
+        return null;
+    }
+
+    @Override
+    public ValueNode canonical(CanonicalizerTool tool, ValueNode forX, ValueNode forY) {
+        ValueNode value = canonical(forX, forY, NodeView.from(tool));
+        return value != null ? value : this;
     }
 
     @Override

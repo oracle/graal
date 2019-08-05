@@ -35,7 +35,7 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
     }
 
     @Override
-    default boolean supportBulkZeroing() {
-        return true;
+    default int bulkZeroingStride() {
+        return 8;
     }
 }
