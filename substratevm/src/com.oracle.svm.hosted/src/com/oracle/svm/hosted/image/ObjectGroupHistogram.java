@@ -68,8 +68,8 @@ public final class ObjectGroupHistogram {
          * heap.objects has some ObjectInfo values registered for multiple keys. We therefore make
          * our own map without duplicates.
          */
-        objects = new HashSet<>(heap.objects.size());
-        for (ObjectInfo info : heap.objects.values()) {
+        objects = new HashSet<>(heap.getObjectCount());
+        for (ObjectInfo info : heap.getObjects()) {
             objects.add(info);
         }
     }
@@ -126,7 +126,7 @@ public final class ObjectGroupHistogram {
         try {
             Field field = Class.forName("com.oracle.svm.graal.SubstrateRuntimeProvider").getDeclaredField("graphObjects");
             Object object = SubstrateObjectConstant.asObject(heap.getMetaAccess().lookupJavaField(field).readValue(null));
-            processObject(heap.objects.get(object), "CompressedGraphObjects", true, null, ObjectGroupHistogram::filterObjectConstantField);
+            processObject(heap.getObjectInfo(object), "CompressedGraphObjects", true, null, ObjectGroupHistogram::filterObjectConstantField);
         } catch (Throwable ex) {
             /* Ignore. When we build an image without Graal support, the class is not present. */
         }
@@ -174,7 +174,7 @@ public final class ObjectGroupHistogram {
 
     public void processObject(Object object, String group, boolean addObject, ObjectFilter objectFilter, FieldFilter fieldFilter) {
         if (object != null) {
-            processObject(heap.objects.get(object), group, addObject, 1, objectFilter, fieldFilter);
+            processObject(heap.getObjectInfo(object), group, addObject, 1, objectFilter, fieldFilter);
         }
     }
 
@@ -195,7 +195,7 @@ public final class ObjectGroupHistogram {
                     if (fieldFilter == null || fieldFilter.test(info, field)) {
                         Object fieldValue = SubstrateObjectConstant.asObject(field.readStorageValue(con));
                         if (fieldValue != null) {
-                            processObject(heap.objects.get(fieldValue), group, true, recursionLevel + 1, objectFilter, fieldFilter);
+                            processObject(heap.getObjectInfo(fieldValue), group, true, recursionLevel + 1, objectFilter, fieldFilter);
                         }
                     }
                 }
@@ -203,7 +203,7 @@ public final class ObjectGroupHistogram {
         } else if (info.getObject() instanceof Object[]) {
             for (Object element : (Object[]) info.getObject()) {
                 if (element != null) {
-                    processObject(heap.objects.get(element), group, true, recursionLevel + 1, objectFilter, fieldFilter);
+                    processObject(heap.getObjectInfo(element), group, true, recursionLevel + 1, objectFilter, fieldFilter);
                 }
             }
         }

@@ -41,12 +41,11 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
-import com.oracle.svm.core.heap.NativeImageInfo;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -274,10 +273,9 @@ public class PathExhibitor {
     }
 
     private static class BootImageHeapObjRefVisitor implements ObjectReferenceVisitor {
-
         // Lazily-initialized instance state.
-        protected Pointer targetPointer;
-        protected Pointer containerPointer;
+        protected Object target;
+        protected Object container;
         private PathElements result;
 
         protected BootImageHeapObjRefVisitor() {
@@ -294,10 +292,10 @@ public class PathExhibitor {
             if (objRef.isNull()) {
                 return true;
             }
-            final Pointer referentPointer = ReferenceAccess.singleton().readObjectAsUntrackedPointer(objRef, compressed);
-            if (referentPointer.equal(targetPointer)) {
-                final Object containerObject = containerPointer.toObject();
-                final UnsignedWord offset = objRef.subtract(containerPointer);
+            final Object referent = ReferenceAccess.singleton().readObjectAt(objRef, compressed);
+            if (referent == target) {
+                final UnsignedWord offset = objRef.subtract(Word.objectToUntrackedPointer(container));
+                element = BootImageHeapElement.factory(container, offset);
                 result.add(BootImageHeapElement.factory(containerObject, offset, referentPointer));
                 return result.isSpaceAvailable();
             }
@@ -469,8 +467,8 @@ public class PathExhibitor {
     /** A path element for a reference from the native image heap. */
     public static class BootImageHeapElement extends PathElement {
 
-        public static BootImageHeapElement factory(final Object base, final UnsignedWord offset, final Pointer field) {
-            return new BootImageHeapElement(base, offset, field);
+        public static BootImageHeapElement factory(final Object base, final UnsignedWord offset) {
+            return new BootImageHeapElement(base, offset);
         }
 
         @Override
@@ -484,21 +482,18 @@ public class PathExhibitor {
             log.string("[native image heap:");
             log.string("  object: ").object(base);
             log.string("  offset: ").unsigned(offset);
-            log.string("  field: ").hex(field);
             log.string("]");
             return log;
         }
 
-        protected BootImageHeapElement(final Object base, final UnsignedWord offset, final Pointer field) {
+        protected BootImageHeapElement(final Object base, final UnsignedWord offset) {
             this.base = base;
             this.offset = offset;
-            this.field = field;
         }
 
         // Immutable state.
         protected final Object base;
         protected final UnsignedWord offset;
-        protected final Pointer field;
     }
 
     /** A path element for a cyclic reference. */

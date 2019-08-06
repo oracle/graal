@@ -32,7 +32,6 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectReferenceVisitor;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectVisitor;
 import com.oracle.svm.core.heap.DiscoverableReference;
-import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -62,7 +61,6 @@ public class HeapVerifierImpl implements HeapVerifier {
     private final Log witnessLog;
 
     protected HeapVerifierImpl() {
-        super();
         /*
          * The constructor is called during native image generation, at which point there isn't a
          * Heap, so the heap field must be initialized lazily.
@@ -254,10 +252,11 @@ public class HeapVerifierImpl implements HeapVerifier {
     }
 
     private boolean verifyBootImageObjects() {
-        final boolean ropResult = verifyBootImageObjects(NativeImageInfo.firstReadOnlyPrimitiveObject, NativeImageInfo.lastReadOnlyPrimitiveObject);
-        final boolean rorResult = verifyBootImageObjects(NativeImageInfo.firstReadOnlyReferenceObject, NativeImageInfo.lastReadOnlyReferenceObject);
-        final boolean rwpResult = verifyBootImageObjects(NativeImageInfo.firstWritablePrimitiveObject, NativeImageInfo.lastWritablePrimitiveObject);
-        final boolean rwrResult = verifyBootImageObjects(NativeImageInfo.firstWritableReferenceObject, NativeImageInfo.lastWritableReferenceObject);
+        ImageHeapInfo info = HeapImpl.getImageHeapInfo();
+        final boolean ropResult = verifyBootImageObjects(info.firstReadOnlyPrimitiveObject, info.lastReadOnlyPrimitiveObject);
+        final boolean rorResult = verifyBootImageObjects(info.firstReadOnlyReferenceObject, info.lastReadOnlyReferenceObject);
+        final boolean rwpResult = verifyBootImageObjects(info.firstWritablePrimitiveObject, info.lastWritablePrimitiveObject);
+        final boolean rwrResult = verifyBootImageObjects(info.firstWritableReferenceObject, info.lastWritableReferenceObject);
         return ropResult && rorResult && rwpResult && rwrResult;
     }
 
@@ -472,10 +471,11 @@ public class HeapVerifierImpl implements HeapVerifier {
 
     static boolean slowlyFindPointerInBootImage(Pointer objectPointer) {
         boolean result = false;
-        result |= NativeImageInfo.isInReadOnlyPrimitivePartition(objectPointer);
-        result |= NativeImageInfo.isInReadOnlyReferencePartition(objectPointer);
-        result |= NativeImageInfo.isInWritablePrimitivePartition(objectPointer);
-        result |= NativeImageInfo.isInWritableReferencePartition(objectPointer);
+        ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+        result |= imageHeapInfo.isInReadOnlyPrimitivePartition(objectPointer);
+        result |= imageHeapInfo.isInReadOnlyReferencePartition(objectPointer);
+        result |= imageHeapInfo.isInWritablePrimitivePartition(objectPointer);
+        result |= imageHeapInfo.isInWritableReferencePartition(objectPointer);
         return result;
     }
 
