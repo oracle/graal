@@ -79,7 +79,10 @@ public class CoverageTracker implements AutoCloseable {
     public synchronized SourceCoverage[] getCoverage() {
         assert loadedSections.size() == loadedNodes.size();
         assert coveredSections.size() == coveredNodes.size();
-        Map<Source, Map<RootNode, RootData>> mapping = makeMapping();
+        return getSourceCoverage(makeMapping());
+    }
+
+    private static SourceCoverage[] getSourceCoverage(Map<Source, Map<RootNode, RootData>> mapping) {
         SourceCoverage[] coverage = new SourceCoverage[mapping.size()];
         int i = 0;
         for (Map.Entry<Source, Map<RootNode, RootData>> entry : mapping.entrySet()) {
@@ -93,17 +96,25 @@ public class CoverageTracker implements AutoCloseable {
         int i = 0;
         for (Map.Entry<RootNode, RootData> entry : perRootData.entrySet()) {
             final RootData rootData = entry.getValue();
-            rootCoverage[i++] = new RootCoverage(
-                            rootData.loadedStatements.toArray(new SourceSection[0]),
-                            rootData.coveredStatements.toArray(new SourceSection[0]),
+            rootCoverage[i++] = new RootCoverage(getSectionCoverage(rootData),
                             rootData.covered, rootData.sourceSection, entry.getKey().getName());
         }
         return rootCoverage;
     }
 
-    private static class RootData {
+    private static SectionCoverage[] getSectionCoverage(RootData rootData) {
+        final List<SourceSection> loadedStatements = rootData.loadedStatements;
+        SectionCoverage[] sectionCoverage = new SectionCoverage[loadedStatements.size()];
+        int i = 0;
+        for (SourceSection statement : loadedStatements) {
+            sectionCoverage[i++] = new SectionCoverage(statement, rootData.coveredStatements.contains(statement));
+        }
+        return sectionCoverage;
+    }
 
+    private static class RootData {
         private final SourceSection sourceSection;
+
         private boolean covered;
         private final List<SourceSection> loadedStatements = new ArrayList<>();
         private final List<SourceSection> coveredStatements = new ArrayList<>();

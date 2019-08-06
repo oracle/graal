@@ -24,13 +24,14 @@
  */
 package com.oracle.truffle.tools.coverage.impl;
 
+import java.io.PrintStream;
+
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.RootCoverage;
+import com.oracle.truffle.tools.coverage.SectionCoverage;
 import com.oracle.truffle.tools.coverage.SourceCoverage;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
-
-import java.io.PrintStream;
 
 class JSONPrinter {
 
@@ -41,7 +42,7 @@ class JSONPrinter {
 
     void print() {
         JSONArray output = new JSONArray();
-        for (SourceCoverage sourceCoverage: coverage) {
+        for (SourceCoverage sourceCoverage : coverage) {
             output.put(sourceJSON(sourceCoverage));
         }
         out.println(output.toString());
@@ -51,45 +52,55 @@ class JSONPrinter {
 
     private final SourceCoverage[] coverage;
 
-    private static JSONArray statementsJson(SourceSection[] statements) {
-        final JSONArray array = new JSONArray();
-        for (SourceSection statement : statements) {
-            array.put(sourceSectionJson(statement));
-        }
-        return array;
-    }
-
-    private static JSONObject sourceSectionJson(SourceSection statement) {
+    private static JSONObject sourceSectionJson(SourceSection section) {
         JSONObject sourceSection = new JSONObject();
-        sourceSection.put("characters", statement.getCharacters());
-        sourceSection.put("start_line", statement.getStartLine());
-        sourceSection.put("end_line", statement.getEndLine());
-        sourceSection.put("start_column", statement.getStartColumn());
-        sourceSection.put("end_column", statement.getEndColumn());
-        sourceSection.put("char_index", statement.getCharIndex());
-        sourceSection.put("char_end_index", statement.getCharEndIndex());
-        sourceSection.put("char_length", statement.getCharLength());
+        sourceSection.put("characters", section.getCharacters());
+        sourceSection.put("start_line", section.getStartLine());
+        sourceSection.put("end_line", section.getEndLine());
+        sourceSection.put("start_column", section.getStartColumn());
+        sourceSection.put("end_column", section.getEndColumn());
+        sourceSection.put("char_index", section.getCharIndex());
+        sourceSection.put("char_end_index", section.getCharEndIndex());
+        sourceSection.put("char_length", section.getCharLength());
         return sourceSection;
     }
 
-    private JSONObject sourceJSON(SourceCoverage sourceCoverage) {
+    private JSONObject sourceJSON(SourceCoverage coverage) {
         final JSONObject sourceJson = new JSONObject();
-        sourceJson.put("path", sourceCoverage.getSource().getPath());
-        final JSONArray rootsJson = new JSONArray();
-        for (RootCoverage rootCoverage : sourceCoverage.getRoots()) {
-            rootsJson.put(rootJSON(rootCoverage));
-        }
-        sourceJson.put("roots", rootsJson);
+        sourceJson.put("path", coverage.getSource().getPath());
+        sourceJson.put("roots", rootsJson(coverage.getRoots()));
         return sourceJson;
     }
 
-    private static JSONObject rootJSON(RootCoverage rootCoverage) {
+    private JSONArray rootsJson(RootCoverage[] coverages) {
+        final JSONArray rootsJson = new JSONArray();
+        for (RootCoverage coverage : coverages) {
+            rootsJson.put(rootJSON(coverage));
+        }
+        return rootsJson;
+    }
+
+    private static JSONObject rootJSON(RootCoverage coverage) {
         JSONObject rootJson = new JSONObject();
-        rootJson.put("loaded_statements", statementsJson(rootCoverage.getLoadedStatements()));
-        rootJson.put("covered_statements", statementsJson(rootCoverage.getCoveredStatements()));
-        rootJson.put("covered", rootCoverage.isCovered());
-        rootJson.put("source_section", sourceSectionJson(rootCoverage.getSourceSection()));
-        rootJson.put("name", rootCoverage.getName());
+        rootJson.put("covered", coverage.isCovered());
+        rootJson.put("source_section", sourceSectionJson(coverage.getSourceSection()));
+        rootJson.put("name", coverage.getName());
+        rootJson.put("sections", sectionsJson(coverage.getSectionCoverage()));
         return rootJson;
+    }
+
+    private static JSONArray sectionsJson(SectionCoverage[] coverages) {
+        JSONArray sectionsJSON = new JSONArray();
+        for (SectionCoverage coverage : coverages) {
+            sectionsJSON.put(sectionJson(coverage));
+        }
+        return sectionsJSON;
+    }
+
+    private static JSONObject sectionJson(SectionCoverage coverage) {
+        JSONObject sectionJson = new JSONObject();
+        sectionJson.put("covered", coverage.isCovered());
+        sectionJson.put("covered", sourceSectionJson(coverage.getSourceSection()));
+        return sectionJson;
     }
 }

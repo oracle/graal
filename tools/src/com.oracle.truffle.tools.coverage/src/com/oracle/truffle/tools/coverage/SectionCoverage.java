@@ -24,23 +24,23 @@
  */
 package com.oracle.truffle.tools.coverage;
 
-import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
-public final class SourceCoverage {
+public final class SectionCoverage {
 
-    final Source source;
-    final RootCoverage[] roots;
+    private final SourceSection sourceSection;
+    private final boolean covered;
 
-    SourceCoverage(Source source, RootCoverage[] roots) {
-        this.source = source;
-        this.roots = roots;
+    public SectionCoverage(SourceSection sourceSection, boolean covered) {
+        this.sourceSection = sourceSection;
+        this.covered = covered;
     }
 
-    public Source getSource() {
-        return source;
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
-    public RootCoverage[] getRoots() {
-        return roots;
+    public boolean isCovered() {
+        return covered;
     }
 }

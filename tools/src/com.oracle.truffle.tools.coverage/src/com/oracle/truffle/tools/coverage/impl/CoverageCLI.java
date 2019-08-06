@@ -33,6 +33,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.coverage.RootCoverage;
+import com.oracle.truffle.tools.coverage.SectionCoverage;
 import com.oracle.truffle.tools.coverage.SourceCoverage;
 
 final class CoverageCLI {
@@ -148,10 +149,15 @@ final class CoverageCLI {
         int loaded = 0;
         int covered = 0;
         for (RootCoverage root : coverage.getRoots()) {
-            loaded += root.getLoadedStatements().length;
-            covered += root.getCoveredStatements().length;
+            final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
+            loaded += sectionCoverage.length;
+            covered += getCoveredCount(sectionCoverage);
         }
         return percentFormat(100 * (double) covered / loaded);
+    }
+
+    private static long getCoveredCount(SectionCoverage[] sectionCoverage) {
+        return Arrays.stream(sectionCoverage).filter(SectionCoverage::isCovered).count();
     }
 
     private static String rootCoverage(SourceCoverage coverage) {

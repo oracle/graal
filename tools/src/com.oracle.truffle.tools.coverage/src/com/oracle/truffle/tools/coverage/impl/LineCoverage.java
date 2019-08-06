@@ -24,13 +24,16 @@
  */
 package com.oracle.truffle.tools.coverage.impl;
 
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.coverage.RootCoverage;
-import com.oracle.truffle.tools.coverage.SourceCoverage;
-
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tools.coverage.RootCoverage;
+import com.oracle.truffle.tools.coverage.SectionCoverage;
+import com.oracle.truffle.tools.coverage.SourceCoverage;
 
 class LineCoverage {
 
@@ -121,7 +124,13 @@ class LineCoverage {
     private static Set<SourceSection> coveredSourceSections(SourceCoverage sourceCoverage) {
         Set<SourceSection> sourceSections = new HashSet<>();
         for (RootCoverage root : sourceCoverage.getRoots()) {
-            sourceSections.addAll(Arrays.asList(root.getCoveredStatements()));
+            // @formatter:off
+            final List<SourceSection> covered = Arrays.stream(root.getSectionCoverage()).
+                    filter(SectionCoverage::isCovered).
+                    map(SectionCoverage::getSourceSection).
+                    collect(Collectors.toList());
+            // @formatter:on
+            sourceSections.addAll(covered);
         }
         return sourceSections;
     }
@@ -129,7 +138,12 @@ class LineCoverage {
     private static Set<SourceSection> loadedSourceSections(SourceCoverage sourceCoverage) {
         Set<SourceSection> sourceSections = new HashSet<>();
         for (RootCoverage root : sourceCoverage.getRoots()) {
-            sourceSections.addAll(Arrays.asList(root.getLoadedStatements()));
+            // @formatter:off
+            final List<SourceSection> loaded = Arrays.stream(root.getSectionCoverage()).
+                    map(SectionCoverage::getSourceSection).
+                    collect(Collectors.toList());
+            // @formatter:on
+            sourceSections.addAll(loaded);
         }
         return sourceSections;
     }

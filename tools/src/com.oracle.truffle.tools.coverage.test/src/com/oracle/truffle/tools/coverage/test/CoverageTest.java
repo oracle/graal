@@ -26,7 +26,6 @@ package com.oracle.truffle.tools.coverage.test;
 
 import java.io.ByteArrayOutputStream;
 
-import com.oracle.truffle.tools.coverage.RootCoverage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -34,6 +33,8 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
+import com.oracle.truffle.tools.coverage.RootCoverage;
+import com.oracle.truffle.tools.coverage.SectionCoverage;
 import com.oracle.truffle.tools.coverage.SourceCoverage;
 import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
 
@@ -62,26 +63,36 @@ public class CoverageTest {
         for (RootCoverage root : coverage[0].getRoots()) {
             switch (root.getName()) {
                 case "foo":
-                    Assert.assertTrue("\"foo\" should be covered during execution", root.isCovered());
-                    Assert.assertEquals("Unexpected number of statements loaded ", 0, root.getLoadedStatements().length);
-                    Assert.assertEquals("Unexpected number of statements covered", 0, root.getCoveredStatements().length);
+                    assertCoverage(root, 0, 0, "foo", true);
                     break;
                 case "bar":
-                    Assert.assertTrue("\"bar\" should be covered during execution", root.isCovered());
-                    Assert.assertEquals("Unexpected number of statements loaded ", 1, root.getLoadedStatements().length);
-                    Assert.assertEquals("Unexpected number of statements covered", 1, root.getCoveredStatements().length);
+                    assertCoverage(root, 1, 1, "bar", true);
                     break;
                 case "neverCalled":
-                    Assert.assertFalse("\"neverCalled\" should NOT be covered during execution", root.isCovered());
-                    Assert.assertEquals("Unexpected number of statements loaded ", 1, root.getLoadedStatements().length);
-                    Assert.assertEquals("Unexpected number of statements covered", 0, root.getCoveredStatements().length);
+                    assertCoverage(root, 1, 0, "neverCalled", false);
                     break;
                 case "":
-                    Assert.assertTrue("main should be covered during execution", root.isCovered());
-                    Assert.assertEquals("Unexpected number of statements loaded ", 0, root.getLoadedStatements().length);
-                    Assert.assertEquals("Unexpected number of statements covered", 0, root.getCoveredStatements().length);
+                    assertCoverage(root, 0, 0, "", true);
                     break;
             }
         }
+    }
+
+    private static void assertCoverage(RootCoverage root, int expectedLoaded, int expectedCovered, String name, boolean covered) {
+        Assert.assertEquals("Wrong root name!", name, root.getName());
+        Assert.assertEquals("Unexpected \"" + name + "\" root coverage", covered, root.isCovered());
+        final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
+        Assert.assertEquals("Unexpected number of statements loaded ", expectedLoaded, sectionCoverage.length);
+        Assert.assertEquals("Unexpected number of statements covered", expectedCovered, countCovered(sectionCoverage));
+    }
+
+    private static int countCovered(SectionCoverage[] sectionCoverage) {
+        int count = 0;
+        for (SectionCoverage coverage : sectionCoverage) {
+            if (coverage.isCovered()) {
+                count++;
+            }
+        }
+        return count;
     }
 }

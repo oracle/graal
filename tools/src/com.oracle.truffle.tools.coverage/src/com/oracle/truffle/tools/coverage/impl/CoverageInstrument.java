@@ -35,7 +35,6 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import com.oracle.truffle.tools.coverage.SourceCoverage;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -49,6 +48,7 @@ import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
+import com.oracle.truffle.tools.coverage.SourceCoverage;
 
 @Registration(id = CoverageInstrument.ID, name = "Code Coverage", version = CoverageInstrument.VERSION, services = CoverageTracker.class)
 public class CoverageInstrument extends TruffleInstrument {
@@ -97,7 +97,6 @@ public class CoverageInstrument extends TruffleInstrument {
                     });
 
     // TODO: following should be a shared lib for tools.
-
     static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
                     new Function<String, Object[]>() {
                         @Override

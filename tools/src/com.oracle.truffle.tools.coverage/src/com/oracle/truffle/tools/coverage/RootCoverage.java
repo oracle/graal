@@ -26,28 +26,22 @@ package com.oracle.truffle.tools.coverage;
 
 import com.oracle.truffle.api.source.SourceSection;
 
-public class RootCoverage {
+public final class RootCoverage {
 
-    private final SourceSection[] loadedStatements;
-    private final SourceSection[] coveredStatements;
+    private final SectionCoverage[] sectionCoverage;
     private final boolean covered;
     private final SourceSection sourceSection;
     private final String name;
 
-    RootCoverage(SourceSection[] loadedStatements, SourceSection[] coveredStatements, boolean covered, SourceSection sourceSection, String name) {
-        this.loadedStatements = loadedStatements;
-        this.coveredStatements = coveredStatements;
+    RootCoverage(SectionCoverage[] sectionCoverage, boolean covered, SourceSection sourceSection, String name) {
+        this.sectionCoverage = sectionCoverage;
         this.covered = covered;
         this.sourceSection = sourceSection;
         this.name = name;
     }
 
-    public SourceSection[] getLoadedStatements() {
-        return loadedStatements;
-    }
-
-    public SourceSection[] getCoveredStatements() {
-        return coveredStatements;
+    public SectionCoverage[] getSectionCoverage() {
+        return sectionCoverage;
     }
 
     public boolean isCovered() {
