@@ -38,9 +38,16 @@ import com.oracle.truffle.tools.coverage.SectionCoverage;
 import com.oracle.truffle.tools.coverage.SourceCoverage;
 import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
 
-public class CoverageTest {
+public final class CoverageTest {
 
-    protected Source makeSource(String s) {
+    private final String defaultSource = "ROOT(\n" +
+                    "DEFINE(foo,ROOT(SLEEP(1))),\n" +
+                    "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo))))),\n" +
+                    "DEFINE(neverCalled,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar))))),\n" +
+                    "CALL(bar)\n" +
+                    ")";
+
+    private static Source makeSource(String s) {
         return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").buildLiteral();
     }
 
@@ -49,12 +56,7 @@ public class CoverageTest {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
         Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").option("cpusampler.Output", "json").build();
-        Source source = makeSource("ROOT(\n" +
-                        "DEFINE(foo,ROOT(SLEEP(1))),\n" +
-                        "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo))))),\n" +
-                        "DEFINE(neverCalled,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar))))),\n" +
-                        "CALL(bar)\n" +
-                        ")");
+        Source source = makeSource(defaultSource);
         context.eval(source);
         final CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine());
         final SourceCoverage[] coverage = tracker.getCoverage();

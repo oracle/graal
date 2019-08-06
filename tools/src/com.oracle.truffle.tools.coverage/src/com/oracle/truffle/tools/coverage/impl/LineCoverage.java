@@ -80,12 +80,12 @@ class LineCoverage {
         return getCoverageChar(i, '!', '!', ' ', loadedRootLineNumbers, coveredRootLineNumbers, nonCoveredRootLineNumbers);
     }
 
-    private char getCoverageChar(int i, char partly, char not, char yes, Set<Integer> loadedLineNumbers, Set<Integer> coveredLineNumbers, Set<Integer> nonCoveredLineNumbers) {
-        if (loadedLineNumbers.contains(i)) {
-            if (coveredLineNumbers.contains(i) && nonCoveredLineNumbers.contains(i)) {
+    private static char getCoverageChar(int i, char partly, char not, char yes, Set<Integer> loaded, Set<Integer> covered, Set<Integer> nonCovered) {
+        if (loaded.contains(i)) {
+            if (covered.contains(i) && nonCovered.contains(i)) {
                 return partly;
             }
-            return nonCoveredLineNumbers.contains(i) ? not : yes;
+            return nonCovered.contains(i) ? not : yes;
         } else {
             return ' ';
         }

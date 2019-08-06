@@ -49,7 +49,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
 import com.oracle.truffle.tools.coverage.impl.CoverageNode;
 
-public class CoverageTracker implements AutoCloseable {
+public final class CoverageTracker implements AutoCloseable {
 
     public synchronized void startTracking(SourceSectionFilter filter) {
         if (closed) {
@@ -65,7 +65,7 @@ public class CoverageTracker implements AutoCloseable {
             f = DEFAULT_FILTER;
         }
         final Instrumenter instrumenter = env.getInstrumenter();
-        instrument(filter, instrumenter);
+        instrument(f, instrumenter);
     }
 
     public synchronized void endTracking() {
@@ -206,15 +206,15 @@ public class CoverageTracker implements AutoCloseable {
     }
 
     private void instrument(SourceSectionFilter f, Instrumenter instrumenter) {
-        f = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.StatementTag.class).and(f).build();
-        loadedBinding = instrumenter.attachLoadSourceSectionListener(f, new LoadSourceSectionListener() {
+        final SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.StatementTag.class).and(f).build();
+        loadedBinding = instrumenter.attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
                 loadedSections.add(event.getSourceSection());
                 loadedNodes.add(event.getNode());
             }
         }, false);
-        coveredBinding = instrumenter.attachExecutionEventFactory(f, new ExecutionEventNodeFactory() {
+        coveredBinding = instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
                 return new CoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode()) {

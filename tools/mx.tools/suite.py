@@ -328,7 +328,7 @@ suite = {
               "artifactId" : "coverage",
             },
             "javadocType" : "api",
-            "description" : ""
+            "description" : "Tests for the truffle coverage tool.",
         },
         "TRUFFLE_COVERAGE_TEST": {
             "subDir": "src",

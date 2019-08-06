@@ -25,11 +25,8 @@
 package com.oracle.truffle.tools.coverage.impl;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.coverage.RootCoverage;
@@ -118,16 +115,6 @@ final class CoverageCLI {
 
     private void printLine() {
         out.println(String.format("%" + summaryHeaderLen + "s", "").replace(' ', '-'));
-    }
-
-    private List<Source> sortedKeys() {
-        final List<Source> sorted = new ArrayList<>();
-        for (SourceCoverage sourceCoverage : coverage) {
-            sorted.add(sourceCoverage.getSource());
-        }
-        sorted.removeIf(source -> source.getPath() == null);
-        Collections.sort(sorted, (o1, o2) -> o2.getPath().compareTo(o1.getPath()));
-        return sorted;
     }
 
     private static String getHistogramLineFormat(SourceCoverage[] coverage) {
