@@ -42,6 +42,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -116,6 +117,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     // Class to encapsulate state used by functions in the algorithm
     private static final class Instance {
         private final LowTierContext context;
+        private final DebugContext debug;
         private final NodeMap<Block> nodeToBlockMap;
         private final BlockMap<List<Node>> blockToNodesMap;
         private final Block currentBlock;
@@ -123,8 +125,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         private final Map<Node, Integer> alignmentMap = new HashMap<>();
 
-        private Instance(LowTierContext context, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, Block currentBlock, NodeView view) {
+        private Instance(LowTierContext context, DebugContext debug, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, Block currentBlock, NodeView view) {
             this.context = context;
+            this.debug = debug;
             this.nodeToBlockMap = nodeToBlockMap;
             this.blockToNodesMap = blockToNodesMap;
             this.currentBlock = currentBlock;
@@ -771,9 +774,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 // These are broken by removing one of the packs.
                 Pack packToRemove = earliestUnscheduled(unscheduled, nodeToPackMap);
                 assert packToRemove != null : "there no are unscheduled statements in packs";
+                debug.log("dependency violation, removing %s", packToRemove.toString());
                 for (Node packNode : packToRemove.getElements()) {
-                    nodeToPackMap.remove(packNode); // Remove all references for these statements to
-                                                    // pack
+                    nodeToPackMap.remove(packNode); // Remove all references for these statements to pack
                 }
             }
 
@@ -926,6 +929,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         // Main
+        @SuppressWarnings("try")
         private void slpExtract() {
             if (!validForBlock()) {
                 return;
@@ -935,12 +939,29 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             final Set<Pack> combinedPackSet = new HashSet<>();
 
             findAdjRefs(packSet);
+            if (!packSet.isEmpty()) {
+                debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", currentBlock.toString(), packSet.size());
+            }
+
             extendPacklist(packSet);
+            if (!packSet.isEmpty()) {
+                debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", currentBlock.toString(), packSet.size());
+            }
 
             // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
 
-            schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), combinedPackSet);
+            if (combinedPackSet.isEmpty()) {
+                return;
+            }
+
+            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", currentBlock.toString(), combinedPackSet.size());
+
+            try (DebugContext.Scope s = debug.scope("schedule")) {
+                schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), combinedPackSet);
+            } catch (Throwable t) {
+                throw debug.handle(t);
+            }
         }
 
     }
@@ -958,12 +979,19 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, LowTierContext context) {
         // Schedule phase is required so that lowered addresses are in the nodeToBlockMap
         schedulePhase.apply(graph);
-        ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
+        final ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
+        final DebugContext debug = graph.getDebug();
+
         for (Block block : cfg.reversePostOrder()) {
-            new Instance(context, graph.getLastSchedule().getNodeToBlockMap(), graph.getLastSchedule().getBlockToNodesMap(), block, view).slpExtract();
+            try (DebugContext.Scope s = debug.scope("slpExtract")) {
+                new Instance(context, debug, graph.getLastSchedule().getNodeToBlockMap(), graph.getLastSchedule().getBlockToNodesMap(), block, view).slpExtract();
+            } catch (Throwable t) {
+                throw debug.handle(t);
+            }
         }
     }
 }
