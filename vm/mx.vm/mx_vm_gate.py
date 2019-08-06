@@ -207,7 +207,7 @@ def _svm_truffle_tck(native_image, svm, language, language_macro_option, languag
     for dist in svm.dists:
         if 'SVM_TRUFFLE_TCK' == dist.name:
             cp = dist.classpath_repr()
-            break;
+            break
     if not cp:
         mx.abort("Cannot resolve: SVM_TRUFFLE_TCK distribution.")
     with tempfile.NamedTemporaryFile() as report_file:
@@ -223,7 +223,7 @@ def _svm_truffle_tck(native_image, svm, language, language_macro_option, languag
             '-H:TruffleLanguagePermissionsExcludedPackages=com.oracle.truffle.js.shell',
         ]
         if language_exclude_files:
-            options.append('-H:TruffleLanguagePermissionsExcludeFiles={}'.format(','.join(language_exclude_files))),
+            options.append('-H:TruffleLanguagePermissionsExcludeFiles={}'.format(','.join(language_exclude_files)))
         native_image(options)
         if isfile(report_file.name) and getsize(report_file.name) > 0:
             message = "Failed: Language {} performs following privileged calls:\n\n".format(language)
@@ -242,7 +242,7 @@ def gate_svm_truffle_tck_js(tasks):
             excludes_dir = join(js_suite.mxDir, 'svm.truffle.tck')
             if isdir(excludes_dir):
                 for excludes_file in listdir(excludes_dir):
-                    excludes.append(join(excludes_dir,excludes_file))
+                    excludes.append(join(excludes_dir, excludes_file))
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(
