@@ -210,6 +210,9 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     @TruffleBoundary
     public final int BCItoLineNumber(int atBCI) {
+        if (atBCI == -1) {
+            return -1;
+        }
         return codeAttribute.BCItoLineNumber(atBCI);
     }
 

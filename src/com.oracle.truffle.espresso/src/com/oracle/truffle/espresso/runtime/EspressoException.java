@@ -27,8 +27,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.vm.VM;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class EspressoException extends RuntimeException implements TruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
@@ -39,6 +44,36 @@ public final class EspressoException extends RuntimeException implements Truffle
         // TODO(peterssen): Check that exception is a real exception object (e.g. exception
         // instanceof Exception)
         this.exception = exception;
+    }
+
+    public boolean isUnwinding(Meta meta) {
+        return isUnwinding(exception, meta);
+    }
+
+    public static boolean isUnwinding(StaticObject exception, Meta meta) {
+        return exception.getField(meta.Throwable_backtrace) == StaticObject.NULL;
+    }
+
+    public void addStackFrame(Method m, int bci, Meta meta) {
+        addStackFrame(exception, m, bci, meta);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static void addStackFrame(StaticObject exception, Method m, int bci, Meta meta) {
+        ((List<VM.StackElement>) exception.getHiddenField(meta.HIDDEN_FRAMES)).add(new VM.StackElement(m, bci));
+    }
+
+    @SuppressWarnings("unchecked")
+    public boolean isEmptyFrames(Meta meta) {
+        return ((List<VM.StackElement>) exception.getHiddenField(meta.HIDDEN_FRAMES)).isEmpty();
+    }
+
+    public void resetFrames(Meta meta) {
+        exception.setHiddenField(meta.HIDDEN_FRAMES, new ArrayList<VM.StackElement>());
+    }
+
+    public static void resetFrames(StaticObject exception, Meta meta) {
+        exception.setHiddenField(meta.HIDDEN_FRAMES, new ArrayList<VM.StackElement>());
     }
 
     @SuppressWarnings("sync-override")

@@ -303,12 +303,8 @@ public final class VM extends NativeEnv implements ContextAccess {
                         return defaultValue(m.returnType());
                     }
                     throw EspressoError.shouldNotReachHere(e);
-                } catch (RuntimeException e) {
+                } catch (RuntimeException | VirtualMachineError e) {
                     throw e;
-                } catch (StackOverflowError soe) {
-                    throw getContext().getStackOverflow();
-                } catch (OutOfMemoryError oom) {
-                    throw getContext().getOutOfMemory();
                 } catch (ThreadDeath e) {
                     throw getMeta().throwEx(ThreadDeath.class);
                 } catch (Throwable e) {
@@ -424,76 +420,69 @@ public final class VM extends NativeEnv implements ContextAccess {
         return JniEnv.JNI_OK;
     }
 
+    public static class StackElement {
+        private final Method m;
+        private final int bci;
+
+        public StackElement(Method m, int bci) {
+            this.m = m;
+            this.bci = bci;
+        }
+
+        public Method getMethod() {
+            return m;
+        }
+
+        public int getBCI() {
+            return bci;
+        }
+    }
+
     // endregion JNI Invocation Interface
     @VmImpl
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
-        final ArrayList<Method> callers = new ArrayList<>(32);
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Method>() {
-            @Override
-            public Method visitFrame(FrameInstance frameInstance) {
-                CallTarget callTarget = frameInstance.getCallTarget();
-                if (callTarget instanceof RootCallTarget) {
-                    RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
-                    if (rootNode instanceof EspressoRootNode) {
-                        callers.add(((EspressoRootNode) rootNode).getMethod());
-                    }
-                }
-                return null;
-            }
-        });
-        // Avoid printing the Throwable initialization
-        int nonThrowableInitStartIndex = 0;
-        boolean skipFillInStackTrace = true;
-        boolean skipThrowableInit = true;
-        for (Method m : callers) {
-            if (skipFillInStackTrace) {
-                if (!((m.getName() == Name.fillInStackTrace) || (m.getName() == Name.fillInStackTrace0))) {
-                    skipFillInStackTrace = false;
-                }
-            } else if (skipThrowableInit) {
-                if (!(m.getName() == Name.INIT) || !m.getMeta().Throwable.isAssignableFrom(m.getDeclaringKlass())) {
-                    skipThrowableInit = false;
-                    break;
-                }
-            }
-            nonThrowableInitStartIndex++;
-        }
-        self.setHiddenField(getMeta().HIDDEN_FRAMES, callers.subList(nonThrowableInitStartIndex, callers.size()).toArray(Method.EMPTY_ARRAY));
-
-        getMeta().Throwable_backtrace.set(self, self);
+        assert EspressoException.isUnwinding(self, getMeta());
+        assert self.getHiddenField(getMeta().HIDDEN_FRAMES) == null;
+        self.setHiddenField(getMeta().HIDDEN_FRAMES, new ArrayList<StackElement>(EspressoContext.DEFAULT_STACK_SIZE));
         return self;
     }
 
     @VmImpl
     @JniImpl
+    @SuppressWarnings("unchecked")
     public int JVM_GetStackTraceDepth(@Host(Throwable.class) StaticObject self) {
         Meta meta = getMeta();
-        StaticObject backtrace = (StaticObject) meta.Throwable_backtrace.get(self);
-        if (StaticObject.isNull(backtrace)) {
-            return 0;
+        List<StackElement> stackTrace = (List<StackElement>) self.getHiddenField(meta.HIDDEN_FRAMES);
+        if (EspressoException.isUnwinding(self, getMeta())) {
+            InterpreterToVM.fillInStackTrace(self, getMeta());
         }
-        return ((Method[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES)).length;
+        return stackTrace.size();
     }
 
     @VmImpl
     @JniImpl
+    @SuppressWarnings("unchecked")
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index) {
         Meta meta = getMeta();
         StaticObject ste = meta.StackTraceElement.allocateInstance();
-        StaticObject backtrace = (StaticObject) meta.Throwable_backtrace.get(self);
-        Method[] allCallers = ((Method[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES));
-        Method caller = allCallers[index];
+        List<StackElement> stackTrace = ((List<StackElement>) self.getHiddenField(meta.HIDDEN_FRAMES));
+        if (EspressoException.isUnwinding(self, getMeta())) {
+            InterpreterToVM.fillInStackTrace(self, getMeta());
+        }
+        StackElement stackElement = stackTrace.get(index);
+        Method caller = stackElement.getMethod();
         if (caller == null) {
             return StaticObject.NULL;
         }
+        int bci = stackElement.getBCI();
 
         meta.StackTraceElement_init.invokeDirect(
                         /* this */ ste,
                         /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(caller.getDeclaringKlass().getType().toString(), true, true)),
                         /* methodName */ meta.toGuestString(caller.getName()),
                         /* fileName */ StaticObject.NULL,
-                        /* lineNumber */ -1);
+                        /* lineNumber */ caller.BCItoLineNumber(bci));
 
         return ste;
     }
