@@ -75,7 +75,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
 
         T clazz = delegate.resolveType(className);
         if (clazz == null) {
-            throw new JSONParserException("Class " + className + " not found");
+            throw new NoClassDefFoundError("Class " + className + " not found in the classpath");
         }
         delegate.registerType(clazz);
 

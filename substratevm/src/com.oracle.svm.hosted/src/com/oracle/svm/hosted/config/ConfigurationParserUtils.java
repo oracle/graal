@@ -122,14 +122,22 @@ public final class ConfigurationParserUtils {
     private static void doParseAndRegister(ConfigurationParser parser, Reader reader, String featureName, Object location, HostedOptionKey<String[]> option) {
         try {
             parser.parseAndRegister(reader);
+        } catch (NoClassDefFoundError e) {
+            String errorMessage = unwrapErrorMessage(e);
+            throw UserError.abort(errorMessage);
         } catch (IOException | JSONParserException e) {
-            String errorMessage = e.getMessage();
-            if (errorMessage == null || errorMessage.isEmpty()) {
-                errorMessage = e.toString();
-            }
+            String errorMessage = unwrapErrorMessage(e);
             throw UserError.abort("Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage +
                             "\nVerify that the configuration matches the schema described in the " +
-                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
+                            SubstrateOptionsParser.commandArgument(PrintFlags, "<option-category>(User, Expert, Debug)") + " output for option " + option.getName() + ".");
         }
+    }
+
+    private static String unwrapErrorMessage(Throwable e) {
+        String errorMessage = e.getMessage();
+        if (errorMessage == null || errorMessage.isEmpty()) {
+            errorMessage = e.toString();
+        }
+        return errorMessage;
     }
 }
