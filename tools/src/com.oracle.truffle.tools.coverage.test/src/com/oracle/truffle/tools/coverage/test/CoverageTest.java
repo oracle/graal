@@ -44,17 +44,17 @@ public class CoverageTest {
     }
 
     @Test
-    public void testSamplerJson() {
+    public void testBasic() {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
         Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").option("cpusampler.Output", "json").build();
-        Source defaultSourceForSampling = makeSource("ROOT(\n" +
+        Source source = makeSource("ROOT(\n" +
                         "DEFINE(foo,ROOT(SLEEP(1))),\n" +
                         "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo))))),\n" +
                         "DEFINE(neverCalled,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar))))),\n" +
                         "CALL(bar)\n" +
                         ")");
-        context.eval(defaultSourceForSampling);
+        context.eval(source);
         final CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine());
         final SourceCoverage[] coverage = tracker.getCoverage();
         Assert.assertEquals("Unexpected number of sources in coverage", 1, coverage.length);
