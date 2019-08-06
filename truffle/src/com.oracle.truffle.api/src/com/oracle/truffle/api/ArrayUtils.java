@@ -140,22 +140,7 @@ public final class ArrayUtils {
         }
     }
 
-    /**
-     * Returns the index of the first element of {@code haystack} where
-     * {@code (haystack[index] | mask) == needle}, bounded by {@code fromIndex} (inclusive) and
-     * {@code maxIndex} (exclusive).
-     *
-     * @return the index of the first element of {@code haystack} where
-     *         {@code fromIndex <= index && index < maxIndex && (haystack[index] | mask) == needle}
-     *         holds, or {@code -1} if no such element is found.
-     * @since 19.2
-     */
-    public static int indexOfWithORMask(byte[] haystack, int fromIndex, int maxIndex, byte needle, byte mask) {
-        checkArgs(haystack.length, fromIndex, maxIndex, 1);
-        return runIndexOfWithORMask(haystack, fromIndex, maxIndex, needle, mask);
-    }
-
-    private static int runIndexOfWithORMask(byte[] haystack, int fromIndex, int maxIndex, byte needle, byte mask) {
+    private static int runIndexOfWithOrMask(byte[] haystack, int fromIndex, int maxIndex, byte needle, byte mask) {
         for (int i = fromIndex; i < maxIndex; i++) {
             if ((haystack[i] | mask) == needle) {
                 return i;
@@ -164,22 +149,7 @@ public final class ArrayUtils {
         return -1;
     }
 
-    /**
-     * Returns the index of the first element of {@code haystack} where
-     * {@code (haystack[index] | mask) == needle}, bounded by {@code fromIndex} (inclusive) and
-     * {@code maxIndex} (exclusive).
-     *
-     * @return the index of the first element of {@code haystack} where
-     *         {@code fromIndex <= index && index < maxIndex && (haystack[index] | mask) == needle}
-     *         holds, or {@code -1} if no such element is found.
-     * @since 19.2
-     */
-    public static int indexOfWithORMask(char[] haystack, int fromIndex, int maxIndex, char needle, char mask) {
-        checkArgs(haystack.length, fromIndex, maxIndex, 1);
-        return runIndexOfWithORMask(haystack, fromIndex, maxIndex, needle, mask);
-    }
-
-    private static int runIndexOfWithORMask(char[] haystack, int fromIndex, int maxIndex, char needle, char mask) {
+    private static int runIndexOfWithOrMask(char[] haystack, int fromIndex, int maxIndex, char needle, char mask) {
         for (int i = fromIndex; i < maxIndex; i++) {
             if ((haystack[i] | mask) == needle) {
                 return i;
@@ -188,22 +158,7 @@ public final class ArrayUtils {
         return -1;
     }
 
-    /**
-     * Returns the index of the first element of {@code haystack} where
-     * {@code (haystack.charAt(index) | mask) == needle}, bounded by {@code fromIndex} (inclusive)
-     * and {@code maxIndex} (exclusive).
-     *
-     * @return the index of the first element of {@code haystack} where
-     *         {@code fromIndex <= index && index < maxIndex && (haystack.charAt(index) | mask) == needle}
-     *         holds, or {@code -1} if no such element is found.
-     * @since 19.2
-     */
-    public static int indexOfWithORMask(String haystack, int fromIndex, int maxIndex, char needle, char mask) {
-        checkArgs(haystack.length(), fromIndex, maxIndex, 1);
-        return runIndexOfWithORMask(haystack, fromIndex, maxIndex, needle, mask);
-    }
-
-    private static int runIndexOfWithORMask(String haystack, int fromIndex, int maxIndex, char needle, char mask) {
+    private static int runIndexOfWithOrMask(String haystack, int fromIndex, int maxIndex, char needle, char mask) {
         for (int i = fromIndex; i < maxIndex; i++) {
             if ((haystack.charAt(i) | mask) == needle) {
                 return i;
@@ -212,22 +167,7 @@ public final class ArrayUtils {
         return -1;
     }
 
-    /**
-     * Returns the index of the first two consecutive elements of {@code haystack} where
-     * {@code (haystack[index] | mask1) == c1 && (haystack[index + 1] | mask2) == c2}, bounded by
-     * {@code fromIndex} (inclusive) and {@code maxIndex} (exclusive).
-     *
-     * @return the index of the first two consecutive elements of {@code haystack} where
-     *         {@code fromIndex <= index && index < maxIndex - 1 && (haystack[index] | mask1) == c1 && (haystack[index + 1] | mask2) == c2}
-     *         holds, or {@code -1} if no such elements are found.
-     * @since 19.2
-     */
-    public static int indexOf2ConsecutiveWithORMask(byte[] haystack, int fromIndex, int maxIndex, byte c1, byte c2, byte mask1, byte mask2) {
-        checkArgs(haystack.length, fromIndex, maxIndex, 1);
-        return runIndexOf2ConsecutiveWithORMask(haystack, fromIndex, maxIndex, c1, c2, mask1, mask2);
-    }
-
-    private static int runIndexOf2ConsecutiveWithORMask(byte[] haystack, int fromIndex, int maxIndex, byte c1, byte c2, byte mask1, byte mask2) {
+    private static int runIndexOf2ConsecutiveWithOrMask(byte[] haystack, int fromIndex, int maxIndex, byte c1, byte c2, byte mask1, byte mask2) {
         for (int i = fromIndex + 1; i < maxIndex; i++) {
             if ((haystack[i - 1] | mask1) == c1 && (haystack[i] | mask2) == c2) {
                 return i - 1;
@@ -236,22 +176,7 @@ public final class ArrayUtils {
         return -1;
     }
 
-    /**
-     * Returns the index of the first two consecutive elements of {@code haystack} where
-     * {@code (haystack[index] | mask1) == c1 && (haystack[index + 1] | mask2) == c2}, bounded by
-     * {@code fromIndex} (inclusive) and {@code maxIndex} (exclusive).
-     *
-     * @return the index of the first two consecutive elements of {@code haystack} where
-     *         {@code fromIndex <= index && index < maxIndex - 1 && (haystack[index] | mask1) == c1 && (haystack[index + 1] | mask2) == c2}
-     *         holds, or {@code -1} if no such elements are found.
-     * @since 19.2
-     */
-    public static int indexOf2ConsecutiveWithORMask(char[] haystack, int fromIndex, int maxIndex, char c1, char c2, char mask1, char mask2) {
-        checkArgs(haystack.length, fromIndex, maxIndex, 1);
-        return runIndexOf2ConsecutiveWithORMask(haystack, fromIndex, maxIndex, c1, c2, mask1, mask2);
-    }
-
-    private static int runIndexOf2ConsecutiveWithORMask(char[] haystack, int fromIndex, int maxIndex, char c1, char c2, char mask1, char mask2) {
+    private static int runIndexOf2ConsecutiveWithOrMask(char[] haystack, int fromIndex, int maxIndex, char c1, char c2, char mask1, char mask2) {
         for (int i = fromIndex + 1; i < maxIndex; i++) {
             if ((haystack[i - 1] | mask1) == c1 && (haystack[i] | mask2) == c2) {
                 return i - 1;
@@ -260,22 +185,7 @@ public final class ArrayUtils {
         return -1;
     }
 
-    /**
-     * Returns the index of the first two consecutive elements of {@code haystack} where
-     * {@code (haystack.charAt(index) | mask1) == c1 && (haystack.charAt(index + 1) | mask2) == c2},
-     * bounded by {@code fromIndex} (inclusive) and {@code maxIndex} (exclusive).
-     *
-     * @return the index of the first two consecutive elements of {@code haystack} where
-     *         {@code fromIndex <= index && index < maxIndex - 1 && (haystack.charAt(index) | mask1) == c1 && (haystack.charAt(index + 1) | mask2) == c2}
-     *         holds, or {@code -1} if no such elements are found.
-     * @since 19.2
-     */
-    public static int indexOf2ConsecutiveWithORMask(String haystack, int fromIndex, int maxIndex, char c1, char c2, char mask1, char mask2) {
-        checkArgs(haystack.length(), fromIndex, maxIndex, 1);
-        return runIndexOf2ConsecutiveWithORMask(haystack, fromIndex, maxIndex, c1, c2, mask1, mask2);
-    }
-
-    private static int runIndexOf2ConsecutiveWithORMask(String haystack, int fromIndex, int maxIndex, char c1, char c2, char mask1, char mask2) {
+    private static int runIndexOf2ConsecutiveWithOrMask(String haystack, int fromIndex, int maxIndex, char c1, char c2, char mask1, char mask2) {
         for (int i = fromIndex + 1; i < maxIndex; i++) {
             if ((haystack.charAt(i - 1) | mask1) == c1 && (haystack.charAt(i) | mask2) == c2) {
                 return i - 1;
@@ -286,33 +196,32 @@ public final class ArrayUtils {
 
     /**
      * Returns the index of the first region of {@code haystack} that equals {@code needle} after
-     * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code maxIndex}
-     * (exclusive).
+     * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code length}.
      *
      * @return the index of the first region of {@code haystack} where for all indices {@code i} of
      *         {@code needle} {@code (haystack[index + i] | mask[i]) == needle[i]} holds, and
-     *         {@code fromIndex <= index && index < maxIndex} holds, or {@code -1} if no such region
-     *         is found.
-     * @since 19.2
+     *         {@code fromIndex <= index && index + needle.length <= fromIndex + length} holds, or
+     *         {@code -1} if no such region is found.
+     * @since 19.3
      */
-    public static int indexOfWithORMask(byte[] haystack, int fromIndex, int maxIndex, byte[] needle, byte[] mask) {
-        checkArgsIndexOf(haystack.length, fromIndex, maxIndex, needle.length, mask.length);
+    public static int indexOfWithOrMask(byte[] haystack, int fromIndex, int length, byte[] needle, byte[] mask) {
+        checkArgsIndexOf(haystack.length, fromIndex, length, needle.length, mask.length);
         if (needle.length == 0) {
             return fromIndex;
         }
-        if (maxIndex - fromIndex - needle.length < 0) {
+        if (length - needle.length < 0) {
             return -1;
         } else if (needle.length == 1) {
-            return indexOfWithORMask(haystack, fromIndex, maxIndex, needle[0], mask[0]);
+            return runIndexOfWithOrMask(haystack, fromIndex, fromIndex + length, needle[0], mask[0]);
         } else {
-            int max = maxIndex - (needle.length - 2);
+            int max = fromIndex + length - (needle.length - 2);
             int index = fromIndex;
             while (index < max) {
-                index = indexOf2ConsecutiveWithORMask(haystack, index, max, needle[0], needle[1], mask[0], mask[1]);
+                index = runIndexOf2ConsecutiveWithOrMask(haystack, index, max, needle[0], needle[1], mask[0], mask[1]);
                 if (index < 0) {
                     return -1;
                 }
-                if (mask.length == 2 || regionEqualsWithORMask(haystack, index, needle, 0, mask)) {
+                if (mask.length == 2 || regionEqualsWithOrMask(haystack, index, needle, 0, mask.length, mask)) {
                     return index;
                 }
                 index++;
@@ -323,33 +232,32 @@ public final class ArrayUtils {
 
     /**
      * Returns the index of the first region of {@code haystack} that equals {@code needle} after
-     * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code maxIndex}
-     * (exclusive).
+     * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code length}.
      *
      * @return the index of the first region of {@code haystack} where for all indices {@code i} of
      *         {@code needle} {@code (haystack[index + i] | mask[i]) == needle[i]} holds, and
-     *         {@code fromIndex <= index && index < maxIndex} holds, or {@code -1} if no such region
-     *         is found.
-     * @since 19.2
+     *         {@code fromIndex <= index && index + needle.length <= fromIndex + length} holds, or
+     *         {@code -1} if no such region is found.
+     * @since 19.3
      */
-    public static int indexOfWithORMask(char[] haystack, int fromIndex, int maxIndex, char[] needle, char[] mask) {
-        checkArgsIndexOf(haystack.length, fromIndex, maxIndex, needle.length, mask.length);
+    public static int indexOfWithOrMask(char[] haystack, int fromIndex, int length, char[] needle, char[] mask) {
+        checkArgsIndexOf(haystack.length, fromIndex, length, needle.length, mask.length);
         if (needle.length == 0) {
             return fromIndex;
         }
-        if (maxIndex - fromIndex - needle.length < 0) {
+        if (length - needle.length < 0) {
             return -1;
         } else if (needle.length == 1) {
-            return indexOfWithORMask(haystack, fromIndex, maxIndex, needle[0], mask[0]);
+            return runIndexOfWithOrMask(haystack, fromIndex, fromIndex + length, needle[0], mask[0]);
         } else {
-            int max = maxIndex - (needle.length - 2);
+            int max = fromIndex + length - (needle.length - 2);
             int index = fromIndex;
             while (index < max) {
-                index = indexOf2ConsecutiveWithORMask(haystack, index, max, needle[0], needle[1], mask[0], mask[1]);
+                index = runIndexOf2ConsecutiveWithOrMask(haystack, index, max, needle[0], needle[1], mask[0], mask[1]);
                 if (index < 0) {
                     return -1;
                 }
-                if (mask.length == 2 || regionEqualsWithORMask(haystack, index, needle, 0, mask)) {
+                if (mask.length == 2 || regionEqualsWithOrMask(haystack, index, needle, 0, mask.length, mask)) {
                     return index;
                 }
                 index++;
@@ -360,34 +268,33 @@ public final class ArrayUtils {
 
     /**
      * Returns the index of the first region of {@code haystack} that equals {@code needle} after
-     * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code maxIndex}
-     * (exclusive).
+     * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code length}.
      *
      * @return the index of the first region of {@code haystack} where for all indices {@code i} of
      *         {@code needle}
      *         {@code (haystack.charAt(index + i) | mask.charAt(i)) == needle.charAt(i)} holds, and
-     *         {@code fromIndex <= index && index < maxIndex} holds, or {@code -1} if no such region
-     *         is found.
-     * @since 19.2
+     *         {@code fromIndex <= index && index + needle.length() <= fromIndex + length} holds, or
+     *         {@code -1} if no such region is found.
+     * @since 19.3
      */
-    public static int indexOfWithORMask(String haystack, int fromIndex, int maxIndex, String needle, String mask) {
-        checkArgsIndexOf(haystack.length(), fromIndex, maxIndex, needle.length(), mask.length());
+    public static int indexOfWithOrMask(String haystack, int fromIndex, int length, String needle, String mask) {
+        checkArgsIndexOf(haystack.length(), fromIndex, length, needle.length(), mask.length());
         if (needle.isEmpty()) {
             return fromIndex;
         }
-        if (maxIndex - fromIndex - needle.length() < 0) {
+        if (length - needle.length() < 0) {
             return -1;
         } else if (needle.length() == 1) {
-            return indexOfWithORMask(haystack, fromIndex, maxIndex, needle.charAt(0), mask.charAt(0));
+            return runIndexOfWithOrMask(haystack, fromIndex, fromIndex + length, needle.charAt(0), mask.charAt(0));
         } else {
-            int max = maxIndex - (needle.length() - 2);
+            int max = fromIndex + length - (needle.length() - 2);
             int index = fromIndex;
             while (index < max) {
-                index = indexOf2ConsecutiveWithORMask(haystack, index, max, needle.charAt(0), needle.charAt(1), mask.charAt(0), mask.charAt(1));
+                index = runIndexOf2ConsecutiveWithOrMask(haystack, index, max, needle.charAt(0), needle.charAt(1), mask.charAt(0), mask.charAt(1));
                 if (index < 0) {
                     return -1;
                 }
-                if (mask.length() == 2 || regionEqualsWithORMask(haystack, index, needle, 0, mask)) {
+                if (mask.length() == 2 || regionEqualsWithOrMask(haystack, index, needle, 0, mask.length(), mask)) {
                     return index;
                 }
                 index++;
@@ -396,32 +303,16 @@ public final class ArrayUtils {
         }
     }
 
-    private static void checkArgsIndexOf(int hayStackLength, int fromIndex, int maxIndex, int needleLength, int maskLength) {
-        if (fromIndex < 0) {
-            throw new IllegalArgumentException("fromIndex must be positive");
+    private static void checkArgsIndexOf(int hayStackLength, int fromIndex, int length, int needleLength, int maskLength) {
+        if (fromIndex < 0 || length < 0) {
+            throw new IllegalArgumentException("fromIndex and length must be positive");
         }
-        if (maxIndex > hayStackLength || maxIndex < fromIndex) {
-            throw new IllegalArgumentException("maxIndex out of range");
+        if (fromIndex + length > hayStackLength) {
+            throw new IllegalArgumentException("length out of range");
         }
         if (needleLength != maskLength) {
             throw new IllegalArgumentException("mask and needle length must be equal");
         }
-    }
-
-    /**
-     * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
-     * {@code length} (exclusive), {@code a1[fromIndex1 + i] == a2[fromIndex2 + i]} holds.
-     *
-     * @since 19.2
-     */
-    public static boolean regionEquals(byte[] a1, int fromIndex1, byte[] a2, int fromIndex2, int length) {
-        Objects.requireNonNull(a1);
-        Objects.requireNonNull(a2);
-        checkArgsRegionEquals(fromIndex1, fromIndex2, length);
-        if (regionEqualsOutOfBounds(a1.length, fromIndex1, a2.length, fromIndex2, length)) {
-            return false;
-        }
-        return runRegionEquals(a1, fromIndex1, a2, fromIndex2, length);
     }
 
     private static boolean runRegionEquals(byte[] a1, int fromIndex1, byte[] a2, int fromIndex2, int length) {
@@ -433,22 +324,6 @@ public final class ArrayUtils {
         return true;
     }
 
-    /**
-     * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
-     * {@code length} (exclusive), {@code a1[fromIndex1 + i] == a2[fromIndex2 + i]} holds.
-     *
-     * @since 19.2
-     */
-    public static boolean regionEquals(char[] a1, int fromIndex1, char[] a2, int fromIndex2, int length) {
-        Objects.requireNonNull(a1);
-        Objects.requireNonNull(a2);
-        checkArgsRegionEquals(fromIndex1, fromIndex2, length);
-        if (regionEqualsOutOfBounds(a1.length, fromIndex1, a2.length, fromIndex2, length)) {
-            return false;
-        }
-        return runRegionEquals(a1, fromIndex1, a2, fromIndex2, length);
-    }
-
     private static boolean runRegionEquals(char[] a1, int fromIndex1, char[] a2, int fromIndex2, int length) {
         for (int i = 0; i < length; i++) {
             if (a1[fromIndex1 + i] != a2[fromIndex2 + i]) {
@@ -456,23 +331,6 @@ public final class ArrayUtils {
             }
         }
         return true;
-    }
-
-    /**
-     * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
-     * {@code length} (exclusive), {@code a1.charAt(fromIndex1 + i) == a2.charAt(fromIndex2 + i)}
-     * holds.
-     *
-     * @since 19.2
-     */
-    public static boolean regionEquals(String a1, int fromIndex1, String a2, int fromIndex2, int length) {
-        Objects.requireNonNull(a1);
-        Objects.requireNonNull(a2);
-        checkArgsRegionEquals(fromIndex1, fromIndex2, length);
-        if (regionEqualsOutOfBounds(a1.length(), fromIndex1, a2.length(), fromIndex2, length)) {
-            return false;
-        }
-        return runRegionEquals(a1, fromIndex1, a2, fromIndex2, length);
     }
 
     private static boolean runRegionEquals(String a1, int fromIndex1, String a2, int fromIndex2, int length) {
@@ -486,22 +344,26 @@ public final class ArrayUtils {
 
     /**
      * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
-     * {@code mask.length} (exclusive), {@code (a1[fromIndex1 + i] | mask[i]) == a2[fromIndex2 + i]}
+     * {@code length} (exclusive), {@code (a1[fromIndex1 + i] | mask[i]) == a2[fromIndex2 + i]}
      * holds.
      *
-     * @since 19.2
+     * @since 19.3
      */
-    public static boolean regionEqualsWithORMask(byte[] a1, int fromIndex1, byte[] a2, int fromIndex2, byte[] mask) {
+    public static boolean regionEqualsWithOrMask(byte[] a1, int fromIndex1, byte[] a2, int fromIndex2, int length, byte[] mask) {
         Objects.requireNonNull(a1);
         Objects.requireNonNull(a2);
-        checkArgsRegionEquals(fromIndex1, fromIndex2, mask.length);
-        if (regionEqualsOutOfBounds(a1.length, fromIndex1, a2.length, fromIndex2, mask.length)) {
+        checkArgsRegionEquals(fromIndex1, fromIndex2, length);
+        if (regionEqualsOutOfBounds(a1.length, fromIndex1, a2.length, fromIndex2, length)) {
             return false;
         }
-        return runRegionEqualsWithORMask(a1, fromIndex1, a2, fromIndex2, mask);
+        if (mask == null) {
+            return runRegionEquals(a1, fromIndex1, a2, fromIndex2, length);
+        }
+        checkMaskLengthRegionEquals(length, mask.length);
+        return runRegionEqualsWithOrMask(a1, fromIndex1, a2, fromIndex2, mask);
     }
 
-    private static boolean runRegionEqualsWithORMask(byte[] a1, int fromIndex1, byte[] a2, int fromIndex2, byte[] mask) {
+    private static boolean runRegionEqualsWithOrMask(byte[] a1, int fromIndex1, byte[] a2, int fromIndex2, byte[] mask) {
         for (int i = 0; i < mask.length; i++) {
             if ((a1[fromIndex1 + i] | mask[i]) != a2[fromIndex2 + i]) {
                 return false;
@@ -512,22 +374,26 @@ public final class ArrayUtils {
 
     /**
      * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
-     * {@code mask.length} (exclusive), {@code (a1[fromIndex1 + i] | mask[i]) == a2[fromIndex2 + i]}
+     * {@code length} (exclusive), {@code (a1[fromIndex1 + i] | mask[i]) == a2[fromIndex2 + i]}
      * holds.
      *
-     * @since 19.2
+     * @since 19.3
      */
-    public static boolean regionEqualsWithORMask(char[] a1, int fromIndex1, char[] a2, int fromIndex2, char[] mask) {
+    public static boolean regionEqualsWithOrMask(char[] a1, int fromIndex1, char[] a2, int fromIndex2, int length, char[] mask) {
         Objects.requireNonNull(a1);
         Objects.requireNonNull(a2);
-        checkArgsRegionEquals(fromIndex1, fromIndex2, mask.length);
-        if (regionEqualsOutOfBounds(a1.length, fromIndex1, a2.length, fromIndex2, mask.length)) {
+        checkArgsRegionEquals(fromIndex1, fromIndex2, length);
+        if (regionEqualsOutOfBounds(a1.length, fromIndex1, a2.length, fromIndex2, length)) {
             return false;
         }
-        return runRegionEqualsWithORMask(a1, fromIndex1, a2, fromIndex2, mask);
+        if (mask == null) {
+            return runRegionEquals(a1, fromIndex1, a2, fromIndex2, length);
+        }
+        checkMaskLengthRegionEquals(length, mask.length);
+        return runRegionEqualsWithOrMask(a1, fromIndex1, a2, fromIndex2, mask);
     }
 
-    private static boolean runRegionEqualsWithORMask(char[] a1, int fromIndex1, char[] a2, int fromIndex2, char[] mask) {
+    private static boolean runRegionEqualsWithOrMask(char[] a1, int fromIndex1, char[] a2, int fromIndex2, char[] mask) {
         for (int i = 0; i < mask.length; i++) {
             if ((a1[fromIndex1 + i] | mask[i]) != a2[fromIndex2 + i]) {
                 return false;
@@ -538,22 +404,26 @@ public final class ArrayUtils {
 
     /**
      * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
-     * {@code mask.length} (exclusive),
+     * {@code length} (exclusive),
      * {@code (a1.charAt(fromIndex1 + i) | mask.charAt(i)) == a2.charAt(fromIndex2 + i)} holds.
      *
-     * @since 19.2
+     * @since 19.3
      */
-    public static boolean regionEqualsWithORMask(String a1, int fromIndex1, String a2, int fromIndex2, String mask) {
+    public static boolean regionEqualsWithOrMask(String a1, int fromIndex1, String a2, int fromIndex2, int length, String mask) {
         Objects.requireNonNull(a1);
         Objects.requireNonNull(a2);
-        checkArgsRegionEquals(fromIndex1, fromIndex2, mask.length());
-        if (regionEqualsOutOfBounds(a1.length(), fromIndex1, a2.length(), fromIndex2, mask.length())) {
+        checkArgsRegionEquals(fromIndex1, fromIndex2, length);
+        if (regionEqualsOutOfBounds(a1.length(), fromIndex1, a2.length(), fromIndex2, length)) {
             return false;
         }
-        return runRegionEqualsWithORMask(a1, fromIndex1, a2, fromIndex2, mask);
+        if (mask == null) {
+            return runRegionEquals(a1, fromIndex1, a2, fromIndex2, length);
+        }
+        checkMaskLengthRegionEquals(length, mask.length());
+        return runRegionEqualsWithOrMask(a1, fromIndex1, a2, fromIndex2, mask);
     }
 
-    private static boolean runRegionEqualsWithORMask(String a1, int fromIndex1, String a2, int fromIndex2, String mask) {
+    private static boolean runRegionEqualsWithOrMask(String a1, int fromIndex1, String a2, int fromIndex2, String mask) {
         for (int i = 0; i < mask.length(); i++) {
             if ((a1.charAt(fromIndex1 + i) | mask.charAt(i)) != a2.charAt(fromIndex2 + i)) {
                 return false;
@@ -565,6 +435,12 @@ public final class ArrayUtils {
     private static void checkArgsRegionEquals(int fromIndex1, int fromIndex2, int length) {
         if (fromIndex1 < 0 || fromIndex2 < 0 || length < 0) {
             throw new IllegalArgumentException("length, fromIndex1 and fromIndex2 must be positive");
+        }
+    }
+
+    private static void checkMaskLengthRegionEquals(int length, int maskLength) {
+        if (length > maskLength) {
+            throw new IllegalArgumentException("mask length must be greater or equal to length");
         }
     }
 

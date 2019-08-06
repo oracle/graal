@@ -65,7 +65,9 @@ public class ArrayUtilsRegionEqualsWithMaskTest {
 
     @Parameters(name = "{index}: fromIndex1 {1} fromIndex2 {3} length {5} mask {4} expected {6}")
     public static Iterable<Object[]> data() {
-        return data(true);
+        ArrayList<Object[]> ret = data(false);
+        ret.addAll(data(true));
+        return ret;
     }
 
     public static ArrayList<Object[]> data(boolean withMask) {
@@ -102,11 +104,11 @@ public class ArrayUtilsRegionEqualsWithMaskTest {
     }
 
     private static Object[] dataRow(String a1, int fromIndex1, String a2, int fromIndex2, String mask, boolean expected, boolean withMask) {
-        return new Object[]{a1, fromIndex1, a2, fromIndex2, withMask ? mask(mask) : mask.length(), mask.length(), expected};
+        return new Object[]{a1, fromIndex1, a2, fromIndex2, withMask ? mask(mask) : null, mask.length(), expected};
     }
 
     private static Object[] dataRow(String a1, int fromIndex1, String a2, int fromIndex2, int maskLength, boolean expected, boolean withMask) {
-        return new Object[]{a1, fromIndex1, a2, fromIndex2, withMask ? mask(maskLength) : maskLength, maskLength, expected};
+        return new Object[]{a1, fromIndex1, a2, fromIndex2, withMask ? mask(maskLength) : null, maskLength, expected};
     }
 
     private final String a1;
@@ -114,21 +116,23 @@ public class ArrayUtilsRegionEqualsWithMaskTest {
     private final String a2;
     private final int fromIndex2;
     private final String mask;
+    private final int length;
     private final boolean expected;
 
-    public ArrayUtilsRegionEqualsWithMaskTest(String a1, int fromIndex1, String a2, int fromIndex2, String mask, @SuppressWarnings("unused") int length, boolean expected) {
+    public ArrayUtilsRegionEqualsWithMaskTest(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length, boolean expected) {
         this.a1 = a1;
         this.fromIndex1 = fromIndex1;
         this.a2 = a2;
         this.fromIndex2 = fromIndex2;
         this.mask = mask;
+        this.length = length;
         this.expected = expected;
     }
 
     @Test
     public void test() {
-        Assert.assertEquals(expected, ArrayUtils.regionEqualsWithORMask(toByteArray(a1), fromIndex1, toByteArray(a2), fromIndex2, toByteArray(mask)));
-        Assert.assertEquals(expected, ArrayUtils.regionEqualsWithORMask(a1.toCharArray(), fromIndex1, a2.toCharArray(), fromIndex2, mask.toCharArray()));
-        Assert.assertEquals(expected, ArrayUtils.regionEqualsWithORMask(a1, fromIndex1, a2, fromIndex2, mask));
+        Assert.assertEquals(expected, ArrayUtils.regionEqualsWithOrMask(toByteArray(a1), fromIndex1, toByteArray(a2), fromIndex2, length, toByteArray(mask)));
+        Assert.assertEquals(expected, ArrayUtils.regionEqualsWithOrMask(a1.toCharArray(), fromIndex1, a2.toCharArray(), fromIndex2, length, mask == null ? null : mask.toCharArray()));
+        Assert.assertEquals(expected, ArrayUtils.regionEqualsWithOrMask(a1, fromIndex1, a2, fromIndex2, length, mask));
     }
 }

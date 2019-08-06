@@ -62,7 +62,7 @@ public class ArrayUtilsIndexOfWithMaskTest {
                     " erat, \u0000 sed diam voluptua. At vero \uffff eos et ac" +
                     "cusa\u016f et justo duo dolores 0";
 
-    @Parameters(name = "{index}: haystack {0} fromIndex {1} maxIndex {2} needle {3} expected {5}")
+    @Parameters(name = "{index}: haystack {0} fromIndex {1} length {2} needle {3} expected {5}")
     public static Iterable<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         for (int length : new int[]{15, 16, 17, strAlphabet.length()}) {
@@ -77,24 +77,24 @@ public class ArrayUtilsIndexOfWithMaskTest {
         }
         for (String s : new String[]{lipsum, lipsum.toLowerCase(), lipsum.toUpperCase()}) {
             ret.addAll(Arrays.asList(
-                            dataRow(s, 1, 1, "", noMask(0), 1),
+                            dataRow(s, 1, 0, "", noMask(0), 1),
                             dataRow(s, 0, s.length(), "l", mask(1), 0),
-                            dataRow(s, 1, s.length(), "l", mask(1), 14),
+                            dataRow(s, 1, s.length() - 1, "l", mask(1), 14),
                             dataRow(s, 0, s.length(), "o", mask(1), 1),
-                            dataRow(s, 1, s.length(), "o", mask(1), 1),
-                            dataRow(s, 3, s.length(), "o", mask(1), 13),
-                            dataRow(s, 3, s.length(), "\u0000", noMask(1), 137),
-                            dataRow(s, 3, s.length(), " \u0000", noMask(2), 136),
-                            dataRow(s, 3, s.length(), ", \u0000", noMask(3), 135),
-                            dataRow(s, 3, s.length(), "t, \u0000", mask("t, \u0000"), 134),
-                            dataRow(s, 3, s.length(), "\uffff", noMask(1), 166),
-                            dataRow(s, 3, s.length(), " \uffff", noMask(2), 165),
-                            dataRow(s, 3, s.length(), "o \uffff", mask("o \uffff"), 164),
-                            dataRow(s, 3, s.length(), "0", noMask(1), 204),
-                            dataRow(s, 3, s.length(), " 0", noMask(2), 203),
-                            dataRow(s, 3, s.length(), "s 0", mask("s 0"), 202),
+                            dataRow(s, 1, s.length() - 1, "o", mask(1), 1),
+                            dataRow(s, 3, s.length() - 3, "o", mask(1), 13),
+                            dataRow(s, 3, s.length() - 3, "\u0000", noMask(1), 137),
+                            dataRow(s, 3, s.length() - 3, " \u0000", noMask(2), 136),
+                            dataRow(s, 3, s.length() - 3, ", \u0000", noMask(3), 135),
+                            dataRow(s, 3, s.length() - 3, "t, \u0000", mask("t, \u0000"), 134),
+                            dataRow(s, 3, s.length() - 3, "\uffff", noMask(1), 166),
+                            dataRow(s, 3, s.length() - 3, " \uffff", noMask(2), 165),
+                            dataRow(s, 3, s.length() - 3, "o \uffff", mask("o \uffff"), 164),
+                            dataRow(s, 3, s.length() - 3, "0", noMask(1), 204),
+                            dataRow(s, 3, s.length() - 3, " 0", noMask(2), 203),
+                            dataRow(s, 3, s.length() - 3, "s 0", mask("s 0"), 202),
                             dataRow(s, 0, s.length(), "lo", mask(2), 0),
-                            dataRow(s, 1, s.length(), "lo", mask(2), 14),
+                            dataRow(s, 1, s.length() - 1, "lo", mask(2), 14),
                             dataRow(s, 0, s.length(), " dolor", mask(" dolor"), 11)));
         }
         ret.add(dataRow(strAlphabet, 0, strAlphabet.length(), "O", String.valueOf('\u0100'), 14, -1));
@@ -114,16 +114,16 @@ public class ArrayUtilsIndexOfWithMaskTest {
 
     private final String haystack;
     private final int fromIndex;
-    private final int maxIndex;
+    private final int length;
     private final String needle;
     private final String mask;
     private final int expectedB;
     private final int expectedC;
 
-    public ArrayUtilsIndexOfWithMaskTest(String haystack, int fromIndex, int maxIndex, String needle, String mask, int expectedByte, int expectedChar) {
+    public ArrayUtilsIndexOfWithMaskTest(String haystack, int fromIndex, int length, String needle, String mask, int expectedByte, int expectedChar) {
         this.haystack = haystack;
         this.fromIndex = fromIndex;
-        this.maxIndex = maxIndex;
+        this.length = length;
         this.needle = needle;
         this.mask = mask;
         this.expectedB = expectedByte;
@@ -132,20 +132,9 @@ public class ArrayUtilsIndexOfWithMaskTest {
 
     @Test
     public void test() {
-        if (mask.length() == 1) {
-            Assert.assertEquals(expectedB, ArrayUtils.indexOfWithORMask(toByteArray(haystack), fromIndex, maxIndex, (byte) needle.charAt(0), (byte) mask.charAt(0)));
-            Assert.assertEquals(expectedC, ArrayUtils.indexOfWithORMask(haystack.toCharArray(), fromIndex, maxIndex, needle.charAt(0), mask.charAt(0)));
-            Assert.assertEquals(expectedC, ArrayUtils.indexOfWithORMask(haystack, fromIndex, maxIndex, needle.charAt(0), mask.charAt(0)));
-        }
-        if (mask.length() == 2) {
-            Assert.assertEquals(expectedB, ArrayUtils.indexOf2ConsecutiveWithORMask(toByteArray(haystack), fromIndex, maxIndex,
-                            (byte) needle.charAt(0), (byte) needle.charAt(1), (byte) mask.charAt(0), (byte) mask.charAt(1)));
-            Assert.assertEquals(expectedC, ArrayUtils.indexOf2ConsecutiveWithORMask(haystack.toCharArray(), fromIndex, maxIndex, needle.charAt(0), needle.charAt(1), mask.charAt(0), mask.charAt(1)));
-            Assert.assertEquals(expectedC, ArrayUtils.indexOf2ConsecutiveWithORMask(haystack, fromIndex, maxIndex, needle.charAt(0), needle.charAt(1), mask.charAt(0), mask.charAt(1)));
-        }
-        Assert.assertEquals(expectedB, ArrayUtils.indexOfWithORMask(toByteArray(haystack), fromIndex, maxIndex, toByteArray(needle), toByteArray(mask)));
-        Assert.assertEquals(expectedC, ArrayUtils.indexOfWithORMask(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray(), mask.toCharArray()));
-        Assert.assertEquals(expectedC, ArrayUtils.indexOfWithORMask(haystack, fromIndex, maxIndex, needle, mask));
+        Assert.assertEquals(expectedB, ArrayUtils.indexOfWithOrMask(toByteArray(haystack), fromIndex, length, toByteArray(needle), toByteArray(mask)));
+        Assert.assertEquals(expectedC, ArrayUtils.indexOfWithOrMask(haystack.toCharArray(), fromIndex, length, needle.toCharArray(), mask.toCharArray()));
+        Assert.assertEquals(expectedC, ArrayUtils.indexOfWithOrMask(haystack, fromIndex, length, needle, mask));
     }
 
     public static String noMask(int len) {
