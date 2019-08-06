@@ -57,6 +57,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             long classLoaderDelegate = LibGraal.translate(runtime, type);
             handle = HotSpotToSVMCalls.initializeRuntime(getIsolateThread(), this, classLoaderDelegate);
         }
+        initJMXBean(runtime);
     }
 
     @SuppressWarnings("try")
@@ -91,4 +92,16 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             HotSpotToSVMCalls.log(getIsolateThread(), message);
         }
     }
+
+    // Todo: remove me when find a way how to get an JNIEnv.
+    private static void initJMXBean(HotSpotJVMCIRuntime runtime) {
+        LibGraal.registerNativeMethods(runtime, JMXInitializer.class);
+        try (LibGraalScope scope = new LibGraalScope(runtime)) {
+            JMXInitializer.init(getIsolateThread());
+        }
+    }
+}
+
+final class JMXInitializer {
+    native static void init(long isolateThreadId);
 }

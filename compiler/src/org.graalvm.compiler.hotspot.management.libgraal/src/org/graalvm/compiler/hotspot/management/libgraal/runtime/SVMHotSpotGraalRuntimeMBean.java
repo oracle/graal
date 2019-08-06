@@ -76,8 +76,4 @@ public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     public MBeanInfo getMBeanInfo() {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
-
-    static SVMHotSpotGraalRuntimeMBean create(long isolate, long handle) {
-        return new SVMHotSpotGraalRuntimeMBean(isolate, handle);
-    }
 }

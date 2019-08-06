@@ -25,21 +25,22 @@
 package org.graalvm.compiler.hotspot.management.libgraal;
 
 import java.lang.management.ManagementFactory;
-import java.util.ArrayList;
-
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.MBeanRegistrationException;
-import javax.management.MBeanServer;
+import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
+import java.util.Queue;
+import java.util.function.Supplier;
 import javax.management.MBeanServerFactory;
-import javax.management.MalformedObjectNameException;
-import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.libgraal.jni.JNI;
+import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.WordFactory;
 
 /**
  * Dynamically registers an MBean with the {@link ManagementFactory#getPlatformMBeanServer()}.
@@ -52,7 +53,10 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
 @ServiceProvider(HotSpotGraalManagementRegistration.class)
 public final class HotSpotGraalManagement implements HotSpotGraalManagementRegistration {
 
-    private static final byte[] HS_DELEGATE_CLASS = null;
+    private static final byte[] HS_BEAN_CLASS = null;
+    private static final String HS_BEAN_CLASS_NAME = null;
+    private static final byte[] HS_BEAN_FACTORY_CLASS = null;
+    private static final String HS_BEAN_FACTORY_CLASS_NAME = null;
 
     private HotSpotGraalRuntimeMBean bean;
     private volatile boolean needsRegistration = true;
@@ -67,7 +71,6 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
             if (runtime.getManagement() != this) {
                 throw new IllegalArgumentException("Cannot initialize a second management object for runtime " + runtime.getName());
             }
-            defineMXBeanInRuntime();
         } else if (bean.getRuntime() != runtime) {
             throw new IllegalArgumentException("Cannot change the runtime a management interface is associated with");
         }
@@ -85,103 +88,49 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
         return bean.getObjectName();
     }
 
-    private void defineMXBeanInRuntime() {
-        System.out.println("HS_DELEGATE_CLASS: " + HS_DELEGATE_CLASS);
+    static void defineRequiredClassesInHotSpot(JNI.JNIEnv env) {
+        System.out.println("Defining JMX Bean.");
+        defineClassInHotSpot(env, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS);
+        defineClassInHotSpot(env, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
+        System.out.println("Defined JMX Bean.");
     }
 
-//    static final class RegistrationThread extends Thread {
-//
-//        private MBeanServer platformMBeanServer;
-//        private HotSpotGraalManagement deferred;
-//
-//        RegistrationThread() {
-//            super("HotSpotGraalManagement Bean Registration");
-//            this.setPriority(Thread.MIN_PRIORITY);
-//            this.setDaemon(true);
-//            this.start();
-//        }
-//
-//        /**
-//         * Poll for active MBean server every 2 seconds.
-//         */
-//        private static final int POLL_INTERVAL_MS = 2000;
-//
-//        /**
-//         * Adds a {@link HotSpotGraalManagement} to register with an active MBean server when one
-//         * becomes available.
-//         */
-//        synchronized void add(HotSpotGraalManagement e) {
-//            if (deferred != null) {
-//                e.nextDeferred = deferred;
-//            }
-//            deferred = e;
-//
-//            // Notify the registration thread that there is now
-//            // a deferred registration to process
-//            notify();
-//        }
-//
-//        /**
-//         * Processes and clears any deferred registrations.
-//         */
-//        private void process() {
-//            for (HotSpotGraalManagement m = deferred; m != null; m = m.nextDeferred) {
-//                HotSpotGraalRuntimeMBean bean = m.bean;
-//                if (m.needsRegistration && bean != null) {
-//                    try {
-//                        platformMBeanServer.registerMBean(bean, bean.getObjectName());
-//                    } catch (InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-//                        e.printStackTrace(TTY.out);
-//                        // Registration failed - don't try again
-//                        m.bean = null;
-//                    }
-//                    m.needsRegistration = false;
-//                }
-//            }
-//            deferred = null;
-//        }
-//
-//        @Override
-//        public void run() {
-//            while (true) {
-//                try {
-//                    synchronized (this) {
-//                        // Wait until there are deferred registrations to process
-//                        while (deferred == null) {
-//                            wait();
-//                        }
-//                    }
-//                    poll();
-//                    Thread.sleep(POLL_INTERVAL_MS);
-//                } catch (InterruptedException e) {
-//                    // Be verbose about unexpected interruption and then continue
-//                    e.printStackTrace(TTY.out);
-//                }
-//            }
-//        }
-//
-//        /**
-//         * Checks for active MBean server and if available, processes deferred registrations.
-//         */
-//        synchronized void poll() {
-//            if (platformMBeanServer == null) {
-//                try {
-//                    ArrayList<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
-//                    if (!servers.isEmpty()) {
-//                        platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-//                        process();
-//                    }
-//                } catch (SecurityException | UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
-//                    // Without permission to find or create the MBeanServer,
-//                    // we cannot process any Graal mbeans.
-//                    // Various other errors can occur in the ManagementFactory (JDK-8076557)
-//                    deferred = null;
-//                }
-//            } else {
-//                process();
-//            }
-//        }
-//    }
-//
-//    private static final RegistrationThread registration = new RegistrationThread();
+    private static void defineClassInHotSpot(JNI.JNIEnv env, String clazzName, byte[] clazz) {
+        CCharPointer classData = UnmanagedMemory.malloc(clazz.length);
+        ByteBuffer buffer = CTypeConversion.asByteBuffer(classData, clazz.length);
+        buffer.put(clazz);
+        try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(clazzName)) {
+            env.getFunctions().getDefineClass().call(
+                    env,
+                    className.get(),
+                    WordFactory.nullPointer(),
+                    classData,
+                    clazz.length);
+        } finally {
+            UnmanagedMemory.free(classData);
+        }
+    }
+
+
+    static final class Factory implements Supplier<HotSpotGraalManagementRegistration> {
+
+        private static final Queue<HotSpotGraalManagement> instances = new ArrayDeque<>();
+
+        Factory() {
+        }
+
+        @Override
+        public HotSpotGraalManagementRegistration get() {
+            return enqueue(new HotSpotGraalManagement());
+        }
+
+        synchronized HotSpotGraalManagement poll() {
+            return instances.poll();
+        }
+
+        private static synchronized HotSpotGraalManagement enqueue(HotSpotGraalManagement instance) {
+            instances.add(instance);
+            return instance;
+        }
+    }
 }

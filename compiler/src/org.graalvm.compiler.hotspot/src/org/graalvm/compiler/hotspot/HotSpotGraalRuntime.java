@@ -98,7 +98,7 @@ import jdk.vm.ci.services.Services;
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private static final boolean IS_AOT = Boolean.parseBoolean(Services.getSavedProperties().get("com.oracle.graalvm.isaot"));
-    private static final HotSpotGraalManagementRegistration AOT_INJECTED_MANAGEMENT = null;
+    private static final Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT = null;
 
     private static boolean checkArrayIndexScaleInvariants(MetaAccessProvider metaAccess) {
         assert metaAccess.getArrayIndexScale(JavaKind.Byte) == 1;
@@ -167,7 +167,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         compilerConfigurationName = compilerConfigurationFactory.getName();
 
         if (IS_AOT) {
-            management = AOT_INJECTED_MANAGEMENT;
+            management = AOT_INJECTED_MANAGEMENT == null ? null : AOT_INJECTED_MANAGEMENT.get();
         } else {
             management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
         }
