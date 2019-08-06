@@ -423,6 +423,7 @@ public final class InterpreterToVM implements ContextAccess {
         return getStrings().intern(guestString);
     }
 
+    // Recursion depth = 4
     public static StaticObject fillInStackTrace(ArrayList<Method> frames, StaticObject throwable, Meta meta) {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
@@ -448,7 +449,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
         });
         throwable.setHiddenField(meta.HIDDEN_FRAMES, frames.toArray(Method.EMPTY_ARRAY));
-        meta.Throwable_backtrace.set(throwable, throwable);
+        throwable.setField(meta.Throwable_backtrace, throwable);
         return throwable;
     }
 

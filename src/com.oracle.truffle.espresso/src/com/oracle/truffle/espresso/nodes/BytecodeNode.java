@@ -271,9 +271,9 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
-import com.oracle.truffle.espresso.runtime.MemoryErrorDelegate;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -315,6 +315,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] stackSlots;
 
+    @CompilationFinal(dimensions = 1) //
+    private final int[] SOEinfo;
+
     private final BytecodeStream bs;
 
     @TruffleBoundary
@@ -325,6 +328,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
         this.locals = Arrays.copyOfRange(slots, 0, method.getMaxLocals());
         this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize());
+        this.SOEinfo = getMethod().getSOEHandlerInfo();
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -883,12 +887,32 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     // Checkstyle: resume
                 } catch (EspressoException | EspressoExitException e) {
                     throw e;
-                } catch (OutOfMemoryError | StackOverflowError e) {
+                } catch (OutOfMemoryError e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    // Free lots of memory (this stack trace is ~5x bigger than the espresso one)
+                    e.setStackTrace(EspressoContext.EMPTY_STACK);
+                    for (int i = 0; i < getMethod().getMaxStackSize(); i++) {
+                        // Free the current stack
+                        putObject(frame, i, null);
+                    }
+                    InterpreterToVM.fillInStackTrace(getContext().getFrames(), getContext().getOutOfMemory().getException(), getMeta());
+                    throw getContext().getOutOfMemory();
+                } catch (StackOverflowError e) {
                     // Free some memory
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    e.setStackTrace(MemoryErrorDelegate.EMPTY_STACK);
-                    // Delegate to free some stack
-                    throw getContext().getDelegate().delegate(e instanceof StackOverflowError);
+                    if (SOEinfo != null) {
+                        for (int i = 0; i < SOEinfo.length; i += 3) {
+                            if (curBCI >= SOEinfo[i] && curBCI < SOEinfo[i + 1]) {
+                                top = 0;
+                                // TODO: Find a way to fill the stack trace without overflowing.
+                                putObject(frame, 0, getContext().getStackOverflow().getException());
+                                top++;
+                                curBCI = SOEinfo[i + 2];
+                                continue loop;
+                            }
+                        }
+                    }
+                    throw getContext().getStackOverflow();
                 } catch (RuntimeException e) {
                     CompilerDirectives.transferToInterpreter();
                     if (DEBUG_GENERAL) {
@@ -935,18 +959,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 } else {
                     throw e;
                 }
-            } catch (MemoryErrorDelegate e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (e.check()) {
-                    EspressoException exception = e.act(getContext(), getMeta());
-                    if (DEBUG_GENERAL) {
-                        reportThrow(curBCI, getMethod(), exception.getException());
-                    }
-                    throw exception;
-                } else {
-                    // Give us some room on the stack
-                    throw e.deStack();
-                }
             } catch (VirtualMachineError e) {
                 // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
                 Meta meta = EspressoLanguage.getCurrentContext().getMeta();
@@ -983,6 +995,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = bs.nextBCI(curBCI);
         }
+
     }
 
     private boolean takeBranch(VirtualFrame frame, int top, int opCode) {
@@ -1173,7 +1186,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     @ExplodeLoop
     @SuppressWarnings("unused")
-    //
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
         CompilerAsserts.partialEvaluationConstant(bci);
         ExceptionHandler[] handlers = getMethod().getExceptionHandlers();

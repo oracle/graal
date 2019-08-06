@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
@@ -67,6 +68,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method implements TruffleObject, ModifiersProvider, ContextAccess {
@@ -242,6 +244,26 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     public ExceptionHandler[] getExceptionHandlers() {
         return codeAttribute.getExceptionHandlers();
+    }
+
+    public int[] getSOEHandlerInfo() {
+        ArrayList<Integer> toArray = new ArrayList<>();
+        for (ExceptionHandler handler : getExceptionHandlers()) {
+            if (handler.getCatchType() == Type.StackOverflowError) {
+                toArray.add(handler.getStartBCI());
+                toArray.add(handler.getEndBCI());
+                toArray.add(handler.getHandlerBCI());
+            }
+        }
+        if (toArray.isEmpty()) {
+            return null;
+        }
+        int[] res = new int[toArray.size()];
+        int pos = 0;
+        for (Integer i : toArray) {
+            res[pos++] = i;
+        }
+        return res;
     }
 
     private static String buildJniNativeSignature(Method method) {
