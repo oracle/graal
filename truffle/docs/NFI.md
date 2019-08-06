@@ -7,7 +7,7 @@ Truffle interop. NFI is intended to be used for example to implement a
 language's FFI, or to call native runtime routines that aren't available in
 Java.
 
-NFI uses `libffi`. On a standard JVM it calls it using JNI, and on the Graal
+NFI uses `libffi`. On a standard JVM it calls it using JNI, and on the GraalVM
 Native Image it uses System Java. In the future it may be optimised by the
 GraalVM Compiler in native images so that native calls are made directly from
 compiled code.
@@ -37,9 +37,9 @@ Here's a full basic working example, before we go into the details:
 
 ```ruby
 library = Polyglot.eval('nfi', 'load "libSDL2.dylib"')  # load a library
-symbol = library['SDL_GetRevisionNumber']             # load a symbol from the lirbary
-function = symbol.bind('():UINT32')                   # bind the symbol to types to create a function
-puts function.call # => 12373                         # call the function
+symbol = library['SDL_GetRevisionNumber']               # load a symbol from the lirbary
+function = symbol.bind('():UINT32')                     # bind the symbol to types to create a function
+puts function.call # => 12373                           # call the function
 ```
 
 ## Loading libaries
@@ -54,17 +54,17 @@ library = Polyglot.eval('nfi', '...load command...')
 The load command can be any of these forms:
 
 * `default`
-* `load name`
+* `load "filename"`
 * `load (flag | flag | ...) "filename"`
 
 `default` returns a pseudo-library that contains all symbols already loaded in
 the process, equivalent to `RTLD_DEFAULT` in the Posix interface.
 
-`load name` loads a library from a file. You are responsible for any
+`load "filename"` loads a library from a file. You are responsible for any
 cross-platform concerns about library naming conventions and load paths.
 
-`load (flag | flag | ...) name` allows you to specify flags to load the
-library. For the default backend of NFI (backends will be described later), and
+`load (flag | flag | ...) "filename"` allows you to specify flags to load the
+library. For the default backend (backends will be described later), and
 when running on a Posix platform, the flags available are `RTLD_GLOBAL`,
 `RTLD_LOCAL`, `RTLD_LAZY`, and `RTLD_NOW`, which have the conventional Posix
 semantics. The default is `RTLD_NOW` if neither `RTLD_LAZY` nor `RTLD_NOW`
@@ -123,9 +123,9 @@ same symbol multiple times in order to call it with different types or a
 different number of arguments. For example to call `printf` with `%d %f` you
 would use the type signature `(STRING, ...SINT32, DOUBLE) : SINT32`.
 
-Types expressions can be nested arbitrarily deep.
+Type expressions can be nested arbitrarily deep.
 
-Two additional special types `env` and `OBJECT` are described in the section
+Two additional special types `ENV` and `OBJECT` are described in the section
 on the native API, later in this document.
 
 Types can be written in any case.
