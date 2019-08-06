@@ -126,6 +126,7 @@ public class CallNode extends Node {
         return root;
     }
 
+    // Needs to be protected because of the @NodeInfo annotation
     protected CallNode(CallTree tree, TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency, InliningPolicy policy) {
         super(TYPE);
         this.state = State.Cutoff;

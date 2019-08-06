@@ -64,6 +64,15 @@ public class GraphManager {
         this.callNodeProvider = callNodeProvider;
     }
 
+    static ResolvedJavaMethod findRequiredMethod(ResolvedJavaType declaringClass, ResolvedJavaMethod[] methods, String name, String descriptor) {
+        for (ResolvedJavaMethod method : methods) {
+            if (method.getName().equals(name) && method.getSignature().toMethodDescriptor().equals(descriptor)) {
+                return method;
+            }
+        }
+        throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
+    }
+
     Entry get(CompilableTruffleAST truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
@@ -120,9 +129,9 @@ public class GraphManager {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             MetaAccessProvider metaAccess = providers.getMetaAccess();
             ResolvedJavaType callTargetType = runtime.resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
-            this.callTargetCallDirect = AgnosticInliningPhase.findRequiredMethod(callTargetType, callTargetType.getDeclaredMethods(), "callDirect",
+            this.callTargetCallDirect = findRequiredMethod(callTargetType, callTargetType.getDeclaredMethods(), "callDirect",
                             "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
-            this.callBoundary = AgnosticInliningPhase.findRequiredMethod(callTargetType, callTargetType.getDeclaredMethods(), "callBoundary",
+            this.callBoundary = findRequiredMethod(callTargetType, callTargetType.getDeclaredMethods(), "callBoundary",
                             "([Ljava/lang/Object;)Ljava/lang/Object;");
 
         }
