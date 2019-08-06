@@ -102,10 +102,12 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
     protected LLVMValueRef emitCondition(LogicNode condition) {
         if (condition instanceof SafepointCheckNode) {
             LLVMValueRef threadData = getGenerator().getSpecialRegister(LLVMFeature.THREAD_POINTER_INDEX);
-            threadData = gen.getBuilder().buildIntToPtr(threadData, gen.getBuilder().rawPointerType());
-            LLVMValueRef safepointCounterAddr = gen.getBuilder().buildGEP(threadData, gen.getBuilder().constantInt(Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())));
-            LLVMValueRef safepointCount = gen.getBuilder().buildAtomicSub(safepointCounterAddr, gen.getBuilder().constantInt(1));
-            return gen.getBuilder().buildIsNull(safepointCount);
+            threadData = builder.buildIntToPtr(threadData, builder.rawPointerType());
+            LLVMValueRef safepointCounterAddr = builder.buildGEP(threadData, builder.constantInt(Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset())));
+            LLVMValueRef safepointCount = builder.buildLoad(safepointCounterAddr, builder.intType());
+            safepointCount = builder.buildSub(safepointCount, builder.constantInt(1));
+            builder.buildStore(safepointCount, safepointCounterAddr);
+            return builder.buildIsNull(safepointCount);
         }
         return super.emitCondition(condition);
     }
