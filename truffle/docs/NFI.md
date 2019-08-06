@@ -246,7 +246,7 @@ these arguments map to on the managed side:
 | `POINTER`        | `void *`                                | Polyglot object with `isPointer == true` or `isNull == true`.        |
 | `STRING`         | `char *` (zero-terminated UTF-8 string) | Polyglot `isString`.                                                 |
 | `OBJECT`         | `TruffleObject`                         | Arbitrary object.                                                    |
-| `[type]`         | `type *` (array of primitive)           | Java host primitive array                                            |
+| `[type]`         | `type *` (array of primitive)           | Java host primitive array.                                           |
 | `(args):ret`     | `ret (*)(args)` (function pointer type) | Polyglot function with `isExecutable == true`.                       |
 | `ENV`            | `TruffleEnv *`                          | nothing (injected argument)                                          |
 
@@ -269,7 +269,7 @@ that have a `VOID` return type.
 The return value of managed callback functions with return type `VOID` will
 be ignored.
 
-### primitive numbers
+### Primitive numbers
 
 The primitive number types are converted as you might expect. The argument needs
 to be a Polyglot number, and its value needs to fit in the value range of the
