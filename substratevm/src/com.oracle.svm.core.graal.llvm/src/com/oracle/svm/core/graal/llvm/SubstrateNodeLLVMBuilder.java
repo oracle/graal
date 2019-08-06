@@ -64,6 +64,10 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
         this.runtimeConfiguration = runtimeConfiguration;
 
         gen.getBuilder().setPersonalityFunction(gen.getFunction(LLVMFeature.getPersonalityStub()));
+
+        for (String alias : getGenerator().getAliases()) {
+            builder.addAlias(alias);
+        }
     }
 
     @Override
