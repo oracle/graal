@@ -284,7 +284,7 @@ public class PermissionsFeature implements Feature {
                             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
                         }
                         vote |= add;
-                    } else if (isBacktraceOverLanguage(callee, path) != Boolean.FALSE) {
+                    } else if (!isBacktrace(callee, path) || isBacktraceOverLanguage(callee, path)) {
                         parents.add(m);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
                         vote |= true;
@@ -304,18 +304,25 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
+     * Checks if the method is already included on call path, in other words it's a recursive call.
+     *
+     * @param method the {@link AnalysisMethod} to check
+     * @param path the current call path
+     */
+    private static boolean isBacktrace(AnalysisMethod method, Deque<AnalysisMethod> path) {
+        return path.contains(method);
+    }
+
+    /**
      * Checks if the method is a back trace crossing language boundary.
      *
      * @param method the {@link AnalysisMethod} to check
      * @param path the current call path
-     * @return {@code null} if the method is not a recursive call, {@code false} if the method is a
-     *         recursive call which does not cross language boundary, {@code true} if the method is
-     *         a recursive call crossing the language boundary.
+     * @return {@code false} if the method is not a recursive call or a recursive call which does
+     *         not cross language boundary, {@code true} if the method is a recursive call crossing
+     *         the language boundary.
      */
-    private Boolean isBacktraceOverLanguage(AnalysisMethod method, Deque<AnalysisMethod> path) {
-        if (!path.contains(method)) {
-            return null;
-        }
+    private boolean isBacktraceOverLanguage(AnalysisMethod method, Deque<AnalysisMethod> path) {
         for (Iterator<AnalysisMethod> it = path.descendingIterator(); it.hasNext();) {
             AnalysisMethod pe = it.next();
             if (method.equals(pe)) {
@@ -325,7 +332,7 @@ public class PermissionsFeature implements Feature {
                 return true;
             }
         }
-        throw new IllegalStateException();
+        return false;
     }
 
     /**

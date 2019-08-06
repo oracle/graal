@@ -81,10 +81,11 @@ public class ReportUtils {
      */
     public static void report(String description, Path file, Consumer<PrintWriter> reporter) {
         Path folder = file.getParent();
-        if (folder == null) {
-            throw new IllegalArgumentException("File must be valid file name");
+        Path fileName = file.getFileName();
+        if (folder == null || fileName == null) {
+            throw new IllegalArgumentException("File parameter must be a file, got: " + file);
         }
-        reportImpl(description, folder, file.getFileName().toString(), reporter);
+        reportImpl(description, folder, fileName.toString(), reporter);
     }
 
     private static void reportImpl(String description, Path folder, String fileName, Consumer<PrintWriter> reporter) {
