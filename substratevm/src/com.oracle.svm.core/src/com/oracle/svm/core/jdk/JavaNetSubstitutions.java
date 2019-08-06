@@ -222,7 +222,7 @@ final class Target_java_net_URL {
                 }
             }
 
-            handlerTmp.parseURL(URL.class.cast(this), spec, start, limit);
+            handlerTmp.parseURL(SubstrateUtil.cast(this, URL.class), spec, start, limit);
 
         } catch (MalformedURLException e) {
             throw e;
