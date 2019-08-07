@@ -356,12 +356,12 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter Register threadRegister,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter String typeContext,
-                    @ConstantParameter boolean useBulkZeroing,
+                    @ConstantParameter int bulkZeroingStride,
                     @ConstantParameter Counters counters) {
         // Primitive array types are eagerly pre-resolved. We can use a floating load.
         KlassPointer picHub = LoadConstantIndirectlyNode.loadKlass(hub);
         return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents,
-                        emitMemoryBarrier, threadRegister, maybeUnroll, typeContext, useBulkZeroing, counters);
+                        emitMemoryBarrier, threadRegister, maybeUnroll, typeContext, bulkZeroingStride, counters);
     }
 
     @Snippet
@@ -375,12 +375,12 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter Register threadRegister,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter String typeContext,
-                    @ConstantParameter boolean useBulkZeroing,
+                    @ConstantParameter int bulkZeroingStride,
                     @ConstantParameter Counters counters) {
         // Array type would be resolved by dominating resolution.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
         return allocateArrayImpl(picHub, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents,
-                        emitMemoryBarrier, threadRegister, maybeUnroll, typeContext, useBulkZeroing, counters);
+                        emitMemoryBarrier, threadRegister, maybeUnroll, typeContext, bulkZeroingStride, counters);
     }
 
     @Snippet
@@ -394,7 +394,7 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter Register threadRegister,
                     @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter String typeContext,
-                    @ConstantParameter boolean useBulkZeroing,
+                    @ConstantParameter int bulkZeroingStride,
                     @ConstantParameter Counters counters) {
         Object result = allocateArrayImpl(hub,
                         length,
@@ -405,7 +405,7 @@ public class NewObjectSnippets implements Snippets {
                         emitMemoryBarrier, threadRegister,
                         maybeUnroll,
                         typeContext,
-                        useBulkZeroing,
+                        bulkZeroingStride,
                         counters);
         return piArrayCastToSnippetReplaceeStamp(verifyOop(result), length);
     }
@@ -429,7 +429,7 @@ public class NewObjectSnippets implements Snippets {
                     Register threadRegister,
                     boolean maybeUnroll,
                     String typeContext,
-                    boolean useBulkZeroing,
+                    int bulkZeroingStride,
                     Counters counters) {
         Object result;
         long allocationSize = arrayAllocationSize(length, headerSize, log2ElementSize);
@@ -445,7 +445,7 @@ public class NewObjectSnippets implements Snippets {
             if (theCounters != null && theCounters.arrayLoopInit != null) {
                 theCounters.arrayLoopInit.inc();
             }
-            result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents, emitMemoryBarrier, maybeUnroll, useBulkZeroing, counters);
+            result = formatArray(hub, allocationSize, length, headerSize, top, prototypeMarkWord, fillContents, emitMemoryBarrier, maybeUnroll, bulkZeroingStride, counters);
         } else {
             result = newArrayStub(hub, length);
         }
@@ -510,11 +510,11 @@ public class NewObjectSnippets implements Snippets {
                     @ConstantParameter Register threadRegister,
                     @ConstantParameter JavaKind knownElementKind,
                     @ConstantParameter int knownLayoutHelper,
-                    @ConstantParameter boolean useBulkZeroing,
+                    @ConstantParameter int bulkZeroingStride,
                     Word prototypeMarkWord,
                     @ConstantParameter Counters counters) {
         Object result = allocateArrayDynamicImpl(elementType, voidClass, length, fillContents, emitMemoryBarrier, threadRegister, knownElementKind,
-                        knownLayoutHelper, useBulkZeroing, prototypeMarkWord, counters);
+                        knownLayoutHelper, bulkZeroingStride, prototypeMarkWord, counters);
         return result;
     }
 
@@ -526,7 +526,7 @@ public class NewObjectSnippets implements Snippets {
                     Register threadRegister,
                     JavaKind knownElementKind,
                     int knownLayoutHelper,
-                    boolean useBulkZeroing,
+                    int bulkZeroingStride,
                     Word prototypeMarkWord,
                     Counters counters) {
         /*
@@ -571,7 +571,7 @@ public class NewObjectSnippets implements Snippets {
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
 
         Object result = allocateArrayImpl(nonNullKlass, length, prototypeMarkWord, headerSize, log2ElementSize, fillContents,
-                        emitMemoryBarrier, threadRegister, false, "dynamic type", useBulkZeroing, counters);
+                        emitMemoryBarrier, threadRegister, false, "dynamic type", bulkZeroingStride, counters);
         return piArrayCastToSnippetReplaceeStamp(verifyOop(result), length);
     }
 
@@ -624,15 +624,15 @@ public class NewObjectSnippets implements Snippets {
      * @param constantSize is {@code size} known to be constant in the snippet
      * @param startOffset offset to begin zeroing. May not be word aligned.
      * @param manualUnroll maximally unroll zeroing
-     * @param useBulkZeroing apply bulk zeroing
+     * @param bulkZeroingStride apply bulk zeroing
      */
     private static void zeroMemory(long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll,
-                    boolean useBulkZeroing, Counters counters) {
-        fillMemory(0, size, memory, constantSize, startOffset, manualUnroll, useBulkZeroing, counters);
+                    int bulkZeroingStride, Counters counters) {
+        fillMemory(0, size, memory, constantSize, startOffset, manualUnroll, bulkZeroingStride, counters);
     }
 
     private static void fillMemory(long value, long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll,
-                    boolean useBulkZeroing, Counters counters) {
+                    int bulkZeroingStride, Counters counters) {
         ReplacementsUtil.runtimeAssert((size & 0x7) == 0, "unaligned object size");
         int offset = startOffset;
         if ((offset & 0x7) != 0) {
@@ -660,7 +660,7 @@ public class NewObjectSnippets implements Snippets {
         } else {
             // Use Word instead of int to avoid extension to long in generated code
             Word off = WordFactory.signed(offset);
-            if (useBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, (size - offset) >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
+            if (bulkZeroingStride > 0 && value == 0 && probability(SLOW_PATH_PROBABILITY, (size - offset) >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
                 if (theCounters != null && theCounters.instanceBulkInit != null) {
                     theCounters.instanceBulkInit.inc();
                 }
@@ -699,7 +699,7 @@ public class NewObjectSnippets implements Snippets {
      * @param manualUnroll maximally unroll zeroing
      */
     private static void fillWithGarbage(long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, Counters counters) {
-        fillMemory(0xfefefefefefefefeL, size, memory, constantSize, startOffset, manualUnroll, false, counters);
+        fillMemory(0xfefefefefefefefeL, size, memory, constantSize, startOffset, manualUnroll, 0, counters);
     }
 
     /**
@@ -716,7 +716,7 @@ public class NewObjectSnippets implements Snippets {
         Word prototypeMarkWord = useBiasedLocking(INJECTED_VMCONFIG) ? hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
-            zeroMemory(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, false, counters);
+            zeroMemory(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, 0, counters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, counters);
         }
@@ -763,7 +763,7 @@ public class NewObjectSnippets implements Snippets {
                     boolean fillContents,
                     boolean emitMemoryBarrier,
                     boolean maybeUnroll,
-                    boolean useBulkZeroing,
+                    int bulkZeroingStride,
                     Counters counters) {
         memory.writeInt(arrayLengthOffset(INJECTED_VMCONFIG), length, LocationIdentity.init());
         /*
@@ -772,7 +772,7 @@ public class NewObjectSnippets implements Snippets {
          */
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
-            zeroMemory(allocationSize, memory, false, headerSize, maybeUnroll, useBulkZeroing, counters);
+            zeroMemory(allocationSize, memory, false, headerSize, maybeUnroll, bulkZeroingStride, counters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
             fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, counters);
         }
@@ -893,7 +893,7 @@ public class NewObjectSnippets implements Snippets {
             args.addConst("threadRegister", registers.getThreadRegister());
             args.addConst("maybeUnroll", length.isConstant());
             args.addConst("typeContext", ProfileAllocations.getValue(localOptions) ? arrayType.toJavaName(false) : "");
-            args.addConst("useBulkZeroing", tool.getLowerer().supportBulkZeroing());
+            args.addConst("bulkZeroingStride", tool.getLowerer().bulkZeroingStride());
             args.addConst("counters", counters);
             SnippetTemplate template = template(newArrayNode, args);
             graph.getDebug().log("Lowering allocateArray in %s: node=%s, template=%s, arguments=%s", graph, newArrayNode, template, args);
@@ -937,7 +937,7 @@ public class NewObjectSnippets implements Snippets {
             } else {
                 args.addConst("knownLayoutHelper", 0);
             }
-            args.addConst("useBulkZeroing", tool.getLowerer().supportBulkZeroing());
+            args.addConst("bulkZeroingStride", tool.getLowerer().bulkZeroingStride());
             args.add("prototypeMarkWord", lookupArrayClass(tool, JavaKind.Object).prototypeMarkWord());
             args.addConst("counters", counters);
             SnippetTemplate template = template(newArrayNode, args);

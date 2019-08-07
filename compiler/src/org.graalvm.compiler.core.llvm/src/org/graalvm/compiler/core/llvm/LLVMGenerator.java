@@ -172,15 +172,15 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         if (stamp instanceof RawPointerStamp) {
             return builder.rawPointerType();
         }
-        return builder.getLLVMType(getTypeKind(stamp.javaType(getMetaAccess())));
+        return builder.getLLVMType(getTypeKind(stamp.javaType(getMetaAccess()), false));
     }
 
-    protected JavaKind getTypeKind(@SuppressWarnings("unused") ResolvedJavaType type) {
+    protected JavaKind getTypeKind(@SuppressWarnings("unused") ResolvedJavaType type, @SuppressWarnings("unused") boolean forMainFunction) {
         throw unimplemented();
     }
 
     public LLVMValueRef getFunction(ResolvedJavaMethod method) {
-        LLVMTypeRef functionType = getLLVMFunctionType(method);
+        LLVMTypeRef functionType = getLLVMFunctionType(method, false);
         return builder.getFunction(getFunctionName(method), functionType);
     }
 
@@ -190,19 +190,19 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         return method.getName();
     }
 
-    LLVMTypeRef getLLVMFunctionReturnType(ResolvedJavaMethod method) {
+    LLVMTypeRef getLLVMFunctionReturnType(ResolvedJavaMethod method, boolean forMainFunction) {
         ResolvedJavaType returnType = method.getSignature().getReturnType(null).resolve(null);
-        return builder.getLLVMStackType(getTypeKind(returnType));
+        return builder.getLLVMStackType(getTypeKind(returnType, forMainFunction));
     }
 
-    protected LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method) {
+    protected LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
         ResolvedJavaType receiver = method.hasReceiver() ? method.getDeclaringClass() : null;
         JavaType[] parameterTypes = method.getSignature().toParameterTypes(receiver);
-        return Arrays.stream(parameterTypes).map(type -> builder.getLLVMStackType(getTypeKind(type.resolve(null)))).toArray(LLVMTypeRef[]::new);
+        return Arrays.stream(parameterTypes).map(type -> builder.getLLVMStackType(getTypeKind(type.resolve(null), forMainFunction))).toArray(LLVMTypeRef[]::new);
     }
 
-    public LLVMTypeRef getLLVMFunctionType(ResolvedJavaMethod method) {
-        return builder.functionType(getLLVMFunctionReturnType(method), getLLVMFunctionArgTypes(method));
+    public LLVMTypeRef getLLVMFunctionType(ResolvedJavaMethod method, boolean forMainFunction) {
+        return builder.functionType(getLLVMFunctionReturnType(method, forMainFunction), getLLVMFunctionArgTypes(method, forMainFunction));
     }
 
     private long nextConstantId = 0L;
@@ -460,7 +460,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         LLVMValueRef[] callArguments = getCallArguments(args, getCallingConventionType(linkage.getOutgoingCallingConvention()), targetMethod);
 
         LLVMValueRef call = builder.buildCall(callee, patchpointId, callArguments);
-        return (isVoidType(getLLVMFunctionReturnType(targetMethod))) ? null : new LLVMVariable(call);
+        return (isVoidType(getLLVMFunctionReturnType(targetMethod, false))) ? null : new LLVMVariable(call);
     }
 
     protected abstract CallingConvention.Type getCallingConventionType(CallingConvention callingConvention);
@@ -569,11 +569,16 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
                 }
             } else if (returnsEnum && javaKind == JavaKind.Long) {
                 /* Enum values are returned as long */
-                retVal = builder.buildIntToPtr(retVal, builder.rawPointerType());
-                retVal = builder.buildRegisterObject(retVal);
+                retVal = convertEnumReturnValue(retVal);
             }
             builder.buildRet(retVal);
         }
+    }
+
+    protected LLVMValueRef convertEnumReturnValue(LLVMValueRef longValue) {
+        LLVMValueRef retVal = builder.buildIntToPtr(longValue, builder.rawPointerType());
+        retVal = builder.buildRegisterObject(retVal);
+        return retVal;
     }
 
     void indent() {

@@ -1026,7 +1026,7 @@ public class LLVMIRBuilder {
         return value;
     }
 
-    LLVMValueRef buildTrunc(LLVMValueRef value, int toBits) {
+    public LLVMValueRef buildTrunc(LLVMValueRef value, int toBits) {
         return LLVM.LLVMBuildTrunc(builder, value, integerType(toBits), DEFAULT_INSTR_NAME);
     }
 

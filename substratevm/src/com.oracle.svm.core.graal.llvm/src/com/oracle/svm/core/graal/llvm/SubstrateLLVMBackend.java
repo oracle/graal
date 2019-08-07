@@ -77,7 +77,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         SubstrateLLVMGenerator generator = new SubstrateLLVMGenerator(getProviders(), genResult, method, context, 0);
         LLVMIRBuilder builder = generator.getBuilder();
 
-        builder.addMainFunction(generator.getLLVMFunctionType(method));
+        builder.addMainFunction(generator.getLLVMFunctionType(method, true));
         builder.setAttribute(builder.getMainFunction(), LLVM.LLVMAttributeFunctionIndex, "naked");
 
         LLVMBasicBlockRef block = builder.appendBasicBlock("main");
