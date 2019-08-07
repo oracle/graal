@@ -58,8 +58,9 @@ import java.lang.annotation.Target;
  * {@link ReportPolymorphism.Exclude} Polymorphic specializations are never reported on the first
  * specialization.
  *
- * Additional information on the effect of {@link @ReportPolymorphism} can be found in <a href=
- * "https://github.com/oracle/graal/blob/master/truffle/docs/splitting/ReportingPolymorphism.md">ReportingPolymorphism.md</a>.
+ * Additional information on the effect of {@link ReportPolymorphism} can be found in <a href=
+ * "https://github.com/oracle/graal/blob/master/truffle/docs/splitting/ReportingPolymorphism.md">
+ * ReportingPolymorphism.md</a>.
  *
  * @since 0.33
  */
