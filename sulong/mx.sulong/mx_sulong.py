@@ -661,6 +661,12 @@ def findBundledLLVMProgram(llvm_program):
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
     return os.path.join(dep.get_output(), 'bin', llvm_program)
 
+def llvm_tool(args=None, out=None):
+    if len(args) < 1:
+        mx.abort("usage: mx llvm-tool <llvm-tool> [args...]")
+    llvm_program = findBundledLLVMProgram(args[0])
+    mx.run([llvm_program] + args[1:], out=out)
+
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
     return mx.get_runtime_jvm_args(['SULONG', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
@@ -941,10 +947,10 @@ def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
 
-
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],
     'test-llvm-image' : [_test_llvm_image, 'test a pre-built LLVM image'],
     'create-asm-parser' : [create_asm_parser, 'create the inline assembly parser using antlr'],
     'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
+    'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
 })
