@@ -26,36 +26,18 @@ package org.graalvm.compiler.replacements.test;
 
 import static org.junit.Assume.assumeFalse;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(value = Parameterized.class)
 public abstract class StringIndexOfTestBase extends GraalCompilerTest {
-
-    private static Map<ResolvedJavaMethod, InstalledCode> cache;
-
-    @BeforeClass
-    public static void setupCache() {
-        cache = new ConcurrentHashMap<>();
-    }
-
-    @AfterClass
-    public static void tearDownCache() {
-        cache = null;
-    }
 
     @Parameterized.Parameters(name = "{0},{1}")
     public static Collection<Object[]> data() {
@@ -112,7 +94,6 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
     protected final String constantString;
 
     public StringIndexOfTestBase(String sourceString, String constantString) {
-        super(cache);
         this.sourceString = sourceString;
         this.constantString = constantString;
     }

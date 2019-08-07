@@ -25,14 +25,10 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.util.ArrayList;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -40,23 +36,8 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.ArrayUtils;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 @RunWith(Parameterized.class)
 public class ArrayUtilsTest extends GraalCompilerTest {
-
-    private static Map<ResolvedJavaMethod, InstalledCode> cache;
-
-    @BeforeClass
-    public static void setupCache() {
-        cache = new ConcurrentHashMap<>();
-    }
-
-    @AfterClass
-    public static void tearDownCache() {
-        cache = null;
-    }
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
@@ -120,7 +101,6 @@ public class ArrayUtilsTest extends GraalCompilerTest {
     private final String needle;
 
     public ArrayUtilsTest(String haystack, int fromIndex, int maxIndex, String needle) {
-        super(cache);
         this.haystack = haystack;
         this.fromIndex = fromIndex;
         this.maxIndex = maxIndex;
