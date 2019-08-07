@@ -977,6 +977,7 @@ suite = {
       },
       "dependencies": [
         "bootstrap-toolchain-launchers",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
       ],
       "distDependencies" : [
         "SULONG_TOOLCHAIN_LAUNCHERS",
