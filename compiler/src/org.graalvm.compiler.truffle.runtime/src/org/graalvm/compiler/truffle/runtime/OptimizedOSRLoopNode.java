@@ -43,7 +43,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.meta.SpeculationLog;
 
-import static com.oracle.truffle.api.nodes.RepeatingNode.*;
+import static com.oracle.truffle.api.nodes.RepeatingNode.CONTINUE_LOOP_STATUS;
 
 /**
  * Loop node implementation that supports on-stack-replacement with compiled code.
@@ -205,7 +205,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     private int callOSR(OptimizedCallTarget target, VirtualFrame frame) {
         Object status;
-        if ((status = target.callOSR(frame)) != Integer.valueOf(CONTINUE_LOOP_STATUS)) {
+        if (!(status = target.callOSR(frame)).equals(CONTINUE_LOOP_STATUS)) {
             return (Integer) status;
         } else {
             if (!target.isValid()) {
