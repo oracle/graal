@@ -96,6 +96,7 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.util",
+                "com.oracle.graal.pointsto"
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",

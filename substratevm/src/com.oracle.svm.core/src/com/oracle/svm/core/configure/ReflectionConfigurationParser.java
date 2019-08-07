@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
@@ -57,13 +58,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
 
     @Override
     public void parseAndRegister(Reader reader) throws IOException {
-        try {
-            JSONParser parser = new JSONParser(reader);
-            Object json = parser.parse();
-            parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
-        } catch (NoClassDefFoundError e) {
-            throw e;
-        }
+        JSONParser parser = new JSONParser(reader);
+        Object json = parser.parse();
+        parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
     }
 
     private void parseClassArray(List<Object> classes) {
@@ -81,7 +78,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
 
         T clazz = delegate.resolveType(className);
         if (clazz == null) {
-            handleError("Could not resolve " + className + " for reflection configuration.");
+            handleClasspathError("Class " + className + " not found in the classpath");
             return;
         }
         delegate.registerType(clazz);
@@ -134,7 +131,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                                     delegate.getTypeName(clazz));
                 }
             } catch (NoClassDefFoundError e) {
-                handleError("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection. Reason: " + formatError(e) + ".");
+                handleClasspathError("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection. Reason: " + formatError(e) + ".");
             }
         }
     }
@@ -169,9 +166,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         try {
             delegate.registerField(clazz, fieldName, allowWrite, allowUnsafeAccess);
         } catch (NoSuchFieldException e) {
-            handleError("Field " + delegate.getTypeName(clazz) + "." + fieldName + " not found.");
+            handleParsingError("Field " + delegate.getTypeName(clazz) + "." + fieldName + " not found.");
         } catch (NoClassDefFoundError e) {
-            handleError("Could not register field " + delegate.getTypeName(clazz) + "." + fieldName + " for reflection. Reason: " + formatError(e) + ".");
+            handleClasspathError("Could not register field " + delegate.getTypeName(clazz) + "." + fieldName + " for reflection. Reason: " + formatError(e) + ".");
         }
     }
 
@@ -209,9 +206,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     delegate.registerMethod(clazz, methodName, methodParameterTypes);
                 }
             } catch (NoSuchMethodException e) {
-                handleError("Method " + formatMethod(clazz, methodName, methodParameterTypes) + " not found.");
+                handleParsingError("Method " + formatMethod(clazz, methodName, methodParameterTypes) + " not found.");
             } catch (NoClassDefFoundError e) {
-                handleError("Could not register method " + formatMethod(clazz, methodName, methodParameterTypes) + " for reflection. Reason: " + formatError(e) + ".");
+                handleClasspathError("Could not register method " + formatMethod(clazz, methodName, methodParameterTypes) + " for reflection. Reason: " + formatError(e) + ".");
             }
         } else {
             try {
@@ -225,7 +222,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                     throw new JSONParserException("Method " + delegate.getTypeName(clazz) + "." + methodName + " not found");
                 }
             } catch (NoClassDefFoundError e) {
-                handleError("Could not register method " + delegate.getTypeName(clazz) + "." + methodName + " for reflection. Reason: " + formatError(e) + ".");
+                handleClasspathError("Could not register method " + delegate.getTypeName(clazz) + "." + methodName + " for reflection. Reason: " + formatError(e) + ".");
             }
         }
     }
@@ -252,13 +249,23 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         return delegate.getTypeName(clazz) + "." + methodName + "(" + parameterTypeNames + ")";
     }
 
-    private void handleError(String message) {
-        // Checkstyle: stop
+    private void handleClasspathError(String message) {
         if (this.allowIncompleteClasspath) {
             System.out.println("WARNING: " + message);
         } else {
-            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath");
+            throw new UnresolvedElementException(composeErrorMessage(message));
         }
-        // Checkstyle: resume
+    }
+
+    private void handleParsingError(String message) {
+        if (this.allowIncompleteClasspath) {
+            System.out.println("WARNING: " + message);
+        } else {
+            throw new JSONParserException(composeErrorMessage(message));
+        }
+    }
+
+    private String composeErrorMessage(String message) {
+        return message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath";
     }
 }
