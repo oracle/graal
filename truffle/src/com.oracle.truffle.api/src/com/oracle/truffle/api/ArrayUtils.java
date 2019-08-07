@@ -42,6 +42,8 @@ package com.oracle.truffle.api;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 /**
  * This class provides additional operations for {@link String} as well as character and byte
  * arrays, which may be intrinsified by a compiler.
@@ -197,6 +199,8 @@ public final class ArrayUtils {
     /**
      * Returns the index of the first region of {@code haystack} that equals {@code needle} after
      * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code length}.
+     * Performs best if {@code needle} and {@code mask} are {@link CompilationFinal} with
+     * {@code dimensions = 1}.
      *
      * @return the index of the first region of {@code haystack} where for all indices {@code i} of
      *         {@code needle} {@code (haystack[index + i] | mask[i]) == needle[i]} holds, and
@@ -233,6 +237,8 @@ public final class ArrayUtils {
     /**
      * Returns the index of the first region of {@code haystack} that equals {@code needle} after
      * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code length}.
+     * Performs best if {@code needle} and {@code mask} are {@link CompilationFinal} with
+     * {@code dimensions = 1}.
      *
      * @return the index of the first region of {@code haystack} where for all indices {@code i} of
      *         {@code needle} {@code (haystack[index + i] | mask[i]) == needle[i]} holds, and
@@ -269,6 +275,7 @@ public final class ArrayUtils {
     /**
      * Returns the index of the first region of {@code haystack} that equals {@code needle} after
      * being OR'ed with {@code mask}, bounded by {@code fromIndex} (inclusive) and {@code length}.
+     * Performs best if {@code needle} and {@code mask} are {@link CompilationFinal}.
      *
      * @return the index of the first region of {@code haystack} where for all indices {@code i} of
      *         {@code needle}
@@ -345,7 +352,9 @@ public final class ArrayUtils {
     /**
      * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
      * {@code length} (exclusive), {@code (a1[fromIndex1 + i] | mask[i]) == a2[fromIndex2 + i]}
-     * holds.
+     * holds. Performs best if {@code length} and {@code mask} are {@link CompilationFinal} with
+     * {@code dimensions = 1}. If {@code mask} is {@code null}, it is treated as if it was filled
+     * with zeroes.
      *
      * @since 19.3
      */
@@ -375,7 +384,9 @@ public final class ArrayUtils {
     /**
      * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
      * {@code length} (exclusive), {@code (a1[fromIndex1 + i] | mask[i]) == a2[fromIndex2 + i]}
-     * holds.
+     * holds. Performs best if {@code length} and {@code mask} are {@link CompilationFinal} with
+     * {@code dimensions = 1}. If {@code mask} is {@code null}, it is treated as if it was filled
+     * with zeroes.
      *
      * @since 19.3
      */
@@ -406,6 +417,9 @@ public final class ArrayUtils {
      * Returns {@code true} iff for all indices {@code i} from {@code 0} (inclusive) to
      * {@code length} (exclusive),
      * {@code (a1.charAt(fromIndex1 + i) | mask.charAt(i)) == a2.charAt(fromIndex2 + i)} holds.
+     * Performs best if {@code length} and {@code mask} are {@link CompilationFinal} with
+     * {@code dimensions = 1}. If {@code mask} is {@code null}, it is treated as if it was filled
+     * with zeroes.
      *
      * @since 19.3
      */
