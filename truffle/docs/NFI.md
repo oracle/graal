@@ -157,12 +157,8 @@ void native_function(int32_t (*fn)(int32_t)) {
 ```
 
 ```ruby
-def callback(x)
-    return x + 1
-end
-
 native_function = library['native_function'].bind("((SINT32):SINT32):VOID")
-native_function.call(callback)
+native_function.call(->(x) { x + 1 })
 ```
 
 The arguments and return values of callback functions are converted the same as
