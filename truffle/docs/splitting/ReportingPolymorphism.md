@@ -79,7 +79,7 @@ which is applicable to classes (disabling automated reporting for the entire
 class) or to individual specializations (excluding those specializations from
 consideration when checking for polymorphism).
 
-### Tools Suppot
+### Tools Support
 
 Knowing which nodes should and should not report polymorphic specializations is
 for the language developer to conclude through either knowledge of the language
