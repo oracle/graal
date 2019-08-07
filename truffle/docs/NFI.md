@@ -152,7 +152,7 @@ the native side, the `execute` message is sent to the Polyglot object.
 
 ```C
 void native_function(int32_t (*fn)(int32_t)) {
-    printf("%d\n", fn(15));
+  printf("%d\n", fn(15));
 }
 ```
 
