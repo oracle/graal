@@ -44,6 +44,8 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 final class LLScanner {
 
+    static final LLSourceMap NOT_FOUND = new LLSourceMap(null);
+
     private static TruffleFile findMapping(Path canonicalBCPath, String pathMappings, LLVMContext context) {
         if (pathMappings.isEmpty()) {
             return null;
@@ -82,12 +84,12 @@ final class LLScanner {
 
     static LLSourceMap findAndScanLLFile(String bcPath, String pathMappings, LLVMContext context) {
         if (bcPath == null || !bcPath.endsWith(".bc")) {
-            return null;
+            return NOT_FOUND;
         }
 
         final TruffleFile llFile = findLLPathMapping(bcPath, pathMappings, context);
         if (llFile == null || !llFile.exists() || !llFile.isReadable()) {
-            return null;
+            return NOT_FOUND;
         }
 
         try (BufferedReader llReader = llFile.newBufferedReader()) {
@@ -104,7 +106,7 @@ final class LLScanner {
             throw new LLVMParserException("Error while reading from file: " + llFile.getPath());
         }
 
-        return null;
+        return NOT_FOUND;
     }
 
     private final LLSourceMap map;
