@@ -30,6 +30,7 @@
 import sys
 import tarfile
 import os
+import tempfile
 from os.path import join
 import shutil
 import subprocess
@@ -706,6 +707,44 @@ def extract_bitcode(args=None, out=None):
     return mx.run_java(mx.get_runtime_jvm_args(["com.oracle.truffle.llvm.tools"]) + ["com.oracle.truffle.llvm.tools.ExtractBitcode"] + args, out=out)
 
 
+def llvm_dis(args=None, out=None):
+    parser = ArgumentParser(prog='mx llvm-dis', description='Disassemble (embedded) LLVM bitcode to LLVM assembly.')
+    parser.add_argument('input', help='The input file.', metavar='<input>')
+    parser.add_argument('output', help='The output file. If omitted, <input>.ll is used. If <input> ends with ".bc", the ".bc" part is replaced with ".ll".', metavar='<output>', default=None, nargs='?')
+    parser.add_argument('llvm_dis_args', help='Additional arguments forwarded to the llvm-dis command', metavar='<arg>', nargs='*')
+    parsed_args = parser.parse_args(args)
+
+    def get_bc_filename(orig_path):
+        filename, ext = os.path.splitext(orig_path)
+        return orig_path if ext == ".bc" else filename + ".bc"
+
+    def get_ll_filename(orig_path):
+        filename, ext = os.path.splitext(orig_path)
+        return filename + ".ll" if ext == ".bc" else orig_path + ".ll"
+
+    tmp_dir = None
+    try:
+        # create temp dir
+        tmp_dir = tempfile.mkdtemp()
+        in_file = parsed_args.input
+        tmp_path = os.path.join(tmp_dir, os.path.basename(get_bc_filename(in_file)))
+
+        extract_bitcode([in_file, tmp_path])
+
+        # disassemble into temporary file
+        ll_tmp_path = get_ll_filename(tmp_path)
+        llvm_tool(["llvm-dis", tmp_path, "-o", ll_tmp_path] + parsed_args.llvm_dis_args)
+
+        # write output file and patch paths
+        ll_path = parsed_args.output or get_ll_filename(in_file)
+        with open(ll_tmp_path, 'r') as ll_tmp_f, open(ll_path, 'w') as ll_f:
+            ll_f.writelines((l.replace(tmp_path, in_file) for l in ll_tmp_f))
+
+    finally:
+        if tmp_dir:
+            shutil.rmtree(tmp_dir)
+
+
 _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
@@ -953,4 +992,5 @@ mx.update_commands(_suite, {
     'create-asm-parser' : [create_asm_parser, 'create the inline assembly parser using antlr'],
     'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
     'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
+    'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],
 })
