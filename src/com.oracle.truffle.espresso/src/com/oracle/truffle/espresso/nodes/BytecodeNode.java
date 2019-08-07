@@ -925,8 +925,13 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 // CompilerDirectives.transferToInterpreter();
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 if (e == getContext().getStackOverflow()) {
-                    // Stack Overflow management. All calls to stack manipulation is manually
-                    // inlined to prevent re-SOE.
+                    /*
+                     * Stack Overflow management. All calls to stack manipulation are manually
+                     * inlined to prevent another SOE.
+                     *
+                     * Note: no need to check for the stacktrace being null, as we reset the frames
+                     * at each apparition of a host SOE.
+                     */
                     if (SOEinfo != null) {
                         for (int i = 0; i < SOEinfo.length; i += 3) {
                             if (curBCI >= SOEinfo[i] && curBCI < SOEinfo[i + 1]) {
@@ -978,9 +983,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     if (e.isUnwinding(getMeta())) {
                         e.addStackFrame(getMethod(), curBCI, getMeta());
                         InterpreterToVM.fillInStackTrace(e.getException(), true, getMeta());
-                    }
-                    if (e.getException().getKlass() != getMeta().ClassNotFoundException) {
-                        getMeta().Throwable.lookupDeclaredMethod(Symbol.Name.printStackTrace, Symbol.Signature._void).invokeDirect(e.getException());
                     }
                     putObject(frame, 0, e.getException());
                     top++;

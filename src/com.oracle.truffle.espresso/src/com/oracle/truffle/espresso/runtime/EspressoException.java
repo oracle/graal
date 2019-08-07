@@ -55,12 +55,16 @@ public final class EspressoException extends RuntimeException implements Truffle
         addStackFrame(exception, m, bci, meta);
     }
 
-    public static void addStackFrame(StaticObject exception, Method m, int bci, Meta meta) {
-        ((VM.StackTrace) exception.getHiddenField(meta.HIDDEN_FRAMES)).add(new VM.StackElement(m, bci));
+    public static boolean checkInitFrame(StaticObject exception, Meta meta) {
+        return exception.getHiddenField(meta.HIDDEN_FRAMES) != null;
     }
 
-    public boolean isEmptyFrames(Meta meta) {
-        return ((VM.StackTrace) exception.getHiddenField(meta.HIDDEN_FRAMES)).size == 0;
+    public static void addStackFrame(StaticObject exception, Method m, int bci, Meta meta) {
+        if (!checkInitFrame(exception, meta)) {
+            // This happens when an exception overrides fillInStackTrace().
+            resetFrames(exception, meta);
+        }
+        ((VM.StackTrace) exception.getHiddenField(meta.HIDDEN_FRAMES)).add(new VM.StackElement(m, bci));
     }
 
     public void resetFrames(Meta meta) {
@@ -69,10 +73,6 @@ public final class EspressoException extends RuntimeException implements Truffle
 
     public static void resetFrames(StaticObject exception, Meta meta) {
         exception.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
-    }
-
-    public static void setFrames(StaticObject exception, Meta meta, VM.StackTrace frames) {
-        exception.setHiddenField(meta.HIDDEN_FRAMES, frames);
     }
 
     public static VM.StackTrace getFrames(StaticObject exception, Meta meta) {

@@ -465,7 +465,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
         assert EspressoException.isUnwinding(self, getMeta());
-        assert self.getHiddenField(getMeta().HIDDEN_FRAMES) == null;
         self.setHiddenField(getMeta().HIDDEN_FRAMES, new StackTrace());
         return self;
     }
