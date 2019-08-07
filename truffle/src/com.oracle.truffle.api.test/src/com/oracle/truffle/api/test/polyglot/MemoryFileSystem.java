@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.test.OSUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -82,6 +81,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -1119,20 +1119,11 @@ public final class MemoryFileSystem implements FileSystem {
         }
 
         static Path getRootDirectory() {
-            Path delegate;
-            if (OSUtils.isUnix()) {
-                delegate = Paths.get("/");
-            } else {
-                delegate = null;
-                for (Path root : Paths.get("").getFileSystem().getRootDirectories()) {
-                    delegate = root;
-                    break;
-                }
+            List<? extends Path> rootDirectories = VirtualizedFileSystemTest.getRootDirectories();
+            if (rootDirectories.isEmpty()) {
+                throw new IllegalStateException("No root directory.");
             }
-            if (delegate == null) {
-                throw new IllegalStateException("No root found.");
-            }
-            return new MemoryPath(delegate);
+            return new MemoryPath(rootDirectories.get(0));
         }
     }
 }

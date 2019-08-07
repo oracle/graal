@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleAssumptions;
-
 import java.lang.ref.WeakReference;
 import java.util.function.Consumer;
 
@@ -37,6 +35,7 @@ import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 
 import jdk.vm.ci.meta.JavaKind.FormatWithToString;
+import org.graalvm.options.OptionValues;
 
 /**
  * An assumption that when {@linkplain #invalidate() invalidated} will cause all
@@ -162,16 +161,28 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             return;
         }
 
-        boolean invalidatedADependency = false;
+        OptionValues engineOptions = null;
+        boolean logStackTrace = false;
+
         Entry e = dependencies;
         while (e != null) {
             OptimizedAssumptionDependency dependency = e.awaitDependency();
             if (dependency != null) {
                 OptimizedCallTarget callTarget = invalidateWithReason(dependency, "assumption invalidated");
-                invalidatedADependency = true;
-                if (TruffleRuntimeOptions.getValue(TraceTruffleAssumptions)) {
+
+                if (engineOptions == null) {
+                    if (callTarget != null) {
+                        engineOptions = callTarget.getOptionValues();
+                    } else {
+                        engineOptions = GraalTVMCI.getEngineData(null).engineOptions;
+                    }
+                }
+
+                if (PolyglotCompilerOptions.getValue(engineOptions, PolyglotCompilerOptions.TraceAssumptions)) {
+                    logStackTrace = true;
                     logInvalidatedDependency(dependency, message);
                 }
+
                 if (callTarget != null) {
                     callTarget.getCompilationProfile().reportInvalidated();
                 }
@@ -183,10 +194,8 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         sizeAfterLastRemove = 0;
         isValid = false;
 
-        if (TruffleRuntimeOptions.getValue(TraceTruffleAssumptions)) {
-            if (invalidatedADependency) {
-                logStackTrace();
-            }
+        if (logStackTrace) {
+            logStackTrace(engineOptions);
         }
     }
 
@@ -277,9 +286,9 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         GraalTruffleRuntime.getRuntime().log(sb.toString());
     }
 
-    private static void logStackTrace() {
+    private static void logStackTrace(OptionValues engineOptions) {
         final int skip = 1;
-        final int limit = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleStackTraceLimit);
+        final int limit = PolyglotCompilerOptions.getValue(engineOptions, PolyglotCompilerOptions.TraceStackTraceLimit);
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         StringBuilder strb = new StringBuilder();
         String sep = "";

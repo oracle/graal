@@ -26,17 +26,33 @@ package org.graalvm.compiler.replacements.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 @RunWith(value = Parameterized.class)
 public class StringIndexOfCharTest extends GraalCompilerTest {
-    @Parameterized.Parameter(value = 0) public String sourceString;
-    @Parameterized.Parameter(value = 1) public int constantChar;
-    @Parameterized.Parameter(value = 2) public int fromIndex;
+
+    private static Map<ResolvedJavaMethod, InstalledCode> cache;
+
+    @BeforeClass
+    public static void setupCache() {
+        cache = new ConcurrentHashMap<>();
+    }
+
+    @AfterClass
+    public static void tearDownCache() {
+        cache = null;
+    }
 
     @Parameterized.Parameters(name = "{0},{1},{2}")
     public static Collection<Object[]> data() {
@@ -66,6 +82,17 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
         }
 
         return tests;
+    }
+
+    private final String sourceString;
+    private final int constantChar;
+    private final int fromIndex;
+
+    public StringIndexOfCharTest(String sourceString, int constantChar, int fromIndex) {
+        super(cache);
+        this.sourceString = sourceString;
+        this.constantChar = constantChar;
+        this.fromIndex = fromIndex;
     }
 
     public int testStringIndexOf(String a, int b) {

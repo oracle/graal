@@ -65,7 +65,7 @@ public class InteropTestBase {
 
     protected static TruffleObject loadTestBitcodeInternal(String name) {
         File file = Paths.get(testBase.toString(), name, TEST_FILE_NAME).toFile();
-        TruffleFile tf = runWithPolyglot.getTruffleTestEnv().getTruffleFile(file.toURI());
+        TruffleFile tf = runWithPolyglot.getTruffleTestEnv().getPublicTruffleFile(file.toURI());
         Source source;
         try {
             source = Source.newBuilder("llvm", tf).build();

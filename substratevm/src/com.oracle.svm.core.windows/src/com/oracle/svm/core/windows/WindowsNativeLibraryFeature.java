@@ -40,6 +40,7 @@ import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
+import com.oracle.svm.core.windows.headers.WinSock;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -58,9 +59,6 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
 
     @Override
     public boolean initializeBuiltinLibraries() {
-        if (!WindowsJavaNetSubstitutions.initIDs()) {
-            return false;
-        }
         /*
          * java.dll is normally loaded by the VM. After loading java.dll, the VM then calls
          * initializeSystemClasses which loads zip.dll.
@@ -77,6 +75,14 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
         if (!WindowsJavaNIOSubstitutions.initIDs()) {
             return false;
         }
+
+        try {
+            WinSock.init();
+            System.loadLibrary("net");
+        } catch (UnsatisfiedLinkError e) {
+            return false;
+        }
+
         return true;
     }
 

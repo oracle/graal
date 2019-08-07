@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.llvm;
+package com.oracle.svm.core.jdk;
 
-import org.bytedeco.javacpp.LLVM;
-import org.bytedeco.javacpp.LLVM.LLVMContextRef;
-import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
+import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.svm.core.SubstrateUtil;
-import org.graalvm.compiler.core.llvm.LLVMIRBuilder;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
-public class SubstrateLLVMIRBuilder extends LLVMIRBuilder {
-    SubstrateLLVMIRBuilder(String functionName, LLVMContextRef context, boolean shouldTrackPointers) {
-        super(functionName, context, shouldTrackPointers);
-    }
+import com.oracle.svm.core.annotate.AutomaticFeature;
+
+@AutomaticFeature
+@Platforms(Platform.HOSTED_ONLY.class)
+class ForkJoinPoolFeature implements Feature {
+
+    private final DeferredCommonPool commonPool = new DeferredCommonPool();
 
     @Override
-    public void addMainFunction(LLVMTypeRef type) {
-        super.addMainFunction(type);
-        LLVM.LLVMAddAlias(getModule(), LLVM.LLVMTypeOf(getMainFunction()), getMainFunction(), SubstrateUtil.mangleName(getFunctionName()));
+    public void duringSetup(DuringSetupAccess access) {
+        access.registerObjectReplacer(this::replaceCommonPool);
+    }
+
+    private Object replaceCommonPool(Object original) {
+        if (original == ForkJoinPool.commonPool()) {
+            return this.commonPool;
+        }
+        return original;
     }
 }

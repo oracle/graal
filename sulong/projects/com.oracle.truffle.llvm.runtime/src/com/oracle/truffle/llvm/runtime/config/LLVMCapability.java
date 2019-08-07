@@ -27,49 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.config;
 
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ServiceLoader;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
-
-final class Configurations {
-
-    private static final Configuration[] configurations;
-
-    static {
-        ArrayList<Configuration> cfgs = new ArrayList<>();
-
-        ClassLoader cl = LLVMLanguage.class.getClassLoader();
-        for (Configuration f : ServiceLoader.load(Configuration.class, cl)) {
-            cfgs.add(f);
-        }
-
-        cfgs.sort((o1, o2) -> {
-            // higher priority first
-            return o2.getPriority() - o1.getPriority();
-        });
-
-        configurations = cfgs.toArray(new Configuration[cfgs.size()]);
-    }
-
-    static Configuration findActiveConfiguration(Env env) {
-        for (Configuration config : configurations) {
-            if (config.isActive(env)) {
-                return config;
-            }
-        }
-        throw new IllegalStateException("should not reach here: no configuration found");
-    }
-
-    static OptionDescriptors getOptionDescriptors() {
-        List<OptionDescriptor> optionDescriptors = new ArrayList<>();
-        for (Configuration c : configurations) {
-            optionDescriptors.addAll(c.getOptionDescriptors());
-        }
-        return OptionDescriptors.create(optionDescriptors);
-    }
+/**
+ * Marker interface for LLVM runtime capabilities.
+ *
+ * @see Configuration#getCapability(java.lang.Class)
+ */
+public interface LLVMCapability {
 }

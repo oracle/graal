@@ -132,7 +132,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
             try {
                 // never cache, since the file content could change between invocations
                 Env env = ctx.getEnv();
-                Source sourceObject = Source.newBuilder(id, env.getTruffleFile(filename)).build();
+                Source sourceObject = Source.newBuilder(id, env.getPublicTruffleFile(filename)).build();
                 return env.parsePublic(sourceObject);
             } catch (IOException ex) {
                 throw new LLVMPolyglotException(this, "Could not parse file %s (%s).", filename, ex.getMessage());

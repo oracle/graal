@@ -242,9 +242,9 @@ final class TRegexCompilationRequest {
     private void debugAST() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getTruffleFile("./ast.tex");
+            TruffleFile file = env.getPublicTruffleFile("./ast.tex");
             ASTLaTexExportVisitor.exportLatex(ast, file);
-            file = env.getTruffleFile("ast.json");
+            file = env.getPublicTruffleFile("ast.json");
             ast.getWrappedRoot().toJson().dump(file);
         }
     }
@@ -252,13 +252,13 @@ final class TRegexCompilationRequest {
     private void debugNFA() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getTruffleFile("./nfa.gv");
+            TruffleFile file = env.getPublicTruffleFile("./nfa.gv");
             NFAExport.exportDot(nfa, file, true, false);
-            file = env.getTruffleFile("./nfa.tex");
+            file = env.getPublicTruffleFile("./nfa.tex");
             NFAExport.exportLaTex(nfa, file, false, true);
-            file = env.getTruffleFile("./nfa_reverse.gv");
+            file = env.getPublicTruffleFile("./nfa_reverse.gv");
             NFAExport.exportDotReverse(nfa, file, true, false);
-            file = env.getTruffleFile("nfa.json");
+            file = env.getPublicTruffleFile("nfa.json");
             nfa.toJson().dump(file);
         }
     }
@@ -266,9 +266,9 @@ final class TRegexCompilationRequest {
     private void debugTraceFinder() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getTruffleFile("./trace_finder.gv");
+            TruffleFile file = env.getPublicTruffleFile("./trace_finder.gv");
             NFAExport.exportDotReverse(traceFinderNFA, file, true, false);
-            file = env.getTruffleFile("nfa_trace_finder.json");
+            file = env.getPublicTruffleFile("nfa_trace_finder.json");
             traceFinderNFA.toJson().dump(file);
         }
     }
@@ -276,9 +276,9 @@ final class TRegexCompilationRequest {
     private void debugDFA(DFAGenerator dfa) {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getTruffleFile("dfa_" + dfa.getDebugDumpName() + ".gv");
+            TruffleFile file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName() + ".gv");
             DFAExport.exportDot(dfa, file, false);
-            file = env.getTruffleFile("dfa_" + dfa.getDebugDumpName() + ".json");
+            file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName() + ".json");
             Json.obj(Json.prop("dfa", dfa.toJson())).dump(file);
         }
     }

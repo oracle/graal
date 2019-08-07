@@ -115,7 +115,7 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
         }
 
         void createSource(Env env) {
-            this.source = Source.newBuilder(ProxyLanguage.ID, env.getTruffleFile(path)).content(Source.CONTENT_NONE).cached(false).build();
+            this.source = Source.newBuilder(ProxyLanguage.ID, env.getPublicTruffleFile(path)).content(Source.CONTENT_NONE).cached(false).build();
         }
 
         private SourceSection copySection(SourceSection section) {

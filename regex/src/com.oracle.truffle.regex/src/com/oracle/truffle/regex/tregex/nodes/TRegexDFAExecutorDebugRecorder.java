@@ -164,7 +164,7 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
     @TruffleBoundary
     public void finishRecording() {
         CompilerAsserts.neverPartOfCompilation();
-        TruffleFile file = RegexLanguage.getCurrentContext().getEnv().getTruffleFile(
+        TruffleFile file = RegexLanguage.getCurrentContext().getEnv().getPublicTruffleFile(
                         "tregex_" + dfa.getDebugDumpName() + "_" + dfa.getNfa().getAst().getSource().toFileName() + "_recording" + recordings.size() + ".json");
         Json.obj(Json.prop("dfa", dfa), Json.prop("recording", curRecording())).dump(file);
     }

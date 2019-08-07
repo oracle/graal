@@ -730,6 +730,8 @@ intf org.graalvm.nativeimage.hosted.Feature$FeatureAccess
 meth public abstract boolean isReachable(java.lang.Class<?>)
 meth public abstract boolean isReachable(java.lang.reflect.Field)
 meth public abstract boolean isReachable(java.lang.reflect.Executable)
+meth public abstract java.util.Set reachableSubtypes(java.lang.Class)
+meth public abstract java.util.Set reachableMethodOverrides(java.lang.reflect.Executable)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$AfterAnalysisAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -760,6 +762,8 @@ meth public abstract void registerAsInHeap(java.lang.Class<?>)
 meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
 meth public abstract void registerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Object[])
+meth public abstract void registerSubtypeReachabilityHandler(java.util.function.BiConsumer,java.lang.Class)
+meth public abstract void registerMethodOverrideReachabilityHandler(java.util.function.BiConsumer,java.lang.reflect.Executable)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature

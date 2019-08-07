@@ -58,7 +58,7 @@ final class LLScanner {
             final Path mappedBCFile = Paths.get(splittedMapping[0]).normalize().toAbsolutePath();
             if (mappedBCFile.equals(canonicalBCPath)) {
                 final Path mappedLLFile = Paths.get(splittedMapping[1]).normalize().toAbsolutePath();
-                return context.getEnv().getTruffleFile(mappedLLFile.toUri());
+                return context.getEnv().getInternalTruffleFile(mappedLLFile.toUri());
             }
         }
 
@@ -77,7 +77,7 @@ final class LLScanner {
         }
 
         final String defaultPath = canonicalBCPath.toString().substring(0, bcPath.length() - ".bc".length()) + ".ll";
-        return context.getEnv().getTruffleFile(defaultPath);
+        return context.getEnv().getInternalTruffleFile(defaultPath);
     }
 
     static LLSourceMap findAndScanLLFile(String bcPath, String pathMappings, LLVMContext context) {

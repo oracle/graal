@@ -152,6 +152,10 @@ java_base_opens_packages = [
     'java.base/javax.crypto',
     # Reflective access to java.util.Bits.words.
     'java.base/java.util',
+    # Reflective access to java.util.concurrent.atomic.AtomicIntegerFieldUpdater$AtomicIntegerFieldUpdaterImpl.tclass.
+    'java.base/java.util.concurrent.atomic',
+    # Reflective access to sun.security.x509.OIDMap.nameMap
+    'java.base/sun.security.x509',
     'java.base/jdk.internal.logger',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(java_base_opens_packages))
 
@@ -166,8 +170,9 @@ graal_truffle_opens_packages = [
     'org.graalvm.truffle/com.oracle.truffle.api.impl',]
 GRAAL_COMPILER_FLAGS_MAP['11'].extend(add_opens_from_packages(graal_truffle_opens_packages))
 
-# Currently JDK 13 and JDK 11 have the same flags
+# Currently JDK 13, 14 and JDK 11 have the same flags
 GRAAL_COMPILER_FLAGS_MAP['13'] = GRAAL_COMPILER_FLAGS_MAP['11']
+GRAAL_COMPILER_FLAGS_MAP['14'] = GRAAL_COMPILER_FLAGS_MAP['11']
 
 def svm_java_compliance():
     return mx.get_jdk(tag='default').javaCompliance
@@ -293,7 +298,7 @@ def _vm_home(config):
 
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 _graalvm_config = GraalVMConfig(disable_libpolyglot=True,
-                                force_bash_launchers=['polyglot', 'native-image-configure'],
+                                force_bash_launchers=['polyglot', 'native-image-configure', 'gu'],
                                 skip_libraries=['native-image-agent'],
                                 exclude_components=_graalvm_exclude_components)
 _graalvm_jvm_config = GraalVMConfig(disable_libpolyglot=True,

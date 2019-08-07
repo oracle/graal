@@ -46,6 +46,12 @@ import org.graalvm.word.PointerBase;
 public class NetIf {
 
     @CConstant
+    public static native int IFF_UP();
+
+    @CConstant
+    public static native int IFF_RUNNING();
+
+    @CConstant
     public static native int IFF_LOOPBACK();
 
     // #define IF_NAMESIZE 16

@@ -57,6 +57,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -289,8 +290,11 @@ public class NativeImageGenerator {
     private AbstractBootImage image;
     private AtomicBoolean buildStarted = new AtomicBoolean();
 
-    public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider) {
+    private Pair<Method, CEntryPointData> mainEntryPoint;
+
+    public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint) {
         this.loader = loader;
+        this.mainEntryPoint = mainEntryPoint;
         this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
         /*
@@ -417,9 +421,9 @@ public class NativeImageGenerator {
     /**
      * Executes the image build. Only one image can be built with this generator.
      */
-    public void run(Map<Method, CEntryPointData> entryPoints, Method mainEntryPoint,
+    public void run(Map<Method, CEntryPointData> entryPoints,
                     JavaMainSupport javaMainSupport, String imageName,
-                    AbstractBootImage.NativeImageKind k,
+                    NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor,
                     EconomicSet<String> allOptionNames) {
@@ -437,7 +441,7 @@ public class NativeImageGenerator {
                     ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
                     ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
 
-                    doRun(entryPoints, mainEntryPoint, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
+                    doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
                 } finally {
                     try {
                         /*
@@ -508,8 +512,8 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    private void doRun(Map<Method, CEntryPointData> entryPoints, Method mainEntryPoint,
-                    JavaMainSupport javaMainSupport, String imageName, AbstractBootImage.NativeImageKind k,
+    private void doRun(Map<Method, CEntryPointData> entryPoints,
+                    JavaMainSupport javaMainSupport, String imageName, NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor) {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
@@ -554,8 +558,8 @@ public class NativeImageGenerator {
                     }
                 }
                 /* Find main entry point */
-                if (mainEntryPoint != null) {
-                    AnalysisMethod analysisStub = CEntryPointCallStubSupport.singleton().getStubForMethod(mainEntryPoint);
+                if (!Pair.<Method, CEntryPointData> empty().equals(mainEntryPoint)) {
+                    AnalysisMethod analysisStub = CEntryPointCallStubSupport.singleton().getStubForMethod(mainEntryPoint.getLeft());
                     mainEntryPointHostedStub = (HostedMethod) hMetaAccess.getUniverse().lookup(analysisStub);
                     assert hostedEntryPoints.contains(mainEntryPointHostedStub);
                 } else {
@@ -801,9 +805,11 @@ public class NativeImageGenerator {
                 MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
 
                 featureHandler.registerFeatures(loader, debug);
-                AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, debug);
+                AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
-
+                if (!Pair.<Method, CEntryPointData> empty().equals(access.getMainEntryPoint())) {
+                    setAndVerifyMainEntryPoint(access, entryPoints);
+                }
                 registerEntryPoints(entryPoints);
 
                 /*
@@ -841,6 +847,11 @@ public class NativeImageGenerator {
                 entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
             }
         }
+    }
+
+    private void setAndVerifyMainEntryPoint(AfterRegistrationAccessImpl access, Map<Method, CEntryPointData> entryPoints) {
+        mainEntryPoint = access.getMainEntryPoint();
+        entryPoints.put(mainEntryPoint.getLeft(), mainEntryPoint.getRight());
     }
 
     public static AnalysisUniverse createAnalysisUniverse(OptionValues options, TargetDescription target, ImageClassLoader loader, MetaAccessProvider originalMetaAccess,

@@ -51,7 +51,6 @@ import mx_testsuites
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
-from mx_testsuites import GlobNativeProject #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):
@@ -102,9 +101,10 @@ clangFormatCheckPaths = [
     join(_suite.dir, "include"),
     join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src"),
     join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "include"),
-    join(_root, "com.oracle.truffle.llvm.tests.pipe.native", "src"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulong"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.pipe.native", "src"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.sulong.native"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp.native"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.linker.native"),
     join(_testDir, "interoptests"),
     join(_testDir, "inlineassemblytests"),
     join(_testDir, "other")
@@ -179,6 +179,7 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args, tags=['gcc_fortran', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('Linker', tasks, args, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('BitcodeFormat', tasks, args, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
@@ -730,7 +731,7 @@ class ArchiveProject(mx.ArchivableProject):
     def getResults(self):
         return mx.ArchivableProject.walk(self.output_dir())
 
-class SulongDocsProject(ArchiveProject):
+class SulongDocsProject(ArchiveProject):  # pylint: disable=too-many-ancestors
     doc_files = (glob.glob(join(_suite.dir, 'LICENSE')) +
         glob.glob(join(_suite.dir, '*.md')))
 
@@ -838,7 +839,7 @@ class ToolchainConfig(object):
         ]
 
 
-class ToolchainLauncherProject(mx.NativeProject):
+class ToolchainLauncherProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **attrs):
         results = ["bin/" + e for e in suite.toolchain._supported_exes()]
         projectDir = attrs.pop('dir', None)

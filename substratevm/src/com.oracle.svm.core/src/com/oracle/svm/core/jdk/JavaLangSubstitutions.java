@@ -545,6 +545,26 @@ final class Target_java_lang_Compiler {
                         "with the first element being a String providing the name of the SVM command to run " +
                         "and subsequent elements being the arguments to the command");
     }
+
+    @SuppressWarnings({"unused"})
+    @Substitute
+    static boolean compileClass(Class<?> clazz) {
+        return false;
+    }
+
+    @SuppressWarnings({"unused"})
+    @Substitute
+    static boolean compileClasses(String string) {
+        return false;
+    }
+
+    @Substitute
+    static void enable() {
+    }
+
+    @Substitute
+    static void disable() {
+    }
 }
 
 final class IsSingleThreaded implements Predicate<Class<?>> {

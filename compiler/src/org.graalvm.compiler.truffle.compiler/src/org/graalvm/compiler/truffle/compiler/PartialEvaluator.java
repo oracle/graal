@@ -24,9 +24,10 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
+import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleInlining;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit;
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleFunctionInlining;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PrintTruffleExpansionHistogram;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TraceTrufflePerformanceWarnings;
@@ -34,6 +35,8 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.Truff
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBoundaries;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIterativePartialEscape;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleMaximumGraalNodeCount;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleMaximumInlineNodeCount;
 
 import java.io.Closeable;
 import java.net.URI;
@@ -42,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -224,7 +228,7 @@ public abstract class PartialEvaluator {
                     AllowAssumptions allowAssumptions, CompilationIdentifier compilationId, SpeculationLog log, Cancellable cancellable) {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install()) {
             String name = compilable.toString();
-            OptionValues options = TruffleCompilerOptions.getOptions();
+            OptionValues options = debug.getOptions();
             ResolvedJavaMethod rootMethod = rootForCallTarget(compilable);
             // @formatter:off
             StructuredGraph.Builder builder = new StructuredGraph.Builder(options, debug, allowAssumptions).
@@ -244,7 +248,7 @@ public abstract class PartialEvaluator {
                 CoreProviders baseContext = providers;
                 HighTierContext tierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
 
-                fastPartialEvaluation(compilable, inliningPlan, graph, baseContext, tierContext);
+                fastPartialEvaluation(compilable, inliningPlan, graph, baseContext, tierContext, handler);
 
                 if (cancellable != null && cancellable.isCancelled()) {
                     return null;
@@ -298,14 +302,24 @@ public abstract class PartialEvaluator {
     private class PEInlineInvokePlugin implements InlineInvokePlugin {
 
         private final Deque<TruffleInliningPlan> inlining;
+        private final int nodeLimit;
+        private final StructuredGraph graph;
+        private final int inliningNodeLimit;
+        private boolean graphTooBigReported;
 
-        PEInlineInvokePlugin(TruffleInliningPlan inlining) {
+        PEInlineInvokePlugin(TruffleInliningPlan inlining, StructuredGraph graph, int nodeLimit, int inliningNodeLimit) {
             this.inlining = new ArrayDeque<>();
             this.inlining.push(inlining);
+            this.graph = graph;
+            this.nodeLimit = nodeLimit;
+            this.inliningNodeLimit = inliningNodeLimit;
         }
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
+            if (graph.getNodeCount() > nodeLimit) {
+                throw builder.bailout("Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Limit: " + nodeLimit);
+            }
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
             InlineInfo inlineInfo = asInlineInfo(rt.getInlineKind(original, true), original);
             if (!inlineInfo.allowsInlining()) {
@@ -313,23 +327,35 @@ public abstract class PartialEvaluator {
             }
             assert !builder.parsingIntrinsic();
 
-            if (TruffleCompilerOptions.getValue(TruffleFunctionInlining)) {
-                if (original.equals(callDirectMethod)) {
-                    ValueNode arg0 = arguments[1];
-                    if (!arg0.isConstant()) {
-                        GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
-                    }
-                    TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), (JavaConstant) arg0.asConstant());
-                    if (decision != null && decision.shouldInline()) {
-                        inlining.push(decision);
-                        JavaConstant assumption = decision.getNodeRewritingAssumption();
-                        builder.getAssumptions().record(new TruffleAssumption(assumption));
-                        return createStandardInlineInfo(callInlinedMethod);
-                    }
+            if (original.equals(callDirectMethod)) {
+                ValueNode arg0 = arguments[1];
+                if (!arg0.isConstant()) {
+                    GraalError.shouldNotReachHere("The direct call node does not resolve to a constant!");
+                }
+                if (graph.getNodeCount() > inliningNodeLimit) {
+                    logGraphTooBig();
+                    return DO_NOT_INLINE_WITH_EXCEPTION;
+                }
+                TruffleInliningPlan.Decision decision = getDecision(inlining.peek(), (JavaConstant) arg0.asConstant());
+                if (decision != null && decision.shouldInline()) {
+                    inlining.push(decision);
+                    JavaConstant assumption = decision.getNodeRewritingAssumption();
+                    builder.getAssumptions().record(new TruffleAssumption(assumption));
+                    return createStandardInlineInfo(callInlinedMethod);
                 }
             }
 
             return inlineInfo;
+        }
+
+        private void logGraphTooBig() {
+            if (!graphTooBigReported && TruffleCompilerOptions.getValue(TraceTruffleInlining)) {
+                graphTooBigReported = true;
+                final HashMap<String, Object> properties = new HashMap<>();
+                properties.put("graph node count", graph.getNodeCount());
+                properties.put("graph node limit", inliningNodeLimit);
+                TruffleCompilerRuntime.getRuntime().logEvent(0, "Truffle inlining caused graal node count to be too big during partial evaluation.", "", properties);
+            }
         }
 
         @Override
@@ -465,7 +491,8 @@ public abstract class PartialEvaluator {
 
         ReplacementsImpl replacements = (ReplacementsImpl) providers.getReplacements();
         InlineInvokePlugin[] inlineInvokePlugins;
-        InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision);
+        InlineInvokePlugin inlineInvokePlugin = new PEInlineInvokePlugin(inliningDecision, graph, TruffleMaximumGraalNodeCount.getValue(graph.getOptions()),
+                        TruffleMaximumInlineNodeCount.getValue(graph.getOptions()));
 
         HistogramInlineInvokePlugin histogramPlugin = null;
         Boolean printTruffleExpansionHistogram = TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram);
@@ -515,7 +542,8 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings({"try", "unused"})
-    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext) {
+    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, CoreProviders baseContext, HighTierContext tierContext,
+                    PerformanceInformationHandler handler) {
         DebugContext debug = graph.getDebug();
         doGraphPE(compilable, graph, tierContext, inliningDecision);
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After Partial Evaluation");
@@ -554,7 +582,7 @@ public abstract class PartialEvaluator {
 
         graph.maybeCompress();
 
-        PerformanceInformationHandler.reportPerformanceWarnings(compilable, graph);
+        handler.reportPerformanceWarnings(compilable, graph);
     }
 
     protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {
@@ -637,7 +665,7 @@ public abstract class PartialEvaluator {
         }
 
         public static boolean isEnabled() {
-            return TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
+            return TruffleCompilerOptions.getValue(TraceTrufflePerformanceWarnings) || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal); // TODO
         }
 
         public static void logPerformanceWarning(String callTargetName, List<? extends Node> locations, String details, Map<String, Object> properties) {
@@ -660,7 +688,7 @@ public abstract class PartialEvaluator {
             if (locations == null || locations.isEmpty()) {
                 return;
             }
-            int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit);
+            int limit = TruffleCompilerOptions.getValue(TraceTruffleStackTraceLimit); // TODO
             if (limit <= 0) {
                 return;
             }
@@ -700,7 +728,7 @@ public abstract class PartialEvaluator {
         }
 
         @SuppressWarnings("try")
-        static void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
+        void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
             if (!isEnabled()) {
                 return;
             }
@@ -745,7 +773,7 @@ public abstract class PartialEvaluator {
                 }
             }
 
-            if (instance.get().hasWarnings() && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) {
+            if (hasWarnings() && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) { // TODO
                 throw new AssertionError("Performance warning detected and is fatal.");
             }
         }

@@ -309,15 +309,7 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
 
 
 _RENAISSANCE_EXTRA_VM_ARGS = {
-    "scala-kmeans"    : '--initialize-at-build-time=scala.Function1',
-    "mnemonics"       : '--initialize-at-build-time=scala.Function1',
-    "par-mnemonics"   : '--initialize-at-build-time=scala.Function1',
-    "dotty"           : '--initialize-at-build-time=scala.Function0,scala.Function1',
-    "fj-kmeans"       : '--initialize-at-build-time=scala.Function1',
-    "future-genetic"  : '--initialize-at-build-time=scala.Function1',
     "db-shootout"     : '--initialize-at-build-time=net.openhft.chronicle.wire.ReadMarshallable,net.openhft.chronicle.wire.WriteMarshallable',
-    "philosophers"    : '--initialize-at-build-time=scala.Function1,scala.Function2',
-    "scrabble"        : '--initialize-at-build-time=scala.Function1'
 }
 
 _RENAISSANCE_EXTRA_AGENT_ARGS = [
@@ -378,10 +370,10 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
     """
 
     def name(self):
-        return "renaissance-substratevm"
+        return 'renaissance-native-image'
 
-    def subgroup(self):
-        return "substratevm"
+    def benchSuiteName(self):
+        return 'renaissance'
 
     def renaissance_harness_lib_name(self):
         return "RENAISSANCE_HARNESS_11"

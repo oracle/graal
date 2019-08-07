@@ -266,8 +266,8 @@ public class AMD64VectorMove {
     public static class SaveRegistersOp extends AMD64SaveRegistersOp {
         public static final LIRInstructionClass<SaveRegistersOp> TYPE = LIRInstructionClass.create(SaveRegistersOp.class);
 
-        public SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] slots, boolean supportsRemove) {
-            super(TYPE, savedRegisters, slots, supportsRemove);
+        public SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] slots) {
+            super(TYPE, savedRegisters, slots);
         }
 
         @Override

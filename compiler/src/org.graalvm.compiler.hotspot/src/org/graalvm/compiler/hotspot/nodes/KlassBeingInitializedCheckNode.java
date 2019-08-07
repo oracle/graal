@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,41 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge.graal;
+package org.graalvm.compiler.hotspot.nodes;
+
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
-/** An abstract super-class for all the write barriers. */
-@NodeInfo
-public abstract class WriteBarrierNode extends FixedWithNextNode implements Lowerable {
-    public static final NodeClass<WriteBarrierNode> TYPE = NodeClass.create(WriteBarrierNode.class);
+@NodeInfo(cycles = CYCLES_4, size = SIZE_16)
+public class KlassBeingInitializedCheckNode extends DeoptimizingFixedWithNextNode implements Lowerable {
+    public static final NodeClass<KlassBeingInitializedCheckNode> TYPE = NodeClass.create(KlassBeingInitializedCheckNode.class);
 
-    @Input(InputType.Association) protected AddressNode address;
+    @Input protected ValueNode klass;
 
-    protected WriteBarrierNode(NodeClass<? extends WriteBarrierNode> c, AddressNode address) {
-        super(c, StampFactory.forVoid());
-        this.address = address;
+    public KlassBeingInitializedCheckNode(ValueNode klass) {
+        super(TYPE, StampFactory.forVoid());
+        this.klass = klass;
     }
 
-    public AddressNode getAddress() {
-        return address;
+    public ValueNode getKlass() {
+        return klass;
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
     }
 
     @Override
     public void lower(LoweringTool tool) {
-        // Check to make sure this is happening after FSA, so no nodes will get placed between
-        // the WriteNode and the PostWriteBarrierNode.
-        assert graph().getGuardsStage() == StructuredGraph.GuardsStage.AFTER_FSA;
         tool.getLowerer().lower(this, tool);
     }
 }

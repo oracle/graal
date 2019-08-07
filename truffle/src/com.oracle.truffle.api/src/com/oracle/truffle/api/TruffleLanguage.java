@@ -66,6 +66,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Value;
@@ -1289,6 +1290,7 @@ public abstract class TruffleLanguage<C> {
         private final OptionValues options;
         private final String[] applicationArguments;
         private final TruffleFile.FileSystemContext fileSystemContext;
+        private final TruffleFile.FileSystemContext internalFileSystemContext;
 
         @CompilationFinal volatile List<Object> services;
 
@@ -1301,7 +1303,7 @@ public abstract class TruffleLanguage<C> {
 
         @SuppressWarnings("unchecked")
         Env(Object vmObject, TruffleLanguage<?> language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
+                        FileSystem fileSystem, FileSystem internalFileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
             this.vmObject = vmObject;
             this.spi = (TruffleLanguage<Object>) language;
             this.in = in;
@@ -1312,6 +1314,7 @@ public abstract class TruffleLanguage<C> {
             this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
             this.valid = true;
             this.fileSystemContext = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectors);
+            this.internalFileSystemContext = new TruffleFile.FileSystemContext(internalFileSystem, fileTypeDetectors);
         }
 
         Object getVMObject() {
@@ -2099,9 +2102,47 @@ public abstract class TruffleLanguage<C> {
          * @param path the absolute or relative path to create {@link TruffleFile} for
          * @return {@link TruffleFile}
          * @since 19.0
+         * @deprecated use {@link #getInternalTruffleFile(java.lang.String) getInternalTruffleFile}
+         *             for language standard library files or
+         *             {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} for user
+         *             files.
          */
         @TruffleBoundary
+        @Deprecated
         public TruffleFile getTruffleFile(String path) {
+            return getInternalTruffleFile(path);
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI}.
+         *
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.0
+         * @deprecated use {@link #getInternalTruffleFile(java.lang.String) getInternalTruffleFile}
+         *             for language standard library files or
+         *             {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} for user
+         *             files.
+         */
+        @TruffleBoundary
+        @Deprecated
+        public TruffleFile getTruffleFile(URI uri) {
+            return getInternalTruffleFile(uri);
+        }
+
+        /**
+         * Returns a public {@link TruffleFile} for given path. The access to public files depends
+         * on {@link Builder#allowIO(boolean) Context's IO policy}. When IO is not enabled by the
+         * {@code Context} the {@link TruffleFile} operations throw {@link SecurityException}. The
+         * {@code getPublicTruffleFile} method should be used to access user files or to implement
+         * language IO builtins.
+         *
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.3.0
+         */
+        @TruffleBoundary
+        public TruffleFile getPublicTruffleFile(String path) {
             checkDisposed();
             try {
                 return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.parsePath(path));
@@ -2113,14 +2154,18 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns a {@link TruffleFile} for given {@link URI}.
+         * Returns a public {@link TruffleFile} for given {@link URI}. The access to public files
+         * depends on {@link Builder#allowIO(boolean) Context's IO policy}. When IO is not enabled
+         * by the {@code Context} the {@link TruffleFile} operations throw {@link SecurityException}
+         * . The {@code getPublicTruffleFile} method should be used to access user files or to
+         * implement language IO builtins.
          *
          * @param uri the {@link URI} to create {@link TruffleFile} for
          * @return {@link TruffleFile}
-         * @since 19.0
+         * @since 19.3.0
          */
         @TruffleBoundary
-        public TruffleFile getTruffleFile(URI uri) {
+        public TruffleFile getPublicTruffleFile(URI uri) {
             checkDisposed();
             try {
                 return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.parsePath(uri));
@@ -2128,6 +2173,60 @@ public abstract class TruffleLanguage<C> {
                 throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
             } catch (Throwable t) {
                 throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+            }
+        }
+
+        /**
+         * Returns a public or internal {@link TruffleFile} for given path. Unlike
+         * {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} the
+         * {@link TruffleFile} returned by this method for a file in a language home is readable
+         * even when IO is not enabled by the {@code Context}. The {@code getInternalTruffleFile}
+         * method should be used to read language standard libraries in a language home. For
+         * security reasons the language should check that the file is a language source file in
+         * language standard libraries folder before using this method for a file in a language
+         * home.
+         *
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.3.0
+         * @see #getPublicTruffleFile(java.lang.String)
+         */
+        @TruffleBoundary
+        public TruffleFile getInternalTruffleFile(String path) {
+            checkDisposed();
+            try {
+                return new TruffleFile(internalFileSystemContext, internalFileSystemContext.fileSystem.parsePath(path));
+            } catch (UnsupportedOperationException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, internalFileSystemContext.fileSystem);
+            }
+        }
+
+        /**
+         * Returns a public or internal {@link TruffleFile} for given {@link URI}. Unlike
+         * {@link #getPublicTruffleFile(java.lang.String) getPublicTruffleFile} the
+         * {@link TruffleFile} returned by this method for a file in a language home is readable
+         * even when IO is not enabled by the {@code Context}. The {@code getInternalTruffleFile}
+         * method should be used to read language standard libraries in a language home. For
+         * security reasons the language should check that the file is a language source file in
+         * language standard libraries folder before using this method for a file in a language
+         * home.
+         *
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 19.3.0
+         * @see #getPublicTruffleFile(java.net.URI)
+         */
+        @TruffleBoundary
+        public TruffleFile getInternalTruffleFile(URI uri) {
+            checkDisposed();
+            try {
+                return new TruffleFile(internalFileSystemContext, internalFileSystemContext.fileSystem.parsePath(uri));
+            } catch (UnsupportedOperationException e) {
+                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, internalFileSystemContext.fileSystem);
             }
         }
 
@@ -2142,7 +2241,7 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public TruffleFile getCurrentWorkingDirectory() {
-            return getTruffleFile("").getAbsoluteFile();
+            return getPublicTruffleFile("").getAbsoluteFile();
         }
 
         /**
@@ -2169,6 +2268,9 @@ public abstract class TruffleLanguage<C> {
             }
             try {
                 fileSystemContext.fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+                if (fileSystemContext.fileSystem != internalFileSystemContext.fileSystem) {
+                    internalFileSystemContext.fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
+                }
             } catch (UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {

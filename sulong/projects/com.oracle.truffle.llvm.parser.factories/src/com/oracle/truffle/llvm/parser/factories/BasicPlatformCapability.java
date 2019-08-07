@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64Syscall;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallAcceptNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallAccessNodeGen;
@@ -97,14 +96,13 @@ import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallUtimensatNodeGe
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallWriteNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallWritevNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
-import com.oracle.truffle.llvm.runtime.SystemContextExtension;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class BasicSystemContextExtension extends SystemContextExtension {
+public class BasicPlatformCapability extends PlatformCapability {
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
     protected static final String LIBSULONG_FILENAME = "libsulong.bc";
@@ -112,8 +110,8 @@ public class BasicSystemContextExtension extends SystemContextExtension {
 
     private final boolean loadCxxLibraries;
 
-    public BasicSystemContextExtension(Env env) {
-        this.loadCxxLibraries = env.getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES);
+    public BasicPlatformCapability(boolean loadCxxLibraries) {
+        this.loadCxxLibraries = loadCxxLibraries;
     }
 
     @Override

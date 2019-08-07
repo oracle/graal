@@ -247,7 +247,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final LLVMSourceLocation source = getSourceLocation(call, false);
         final SymbolImpl target = call.getCallTarget();
-        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argCount, source);
+        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount, source);
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
@@ -340,7 +340,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final LLVMSourceLocation source = getSourceLocation(call, false);
         final SymbolImpl target = call.getCallTarget();
-        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(target, args, argCount, source);
+        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(target, args, argsType, argCount, source);
         if (node == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
@@ -410,10 +410,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                         unwindType.toArray(Type.EMPTY_ARRAY));
 
         final LLVMSourceLocation source = getSourceLocation(call, false);
-        LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(target, argNodes, argCount, null);
-        if (function == null) {
-            function = symbols.resolve(target);
-        }
+        // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
+        LLVMExpressionNode function = symbols.resolve(target);
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(getSlot(call), function, argNodes, new FunctionType(targetType, argTypes, false),
                         regularIndex, unwindIndex, normalPhi,
                         unwindPhi, source);
@@ -475,10 +473,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                         unwindType.toArray(Type.EMPTY_ARRAY));
 
         final LLVMSourceLocation source = getSourceLocation(call, false);
-        LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(target, args, argCount, null);
-        if (function == null) {
-            function = symbols.resolve(target);
-        }
+        // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
+        LLVMExpressionNode function = symbols.resolve(target);
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(null, function, args, new FunctionType(call.getType(), argsType, false),
                         regularIndex, unwindIndex, normalPhi, unwindPhi, source);
 

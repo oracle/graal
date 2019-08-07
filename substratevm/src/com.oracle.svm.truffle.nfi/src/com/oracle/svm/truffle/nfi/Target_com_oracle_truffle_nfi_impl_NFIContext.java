@@ -213,7 +213,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
         if (ImageSingletons.lookup(TruffleNFISupport.class).errnoGetterFunctionName.equals(name)) {
             return new ErrnoMirror();
         } else {
-            Target_com_oracle_truffle_nfi_impl_LibFFISymbol ret = Target_com_oracle_truffle_nfi_impl_LibFFISymbol.create(language, library, lookup(nativeContext, library.handle, name));
+            Target_com_oracle_truffle_nfi_impl_LibFFISymbol ret = Target_com_oracle_truffle_nfi_impl_LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
             return KnownIntrinsics.convertUnknownValue(ret, TruffleObject.class);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-import java.nio.file.Path;
+/**
+ * A node to wrap an intrinsic node inlined in the AST, to give it a SourceLocation.
+ */
+public class LLVMIntrinsicWrapperNode extends LLVMExpressionNode {
 
-public abstract class SystemContextExtension implements ContextExtension {
+    private final LLVMSourceLocation sourceLocation;
+    @Child private LLVMExpressionNode intrinsic;
 
-    public abstract Path getSulongLibrariesPath();
-
-    public abstract String[] getSulongDefaultLibraries();
-
-    public abstract LLVMSyscallOperationNode createSyscallNode(long index);
+    public LLVMIntrinsicWrapperNode(LLVMSourceLocation sourceLocation, LLVMExpressionNode intrinsic) {
+        this.sourceLocation = sourceLocation;
+        this.intrinsic = intrinsic;
+    }
 
     @Override
-    public final Class<?> extensionClass() {
-        return SystemContextExtension.class;
+    public Object executeGeneric(VirtualFrame frame) {
+        return intrinsic.executeGeneric(frame);
+    }
+
+    @Override
+    public LLVMSourceLocation getSourceLocation() {
+        return sourceLocation;
     }
 }
