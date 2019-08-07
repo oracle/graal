@@ -173,6 +173,9 @@ public final class JNI {
         @CField("NewByteArray")
         NewByteArray getNewByteArray();
 
+        @CField("NewLongArray")
+        NewLongArray getNewLongArray();
+
         @CField("GetObjectArrayElement")
         GetObjectArrayElement getGetObjectArrayElement();
 
@@ -404,6 +407,11 @@ public final class JNI {
     public interface NewByteArray extends CFunctionPointer {
         @InvokeCFunctionPointer
         JByteArray call(JNIEnv env, int len);
+    }
+
+    public interface NewLongArray extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JLongArray call(JNIEnv env, int len);
     }
 
     public interface NewGlobalRef extends CFunctionPointer {

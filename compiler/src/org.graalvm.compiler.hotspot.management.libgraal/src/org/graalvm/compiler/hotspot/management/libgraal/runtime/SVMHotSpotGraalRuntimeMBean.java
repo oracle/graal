@@ -24,14 +24,23 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal.runtime;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
 import javax.management.InvalidAttributeValueException;
+import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
+import javax.management.MBeanOperationInfo;
 import javax.management.ReflectionException;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import org.graalvm.libgraal.LibGraalScope;
+import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -39,41 +48,58 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
 
-    private final long isolate;
     private final long handle;
 
-    private SVMHotSpotGraalRuntimeMBean(long isolate, long handle) {
-        this.isolate = isolate;
+    SVMHotSpotGraalRuntimeMBean(long handle) {
         this.handle = handle;
     }
 
     @Override
     public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return null;
     }
 
     @Override
     public void setAttribute(Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
     public AttributeList getAttributes(String[] attributes) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return null;
     }
 
     @Override
     public AttributeList setAttributes(AttributeList attributes) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return null;
     }
 
     @Override
     public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException, ReflectionException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return null;
     }
 
     @Override
     public MBeanInfo getMBeanInfo() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            byte[] rawData = HotSpotToSVMCalls.getMBeanInfo(LibGraalScope.getIsolateThread(), handle);
+            Map<String,?> map = OptionsEncoder.decode(rawData);
+            String className = null;
+            String description = null;
+            List<MBeanAttributeInfo> attributes = new ArrayList<>();
+            List<MBeanOperationInfo> operations = new ArrayList<>();
+            for (Map.Entry<String,?> entry : map.entrySet()) {
+                String key = entry.getKey();
+                if (key.equals("bean.class")) {
+                    className = (String) entry.getValue();
+                } else if (key.equals("bean.description")) {
+                    description = (String) entry.getValue();
+                }
+            }
+            Objects.requireNonNull(className, "ClassName must be non null.");
+            Objects.requireNonNull(description, "Description must be non null.");
+            return new MBeanInfo(className, description,
+                    attributes.toArray(new MBeanAttributeInfo[attributes.size()]), null,
+                    operations.toArray(new MBeanOperationInfo[operations.size()]), null);
+        }
     }
 }

@@ -69,6 +69,10 @@ public final class JNIUtil {
         return env.getFunctions().getPopLocalFrame().call(env, result);
     }
 
+    public static JClass DefineClass(JNIEnv env, CCharPointer name, JObject loader, CCharPointer buf, int bufLen) {
+        return env.getFunctions().getDefineClass().call(env, name, loader, buf, bufLen);
+    }
+
     public static JClass FindClass(JNIEnv env, CCharPointer name) {
         traceJNI("FindClass");
         return env.getFunctions().getFindClass().call(env, name);
@@ -87,6 +91,11 @@ public final class JNIUtil {
     public static JByteArray NewByteArray(JNIEnv env, int len) {
         traceJNI("NewByteArray");
         return env.getFunctions().getNewByteArray().call(env, len);
+    }
+
+    public static JLongArray NewLongArray(JNIEnv env, int len) {
+        traceJNI("NewLongArray");
+        return env.getFunctions().getNewLongArray().call(env, len);
     }
 
     public static int GetArrayLength(JNIEnv env, JArray array) {

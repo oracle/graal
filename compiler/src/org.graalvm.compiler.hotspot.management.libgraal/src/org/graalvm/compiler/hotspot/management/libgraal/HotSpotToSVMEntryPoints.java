@@ -24,17 +24,141 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
+import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
+import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
+
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.management.MBeanInfo;
+import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.libgraal.jni.JNI;
+import org.graalvm.libgraal.jni.JNI.JMethodID;
+import org.graalvm.libgraal.jni.JNIUtil;
+import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.word.WordFactory;
 
 
 public final class HotSpotToSVMEntryPoints {
+
+    private static final String HS_BEAN_CLASS_NAME = null;
+    private static final byte[] HS_BEAN_CLASS = null;
+    private static final String HS_BEAN_FACTORY_CLASS_NAME =  null;
+    private static final byte[] HS_BEAN_FACTORY_CLASS = null;
+    private static final String HS_SVM_CALLS_CLASS_NAME =  null;
+    private static final byte[] HS_SVM_CALLS_CLASS =  null;
 
     private HotSpotToSVMEntryPoints() {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_JMXInitializer_init")
-    public static void init(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
-        HotSpotGraalManagement.defineRequiredClassesInHotSpot(env);
+    public static void init(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JObject classLoader) {
+        JNI.JClass hsSvmCallsClass = defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS);
+        if (hsSvmCallsClass.isNull()) {
+            throw new InternalError("Failed to define HotSpotToSVMCalls class.");
+        }
+
+        JNI.JClass beanClass = defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS);
+        if (beanClass.isNull()) {
+            throw new InternalError("Failed to define MXBean class.");
+        }
+        JNI.JClass factoryClass = defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
+        if (factoryClass.isNull()) {
+            throw new InternalError("Failed to define Factory class.");
+        }
+        JMethodID createId;
+        try (CCharPointerHolder name = toCString("create"); CCharPointerHolder sig = toCString("()Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/Factory;")) {
+            createId = GetStaticMethodID(env, factoryClass, name.get(), sig.get());
+            if (createId.isNull()) {
+                throw new InternalError("No such method: create");
+            }
+        }
+        JNI.JObject result = env.getFunctions().getCallStaticObjectMethodA().call(env, factoryClass, createId, WordFactory.nullPointer());
+        if (result.isNull()) {
+            throw new InternalError("Failed to initiate Factory.");
+        }
+    }
+
+
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_pollRegistrations")
+    public static JNI.JLongArray pollRegistrations(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+        List<HotSpotGraalManagement> registrations = HotSpotGraalManagement.Factory.drain();
+        JNI.JLongArray res = JNIUtil.NewLongArray(env, registrations.size());
+        CLongPointer elems = JNIUtil.GetLongArrayElements(env, res, WordFactory.nullPointer());
+        try {
+            ObjectHandles globalHandles = ObjectHandles.getGlobal();
+            for (int i=0; i < registrations.size(); i++) {
+                long handle = globalHandles.create(registrations.get(i)).rawValue();
+                elems.write(i, handle);
+            }
+        } finally {
+            JNIUtil.ReleaseLongArrayElements(env, res, elems, JNI.JArray.MODE_WRITE_RELEASE);
+        }
+        return res;
+    }
+
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_finishRegistration")
+    public static void finishRegistration(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JLongArray svmRegistrations) {
+        long len = JNIUtil.GetArrayLength(env, svmRegistrations);
+        CLongPointer elems = JNIUtil.GetLongArrayElements(env, svmRegistrations, WordFactory.nullPointer());
+        try {
+            ObjectHandles globalHandles = ObjectHandles.getGlobal();
+            for (int i=0; i < len; i++) {
+                HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(elems.read(i)));
+                registration.finishRegistration();
+            }
+        } finally {
+            JNIUtil.ReleaseLongArrayElements(env, svmRegistrations, elems, JNI.JArray.MODE_RELEASE);
+        }
+    }
+
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getRegistrationName")
+    public static JNI.JString getRegistrationName(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
+        ObjectHandles globalHandles = ObjectHandles.getGlobal();
+        HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(svmRegistration));
+        String name = registration.getName();
+        return JNIUtil.createHSString(env, name);
+    }
+
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getMBeanInfo")
+    public static JNI.JByteArray getMBeanInfo(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
+        ObjectHandles globalHandles = ObjectHandles.getGlobal();
+        HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(svmRegistration));
+        MBeanInfo info = registration.getBean().getMBeanInfo();
+        Map<String,Object> map = new HashMap<>();
+        map.put("bean.class", info.getClassName());
+        map.put("bean.description", info.getDescription());
+        byte[] serialized = OptionsEncoder.encode(map);
+        JNI.JByteArray res = JNIUtil.NewByteArray(env, serialized.length);
+        CCharPointer elems = JNIUtil.GetByteArrayElements(env, res, WordFactory.nullPointer());
+        try {
+            CTypeConversion.asByteBuffer(elems, serialized.length).put(serialized);
+        } finally {
+            JNIUtil.ReleaseByteArrayElements(env, res, elems, JNI.JArray.MODE_WRITE_RELEASE);
+        }
+        return res;
+    }
+
+    private static JNI.JClass defineClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String clazzName, byte[] clazz) {
+        CCharPointer classData = UnmanagedMemory.malloc(clazz.length);
+        ByteBuffer buffer = CTypeConversion.asByteBuffer(classData, clazz.length);
+        buffer.put(clazz);
+        try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(clazzName)) {
+            return JNIUtil.DefineClass(
+                    env,
+                    className.get(),
+                    classLoader,
+                    classData,
+                    clazz.length);
+        } finally {
+            UnmanagedMemory.free(classData);
+        }
     }
 }

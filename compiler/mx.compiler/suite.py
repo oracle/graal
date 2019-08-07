@@ -761,6 +761,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.hotspot.management",
+        "org.graalvm.libgraal",
         "org.graalvm.libgraal.jni",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -2644,6 +2645,7 @@ suite = {
       "distDependencies" : [
         "GRAAL_MANAGEMENT",
         "GRAAL_LIBGRAAL_JNI",
+        "GRAAL_LIBGRAAL",
       ],
       "maven": False,
       "javaCompliance" : "8+",

@@ -98,11 +98,11 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     private static void initJMXBean(HotSpotJVMCIRuntime runtime) {
         LibGraal.registerNativeMethods(runtime, JMXInitializer.class);
         try (LibGraalScope scope = new LibGraalScope(runtime)) {
-            JMXInitializer.init(getIsolateThread());
+            JMXInitializer.init(getIsolateThread(), LibGraalScope.class.getClassLoader());
         }
     }
 }
 
 final class JMXInitializer {
-    native static void init(long isolateThreadId);
+    native static void init(long isolateThreadId, ClassLoader classLoader);
 }

@@ -25,40 +25,27 @@
 package org.graalvm.compiler.hotspot.management.libgraal;
 
 import java.lang.management.ManagementFactory;
-import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Queue;
 import java.util.function.Supplier;
-import javax.management.MBeanServerFactory;
+import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import org.graalvm.compiler.debug.TTY;
 
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.libgraal.jni.JNI;
-import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
-/**
- * Dynamically registers an MBean with the {@link ManagementFactory#getPlatformMBeanServer()}.
- *
- * Polling for an active platform MBean server is done by calling
- * {@link MBeanServerFactory#findMBeanServer(String)} with an argument value of {@code null}. Once
- * this returns an non-empty list, {@link ManagementFactory#getPlatformMBeanServer()} can be called
- * to obtain a reference to the platform MBean server instance.
- */
+
 @ServiceProvider(HotSpotGraalManagementRegistration.class)
 public final class HotSpotGraalManagement implements HotSpotGraalManagementRegistration {
 
-    private static final byte[] HS_BEAN_CLASS = null;
-    private static final String HS_BEAN_CLASS_NAME = null;
-    private static final byte[] HS_BEAN_FACTORY_CLASS = null;
-    private static final String HS_BEAN_FACTORY_CLASS_NAME = null;
-
     private HotSpotGraalRuntimeMBean bean;
+    private String name;
     private volatile boolean needsRegistration = true;
     HotSpotGraalManagement nextDeferred;
 
@@ -71,6 +58,13 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
             if (runtime.getManagement() != this) {
                 throw new IllegalArgumentException("Cannot initialize a second management object for runtime " + runtime.getName());
             }
+            try {
+                name = runtime.getName().replace(':', '_');
+                bean = new HotSpotGraalRuntimeMBean(new ObjectName("org.graalvm.compiler.hotspot:type=" + name), runtime);
+                Factory.enqueue(this);
+            } catch (MalformedObjectNameException err) {
+                err.printStackTrace(TTY.out);
+            }
         } else if (bean.getRuntime() != runtime) {
             throw new IllegalArgumentException("Cannot change the runtime a management interface is associated with");
         }
@@ -78,58 +72,48 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
 
     @Override
     public ObjectName poll(boolean sync) {
-        if (sync) {
-//            registration.poll();
-        }
         if (bean == null || needsRegistration) {
-            // initialize() has not been called, it failed or registration failed
             return null;
         }
         return bean.getObjectName();
     }
 
-    static void defineRequiredClassesInHotSpot(JNI.JNIEnv env) {
-        System.out.println("Defining JMX Bean.");
-        defineClassInHotSpot(env, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS);
-        defineClassInHotSpot(env, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
-        System.out.println("Defined JMX Bean.");
+    HotSpotGraalRuntimeMBean getBean() {
+        return bean;
     }
 
-    private static void defineClassInHotSpot(JNI.JNIEnv env, String clazzName, byte[] clazz) {
-        CCharPointer classData = UnmanagedMemory.malloc(clazz.length);
-        ByteBuffer buffer = CTypeConversion.asByteBuffer(classData, clazz.length);
-        buffer.put(clazz);
-        try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(clazzName)) {
-            env.getFunctions().getDefineClass().call(
-                    env,
-                    className.get(),
-                    WordFactory.nullPointer(),
-                    classData,
-                    clazz.length);
-        } finally {
-            UnmanagedMemory.free(classData);
-        }
+    void finishRegistration() {
+        needsRegistration = false;
     }
 
+    String getName() {
+        return name;
+    }
 
     static final class Factory implements Supplier<HotSpotGraalManagementRegistration> {
 
-        private static final Queue<HotSpotGraalManagement> instances = new ArrayDeque<>();
+        private static Queue<HotSpotGraalManagement> registrations = new ArrayDeque<>();
 
         Factory() {
         }
 
         @Override
         public HotSpotGraalManagementRegistration get() {
-            return enqueue(new HotSpotGraalManagement());
+            return new HotSpotGraalManagement();
         }
 
-        synchronized HotSpotGraalManagement poll() {
-            return instances.poll();
+        static synchronized List<HotSpotGraalManagement> drain() {
+            if (registrations.isEmpty()) {
+                return Collections.emptyList();
+            } else {
+                List<HotSpotGraalManagement> res = new ArrayList<>(registrations);
+                registrations.clear();
+                return res;
+            }
         }
 
         private static synchronized HotSpotGraalManagement enqueue(HotSpotGraalManagement instance) {
-            instances.add(instance);
+            registrations.add(instance);
             return instance;
         }
     }
