@@ -129,9 +129,9 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
         methodLookupCount.inc();
-        return getSuperKlass().lookupMethod(methodName, signature);
+        return getSuperKlass().lookupMethod(methodName, signature, accessingKlass);
     }
 
     @Override

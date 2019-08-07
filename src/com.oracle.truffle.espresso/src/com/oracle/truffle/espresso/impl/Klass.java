@@ -564,23 +564,31 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature);
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        return lookupMethod(methodName, signature, null);
+    }
+
+    /**
+     * Give the accessing klass if there is a chance the method to be resolved is a method handle
+     * intrinsics.
+     */
+    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass);
 
     public abstract Method vtableLookup(int vtableIndex);
 
-    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
         if (methodName == Name.invoke || methodName == Name.invokeExact) {
-            return findMethodHandleIntrinsic(methodName, signature, InvokeGeneric);
+            return findMethodHandleIntrinsic(methodName, signature, InvokeGeneric, accessingKlass);
         } else if (methodName == Name.invokeBasic) {
-            return findMethodHandleIntrinsic(methodName, signature, InvokeBasic);
+            return findMethodHandleIntrinsic(methodName, signature, InvokeBasic, accessingKlass);
         } else if (methodName == Name.linkToInterface) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToInterface);
+            return findMethodHandleIntrinsic(methodName, signature, LinkToInterface, accessingKlass);
         } else if (methodName == Name.linkToSpecial) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToSpecial);
+            return findMethodHandleIntrinsic(methodName, signature, LinkToSpecial, accessingKlass);
         } else if (methodName == Name.linkToStatic) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToStatic);
+            return findMethodHandleIntrinsic(methodName, signature, LinkToStatic, accessingKlass);
         } else if (methodName == Name.linkToVirtual) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToVirtual);
+            return findMethodHandleIntrinsic(methodName, signature, LinkToVirtual, accessingKlass);
         }
         for (Method m : getDeclaredMethods()) {
             if (m.isNative() && m.isVarargs() && m.getName() == methodName) {
@@ -591,14 +599,17 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    private Method findMethodHandleIntrinsic(@SuppressWarnings("unused") Symbol<Name> methodName, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
+    private Method findMethodHandleIntrinsic(Symbol<Name> methodName,
+                    Symbol<Signature> signature,
+                    MethodHandleIntrinsics.PolySigIntrinsics id,
+                    Klass accessingKlass) {
         if (id == InvokeGeneric) {
             return (methodName == Name.invoke ? getMeta().invoke : getMeta().invokeExact).findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
                 // TODO(garcia) Create a whole new Node to handle MH invokes.
                 @Override
                 public EspressoBaseNode apply(Method method) {
                     // TODO(garcia) true access checks
-                    ObjectKlass callerKlass = getMeta().Object;
+                    Klass callerKlass = accessingKlass == null ? getMeta().Object : accessingKlass;
                     StaticObject appendixBox = StaticObject.createArray(getMeta().Object_array, new Object[1]);
                     StaticObject memberName = (StaticObject) getMeta().linkMethod.invokeDirect(
                                     null,
