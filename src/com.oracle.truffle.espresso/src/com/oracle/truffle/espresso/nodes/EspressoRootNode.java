@@ -29,6 +29,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
@@ -62,7 +63,14 @@ public final class EspressoRootNode extends RootNode implements ContextAccess {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return childNode.execute(frame);
+        try {
+            return childNode.execute(frame);
+        } catch (EspressoException e) {
+            if (!(isBytecodeNode())) {
+                e.addStackFrame(method, -2, getMeta());
+            }
+            throw e;
+        }
     }
 
     @Override
@@ -78,5 +86,9 @@ public final class EspressoRootNode extends RootNode implements ContextAccess {
     @Override
     public SourceSection getSourceSection() {
         return childNode.getSourceSection();
+    }
+
+    public boolean isBytecodeNode() {
+        return childNode instanceof BytecodeNode;
     }
 }

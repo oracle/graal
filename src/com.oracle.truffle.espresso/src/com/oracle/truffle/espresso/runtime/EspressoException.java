@@ -32,9 +32,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.VM;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public final class EspressoException extends RuntimeException implements TruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
@@ -58,22 +55,28 @@ public final class EspressoException extends RuntimeException implements Truffle
         addStackFrame(exception, m, bci, meta);
     }
 
-    @SuppressWarnings("unchecked")
     public static void addStackFrame(StaticObject exception, Method m, int bci, Meta meta) {
-        ((List<VM.StackElement>) exception.getHiddenField(meta.HIDDEN_FRAMES)).add(new VM.StackElement(m, bci));
+        ((VM.StackTrace) exception.getHiddenField(meta.HIDDEN_FRAMES)).add(new VM.StackElement(m, bci));
     }
 
-    @SuppressWarnings("unchecked")
     public boolean isEmptyFrames(Meta meta) {
-        return ((List<VM.StackElement>) exception.getHiddenField(meta.HIDDEN_FRAMES)).isEmpty();
+        return ((VM.StackTrace) exception.getHiddenField(meta.HIDDEN_FRAMES)).size == 0;
     }
 
     public void resetFrames(Meta meta) {
-        exception.setHiddenField(meta.HIDDEN_FRAMES, new ArrayList<VM.StackElement>());
+        resetFrames(exception, meta);
     }
 
     public static void resetFrames(StaticObject exception, Meta meta) {
-        exception.setHiddenField(meta.HIDDEN_FRAMES, new ArrayList<VM.StackElement>());
+        exception.setHiddenField(meta.HIDDEN_FRAMES, new VM.StackTrace());
+    }
+
+    public static void setFrames(StaticObject exception, Meta meta, VM.StackTrace frames) {
+        exception.setHiddenField(meta.HIDDEN_FRAMES, frames);
+    }
+
+    public static VM.StackTrace getFrames(StaticObject exception, Meta meta) {
+        return (VM.StackTrace) exception.getHiddenField(meta.HIDDEN_FRAMES);
     }
 
     @SuppressWarnings("sync-override")

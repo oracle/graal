@@ -68,7 +68,6 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method implements TruffleObject, ModifiersProvider, ContextAccess {
@@ -210,8 +209,8 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     @TruffleBoundary
     public final int BCItoLineNumber(int atBCI) {
-        if (atBCI == -1) {
-            return -1;
+        if (atBCI < 0) {
+            return atBCI;
         }
         return codeAttribute.BCItoLineNumber(atBCI);
     }
@@ -649,7 +648,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         this.poisonPill = true;
     }
 
-    private String getSourceFile() {
+    public String getSourceFile() {
         SourceFileAttribute sfa = (SourceFileAttribute) declaringKlass.getAttribute(Name.SourceFile);
         if (sfa == null) {
             return "unknown source";

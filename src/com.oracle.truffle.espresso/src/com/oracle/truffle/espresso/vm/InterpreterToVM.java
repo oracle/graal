@@ -24,7 +24,6 @@
 package com.oracle.truffle.espresso.vm;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CallTarget;
@@ -425,21 +424,29 @@ public final class InterpreterToVM implements ContextAccess {
 
     // Recursion depth = 4
     @SuppressWarnings("unchecked")
-    public static StaticObject fillInStackTrace(StaticObject throwable, Meta meta) {
+    public static StaticObject fillInStackTrace(StaticObject throwable, boolean skipFirst, Meta meta) {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
-        List<VM.StackElement> frames = (List<VM.StackElement>) throwable.getHiddenField(meta.HIDDEN_FRAMES);
+        VM.StackTrace frames = (VM.StackTrace) throwable.getHiddenField(meta.HIDDEN_FRAMES);
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+            boolean first = skipFirst;
+
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
+                if (first) {
+                    first = false;
+                    return null;
+                }
                 if (c.value < size) {
                     CallTarget callTarget = frameInstance.getCallTarget();
                     if (callTarget instanceof RootCallTarget) {
                         RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
                         if (rootNode instanceof EspressoRootNode) {
-                            if (!c.checkFillIn(((EspressoRootNode) rootNode).getMethod())) {
-                                if (!c.checkThrowableInit(((EspressoRootNode) rootNode).getMethod())) {
-                                    frames.add(new VM.StackElement(((EspressoRootNode) rootNode).getMethod(), -1));
+                            EspressoRootNode espressoNode = (EspressoRootNode) rootNode;
+                            Method method = espressoNode.getMethod();
+                            if (!c.checkFillIn(method)) {
+                                if (!c.checkThrowableInit(method)) {
+                                    frames.add(new VM.StackElement(method, espressoNode.isBytecodeNode() ? -1 : -2));
                                     c.inc();
                                 }
                             }

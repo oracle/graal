@@ -63,7 +63,7 @@ import org.graalvm.polyglot.Engine;
 
 public final class EspressoContext {
 
-    public static final int DEFAULT_STACK_SIZE = 128;
+    public static final int DEFAULT_STACK_SIZE = 32;
     public static StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
 
     private final EspressoLanguage language;
