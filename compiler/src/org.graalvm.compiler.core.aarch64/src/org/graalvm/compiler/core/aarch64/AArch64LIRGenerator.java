@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
+import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.phases.util.Providers;
@@ -582,5 +583,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitSpeculationFence() {
         append(new AArch64SpeculativeBarrier());
+    }
+
+    @Override
+    public void emitZeroMemory(Value address, Value length) {
+        // Value address is 8-byte aligned; Value length is multiple of 8.
+        append(new AArch64ZeroMemoryOp(asAllocatable(address), asAllocatable(length), false, -1));
     }
 }

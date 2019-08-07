@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -38,6 +38,7 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction.RESOLV
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
+import java.util.EnumSet;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
@@ -48,6 +49,7 @@ import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.aarch64.AArch64LIRGenerator;
 import org.graalvm.compiler.core.aarch64.AArch64LIRKindTool;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -82,6 +84,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -538,5 +541,29 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     public LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues) {
         throw GraalError.unimplemented();
+    }
+
+    @Override
+    public void emitZeroMemory(Value address, Value length) {
+        int dczidValue = config.psrInfoDczidValue;
+        EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
+
+        // ARMv8-A architecture reference manual D12.2.35 Data Cache Zero ID register says:
+        // * BS, bits [3:0] indicate log2 of the DC ZVA block size in (4-byte) words.
+        // * DZP, bit [4] of indicates whether use of DC ZVA instruction is prohibited.
+        int zvaLength = 4 << (dczidValue & 0xF);
+        boolean isDcZvaProhibited = ((dczidValue & 0x10) != 0);
+
+        // Use DC ZVA if it's not prohibited and AArch64 HotSpot flag UseBlockZeroing is on.
+        boolean useDcZva = !isDcZvaProhibited && flags.contains(AArch64.Flag.UseBlockZeroing);
+
+        // Set zva length negative (unknown at compile-time) for AOT compilation, since the value
+        // could be different on different AArch64 CPU implementations.
+        if (GraalOptions.ImmutableCode.getValue(getResult().getLIR().getOptions())) {
+            useDcZva = false;
+        }
+
+        // Value address is 8-byte aligned; Value length is multiple of 8.
+        append(new AArch64ZeroMemoryOp(asAllocatable(address), asAllocatable(length), useDcZva, zvaLength));
     }
 }
