@@ -294,7 +294,7 @@ import com.oracle.truffle.object.DebugCounter;
  * bytecode is first processed/executed without growing or shinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
+public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     public static final boolean DEBUG_GENERAL = false;
     public static final boolean DEBUG_THROWN = false;
