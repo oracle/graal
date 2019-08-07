@@ -94,6 +94,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     // Todo: remove me when find a way how to get an JNIEnv.
+    @SuppressWarnings("try")
     private static void initJMXBean(HotSpotJVMCIRuntime runtime) {
         LibGraal.registerNativeMethods(runtime, JMXInitializer.class);
         try (LibGraalScope scope = new LibGraalScope(runtime)) {

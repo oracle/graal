@@ -22,13 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package org.graalvm.libgraal.jni;
 
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.PopLocalFrame;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.PushLocalFrame;
+import static org.graalvm.libgraal.jni.JNIUtil.PopLocalFrame;
+import static org.graalvm.libgraal.jni.JNIUtil.PushLocalFrame;
 
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
 
@@ -41,9 +39,9 @@ import org.graalvm.libgraal.jni.JNI.JObject;
  * {@linkplain #getObjectResult() retrieved} and returned outside the try-with-resources statement.
  * This is necessary to support use of JNI local frames.
  */
-public class HotSpotToSVMScope implements AutoCloseable {
+public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
 
-    private static final ThreadLocal<HotSpotToSVMScope> topScope = new ThreadLocal<>();
+    private static final ThreadLocal<HotSpotToSVMScope<?>> topScope = new ThreadLocal<>();
 
     private final JNIEnv env;
     private final HotSpotToSVMScope parent;
@@ -58,24 +56,25 @@ public class HotSpotToSVMScope implements AutoCloseable {
     /**
      * The SVM call for this scope.
      */
-    private final Id id;
+    private final Enum<T> id;
 
     /**
      * Gets the {@link JNIEnv} value for the current thread.
      */
-    static JNIEnv env() {
+    public static JNIEnv env() {
         return scope().env;
     }
 
-    JNIEnv getEnv() {
+    public JNIEnv getEnv() {
         return env;
     }
 
     /**
      * Gets the inner most {@link HotSpotToSVMScope} value for the current thread.
      */
-    static HotSpotToSVMScope scopeOrNull() {
-        HotSpotToSVMScope scope = topScope.get();
+    @SuppressWarnings("unchecked")
+    public static <T extends Enum<T>> HotSpotToSVMScope<T> scopeOrNull() {
+        HotSpotToSVMScope<T> scope = (HotSpotToSVMScope<T>) topScope.get();
         if (scope == null) {
             return null;
         }
@@ -85,7 +84,7 @@ public class HotSpotToSVMScope implements AutoCloseable {
     /**
      * Gets the inner most {@link HotSpotToSVMScope} value for the current thread.
      */
-    static HotSpotToSVMScope scope() {
+    public static HotSpotToSVMScope scope() {
         HotSpotToSVMScope scope = topScope.get();
         if (scope == null) {
             throw new IllegalStateException("Not in the scope of an SVM call");
@@ -96,8 +95,8 @@ public class HotSpotToSVMScope implements AutoCloseable {
     /**
      * Enters the scope of an SVM call.
      */
-    public HotSpotToSVMScope(HotSpotToSVM.Id id, JNIEnv env) {
-        HotSpotToSVMEntryPoints.trace(1, "HS->SVM[enter]: %s", id);
+    public HotSpotToSVMScope(Enum<T> id, JNIEnv env) {
+        JNIUtil.trace(1, "HS->SVM[enter]: %s", id);
         this.id = id;
         HotSpotToSVMScope top = topScope.get();
         this.env = env;
@@ -122,12 +121,12 @@ public class HotSpotToSVMScope implements AutoCloseable {
      */
     private JObject objResult;
 
-    void setObjectResult(JObject obj) {
+    public void setObjectResult(JObject obj) {
         objResult = obj;
     }
 
     @SuppressWarnings("unchecked")
-    <T extends JObject> T getObjectResult() {
+    public <T extends JObject> T getObjectResult() {
         return (T) objResult;
     }
 
@@ -147,7 +146,7 @@ public class HotSpotToSVMScope implements AutoCloseable {
             }
             top.leaf = parent;
         }
-        HotSpotToSVMEntryPoints.trace(1, "HS->SVM[ exit]: %s", id);
+        JNIUtil.trace(1, "HS->SVM[ exit]: %s", id);
     }
 
     int depth() {

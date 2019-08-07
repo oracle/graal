@@ -22,8 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package org.graalvm.libgraal.jni;
 
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.libgraal.jni.JNI.JArray;
 import org.graalvm.libgraal.jni.JNI.JByteArray;
 import org.graalvm.libgraal.jni.JNI.JClass;
@@ -45,105 +46,105 @@ import org.graalvm.word.WordFactory;
 /**
  * Helpers for calling JNI functions.
  */
-final class JNIUtil {
+public final class JNIUtil {
 
     // Checkstyle: stop
-    static boolean IsSameObject(JNIEnv env, JObject ref1, JObject ref2) {
+    public static boolean IsSameObject(JNIEnv env, JObject ref1, JObject ref2) {
         traceJNI("IsSameObject");
         return env.getFunctions().getIsSameObject().call(env, ref1, ref2);
     }
 
-    static void DeleteLocalRef(JNIEnv env, JObject ref) {
+    public static void DeleteLocalRef(JNIEnv env, JObject ref) {
         traceJNI("DeleteLocalRef");
         env.getFunctions().getDeleteLocalRef().call(env, ref);
     }
 
-    static int PushLocalFrame(JNIEnv env, int capacity) {
+    public static int PushLocalFrame(JNIEnv env, int capacity) {
         traceJNI("PushLocalFrame");
         return env.getFunctions().getPushLocalFrame().call(env, capacity);
     }
 
-    static JObject PopLocalFrame(JNIEnv env, JObject result) {
+    public static JObject PopLocalFrame(JNIEnv env, JObject result) {
         traceJNI("PopLocalFrame");
         return env.getFunctions().getPopLocalFrame().call(env, result);
     }
 
-    static JClass FindClass(JNIEnv env, CCharPointer name) {
+    public static JClass FindClass(JNIEnv env, CCharPointer name) {
         traceJNI("FindClass");
         return env.getFunctions().getFindClass().call(env, name);
     }
 
-    static JMethodID GetStaticMethodID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
+    public static JMethodID GetStaticMethodID(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig) {
         traceJNI("GetStaticMethodID");
         return env.getFunctions().getGetStaticMethodID().call(env, clazz, name, sig);
     }
 
-    static JObjectArray NewObjectArray(JNIEnv env, int len, JClass componentClass, JObject initialElement) {
+    public static JObjectArray NewObjectArray(JNIEnv env, int len, JClass componentClass, JObject initialElement) {
         traceJNI("NewObjectArray");
         return env.getFunctions().getNewObjectArray().call(env, len, componentClass, initialElement);
     }
 
-    static JByteArray NewByteArray(JNIEnv env, int len) {
+    public static JByteArray NewByteArray(JNIEnv env, int len) {
         traceJNI("NewByteArray");
         return env.getFunctions().getNewByteArray().call(env, len);
     }
 
-    static int GetArrayLength(JNIEnv env, JArray array) {
+    public static int GetArrayLength(JNIEnv env, JArray array) {
         traceJNI("GetArrayLength");
         return env.getFunctions().getGetArrayLength().call(env, array);
     }
 
-    static void SetObjectArrayElement(JNIEnv env, JObjectArray array, int index, JObject value) {
+    public static void SetObjectArrayElement(JNIEnv env, JObjectArray array, int index, JObject value) {
         traceJNI("SetObjectArrayElement");
         env.getFunctions().getSetObjectArrayElement().call(env, array, index, value);
     }
 
-    static JObject GetObjectArrayElement(JNIEnv env, JObjectArray array, int index) {
+    public static JObject GetObjectArrayElement(JNIEnv env, JObjectArray array, int index) {
         traceJNI("GetObjectArrayElement");
         return env.getFunctions().getGetObjectArrayElement().call(env, array, index);
     }
 
-    static CLongPointer GetLongArrayElements(JNIEnv env, JLongArray array, JValue isCopy) {
+    public static CLongPointer GetLongArrayElements(JNIEnv env, JLongArray array, JValue isCopy) {
         traceJNI("GetLongArrayElements");
         return env.getFunctions().getGetLongArrayElements().call(env, array, isCopy);
     }
 
-    static void ReleaseLongArrayElements(JNIEnv env, JLongArray array, CLongPointer elems, int mode) {
+    public static void ReleaseLongArrayElements(JNIEnv env, JLongArray array, CLongPointer elems, int mode) {
         traceJNI("ReleaseLongArrayElements");
         env.getFunctions().getReleaseLongArrayElements().call(env, array, elems, mode);
     }
 
-    static CCharPointer GetByteArrayElements(JNIEnv env, JByteArray array, JValue isCopy) {
+    public static CCharPointer GetByteArrayElements(JNIEnv env, JByteArray array, JValue isCopy) {
         traceJNI("GetByteArrayElements");
         return env.getFunctions().getGetByteArrayElements().call(env, array, isCopy);
     }
 
-    static void ReleaseByteArrayElements(JNIEnv env, JByteArray array, CCharPointer elems, int mode) {
+    public static void ReleaseByteArrayElements(JNIEnv env, JByteArray array, CCharPointer elems, int mode) {
         traceJNI("ReleaseByteArrayElements");
         env.getFunctions().getReleaseByteArrayElements().call(env, array, elems, mode);
     }
 
-    static void Throw(JNIEnv env, JThrowable throwable) {
+    public static void Throw(JNIEnv env, JThrowable throwable) {
         traceJNI("Throw");
         env.getFunctions().getThrow().call(env, throwable);
     }
 
-    static boolean ExceptionCheck(JNIEnv env) {
+    public static boolean ExceptionCheck(JNIEnv env) {
         traceJNI("ExceptionCheck");
         return env.getFunctions().getExceptionCheck().call(env);
     }
 
-    static void ExceptionClear(JNIEnv env) {
+    public static void ExceptionClear(JNIEnv env) {
         traceJNI("ExceptionClear");
         env.getFunctions().getExceptionClear().call(env);
     }
 
-    static void ExceptionDescribe(JNIEnv env) {
+    public static void ExceptionDescribe(JNIEnv env) {
         traceJNI("ExceptionDescribe");
         env.getFunctions().getExceptionDescribe().call(env);
     }
 
-    static JThrowable ExceptionOccurred(JNIEnv env) {
+    public static JThrowable ExceptionOccurred(JNIEnv env) {
         traceJNI("ExceptionOccurred");
         return env.getFunctions().getExceptionOccurred().call(env);
     }
@@ -157,24 +158,24 @@ final class JNIUtil {
      * @return JNI global reference for given {@link JObject}
      */
     @SuppressWarnings("unchecked")
-    static <T extends JObject> T NewGlobalRef(JNIEnv env, T ref, String type) {
+    public static <T extends JObject> T NewGlobalRef(JNIEnv env, T ref, String type) {
         traceJNI("NewGlobalRef");
         T res = (T) env.getFunctions().getNewGlobalRef().call(env, ref);
-        if (HotSpotToSVMEntryPoints.tracingAt(3)) {
-            HotSpotToSVMEntryPoints.trace(3, "New global reference for 0x%x of type %s -> 0x%x", ref.rawValue(), type, res.rawValue());
+        if (tracingAt(3)) {
+            trace(3, "New global reference for 0x%x of type %s -> 0x%x", ref.rawValue(), type, res.rawValue());
         }
         return res;
     }
 
-    static void DeleteGlobalRef(JNIEnv env, JObject ref) {
+    public static void DeleteGlobalRef(JNIEnv env, JObject ref) {
         traceJNI("DeleteGlobalRef");
-        if (HotSpotToSVMEntryPoints.tracingAt(3)) {
-            HotSpotToSVMEntryPoints.trace(3, "Delete global reference 0x%x", ref.rawValue());
+        if (tracingAt(3)) {
+            trace(3, "Delete global reference 0x%x", ref.rawValue());
         }
         env.getFunctions().getDeleteGlobalRef().call(env, ref);
     }
 
-    static VoidPointer GetDirectBufferAddress(JNIEnv env, JObject buf) {
+    public static VoidPointer GetDirectBufferAddress(JNIEnv env, JObject buf) {
         traceJNI("GetDirectBufferAddress");
         return env.getFunctions().getGetDirectBufferAddress().call(env, buf);
     }
@@ -182,7 +183,7 @@ final class JNIUtil {
     // Checkstyle: resume
 
     private static void traceJNI(String function) {
-        HotSpotToSVMEntryPoints.trace(2, "SVM->JNI: %s", function);
+        trace(2, "SVM->JNI: %s", function);
     }
 
     private JNIUtil() {
@@ -191,7 +192,7 @@ final class JNIUtil {
     /**
      * Decodes a string in the HotSpot heap to a local {@link String}.
      */
-    static String createString(JNIEnv env, JString hsString) {
+    public static String createString(JNIEnv env, JString hsString) {
         if (hsString.isNull()) {
             return null;
         }
@@ -211,7 +212,7 @@ final class JNIUtil {
     /**
      * Creates a String in the HotSpot heap from {@code string}.
      */
-    static JString createHSString(JNIEnv env, String string) {
+    public static JString createHSString(JNIEnv env, String string) {
         if (string == null) {
             return WordFactory.nullPointer();
         }
@@ -231,7 +232,7 @@ final class JNIUtil {
      * Converts a fully qualified Java class name from Java source format (e.g.
      * {@code "java.lang.getString"}) to internal format (e.g. {@code "Ljava/lang/getString;"}.
      */
-    static String getInternalName(String fqn) {
+    public static String getInternalName(String fqn) {
         return "L" + getBinaryName(fqn) + ";";
     }
 
@@ -239,7 +240,49 @@ final class JNIUtil {
      * Converts a fully qualified Java class name from Java source format (e.g.
      * {@code "java.lang.getString"}) to binary format (e.g. {@code "java/lang/getString"}.
      */
-    static String getBinaryName(String fqn) {
+    public static String getBinaryName(String fqn) {
         return fqn.replace('.', '/');
+    }
+
+    /*----------------- TRACING ------------------*/
+
+    private static Integer traceLevel;
+
+    private static final String JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
+
+    /**
+     * Checks if {@link SVMToHotSpotUtil} and {@link HotSpotToSVMEntryPoints} are verbose.
+     */
+    private static int traceLevel() {
+        if (traceLevel == null) {
+            String var = System.getenv(JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME);
+            if (var != null) {
+                try {
+                    traceLevel = Integer.parseInt(var);
+                } catch (NumberFormatException e) {
+                    TTY.printf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME, e);
+                    traceLevel = 0;
+                }
+            } else {
+                traceLevel = 0;
+            }
+        }
+        return traceLevel;
+    }
+
+    public static boolean tracingAt(int level) {
+        return traceLevel() >= level;
+    }
+
+    /**
+     * Emits a trace line composed of {@code format} and {@code args} if the tracing level equal to
+     * or greater than {@code level}.
+     */
+    public static void trace(int level, String format, Object... args) {
+        if (traceLevel() >= level) {
+            HotSpotToSVMScope scope = HotSpotToSVMScope.scopeOrNull();
+            String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
+            TTY.printf(indent + format + "%n", args);
+        }
     }
 }

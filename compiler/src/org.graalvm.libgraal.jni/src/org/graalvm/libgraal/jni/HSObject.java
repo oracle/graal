@@ -22,10 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package org.graalvm.libgraal.jni;
 
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.DeleteGlobalRef;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.NewGlobalRef;
+import org.graalvm.libgraal.jni.JNIUtil;
+import static org.graalvm.libgraal.jni.JNIUtil.DeleteGlobalRef;
+import static org.graalvm.libgraal.jni.JNIUtil.NewGlobalRef;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
@@ -42,7 +43,7 @@ import org.graalvm.libgraal.jni.JNI.JObject;
  * used, the handle is either local to a {@link HotSpotToSVMScope} and thus invalid once the scope
  * exits or a global JNI handle that is only released sometime after the {@link HSObject} dies.
  */
-abstract class HSObject {
+public abstract class HSObject {
 
     /**
      * JNI handle to the HotSpot object.
@@ -67,9 +68,9 @@ abstract class HSObject {
     /**
      * Creates an object encapsulating a {@code handle} whose lifetime is determined by this object.
      */
-    HSObject(JNIEnv env, JObject handle) {
+    protected HSObject(JNIEnv env, JObject handle) {
         cleanHandles(env);
-        if (Assertions.assertionsEnabled() || HotSpotToSVMEntryPoints.tracingAt(1)) {
+        if (Assertions.assertionsEnabled() || JNIUtil.tracingAt(1)) {
             checkNonExistingGlobalReference(env, handle);
         }
         this.handle = NewGlobalRef(env, handle, this.getClass().getSimpleName());
@@ -83,7 +84,7 @@ abstract class HSObject {
      * Once {@code scope.close()} is called, any attempt to {@linkplain #getHandle() use} the handle
      * will result in an {@link IllegalArgumentException}.
      */
-    HSObject(HotSpotToSVMScope scope, JObject handle) {
+    protected <T extends Enum<T>> HSObject(HotSpotToSVMScope<T> scope, JObject handle) {
         this.handle = handle;
         next = scope.locals;
         scope.locals = this;
@@ -121,7 +122,7 @@ abstract class HSObject {
         return String.format("%s[0x%x]", getClass().getSimpleName(), handle.rawValue());
     }
 
-    void release(JNIEnv env) {
+    public void release(JNIEnv env) {
         if (cleaner != null) {
             assert next == null || next == this;
             this.next = this;
@@ -132,7 +133,7 @@ abstract class HSObject {
     /**
      * Processes {@link #CLEANERS_QUEUE} to release any handles whose objects are now unreachable.
      */
-    static void cleanHandles(JNIEnv env) {
+    public static void cleanHandles(JNIEnv env) {
         Cleaner cleaner;
         while ((cleaner = (Cleaner) CLEANERS_QUEUE.poll()) != null) {
             cleaner.clean(env);

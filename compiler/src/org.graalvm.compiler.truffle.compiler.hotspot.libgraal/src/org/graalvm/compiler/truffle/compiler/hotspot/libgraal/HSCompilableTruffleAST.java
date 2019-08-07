@@ -52,6 +52,8 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilabl
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.env;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.scope;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.createString;
+import static org.graalvm.libgraal.jni.JNIUtil.createString;
+import static org.graalvm.libgraal.jni.HotSpotToSVMScope.env;
 
 import java.util.function.Supplier;
 
@@ -64,6 +66,8 @@ import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObjectArray;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
+import org.graalvm.libgraal.jni.HSObject;
+import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI.JNIEnv;
 import org.graalvm.libgraal.jni.JNI.JObject;
 import org.graalvm.libgraal.jni.JNI.JString;
@@ -71,6 +75,7 @@ import org.graalvm.libgraal.LibGraal;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM;
 
 /**
  * Proxy for a {@code HotSpotOptimizedCallTarget} object in the HotSpot heap.
@@ -102,7 +107,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
      * @param scope the owning scope
      * @param handle the JNI object reference
      */
-    HSCompilableTruffleAST(HotSpotToSVMScope scope, JObject handle) {
+    HSCompilableTruffleAST(HotSpotToSVMScope<HotSpotToSVM.Id> scope, JObject handle) {
         super(scope, handle);
     }
 

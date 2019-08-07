@@ -25,11 +25,11 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapper.wrapAndThrowPendingJNIException;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.FindClass;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.GetStaticMethodID;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.NewGlobalRef;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.getBinaryName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMEntryPoints.trace;
+import static org.graalvm.libgraal.jni.JNIUtil.FindClass;
+import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
+import static org.graalvm.libgraal.jni.JNIUtil.NewGlobalRef;
+import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
+import static org.graalvm.libgraal.jni.JNIUtil.trace;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 import java.lang.annotation.ElementType;
