@@ -305,6 +305,10 @@ public final class VM extends NativeEnv implements ContextAccess {
                     }
                     throw EspressoError.shouldNotReachHere(e);
                 } catch (RuntimeException | VirtualMachineError e) {
+                    if (isJni) {
+                        jniEnv.getThreadLocalPendingException().set(getMeta().initEx(e.getClass()));
+                        return defaultValue(m.returnType());
+                    }
                     throw e;
                 } catch (ThreadDeath e) {
                     throw getMeta().throwEx(ThreadDeath.class);
