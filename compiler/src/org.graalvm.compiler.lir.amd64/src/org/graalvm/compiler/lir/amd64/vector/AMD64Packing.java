@@ -36,6 +36,7 @@ import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
@@ -114,6 +115,8 @@ public final class AMD64Packing {
                     assert ((AMD64) masm.target.arch).getFeatures().contains(AMD64.CPUFeature.AVX) : "AVX is unsupported";
                     masm.vmovdqu(asRegister(result), address);
                     break;
+                default:
+                    throw GraalError.shouldNotReachHere();
             }
         }
     }
