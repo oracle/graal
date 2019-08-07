@@ -951,7 +951,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
 
-            if (combinedPackSet.isEmpty()) {
+            if (combinedPackSet.size() < 2) {
                 return;
             }
 
