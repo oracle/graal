@@ -216,7 +216,7 @@ public final class ArrayUtils {
         } else {
             int max = fromIndex + length - (needle.length - 2);
             int index = fromIndex;
-            while (index < max) {
+            while (index < max - 1) {
                 index = runIndexOf2ConsecutiveWithOrMask(haystack, index, max, needle[0], needle[1], mask[0], mask[1]);
                 if (index < 0) {
                     return -1;
@@ -252,7 +252,7 @@ public final class ArrayUtils {
         } else {
             int max = fromIndex + length - (needle.length - 2);
             int index = fromIndex;
-            while (index < max) {
+            while (index < max - 1) {
                 index = runIndexOf2ConsecutiveWithOrMask(haystack, index, max, needle[0], needle[1], mask[0], mask[1]);
                 if (index < 0) {
                     return -1;
@@ -289,7 +289,7 @@ public final class ArrayUtils {
         } else {
             int max = fromIndex + length - (needle.length() - 2);
             int index = fromIndex;
-            while (index < max) {
+            while (index < max - 1) {
                 index = runIndexOf2ConsecutiveWithOrMask(haystack, index, max, needle.charAt(0), needle.charAt(1), mask.charAt(0), mask.charAt(1));
                 if (index < 0) {
                     return -1;

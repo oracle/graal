@@ -101,6 +101,11 @@ public class ArrayUtilsIndexOfWithMaskTest {
         ret.add(dataRow(strAlphabet, 0, strAlphabet.length(), "\u014f", String.valueOf('\u0100'), 14));
         ret.add(dataRow(lipsum, 0, lipsum.length(), "o", String.valueOf('\u0100'), 1, -1));
         ret.add(dataRow(lipsum, 0, lipsum.length(), "\u016f", String.valueOf('\u0100'), 1));
+        ret.add(dataRow(lipsum, 0, lipsum.length(), "X", mask(1), -1));
+        ret.add(dataRow(lipsum, 0, lipsum.length(), "XX", mask(2), -1));
+        ret.add(dataRow(lipsum, 0, lipsum.length(), "XXX", mask(3), -1));
+        ret.add(dataRow(lipsum, 0, lipsum.length(), "s x", mask("s x"), -1));
+        ret.add(dataRow("l", 0, 1, "lo", mask(2), -1));
         return ret;
     }
 

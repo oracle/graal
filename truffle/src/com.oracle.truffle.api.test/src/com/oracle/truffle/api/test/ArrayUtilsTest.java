@@ -206,6 +206,11 @@ public class ArrayUtilsTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringException4() {
+        ArrayUtils.indexOf(strS, 0, strS.length());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
     public void testIndexOfCharArrayException1() {
         ArrayUtils.indexOf(strC, -1, strS.length(), 'L');
     }
@@ -293,6 +298,56 @@ public class ArrayUtilsTest {
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringWithORMaskByteArrayException4() {
         ArrayUtils.indexOfWithOrMask(strB, 0, 1, toByteArray("l"), toByteArray(mask(2)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testRegionEqualsWithOrMaskStringException1() {
+        ArrayUtils.regionEqualsWithOrMask(strS, -1, strS, 0, 1, mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testRegionEqualsWithOrMaskStringException2() {
+        ArrayUtils.regionEqualsWithOrMask(strS, 0, strS, -1, 1, mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskStringException3() {
+        ArrayUtils.regionEqualsWithOrMask(strS, 0, strS, 0, -1, mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskStringException4() {
+        ArrayUtils.regionEqualsWithOrMask(strS, 0, strS, 0, 1, mask(0));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskCharArrayException1() {
+        ArrayUtils.regionEqualsWithOrMask(strC, -1, strC, 0, 1, mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskCharArrayException2() {
+        ArrayUtils.regionEqualsWithOrMask(strC, 0, strC, -1, 1, mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskCharArrayException3() {
+        ArrayUtils.regionEqualsWithOrMask(strC, 0, strC, 0, -1, mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskByteArrayException1() {
+        ArrayUtils.regionEqualsWithOrMask(strB, -1, strB, 0, 1, toByteArray(mask(1)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskByteArrayException2() {
+        ArrayUtils.regionEqualsWithOrMask(strB, 0, strB, -1, 1, toByteArray(mask(1)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskByteArrayException3() {
+        ArrayUtils.regionEqualsWithOrMask(strB, 0, strB, 0, -1, toByteArray(mask(1)));
     }
 
     private static void doTestIndexOf(String haystack, int fromIndex, int maxIndex, String needle, int expected) {
