@@ -193,7 +193,13 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (headArg.equals("-J")) {
                 NativeImage.showError("The -J option should not be followed by a space");
             } else {
-                nativeImage.addCustomJavaArgs(headArg.substring(2));
+                if (headArg.startsWith("-J-Xmx")) {
+                    nativeImage.setXmxValue(headArg.substring(6));
+                } else if (headArg.startsWith("-J-Xms")) {
+                    nativeImage.setXmsValue(headArg.substring(6));
+                } else {
+                    nativeImage.addCustomJavaArgs(headArg.substring(2));
+                }
             }
             return true;
         }

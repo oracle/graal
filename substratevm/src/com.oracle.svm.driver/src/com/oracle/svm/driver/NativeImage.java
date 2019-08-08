@@ -192,6 +192,9 @@ public class NativeImage {
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
     private final ArrayList<OptionHandler<? extends NativeImage>> optionHandlers = new ArrayList<>();
 
+    private String xmxValue;
+    private String xmsValue = "1g";
+
     protected final BuildConfiguration config;
 
     private final Map<String, String> userConfigProperties = new HashMap<>();
@@ -655,8 +658,6 @@ public class NativeImage {
     private void prepareImageBuildArgs() {
         config.getBuilderJavaArgs().forEach(this::addImageBuilderJavaArgs);
         addImageBuilderJavaArgs("-Xss10m");
-        addImageBuilderJavaArgs(oXms + getXmsValue());
-        addImageBuilderJavaArgs(oXmx + getXmxValue(1));
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
@@ -717,6 +718,14 @@ public class NativeImage {
 
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity()); // legacy
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.image-build-time.PreinitializeContexts=", ",", Function.identity());
+
+        if (this.xmxValue != null) {
+            imageBuilderJavaArgs.add(oXmx + this.xmxValue);
+        }
+
+        if (this.xmsValue != null) {
+            imageBuilderJavaArgs.add(oXms + this.xmsValue);
+        }
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
@@ -967,11 +976,14 @@ public class NativeImage {
             imageClasspath.addAll(customImageClasspath);
         }
 
+        addImageBuilderJavaArgs(oXms + getXmsValue());
+        addImageBuilderJavaArgs(oXmx + getXmxValue(1));
+
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
-        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
-        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
-        if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
-            replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
+        Long currentXmlValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
+        Long currentXmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
+        if (Long.compareUnsigned(currentXmsValue, currentXmlValue) > 0) {
+            replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(currentXmlValue));
         }
 
         /* Enable class initializaiton tracing agent. */
@@ -1374,6 +1386,14 @@ public class NativeImage {
         }
     }
 
+    void setXmxValue(String xmxValue) {
+        this.xmxValue = xmxValue;
+    }
+
+    void setXmsValue(String xmsValue) {
+        this.xmsValue = xmsValue;
+    }
+
     void addCustomJavaArgs(String javaArg) {
         customJavaArgs.add(javaArg);
     }
@@ -1492,7 +1512,7 @@ public class NativeImage {
     }
 
     protected String getXmsValue() {
-        return "1g";
+        return this.xmsValue;
     }
 
     private static long getPhysicalMemorySize() {
@@ -1502,6 +1522,9 @@ public class NativeImage {
     }
 
     protected String getXmxValue(int maxInstances) {
+        if (this.xmxValue != null) {
+            return this.xmxValue;
+        }
         Long memMax = Long.divideUnsigned(Long.divideUnsigned(getPhysicalMemorySize(), 10) * 8, maxInstances);
         String maxXmx = "14g";
         if (Long.compareUnsigned(memMax, SubstrateOptionsParser.parseLong(maxXmx)) >= 0) {
