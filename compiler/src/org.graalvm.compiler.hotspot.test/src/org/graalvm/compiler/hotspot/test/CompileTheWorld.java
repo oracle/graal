@@ -671,7 +671,7 @@ public final class CompileTheWorld {
     @SuppressWarnings("try")
     private void compile(String classPath, LibGraalParams libgraal) throws IOException {
         final String[] entries = classPath.split(File.pathSeparator);
-        long start = System.currentTimeMillis();
+        long start = System.nanoTime();
         Map<Thread, StackTraceElement[]> initialThreads = Thread.getAllStackTraces();
 
         if (libgraal == null) {
@@ -801,7 +801,7 @@ public final class CompileTheWorld {
                         // Are we compiling this class?
                         if (classFileCounter >= compileStartAt) {
 
-                            long start0 = System.currentTimeMillis();
+                            long start0 = System.nanoTime();
                             // Compile each constructor/method in the class.
                             for (Constructor<?> constructor : javaClass.getDeclaredConstructors()) {
                                 HotSpotResolvedJavaMethod javaMethod = (HotSpotResolvedJavaMethod) metaAccess.lookupJavaMethod(constructor);
@@ -821,7 +821,7 @@ public final class CompileTheWorld {
                             if (clinit != null && canBeCompiled(clinit, clinit.getModifiers())) {
                                 compileMethod(clinit, libgraal);
                             }
-                            println("CompileTheWorld (%d) : %s (%d ms)", classFileCounter, className, System.currentTimeMillis() - start0);
+                            println("CompileTheWorld (%d) : %s (%d us)", classFileCounter, className, (System.nanoTime() - start0) / 1000);
                         }
                     } catch (Throwable t) {
                         if (isClassIncluded(className)) {
@@ -852,13 +852,13 @@ public final class CompileTheWorld {
         threadPool.shutdown();
         threadPool = null;
 
-        long elapsedTime = System.currentTimeMillis() - start;
+        long elapsedTime = System.nanoTime() - start;
 
         println();
         int compiledClasses = classFileCounter > compileStartAt ? classFileCounter - compileStartAt : 0;
         if (Options.MultiThreaded.getValue(harnessOptions)) {
             TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms elapsed, %d ms compile time, %d bytes of memory used)", compiledClasses, compiledMethodsCounter.get(), elapsedTime,
-                            compileTime.get(), memoryUsed.get());
+                            compileTime.get() / 1000000, memoryUsed.get());
         } else {
             TTY.println("CompileTheWorld : Done (%d classes, %d methods, %d ms, %d bytes of memory used)", compiledClasses, compiledMethodsCounter.get(), compileTime.get(), memoryUsed.get());
         }
@@ -948,7 +948,7 @@ public final class CompileTheWorld {
     @SuppressWarnings("try")
     private void compileMethod(HotSpotResolvedJavaMethod method, int counter, LibGraalParams libgraal) {
         try {
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();
             long allocatedAtStart = getCurrentThreadAllocatedBytes();
             // For more stable CTW execution, disable use of profiling information
             boolean useProfilingInfo = false;
@@ -997,7 +997,7 @@ public final class CompileTheWorld {
             }
 
             memoryUsed.getAndAdd(getCurrentThreadAllocatedBytes() - allocatedAtStart);
-            compileTime.getAndAdd(System.currentTimeMillis() - start);
+            compileTime.getAndAdd(System.nanoTime() - start);
             compiledMethodsCounter.incrementAndGet();
         } catch (Throwable t) {
             // Catch everything and print a message
