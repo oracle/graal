@@ -243,7 +243,7 @@ public class CoverageInstrument extends TruffleInstrument {
         final OptionValues options = env.getOptions();
         enabled = ENABLED.getValue(options);
         if (enabled) {
-            tracker.startTracking(getSourceSectionFilter(options));
+            tracker.start(getSourceSectionFilter(options));
             env.registerService(tracker);
         }
     }

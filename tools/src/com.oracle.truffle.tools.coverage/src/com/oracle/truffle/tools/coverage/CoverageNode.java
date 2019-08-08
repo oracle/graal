@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.coverage.impl;
+package com.oracle.truffle.tools.coverage;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -30,14 +30,18 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-public abstract class CoverageNode extends ExecutionEventNode {
-    protected final SourceSection sourceSection;
-    protected final Node instrumentedNode;
-    @CompilerDirectives.CompilationFinal private boolean covered;
+public final class CoverageNode extends ExecutionEventNode {
+    final SourceSection sourceSection;
+    final Node instrumentedNode;
+    final boolean isRoot;
+    final boolean isStatement;
+    @CompilerDirectives.CompilationFinal private volatile boolean covered;
 
-    public CoverageNode(SourceSection sourceSection, Node instrumentedNode) {
+    public CoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
         this.sourceSection = sourceSection;
         this.instrumentedNode = instrumentedNode;
+        this.isRoot = isRoot;
+        this.isStatement = isStatement;
     }
 
     @Override
@@ -45,9 +49,6 @@ public abstract class CoverageNode extends ExecutionEventNode {
         if (!covered) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             covered = true;
-            notifyTracker();
         }
     }
-
-    protected abstract void notifyTracker();
 }

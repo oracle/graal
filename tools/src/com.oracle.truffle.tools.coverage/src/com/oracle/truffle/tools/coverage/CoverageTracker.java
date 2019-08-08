@@ -38,7 +38,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
-import com.oracle.truffle.tools.coverage.impl.CoverageNode;
 
 public final class CoverageTracker implements AutoCloseable {
 
@@ -54,11 +53,9 @@ public final class CoverageTracker implements AutoCloseable {
         });
     }
 
-    final List<SourceSection> coveredSections = new ArrayList<>();
+    private final List<CoverageNode> coverageNodes = new ArrayList<>();
+    private final List<LoadSourceSectionEvent> loadedEvents = new ArrayList<>();
     private final Env env;
-    private final List<SourceSection> loadedSections = new ArrayList<>();
-    private final List<Node> loadedNodes = new ArrayList<>();
-    private final List<Node> coveredNodes = new ArrayList<>();
     private boolean tracking;
     private boolean closed;
     private EventBinding<LoadSourceSectionListener> loadedBinding;
@@ -98,14 +95,13 @@ public final class CoverageTracker implements AutoCloseable {
         return sectionCoverage;
     }
 
-    public synchronized void startTracking(SourceSectionFilter filter) {
+    public synchronized void start(SourceSectionFilter filter) {
         if (closed) {
             throw new IllegalStateException("Coverage Tracker is closed");
         }
         if (tracking) {
             throw new IllegalStateException("Coverage Tracker is already tracking");
         }
-        assert Thread.holdsLock(this);
         tracking = true;
         SourceSectionFilter f = filter;
         if (f == null) {
@@ -115,7 +111,7 @@ public final class CoverageTracker implements AutoCloseable {
         instrument(f, instrumenter);
     }
 
-    public synchronized void endTracking() {
+    public synchronized void end() {
         if (!tracking) {
             throw new IllegalStateException("Coverage tracker is not tracking");
         }
@@ -124,8 +120,6 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     public synchronized SourceCoverage[] getCoverage() {
-        assert loadedSections.size() == loadedNodes.size();
-        assert coveredSections.size() == coveredNodes.size();
         return getSourceCoverage(makeMapping());
     }
 
@@ -137,11 +131,11 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     private void processLoaded(Map<Source, Map<RootNode, RootData>> sourceCoverage) {
-        for (int i = 0; i < loadedSections.size(); i++) {
-            final SourceSection section = loadedSections.get(i);
+        for (LoadSourceSectionEvent loadedEvent : loadedEvents) {
+            final SourceSection section = loadedEvent.getSourceSection();
             final Source source = section.getSource();
             final Map<RootNode, RootData> perRootData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
-            final Node node = loadedNodes.get(i);
+            final Node node = loadedEvent.getNode();
             final InstrumentableNode instrumentableNode = (InstrumentableNode) node;
             if (instrumentableNode.hasTag(StandardTags.RootTag.class)) {
                 perRootData.put(node.getRootNode(), new RootData(section));
@@ -157,21 +151,20 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     private void processCovered(Map<Source, Map<RootNode, RootData>> mapping) {
-        for (int i = 0; i < coveredSections.size(); i++) {
-            final SourceSection section = coveredSections.get(i);
+        for (CoverageNode coverageNode : coverageNodes) {
+            final SourceSection section = coverageNode.sourceSection;
             final Source source = section.getSource();
-            final Node node = coveredNodes.get(i);
+            final Node node = coverageNode.instrumentedNode;
             final RootData rootData = mapping.get(source).get(node.getRootNode());
-            final InstrumentableNode instrumentableNode = (InstrumentableNode) node;
-            if (instrumentableNode.hasTag(StandardTags.RootTag.class)) {
+            if (coverageNode.isRoot) {
                 rootData.covered = true;
                 continue;
             }
-            if (instrumentableNode.hasTag(StandardTags.StatementTag.class)) {
+            if (coverageNode.isStatement) {
                 rootData.coveredStatements.add(section);
                 continue;
             }
-            throw new IllegalStateException("Found a node without adequate tag: " + instrumentableNode);
+            throw new IllegalStateException("Found a node without adequate tag.");
         }
     }
 
@@ -179,7 +172,7 @@ public final class CoverageTracker implements AutoCloseable {
     public synchronized void close() {
         closed = true;
         if (tracking) {
-            endTracking();
+            end();
         }
     }
 
@@ -188,21 +181,19 @@ public final class CoverageTracker implements AutoCloseable {
         loadedBinding = instrumenter.attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
-                loadedSections.add(event.getSourceSection());
-                loadedNodes.add(event.getNode());
+                synchronized (CoverageTracker.this) {
+                    loadedEvents.add(event);
+                }
             }
-        }, false);
+        }, true);
         coveredBinding = instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
-                return new CoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode()) {
-
-                    @Override
-                    protected void notifyTracker() {
-                        coveredSections.add(sourceSection);
-                        coveredNodes.add(instrumentedNode);
-                    }
-                };
+                final boolean isRoot = context.hasTag(StandardTags.RootTag.class);
+                final boolean isStatement = context.hasTag(StandardTags.StatementTag.class);
+                final CoverageNode coverageNode = new CoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode(), isRoot, isStatement);
+                coverageNodes.add(coverageNode);
+                return coverageNode;
             }
         });
 
