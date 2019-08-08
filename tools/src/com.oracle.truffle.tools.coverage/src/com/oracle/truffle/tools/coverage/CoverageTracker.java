@@ -65,27 +65,27 @@ public final class CoverageTracker implements AutoCloseable {
         this.env = env;
     }
 
-    private static SourceCoverage[] getSourceCoverage(Map<Source, Map<RootNode, RootData>> mapping) {
+    private static SourceCoverage[] sourceCoverage(Map<Source, Map<RootNode, RootData>> mapping) {
         SourceCoverage[] coverage = new SourceCoverage[mapping.size()];
         int i = 0;
         for (Map.Entry<Source, Map<RootNode, RootData>> entry : mapping.entrySet()) {
-            coverage[i++] = new SourceCoverage(entry.getKey(), getRootCoverage(entry.getValue()));
+            coverage[i++] = new SourceCoverage(entry.getKey(), rootCoverage(entry.getValue()));
         }
         return coverage;
     }
 
-    private static RootCoverage[] getRootCoverage(Map<RootNode, RootData> perRootData) {
+    private static RootCoverage[] rootCoverage(Map<RootNode, RootData> perRootData) {
         RootCoverage[] rootCoverage = new RootCoverage[perRootData.size()];
         int i = 0;
         for (Map.Entry<RootNode, RootData> entry : perRootData.entrySet()) {
             final RootData rootData = entry.getValue();
-            rootCoverage[i++] = new RootCoverage(getSectionCoverage(rootData),
+            rootCoverage[i++] = new RootCoverage(sectionCoverage(rootData),
                             rootData.covered, rootData.sourceSection, entry.getKey().getName());
         }
         return rootCoverage;
     }
 
-    private static SectionCoverage[] getSectionCoverage(RootData rootData) {
+    private static SectionCoverage[] sectionCoverage(RootData rootData) {
         final List<SourceSection> loadedStatements = rootData.loadedStatements;
         SectionCoverage[] sectionCoverage = new SectionCoverage[loadedStatements.size()];
         int i = 0;
@@ -120,10 +120,10 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     public synchronized SourceCoverage[] getCoverage() {
-        return getSourceCoverage(makeMapping());
+        return sourceCoverage(mapping());
     }
 
-    private Map<Source, Map<RootNode, RootData>> makeMapping() {
+    private Map<Source, Map<RootNode, RootData>> mapping() {
         Map<Source, Map<RootNode, RootData>> sourceCoverage = new HashMap<>();
         processLoaded(sourceCoverage);
         processCovered(sourceCoverage);
