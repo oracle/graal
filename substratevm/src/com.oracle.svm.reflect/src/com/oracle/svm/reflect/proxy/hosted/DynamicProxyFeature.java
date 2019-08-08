@@ -44,6 +44,7 @@ import com.oracle.svm.reflect.proxy.DynamicProxySupport;
 
 @AutomaticFeature
 public final class DynamicProxyFeature implements Feature {
+    private int loadedConfigurations;
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -75,7 +76,7 @@ public final class DynamicProxyFeature implements Feature {
             dynamicProxySupport.addProxyClass(interfaces);
         };
         ProxyConfigurationParser parser = new ProxyConfigurationParser(adapter);
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
+        loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                         ConfigurationFiles.DYNAMIC_PROXY_NAME);
     }
@@ -86,8 +87,7 @@ public final class DynamicProxyFeature implements Feature {
             return;
         }
         FallbackFeature.FallbackImageRequest proxyFallback = ImageSingletons.lookup(FallbackFeature.class).proxyFallback;
-        if (proxyFallback != null && ConfigurationFiles.Options.DynamicProxyConfigurationFiles.getValue() == null &&
-                        ConfigurationFiles.Options.DynamicProxyConfigurationResources.getValue() == null) {
+        if (proxyFallback != null && loadedConfigurations == 0) {
             throw proxyFallback;
         }
     }
