@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -92,5 +93,10 @@ public final class Target_java_lang_System {
             // Should catch NPE if src or dest is null, and ArrayStoreException.
             throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
+    }
+
+    @Substitution
+    public static void exit(int code) {
+        throw new EspressoExitException(code);
     }
 }
