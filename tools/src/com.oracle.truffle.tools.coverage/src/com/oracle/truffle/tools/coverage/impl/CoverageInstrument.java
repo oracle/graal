@@ -35,12 +35,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionStability;
-import org.graalvm.options.OptionType;
-import org.graalvm.options.OptionValues;
+import org.graalvm.options.*;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 
@@ -53,37 +48,8 @@ import com.oracle.truffle.tools.coverage.SourceCoverage;
 @Registration(id = CoverageInstrument.ID, name = "Code Coverage", version = CoverageInstrument.VERSION, services = CoverageTracker.class)
 public class CoverageInstrument extends TruffleInstrument {
 
-    public static CoverageTracker getTracker(Engine engine) {
-        Instrument instrument = engine.getInstruments().get(ID);
-        if (instrument == null) {
-            throw new IllegalStateException("Sampler is not installed.");
-        }
-        return instrument.lookup(CoverageTracker.class);
-    }
-
-    public static void setFactory(Function<Env, CoverageTracker> factory) {
-        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.coverage")) {
-            throw new IllegalArgumentException("Wrong factory: " + factory);
-        }
-        CoverageInstrument.factory = factory;
-    }
-
     public static final String ID = "codecoverage";
-
     static final String VERSION = "0.1.0";
-    private CoverageTracker tracker;
-
-    private static Function<Env, CoverageTracker> factory;
-    private Boolean enabled;
-
-    enum Output {
-        HISTOGRAM,
-        LINES,
-
-        JSON,
-
-    }
-
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
                     new Function<String, Output>() {
                         @Override
@@ -95,7 +61,6 @@ public class CoverageInstrument extends TruffleInstrument {
                             }
                         }
                     });
-
     // TODO: following should be a shared lib for tools.
     static final OptionType<Object[]> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
                     new Function<String, Object[]>() {
@@ -128,6 +93,53 @@ public class CoverageInstrument extends TruffleInstrument {
 
                         }
                     });
+    @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+    @Option(name = "Output", help = "", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
+    @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
+    @Option(name = "TrackInternal", help = "Track internal elements (default:false).", category = OptionCategory.INTERNAL)
+    static final OptionKey<Boolean> TRACK_INTERNAL = new OptionKey<>(false);
+    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
+
+    // @formatter:off
+    private static Function<Env, CoverageTracker> factory;
+
+    static {
+        // Be sure that the factory is initialized:
+        try {
+            Class.forName(CoverageTracker.class.getName(), true, CoverageTracker.class.getClassLoader());
+        } catch (ClassNotFoundException cannotHappen) {
+            // Can not happen
+            throw new AssertionError();
+        }
+    }
+
+    private CoverageTracker tracker;
+    private Boolean enabled;
+
+    public static CoverageTracker getTracker(Engine engine) {
+        Instrument instrument = engine.getInstruments().get(ID);
+        if (instrument == null) {
+            throw new IllegalStateException("Sampler is not installed.");
+        }
+        return instrument.lookup(CoverageTracker.class);
+    }
+
+    public static void setFactory(Function<Env, CoverageTracker> factory) {
+        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.coverage")) {
+            throw new IllegalArgumentException("Wrong factory: " + factory);
+        }
+        CoverageInstrument.factory = factory;
+    }
 
     private static String wildcardToRegex(String wildcard) {
         StringBuilder s = new StringBuilder(wildcard.length());
@@ -188,63 +200,7 @@ public class CoverageInstrument extends TruffleInstrument {
         return false;
     }
 
-    // @formatter:off
-
-    @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-
-    @Option(name = "Output", help = "", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
-
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
-
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(new Object[0], WILDCARD_FILTER_TYPE);
-
-    @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
-
-    @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
-    @Option(name = "TrackInternal", help = "Track internal elements (default:false).", category = OptionCategory.INTERNAL)
-    static final OptionKey<Boolean> TRACK_INTERNAL = new OptionKey<>(false);
-
-    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
-
     // @formatter:on
-
-    @Override
-    protected void onCreate(Env env) {
-        tracker = factory.apply(env);
-        final OptionValues options = env.getOptions();
-        enabled = ENABLED.getValue(options);
-        if (enabled) {
-            tracker.startTracking(getSourceSectionFilter(options));
-            env.registerService(tracker);
-        }
-    }
-
-    @Override
-    protected void onDispose(Env env) {
-        if (enabled) {
-            PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
-            SourceCoverage[] coverage = tracker.getCoverage();
-            switch (OUTPUT.getValue(env.getOptions())) {
-                case HISTOGRAM:
-                    new CoverageCLI(out, coverage).printHistogramOutput();
-                    break;
-                case LINES:
-                    new CoverageCLI(out, coverage).printLinesOutput();
-                    break;
-                case JSON:
-                    new JSONPrinter(out, coverage).print();
-                    break;
-            }
-            tracker.close();
-        }
-    }
 
     private static PrintStream chooseOutputStream(TruffleInstrument.Env env, OptionKey<String> option) {
         try {
@@ -282,18 +238,47 @@ public class CoverageInstrument extends TruffleInstrument {
     }
 
     @Override
+    protected void onCreate(Env env) {
+        tracker = factory.apply(env);
+        final OptionValues options = env.getOptions();
+        enabled = ENABLED.getValue(options);
+        if (enabled) {
+            tracker.startTracking(getSourceSectionFilter(options));
+            env.registerService(tracker);
+        }
+    }
+
+    @Override
+    protected void onDispose(Env env) {
+        if (enabled) {
+            PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+            SourceCoverage[] coverage = tracker.getCoverage();
+            switch (OUTPUT.getValue(env.getOptions())) {
+                case HISTOGRAM:
+                    new CoverageCLI(out, coverage).printHistogramOutput();
+                    break;
+                case LINES:
+                    new CoverageCLI(out, coverage).printLinesOutput();
+                    break;
+                case JSON:
+                    new JSONPrinter(out, coverage).print();
+                    break;
+            }
+            tracker.close();
+        }
+    }
+
+    @Override
     protected OptionDescriptors getOptionDescriptors() {
         return new CoverageInstrumentOptionDescriptors();
     }
 
-    static {
-        // Be sure that the factory is initialized:
-        try {
-            Class.forName(CoverageTracker.class.getName(), true, CoverageTracker.class.getClassLoader());
-        } catch (ClassNotFoundException cannotHappen) {
-            // Can not happen
-            throw new AssertionError();
-        }
+    enum Output {
+        HISTOGRAM,
+        LINES,
+
+        JSON,
+
     }
 
 }

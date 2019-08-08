@@ -35,22 +35,13 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 class JSONPrinter {
 
+    private final PrintStream out;
+    private final SourceCoverage[] sourceCoverages;
+
     JSONPrinter(PrintStream out, SourceCoverage[] sourceCoverages) {
         this.out = out;
         this.sourceCoverages = sourceCoverages;
     }
-
-    void print() {
-        JSONArray output = new JSONArray();
-        for (SourceCoverage sourceCoverage : sourceCoverages) {
-            output.put(sourceJSON(sourceCoverage));
-        }
-        out.println(output.toString());
-    }
-
-    private final PrintStream out;
-
-    private final SourceCoverage[] sourceCoverages;
 
     private static JSONObject sourceSectionJson(SourceSection section) {
         JSONObject sourceSection = new JSONObject();
@@ -102,5 +93,13 @@ class JSONPrinter {
         sectionJson.put("covered", coverage.isCovered());
         sectionJson.put("covered", sourceSectionJson(coverage.getSourceSection()));
         return sectionJson;
+    }
+
+    void print() {
+        JSONArray output = new JSONArray();
+        for (SourceCoverage sourceCoverage : sourceCoverages) {
+            output.put(sourceJSON(sourceCoverage));
+        }
+        out.println(output.toString());
     }
 }

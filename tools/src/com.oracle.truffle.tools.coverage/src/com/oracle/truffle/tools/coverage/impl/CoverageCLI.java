@@ -50,6 +50,50 @@ final class CoverageCLI {
         summaryHeaderLen = summaryHeader.length();
     }
 
+    private static String getHistogramLineFormat(SourceCoverage[] coverage) {
+        int maxPathLength = 10;
+        for (SourceCoverage source : coverage) {
+            final String path = source.getSource().getPath();
+            if (path != null) {
+                maxPathLength = Math.max(maxPathLength, path.length());
+            }
+        }
+        return " %-" + maxPathLength + "s |  %10s |  %7s |  %7s ";
+    }
+
+    private static String percentFormat(double val) {
+        return String.format("%.2f%%", val);
+    }
+
+    private static String statementCoverage(SourceCoverage coverage) {
+        int loaded = 0;
+        int covered = 0;
+        for (RootCoverage root : coverage.getRoots()) {
+            final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
+            loaded += sectionCoverage.length;
+            covered += getCoveredCount(sectionCoverage);
+        }
+        return percentFormat(100 * (double) covered / loaded);
+    }
+
+    private static long getCoveredCount(SectionCoverage[] sectionCoverage) {
+        return Arrays.stream(sectionCoverage).filter(SectionCoverage::isCovered).count();
+    }
+
+    private static String rootCoverage(SourceCoverage coverage) {
+        int covered = 0;
+        for (RootCoverage root : coverage.getRoots()) {
+            if (root.isCovered()) {
+                covered++;
+            }
+        }
+        return percentFormat(100 * (double) covered / coverage.getRoots().length);
+    }
+
+    private static String lineCoverage(LineCoverage lineCoverage) {
+        return percentFormat(100 * lineCoverage.getCoverage());
+    }
+
     void printLinesOutput() {
         printLine();
         printLinesLegend();
@@ -115,50 +159,6 @@ final class CoverageCLI {
 
     private void printLine() {
         out.println(String.format("%" + summaryHeaderLen + "s", "").replace(' ', '-'));
-    }
-
-    private static String getHistogramLineFormat(SourceCoverage[] coverage) {
-        int maxPathLength = 10;
-        for (SourceCoverage source : coverage) {
-            final String path = source.getSource().getPath();
-            if (path != null) {
-                maxPathLength = Math.max(maxPathLength, path.length());
-            }
-        }
-        return " %-" + maxPathLength + "s |  %10s |  %7s |  %7s ";
-    }
-
-    private static String percentFormat(double val) {
-        return String.format("%.2f%%", val);
-    }
-
-    private static String statementCoverage(SourceCoverage coverage) {
-        int loaded = 0;
-        int covered = 0;
-        for (RootCoverage root : coverage.getRoots()) {
-            final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
-            loaded += sectionCoverage.length;
-            covered += getCoveredCount(sectionCoverage);
-        }
-        return percentFormat(100 * (double) covered / loaded);
-    }
-
-    private static long getCoveredCount(SectionCoverage[] sectionCoverage) {
-        return Arrays.stream(sectionCoverage).filter(SectionCoverage::isCovered).count();
-    }
-
-    private static String rootCoverage(SourceCoverage coverage) {
-        int covered = 0;
-        for (RootCoverage root : coverage.getRoots()) {
-            if (root.isCovered()) {
-                covered++;
-            }
-        }
-        return percentFormat(100 * (double) covered / coverage.getRoots().length);
-    }
-
-    private static String lineCoverage(LineCoverage lineCoverage) {
-        return percentFormat(100 * lineCoverage.getCoverage());
     }
 
 }

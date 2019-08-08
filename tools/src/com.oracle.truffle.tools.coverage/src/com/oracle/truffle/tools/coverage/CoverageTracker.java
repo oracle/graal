@@ -32,16 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -51,35 +42,30 @@ import com.oracle.truffle.tools.coverage.impl.CoverageNode;
 
 public final class CoverageTracker implements AutoCloseable {
 
-    public synchronized void startTracking(SourceSectionFilter filter) {
-        if (closed) {
-            throw new IllegalStateException("Coverage Tracker is closed");
-        }
-        if (tracking) {
-            throw new IllegalStateException("Coverage Tracker is already tracking");
-        }
-        assert Thread.holdsLock(this);
-        tracking = true;
-        SourceSectionFilter f = filter;
-        if (f == null) {
-            f = DEFAULT_FILTER;
-        }
-        final Instrumenter instrumenter = env.getInstrumenter();
-        instrument(f, instrumenter);
+    private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().includeInternal(false).build();
+
+    static {
+        CoverageInstrument.setFactory(new Function<Env, CoverageTracker>() {
+            @Override
+            public CoverageTracker apply(Env env) {
+                return new CoverageTracker(env);
+            }
+
+        });
     }
 
-    public synchronized void endTracking() {
-        if (!tracking) {
-            throw new IllegalStateException("Coverage tracker is not tracking");
-        }
-        tracking = false;
-        disposeBindings();
-    }
+    final List<SourceSection> coveredSections = new ArrayList<>();
+    private final Env env;
+    private final List<SourceSection> loadedSections = new ArrayList<>();
+    private final List<Node> loadedNodes = new ArrayList<>();
+    private final List<Node> coveredNodes = new ArrayList<>();
+    private boolean tracking;
+    private boolean closed;
+    private EventBinding<LoadSourceSectionListener> loadedBinding;
+    private EventBinding<ExecutionEventNodeFactory> coveredBinding;
 
-    public synchronized SourceCoverage[] getCoverage() {
-        assert loadedSections.size() == loadedNodes.size();
-        assert coveredSections.size() == coveredNodes.size();
-        return getSourceCoverage(makeMapping());
+    private CoverageTracker(Env env) {
+        this.env = env;
     }
 
     private static SourceCoverage[] getSourceCoverage(Map<Source, Map<RootNode, RootData>> mapping) {
@@ -112,17 +98,35 @@ public final class CoverageTracker implements AutoCloseable {
         return sectionCoverage;
     }
 
-    private static class RootData {
-        private final SourceSection sourceSection;
-
-        private boolean covered;
-        private final List<SourceSection> loadedStatements = new ArrayList<>();
-        private final List<SourceSection> coveredStatements = new ArrayList<>();
-
-        RootData(SourceSection sourceSection) {
-            this.sourceSection = sourceSection;
+    public synchronized void startTracking(SourceSectionFilter filter) {
+        if (closed) {
+            throw new IllegalStateException("Coverage Tracker is closed");
         }
+        if (tracking) {
+            throw new IllegalStateException("Coverage Tracker is already tracking");
+        }
+        assert Thread.holdsLock(this);
+        tracking = true;
+        SourceSectionFilter f = filter;
+        if (f == null) {
+            f = DEFAULT_FILTER;
+        }
+        final Instrumenter instrumenter = env.getInstrumenter();
+        instrument(f, instrumenter);
+    }
 
+    public synchronized void endTracking() {
+        if (!tracking) {
+            throw new IllegalStateException("Coverage tracker is not tracking");
+        }
+        tracking = false;
+        disposeBindings();
+    }
+
+    public synchronized SourceCoverage[] getCoverage() {
+        assert loadedSections.size() == loadedNodes.size();
+        assert coveredSections.size() == coveredNodes.size();
+        return getSourceCoverage(makeMapping());
     }
 
     private Map<Source, Map<RootNode, RootData>> makeMapping() {
@@ -179,32 +183,6 @@ public final class CoverageTracker implements AutoCloseable {
         }
     }
 
-    private static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().includeInternal(false).build();
-
-    static {
-        CoverageInstrument.setFactory(new Function<Env, CoverageTracker>() {
-            @Override
-            public CoverageTracker apply(Env env) {
-                return new CoverageTracker(env);
-            }
-
-        });
-    }
-
-    private final Env env;
-    private boolean tracking;
-    private boolean closed;
-    private EventBinding<LoadSourceSectionListener> loadedBinding;
-    private EventBinding<ExecutionEventNodeFactory> coveredBinding;
-    private final List<SourceSection> loadedSections = new ArrayList<>();
-    private final List<Node> loadedNodes = new ArrayList<>();
-    final List<SourceSection> coveredSections = new ArrayList<>();
-    private final List<Node> coveredNodes = new ArrayList<>();
-
-    private CoverageTracker(Env env) {
-        this.env = env;
-    }
-
     private void instrument(SourceSectionFilter f, Instrumenter instrumenter) {
         final SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.StatementTag.class).and(f).build();
         loadedBinding = instrumenter.attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
@@ -233,5 +211,17 @@ public final class CoverageTracker implements AutoCloseable {
     private void disposeBindings() {
         loadedBinding.dispose();
         coveredBinding.dispose();
+    }
+
+    private static class RootData {
+        private final SourceSection sourceSection;
+        private final List<SourceSection> loadedStatements = new ArrayList<>();
+        private final List<SourceSection> coveredStatements = new ArrayList<>();
+        private boolean covered;
+
+        RootData(SourceSection sourceSection) {
+            this.sourceSection = sourceSection;
+        }
+
     }
 }
