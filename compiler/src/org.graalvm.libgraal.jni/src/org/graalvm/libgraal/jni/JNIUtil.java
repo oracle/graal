@@ -46,6 +46,7 @@ import org.graalvm.word.WordFactory;
 /**
  * Helpers for calling JNI functions.
  */
+
 public final class JNIUtil {
 
     // Checkstyle: stop
@@ -289,7 +290,7 @@ public final class JNIUtil {
      */
     public static void trace(int level, String format, Object... args) {
         if (traceLevel() >= level) {
-            HotSpotToSVMScope scope = HotSpotToSVMScope.scopeOrNull();
+            HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
             String indent = scope == null ? "" : new String(new char[2 + (scope.depth() * 2)]).replace('\0', ' ');
             TTY.printf(indent + format + "%n", args);
         }

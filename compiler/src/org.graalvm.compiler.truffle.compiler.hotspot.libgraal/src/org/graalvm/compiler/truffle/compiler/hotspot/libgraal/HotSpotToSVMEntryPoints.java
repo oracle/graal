@@ -620,7 +620,7 @@ final class HotSpotToSVMEntryPoints {
     @SuppressWarnings({"unused", "try"})
     public static JObject getTruffleCompilationTruffleAST(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilationHandle) {
         HotSpotToSVMScope<HotSpotToSVM.Id> scope = new HotSpotToSVMScope<>(GetTruffleCompilationTruffleAST, env);
-        try (HotSpotToSVMScope s = scope) {
+        try (HotSpotToSVMScope<HotSpotToSVM.Id> s = scope) {
             HSCompilableTruffleAST compilable = (HSCompilableTruffleAST) SVMObjectHandles.resolve(compilationHandle, TruffleCompilation.class).getCompilable();
             scope.setObjectResult(compilable.getHandle());
         } catch (Throwable t) {

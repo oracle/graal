@@ -40,6 +40,7 @@ import javax.management.MBeanOperationInfo;
 import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import org.graalvm.libgraal.OptionsEncoder;
+import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNI.JMethodID;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -67,158 +68,194 @@ public final class HotSpotToSVMEntryPoints {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_JMXInitializer_init")
+    @SuppressWarnings("try")
     public static void init(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JObject classLoader) {
-        if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
-            throw new InternalError("Failed to define HotSpotToSVMCalls class.");
-        }
-
-        if (defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS).isNull()) {
-            throw new InternalError("Failed to define HotSpotToSVMCalls class.");
-        }
-
-        if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
-            throw new InternalError("Failed to define MXBean class.");
-        }
-        JNI.JClass factoryClass = defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
-        if (factoryClass.isNull()) {
-            throw new InternalError("Failed to define Factory class.");
-        }
-        JMethodID createId;
-        try (CCharPointerHolder name = toCString("create"); CCharPointerHolder sig = toCString("()Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/Factory;")) {
-            createId = GetStaticMethodID(env, factoryClass, name.get(), sig.get());
-            if (createId.isNull()) {
-                throw new InternalError("No such method: create");
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.Init, env)) {
+            if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
+                throw new InternalError("Failed to define HotSpotToSVMCalls class.");
             }
-        }
-        JNI.JObject result = env.getFunctions().getCallStaticObjectMethodA().call(env, factoryClass, createId, WordFactory.nullPointer());
-        if (result.isNull()) {
-            throw new InternalError("Failed to initiate Factory.");
+
+            if (defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS).isNull()) {
+                throw new InternalError("Failed to define HotSpotToSVMCalls class.");
+            }
+
+            if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
+                throw new InternalError("Failed to define MXBean class.");
+            }
+            JNI.JClass factoryClass = defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
+            if (factoryClass.isNull()) {
+                throw new InternalError("Failed to define Factory class.");
+            }
+            JMethodID createId;
+            try (CCharPointerHolder name = toCString("create"); CCharPointerHolder sig = toCString("()Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/Factory;")) {
+                createId = GetStaticMethodID(env, factoryClass, name.get(), sig.get());
+                if (createId.isNull()) {
+                    throw new InternalError("No such method: create");
+                }
+            }
+            JNI.JObject result = env.getFunctions().getCallStaticObjectMethodA().call(env, factoryClass, createId, WordFactory.nullPointer());
+            if (result.isNull()) {
+                throw new InternalError("Failed to initiate Factory.");
+            }
         }
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_pollRegistrations")
+    @SuppressWarnings("try")
     public static JNI.JLongArray pollRegistrations(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
-        List<HotSpotGraalManagement> registrations = HotSpotGraalManagement.Factory.drain();
-        JNI.JLongArray res = JNIUtil.NewLongArray(env, registrations.size());
-        CLongPointer elems = JNIUtil.GetLongArrayElements(env, res, WordFactory.nullPointer());
-        try {
-            ObjectHandles globalHandles = ObjectHandles.getGlobal();
-            for (int i = 0; i < registrations.size(); i++) {
-                long handle = globalHandles.create(registrations.get(i)).rawValue();
-                elems.write(i, handle);
+        HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.PollRegistrations, env);
+        try (HotSpotToSVMScope<Id> s = scope) {
+            List<HotSpotGraalManagement> registrations = HotSpotGraalManagement.Factory.drain();
+            JNI.JLongArray res = JNIUtil.NewLongArray(env, registrations.size());
+            CLongPointer elems = JNIUtil.GetLongArrayElements(env, res, WordFactory.nullPointer());
+            try {
+                ObjectHandles globalHandles = ObjectHandles.getGlobal();
+                for (int i = 0; i < registrations.size(); i++) {
+                    long handle = globalHandles.create(registrations.get(i)).rawValue();
+                    elems.write(i, handle);
+                }
+            } finally {
+                JNIUtil.ReleaseLongArrayElements(env, res, elems, JNI.JArray.MODE_WRITE_RELEASE);
             }
-        } finally {
-            JNIUtil.ReleaseLongArrayElements(env, res, elems, JNI.JArray.MODE_WRITE_RELEASE);
+            scope.setObjectResult(res);
         }
-        return res;
+        return scope.getObjectResult();
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_finishRegistration")
+    @SuppressWarnings("try")
     public static void finishRegistration(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JLongArray svmRegistrations) {
-        long len = JNIUtil.GetArrayLength(env, svmRegistrations);
-        CLongPointer elems = JNIUtil.GetLongArrayElements(env, svmRegistrations, WordFactory.nullPointer());
-        try {
-            ObjectHandles globalHandles = ObjectHandles.getGlobal();
-            for (int i = 0; i < len; i++) {
-                HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(elems.read(i)));
-                registration.finishRegistration();
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.FinishRegistration, env)) {
+            long len = JNIUtil.GetArrayLength(env, svmRegistrations);
+            CLongPointer elems = JNIUtil.GetLongArrayElements(env, svmRegistrations, WordFactory.nullPointer());
+            try {
+                ObjectHandles globalHandles = ObjectHandles.getGlobal();
+                for (int i = 0; i < len; i++) {
+                    HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(elems.read(i)));
+                    registration.finishRegistration();
+                }
+            } finally {
+                JNIUtil.ReleaseLongArrayElements(env, svmRegistrations, elems, JNI.JArray.MODE_RELEASE);
             }
-        } finally {
-            JNIUtil.ReleaseLongArrayElements(env, svmRegistrations, elems, JNI.JArray.MODE_RELEASE);
         }
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getRegistrationName")
+    @SuppressWarnings("try")
     public static JNI.JString getRegistrationName(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
-        ObjectHandles globalHandles = ObjectHandles.getGlobal();
-        HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(svmRegistration));
-        String name = registration.getName();
-        return JNIUtil.createHSString(env, name);
+        HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.GetRegistrationName, env);
+        try (HotSpotToSVMScope<Id> s = scope) {
+            ObjectHandles globalHandles = ObjectHandles.getGlobal();
+            HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(svmRegistration));
+            String name = registration.getName();
+            scope.setObjectResult(JNIUtil.createHSString(env, name));
+        }
+        return scope.getObjectResult();
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getMBeanInfo")
+    @SuppressWarnings("try")
     public static JNI.JByteArray getMBeanInfo(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
-        ObjectHandles globalHandles = ObjectHandles.getGlobal();
-        HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(svmRegistration));
-        MBeanInfo info = registration.getBean().getMBeanInfo();
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("bean.class", info.getClassName());
-        map.put("bean.description", info.getDescription());
-        for (MBeanAttributeInfo attr : info.getAttributes()) {
-            String name = attr.getName();
-            map.put("attr." + name + ".name", name);
-            map.put("attr." + name + ".type", attr.getType());
-            map.put("attr." + name + ".description", attr.getDescription());
-            map.put("attr." + name + ".r", attr.isReadable());
-            map.put("attr." + name + ".w", attr.isWritable());
-            map.put("attr." + name + ".i", attr.isIs());
-        }
-        int opCounter = 0;
-        for (MBeanOperationInfo op : info.getOperations()) {
-            opCounter++;
-            String name = op.getName();
-            map.put("op." + opCounter + ".id", opCounter);
-            map.put("op." + opCounter + ".name", name);
-            map.put("op." + opCounter + ".type", op.getReturnType());
-            map.put("op." + opCounter + ".description", op.getDescription());
-            map.put("op." + opCounter + ".i", op.getImpact());
-            for (MBeanParameterInfo param : op.getSignature()) {
-                String paramName = param.getName();
-                map.put("op." + opCounter + ".arg." + paramName + ".name", paramName);
-                map.put("op." + opCounter + ".arg." + paramName + ".description", param.getDescription());
-                map.put("op." + opCounter + ".arg." + paramName + ".type", param.getType());
+        HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.GetMBeanInfo, env);
+        try (HotSpotToSVMScope<Id> s = scope) {
+            ObjectHandles globalHandles = ObjectHandles.getGlobal();
+            HotSpotGraalManagement registration = globalHandles.get(WordFactory.pointer(svmRegistration));
+            MBeanInfo info = registration.getBean().getMBeanInfo();
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("bean.class", info.getClassName());
+            map.put("bean.description", info.getDescription());
+            for (MBeanAttributeInfo attr : info.getAttributes()) {
+                String name = attr.getName();
+                map.put("attr." + name + ".name", name);
+                map.put("attr." + name + ".type", attr.getType());
+                map.put("attr." + name + ".description", attr.getDescription());
+                map.put("attr." + name + ".r", attr.isReadable());
+                map.put("attr." + name + ".w", attr.isWritable());
+                map.put("attr." + name + ".i", attr.isIs());
             }
+            int opCounter = 0;
+            for (MBeanOperationInfo op : info.getOperations()) {
+                opCounter++;
+                String name = op.getName();
+                map.put("op." + opCounter + ".id", opCounter);
+                map.put("op." + opCounter + ".name", name);
+                map.put("op." + opCounter + ".type", op.getReturnType());
+                map.put("op." + opCounter + ".description", op.getDescription());
+                map.put("op." + opCounter + ".i", op.getImpact());
+                for (MBeanParameterInfo param : op.getSignature()) {
+                    String paramName = param.getName();
+                    map.put("op." + opCounter + ".arg." + paramName + ".name", paramName);
+                    map.put("op." + opCounter + ".arg." + paramName + ".description", param.getDescription());
+                    map.put("op." + opCounter + ".arg." + paramName + ".type", param.getType());
+                }
+            }
+            scope.setObjectResult(mapToRaw(env, map));
         }
-        return mapToRaw(env, map);
+        return scope.getObjectResult();
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getAttributes")
+    @SuppressWarnings("try")
     public static JNI.JByteArray getAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JObjectArray requiredAttributes) {
-        int len = JNIUtil.GetArrayLength(env, requiredAttributes);
-        String[] attrNames = new String[len];
-        for (int i = 0; i < len; i++) {
-            JNI.JString el = (JNI.JString) JNIUtil.GetObjectArrayElement(env, requiredAttributes, i);
-            attrNames[i] = JNIUtil.createString(env, el);
+        HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.GetAttributes, env);
+        try (HotSpotToSVMScope<Id> s = scope) {
+            int len = JNIUtil.GetArrayLength(env, requiredAttributes);
+            String[] attrNames = new String[len];
+            for (int i = 0; i < len; i++) {
+                JNI.JString el = (JNI.JString) JNIUtil.GetObjectArrayElement(env, requiredAttributes, i);
+                attrNames[i] = JNIUtil.createString(env, el);
+            }
+            HotSpotGraalManagement registration = ObjectHandles.getGlobal().get(WordFactory.pointer(svmRegistration));
+            AttributeList attributesList = registration.getBean().getAttributes(attrNames);
+            scope.setObjectResult(attributeListToRaw(env, attributesList));
         }
-        HotSpotGraalManagement registration = ObjectHandles.getGlobal().get(WordFactory.pointer(svmRegistration));
-        AttributeList attributesList = registration.getBean().getAttributes(attrNames);
-        return attributeListToRaw(env, attributesList);
+        return scope.getObjectResult();
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_setAttributes")
+    @SuppressWarnings("try")
     public static JNI.JByteArray setAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JByteArray attributes) {
-        Map<String, Object> map = rawToMap(env, attributes);
-        AttributeList attributesList = new AttributeList();
-        for (Map.Entry<String, Object> entry : map.entrySet()) {
-            attributesList.add(new Attribute(entry.getKey(), entry.getValue()));
+        HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.SetAttributes, env);
+        try (HotSpotToSVMScope<Id> s = scope) {
+            Map<String, Object> map = rawToMap(env, attributes);
+            AttributeList attributesList = new AttributeList();
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                attributesList.add(new Attribute(entry.getKey(), entry.getValue()));
+            }
+            HotSpotGraalManagement registration = ObjectHandles.getGlobal().get(WordFactory.pointer(svmRegistration));
+            attributesList = registration.getBean().setAttributes(attributesList);
+            scope.setObjectResult(attributeListToRaw(env, attributesList));
         }
-        HotSpotGraalManagement registration = ObjectHandles.getGlobal().get(WordFactory.pointer(svmRegistration));
-        attributesList = registration.getBean().setAttributes(attributesList);
-        return attributeListToRaw(env, attributesList);
+        return scope.getObjectResult();
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_invoke")
+    @SuppressWarnings("try")
     public static JNI.JByteArray invoke(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JString hsActionName,
                     JNI.JByteArray hsParams, JNI.JObjectArray hsSignature) {
-        String actionName = JNIUtil.createString(env, hsActionName);
-        int len = JNIUtil.GetArrayLength(env, hsSignature);
-        String[] signature = new String[len];
-        for (int i = 0; i < len; i++) {
-            signature[i] = JNIUtil.createString(env, (JNI.JString) JNIUtil.GetObjectArrayElement(env, hsSignature, i));
-        }
-        Map<String, Object> map = rawToMap(env, hsParams);
-        Object[] params = map.values().toArray(new Object[map.size()]);
-        HotSpotGraalManagement registration = ObjectHandles.getGlobal().get(WordFactory.pointer(svmRegistration));
-        try {
-            Object result = registration.getBean().invoke(actionName, params, signature);
-            AttributeList attributesList = new AttributeList();
-            if (result != null) {
-                attributesList.add(new Attribute("result", result));
+        HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.Invoke, env);
+        try (HotSpotToSVMScope<Id> s = scope) {
+            String actionName = JNIUtil.createString(env, hsActionName);
+            int len = JNIUtil.GetArrayLength(env, hsSignature);
+            String[] signature = new String[len];
+            for (int i = 0; i < len; i++) {
+                signature[i] = JNIUtil.createString(env, (JNI.JString) JNIUtil.GetObjectArrayElement(env, hsSignature, i));
             }
-            return attributeListToRaw(env, attributesList);
-        } catch (MBeanException | ReflectionException e) {
-            return WordFactory.nullPointer();
+            Map<String, Object> map = rawToMap(env, hsParams);
+            Object[] params = map.values().toArray(new Object[map.size()]);
+            HotSpotGraalManagement registration = ObjectHandles.getGlobal().get(WordFactory.pointer(svmRegistration));
+            try {
+                Object result = registration.getBean().invoke(actionName, params, signature);
+                AttributeList attributesList = new AttributeList();
+                if (result != null) {
+                    attributesList.add(new Attribute("result", result));
+                }
+                scope.setObjectResult(attributeListToRaw(env, attributesList));
+            } catch (MBeanException | ReflectionException e) {
+                scope.setObjectResult(WordFactory.nullPointer());
+            }
         }
+        return scope.getObjectResult();
     }
 
     private static Map<String, Object> rawToMap(JNI.JNIEnv env, JNI.JByteArray raw) {
@@ -269,4 +306,15 @@ public final class HotSpotToSVMEntryPoints {
             UnmanagedMemory.free(classData);
         }
     }
+}
+
+enum Id {
+    FinishRegistration,
+    GetAttributes,
+    GetMBeanInfo,
+    GetRegistrationName,
+    Init,
+    Invoke,
+    PollRegistrations,
+    SetAttributes
 }

@@ -44,8 +44,8 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     private static final ThreadLocal<HotSpotToSVMScope<?>> topScope = new ThreadLocal<>();
 
     private final JNIEnv env;
-    private final HotSpotToSVMScope parent;
-    private HotSpotToSVMScope leaf;
+    private final HotSpotToSVMScope<T> parent;
+    private HotSpotToSVMScope<T> leaf;
 
     /**
      * List of scope local {@link HSObject}s that created within this scope. These are
@@ -84,8 +84,9 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     /**
      * Gets the inner most {@link HotSpotToSVMScope} value for the current thread.
      */
-    public static HotSpotToSVMScope scope() {
-        HotSpotToSVMScope scope = topScope.get();
+    @SuppressWarnings("unchecked")
+    public static <T extends Enum<T>> HotSpotToSVMScope<T> scope() {
+        HotSpotToSVMScope<T> scope = (HotSpotToSVMScope<T>) topScope.get();
         if (scope == null) {
             throw new IllegalStateException("Not in the scope of an SVM call");
         }
@@ -95,10 +96,11 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     /**
      * Enters the scope of an SVM call.
      */
+    @SuppressWarnings("unchecked")
     public HotSpotToSVMScope(Enum<T> id, JNIEnv env) {
         JNIUtil.trace(1, "HS->SVM[enter]: %s", id);
         this.id = id;
-        HotSpotToSVMScope top = topScope.get();
+        HotSpotToSVMScope<T> top = (HotSpotToSVMScope<T>) topScope.get();
         this.env = env;
         if (top == null) {
             // Only push a JNI frame for the top level SVM call.
@@ -140,7 +142,7 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
             topScope.set(null);
             objResult = PopLocalFrame(env, objResult);
         } else {
-            HotSpotToSVMScope top = parent;
+            HotSpotToSVMScope<T> top = parent;
             while (top.parent != null) {
                 top = top.parent;
             }
@@ -151,7 +153,7 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
 
     int depth() {
         int depth = 0;
-        HotSpotToSVMScope ancestor = parent;
+        HotSpotToSVMScope<T> ancestor = parent;
         while (ancestor != null) {
             depth++;
             ancestor = ancestor.parent;
