@@ -31,6 +31,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureA
 import static org.graalvm.compiler.core.test.ReflectionOptionDescriptors.extractEntries;
 import static org.graalvm.compiler.debug.MemUseTrackerKey.getCurrentThreadAllocatedBytes;
 import static org.graalvm.compiler.hotspot.test.CompileTheWorld.Options.DESCRIPTORS;
+import static org.graalvm.compiler.hotspot.test.CompileTheWorld.Options.InvalidateInstalledCode;
 import static sun.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
 import java.io.ByteArrayOutputStream;
@@ -991,7 +992,7 @@ public final class CompileTheWorld {
             }
 
             // Invalidate the generated code so the code cache doesn't fill up
-            if (installedCode != null) {
+            if (installedCode != null && InvalidateInstalledCode.getValue(compilerOptions)) {
                 installedCode.invalidate();
             }
 
@@ -1053,6 +1054,7 @@ public final class CompileTheWorld {
         public static final OptionKey<String> Config = new OptionKey<>(null);
         public static final OptionKey<Boolean> MultiThreaded = new OptionKey<>(false);
         public static final OptionKey<Integer> Threads = new OptionKey<>(0);
+        public static final OptionKey<Boolean> InvalidateInstalledCode = new OptionKey<>(false);
 
         // @formatter:off
         static final ReflectionOptionDescriptors DESCRIPTORS = new ReflectionOptionDescriptors(Options.class,
@@ -1103,6 +1105,11 @@ public final class CompileTheWorld {
 
             CompileTheWorld ctw = new CompileTheWorld(jvmciRuntime, compiler, harnessOptions, graalRuntime.getOptions());
             ctw.compile();
+            if (iterations > 1) {
+                // Force a GC to encourage reclamation of nmethods when their InstalledCode
+                // reference has been dropped.
+                System.gc();
+            }
         }
         // This is required as non-daemon threads can be started by class initializers
         System.exit(0);
