@@ -214,8 +214,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                     // (value & 1) == 0 ? 0 : 1
                     // (value & 1) == 1 ? 1 : 0
                     IntegerTestNode integerTestNode = (IntegerTestNode) condition;
-                    if (integerTestNode.getY().isConstant()) {
-                        assert integerTestNode.getX().stamp(view) instanceof IntegerStamp;
+                    if (integerTestNode.getY().isConstant() && integerTestNode.getX().stamp(view) instanceof IntegerStamp) {
                         long testY = integerTestNode.getY().asJavaConstant().asLong();
                         if (testY == 1 && constTrueValue == 0 && constFalseValue == 1) {
                             return IntegerConvertNode.convertUnsigned(AndNode.create(integerTestNode.getX(), integerTestNode.getY(), view), stamp, view);

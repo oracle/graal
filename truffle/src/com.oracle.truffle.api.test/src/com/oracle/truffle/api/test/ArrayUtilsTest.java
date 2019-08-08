@@ -42,14 +42,18 @@ package com.oracle.truffle.api.test;
 
 import com.oracle.truffle.api.ArrayUtils;
 import org.junit.Test;
+
+import static com.oracle.truffle.api.test.ArrayUtilsIndexOfWithMaskTest.mask;
 import static org.junit.Assert.assertEquals;
 
 public class ArrayUtilsTest {
 
-    private static final String str = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy " +
+    private static final String strS = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy " +
                     "eirmod tempor invidunt ut labore et dolore magna aliquyam" +
                     " erat, \u0000 sed diam voluptua. At vero \uffff eos et ac" +
                     "cusam et justo duo dolores 0";
+    private static final byte[] strB = toByteArray(strS);
+    private static final char[] strC = strS.toCharArray();
     private static final String[] searchValues = {
                     "L",
                     "0",
@@ -176,10 +180,10 @@ public class ArrayUtilsTest {
     public void testIndexOf() {
         int i = 0;
         for (String needle : searchValues) {
-            for (int maxIndex : new int[]{0, str.length() - 1, str.length(), str.length()}) {
-                for (int fromIndex : new int[]{0, 1, str.length() - 1, str.length()}) {
+            for (int maxIndex : new int[]{0, strS.length() - 1, strS.length(), strS.length()}) {
+                for (int fromIndex : new int[]{0, 1, strS.length() - 1, strS.length()}) {
                     if (fromIndex < maxIndex) {
-                        doTestIndexOf(str, fromIndex, maxIndex, needle, expectedResults[i++]);
+                        doTestIndexOf(strS, fromIndex, maxIndex, needle, expectedResults[i++]);
                     }
                 }
             }
@@ -188,47 +192,162 @@ public class ArrayUtilsTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringException1() {
-        ArrayUtils.indexOf(str, -1, str.length(), 'L');
+        ArrayUtils.indexOf(strS, -1, strS.length(), 'L');
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringException2() {
-        ArrayUtils.indexOf(str, 0, str.length() + 1, 'L');
+        ArrayUtils.indexOf(strS, 0, strS.length() + 1, 'L');
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfStringException3() {
-        ArrayUtils.indexOf(str, 1, 0, 'L');
+        ArrayUtils.indexOf(strS, 1, 0, 'L');
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringException4() {
+        ArrayUtils.indexOf(strS, 0, strS.length());
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfCharArrayException1() {
-        ArrayUtils.indexOf(str.toCharArray(), -1, str.length(), 'L');
+        ArrayUtils.indexOf(strC, -1, strS.length(), 'L');
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfCharArrayException2() {
-        ArrayUtils.indexOf(str.toCharArray(), 0, str.length() + 1, 'L');
+        ArrayUtils.indexOf(strC, 0, strS.length() + 1, 'L');
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfCharArrayException3() {
-        ArrayUtils.indexOf(str.toCharArray(), 1, 0, 'L');
+        ArrayUtils.indexOf(strC, 1, 0, 'L');
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfByteArrayException1() {
-        ArrayUtils.indexOf(toByteArray(str), -1, str.length(), (byte) 'L');
+        ArrayUtils.indexOf(strB, -1, strS.length(), (byte) 'L');
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfByteArrayException2() {
-        ArrayUtils.indexOf(toByteArray(str), 0, str.length() + 1, (byte) 'L');
+        ArrayUtils.indexOf(strB, 0, strS.length() + 1, (byte) 'L');
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testIndexOfByteArrayException3() {
-        ArrayUtils.indexOf(toByteArray(str), 1, 0, (byte) 'L');
+        ArrayUtils.indexOf(strB, 1, 0, (byte) 'L');
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskStringException1() {
+        ArrayUtils.indexOfWithOrMask(strS, -1, strS.length(), "l", mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskStringException2() {
+        ArrayUtils.indexOfWithOrMask(strS, 0, strS.length() + 1, "l", mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskStringException3() {
+        ArrayUtils.indexOfWithOrMask(strS, 1, strS.length(), "l", mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskStringException4() {
+        ArrayUtils.indexOfWithOrMask(strS, 0, 1, "l", mask(2));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskCharArrayException1() {
+        ArrayUtils.indexOfWithOrMask(strC, -1, strS.length(), "l".toCharArray(), mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskCharArrayException2() {
+        ArrayUtils.indexOfWithOrMask(strC, 0, strS.length() + 1, "l".toCharArray(), mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskCharArrayException3() {
+        ArrayUtils.indexOfWithOrMask(strC, 1, strS.length(), "l".toCharArray(), mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskCharArrayException4() {
+        ArrayUtils.indexOfWithOrMask(strC, 0, 1, "l".toCharArray(), mask(2).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskByteArrayException1() {
+        ArrayUtils.indexOfWithOrMask(strB, -1, strS.length(), toByteArray("l"), toByteArray(mask(1)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskByteArrayException2() {
+        ArrayUtils.indexOfWithOrMask(strB, 0, strS.length() + 1, toByteArray("l"), toByteArray(mask(1)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskByteArrayException3() {
+        ArrayUtils.indexOfWithOrMask(strB, 1, strS.length(), toByteArray("l"), toByteArray(mask(1)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testIndexOfStringWithORMaskByteArrayException4() {
+        ArrayUtils.indexOfWithOrMask(strB, 0, 1, toByteArray("l"), toByteArray(mask(2)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testRegionEqualsWithOrMaskStringException1() {
+        ArrayUtils.regionEqualsWithOrMask(strS, -1, strS, 0, 1, mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testRegionEqualsWithOrMaskStringException2() {
+        ArrayUtils.regionEqualsWithOrMask(strS, 0, strS, -1, 1, mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskStringException3() {
+        ArrayUtils.regionEqualsWithOrMask(strS, 0, strS, 0, -1, mask(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskStringException4() {
+        ArrayUtils.regionEqualsWithOrMask(strS, 0, strS, 0, 1, mask(0));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskCharArrayException1() {
+        ArrayUtils.regionEqualsWithOrMask(strC, -1, strC, 0, 1, mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskCharArrayException2() {
+        ArrayUtils.regionEqualsWithOrMask(strC, 0, strC, -1, 1, mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskCharArrayException3() {
+        ArrayUtils.regionEqualsWithOrMask(strC, 0, strC, 0, -1, mask(1).toCharArray());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskByteArrayException1() {
+        ArrayUtils.regionEqualsWithOrMask(strB, -1, strB, 0, 1, toByteArray(mask(1)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskByteArrayException2() {
+        ArrayUtils.regionEqualsWithOrMask(strB, 0, strB, -1, 1, toByteArray(mask(1)));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testregionEqualsWithOrMaskByteArrayException3() {
+        ArrayUtils.regionEqualsWithOrMask(strB, 0, strB, 0, -1, toByteArray(mask(1)));
     }
 
     private static void doTestIndexOf(String haystack, int fromIndex, int maxIndex, String needle, int expected) {
@@ -237,7 +356,10 @@ public class ArrayUtilsTest {
         assertEquals(ArrayUtils.indexOf(toByteArray(haystack), fromIndex, maxIndex, toByteArray(needle)), expected);
     }
 
-    private static byte[] toByteArray(String s) {
+    public static byte[] toByteArray(String s) {
+        if (s == null) {
+            return null;
+        }
         byte[] ret = new byte[s.length()];
         for (int i = 0; i < s.length(); i++) {
             ret[i] = (byte) s.charAt(i);
