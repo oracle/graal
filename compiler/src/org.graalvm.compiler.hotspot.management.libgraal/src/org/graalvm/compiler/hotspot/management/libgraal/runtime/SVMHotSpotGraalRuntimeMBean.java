@@ -25,6 +25,8 @@
 package org.graalvm.compiler.hotspot.management.libgraal.runtime;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -44,7 +46,6 @@ import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-
 @Platforms(Platform.HOSTED_ONLY.class)
 public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
 
@@ -56,21 +57,50 @@ public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
 
     @Override
     public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
-        return null;
+        AttributeList attributes = getAttributes(new String[]{attribute});
+        return ((Attribute) attributes.get(0)).getValue();
     }
 
     @Override
     public void setAttribute(Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
+        AttributeList list = new AttributeList();
+        list.add(attribute);
+        setAttributes(list);
     }
 
     @Override
+    @SuppressWarnings("try")
     public AttributeList getAttributes(String[] attributes) {
-        return null;
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            byte[] rawData = HotSpotToSVMCalls.getAttributes(LibGraalScope.getIsolateThread(), handle, attributes);
+            return rawToAttributeList(rawData);
+        }
     }
 
     @Override
+    @SuppressWarnings("try")
     public AttributeList setAttributes(AttributeList attributes) {
-        return null;
+        try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            for (Object item : attributes) {
+                Attribute attribute = (Attribute) item;
+                map.put(attribute.getName(), attribute.getValue());
+            }
+            byte[] rawData = OptionsEncoder.encode(map);
+            rawData = HotSpotToSVMCalls.setAttributes(LibGraalScope.getIsolateThread(), handle, rawData);
+            return rawToAttributeList(rawData);
+        }
+    }
+
+    private static AttributeList rawToAttributeList(byte[] rawData) {
+        AttributeList res = new AttributeList();
+        Map<String, Object> map = OptionsEncoder.decode(rawData);
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            String attrName = e.getKey();
+            Object attrValue = e.getValue();
+            res.add(new Attribute(attrName, attrValue));
+        }
+        return res;
     }
 
     @Override
@@ -79,27 +109,109 @@ public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     }
 
     @Override
+    @SuppressWarnings("try")
     public MBeanInfo getMBeanInfo() {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
             byte[] rawData = HotSpotToSVMCalls.getMBeanInfo(LibGraalScope.getIsolateThread(), handle);
-            Map<String,?> map = OptionsEncoder.decode(rawData);
+            Map<String, Object> map = OptionsEncoder.decode(rawData);
             String className = null;
             String description = null;
             List<MBeanAttributeInfo> attributes = new ArrayList<>();
             List<MBeanOperationInfo> operations = new ArrayList<>();
-            for (Map.Entry<String,?> entry : map.entrySet()) {
+            for (PushBackIterator<Map.Entry<String, Object>> it = new PushBackIterator<Map.Entry<String, Object>>(map.entrySet().iterator()); it.hasNext();) {
+                Map.Entry<String, ?> entry = it.next();
                 String key = entry.getKey();
                 if (key.equals("bean.class")) {
                     className = (String) entry.getValue();
                 } else if (key.equals("bean.description")) {
                     description = (String) entry.getValue();
+                } else if (key.startsWith("attr.")) {
+                    String attrName = (String) entry.getValue();
+                    if (!key.equals("attr." + attrName + ".name")) {
+                        throw new IllegalStateException("Invalid order of attribute properties");
+                    }
+                    MBeanAttributeInfo attr = createAttributeInfo(attrName, it);
+                    attributes.add(attr);
                 }
             }
             Objects.requireNonNull(className, "ClassName must be non null.");
             Objects.requireNonNull(description, "Description must be non null.");
             return new MBeanInfo(className, description,
-                    attributes.toArray(new MBeanAttributeInfo[attributes.size()]), null,
-                    operations.toArray(new MBeanOperationInfo[operations.size()]), null);
+                            attributes.toArray(new MBeanAttributeInfo[attributes.size()]), null,
+                            operations.toArray(new MBeanOperationInfo[operations.size()]), null);
         }
+    }
+
+    private static MBeanAttributeInfo createAttributeInfo(String attrName, PushBackIterator<Map.Entry<String, Object>> it) {
+        String attrType = null;
+        String attrDescription = null;
+        boolean isReadable = false;
+        boolean isWritable = false;
+        boolean isIs = false;
+        while (it.hasNext()) {
+            Map.Entry<String, Object> entry = it.next();
+            String key = entry.getKey();
+            if (!key.startsWith("attr." + attrName + ".")) {
+                it.pushBack(entry);
+                break;
+            }
+            String propertyName = key.substring(key.lastIndexOf('.') + 1);
+            switch (propertyName) {
+                case "type":
+                    attrType = (String) entry.getValue();
+                    break;
+                case "description":
+                    attrDescription = (String) entry.getValue();
+                    break;
+                case "r":
+                    isReadable = (Boolean) entry.getValue();
+                    break;
+                case "w":
+                    isWritable = (Boolean) entry.getValue();
+                    break;
+                case "i":
+                    isIs = (Boolean) entry.getValue();
+                    break;
+                default:
+                    throw new IllegalStateException("Unkown attribute property: " + propertyName);
+            }
+        }
+        if (attrType == null) {
+            throw new IllegalStateException("Attribute type must be given.");
+        }
+        return new MBeanAttributeInfo(attrName, attrType, attrDescription, isReadable, isWritable, isIs);
+    }
+}
+
+final class PushBackIterator<T> implements Iterator<T> {
+
+    private final Iterator<T> delegate;
+    private T pushBack;
+
+    PushBackIterator(Iterator<T> delegate) {
+        this.delegate = delegate;
+    }
+
+    @Override
+    public boolean hasNext() {
+        return pushBack != null || delegate.hasNext();
+    }
+
+    @Override
+    public T next() {
+        if (pushBack != null) {
+            T res = pushBack;
+            pushBack = null;
+            return res;
+        } else {
+            return delegate.next();
+        }
+    }
+
+    void pushBack(T e) {
+        if (pushBack != null) {
+            throw new IllegalStateException("Push back element already exists.");
+        }
+        pushBack = e;
     }
 }

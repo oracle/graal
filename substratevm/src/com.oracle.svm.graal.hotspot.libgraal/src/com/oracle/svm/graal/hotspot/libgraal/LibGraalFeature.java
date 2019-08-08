@@ -124,6 +124,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
+import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 
 public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
 
@@ -425,6 +426,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class);
         GraalServices.load(TruffleInvocationPluginProvider.class);
         GraalServices.load(HotSpotCodeCacheListener.class);
+        GraalServices.load(HotSpotMBeanOperationProvider.class);
 
         FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         DebugContext debug = impl.getBigBang().getDebug();
@@ -697,6 +699,16 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVM
     @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.HotSpotToSVMCalls")
     @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassDataComputer.class, isFinal = true)
     private static byte[] HS_SVM_CALLS_CLASS;
+
+    @Alias
+    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.PushBackIterator")
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassNameComputer.class, isFinal = true)
+    private static String HS_PUSHBACK_ITER_CLASS_NAME;
+
+    @Alias
+    @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.PushBackIterator")
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassDataComputer.class, isFinal = true)
+    private static byte[] HS_PUSHBACK_ITER_CLASS;
 
     static final class ClassDataComputer implements RecomputeFieldValue.CustomFieldValueComputer {
         @Override

@@ -294,13 +294,15 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 HotSpotResolvedObjectType type = ((HotSpotResolvedJavaMethod) compilable).getDeclaringClass();
                 if (type instanceof HotSpotResolvedJavaType) {
                     Class<?> clazz = runtime().getMirror(type);
-                    try {
-                        ClassLoader cl = clazz.getClassLoader();
-                        if (cl != null) {
-                            loaders.add(cl);
+                    if (clazz != null) {
+                        try {
+                            ClassLoader cl = clazz.getClassLoader();
+                            if (cl != null) {
+                                loaders.add(cl);
+                            }
+                        } catch (SecurityException e) {
+                            // This loader can obviously not be used for resolving class names
                         }
-                    } catch (SecurityException e) {
-                        // This loader can obviously not be used for resolving class names
                     }
                 }
             }

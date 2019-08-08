@@ -24,10 +24,9 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal.runtime;
 
-
 final class HotSpotToSVMCalls {
 
-    private HotSpotToSVMCalls(){
+    private HotSpotToSVMCalls() {
     }
 
     static native long[] pollRegistrations(long isolateThreadId);
@@ -37,4 +36,8 @@ final class HotSpotToSVMCalls {
     static native String getRegistrationName(long isolateThreadId, long svmRegistration);
 
     static native byte[] getMBeanInfo(long isolateThreadId, long svmRegistration);
+
+    static native byte[] getAttributes(long isolateThreadId, long handle, String[] attributes);
+
+    static native byte[] setAttributes(long isolateThreadId, long handle, byte[] rawData);
 }

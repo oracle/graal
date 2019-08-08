@@ -39,7 +39,6 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 
-
 final class Factory extends Thread {
 
     private static final int POLL_INTERVAL_MS = 2000;
@@ -55,7 +54,6 @@ final class Factory extends Thread {
 
     @Override
     public void run() {
-        System.out.println("Running factory Thread.");
         while (poll()) {
             try {
                 Thread.sleep(POLL_INTERVAL_MS);
@@ -86,28 +84,20 @@ final class Factory extends Thread {
         return true;
     }
 
+    @SuppressWarnings("try")
     private void process() {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            System.out.println("Enter");
-            try {
-                long[] svmRegistrations =  HotSpotToSVMCalls.pollRegistrations(LibGraalScope.getIsolateThread());
-                for (long svmRegistration : svmRegistrations) {
-                    System.out.println("Processing....");
-                    try {
-                        SVMHotSpotGraalRuntimeMBean bean = new SVMHotSpotGraalRuntimeMBean(svmRegistration);
-                        String name = HotSpotToSVMCalls.getRegistrationName(LibGraalScope.getIsolateThread(), svmRegistration);
-                        System.out.println("\tRegistering bean: " + name);
-                        platformMBeanServer.registerMBean(bean, new ObjectName("org.graalvm.compiler.hotspot:type=" + name));
-                        System.out.println("\tRegistered");
-                    } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
-                        e.printStackTrace(TTY.out);
-                    }
+            long[] svmRegistrations = HotSpotToSVMCalls.pollRegistrations(LibGraalScope.getIsolateThread());
+            for (long svmRegistration : svmRegistrations) {
+                try {
+                    SVMHotSpotGraalRuntimeMBean bean = new SVMHotSpotGraalRuntimeMBean(svmRegistration);
+                    String name = HotSpotToSVMCalls.getRegistrationName(LibGraalScope.getIsolateThread(), svmRegistration);
+                    platformMBeanServer.registerMBean(bean, new ObjectName("org.graalvm.compiler.hotspot:type=" + name));
+                } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
+                    e.printStackTrace(TTY.out);
                 }
-                HotSpotToSVMCalls.finishRegistration(LibGraalScope.getIsolateThread(), svmRegistrations);
-                System.out.println("Done");
-            } catch (Throwable t) {
-                t.printStackTrace();
             }
+            HotSpotToSVMCalls.finishRegistration(LibGraalScope.getIsolateThread(), svmRegistrations);
         }
     }
 
