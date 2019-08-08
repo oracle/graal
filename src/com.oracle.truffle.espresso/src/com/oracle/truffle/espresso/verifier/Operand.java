@@ -267,8 +267,8 @@ class ArrayOperand extends Operand {
             return false;
         }
         return (other == Invalid) || (other.isReference() && (other.getType() == Type.Object ||
-                other.getType() == Type.Cloneable ||
-                other.getType() == Type.Serializable));
+                        other.getType() == Type.Cloneable ||
+                        other.getType() == Type.Serializable));
     }
 
     @Override

@@ -771,7 +771,7 @@ public final class StaticObject implements TruffleObject {
     static {
         // Assert a byte array has the same representation as a boolean array.
         assert (Unsafe.ARRAY_BYTE_BASE_OFFSET == Unsafe.ARRAY_BOOLEAN_BASE_OFFSET &&
-                Unsafe.ARRAY_BYTE_INDEX_SCALE == Unsafe.ARRAY_BOOLEAN_INDEX_SCALE);
+                        Unsafe.ARRAY_BYTE_INDEX_SCALE == Unsafe.ARRAY_BOOLEAN_INDEX_SCALE);
     }
 
     public void setArrayByte(byte value, int index, Meta meta) {
@@ -782,8 +782,6 @@ public final class StaticObject implements TruffleObject {
             throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
         }
     }
-
-
 
     public byte getArrayByte(int index, Meta meta) {
         assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
