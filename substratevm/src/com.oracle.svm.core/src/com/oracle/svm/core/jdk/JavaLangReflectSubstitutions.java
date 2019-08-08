@@ -364,10 +364,7 @@ final class Target_java_lang_reflect_Array {
                 return;
             }
         } else if (array instanceof Object[]) {
-            if (value == null) {
-                ((Object[]) array)[index] = null;
-                return;
-            } else if (array.getClass().getComponentType().isAssignableFrom(value.getClass())) {
+            if (value == null || array.getClass().getComponentType().isAssignableFrom(value.getClass())) {
                 ((Object[]) array)[index] = value;
                 return;
             }
