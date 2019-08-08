@@ -65,22 +65,22 @@ public final class CoverageTracker implements AutoCloseable {
         this.env = env;
     }
 
-    private static SourceCoverage[] sourceCoverage(Map<Source, Map<RootNode, RootData>> mapping) {
+    private static SourceCoverage[] sourceCoverage(Map<Source, Map<SourceSection, RootData>> mapping) {
         SourceCoverage[] coverage = new SourceCoverage[mapping.size()];
         int i = 0;
-        for (Map.Entry<Source, Map<RootNode, RootData>> entry : mapping.entrySet()) {
+        for (Map.Entry<Source, Map<SourceSection, RootData>> entry : mapping.entrySet()) {
             coverage[i++] = new SourceCoverage(entry.getKey(), rootCoverage(entry.getValue()));
         }
         return coverage;
     }
 
-    private static RootCoverage[] rootCoverage(Map<RootNode, RootData> perRootData) {
+    private static RootCoverage[] rootCoverage(Map<SourceSection, RootData> perRootData) {
         RootCoverage[] rootCoverage = new RootCoverage[perRootData.size()];
         int i = 0;
-        for (Map.Entry<RootNode, RootData> entry : perRootData.entrySet()) {
+        for (Map.Entry<SourceSection, RootData> entry : perRootData.entrySet()) {
             final RootData rootData = entry.getValue();
             rootCoverage[i++] = new RootCoverage(sectionCoverage(rootData),
-                            rootData.covered, rootData.sourceSection, entry.getKey().getName());
+                            rootData.covered, rootData.sourceSection, rootData.name);
         }
         return rootCoverage;
     }
@@ -123,26 +123,30 @@ public final class CoverageTracker implements AutoCloseable {
         return sourceCoverage(mapping());
     }
 
-    private Map<Source, Map<RootNode, RootData>> mapping() {
-        Map<Source, Map<RootNode, RootData>> sourceCoverage = new HashMap<>();
+    private Map<Source, Map<SourceSection, RootData>> mapping() {
+        Map<Source, Map<SourceSection, RootData>> sourceCoverage = new HashMap<>();
         processLoaded(sourceCoverage);
         processCovered(sourceCoverage);
         return sourceCoverage;
     }
 
-    private void processLoaded(Map<Source, Map<RootNode, RootData>> sourceCoverage) {
+    private void processLoaded(Map<Source, Map<SourceSection, RootData>> sourceCoverage) {
         for (LoadSourceSectionEvent loadedEvent : loadedEvents) {
             final SourceSection section = loadedEvent.getSourceSection();
             final Source source = section.getSource();
-            final Map<RootNode, RootData> perRootData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
+            final Map<SourceSection, RootData> perRootData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
             final Node node = loadedEvent.getNode();
             final InstrumentableNode instrumentableNode = (InstrumentableNode) node;
+            final RootNode rootNode = node.getRootNode();
+            if (rootNode == null) {
+                continue;
+            }
             if (instrumentableNode.hasTag(StandardTags.RootTag.class)) {
-                perRootData.put(node.getRootNode(), new RootData(section));
+                perRootData.put(rootNode.getSourceSection(), new RootData(section, rootNode.getName()));
                 continue;
             }
             if (instrumentableNode.hasTag(StandardTags.StatementTag.class)) {
-                final RootData rootData = perRootData.get(node.getRootNode());
+                final RootData rootData = perRootData.get(rootNode.getSourceSection());
                 rootData.loadedStatements.add(section);
                 continue;
             }
@@ -150,12 +154,16 @@ public final class CoverageTracker implements AutoCloseable {
         }
     }
 
-    private void processCovered(Map<Source, Map<RootNode, RootData>> mapping) {
+    private void processCovered(Map<Source, Map<SourceSection, RootData>> mapping) {
         for (CoverageNode coverageNode : coverageNodes) {
             final SourceSection section = coverageNode.sourceSection;
             final Source source = section.getSource();
             final Node node = coverageNode.instrumentedNode;
-            final RootData rootData = mapping.get(source).get(node.getRootNode());
+            final RootNode rootNode = node.getRootNode();
+            if (rootNode == null) {
+                continue;
+            }
+            final RootData rootData = mapping.get(source).get(rootNode.getSourceSection());
             if (coverageNode.isRoot) {
                 rootData.covered = true;
                 continue;
@@ -208,10 +216,12 @@ public final class CoverageTracker implements AutoCloseable {
         private final SourceSection sourceSection;
         private final List<SourceSection> loadedStatements = new ArrayList<>();
         private final List<SourceSection> coveredStatements = new ArrayList<>();
+        private final String name;
         private boolean covered;
 
-        RootData(SourceSection sourceSection) {
+        RootData(SourceSection sourceSection, String name) {
             this.sourceSection = sourceSection;
+            this.name = name;
         }
 
     }
