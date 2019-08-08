@@ -249,24 +249,6 @@ suite = {
       ],
       "maven" : False,
     },
-    "WORD_API" : {
-      "subDir" : "src",
-      "moduleInfo" : {
-        "name" : "org.graalvm.word",
-        "exports" : [
-          "org.graalvm.word"
-        ],
-      },
-      "dependencies" : [
-        "org.graalvm.word",
-      ],
-      "distDependencies" : [
-      ],
-      "overlaps" : [
-        "GRAAL_SDK",
-      ],
-      "maven" : False,
-    },
     "LAUNCHER_COMMON" : {
       "subDir" : "src",
       "moduleInfo" : {

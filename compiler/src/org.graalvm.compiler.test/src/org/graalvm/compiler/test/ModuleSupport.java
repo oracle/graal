@@ -55,7 +55,7 @@ public class ModuleSupport {
 
     /**
      * Gets the names of the classes in the JDK image (i.e. lib/modules) that implement Graal.
-     * 
+     *
      * @throws IOException
      */
     @SuppressWarnings("unused")

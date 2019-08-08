@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.226.3",
+  "mxversion" : "5.231.0",
   "name" : "truffle",
   "version" : "19.3.0",
   "release" : False,
@@ -187,7 +187,11 @@ suite = {
         "TRUFFLE_SL",
         "mx:JUNIT",
       ],
-      "imports" : ["jdk.internal.loader"],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.loader"
+        ],
+      },
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -203,7 +207,9 @@ suite = {
         "TRUFFLE_INSTRUMENT_TEST",
         "mx:JMH_1_21",
       ],
-      "imports" : ["jdk.internal.loader"],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.loader"],
+      },
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
       "spotbugsIgnoresGenerated" : True,
@@ -289,13 +295,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
-      "imports" : [
-        "com.sun.tools.javac.processing",
-        "com.sun.tools.javac.model",
-        "com.sun.tools.javac.util",
-        "com.sun.tools.javac.tree",
-        "com.sun.tools.javac.file",
-      ],
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -305,17 +304,13 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.dsl.processor",
       ],
+      "requires" : [
+        "java.compiler",
+      ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "9+",
       "overlayTarget" : "com.oracle.truffle.dsl.processor",
       "multiReleaseJarVersion" : "9",
-      "imports" : [
-        "com.sun.tools.javac.processing",
-        "com.sun.tools.javac.model",
-        "com.sun.tools.javac.util",
-        "com.sun.tools.javac.tree",
-        "com.sun.tools.javac.file",
-      ],
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -332,13 +327,6 @@ suite = {
       # in this package, together with using it in an annotation processor.
       # Can be removed when deprecated API was removed.
       "forceJavac" : "true",
-      "imports" : [
-        "com.sun.tools.javac.processing",
-        "com.sun.tools.javac.model",
-        "com.sun.tools.javac.util",
-        "com.sun.tools.javac.tree",
-        "com.sun.tools.javac.file",
-      ],
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -765,7 +753,9 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.truffle",
         "requires" : [
-          "static java.desktop"
+          "static java.desktop",
+          "jdk.unsupported", # sun.misc.Unsafe
+          "java.logging"
         ],
         "exports" : [
 #           "com.oracle.truffle.api.object.dsl",
