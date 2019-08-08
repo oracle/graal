@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.EspressoOptions.VerifyMode;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.InnerClassesAttribute;
@@ -560,6 +561,7 @@ public final class ObjectKlass extends Klass {
                     } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
                         // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
                         setErroneous();
+                        new BytecodeStream(m.getCode()).printBytecode(this);
                         throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
                     } catch (Throwable e) {
                         e.printStackTrace();

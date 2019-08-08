@@ -418,9 +418,19 @@ public final class MethodVerifier implements ContextAccess {
     private final Operand thisOperand;
 
     // Regular BCI states
+
+    // Indicates that a particular BCI should never be reached by normal control flow (e.g.: the
+    // bytecode of a WIDE instruction)
     static private final byte UNREACHABLE = 0;
+    // Indicates a BCI that has not yet been reached by control flow. After verification, if such a
+    // BCI still exists, it means that control flow never did reach it.
     static private final byte UNSEEN = 1;
+    // Indicates previous iteration of a verification successfully verified this particular BCI.
+    // Further verification can therefore stop their execution if merging its state into the state
+    // of this BCI is successful.
     static private final byte DONE = 2;
+    // Indicates that a particular BCI is the target of a jump, therefore requiring a stack map to
+    // be provided fo this BCI.
     static private final byte JUMP_TARGET = 4;
 
     // Exception handler target states
@@ -609,6 +619,9 @@ public final class MethodVerifier implements ContextAccess {
                 BCI--;
                 first = false;
             }
+            if (BCI < 0 || BCI >= stackFrames.length) {
+                throw new ClassFormatError("Invalid offset for Stack frame: " + BCI);
+            }
             stackFrames[BCI] = frame;
             previous = frame;
         }
@@ -792,6 +805,9 @@ public final class MethodVerifier implements ContextAccess {
 
         // Performs verification of reachable handlers
         verifyExceptionHandlers();
+
+        // Verifies that each bytecode is reachable by control flow.
+        verifyReachability();
     }
 
     private void validateExceptionHandlers() {
@@ -888,6 +904,16 @@ public final class MethodVerifier implements ContextAccess {
             locals = frame.extractLocals();
         }
         startVerify(handlerBCI, stack, locals);
+    }
+
+    private void verifyReachability() {
+        int bci = 0;
+        while (bci < code.endBCI()) {
+            if (BCIstates[bci] == UNSEEN) {
+                throw new VerifyError("Unreachable BCI: " + bci);
+            }
+            bci = code.nextBCI(bci);
+        }
     }
 
     private void branch(int BCI, Stack stack, Locals locals) {

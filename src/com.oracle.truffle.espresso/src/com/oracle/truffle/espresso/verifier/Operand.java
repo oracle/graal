@@ -107,6 +107,11 @@ class ReturnAddressOperand extends PrimitiveOperand {
         targetBCIs.add(target);
     }
 
+    private ReturnAddressOperand(ArrayList<Integer> bcis) {
+        super(JavaKind.ReturnAddress);
+        targetBCIs.addAll(bcis);
+    }
+
     @Override
     boolean isReturnAddress() {
         return true;
@@ -134,7 +139,7 @@ class ReturnAddressOperand extends PrimitiveOperand {
         if (!other.isReturnAddress()) {
             return null;
         }
-        ReturnAddressOperand ra = (ReturnAddressOperand) other;
+        ReturnAddressOperand ra = new ReturnAddressOperand(((ReturnAddressOperand) other).targetBCIs);
         for (Integer target : targetBCIs) {
             if (!ra.targetBCIs.contains(target)) {
                 ra.targetBCIs.add(target);
