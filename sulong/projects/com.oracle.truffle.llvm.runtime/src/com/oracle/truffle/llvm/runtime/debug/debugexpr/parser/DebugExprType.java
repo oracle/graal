@@ -1,11 +1,11 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
 import java.util.EnumMap;
+
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -18,10 +18,16 @@ public class DebugExprType {
     private final Kind kind;
     private DebugExprType innerType; // used for arrays, pointers, ...
     private static EnumMap<Kind, DebugExprType> map = new EnumMap<>(Kind.class);
+    private int nElems;
 
     private DebugExprType(Kind kind, DebugExprType innerType) {
+        this(kind, innerType, -1);
+    }
+
+    private DebugExprType(Kind kind, DebugExprType innerType, int nElems) {
         this.kind = kind;
         this.innerType = innerType;
+        this.nElems = nElems;
     }
 
     public DebugExprType getInnerType() {
@@ -42,6 +48,14 @@ public class DebugExprType {
             default:
                 return false;
         }
+    }
+
+    public DebugExprType createPointer() {
+        return new DebugExprType(Kind.POINTER, this);
+    }
+
+    public DebugExprType createArrayType(int length) {
+        return new DebugExprType(Kind.ARRAY, this, length);
     }
 
     public boolean isIntegerType() {
@@ -96,6 +110,14 @@ public class DebugExprType {
                 return PrimitiveType.DOUBLE;
             case LONG_DOUBLE:
                 return PrimitiveType.X86_FP80;
+            case POINTER:
+                return new PointerType(innerType.getLLVMRuntimeType());
+            case ARRAY:
+                if (nElems >= 0) {
+                    return new ArrayType(innerType.getLLVMRuntimeType(), nElems);
+                } else {
+                    return new PointerType(innerType.getLLVMRuntimeType());
+                }
             default:
                 return VoidType.INSTANCE;
         }
@@ -281,7 +303,7 @@ public class DebugExprType {
         } else if (metaObj instanceof LLVMSourceArrayLikeType) {
             LLVMSourceArrayLikeType arrayType = (LLVMSourceArrayLikeType) metaObj;
             DebugExprType innerType = getTypeFromSymbolTableMetaObject(arrayType.getElementType(0));
-            return new DebugExprType(Kind.ARRAY, innerType);
+            return new DebugExprType(Kind.ARRAY, innerType, arrayType.getElementCount());
         } else if (metaObj instanceof LLVMSourceDecoratorType) {
             LLVMSourceDecoratorType structType = (LLVMSourceDecoratorType) metaObj;
             return new DebugExprType(Kind.STRUCT, null);
@@ -340,10 +362,58 @@ public class DebugExprType {
         DOUBLE,
         LONG_DOUBLE,
         POINTER,
-        REFERENCE,
         ARRAY,
         STRUCT,
         FUNCTION;
 
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (obj instanceof DebugExprType) {
+            return equalsType((DebugExprType) obj);
+        }
+        return false;
+    }
+
+    public boolean equalsType(DebugExprType o) {
+        if (o.kind != kind) {
+            return false;
+        }
+        switch (kind) {
+            case VOID:
+            case BOOL:
+            case UNSIGNED_CHAR:
+            case SIGNED_CHAR:
+            case UNSIGNED_SHORT:
+            case SIGNED_SHORT:
+            case UNSIGNED_INT:
+            case SIGNED_INT:
+            case UNSIGNED_LONG:
+            case SIGNED_LONG:
+            case FLOAT:
+            case DOUBLE:
+            case LONG_DOUBLE:
+                return true;
+            case POINTER:
+            case ARRAY:
+                return innerType.equals(o.innerType) && nElems == o.nElems;
+            case STRUCT:
+            case FUNCTION:
+            default:
+                return super.equals(o);
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        if (innerType != null) {
+            return kind.hashCode() ^ innerType.hashCode();
+        }
+        return kind.hashCode();
+    }
+
 }

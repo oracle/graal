@@ -52,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -153,13 +154,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     try {
                         // try to execute node
                         return String.valueOf(rootExpr.executeGeneric(frame));
-                    } catch (DebugExprException e) {
+                    } catch (DebugExprException | LLVMParserException e) {
                         // return message of exception that occurred during AST execution
                         return e.getMessage();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        throw e;
                     }
                 }
             };
-        } catch (DebugExprException e) {
+        } catch (DebugExprException | LLVMParserException e) {
             // error found during parsing
             return new ExecutableNode(this) {
                 @Override

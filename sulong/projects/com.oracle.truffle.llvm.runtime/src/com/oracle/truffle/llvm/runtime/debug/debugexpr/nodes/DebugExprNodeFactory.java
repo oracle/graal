@@ -209,14 +209,19 @@ public final class DebugExprNodeFactory {
 
     public DebugExpressionPair createCastIfNecessary(DebugExpressionPair pair, DebugExprType type) {
         checkError(pair, "cast");
-        if (pair.getType() == type) {
+        if (pair.getType().equalsType(type)) {
             return pair;
         }
         LLVMExpressionNode node;
-        if (type.isUnsigned())
-            node = contextReference.get().getNodeFactory().createUnsignedCast(pair.getNode(), type.getLLVMRuntimeType());
-        else
-            node = contextReference.get().getNodeFactory().createSignedCast(pair.getNode(), type.getLLVMRuntimeType());
+        if (type.isFloatingType() || type.isIntegerType()) {
+            if (type.isUnsigned()) {
+                node = contextReference.get().getNodeFactory().createUnsignedCast(pair.getNode(), type.getLLVMRuntimeType());
+            } else {
+                node = contextReference.get().getNodeFactory().createSignedCast(pair.getNode(), type.getLLVMRuntimeType());
+            }
+        } else {
+            node = contextReference.get().getNodeFactory().createBitcast(pair.getNode(), type.getLLVMRuntimeType(), pair.getType().getLLVMRuntimeType());
+        }
         return DebugExpressionPair.create(node, type);
     }
 

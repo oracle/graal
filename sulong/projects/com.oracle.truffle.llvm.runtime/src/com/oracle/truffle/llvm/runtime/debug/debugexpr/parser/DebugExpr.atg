@@ -12,7 +12,7 @@ boolean IsCast() {
 	if(la.kind==_lpar) {
 	    while(peek.kind==_asterisc) peek=scanner.Peek();
 	    int k = peek.kind;
-	    if(k==_signed||k==_unsigned||k==_int||k==_long||k==_char||k==_short||k==_float||k==_double) return true;
+	    if(k==_signed||k==_unsigned||k==_int||k==_long||k==_char||k==_short||k==_float||k==_double||k==_typeof) return true;
 	}
 	return false;
 }
@@ -61,6 +61,7 @@ TOKENS
    float = "float".
    double = "double".
    char = "char".
+   typeof = "typeof".
 
 PRAGMAS
 // Add pragma declarations here.
@@ -116,7 +117,7 @@ PrimExpr<out p>
 	|
 	 "." ident										(. p = NF.createObjectMember(p, t.val); .)
 	|
-	 "->" ident										(. SemErr("pointer access not available yet"); .)
+	 "->" ident										(. p = NF.createObjectPointerMember(p, t.val); .)
 }
 .
 
@@ -289,23 +290,27 @@ DType<out DebugExprType ty>
 =
 BaseType<out ty>  
 {
-		 "*" 										(. SemErr("Pointer types are not available yet"); .)
+		 "*" 										(. ty = ty.createPointer(); .)
 		
 }	
 {
-	 "[" 											(. SemErr("Array types are not available yet"); .)
+	 "[" 											
 	 
-	[
-		 number
-	]
+	(
+		 number										(. ty = ty.createArrayType(Integer.parseInt(t.val)); .)
+	|
+													(. ty = ty.createArrayType(-1); .)
+	)
 	 "]"
 }
 .
 BaseType<out DebugExprType ty>						(. ty=null; boolean signed=false;.)
 =
+"(" DType<out ty> ")"
+|
 "void" 												(. ty = DebugExprType.getVoidType(); .)
 |
-ident
+"typeof" "(" ident ")"
 |
 (
 	 "signed" 										(. signed = true; .)

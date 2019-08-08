@@ -76,8 +76,7 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode implements Mem
 
     private Pair<Object, DebugExprType> findMemberAndType(Object baseMember) {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
-
-        if (library.isMemberExisting(baseMember, fieldName)) {
+        if (baseMember != null && library.isMemberExisting(baseMember, fieldName)) {
             try {
                 Object member = library.readMember(baseMember, fieldName);
                 LLVMDebuggerValue ldv = (LLVMDebuggerValue) member;
