@@ -28,18 +28,15 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 51 CONTINUE "main"
-	"3+" "member at ADD is not available"
-	"r-<w" "member at SUB is not available"
-	"-" "member at - is not available"
-	"/a" "member at / is not available"
-	"a>>>b" "member at >> is not available"
+BREAK 67 CONTINUE "main"
+	"list->a" "0"
+	"list->next" "0x0"
 	END
 
-BREAK 56 CONTINUE "main"
-	"3+" "member at ADD is not available"
-	"r-<w" "member at SUB is not available"
-	"-" "member at - is not available"
-	"/a" "member at / is not available"
-	"a>>>b" "member at >> is not available"
+BREAK 71 CONTINUE "main"
+	"4==3?1:0" "0"
+	"(*list).a" "10"
+	"list->a" "10"
+	"list->next->a" "9"
+	"(*((*list).next)).a" "9"
 	END

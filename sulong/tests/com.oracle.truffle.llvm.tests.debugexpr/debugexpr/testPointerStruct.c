@@ -27,34 +27,50 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <stdio.h>
+#include <stdlib.h>
 
-/*
- * Code in this file is basically irrelevant, as only invalid expressions are tested. 
- * However, code lines of '__builtin_debugtrap()' MUST NOT BE CHANGED due to the 
- * testing framework without adjusting the lines in the testInvalid.txt file.
- * Relative path of testInvalid.txt: '../testExpr/testInvalid.txt'
- */
+typedef struct {
+	int a;
+	struct List* next;
+} List;
 
-int gcd(int a, int b) {
-	if(a<0) a=-a;
-	if(b<0) b=-b;
-	if(a==0) return b;
-	if(b==0) return a;
-	return gcd(b, a%b);
+List* createNode(int a) {
+	List* l = (List*) malloc(sizeof(List*));
+	l->a=a;
+	l->next = NULL;
+	return l;
 }
+
+void freeList(List* l) {
+	if(l->next!=NULL) freeList(l->next);
+	free(l);
+}
+
+void push(List** list, int a) {
+	List* newList = createNode(a);
+	newList->next = *list;
+	*list = newList;
+}
+
+void printList(List* list) {
+	while(list!=NULL) {
+		printf("%i\n",list->a);
+		list = list->next;
+	}	
+}
+
 
 __attribute__((constructor)) int main() {
-	int a=54;
-	int b=2016;
-	int* pa = &a;
+	List* list = createNode(0);
 	__builtin_debugtrap();
-	int sum = a + b;
-	int prod = a * b;
-	int rem = a % b;
-	int g = gcd(a, b);
+	for(int i=1;i<10;i++) {
+		push(&list, i);	
+	}
 	__builtin_debugtrap();
-	printf("%i\n",g);
-	printf("%i\n",*pa);
+	printList(list);
+	freeList(list);
 	return 0;
 }
+
