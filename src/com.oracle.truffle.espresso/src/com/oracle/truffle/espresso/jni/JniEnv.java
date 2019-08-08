@@ -145,8 +145,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 } catch (EspressoException targetEx) {
                     setPendingException(targetEx.getException());
                     return defaultValue(m.returnType());
-                } catch (RuntimeException targetEx) {
-                    throw targetEx;
+                } catch (StackOverflowError | OutOfMemoryError e) {
+                    // This will most likely SOE again. Nothing we can do about that
+                    // unfortunately.
+                    getThreadLocalPendingException().set(getMeta().initEx(e.getClass()));
+                    return defaultValue(m.returnType());
+                } catch (RuntimeException | VirtualMachineError e) {
+                    throw e;
                 } catch (Throwable targetEx) {
                     // FIXME(peterssen): Handle VME exceptions back to guest.
                     throw EspressoError.shouldNotReachHere(targetEx);

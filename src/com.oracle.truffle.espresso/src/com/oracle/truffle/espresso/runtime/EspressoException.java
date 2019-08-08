@@ -51,6 +51,10 @@ public final class EspressoException extends RuntimeException implements Truffle
         return exception.getField(meta.Throwable_backtrace) == StaticObject.NULL;
     }
 
+    public boolean isEmptyFrame(Meta meta) {
+        return getFrames(exception, meta).size == 0;
+    }
+
     public void addStackFrame(Method m, int bci, Meta meta) {
         addStackFrame(exception, m, bci, meta);
     }
@@ -147,4 +151,5 @@ public final class EspressoException extends RuntimeException implements Truffle
     public SourceSection getSourceLocation() {
         return null;
     }
+
 }

@@ -423,7 +423,6 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     // Recursion depth = 4
-    @SuppressWarnings("unchecked")
     public static StaticObject fillInStackTrace(StaticObject throwable, boolean skipFirst, Meta meta) {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
