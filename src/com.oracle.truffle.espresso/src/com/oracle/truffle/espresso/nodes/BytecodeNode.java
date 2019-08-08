@@ -1387,7 +1387,9 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
                 QuickNode invoke = null;
 
-                if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
+                if (resolutionSeed.isMethodHandleIntrinsic()) {
+                    invoke = new MethodHandleInvokeNode(resolutionSeed);
+                } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
                     // Can happen in old classfiles that calls j.l.Object on interfaces.
                     invoke = InvokeVirtualNodeGen.create(resolutionSeed);
                 } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet())) {
@@ -1826,7 +1828,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     // Effort to prevent double copies.
     @ExplodeLoop
-    public Object[] peekBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount) {
+    public Object[] peekBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount, int start) {
         // Use basic types
         CompilerAsserts.partialEvaluationConstant(argCount);
         CompilerAsserts.partialEvaluationConstant(signature);
@@ -1837,15 +1839,15 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             // @formatter:off
             // Checkstyle: stop
             switch (kind) {
-                case Boolean : args[i] = peekInt(frame, argAt);    break;
-                case Byte    : args[i] = peekInt(frame, argAt);    break;
-                case Short   : args[i] = peekInt(frame, argAt);    break;
-                case Char    : args[i] = peekInt(frame, argAt);    break;
-                case Int     : args[i] = peekInt(frame, argAt);    break;
-                case Float   : args[i] = peekFloat(frame, argAt);  break;
-                case Long    : args[i] = peekLong(frame, argAt);   break;
-                case Double  : args[i] = peekDouble(frame, argAt); break;
-                case Object  : args[i] = peekObject(frame, argAt); break;
+                case Boolean : args[i + start] = peekInt(frame, argAt);    break;
+                case Byte    : args[i + start] = peekInt(frame, argAt);    break;
+                case Short   : args[i + start] = peekInt(frame, argAt);    break;
+                case Char    : args[i + start] = peekInt(frame, argAt);    break;
+                case Int     : args[i + start] = peekInt(frame, argAt);    break;
+                case Float   : args[i + start] = peekFloat(frame, argAt);  break;
+                case Long    : args[i + start] = peekLong(frame, argAt);   break;
+                case Double  : args[i + start] = peekDouble(frame, argAt); break;
+                case Object  : args[i + start] = peekObject(frame, argAt); break;
                 default      : throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
