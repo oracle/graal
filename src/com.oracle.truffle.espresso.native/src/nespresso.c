@@ -24,7 +24,6 @@ V(FatalError) \
 V(PushLocalFrame) \
 V(PopLocalFrame) \
 V(DeleteLocalRef) \
-V(IsSameObject) \
 V(NewLocalRef) \
 V(EnsureLocalCapacity) \
 V(AllocObject) \
@@ -590,7 +589,8 @@ jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity) {
   V(NewGlobalRef) \
   V(DeleteGlobalRef) \
   V(NewWeakGlobalRef) \
-  V(DeleteWeakGlobalRef)
+  V(DeleteWeakGlobalRef) \
+  V(IsSameObject)
 
 
 // Global state.
@@ -626,6 +626,11 @@ jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, 
   }
   // TODO(peterssen): Always OK?.
   return JNI_OK;
+}
+
+jboolean IsSameObject(JNIEnv *env, jobject first, jobject second) {
+  TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);  
+  return (jboolean) (*truffle_env)->isSameObject(truffle_env, (TruffleObject) first, (TruffleObject) second);
 }
 
 jobject NewGlobalRef(JNIEnv *env, jobject obj) {
