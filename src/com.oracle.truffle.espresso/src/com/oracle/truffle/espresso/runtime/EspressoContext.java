@@ -63,7 +63,8 @@ import org.graalvm.polyglot.Engine;
 
 public final class EspressoContext {
 
-    public static final int DEFAULT_STACK_SIZE = 128;
+    public static final int DEFAULT_STACK_SIZE = 32;
+    public static StackTraceElement[] EMPTY_STACK = new StackTraceElement[0];
 
     private final EspressoLanguage language;
     private final TruffleLanguage.Env env;
@@ -97,8 +98,6 @@ public final class EspressoContext {
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
     @CompilationFinal private ArrayList<Method> frames;
-
-    private final MemoryErrorDelegate delegate = new MemoryErrorDelegate();
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
@@ -240,7 +239,6 @@ public final class EspressoContext {
         StaticObject outOfMemoryErrorInstance = meta.OutOfMemoryError.allocateInstance();
         meta.StackOverflowError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
         meta.OutOfMemoryError.lookupDeclaredMethod(Name.INIT, Signature._void_String).invokeDirect(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
-        this.frames = new ArrayList<>(DEFAULT_STACK_SIZE);
         this.stackOverflow = new EspressoException(stackOverflowErrorInstance);
         this.outOfMemory = new EspressoException(outOfMemoryErrorInstance);
 
@@ -360,14 +358,6 @@ public final class EspressoContext {
 
     public EspressoException getOutOfMemory() {
         return outOfMemory;
-    }
-
-    public MemoryErrorDelegate getDelegate() {
-        return delegate;
-    }
-
-    public ArrayList<Method> getFrames() {
-        return frames;
     }
 
     public void putHost2Guest(Thread hostThread, StaticObject guest) {

@@ -271,12 +271,13 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
-import com.oracle.truffle.espresso.runtime.MemoryErrorDelegate;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.object.DebugCounter;
 
 /**
@@ -293,7 +294,7 @@ import com.oracle.truffle.object.DebugCounter;
  * bytecode is first processed/executed without growing or shinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
+public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     public static final boolean DEBUG_GENERAL = false;
     public static final boolean DEBUG_THROWN = false;
@@ -315,6 +316,9 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     @CompilationFinal(dimensions = 1) //
     private final FrameSlot[] stackSlots;
 
+    @CompilationFinal(dimensions = 1) //
+    private final int[] SOEinfo;
+
     private final BytecodeStream bs;
 
     @TruffleBoundary
@@ -325,6 +329,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
         FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
         this.locals = Arrays.copyOfRange(slots, 0, method.getMaxLocals());
         this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize());
+        this.SOEinfo = getMethod().getSOEHandlerInfo();
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -502,6 +507,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
     @CompilationFinal private boolean zeroStackBackEdges = false;
 
     @Override
+    @SuppressWarnings("unchecked")
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     public Object invokeNaked(VirtualFrame frame) {
 
@@ -883,12 +889,24 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     // Checkstyle: resume
                 } catch (EspressoException | EspressoExitException e) {
                     throw e;
-                } catch (OutOfMemoryError | StackOverflowError e) {
+                } catch (OutOfMemoryError e) {
+                    CompilerDirectives.transferToInterpreter();
+                    // Free lots of memory (the host stack trace is ~5x bigger than the espresso
+                    // one)
+                    e.setStackTrace(EspressoContext.EMPTY_STACK);
+                    for (int i = 0; i < getMethod().getMaxStackSize(); i++) {
+                        // Free the current stack
+                        putObject(frame, i, null);
+                    }
+                    EspressoException outOfMemory = getContext().getOutOfMemory();
+                    outOfMemory.resetFrames(getMeta());
+                    throw outOfMemory;
+                } catch (StackOverflowError e) {
                     // Free some memory
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    e.setStackTrace(MemoryErrorDelegate.EMPTY_STACK);
-                    // Delegate to free some stack
-                    throw getContext().getDelegate().delegate(e instanceof StackOverflowError);
+                    CompilerDirectives.transferToInterpreter();
+                    EspressoException stackOverflow = getContext().getStackOverflow();
+                    stackOverflow.getException().setHiddenField(getMeta().HIDDEN_FRAMES, new VM.StackTrace());
+                    throw stackOverflow;
                 } catch (RuntimeException e) {
                     CompilerDirectives.transferToInterpreter();
                     if (DEBUG_GENERAL) {
@@ -906,6 +924,43 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             } catch (EspressoException e) {
                 // CompilerDirectives.transferToInterpreter();
                 CompilerAsserts.partialEvaluationConstant(curBCI);
+                if (e == getContext().getStackOverflow()) {
+                    /*
+                     * Stack Overflow management. All calls to stack manipulation are manually
+                     * inlined to prevent another SOE.
+                     *
+                     * Note: no need to check for the stacktrace being null, as we reset the frames
+                     * at each apparition of a host SOE.
+                     */
+                    if (SOEinfo != null) {
+                        for (int i = 0; i < SOEinfo.length; i += 3) {
+                            if (curBCI >= SOEinfo[i] && curBCI < SOEinfo[i + 1]) {
+                                top = 0;
+                                try {
+                                    // isUnwinding()
+                                    if (e.getException().getUnsafeField(getMeta().Throwable_backtrace.getFieldIndex()) == StaticObject.NULL) {
+                                        // addStackFrame()
+                                        ((VM.StackTrace) e.getException().getHiddenField(getMeta().HIDDEN_FRAMES)).add(new VM.StackElement(getMethod(), curBCI));
+                                        InterpreterToVM.fillInStackTrace(e.getException(), true, getMeta());
+                                    }
+                                } catch (StackOverflowError soe) {
+                                    // resetFrames()
+                                    e.getException().setHiddenField(getMeta().HIDDEN_FRAMES, new VM.StackTrace());
+                                }
+                                putObject(frame, 0, e.getException());
+                                top++;
+                                curBCI = SOEinfo[i + 2];
+                                continue loop;
+                            }
+                        }
+                    }
+                    // isUnwinding()
+                    if (e.getException().getUnsafeField(getMeta().Throwable_backtrace.getFieldIndex()) == StaticObject.NULL) {
+                        // addStackFrame()
+                        ((VM.StackTrace) e.getException().getHiddenField(getMeta().HIDDEN_FRAMES)).add(new VM.StackElement(getMethod(), curBCI));
+                    }
+                    throw e;
+                }
                 ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
                 ExceptionHandler handler = null;
                 for (ExceptionHandler toCheck : handlers) {
@@ -925,6 +980,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                 }
                 if (handler != null) {
                     top = 0;
+                    if (e.isUnwinding(getMeta())) {
+                        e.addStackFrame(getMethod(), curBCI, getMeta());
+                        InterpreterToVM.fillInStackTrace(e.getException(), true, getMeta());
+                    }
                     putObject(frame, 0, e.getException());
                     top++;
                     curBCI = handler.getHandlerBCI();
@@ -933,19 +992,10 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
                     }
                     continue loop; // skip bs.next()
                 } else {
-                    throw e;
-                }
-            } catch (MemoryErrorDelegate e) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (e.check()) {
-                    EspressoException exception = e.act(getContext(), getMeta());
-                    if (DEBUG_GENERAL) {
-                        reportThrow(curBCI, getMethod(), exception.getException());
+                    if (e.isUnwinding(getMeta())) {
+                        e.addStackFrame(getMethod(), curBCI, getMeta());
                     }
-                    throw exception;
-                } else {
-                    // Give us some room on the stack
-                    throw e.deStack();
+                    throw e;
                 }
             } catch (VirtualMachineError e) {
                 // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
@@ -983,6 +1033,7 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = bs.nextBCI(curBCI);
         }
+
     }
 
     private boolean takeBranch(VirtualFrame frame, int top, int opCode) {
@@ -1173,7 +1224,6 @@ public class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
 
     @ExplodeLoop
     @SuppressWarnings("unused")
-    //
     private ExceptionHandler resolveExceptionHandlers(int bci, StaticObject ex) {
         CompilerAsserts.partialEvaluationConstant(bci);
         ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
