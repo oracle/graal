@@ -35,6 +35,8 @@ import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
+import javax.management.MBeanOperationInfo;
+import javax.management.MBeanParameterInfo;
 import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.libgraal.jni.JNI;
@@ -143,17 +145,28 @@ public final class HotSpotToSVMEntryPoints {
         map.put("bean.description", info.getDescription());
         for (MBeanAttributeInfo attr : info.getAttributes()) {
             String name = attr.getName();
-            String type = attr.getType();
-            String description = attr.getDescription();
-            boolean isReadable = attr.isReadable();
-            boolean isWritable = attr.isWritable();
-            boolean isIs = attr.isIs();
             map.put("attr." + name + ".name", name);
-            map.put("attr." + name + ".type", type);
-            map.put("attr." + name + ".description", description);
-            map.put("attr." + name + ".r", isReadable);
-            map.put("attr." + name + ".w", isWritable);
-            map.put("attr." + name + ".i", isIs);
+            map.put("attr." + name + ".type", attr.getType());
+            map.put("attr." + name + ".description", attr.getDescription());
+            map.put("attr." + name + ".r", attr.isReadable());
+            map.put("attr." + name + ".w", attr.isWritable());
+            map.put("attr." + name + ".i", attr.isIs());
+        }
+        int opCounter = 0;
+        for (MBeanOperationInfo op : info.getOperations()) {
+            opCounter++;
+            String name = op.getName();
+            map.put("op." + opCounter + ".id", opCounter);
+            map.put("op." + opCounter + ".name", name);
+            map.put("op." + opCounter + ".type", op.getReturnType());
+            map.put("op." + opCounter + ".description", op.getDescription());
+            map.put("op." + opCounter + ".i", op.getImpact());
+            for (MBeanParameterInfo param : op.getSignature()) {
+                String paramName = param.getName();
+                map.put("op." + opCounter + ".arg." + paramName +".name", paramName);
+                map.put("op." + opCounter + ".arg." + paramName +".description", param.getDescription());
+                map.put("op." + opCounter + ".arg." + paramName +".type", param.getType());
+            }
         }
         byte[] serialized = OptionsEncoder.encode(map);
         JNI.JByteArray res = JNIUtil.NewByteArray(env, serialized.length);

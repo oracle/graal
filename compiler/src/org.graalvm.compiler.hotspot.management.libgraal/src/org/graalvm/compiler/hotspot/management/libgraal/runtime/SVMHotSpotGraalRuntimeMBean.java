@@ -39,12 +39,14 @@ import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
+import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
@@ -57,8 +59,8 @@ public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
 
     @Override
     public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
-        AttributeList attributes = getAttributes(new String[]{attribute});
-        return ((Attribute) attributes.get(0)).getValue();
+        AttributeList attributes = getAttributes(new String[] {attribute});
+        return ((Attribute)attributes.get(0)).getValue();
     }
 
     @Override
@@ -81,7 +83,7 @@ public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     @SuppressWarnings("try")
     public AttributeList setAttributes(AttributeList attributes) {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
-            Map<String, Object> map = new LinkedHashMap<>();
+            Map<String,Object> map = new LinkedHashMap<>();
             for (Object item : attributes) {
                 Attribute attribute = (Attribute) item;
                 map.put(attribute.getName(), attribute.getValue());
@@ -94,8 +96,8 @@ public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
 
     private static AttributeList rawToAttributeList(byte[] rawData) {
         AttributeList res = new AttributeList();
-        Map<String, Object> map = OptionsEncoder.decode(rawData);
-        for (Map.Entry<String, Object> e : map.entrySet()) {
+        Map<String,Object> map = OptionsEncoder.decode(rawData);
+        for (Map.Entry<String,Object> e : map.entrySet()) {
             String attrName = e.getKey();
             Object attrValue = e.getValue();
             res.add(new Attribute(attrName, attrValue));
@@ -113,49 +115,57 @@ public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     public MBeanInfo getMBeanInfo() {
         try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {
             byte[] rawData = HotSpotToSVMCalls.getMBeanInfo(LibGraalScope.getIsolateThread(), handle);
-            Map<String, Object> map = OptionsEncoder.decode(rawData);
+            Map<String,Object> map = OptionsEncoder.decode(rawData);
             String className = null;
             String description = null;
             List<MBeanAttributeInfo> attributes = new ArrayList<>();
             List<MBeanOperationInfo> operations = new ArrayList<>();
-            for (PushBackIterator<Map.Entry<String, Object>> it = new PushBackIterator<Map.Entry<String, Object>>(map.entrySet().iterator()); it.hasNext();) {
-                Map.Entry<String, ?> entry = it.next();
+            for (PushBackIterator<Map.Entry<String, Object>> it = new PushBackIterator<Map.Entry<String,Object>>(map.entrySet().iterator()); it.hasNext();) {
+                Map.Entry<String,?> entry = it.next();
                 String key = entry.getKey();
                 if (key.equals("bean.class")) {
                     className = (String) entry.getValue();
                 } else if (key.equals("bean.description")) {
                     description = (String) entry.getValue();
                 } else if (key.startsWith("attr.")) {
-                    String attrName = (String) entry.getValue();
-                    if (!key.equals("attr." + attrName + ".name")) {
+                    String attrName = (String)entry.getValue();
+                    if (!key.equals("attr." + attrName +".name")) {
                         throw new IllegalStateException("Invalid order of attribute properties");
                     }
                     MBeanAttributeInfo attr = createAttributeInfo(attrName, it);
                     attributes.add(attr);
+                } else if (key.startsWith("op.")) {
+                    int opId = (Integer) entry.getValue();
+                    if (!key.equals("op." + opId +".id")) {
+                        throw new IllegalStateException("Invalid order of operation properties");
+                    }
+                    MBeanOperationInfo op = createOperationInfo(opId, it);
+                    operations.add(op);
                 }
             }
             Objects.requireNonNull(className, "ClassName must be non null.");
             Objects.requireNonNull(description, "Description must be non null.");
             return new MBeanInfo(className, description,
-                            attributes.toArray(new MBeanAttributeInfo[attributes.size()]), null,
-                            operations.toArray(new MBeanOperationInfo[operations.size()]), null);
+                    attributes.toArray(new MBeanAttributeInfo[attributes.size()]), null,
+                    operations.toArray(new MBeanOperationInfo[operations.size()]), null);
         }
     }
 
-    private static MBeanAttributeInfo createAttributeInfo(String attrName, PushBackIterator<Map.Entry<String, Object>> it) {
+    private static MBeanAttributeInfo createAttributeInfo(String attrName, PushBackIterator<Map.Entry<String,Object>> it) {
         String attrType = null;
         String attrDescription = null;
         boolean isReadable = false;
         boolean isWritable = false;
         boolean isIs = false;
+        String prefix = "attr." + attrName +".";
         while (it.hasNext()) {
-            Map.Entry<String, Object> entry = it.next();
+            Map.Entry<String,Object> entry = it.next();
             String key = entry.getKey();
-            if (!key.startsWith("attr." + attrName + ".")) {
+            if (!key.startsWith(prefix)) {
                 it.pushBack(entry);
                 break;
             }
-            String propertyName = key.substring(key.lastIndexOf('.') + 1);
+            String propertyName = key.substring(key.lastIndexOf('.')+1);
             switch (propertyName) {
                 case "type":
                     attrType = (String) entry.getValue();
@@ -181,37 +191,119 @@ public class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         }
         return new MBeanAttributeInfo(attrName, attrType, attrDescription, isReadable, isWritable, isIs);
     }
+
+    private static MBeanOperationInfo createOperationInfo(int opId, PushBackIterator<Map.Entry<String,Object>> it) {
+        String opName = null;
+        String opType = null;
+        String opDescription = null;
+        int opImpact = 0;
+        List<MBeanParameterInfo> params = new ArrayList<>();
+        String prefix = "op." + opId +".";
+        while (it.hasNext()) {
+            Map.Entry<String,Object> entry = it.next();
+            String key = entry.getKey();
+            if (!key.startsWith(prefix)) {
+                it.pushBack(entry);
+                break;
+            }
+            int nextDotIndex = key.indexOf('.', prefix.length());
+            nextDotIndex = nextDotIndex < 0 ? key.length() : nextDotIndex;
+            String propertyName = key.substring(prefix.length(), nextDotIndex);
+            switch (propertyName) {
+                case "name":
+                    opName = (String) entry.getValue();
+                    break;
+                case "type":
+                    opType = (String) entry.getValue();
+                    break;
+                case "description":
+                    opDescription = (String) entry.getValue();
+                    break;
+                case "i":
+                    opImpact = (Integer) entry.getValue();
+                    break;
+                case "arg":
+                    String paramName = (String)entry.getValue();
+                    if (!key.equals(prefix + "arg." + paramName + ".name")) {
+                        throw new IllegalStateException("Invalid order of parameter properties");
+                    }
+                    MBeanParameterInfo param = createParameterInfo(prefix, paramName, it);
+                    params.add(param);
+                    break;
+                default:
+                    throw new IllegalStateException("Unkown attribute property: " + propertyName);
+            }
+        }
+        if (opName == null) {
+            throw new IllegalStateException("Operation name must be given.");
+        }
+        if (opType == null) {
+            throw new IllegalStateException("Operation return type must be given.");
+        }
+        return new MBeanOperationInfo(opName, opDescription,
+                params.toArray(new MBeanParameterInfo[params.size()]),
+                opType, opImpact);
+    }
+
+    private static MBeanParameterInfo createParameterInfo(String owner, String paramName, PushBackIterator<Map.Entry<String,Object>> it) {
+        String paramType = null;
+        String paramDescription = null;
+        String prefix = owner + "arg." + paramName + ".";
+        while (it.hasNext()) {
+            Map.Entry<String,Object> entry = it.next();
+            String key = entry.getKey();
+            if (!key.startsWith(prefix)) {
+                it.pushBack(entry);
+                break;
+            }
+            String propertyName = key.substring(key.lastIndexOf('.')+1);
+            switch (propertyName) {
+                case "type":
+                    paramType = (String) entry.getValue();
+                    break;
+                case "description":
+                    paramDescription = (String) entry.getValue();
+                    break;
+                default:
+                    throw new IllegalStateException("Unkown parameter property: " + propertyName);
+            }
+        }
+        if (paramType == null) {
+            throw new IllegalStateException("Parameter type must be given.");
+        }
+        return new MBeanParameterInfo(paramName, paramType, paramDescription);
+    }
 }
 
 final class PushBackIterator<T> implements Iterator<T> {
 
-    private final Iterator<T> delegate;
-    private T pushBack;
+        private final Iterator<T> delegate;
+        private T pushBack;
 
-    PushBackIterator(Iterator<T> delegate) {
-        this.delegate = delegate;
-    }
+        PushBackIterator(Iterator<T> delegate) {
+            this.delegate = delegate;
+        }
 
-    @Override
-    public boolean hasNext() {
-        return pushBack != null || delegate.hasNext();
-    }
+        @Override
+        public boolean hasNext() {
+            return pushBack != null || delegate.hasNext();
+        }
 
-    @Override
-    public T next() {
-        if (pushBack != null) {
-            T res = pushBack;
-            pushBack = null;
-            return res;
-        } else {
-            return delegate.next();
+        @Override
+        public T next() {
+            if (pushBack != null) {
+                T res = pushBack;
+                pushBack = null;
+                return res;
+            } else {
+                return delegate.next();
+            }
+        }
+
+        void pushBack(T e) {
+            if (pushBack != null) {
+                throw new IllegalStateException("Push back element already exists.");
+            }
+            pushBack = e;
         }
     }
-
-    void pushBack(T e) {
-        if (pushBack != null) {
-            throw new IllegalStateException("Push back element already exists.");
-        }
-        pushBack = e;
-    }
-}
