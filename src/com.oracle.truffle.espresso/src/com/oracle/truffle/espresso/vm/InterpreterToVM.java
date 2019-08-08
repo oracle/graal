@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.IntFunction;
 
@@ -423,21 +422,30 @@ public final class InterpreterToVM implements ContextAccess {
         return getStrings().intern(guestString);
     }
 
-    public static StaticObject fillInStackTrace(ArrayList<Method> frames, StaticObject throwable, Meta meta) {
+    // Recursion depth = 4
+    public static StaticObject fillInStackTrace(StaticObject throwable, boolean skipFirst, Meta meta) {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
-        frames.clear();
+        VM.StackTrace frames = (VM.StackTrace) throwable.getHiddenField(meta.HIDDEN_FRAMES);
         Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+            boolean first = skipFirst;
+
             @Override
             public Object visitFrame(FrameInstance frameInstance) {
+                if (first) {
+                    first = false;
+                    return null;
+                }
                 if (c.value < size) {
                     CallTarget callTarget = frameInstance.getCallTarget();
                     if (callTarget instanceof RootCallTarget) {
                         RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
                         if (rootNode instanceof EspressoRootNode) {
-                            if (!c.checkFillIn(((EspressoRootNode) rootNode).getMethod())) {
-                                if (!c.checkThrowableInit(((EspressoRootNode) rootNode).getMethod())) {
-                                    frames.add(((EspressoRootNode) rootNode).getMethod());
+                            EspressoRootNode espressoNode = (EspressoRootNode) rootNode;
+                            Method method = espressoNode.getMethod();
+                            if (!c.checkFillIn(method)) {
+                                if (!c.checkThrowableInit(method)) {
+                                    frames.add(new VM.StackElement(method, espressoNode.isBytecodeNode() ? -1 : -2));
                                     c.inc();
                                 }
                             }
@@ -447,8 +455,8 @@ public final class InterpreterToVM implements ContextAccess {
                 return null;
             }
         });
-        throwable.setHiddenField(meta.HIDDEN_FRAMES, frames.toArray(Method.EMPTY_ARRAY));
-        meta.Throwable_backtrace.set(throwable, throwable);
+        throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
+        throwable.setField(meta.Throwable_backtrace, throwable);
         return throwable;
     }
 

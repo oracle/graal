@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
@@ -208,6 +209,9 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     @TruffleBoundary
     public final int BCItoLineNumber(int atBCI) {
+        if (atBCI < 0) {
+            return atBCI;
+        }
         return codeAttribute.BCItoLineNumber(atBCI);
     }
 
@@ -242,6 +246,26 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     public ExceptionHandler[] getExceptionHandlers() {
         return codeAttribute.getExceptionHandlers();
+    }
+
+    public int[] getSOEHandlerInfo() {
+        ArrayList<Integer> toArray = new ArrayList<>();
+        for (ExceptionHandler handler : getExceptionHandlers()) {
+            if (handler.getCatchType() == Type.StackOverflowError) {
+                toArray.add(handler.getStartBCI());
+                toArray.add(handler.getEndBCI());
+                toArray.add(handler.getHandlerBCI());
+            }
+        }
+        if (toArray.isEmpty()) {
+            return null;
+        }
+        int[] res = new int[toArray.size()];
+        int pos = 0;
+        for (Integer i : toArray) {
+            res[pos++] = i;
+        }
+        return res;
     }
 
     private static String buildJniNativeSignature(Method method) {
@@ -626,7 +650,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         this.poisonPill = true;
     }
 
-    private String getSourceFile() {
+    public String getSourceFile() {
         SourceFileAttribute sfa = (SourceFileAttribute) declaringKlass.getAttribute(Name.SourceFile);
         if (sfa == null) {
             return "unknown source";
