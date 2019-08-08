@@ -135,9 +135,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     protected void finalizeContext(EspressoContext context) {
         long totalTime = System.currentTimeMillis() - startupClock;
         if (totalTime > 5000) {
-            System.out.println("Time spent in Epresso: " + (totalTime / 1000) + "s");
+            System.out.println("Time spent in Espresso: " + (totalTime / 1000) + "s");
         } else {
-            System.out.println("Time spent in Epresso: " + (totalTime) + "ms");
+            System.out.println("Time spent in Espresso: " + (totalTime) + "ms");
         }
         context.interruptActiveThreads();
         // Shutdown.shutdown creates a Cleaner thread. At this point, Polyglot doesn't allow new
