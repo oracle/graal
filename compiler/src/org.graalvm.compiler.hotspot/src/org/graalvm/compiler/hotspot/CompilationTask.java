@@ -303,8 +303,8 @@ public class CompilationTask {
 
     public HotSpotCompilationRequestResult runCompilation(OptionValues initialOptions) {
         OptionValues options = filterOptions(initialOptions);
-        SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
-        try (DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(snippetReflection))) {
+        HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+        try (DebugContext debug = graalRuntime.openDebugContext(options, compilationId, getMethod(), compiler.getDebugHandlersFactories(), DebugContext.DEFAULT_LOG_STREAM)) {
             return runCompilation(debug);
         }
     }
