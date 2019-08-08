@@ -561,6 +561,18 @@ public final class Target_java_lang_Class {
         return StaticObject.NULL;
     }
 
+    @Substitution(hasReceiver = true)
+    public static @Host(byte[].class) StaticObject getRawTypeAnnotations(@Host(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass instanceof ObjectKlass) {
+            Attribute annotations = ((ObjectKlass) klass).getAttribute(Name.RuntimeVisibleTypeAnnotations);
+            if (annotations != null) {
+                return StaticObject.wrap(annotations.getData());
+            }
+        }
+        return StaticObject.NULL;
+    }
+
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static @Host(sun.reflect.ConstantPool.class) StaticObject getConstantPool(@Host(Class.class) StaticObject self) {
