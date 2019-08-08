@@ -55,6 +55,9 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         // @formatter:off
         @Option(help = "", type = OptionType.Debug)
         public static final OptionKey<Boolean> ProfileCompiledMethods = new OptionKey<>(false);
+
+        @Option(help = "", type = OptionType.User)
+        public static final OptionKey<Boolean> Autovectorize = new OptionKey<>(true);
         // @formatter:on
 
     }
@@ -85,7 +88,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         appendPhase(new UseTrappingNullChecksPhase());
 
-        appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST)));
+        if (Options.Autovectorize.getValue(options)) appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST)));
 
         appendPhase(canonicalizer);
 
