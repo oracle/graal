@@ -62,7 +62,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         return false;
     }
 
-    private static PolySigIntrinsics getId(Method m) {
+    public static PolySigIntrinsics getId(Method m) {
         Symbol<Name> name = m.getName();
         if (name == Name.invoke || name == Name.invokeExact) {
             return PolySigIntrinsics.InvokeGeneric;

@@ -59,7 +59,7 @@ final class InvokeDynamicCallSiteNode extends QuickNode {
     public int invoke(final VirtualFrame frame, int top) {
         BytecodeNode root = (BytecodeNode) getParent();
         int argCount = Signatures.parameterCount(parsedSignature, false);
-        Object[] args = root.peekBasicArgumentsWithArray(frame, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount);
+        Object[] args = root.peekBasicArgumentsWithArray(frame, top, parsedSignature, new Object[argCount + (hasAppendix ? 1 : 0)], argCount, 0);
         if (hasAppendix) {
             args[args.length - 1] = appendix;
         }

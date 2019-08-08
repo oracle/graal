@@ -639,4 +639,12 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     public final String report() {
         return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(unknown source)";
     }
+
+    public boolean isMethodHandleInvokeIntrinsic() {
+        return isNative() && declaringKlass == getMeta().MethodHandle && (getName() == Name.invoke || getName() == Name.invokeExact);
+    }
+
+    public boolean isMethodHandleIntrinsic() {
+        return declaringKlass == getMeta().MethodHandle && (isMethodHandleInvokeIntrinsic() || MethodHandleIntrinsics.getId(this) != MethodHandleIntrinsics.PolySigIntrinsics.None);
+    }
 }
