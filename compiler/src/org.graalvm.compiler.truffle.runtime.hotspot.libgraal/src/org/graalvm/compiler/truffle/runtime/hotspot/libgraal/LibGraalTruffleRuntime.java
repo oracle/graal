@@ -104,5 +104,5 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 }
 
 final class JMXInitializer {
-    native static void init(long isolateThreadId, ClassLoader classLoader);
+    static native void init(long isolateThreadId, ClassLoader classLoader);
 }

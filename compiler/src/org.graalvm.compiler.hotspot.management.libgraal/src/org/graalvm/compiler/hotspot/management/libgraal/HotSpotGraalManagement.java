@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import java.lang.management.ManagementFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;

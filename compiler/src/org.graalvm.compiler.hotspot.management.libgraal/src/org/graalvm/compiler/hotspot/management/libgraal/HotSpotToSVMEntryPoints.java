@@ -34,10 +34,11 @@ import java.util.Map;
 import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.MBeanAttributeInfo;
+import javax.management.MBeanException;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanParameterInfo;
-import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
+import javax.management.ReflectionException;
 import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNI.JMethodID;
@@ -163,20 +164,12 @@ public final class HotSpotToSVMEntryPoints {
             map.put("op." + opCounter + ".i", op.getImpact());
             for (MBeanParameterInfo param : op.getSignature()) {
                 String paramName = param.getName();
-                map.put("op." + opCounter + ".arg." + paramName +".name", paramName);
-                map.put("op." + opCounter + ".arg." + paramName +".description", param.getDescription());
-                map.put("op." + opCounter + ".arg." + paramName +".type", param.getType());
+                map.put("op." + opCounter + ".arg." + paramName + ".name", paramName);
+                map.put("op." + opCounter + ".arg." + paramName + ".description", param.getDescription());
+                map.put("op." + opCounter + ".arg." + paramName + ".type", param.getType());
             }
         }
-        byte[] serialized = OptionsEncoder.encode(map);
-        JNI.JByteArray res = JNIUtil.NewByteArray(env, serialized.length);
-        CCharPointer elems = JNIUtil.GetByteArrayElements(env, res, WordFactory.nullPointer());
-        try {
-            CTypeConversion.asByteBuffer(elems, serialized.length).put(serialized);
-        } finally {
-            JNIUtil.ReleaseByteArrayElements(env, res, elems, JNI.JArray.MODE_WRITE_RELEASE);
-        }
-        return res;
+        return mapToRaw(env, map);
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getAttributes")
@@ -194,15 +187,7 @@ public final class HotSpotToSVMEntryPoints {
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_setAttributes")
     public static JNI.JByteArray setAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JByteArray attributes) {
-        int len = JNIUtil.GetArrayLength(env, attributes);
-        byte[] serialized = new byte[len];
-        CCharPointer elems = JNIUtil.GetByteArrayElements(env, attributes, WordFactory.nullPointer());
-        try {
-            CTypeConversion.asByteBuffer(elems, len).get(serialized);
-        } finally {
-            JNIUtil.ReleaseByteArrayElements(env, attributes, elems, JNI.JArray.MODE_WRITE_RELEASE);
-        }
-        Map<String, Object> map = OptionsEncoder.decode(serialized);
+        Map<String, Object> map = rawToMap(env, attributes);
         AttributeList attributesList = new AttributeList();
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             attributesList.add(new Attribute(entry.getKey(), entry.getValue()));
@@ -212,13 +197,44 @@ public final class HotSpotToSVMEntryPoints {
         return attributeListToRaw(env, attributesList);
     }
 
-    private static JNI.JByteArray attributeListToRaw(JNI.JNIEnv env, AttributeList attributesList) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        for (Object item : attributesList) {
-            Attribute attr = (Attribute) item;
-            values.put(attr.getName(), attr.getValue());
+    @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_invoke")
+    public static JNI.JByteArray invoke(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JString hsActionName,
+                    JNI.JByteArray hsParams, JNI.JObjectArray hsSignature) {
+        String actionName = JNIUtil.createString(env, hsActionName);
+        int len = JNIUtil.GetArrayLength(env, hsSignature);
+        String[] signature = new String[len];
+        for (int i = 0; i < len; i++) {
+            signature[i] = JNIUtil.createString(env, (JNI.JString) JNIUtil.GetObjectArrayElement(env, hsSignature, i));
         }
-        byte[] serialized = OptionsEncoder.encode(values);
+        Map<String, Object> map = rawToMap(env, hsParams);
+        Object[] params = map.values().toArray(new Object[map.size()]);
+        HotSpotGraalManagement registration = ObjectHandles.getGlobal().get(WordFactory.pointer(svmRegistration));
+        try {
+            Object result = registration.getBean().invoke(actionName, params, signature);
+            AttributeList attributesList = new AttributeList();
+            if (result != null) {
+                attributesList.add(new Attribute("result", result));
+            }
+            return attributeListToRaw(env, attributesList);
+        } catch (MBeanException | ReflectionException e) {
+            return WordFactory.nullPointer();
+        }
+    }
+
+    private static Map<String, Object> rawToMap(JNI.JNIEnv env, JNI.JByteArray raw) {
+        int len = JNIUtil.GetArrayLength(env, raw);
+        byte[] serialized = new byte[len];
+        CCharPointer elems = JNIUtil.GetByteArrayElements(env, raw, WordFactory.nullPointer());
+        try {
+            CTypeConversion.asByteBuffer(elems, len).get(serialized);
+        } finally {
+            JNIUtil.ReleaseByteArrayElements(env, raw, elems, JNI.JArray.MODE_WRITE_RELEASE);
+        }
+        return OptionsEncoder.decode(serialized);
+    }
+
+    private static JNI.JByteArray mapToRaw(JNI.JNIEnv env, Map<String, Object> map) {
+        byte[] serialized = OptionsEncoder.encode(map);
         JNI.JByteArray res = JNIUtil.NewByteArray(env, serialized.length);
         CCharPointer elems = JNIUtil.GetByteArrayElements(env, res, WordFactory.nullPointer());
         try {
@@ -227,6 +243,15 @@ public final class HotSpotToSVMEntryPoints {
             JNIUtil.ReleaseByteArrayElements(env, res, elems, JNI.JArray.MODE_WRITE_RELEASE);
         }
         return res;
+    }
+
+    private static JNI.JByteArray attributeListToRaw(JNI.JNIEnv env, AttributeList attributesList) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (Object item : attributesList) {
+            Attribute attr = (Attribute) item;
+            values.put(attr.getName(), attr.getValue());
+        }
+        return mapToRaw(env, values);
     }
 
     private static JNI.JClass defineClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String clazzName, byte[] clazz) {

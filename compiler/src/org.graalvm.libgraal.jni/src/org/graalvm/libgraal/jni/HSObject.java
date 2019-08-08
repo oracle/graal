@@ -24,7 +24,6 @@
  */
 package org.graalvm.libgraal.jni;
 
-import org.graalvm.libgraal.jni.JNIUtil;
 import static org.graalvm.libgraal.jni.JNIUtil.DeleteGlobalRef;
 import static org.graalvm.libgraal.jni.JNIUtil.NewGlobalRef;
 

@@ -40,4 +40,6 @@ final class HotSpotToSVMCalls {
     static native byte[] getAttributes(long isolateThreadId, long handle, String[] attributes);
 
     static native byte[] setAttributes(long isolateThreadId, long handle, byte[] rawData);
+
+    static native byte[] invoke(long isolateThreadId, long handle, String actionName, byte[] rawData, String[] signature);
 }
