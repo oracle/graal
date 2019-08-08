@@ -69,6 +69,10 @@ abstract class Operand {
 
     abstract boolean compliesWith(Operand other);
 
+    boolean compliesWithInMerge(Operand other) {
+        return compliesWith(other);
+    }
+
     // Called only after compliesWith returned false, as finding common superType is expensive.
     abstract Operand mergeWith(Operand other);
 }
@@ -220,8 +224,19 @@ class ReferenceOperand extends Operand {
     }
 
     @Override
+    boolean compliesWithInMerge(Operand other) {
+        if (other.isUninit()) {
+            return false;
+        }
+        return compliesWith(other);
+    }
+
+    @Override
     Operand mergeWith(Operand other) {
         if (!other.isReference()) {
+            return null;
+        }
+        if (other.isUninit()) {
             return null;
         }
         if (other.isArrayType()) {
@@ -370,6 +385,22 @@ class UninitReferenceOperand extends ReferenceOperand {
     @Override
     boolean isUninit() {
         return true;
+    }
+
+    @Override
+    boolean compliesWithInMerge(Operand other) {
+        if (other.isUninit()) {
+            return compliesWith(other);
+        }
+        return false;
+    }
+
+    @Override
+    Operand mergeWith(Operand other) {
+        if (other.isUninit()) {
+            return super.mergeWith(other);
+        }
+        return null;
     }
 
     ReferenceOperand init() {

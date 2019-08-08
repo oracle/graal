@@ -358,7 +358,7 @@ class Stack {
             throw new VerifyError("Inconsistent stack height: " + top + " != " + stackFrame.stack.length);
         }
         for (int i = 0; i < top; i++) {
-            if (!stack[i].compliesWith(stackFrame.stack[i])) {
+            if (!stack[i].compliesWithInMerge(stackFrame.stack[i])) {
                 return i;
             }
         }
@@ -475,7 +475,7 @@ class Locals {
         Operand[] frameLocals = frame.locals;
 
         for (int i = 0; i < registers.length; i++) {
-            if (!registers[i].compliesWith(frameLocals[i])) {
+            if (!registers[i].compliesWithInMerge(frameLocals[i])) {
                 return i;
             }
         }
