@@ -30,14 +30,14 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-public final class CoverageNode extends ExecutionEventNode {
+final class CoverageNode extends ExecutionEventNode {
     final SourceSection sourceSection;
     final Node instrumentedNode;
     final boolean isRoot;
     final boolean isStatement;
     @CompilerDirectives.CompilationFinal private volatile boolean covered;
 
-    public CoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
+    CoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
         this.sourceSection = sourceSection;
         this.instrumentedNode = instrumentedNode;
         this.isRoot = isRoot;
