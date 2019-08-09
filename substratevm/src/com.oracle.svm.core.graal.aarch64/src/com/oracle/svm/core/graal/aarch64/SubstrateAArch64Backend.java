@@ -43,6 +43,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.aarch64.AArch64AddressLoweringByUse;
 import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.aarch64.AArch64LIRGenerator;
 import org.graalvm.compiler.core.aarch64.AArch64LIRKindTool;
@@ -808,7 +809,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
     }
 
-    protected LIRKindTool createLirKindTool() {
+    protected AArch64LIRKindTool createLirKindTool() {
         return new SubstrateAArch64LIRKindTool();
     }
 
@@ -896,6 +897,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
     @Override
     public Phase newAddressLoweringPhase(CodeCacheProvider codeCache) {
-        return new AddressLoweringByUsePhase(new SubstrateAArch64AddressLowering());
+        return new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(createLirKindTool()));
     }
 }
