@@ -27,6 +27,11 @@ package org.graalvm.compiler.asm.amd64;
 import static jdk.vm.ci.amd64.AMD64.CPU;
 import static jdk.vm.ci.amd64.AMD64.MASK;
 import static jdk.vm.ci.amd64.AMD64.XMM;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512BW;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512CD;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAddressNop;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIntelNops;
@@ -897,8 +902,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     private enum EVEXFeatureAssertion {
-        AVX512_F_F_F(EnumSet.of(CPUFeature.AVX512F), EnumSet.of(CPUFeature.AVX512F), EnumSet.of(CPUFeature.AVX512F)),
-        AVX512_FVL_FVL_F(EnumSet.of(CPUFeature.AVX512F, CPUFeature.AVX512VL), EnumSet.of(CPUFeature.AVX512F, CPUFeature.AVX512VL), EnumSet.of(CPUFeature.AVX512F));
+        AVX512F_ALL(EnumSet.of(AVX512F), EnumSet.of(AVX512F), EnumSet.of(AVX512F)),
+        AVX512F_128ONLY(EnumSet.of(AVX512F), null, null),
+        AVX512F_VL(EnumSet.of(AVX512F, AVX512VL), EnumSet.of(AVX512F, AVX512VL), EnumSet.of(AVX512F)),
+        AVX512CD_VL(EnumSet.of(AVX512F, AVX512CD, AVX512VL), EnumSet.of(AVX512F, AVX512CD, AVX512VL), EnumSet.of(AVX512F, AVX512CD)),
+        AVX512DQ_VL(EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ)),
+        AVX512BW_VL(EnumSet.of(AVX512F, AVX512BW, AVX512VL), EnumSet.of(AVX512F, AVX512BW, AVX512VL), EnumSet.of(AVX512F, AVX512BW));
 
         private final EnumSet<CPUFeature> l128features;
         private final EnumSet<CPUFeature> l256features;
@@ -953,8 +962,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         BMI1(CPUFeature.BMI1, null, null, CPU, CPU, CPU, null),
         BMI2(CPUFeature.BMI2, null, null, CPU, CPU, CPU, null),
         FMA(CPUFeature.FMA, null, null, XMM, XMM, XMM, null),
-        AVX1_1_512F(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512_F_F_F),
-        AVX1_1_512F_512VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512_FVL_FVL_F);
+
+        XMM_CPU_AVX512F_128ONLY(CPUFeature.AVX, null, EVEXFeatureAssertion.AVX512F_128ONLY, XMM, null, CPU, null),
+        AVX1_AVX512F_ALL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_ALL),
+        AVX1_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL);
 
         private final CPUFeature l128feature;
         private final CPUFeature l256feature;
@@ -1166,16 +1177,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexMoveOp extends VexRMOp {
         // @formatter:off
-        public static final VexMoveOp VMOVDQA = new VexMoveOp("VMOVDQA", P_66, M_0F, WIG, 0x6F, 0x7F);
-        public static final VexMoveOp VMOVDQU = new VexMoveOp("VMOVDQU", P_F3, M_0F, WIG, 0x6F, 0x7F);
-        public static final VexMoveOp VMOVAPS = new VexMoveOp("VMOVAPS", P_,   M_0F, WIG, 0x28, 0x29, VEXOpAssertion.AVX1_1_512F_512VL, EVEXTuple.FVM, W0);
-        public static final VexMoveOp VMOVAPD = new VexMoveOp("VMOVAPD", P_66, M_0F, WIG, 0x28, 0x29, VEXOpAssertion.AVX1_1_512F_512VL, EVEXTuple.FVM, W1);
-        public static final VexMoveOp VMOVUPS = new VexMoveOp("VMOVUPS", P_,   M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_1_512F_512VL, EVEXTuple.FVM, W0);
-        public static final VexMoveOp VMOVUPD = new VexMoveOp("VMOVUPD", P_66, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_1_512F_512VL, EVEXTuple.FVM, W1);
-        public static final VexMoveOp VMOVSS  = new VexMoveOp("VMOVSS",  P_F3, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_1_512F, EVEXTuple.T1S_32BIT, W0);
-        public static final VexMoveOp VMOVSD  = new VexMoveOp("VMOVSD",  P_F2, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_1_512F, EVEXTuple.T1S_64BIT, W1);
-        public static final VexMoveOp VMOVD   = new VexMoveOp("VMOVD",   P_66, M_0F, W0,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU);
-        public static final VexMoveOp VMOVQ   = new VexMoveOp("VMOVQ",   P_66, M_0F, W1,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU);
+        public static final VexMoveOp VMOVDQA32 = new VexMoveOp("VMOVDQA32", P_66, M_0F, WIG, 0x6F, 0x7F, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W0);
+        public static final VexMoveOp VMOVDQA64 = new VexMoveOp("VMOVDQA64", P_66, M_0F, WIG, 0x6F, 0x7F, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
+        public static final VexMoveOp VMOVDQU32 = new VexMoveOp("VMOVDQU32", P_F3, M_0F, WIG, 0x6F, 0x7F, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W0);
+        public static final VexMoveOp VMOVDQU64 = new VexMoveOp("VMOVDQU64", P_F3, M_0F, WIG, 0x6F, 0x7F, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
+        public static final VexMoveOp VMOVAPS   = new VexMoveOp("VMOVAPS",   P_,   M_0F, WIG, 0x28, 0x29, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W0);
+        public static final VexMoveOp VMOVAPD   = new VexMoveOp("VMOVAPD",   P_66, M_0F, WIG, 0x28, 0x29, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
+        public static final VexMoveOp VMOVUPS   = new VexMoveOp("VMOVUPS",   P_,   M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W0);
+        public static final VexMoveOp VMOVUPD   = new VexMoveOp("VMOVUPD",   P_66, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
+        public static final VexMoveOp VMOVSS    = new VexMoveOp("VMOVSS",    P_F3, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_32BIT, W0);
+        public static final VexMoveOp VMOVSD    = new VexMoveOp("VMOVSD",    P_F2, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_64BIT, W1);
+        public static final VexMoveOp VMOVD     = new VexMoveOp("VMOVD",     P_66, M_0F, W0,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1F_32BIT, W0);
+        public static final VexMoveOp VMOVQ     = new VexMoveOp("VMOVQ",     P_66, M_0F, W1,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, W1);
         // @formatter:on
 
         private final int opReverse;
@@ -3818,12 +3831,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void vmovdqu(Register dst, AMD64Address src) {
-        VexMoveOp.VMOVDQU.emit(this, AVXSize.YMM, dst, src);
+        VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
     }
 
     public final void vmovdqu(AMD64Address dst, Register src) {
         assert inRC(XMM, src);
-        VexMoveOp.VMOVDQU.emit(this, AVXSize.YMM, dst, src);
+        VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
     }
 
     public final void vpmovzxbw(Register dst, AMD64Address src) {
