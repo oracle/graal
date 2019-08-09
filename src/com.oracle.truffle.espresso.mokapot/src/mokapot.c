@@ -595,8 +595,8 @@ jbyteArray JVM_GetClassTypeAnnotations(JNIEnv *env, jclass cls) {
 }
 
 jbyteArray JVM_GetFieldTypeAnnotations(JNIEnv *env, jobject field) {
-  UNIMPLEMENTED(JVM_GetFieldTypeAnnotations);
-  return NULL;
+  IMPLEMENTED(JVM_GetFieldTypeAnnotations);
+  return (*getEnv())->JVM_GetFieldTypeAnnotations(env, field);
 }
 
 jbyteArray JVM_GetMethodTypeAnnotations(JNIEnv *env, jobject method) {
@@ -1262,6 +1262,52 @@ void JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
 									 jobject dstObj, jlong dstOffset, 
 									 jlong size,     jlong elemSize) {
   UNIMPLEMENTED(JVM_CopySwapMemory);
+}
+
+jboolean JVM_CX8Field(JNIEnv *env, jobject obj, jfieldID fid, jlong oldVal, jlong newVal) {
+  UNIMPLEMENTED(JVM_CX8Field);
+  return 0;
+}
+
+jclass JVM_DefineClassWithSourceCond(JNIEnv *env, const char *name,
+                                                  jobject loader, const jbyte *buf,
+                                                  jsize len, jobject pd,
+                                                  const char *source, jboolean verify) {
+  UNIMPLEMENTED(JVM_DefineClassWithSourceCond);
+  return NULL;
+}
+
+jobject JVM_GetClassLoader(JNIEnv *env, jclass cls) {
+  UNIMPLEMENTED(JVM_GetClassLoader);
+  return NULL;
+}
+
+jbyteArray JVM_GetFieldAnnotations(JNIEnv *env, jobject field) {
+  UNIMPLEMENTED(JVM_GetFieldAnnotations);
+  return NULL;
+}
+
+jbyteArray JVM_GetMethodAnnotations(JNIEnv *env, jobject method) {
+  UNIMPLEMENTED(JVM_GetMethodAnnotations);
+  return NULL;
+}
+
+jbyteArray JVM_GetMethodDefaultAnnotationValue(JNIEnv *env, jobject method) {
+  UNIMPLEMENTED(JVM_GetMethodDefaultAnnotationValue);
+  return NULL;
+}
+
+jbyteArray JVM_GetMethodParameterAnnotations(JNIEnv *env, jobject method) {
+  UNIMPLEMENTED(JVM_GetMethodParameterAnnotations);
+  return NULL;
+}
+
+int JVM_handle_linux_signal(int sig,
+                          siginfo_t* info,
+                          void* ucVoid,
+                          int abort_if_unrecognized) {
+  UNIMPLEMENTED(JVM_handle_linux_signal);
+  return 0;
 }
 
 int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
