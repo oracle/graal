@@ -939,12 +939,12 @@ public abstract class AMD64BaseAssembler extends Assembler {
         }
     }
 
-    public static boolean isAVX512Registers(Register reg) {
+    public static boolean isAVX512Register(Register reg) {
         return reg != null && reg.isValid() && AMD64.XMM.equals(reg.getRegisterCategory()) && reg.encoding > 15;
     }
 
     public final boolean vexPrefix(Register dst, Register nds, Register src, AVXSize size, int pp, int mmmmm, int w, int wEvex, boolean checkAVX) {
-        if (isAVX512Registers(dst) || isAVX512Registers(nds) || isAVX512Registers(src)) {
+        if (isAVX512Register(dst) || isAVX512Register(nds) || isAVX512Register(src)) {
             evexPrefix(dst, Register.None, nds, src, size, pp, mmmmm, wEvex, Z0, B0);
             return true;
         }
@@ -953,7 +953,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
     }
 
     public final boolean vexPrefix(Register dst, Register nds, AMD64Address src, AVXSize size, int pp, int mmmmm, int w, int wEvex, boolean checkAVX) {
-        if (isAVX512Registers(dst) || isAVX512Registers(nds)) {
+        if (isAVX512Register(dst) || isAVX512Register(nds)) {
             evexPrefix(dst, Register.None, nds, src, size, pp, mmmmm, wEvex, Z0, B0);
             return true;
         }
