@@ -1596,11 +1596,13 @@ suite = {
           "jdk.internal.module",
         ]
       },
+      "checkPackagePrefix" : "false",
       "javaCompliance" : "11+",
       "overlayTarget" : "org.graalvm.compiler.test",
       "multiReleaseJarVersion" : "11",
       "checkstyle" : "org.graalvm.compiler.graph",
       "workingSets" : "Graal,Test",
+      "testProject" : True,
     },
 
     "org.graalvm.compiler.core.test" : {
