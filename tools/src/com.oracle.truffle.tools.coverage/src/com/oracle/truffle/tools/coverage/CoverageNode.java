@@ -35,7 +35,7 @@ final class CoverageNode extends ExecutionEventNode {
     final Node instrumentedNode;
     final boolean isRoot;
     final boolean isStatement;
-    @CompilerDirectives.CompilationFinal private volatile boolean covered;
+    @CompilerDirectives.CompilationFinal volatile boolean covered;
 
     CoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
         this.sourceSection = sourceSection;
