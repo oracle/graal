@@ -269,8 +269,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         private final SharedMethod method;
 
-        public SubstrateLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, SharedMethod method) {
-            super(compilationId, lir, frameMapBuilder, callingConvention);
+        public SubstrateLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, RegisterAllocationConfig registerAllocationConfig,
+                        CallingConvention callingConvention, SharedMethod method) {
+            super(compilationId, lir, frameMapBuilder, registerAllocationConfig, callingConvention);
             this.method = method;
 
             if (method.canDeoptimize() || method.isDeoptTarget()) {
@@ -885,11 +886,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterConfig registerConfig, StructuredGraph graph, Object stub) {
+    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterAllocationConfig registerAllocationConfig, StructuredGraph graph, Object stub) {
         SharedMethod method = (SharedMethod) graph.method();
         CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), method.isEntryPoint() ? SubstrateCallingConventionType.NativeCallee
                         : SubstrateCallingConventionType.JavaCallee, method, this);
-        return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerConfig), callingConvention, method);
+        return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), registerAllocationConfig, callingConvention, method);
     }
 
     @Override
