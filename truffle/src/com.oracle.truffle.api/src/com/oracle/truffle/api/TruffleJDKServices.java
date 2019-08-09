@@ -44,8 +44,13 @@ import java.util.List;
 
 /**
  * JDK version independent interface to JDK services used by Truffle.
+ *
+ * @since 19.3
  */
-public class TruffleJDKServices {
+public final class TruffleJDKServices {
+
+    private TruffleJDKServices() {
+    }
 
     private static InternalError shouldNotReachHere() {
         throw new InternalError("JDK specific overlay for " + TruffleJDKServices.class.getName() + " missing");
@@ -57,6 +62,8 @@ public class TruffleJDKServices {
      * @param loader the loader used to load the classes of the client
      * @param moduleName the name of the module containing the client. This will be {@code null} if
      *            the client is not deployed as a module.
+     *
+     * @since 19.3
      */
     public static void exportTo(ClassLoader loader, String moduleName) {
         throw shouldNotReachHere();
@@ -65,7 +72,9 @@ public class TruffleJDKServices {
     /**
      * Exports all Truffle packages to the module containing {@code client}.
      *
-     * @param client
+     * @param client class in a module that requires access to Truffle
+     *
+     * @since 19.3
      */
     public static void exportTo(Class<?> client) {
         throw shouldNotReachHere();
