@@ -60,7 +60,7 @@ class LineCoverage {
 
         loadedLineNumbers = loadedLineNumbers();
         coveredLineNumbers = coveredLineNumbers();
-        nonCoveredLineNumbers = detailed ? nonCoveredLineNumbers() : null;
+        nonCoveredLineNumbers = nonCoveredLineNumbers();
         loadedRootLineNumbers = detailed ? loadedRootLineNumbers() : null;
         coveredRootLineNumbers = detailed ? coveredRootLineNumbers() : null;
         nonCoveredRootLineNumbers = detailed ? nonCoveredRootLineNumbers() : null;
