@@ -26,6 +26,7 @@ package com.oracle.objectfile;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -1592,12 +1593,19 @@ public abstract class ObjectFile {
         return decisionsByElement;
     }
 
+    /**
+     * See {@code org.graalvm.compiler.serviceprovider.BufferUtil}.
+     */
+    private static Buffer asBaseBuffer(Buffer obj) {
+        return obj;
+    }
+
     public void writeBuffer(List<Element> sortedObjectFileElements, ByteBuffer out) {
         /* Emit each one! */
         for (Element e : sortedObjectFileElements) {
             int off = (int) decisionsTaken.get(e).getDecision(LayoutDecision.Kind.OFFSET).getValue();
             assert off != Integer.MAX_VALUE; // not allowed any more -- this was a broken approach
-            out.position(off);
+            asBaseBuffer(out).position(off);
             int expectedSize = (int) decisionsTaken.get(e).getDecidedValue(LayoutDecision.Kind.SIZE);
             byte[] content = (byte[]) decisionsTaken.get(e).getDecidedValue(LayoutDecision.Kind.CONTENT);
             out.put(content);
