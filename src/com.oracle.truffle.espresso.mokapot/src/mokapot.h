@@ -32,215 +32,223 @@ enum OSReturn {
 };
 
 #define VM_METHOD_LIST(V) \
-    V(JVM_GetInterfaceVersion) \
-    V(JVM_IHashCode) \
-    V(JVM_MonitorWait) \
-    V(JVM_MonitorNotify) \
-    V(JVM_MonitorNotifyAll) \
-    V(JVM_Clone) \
-    V(JVM_InternString) \
-    V(JVM_CurrentTimeMillis) \
-    V(JVM_NanoTime) \
-    V(JVM_ArrayCopy) \
-    V(JVM_InitProperties) \
-    V(JVM_OnExit) \
-    V(JVM_Exit) \
-    V(JVM_Halt) \
-    V(JVM_GC) \
-    V(JVM_MaxObjectInspectionAge) \
-    V(JVM_TraceInstructions) \
-    V(JVM_TraceMethodCalls) \
-    V(JVM_TotalMemory) \
-    V(JVM_FreeMemory) \
-    V(JVM_MaxMemory) \
+    V(JVM_Accept) \
     V(JVM_ActiveProcessorCount) \
-    V(JVM_LoadLibrary) \
-    V(JVM_UnloadLibrary) \
-    V(JVM_FindLibraryEntry) \
-    V(JVM_IsSupportedJNIVersion) \
-    V(JVM_IsNaN) \
-    V(JVM_FillInStackTrace) \
-    V(JVM_GetStackTraceDepth) \
-    V(JVM_GetStackTraceElement) \
-    V(JVM_InitializeCompiler) \
-    V(JVM_IsSilentCompiler) \
+    V(JVM_AllocateNewArray) \
+    V(JVM_AllocateNewObject) \
+    V(JVM_ArrayCopy) \
+    V(JVM_AssertionStatusDirectives) \
+    V(JVM_Available) \
+    V(JVM_Bind) \
+    V(JVM_ClassDepth) \
+    V(JVM_ClassLoaderDepth) \
+    V(JVM_Clone) \
+    V(JVM_Close) \
+    V(JVM_CX8Field) \
     V(JVM_CompileClass) \
     V(JVM_CompileClasses) \
     V(JVM_CompilerCommand) \
-    V(JVM_EnableCompiler) \
-    V(JVM_DisableCompiler) \
-    V(JVM_StartThread) \
-    V(JVM_StopThread) \
-    V(JVM_IsThreadAlive) \
-    V(JVM_SuspendThread) \
-    V(JVM_ResumeThread) \
-    V(JVM_SetThreadPriority) \
-    V(JVM_Yield) \
-    V(JVM_Sleep) \
-    V(JVM_CurrentThread) \
-    V(JVM_CountStackFrames) \
-    V(JVM_Interrupt) \
-    V(JVM_IsInterrupted) \
-    V(JVM_HoldsLock) \
-    V(JVM_DumpAllStacks) \
-    V(JVM_GetAllThreads) \
-    V(JVM_SetNativeThreadName) \
-    V(JVM_DumpThreads) \
-    V(JVM_CurrentLoadedClass) \
-    V(JVM_CurrentClassLoader) \
-    V(JVM_GetClassContext) \
-    V(JVM_ClassDepth) \
-    V(JVM_ClassLoaderDepth) \
-    V(JVM_GetSystemPackage) \
-    V(JVM_GetSystemPackages) \
-    V(JVM_AllocateNewObject) \
-    V(JVM_AllocateNewArray) \
-    V(JVM_LatestUserDefinedLoader) \
-    V(JVM_LoadClass0) \
-    V(JVM_GetArrayLength) \
-    V(JVM_GetArrayElement) \
-    V(JVM_GetPrimitiveArrayElement) \
-    V(JVM_SetArrayElement) \
-    V(JVM_SetPrimitiveArrayElement) \
-    V(JVM_NewArray) \
-    V(JVM_NewMultiArray) \
-    V(JVM_GetCallerClass) \
-    V(JVM_FindPrimitiveClass) \
-    V(JVM_ResolveClass) \
-    V(JVM_FindClassFromBootLoader) \
-    V(JVM_FindClassFromCaller) \
-    V(JVM_FindClassFromClassLoader) \
-    V(JVM_FindClassFromClass) \
-    V(JVM_FindLoadedClass) \
-    V(JVM_DefineClass) \
-    V(JVM_DefineClassWithSource) \
-    V(JVM_GetClassName) \
-    V(JVM_GetClassInterfaces) \
-    V(JVM_IsInterface) \
-    V(JVM_GetClassSigners) \
-    V(JVM_SetClassSigners) \
-    V(JVM_GetProtectionDomain) \
-    V(JVM_IsArrayClass) \
-    V(JVM_IsPrimitiveClass) \
-    V(JVM_GetComponentType) \
-    V(JVM_GetClassModifiers) \
-    V(JVM_GetDeclaredClasses) \
-    V(JVM_GetDeclaringClass) \
-    V(JVM_GetClassSignature) \
-    V(JVM_GetClassAnnotations) \
-    V(JVM_GetClassTypeAnnotations) \
-    V(JVM_GetFieldTypeAnnotations) \
-    V(JVM_GetMethodTypeAnnotations) \
-    V(JVM_GetClassDeclaredMethods) \
-    V(JVM_GetClassDeclaredFields) \
-    V(JVM_GetClassDeclaredConstructors) \
-    V(JVM_GetClassAccessFlags) \
-    V(JVM_InvokeMethod) \
-    V(JVM_NewInstanceFromConstructor) \
-    V(JVM_GetClassConstantPool) \
-    V(JVM_ConstantPoolGetSize) \
+    V(JVM_Connect) \
     V(JVM_ConstantPoolGetClassAt) \
     V(JVM_ConstantPoolGetClassAtIfLoaded) \
-    V(JVM_ConstantPoolGetMethodAt) \
-    V(JVM_ConstantPoolGetMethodAtIfLoaded) \
+    V(JVM_ConstantPoolGetDoubleAt) \
     V(JVM_ConstantPoolGetFieldAt) \
     V(JVM_ConstantPoolGetFieldAtIfLoaded) \
-    V(JVM_ConstantPoolGetMemberRefInfoAt) \
+    V(JVM_ConstantPoolGetFloatAt) \
     V(JVM_ConstantPoolGetIntAt) \
     V(JVM_ConstantPoolGetLongAt) \
-    V(JVM_ConstantPoolGetFloatAt) \
-    V(JVM_ConstantPoolGetDoubleAt) \
+    V(JVM_ConstantPoolGetMethodAt) \
+    V(JVM_ConstantPoolGetMethodAtIfLoaded) \
+    V(JVM_ConstantPoolGetMemberRefInfoAt) \
+    V(JVM_ConstantPoolGetSize) \
     V(JVM_ConstantPoolGetStringAt) \
     V(JVM_ConstantPoolGetUTF8At) \
-    V(JVM_GetMethodParameters) \
-    V(JVM_DoPrivileged) \
-    V(JVM_GetInheritedAccessControlContext) \
-    V(JVM_GetStackAccessControlContext) \
-    V(JVM_RegisterSignal) \
-    V(JVM_RaiseSignal) \
-    V(JVM_FindSignal) \
+    V(JVM_CopySwapMemory) \
+    V(JVM_CountStackFrames) \
+    V(JVM_CurrentClassLoader) \
+    V(JVM_CurrentLoadedClass) \
+    V(JVM_CurrentThread) \
+    V(JVM_CurrentTimeMillis) \
+    V(JVM_DefineClass) \
+    V(JVM_DefineClassWithSource) \
+    V(JVM_DefineClassWithSourceCond) \
     V(JVM_DesiredAssertionStatus) \
-    V(JVM_AssertionStatusDirectives) \
-    V(JVM_SupportsCX8) \
+    V(JVM_DisableCompiler) \
+    V(JVM_DoPrivileged) \
     V(JVM_DTraceGetVersion) \
     V(JVM_DTraceActivate) \
     V(JVM_DTraceIsProbeEnabled) \
-    V(JVM_DTraceDispose) \
     V(JVM_DTraceIsSupported) \
-    V(JVM_GetClassNameUTF) \
-    V(JVM_GetClassCPTypes) \
-    V(JVM_GetClassCPEntriesCount) \
-    V(JVM_GetClassFieldsCount) \
-    V(JVM_GetClassMethodsCount) \
-    V(JVM_GetMethodIxExceptionIndexes) \
-    V(JVM_GetMethodIxExceptionsCount) \
-    V(JVM_GetMethodIxByteCode) \
-    V(JVM_GetMethodIxByteCodeLength) \
-    V(JVM_GetMethodIxExceptionTableEntry) \
-    V(JVM_GetMethodIxExceptionTableLength) \
-    V(JVM_GetFieldIxModifiers) \
-    V(JVM_GetMethodIxModifiers) \
-    V(JVM_GetMethodIxLocalsCount) \
-    V(JVM_GetMethodIxArgsSize) \
-    V(JVM_GetMethodIxMaxStack) \
-    V(JVM_IsConstructorIx) \
-    V(JVM_IsVMGeneratedMethodIx) \
-    V(JVM_GetMethodIxNameUTF) \
-    V(JVM_GetMethodIxSignatureUTF) \
-    V(JVM_GetCPFieldNameUTF) \
-    V(JVM_GetCPMethodNameUTF) \
-    V(JVM_GetCPMethodSignatureUTF) \
-    V(JVM_GetCPFieldSignatureUTF) \
+    V(JVM_DTraceDispose) \
+    V(JVM_DumpAllStacks) \
+    V(JVM_DumpThreads) \
+    V(JVM_EnableCompiler) \
+    V(JVM_Exit) \
+    V(JVM_FillInStackTrace) \
+    V(JVM_FindClassFromCaller) \
+    V(JVM_FindClassFromClass) \
+    V(JVM_FindClassFromClassLoader) \
+    V(JVM_FindClassFromBootLoader) \
+    V(JVM_FindLibraryEntry) \
+    V(JVM_FindLoadedClass) \
+    V(JVM_FindPrimitiveClass) \
+    V(JVM_FindSignal) \
+    V(JVM_FreeMemory) \
+    V(JVM_GC) \
+    V(JVM_GetAllThreads) \
+    V(JVM_GetArrayElement) \
+    V(JVM_GetArrayLength) \
     V(JVM_GetCPClassNameUTF) \
     V(JVM_GetCPFieldClassNameUTF) \
-    V(JVM_GetCPMethodClassNameUTF) \
     V(JVM_GetCPFieldModifiers) \
+    V(JVM_GetCPFieldNameUTF) \
+    V(JVM_GetCPFieldSignatureUTF) \
+    V(JVM_GetCPMethodClassNameUTF) \
     V(JVM_GetCPMethodModifiers) \
-    V(JVM_ReleaseUTF) \
-    V(JVM_IsSameClassPackage) \
+    V(JVM_GetCPMethodNameUTF) \
+    V(JVM_GetCPMethodSignatureUTF) \
+    V(JVM_GetCallerClass) \
+    V(JVM_GetClassAccessFlags) \
+    V(JVM_GetClassAnnotations) \
+    V(JVM_GetClassCPEntriesCount) \
+    V(JVM_GetClassCPTypes) \
+    V(JVM_GetClassConstantPool) \
+    V(JVM_GetClassContext) \
+    V(JVM_GetClassDeclaredConstructors) \
+    V(JVM_GetClassDeclaredFields) \
+    V(JVM_GetClassDeclaredMethods) \
+    V(JVM_GetClassFieldsCount) \
+    V(JVM_GetClassInterfaces) \
+    V(JVM_GetClassLoader) \
+    V(JVM_GetClassMethodsCount) \
+    V(JVM_GetClassModifiers) \
+    V(JVM_GetClassName) \
+    V(JVM_GetClassNameUTF) \
+    V(JVM_GetClassSignature) \
+    V(JVM_GetClassSigners) \
+    V(JVM_GetClassTypeAnnotations) \
+    V(JVM_GetComponentType) \
+    V(JVM_GetDeclaredClasses) \
+    V(JVM_GetDeclaringClass) \
+    V(JVM_GetEnclosingMethodInfo) \
+    V(JVM_GetFieldAnnotations) \
+    V(JVM_GetFieldIxModifiers) \
+    V(JVM_GetFieldTypeAnnotations) \
+    V(JVM_GetHostName) \
+    V(JVM_GetInheritedAccessControlContext) \
+    V(JVM_GetInterfaceVersion) \
     V(JVM_GetLastErrorString) \
-    V(JVM_NativePath) \
-    V(JVM_Open) \
-    V(JVM_Close) \
-    V(JVM_Read) \
-    V(JVM_Write) \
-    V(JVM_Available) \
-    V(JVM_Lseek) \
-    V(JVM_SetLength) \
-    V(JVM_Sync) \
-    V(JVM_InitializeSocketLibrary) \
-    V(JVM_Socket) \
-    V(JVM_SocketClose) \
-    V(JVM_SocketShutdown) \
-    V(JVM_Recv) \
-    V(JVM_Send) \
-    V(JVM_Timeout) \
-    V(JVM_Listen) \
-    V(JVM_Connect) \
-    V(JVM_Bind) \
-    V(JVM_Accept) \
-    V(JVM_RecvFrom) \
-    V(JVM_SendTo) \
-    V(JVM_SocketAvailable) \
+    V(JVM_GetManagement) \
+    V(JVM_GetMethodAnnotations) \
+    V(JVM_GetMethodDefaultAnnotationValue) \
+    V(JVM_GetMethodIxArgsSize) \
+    V(JVM_GetMethodIxByteCode) \
+    V(JVM_GetMethodIxByteCodeLength) \
+    V(JVM_GetMethodIxExceptionIndexes) \
+    V(JVM_GetMethodIxExceptionTableEntry) \
+    V(JVM_GetMethodIxExceptionTableLength) \
+    V(JVM_GetMethodIxExceptionsCount) \
+    V(JVM_GetMethodIxLocalsCount) \
+    V(JVM_GetMethodIxMaxStack) \
+    V(JVM_GetMethodIxModifiers) \
+    V(JVM_GetMethodIxNameUTF) \
+    V(JVM_GetMethodIxSignatureUTF) \
+    V(JVM_GetMethodParameterAnnotations) \
+    V(JVM_GetMethodParameters) \
+    V(JVM_GetMethodTypeAnnotations) \
+    V(JVM_GetPrimitiveArrayElement) \
+    V(JVM_GetProtectionDomain) \
     V(JVM_GetSockName) \
     V(JVM_GetSockOpt) \
-    V(JVM_SetSockOpt) \
-    V(JVM_GetHostName) \
+    V(JVM_GetStackAccessControlContext) \
+    V(JVM_GetStackTraceDepth) \
+    V(JVM_GetStackTraceElement) \
+    V(JVM_GetSystemPackage) \
+    V(JVM_GetSystemPackages) \
+    V(JVM_GetTemporaryDirectory) \
+    V(JVM_GetThreadStateNames) \
+    V(JVM_GetThreadStateValues) \
+    V(JVM_GetVersionInfo) \
+    V(JVM_Halt) \
+    V(JVM_HoldsLock) \
+    V(JVM_IHashCode) \
+    V(JVM_InitAgentProperties) \
+    V(JVM_InitProperties) \
+    V(JVM_InitializeCompiler) \
+    V(JVM_InitializeSocketLibrary) \
+    V(JVM_InternString) \
+    V(JVM_Interrupt) \
+    V(JVM_InvokeMethod) \
+    V(JVM_IsArrayClass) \
+    V(JVM_IsConstructorIx) \
+    V(JVM_IsInterface) \
+    V(JVM_IsInterrupted) \
+    V(JVM_IsNaN) \
+    V(JVM_IsPrimitiveClass) \
+    V(JVM_IsSameClassPackage) \
+    V(JVM_IsSilentCompiler) \
+    V(JVM_IsSupportedJNIVersion) \
+    V(JVM_IsThreadAlive) \
+    V(JVM_IsVMGeneratedMethodIx) \
+    V(JVM_LatestUserDefinedLoader) \
+    V(JVM_Listen) \
+    V(JVM_LoadClass0) \
+    V(JVM_LoadLibrary) \
+    V(JVM_Lseek) \
+    V(JVM_MaxObjectInspectionAge) \
+    V(JVM_MaxMemory) \
+    V(JVM_MonitorNotify) \
+    V(JVM_MonitorNotifyAll) \
+    V(JVM_MonitorWait) \
+    V(JVM_NanoTime) \
+    V(JVM_NativePath) \
+    V(JVM_NewArray) \
+    V(JVM_NewInstanceFromConstructor) \
+    V(JVM_NewMultiArray) \
+    V(JVM_OnExit) \
+    V(JVM_Open) \
+    V(JVM_RaiseSignal) \
     V(JVM_RawMonitorCreate) \
     V(JVM_RawMonitorDestroy) \
     V(JVM_RawMonitorEnter) \
     V(JVM_RawMonitorExit) \
-    V(JVM_GetManagement) \
-    V(JVM_InitAgentProperties) \
-    V(JVM_GetTemporaryDirectory) \
-    V(JVM_GetEnclosingMethodInfo) \
-    V(JVM_GetThreadStateValues) \
-    V(JVM_GetThreadStateNames) \
+    V(JVM_Read) \
+    V(JVM_Recv) \
+    V(JVM_RecvFrom) \
+    V(JVM_RegisterSignal) \
+    V(JVM_ReleaseUTF) \
+    V(JVM_ResolveClass) \
     V(JVM_KnownToNotExist) \
     V(JVM_GetResourceLookupCacheURLs) \
     V(JVM_GetResourceLookupCache) \
-    V(JVM_GetVersionInfo) \
-    V(JVM_CopySwapMemory)
+    V(JVM_ResumeThread) \
+    V(JVM_Send) \
+    V(JVM_SendTo) \
+    V(JVM_SetArrayElement) \
+    V(JVM_SetClassSigners) \
+    V(JVM_SetLength) \
+    V(JVM_SetNativeThreadName) \
+    V(JVM_SetPrimitiveArrayElement) \
+    V(JVM_SetSockOpt) \
+    V(JVM_SetThreadPriority) \
+    V(JVM_Sleep) \
+    V(JVM_Socket) \
+    V(JVM_SocketAvailable) \
+    V(JVM_SocketClose) \
+    V(JVM_SocketShutdown) \
+    V(JVM_StartThread) \
+    V(JVM_StopThread) \
+    V(JVM_SuspendThread) \
+    V(JVM_SupportsCX8) \
+    V(JVM_Sync) \
+    V(JVM_Timeout) \
+    V(JVM_TotalMemory) \
+    V(JVM_TraceInstructions) \
+    V(JVM_TraceMethodCalls) \
+    V(JVM_UnloadLibrary) \
+    V(JVM_Write) \
+    V(JVM_Yield) \
+    V(JVM_handle_linux_signal)
 
 #ifdef __cplusplus
 extern "C" {
@@ -684,6 +692,28 @@ void (*JVM_CopySwapMemory)(JNIEnv *env, jobject srcObj, jlong srcOffset,
 									 jlong size,     jlong elemSize);
 
 void (*Mokapot_SetJNIEnv)(JNIEnv* env);
+
+jboolean (*JVM_CX8Field)(JNIEnv *env, jobject obj, jfieldID fid, jlong oldVal, jlong newVal);
+
+jclass (*JVM_DefineClassWithSourceCond)(JNIEnv *env, const char *name,
+                                                  jobject loader, const jbyte *buf,
+                                                  jsize len, jobject pd,
+                                                  const char *source, jboolean verify);
+
+jobject (*JVM_GetClassLoader)(JNIEnv *env, jclass cls);
+
+jbyteArray (*JVM_GetFieldAnnotations)(JNIEnv *env, jobject field);
+
+jbyteArray (*JVM_GetMethodAnnotations)(JNIEnv *env, jobject method);
+
+jbyteArray (*JVM_GetMethodDefaultAnnotationValue)(JNIEnv *env, jobject method);
+
+jbyteArray (*JVM_GetMethodParameterAnnotations)(JNIEnv *env, jobject method);
+
+int (*JVM_handle_linux_signal)(int sig,
+                          siginfo_t* info,
+                          void* ucVoid,
+                          int abort_if_unrecognized);
 
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,15 +19,42 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
+
+#ifndef SHARE_VM_PRIMS_JVM_H
+#define SHARE_VM_PRIMS_JVM_H
+
+// Unused/not-implemented in Espresso
+// #include "jni.h"
+// #ifdef TARGET_OS_FAMILY_linux
+// # include "jvm_linux.h"
+// #endif
+// #ifdef TARGET_OS_FAMILY_solaris
+// # include "jvm_solaris.h"
+// #endif
+// #ifdef TARGET_OS_FAMILY_windows
+// # include "jvm_windows.h"
+// #endif
+// #ifdef TARGET_OS_FAMILY_aix
+// # include "jvm_aix.h"
+// #endif
+// #ifdef TARGET_OS_FAMILY_bsd
+// # include "jvm_bsd.h"
+// #endif
 
 #ifndef _JAVASOFT_JVM_H_
 #define _JAVASOFT_JVM_H_
 
-#include <sys/stat.h>
+// HotSpot integration note:
+//
+// This file and jvm.h used with the JDK are identical,
+// except for the three includes removed below
 
+#include <sys/stat.h>
 #include "jni.h"
 #include "jvm_md.h"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +89,9 @@ extern "C" {
  */
 
 #define JVM_INTERFACE_VERSION 4
+
+JNIEXPORT jobjectArray JNICALL
+JVM_GetMethodParameters(JNIEnv *env, jobject method);
 
 JNIEXPORT jint JNICALL
 JVM_GetInterfaceVersion(void);
@@ -114,6 +144,14 @@ JVM_InitProperties(JNIEnv *env, jobject p);
  */
 JNIEXPORT void JNICALL
 JVM_OnExit(void (*func)(void));
+
+/*
+ * java.nio.Bits
+ */
+JNIEXPORT void JNICALL
+JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
+                   jobject dstObj, jlong dstOffset, jlong size,
+                   jlong elemSize);
 
 /*
  * java.lang.Runtime
@@ -352,17 +390,15 @@ JVM_NewMultiArray(JNIEnv *env, jclass eltClass, jintArray dim);
 #define JVM_CALLER_DEPTH -1
 
 /*
- * Returns the immediate caller class of the native method invoking
- * JVM_GetCallerClass.  The Method.invoke and other frames due to
- * reflection machinery are skipped.
+ * Returns the class in which the code invoking the native method
+ * belongs.
  *
- * The depth parameter must be -1 (JVM_DEPTH). The caller is expected
- * to be marked with sun.reflect.CallerSensitive.  The JVM will throw
- * an error if it is not marked propertly.
+ * Note that in JDK 1.1, native methods did not create a frame.
+ * In 1.2, they do. Therefore native methods like Class.forName
+ * can no longer look at the current frame for the caller class.
  */
 JNIEXPORT jclass JNICALL
-JVM_GetCallerClass(JNIEnv *env, int depth);
-
+JVM_GetCallerClass(JNIEnv *env, int n);
 
 /*
  * Find primitive classes
@@ -376,6 +412,15 @@ JVM_FindPrimitiveClass(JNIEnv *env, const char *utf);
  */
 JNIEXPORT void JNICALL
 JVM_ResolveClass(JNIEnv *env, jclass cls);
+
+/*
+ * Find a class from a given class loader. Throw ClassNotFoundException
+ * or NoClassDefFoundError depending on the value of the last
+ * argument.
+ */
+JNIEXPORT jclass JNICALL
+JVM_FindClassFromClassLoader(JNIEnv *env, const char *name, jboolean init,
+                             jobject loader, jboolean throwError);
 
 /*
  * Find a class from a boot class loader. Returns NULL if class not found.
@@ -395,15 +440,6 @@ JVM_FindClassFromBootLoader(JNIEnv *env, const char *name);
 JNIEXPORT jclass JNICALL
 JVM_FindClassFromCaller(JNIEnv *env, const char *name, jboolean init,
                         jobject loader, jclass caller);
-
-/*
- * Find a class from a given class loader. Throw ClassNotFoundException
- * or NoClassDefFoundError depending on the value of the last
- * argument.
- */
-JNIEXPORT jclass JNICALL
-JVM_FindClassFromClassLoader(JNIEnv *env, const char *name, jboolean init,
-                             jobject loader, jboolean throwError);
 
 /*
  * Find a class from a given class.
@@ -427,6 +463,17 @@ JVM_DefineClassWithSource(JNIEnv *env, const char *name, jobject loader,
                           const jbyte *buf, jsize len, jobject pd,
                           const char *source);
 
+/* Define a class with a source with conditional verification (added HSX 14)
+ * -Xverify:all will verify anyway, -Xverify:none will not verify,
+ * -Xverify:remote (default) will obey this conditional
+ * i.e. true = should_verify_class
+ */
+JNIEXPORT jclass JNICALL
+JVM_DefineClassWithSourceCond(JNIEnv *env, const char *name,
+                              jobject loader, const jbyte *buf,
+                              jsize len, jobject pd, const char *source,
+                              jboolean verify);
+
 /*
  * Reflection support functions
  */
@@ -436,6 +483,9 @@ JVM_GetClassName(JNIEnv *env, jclass cls);
 
 JNIEXPORT jobjectArray JNICALL
 JVM_GetClassInterfaces(JNIEnv *env, jclass cls);
+
+JNIEXPORT jobject JNICALL
+JVM_GetClassLoader(JNIEnv *env, jclass cls);
 
 JNIEXPORT jboolean JNICALL
 JVM_IsInterface(JNIEnv *env, jclass cls);
@@ -475,14 +525,34 @@ JVM_GetClassSignature(JNIEnv *env, jclass cls);
 JNIEXPORT jbyteArray JNICALL
 JVM_GetClassAnnotations(JNIEnv *env, jclass cls);
 
+/* Annotations support (JDK 1.6) */
+
+// field is a handle to a java.lang.reflect.Field object
+JNIEXPORT jbyteArray JNICALL
+JVM_GetFieldAnnotations(JNIEnv *env, jobject field);
+
+// method is a handle to a java.lang.reflect.Method object
+JNIEXPORT jbyteArray JNICALL
+JVM_GetMethodAnnotations(JNIEnv *env, jobject method);
+
+// method is a handle to a java.lang.reflect.Method object
+JNIEXPORT jbyteArray JNICALL
+JVM_GetMethodDefaultAnnotationValue(JNIEnv *env, jobject method);
+
+// method is a handle to a java.lang.reflect.Method object
+JNIEXPORT jbyteArray JNICALL
+JVM_GetMethodParameterAnnotations(JNIEnv *env, jobject method);
+
 /* Type use annotations support (JDK 1.8) */
 
 JNIEXPORT jbyteArray JNICALL
 JVM_GetClassTypeAnnotations(JNIEnv *env, jclass cls);
 
+// field is a handle to a java.lang.reflect.Field object
 JNIEXPORT jbyteArray JNICALL
 JVM_GetFieldTypeAnnotations(JNIEnv *env, jobject field);
 
+// method is a handle to a java.lang.reflect.Method object
 JNIEXPORT jbyteArray JNICALL
 JVM_GetMethodTypeAnnotations(JNIEnv *env, jobject method);
 
@@ -508,19 +578,6 @@ JVM_GetClassDeclaredConstructors(JNIEnv *env, jclass ofClass, jboolean publicOnl
 JNIEXPORT jint JNICALL
 JVM_GetClassAccessFlags(JNIEnv *env, jclass cls);
 
-/* The following two reflection routines are still needed due to startup time issues */
-/*
- * java.lang.reflect.Method
- */
-JNIEXPORT jobject JNICALL
-JVM_InvokeMethod(JNIEnv *env, jobject method, jobject obj, jobjectArray args0);
-
-/*
- * java.lang.reflect.Constructor
- */
-JNIEXPORT jobject JNICALL
-JVM_NewInstanceFromConstructor(JNIEnv *env, jobject c, jobjectArray args0);
-
 /*
  * Constant pool access; currently used to implement reflective access to annotations (JDK 1.5)
  */
@@ -529,53 +586,46 @@ JNIEXPORT jobject JNICALL
 JVM_GetClassConstantPool(JNIEnv *env, jclass cls);
 
 JNIEXPORT jint JNICALL JVM_ConstantPoolGetSize
-(JNIEnv *env, jobject unused, jobject jcpool);
+(JNIEnv *env, jobject obj, jobject unused);
 
 JNIEXPORT jclass JNICALL JVM_ConstantPoolGetClassAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jclass JNICALL JVM_ConstantPoolGetClassAtIfLoaded
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jobject JNICALL JVM_ConstantPoolGetMethodAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jobject JNICALL JVM_ConstantPoolGetMethodAtIfLoaded
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jobject JNICALL JVM_ConstantPoolGetFieldAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jobject JNICALL JVM_ConstantPoolGetFieldAtIfLoaded
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jobjectArray JNICALL JVM_ConstantPoolGetMemberRefInfoAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jint JNICALL JVM_ConstantPoolGetIntAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jlong JNICALL JVM_ConstantPoolGetLongAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jfloat JNICALL JVM_ConstantPoolGetFloatAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jdouble JNICALL JVM_ConstantPoolGetDoubleAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jstring JNICALL JVM_ConstantPoolGetStringAt
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 JNIEXPORT jstring JNICALL JVM_ConstantPoolGetUTF8At
-(JNIEnv *env, jobject unused, jobject jcpool, jint index);
-
-/*
- * Parameter reflection
- */
-
-JNIEXPORT jobjectArray JNICALL
-JVM_GetMethodParameters(JNIEnv *env, jobject method);
+(JNIEnv *env, jobject obj, jobject unused, jint index);
 
 /*
  * java.security.*
@@ -625,6 +675,9 @@ JVM_AssertionStatusDirectives(JNIEnv *env, jclass unused);
 JNIEXPORT jboolean JNICALL
 JVM_SupportsCX8(void);
 
+JNIEXPORT jboolean JNICALL
+JVM_CX8Field(JNIEnv *env, jobject obj, jfieldID fldID, jlong oldVal, jlong newVal);
+
 /*
  * com.sun.dtrace.jsdt support
  */
@@ -632,13 +685,16 @@ JVM_SupportsCX8(void);
 #define JVM_TRACING_DTRACE_VERSION 1
 
 /*
- * Structure to pass one probe description to JVM
+ * Structure to pass one probe description to JVM.
+ *
+ * The VM will overwrite the definition of the referenced method with
+ * code that will fire the probe.
  */
 typedef struct {
     jmethodID method;
     jstring   function;
     jstring   name;
-    void*            reserved[4];     // for future use
+    void*     reserved[4];     // for future use
 } JVM_DTraceProbe;
 
 /**
@@ -691,7 +747,7 @@ JVM_DTraceIsProbeEnabled(JNIEnv* env, jmethodID method);
  * Destroy custom DOF
  */
 JNIEXPORT void JNICALL
-JVM_DTraceDispose(JNIEnv* env, jlong activation_handle);
+JVM_DTraceDispose(JNIEnv* env, jlong handle);
 
 /*
  * Check to see if DTrace is supported by OS
@@ -864,7 +920,7 @@ JNIEXPORT const char * JNICALL
 JVM_GetMethodIxSignatureUTF(JNIEnv *env, jclass cb, jint index);
 
 /*
- * Returns the name of the field referred to at a given constant pool
+ * Returns the name of the field refered to at a given constant pool
  * index.
  *
  * The result is in UTF format and remains valid until JVM_ReleaseUTF
@@ -877,7 +933,7 @@ JNIEXPORT const char * JNICALL
 JVM_GetCPFieldNameUTF(JNIEnv *env, jclass cb, jint index);
 
 /*
- * Returns the name of the method referred to at a given constant pool
+ * Returns the name of the method refered to at a given constant pool
  * index.
  *
  * The result is in UTF format and remains valid until JVM_ReleaseUTF
@@ -890,7 +946,7 @@ JNIEXPORT const char * JNICALL
 JVM_GetCPMethodNameUTF(JNIEnv *env, jclass cb, jint index);
 
 /*
- * Returns the signature of the method referred to at a given constant pool
+ * Returns the signature of the method refered to at a given constant pool
  * index.
  *
  * The result is in UTF format and remains valid until JVM_ReleaseUTF
@@ -903,7 +959,7 @@ JNIEXPORT const char * JNICALL
 JVM_GetCPMethodSignatureUTF(JNIEnv *env, jclass cb, jint index);
 
 /*
- * Returns the signature of the field referred to at a given constant pool
+ * Returns the signature of the field refered to at a given constant pool
  * index.
  *
  * The result is in UTF format and remains valid until JVM_ReleaseUTF
@@ -916,7 +972,7 @@ JNIEXPORT const char * JNICALL
 JVM_GetCPFieldSignatureUTF(JNIEnv *env, jclass cb, jint index);
 
 /*
- * Returns the class name referred to at a given constant pool index.
+ * Returns the class name refered to at a given constant pool index.
  *
  * The result is in UTF format and remains valid until JVM_ReleaseUTF
  * is called.
@@ -928,7 +984,7 @@ JNIEXPORT const char * JNICALL
 JVM_GetCPClassNameUTF(JNIEnv *env, jclass cb, jint index);
 
 /*
- * Returns the class name referred to at a given constant pool index.
+ * Returns the class name refered to at a given constant pool index.
  *
  * The constant pool entry must refer to a CONSTANT_Fieldref.
  *
@@ -942,7 +998,7 @@ JNIEXPORT const char * JNICALL
 JVM_GetCPFieldClassNameUTF(JNIEnv *env, jclass cb, jint index);
 
 /*
- * Returns the class name referred to at a given constant pool index.
+ * Returns the class name refered to at a given constant pool index.
  *
  * The constant pool entry must refer to CONSTANT_Methodref or
  * CONSTANT_InterfaceMethodref.
@@ -989,8 +1045,108 @@ JVM_ReleaseUTF(const char *utf);
 JNIEXPORT jboolean JNICALL
 JVM_IsSameClassPackage(JNIEnv *env, jclass class1, jclass class2);
 
-/* Get classfile constants */
-#include "classfile_constants.h"
+/* Constants in class files */
+
+#define JVM_ACC_PUBLIC        0x0001  /* visible to everyone */
+#define JVM_ACC_PRIVATE       0x0002  /* visible only to the defining class */
+#define JVM_ACC_PROTECTED     0x0004  /* visible to subclasses */
+#define JVM_ACC_STATIC        0x0008  /* instance variable is static */
+#define JVM_ACC_FINAL         0x0010  /* no further subclassing, overriding */
+#define JVM_ACC_SYNCHRONIZED  0x0020  /* wrap method call in monitor lock */
+#define JVM_ACC_SUPER         0x0020  /* funky handling of invokespecial */
+#define JVM_ACC_VOLATILE      0x0040  /* can not cache in registers */
+#define JVM_ACC_BRIDGE        0x0040  /* bridge method generated by compiler */
+#define JVM_ACC_TRANSIENT     0x0080  /* not persistent */
+#define JVM_ACC_VARARGS       0x0080  /* method declared with variable number of args */
+#define JVM_ACC_NATIVE        0x0100  /* implemented in C */
+#define JVM_ACC_INTERFACE     0x0200  /* class is an interface */
+#define JVM_ACC_ABSTRACT      0x0400  /* no definition provided */
+#define JVM_ACC_STRICT        0x0800  /* strict floating point */
+#define JVM_ACC_SYNTHETIC     0x1000  /* compiler-generated class, method or field */
+#define JVM_ACC_ANNOTATION    0x2000  /* annotation type */
+#define JVM_ACC_ENUM          0x4000  /* field is declared as element of enum */
+
+#define JVM_ACC_PUBLIC_BIT        0
+#define JVM_ACC_PRIVATE_BIT       1
+#define JVM_ACC_PROTECTED_BIT     2
+#define JVM_ACC_STATIC_BIT        3
+#define JVM_ACC_FINAL_BIT         4
+#define JVM_ACC_SYNCHRONIZED_BIT  5
+#define JVM_ACC_SUPER_BIT         5
+#define JVM_ACC_VOLATILE_BIT      6
+#define JVM_ACC_BRIDGE_BIT        6
+#define JVM_ACC_TRANSIENT_BIT     7
+#define JVM_ACC_VARARGS_BIT       7
+#define JVM_ACC_NATIVE_BIT        8
+#define JVM_ACC_INTERFACE_BIT     9
+#define JVM_ACC_ABSTRACT_BIT      10
+#define JVM_ACC_STRICT_BIT        11
+#define JVM_ACC_SYNTHETIC_BIT     12
+#define JVM_ACC_ANNOTATION_BIT    13
+#define JVM_ACC_ENUM_BIT          14
+
+// NOTE: replicated in SA in vm/agent/sun/jvm/hotspot/utilities/ConstantTag.java
+enum {
+    JVM_CONSTANT_Utf8 = 1,
+    JVM_CONSTANT_Unicode,               /* unused */
+    JVM_CONSTANT_Integer,
+    JVM_CONSTANT_Float,
+    JVM_CONSTANT_Long,
+    JVM_CONSTANT_Double,
+    JVM_CONSTANT_Class,
+    JVM_CONSTANT_String,
+    JVM_CONSTANT_Fieldref,
+    JVM_CONSTANT_Methodref,
+    JVM_CONSTANT_InterfaceMethodref,
+    JVM_CONSTANT_NameAndType,
+    JVM_CONSTANT_MethodHandle           = 15,  // JSR 292
+    JVM_CONSTANT_MethodType             = 16,  // JSR 292
+    //JVM_CONSTANT_(unused)             = 17,  // JSR 292 early drafts only
+    JVM_CONSTANT_InvokeDynamic          = 18,  // JSR 292
+    JVM_CONSTANT_ExternalMax            = 18   // Last tag found in classfiles
+};
+
+/* JVM_CONSTANT_MethodHandle subtypes */
+enum {
+    JVM_REF_getField                = 1,
+    JVM_REF_getStatic               = 2,
+    JVM_REF_putField                = 3,
+    JVM_REF_putStatic               = 4,
+    JVM_REF_invokeVirtual           = 5,
+    JVM_REF_invokeStatic            = 6,
+    JVM_REF_invokeSpecial           = 7,
+    JVM_REF_newInvokeSpecial        = 8,
+    JVM_REF_invokeInterface         = 9
+};
+
+/* Used in the newarray instruction. */
+
+#define JVM_T_BOOLEAN 4
+#define JVM_T_CHAR    5
+#define JVM_T_FLOAT   6
+#define JVM_T_DOUBLE  7
+#define JVM_T_BYTE    8
+#define JVM_T_SHORT   9
+#define JVM_T_INT    10
+#define JVM_T_LONG   11
+
+/* JVM method signatures */
+
+#define JVM_SIGNATURE_ARRAY             '['
+#define JVM_SIGNATURE_BYTE              'B'
+#define JVM_SIGNATURE_CHAR              'C'
+#define JVM_SIGNATURE_CLASS             'L'
+#define JVM_SIGNATURE_ENDCLASS          ';'
+#define JVM_SIGNATURE_ENUM              'E'
+#define JVM_SIGNATURE_FLOAT             'F'
+#define JVM_SIGNATURE_DOUBLE            'D'
+#define JVM_SIGNATURE_FUNC              '('
+#define JVM_SIGNATURE_ENDFUNC           ')'
+#define JVM_SIGNATURE_INT               'I'
+#define JVM_SIGNATURE_LONG              'J'
+#define JVM_SIGNATURE_SHORT             'S'
+#define JVM_SIGNATURE_VOID              'V'
+#define JVM_SIGNATURE_BOOLEAN           'Z'
 
 /*
  * A function defined by the byte-code verifier and called by the VM.
@@ -1300,16 +1456,16 @@ JVM_GetHostName(char* name, int namelen);
  * BE CAREFUL! The following functions do not implement the
  * full feature set of standard C printf formats.
  */
-int
+JNIEXPORT int
 jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args);
 
-int
+JNIEXPORT int
 jio_snprintf(char *str, size_t count, const char *fmt, ...);
 
-int
+JNIEXPORT int
 jio_fprintf(FILE *, const char *fmt, ...);
 
-int
+JNIEXPORT int
 jio_vfprintf(FILE *, const char *fmt, va_list args);
 
 
@@ -1324,6 +1480,18 @@ JVM_RawMonitorEnter(void *mon);
 
 JNIEXPORT void JNICALL
 JVM_RawMonitorExit(void *mon);
+
+/*
+ * java.lang.reflect.Method
+ */
+JNIEXPORT jobject JNICALL
+JVM_InvokeMethod(JNIEnv *env, jobject method, jobject obj, jobjectArray args0);
+
+/*
+ * java.lang.reflect.Constructor
+ */
+JNIEXPORT jobject JNICALL
+JVM_NewInstanceFromConstructor(JNIEnv *env, jobject c, jobjectArray args0);
 
 /*
  * java.lang.management support
@@ -1414,15 +1582,6 @@ JNIEXPORT jintArray JNICALL
 JVM_GetResourceLookupCache(JNIEnv *env, jobject loader, const char *resource_name);
 
 
-/*
- * Copies a region of memory to another region, while reversing the bytes of
- * each individual element of the source region.
- */  
-JNIEXPORT void JNICALL
-JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
-							    jobject dstObj, jlong dstOffset, 
-							    jlong size,     jlong elemSize);
-
 /* =========================================================================
  * The following defines a private JVM interface that the JDK can query
  * for the JVM version and capabilities.  sun.misc.Version defines
@@ -1444,11 +1603,12 @@ JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
  * ==========================================================================
  */
 typedef struct {
-    /* Naming convention of RE build version string: n.n.n[_uu[c]][-<identifier>]-bxx */
-    unsigned int jvm_version;   /* Consists of major, minor, micro (n.n.n) */
-                                /* and build number (xx) */
-    unsigned int update_version : 8;         /* Update release version (uu) */
-    unsigned int special_update_version : 8; /* Special update release version (c)*/
+    /* HotSpot Express VM version string:
+     * <major>.<minor>-bxx[-<identifier>][-<debug_flavor>]
+     */
+    unsigned int jvm_version; /* Consists of major.minor.0.build */
+    unsigned int update_version : 8;         /* 0 in HotSpot Express VM */
+    unsigned int special_update_version : 8; /* 0 in HotSpot Express VM */
     unsigned int reserved1 : 16;
     unsigned int reserved2;
 
@@ -1459,7 +1619,7 @@ typedef struct {
      * When a new bit is added in a minor or update release, make sure
      * the new bit is also added in the main/baseline.
      */
-    unsigned int is_attach_supported : 1;
+    unsigned int is_attachable : 1;
     unsigned int : 31;
     unsigned int : 32;
     unsigned int : 32;
@@ -1467,10 +1627,10 @@ typedef struct {
 
 #define JVM_VERSION_MAJOR(version) ((version & 0xFF000000) >> 24)
 #define JVM_VERSION_MINOR(version) ((version & 0x00FF0000) >> 16)
+// Micro version is 0 in HotSpot Express VM (set in jvm.cpp).
 #define JVM_VERSION_MICRO(version) ((version & 0x0000FF00) >> 8)
-
-/* Build number is available only for RE builds.
- * It will be zero for internal builds.
+/* Build number is available in all HotSpot Express VM builds.
+ * It is defined in make/hotspot_version file.
  */
 #define JVM_VERSION_BUILD(version) ((version & 0x000000FF))
 
@@ -1548,8 +1708,9 @@ typedef struct JDK1_1InitArgs {
 
 #ifdef __cplusplus
 } /* extern "C" */
-
 #endif /* __cplusplus */
 
 #endif /* !_JAVASOFT_JVM_H_ */
+
+#endif // SHARE_VM_PRIMS_JVM_H
  
