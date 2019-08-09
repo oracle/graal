@@ -77,7 +77,7 @@ requireGCC: {
 
 sulong-ruby-downstream-test: {
     packages: {
-        ruby: "==2.1.0"
+        ruby: "==2.6.3"
     }
     run: [
         [mx, testdownstream, --repo, "https://github.com/graalvm/truffleruby.git",
