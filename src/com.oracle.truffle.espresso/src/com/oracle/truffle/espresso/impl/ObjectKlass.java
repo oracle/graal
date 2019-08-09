@@ -558,14 +558,9 @@ public final class ObjectKlass extends Klass {
                 for (Method m : declaredMethods) {
                     try {
                         MethodVerifier.verify(m);
-                        if (m.getDeclaringKlass().getType().toString().contains("stackmapframes") && m.getCodeAttribute().getStackMapFrame() != null) {
-                            System.err.println("\n" + m);
-                            m.getCodeAttribute().print(this);
-                        }
                     } catch (VerifyError | ClassFormatError | IncompatibleClassChangeError | NoClassDefFoundError e) {
                         // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
                         setErroneous();
-                        new BytecodeStream(m.getCode()).printBytecode(this);
                         throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
                     } catch (Throwable e) {
                         e.printStackTrace();

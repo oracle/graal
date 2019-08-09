@@ -313,6 +313,9 @@ public final class MethodVerifier implements ContextAccess {
     // <init> method validation
     private boolean calledConstructor = false;
 
+    // Instruction stack to visit
+    private WorkingQueue queue = new WorkingQueue();
+
     Symbol<Type>[] getSig() {
         return sig;
     }
@@ -451,7 +454,6 @@ public final class MethodVerifier implements ContextAccess {
      * @param codeAttribute the code attribute of the method
      * @param m the Espresso method
      */
-
     private MethodVerifier(CodeAttribute codeAttribute, Method m, boolean useStackMaps) {
         // Extract info from codeAttribute
         this.code = new BytecodeStream(codeAttribute.getCode());
@@ -787,6 +789,85 @@ public final class MethodVerifier implements ContextAccess {
     // TODO(garcia) implement instruction stack to visit, to avoid stack overflows from recursively
     // finding fixed points.
 
+    private class WorkingQueue {
+        QueueElement first;
+        QueueElement last;
+
+        WorkingQueue() {
+            /* nop */
+        }
+
+        boolean isEmpty() {
+            return first == null;
+        }
+
+        void push(int BCI, QueueElement elem) {
+            QueueElement current = lookup(BCI);
+            if (current == null) {
+                if (first == null) {
+                    first = elem;
+                    last = first;
+                } else {
+                    last.next = elem;
+                    last = last.next;
+                }
+            } else {
+                // if we are here, we already failed to merge.
+                replace(current, elem);
+                /*
+                 * StackFrame newFrame = mergeFrames(stack, locals, current.frame); if (newFrame !=
+                 * current.frame) { replace(current, new QueueElement(BCI, newFrame)); }
+                 */
+            }
+        }
+
+        QueueElement pop() {
+            assert first != null;
+            QueueElement res = first;
+            first = first.next;
+            return res;
+        }
+
+        void replace(QueueElement oldElem, QueueElement newElem) {
+            assert oldElem.subroutineModifs == newElem.subroutineModifs;
+            if (first == oldElem) {
+                first = newElem;
+            }
+            if (last == oldElem) {
+                last = newElem;
+            }
+            newElem.prev = oldElem.prev;
+            newElem.next = oldElem.next;
+            oldElem.prev.next = newElem;
+            oldElem.next.prev = newElem;
+        }
+
+        QueueElement lookup(int BCI) {
+            QueueElement current = first;
+            while (current != null && current.BCI != BCI) {
+                current = current.next;
+            }
+            return current;
+        }
+    }
+
+    private static class QueueElement {
+        final int BCI;
+        final StackFrame frame;
+        final SubroutineModificationStack subroutineModifs;
+        final boolean constructorCalled;
+
+        QueueElement prev;
+        QueueElement next;
+
+        QueueElement(int BCI, StackFrame frame, SubroutineModificationStack sms, boolean calledConstructor) {
+            this.BCI = BCI;
+            this.frame = frame;
+            this.subroutineModifs = sms;
+            this.constructorCalled = calledConstructor;
+        }
+    }
+
     /**
      * Performs the verification for the method associated with this
      */
@@ -811,6 +892,13 @@ public final class MethodVerifier implements ContextAccess {
         Stack stack = new Stack(maxStack);
         Locals locals = new Locals(this);
         startVerify(0, stack, locals);
+        while (!queue.isEmpty()) {
+            QueueElement toVerify = queue.pop();
+            calledConstructor = toVerify.constructorCalled;
+            locals = toVerify.frame.extractLocals();
+            locals.subRoutineModifications = toVerify.subroutineModifs;
+            startVerify(toVerify.BCI, toVerify.frame.extractStack(maxStack), locals);
+        }
 
         // Performs verification of reachable handlers
         verifyExceptionHandlers();
@@ -931,7 +1019,17 @@ public final class MethodVerifier implements ContextAccess {
 
     private void branch(int BCI, Stack stack, Locals locals) {
         validateBCI(BCI);
-        startVerify(BCI, stack, locals);
+        if (stackFrames[BCI] != null || BCIstates[BCI] == JUMP_TARGET) {
+            // Try merge
+            StackFrame frame = mergeFrames(stack, locals, stackFrames[BCI]);
+            if (!(frame == stackFrames[BCI])) {
+                // merge failed, mark the BCI as not yet verified as state changed
+                BCIstates[BCI] = JUMP_TARGET;
+                stackFrames[BCI] = frame;
+                QueueElement toPush = new QueueElement(BCI, frame, locals.subRoutineModifications, calledConstructor);
+                queue.push(BCI, toPush);
+            }
+        }
     }
 
     private void validateBCI(int BCI) {
@@ -1378,9 +1476,9 @@ public final class MethodVerifier implements ContextAccess {
                     }
                     stack.push(new ReturnAddressOperand(BCI));
                     // Push bit vector
-                    locals.subRoutineModifications = new SubroutineModificationStack(locals.subRoutineModifications, new boolean[maxLocals], BCI);
-
-                    branch(code.readBranchDest(BCI), stack, locals);
+                    int targetBCI = code.readBranchDest(BCI);
+                    locals.subRoutineModifications = new SubroutineModificationStack(locals.subRoutineModifications, new boolean[maxLocals], targetBCI);
+                    branch(targetBCI, stack, locals);
                     BCIstates[BCI] = DONE;
                     return BCI;
                 }
