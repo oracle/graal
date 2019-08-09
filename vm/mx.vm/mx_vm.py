@@ -1491,10 +1491,11 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
         assert not graal_vm.jdk_base.endswith('/')
         boot_jars_directory = graal_vm.jdk_base + "/" + boot_jars_directory
     _cp = set()
-    jimage_deps = mx.project('graalvm-jimage').deps
+    jimage = mx.project('graalvm-jimage', fatalIfMissing=False)
+    jimage_deps = jimage.deps if jimage else None
     mx.logv("Composing classpath for " + str(dependencies) + ". Entries:\n" + '\n'.join(('- {}:{}'.format(d.suite, d.name) for d in mx.classpath_entries(dependencies))))
     for _cp_entry in mx.classpath_entries(dependencies):
-        if _cp_entry in jimage_deps:
+        if jimage_deps and _cp_entry in jimage_deps:
             continue
         if _cp_entry.isJdkLibrary() or _cp_entry.isJreLibrary():
             jdk = _get_jdk()
@@ -2059,12 +2060,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             if with_svm:
                 register_project(GraalVmNativeProperties(None, polyglot_launcher_project.native_image_config))
 
-        register_project(GraalVmJImage(
-            suite=_suite,
-            jvmci_jars=jvmci_jars,
-            boot_jars=boot_jars,
-            workingSets=None,
-        ))
+        if _get_jdk().version.parts[0] >= 9:
+            register_project(GraalVmJImage(
+                suite=_suite,
+                jvmci_jars=jvmci_jars,
+                boot_jars=boot_jars,
+                workingSets=None,
+            ))
 
     if needs_stage1:
         if register_project:
