@@ -26,7 +26,7 @@ final class ConstantPoolImpl extends ConstantPool {
         try {
             return constants[index];
         } catch (IndexOutOfBoundsException exception) {
-            throw ConstantPool.verifyError("Constant pool index (" + index + ")" + (description == null ? "" : " for " + description) + " is out of range");
+            throw ConstantPool.classFormatError("Constant pool index (" + index + ")" + (description == null ? "" : " for " + description) + " is out of range");
         }
     }
 }

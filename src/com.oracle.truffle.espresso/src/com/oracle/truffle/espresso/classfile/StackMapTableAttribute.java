@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 public class StackMapTableAttribute extends Attribute {
@@ -39,5 +40,13 @@ public class StackMapTableAttribute extends Attribute {
     public StackMapTableAttribute(Symbol<Symbol.Name> name, StackMapFrame[] entries) {
         super(name, null);
         this.entries = entries;
+    }
+
+    public void print(Klass klass) {
+        System.err.println("    StackMapTable {");
+        for (StackMapFrame sme : entries) {
+            sme.print(klass);
+        }
+        System.err.println("    }");
     }
 }

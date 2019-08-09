@@ -226,7 +226,6 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
-import static com.oracle.truffle.espresso.classfile.ClassfileParser.JAVA_6_VERSION;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTERFACE_METHOD_REF;
 import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
@@ -288,8 +287,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
  * given for lesser versions, they are ignored. No fallback for classfile v.50
  */
 public final class MethodVerifier implements ContextAccess {
-    private static final boolean FAILBACK = false;
-
     // Class info
     private final Klass thisKlass;
     private final RuntimeConstantPool pool;
@@ -505,14 +502,7 @@ public final class MethodVerifier implements ContextAccess {
         if (codeAttribute == null) {
             return;
         }
-        try {
-            new MethodVerifier(codeAttribute, m).verify();
-        } catch (Error e) {
-            if (FAILBACK && codeAttribute.getMajorVersion() == JAVA_6_VERSION) {
-                new MethodVerifier(codeAttribute, m, false).verify();
-            }
-            throw e;
-        }
+        new MethodVerifier(codeAttribute, m).verify();
     }
 
     private void initVerifier() {
@@ -633,9 +623,7 @@ public final class MethodVerifier implements ContextAccess {
                 BCI--;
                 first = false;
             }
-            if (BCI < 0 || BCI >= stackFrames.length || BCIstates[BCI] == UNREACHABLE) {
-                throw new VerifyError("Invalid offset for Stack frame: " + BCI);
-            }
+            validateFrameBCI(BCI);
             stackFrames[BCI] = frame;
             previous = frame;
         }
@@ -814,7 +802,7 @@ public final class MethodVerifier implements ContextAccess {
         try {
             initStackFrames();
         } catch (IndexOutOfBoundsException e) {
-            throw new VerifyError("Could not construct stackFrames due to invalid maxStack or maxLocals value: " + e.getMessage());
+            throw new ClassFormatError("Could not construct stackFrames due to invalid maxStack or maxLocals value: " + e.getMessage());
         }
         // Check that BCIs in exception handlers are legal
         validateExceptionHandlers();
@@ -928,13 +916,17 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void verifyReachability() {
-// int bci = 0;
-// while (bci < code.endBCI()) {
-// if (BCIstates[bci] == UNSEEN) {
-// throw new VerifyError("Unreachable BCI: " + bci);
-// }
-// bci = code.nextBCI(bci);
-// }
+        // @formatter:off
+        /*
+         * int bci = 0;
+         * while (bci < code.endBCI()) {
+         *     if (BCIstates[bci] == UNSEEN) {
+         *         throw new VerifyError("Unreachable BCI: " + bci);
+         *     }
+         *     bci = code.nextBCI(bci);
+         * }
+         */
+        // @formatter:on
     }
 
     private void branch(int BCI, Stack stack, Locals locals) {
@@ -951,6 +943,18 @@ public final class MethodVerifier implements ContextAccess {
         }
         if (BCIstates[BCI] == UNREACHABLE) {
             throw new VerifyError("Jump to the middle of an instruction: " + BCI);
+        }
+    }
+
+    private void validateFrameBCI(int BCI) {
+        if (BCI >= code.endBCI()) {
+            throw new VerifyError("StackFrame offset falls outside of method");
+        }
+        if (BCI < 0) {
+            throw new VerifyError("negative stack frame offset: " + BCI);
+        }
+        if (BCIstates[BCI] == UNREACHABLE) {
+            throw new VerifyError("StackFrame offset falls to the middle of an instruction: " + BCI);
         }
     }
 
