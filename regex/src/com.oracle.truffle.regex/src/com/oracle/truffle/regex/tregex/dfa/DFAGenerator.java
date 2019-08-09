@@ -73,11 +73,9 @@ import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplitBailoutException;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
-import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.AddToSetVisitor;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -601,12 +599,14 @@ public final class DFAGenerator implements JsonConvertible {
             TRegexDFAExecutorNode prefixMatcher = null;
 
             if (literalStart > 0) {
-                // If the prefix is of variable length, we must check if it is possible to match the
-                // literal beginning from the prefix, and bail out if that is the case.
-                // Otherwise, the resulting DFA would produce wrong results on e.g. /a?aa/. In this
-                // exemplary expression, the DFA would match the literal "aa" and immediately jump
-                // to the successor of the literal's last state, which is the final state. It would
-                // never match "aaa".
+                /*
+                 * If the prefix is of variable length, we must check if it is possible to match the
+                 * literal beginning from the prefix, and bail out if that is the case. Otherwise,
+                 * the resulting DFA would produce wrong results on e.g. /a?aa/. In this exemplary
+                 * expression, the DFA would match the literal "aa" and immediately jump to the
+                 * successor of the literal's last state, which is the final state. It would never
+                 * match "aaa".
+                 */
                 if (rootSeq.getTerms().get(literalStart - 1).getMinPath() < rootSeq.getTerms().get(literalStart - 1).getMaxPath()) {
                     nfa.setInitialLoopBack(false);
                     if (innerLiteralMatchesPrefix(prefixNFAStates)) {
@@ -616,7 +616,23 @@ public final class DFAGenerator implements JsonConvertible {
                     nfa.setInitialLoopBack(true);
                 }
 
-                // redirect all transitions to prefix states to the initial state
+                /*
+                 * Redirect all transitions to prefix states to the initial state. The prefix states
+                 * are all covered/duplicated by the backward matcher, so instead of going to the
+                 * original prefix states (where "prefix" in this case means the part of the regex
+                 * preceding the literal), we can go to the DFAFindInnerLiteralStateNode that is
+                 * inserted as the initial state, and benefit from the vectorized search for the
+                 * literal. An example for why this is important: Given the regex /.?abc[0-9]/, the
+                 * "inner literal" is abc, and the prefix is .?. The dot (.) matches everything
+                 * except newlines. When performing a search, the DFA would first search for abc,
+                 * then check that the preceding character is no newline, and then check if the
+                 * succeeding character is a digit ([0-9]). If the succeeding character is not a
+                 * digit, the DFA would check if it is a newline, and only if it is, it would go
+                 * back to the initial state and start the optimized search for abc again. In all
+                 * other cases, it would go to the state representing the dot, which would loop to
+                 * itself as long as no newline is encountered, and the optimized search would
+                 * hardly ever trigger after the first occurrence of the literal.
+                 */
                 RangesAccumulator<CharRangesBuffer> acc = new RangesAccumulator<>(new CharRangesBuffer());
                 for (DFAStateNodeBuilder s : stateMap.values()) {
                     acc.clear();
@@ -655,17 +671,8 @@ public final class DFAGenerator implements JsonConvertible {
                 NFAState reverseUnAnchoredInitialState = nfa.getReverseUnAnchoredEntry().getSource();
                 nfa.getReverseAnchoredEntry().setSource(literalFirstState);
                 nfa.getReverseUnAnchoredEntry().setSource(literalFirstState);
-                int minPath = 0;
-                for (int i = 0; i < literalStart; i++) {
-                    Term t = rootSeq.getTerms().get(i);
-                    if (t instanceof CharacterClass) {
-                        minPath++;
-                    } else if (t instanceof Group) {
-                        minPath = t.getMinPath();
-                    }
-                }
                 prefixMatcher = compilationReqest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, getOptions().isRegressionTestMode(),
-                                nfa.getAst().getNumberOfCaptureGroups(), minPath), "innerLiteralPrefix");
+                                nfa.getAst().getNumberOfCaptureGroups(), rootSeq.getTerms().get(literalStart - 1).getMinPath()), "innerLiteralPrefix");
                 nfa.setInitialLoopBack(true);
                 nfa.getReverseAnchoredEntry().setSource(reverseAnchoredInitialState);
                 nfa.getReverseUnAnchoredEntry().setSource(reverseUnAnchoredInitialState);
