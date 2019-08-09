@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.classfile;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
@@ -282,6 +283,12 @@ public final class ClassfileParser {
         int nameIndex = stream.readU2();
         int signatureIndex = stream.readU2();
         Attribute[] methodAttributes = parseAttributes();
+        for (Attribute attr : methodAttributes) {
+            if (attr.getName().equals(Name.Synthetic)) {
+                flags |= ACC_SYNTHETIC;
+                break;
+            }
+        }
         return new ParserMethod(flags, nameIndex, signatureIndex, methodAttributes);
     }
 
@@ -555,6 +562,12 @@ public final class ClassfileParser {
         int nameIndex = stream.readU2();
         int typeIndex = stream.readU2();
         Attribute[] fieldAttributes = parseAttributes();
+        for (Attribute attr : fieldAttributes) {
+            if (attr.getName().equals(Name.Synthetic)) {
+                flags |= ACC_SYNTHETIC;
+                break;
+            }
+        }
         return new ParserField(flags, pool.utf8At(nameIndex), pool.utf8At(typeIndex), typeIndex, fieldAttributes);
     }
 
