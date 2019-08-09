@@ -46,7 +46,7 @@ class VmGateTasks:
     compiler = 'compiler'
     substratevm = 'substratevm'
     sulong = 'sulong'
-    graal_js_all = 'graal-js'
+    Graal_js_all = 'graal-js'
     graal_js_smoke = 'graal-js-smoke'
     graal_js_tests = 'graal-js-tests'
     graal_js_tests_compiled = 'graal-js-tests-compiled'
@@ -202,31 +202,37 @@ def gate_python(tasks):
             python_suite = mx.suite("graalpython")
             python_suite.extensions.run_python_unittests(python_svm_image_path)
 
-def _svm_truffle_tck(native_image, svm, language, language_macro_option, language_exclude_files=None):
+def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, language_packages):
     cp = None
-    for dist in svm.dists:
+    for dist in svm_suite.dists:
         if 'SVM_TRUFFLE_TCK' == dist.name:
             cp = dist.classpath_repr()
             break
     if not cp:
         mx.abort("Cannot resolve: SVM_TRUFFLE_TCK distribution.")
+    excludes = []
+    excludes_dir = join(language_suite.mxDir, 'truffle.tck.permissions')
+    if isdir(excludes_dir):
+        for excludes_file in listdir(excludes_dir):
+            excludes.append(join(excludes_dir, excludes_file))
     with tempfile.NamedTemporaryFile() as report_file:
         options = [
-            language_macro_option,
+            '--language:{}'.format(language_id),
+            '-H:ClassInitialization=:build_time',
+            '-H:+EnforceMaxRuntimeCompileMethods',
             '-cp',
             cp,
-            '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
             '--no-server',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleLanguagePermissionsReportFile={}'.format(report_file.name),
-            '-H:TruffleLanguagePermissionsLanguagePackages=com.oracle.truffle.js,com.oracle.truffle.regex',
-            '-H:TruffleLanguagePermissionsExcludedPackages=com.oracle.truffle.js.shell',
+            '-H:TruffleLanguagePermissionsLanguagePackages={}'.format(','.join(language_packages)),
+            'com.oracle.svm.truffle.tck.MockMain'
         ]
-        if language_exclude_files:
-            options.append('-H:TruffleLanguagePermissionsExcludeFiles={}'.format(','.join(language_exclude_files)))
+        if excludes:
+            options.append('-H:TruffleLanguagePermissionsExcludeFiles={}'.format(','.join(excludes)))
         native_image(options)
         if isfile(report_file.name) and getsize(report_file.name) > 0:
-            message = "Failed: Language {} performs following privileged calls:\n\n".format(language)
+            message = "Failed: Language {} performs following privileged calls:\n\n".format(language_id)
             with open(report_file.name, "r") as f:
                 for line in f.readlines():
                     message = message + line
@@ -235,19 +241,9 @@ def _svm_truffle_tck(native_image, svm, language, language_macro_option, languag
 def gate_svm_truffle_tck_js(tasks):
     with Task('JavaScript SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_truffle_tck_js]) as t:
         if t:
-            excludes = []
             js_suite = mx.suite('graal-js')
             if not js_suite:
                 mx.abort("Cannot resolve graal-js suite.")
-            excludes_dir = join(js_suite.mxDir, 'svm.truffle.tck')
-            if isdir(excludes_dir):
-                for excludes_file in listdir(excludes_dir):
-                    excludes.append(join(excludes_dir, excludes_file))
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                _svm_truffle_tck(
-                    native_image,
-                    svm.suite,
-                    'JavaScript',
-                    '--macro:js-launcher',
-                    excludes)
+                _svm_truffle_tck(native_image, svm.suite, js_suite, 'js', ['com.oracle.truffle.js', 'com.oracle.truffle.regex'])

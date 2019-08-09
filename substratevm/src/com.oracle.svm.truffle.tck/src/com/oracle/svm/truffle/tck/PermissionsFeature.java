@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -83,6 +84,7 @@ import org.graalvm.nativeimage.hosted.Feature;
  * disable folding of {@code System.getSecurityManager} using {@code -H:-FoldSecurityManagerGetter}
  * option.
  */
+@AutomaticFeature
 public class PermissionsFeature implements Feature {
 
     private static final String CONFIG = "truffle-language-permissions-config.json";
@@ -93,14 +95,13 @@ public class PermissionsFeature implements Feature {
 
         @Option(help = "Comma separated list of language packages.") public static final HostedOptionKey<String> TruffleLanguagePermissionsLanguagePackages = new HostedOptionKey<>(null);
 
-        @Option(help = "Comma separated list of excluded packages.") public static final HostedOptionKey<String> TruffleLanguagePermissionsExcludedPackages = new HostedOptionKey<>(null);
-
         @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<String[]> TruffleLanguagePermissionsExcludeFiles = new HostedOptionKey<>(null);
 
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxStackTraceDepth = new HostedOptionKey<>(
-                        20);
+                        -1);
 
-        @Option(help = "Maximal number of reports.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxReports = new HostedOptionKey<>(100);
+        @Option(help = "Maximum number of errounous privileged accesses reported.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxErrors = new HostedOptionKey<>(
+                        100);
     }
 
     /**
@@ -125,7 +126,6 @@ public class PermissionsFeature implements Feature {
         compilerPkgs.add("com.oracle.truffle.polyglot.");
         compilerPkgs.add("com.oracle.truffle.nfi.");
         compilerPkgs.add("com.oracle.truffle.object.");
-        compilerPkgs.add("com.oracle.truffle.tools.");
     }
 
     /**
@@ -136,10 +136,6 @@ public class PermissionsFeature implements Feature {
      * List of language packages including nested packages.
      */
     private Set<String> languagePackages;
-    /**
-     * Packages to exclude from the check.
-     */
-    private Set<String> excludedPackages;
     /**
      * Methods which are allowed to do privileged calls without being reported.
      */
@@ -162,13 +158,6 @@ public class PermissionsFeature implements Feature {
         languagePackages = new HashSet<>();
         for (String pkg : pkgs.split(",")) {
             languagePackages.add(pkg + ".");
-        }
-        pkgs = Options.TruffleLanguagePermissionsExcludedPackages.getValue();
-        excludedPackages = new HashSet<>();
-        if (pkgs != null) {
-            for (String pkg : pkgs.split(",")) {
-                excludedPackages.add(pkg + ".");
-            }
         }
     }
 
@@ -199,11 +188,13 @@ public class PermissionsFeature implements Feature {
                 List<List<AnalysisMethod>> report = new ArrayList<>();
                 Set<CallGraphFilter> contextFilters = new HashSet<>();
                 Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang));
+                int maxStackDepth = Options.TruffleLanguagePermissionsMaxStackTraceDepth.getValue();
+                maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
                 for (AnalysisMethod importantMethod : importantMethods) {
                     if (cg.containsKey(importantMethod)) {
                         collectViolations(report, importantMethod,
-                                        Options.TruffleLanguagePermissionsMaxStackTraceDepth.getValue(),
-                                        Options.TruffleLanguagePermissionsMaxReports.getValue(),
+                                        maxStackDepth,
+                                        Options.TruffleLanguagePermissionsMaxErrors.getValue(),
                                         cg, contextFilters,
                                         new LinkedHashSet<>(), 1, 0);
                     }
@@ -264,7 +255,7 @@ public class PermissionsFeature implements Feature {
         String mName = getMethodName(m);
         path.addFirst(m);
         try {
-            boolean vote = false;
+            boolean callPathContainsTarget = false;
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
             for (InvokeTypeFlow invoke : m.getTypeFlow().getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
@@ -283,13 +274,12 @@ public class PermissionsFeature implements Feature {
                             parents.add(m);
                             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
                         }
-                        vote |= add;
-                    } else if (!isBacktrace(callee, path) || isBacktraceOverLanguage(callee, path)) {
+                        callPathContainsTarget |= add;
+                    } else if (!isBacktrace(callee, path) || hasLanguageMethodOnCallPath(callee, path)) {
                         parents.add(m);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
-                        vote |= true;
+                        callPathContainsTarget = true;
                     } else {
-                        vote |= true;
                         if (debugContext.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
                             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName, mName);
                         }
@@ -297,7 +287,7 @@ public class PermissionsFeature implements Feature {
                 }
             }
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Exited method: %s.", mName);
-            return vote;
+            return callPathContainsTarget;
         } finally {
             path.removeFirst();
         }
@@ -314,15 +304,13 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Checks if the method is a back trace crossing language boundary.
+     * Checks if the call path up to given {@code method} frame contains a language method.
      *
-     * @param method the {@link AnalysisMethod} to check
+     * @param method the method to stop on
      * @param path the current call path
-     * @return {@code false} if the method is not a recursive call or a recursive call which does
-     *         not cross language boundary, {@code true} if the method is a recursive call crossing
-     *         the language boundary.
+     * @return {@code true} if the call path up to given {@code method} contains a language method.
      */
-    private boolean isBacktraceOverLanguage(AnalysisMethod method, Deque<AnalysisMethod> path) {
+    private boolean hasLanguageMethodOnCallPath(AnalysisMethod method, Deque<AnalysisMethod> path) {
         for (Iterator<AnalysisMethod> it = path.descendingIterator(); it.hasNext();) {
             AnalysisMethod pe = it.next();
             if (method.equals(pe)) {
@@ -422,9 +410,6 @@ public class PermissionsFeature implements Feature {
      * @param method the {@link AnalysisMethod} to check
      */
     private boolean isExcludedClass(AnalysisMethod method) {
-        if (isClassInPackage(getClassName(method), excludedPackages)) {
-            return true;
-        }
         return whiteList.contains(method);
     }
 
