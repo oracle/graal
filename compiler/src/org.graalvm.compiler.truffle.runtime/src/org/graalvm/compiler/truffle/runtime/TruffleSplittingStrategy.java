@@ -26,10 +26,13 @@ package org.graalvm.compiler.truffle.runtime;
 
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getOptions;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -311,14 +314,26 @@ final class TruffleSplittingStrategy {
             rt.log(String.format(D_FORMAT, "Total nodes executed", totalExecutedNodeCount));
 
             rt.log(String.format(DELIMITER_FORMAT, "SPLIT TARGETS"));
-            for (Map.Entry<OptimizedCallTarget, Integer> entry : splitTargets.entrySet()) {
+            for (Map.Entry<OptimizedCallTarget, Integer> entry : sortByIntegerValue(splitTargets).entrySet()) {
                 rt.log(String.format(D_FORMAT, entry.getKey(), entry.getValue()));
             }
 
             rt.log(String.format(DELIMITER_FORMAT, "NODES"));
-            for (Map.Entry<Class<? extends Node>, Integer> entry : polymorphicNodes.entrySet()) {
+            for (Map.Entry<Class<? extends Node>, Integer> entry : sortByIntegerValue(polymorphicNodes).entrySet()) {
                 rt.log(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
             }
+        }
+        
+        public static <K, T> Map<K, Integer> sortByIntegerValue(Map<K, Integer> map) {
+            List<Entry<K, Integer>> list = new ArrayList<>(map.entrySet());
+            list.sort((x, y) -> y.getValue().compareTo(x.getValue()));
+
+            Map<K, Integer> result = new LinkedHashMap<>();
+            for (Entry<K, Integer> entry : list) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+
+            return result;
         }
     }
 
