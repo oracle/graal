@@ -26,6 +26,9 @@ package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -77,6 +80,7 @@ public class MatcherBuilderTest {
     private static void checkIntersection(CharSet a, CharSet b, char... values) {
         CharSet intersection = a.createIntersection(b, new CompilationBuffer());
         checkMatch("intersection(" + a + "," + b + ")", intersection, values);
+        assertTrue("intersection(" + a + "," + b + ")", a.intersects(b) == intersection.matchesSomething());
         CharSet[] result = new CharSet[3];
         a.intersectAndSubtract(b, new CompilationBuffer(), result);
         checkMatch("intersectAndSubtract(" + a + "," + b + ")[0]", result[0], a.subtract(intersection, new CompilationBuffer()));

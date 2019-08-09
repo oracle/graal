@@ -111,6 +111,14 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         return constant;
     }
 
+    public static CharSet create(CharRangesBuffer buf) {
+        CharSet constant = checkConstants(buf.getBuffer(), buf.length());
+        if (constant == null) {
+            return new CharSet(buf.toArray());
+        }
+        return constant;
+    }
+
     public static CharSet fromSortedRanges(SortedListOfRanges codePointSet) {
         if (codePointSet.matchesNothing()) {
             return CONSTANT_EMPTY;
@@ -223,12 +231,7 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
     @Override
     public CharSet create(RangesBuffer buffer) {
         assert buffer instanceof CharRangesBuffer;
-        CharRangesBuffer buf = (CharRangesBuffer) buffer;
-        CharSet constant = checkConstants(buf.getBuffer(), buf.length());
-        if (constant == null) {
-            return new CharSet(buf.toArray());
-        }
-        return constant;
+        return create((CharRangesBuffer) buffer);
     }
 
     @Override

@@ -103,31 +103,8 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
     }
 
     /**
-     * Marks the node as dead, i.e. unmatchable.
-     * <p>
-     * Note that using this setter also traverses the ancestors and children of this node and
-     * updates their "dead" status as well.
-     */
-    @Override
-    public void markAsDead() {
-        super.markAsDead();
-        if (getParent() == null) {
-            return;
-        }
-        for (Term t : terms) {
-            t.markAsDead();
-        }
-        for (Sequence s : getParent().getAlternatives()) {
-            if (!s.isDead()) {
-                return;
-            }
-        }
-        getParent().markAsDead();
-    }
-
-    /**
      * Adds a {@link Term} to the end of the {@link Sequence}.
-     * 
+     *
      * @param term
      */
     public void add(Term term) {

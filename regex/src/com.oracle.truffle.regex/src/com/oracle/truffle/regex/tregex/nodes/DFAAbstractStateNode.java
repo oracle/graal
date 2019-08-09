@@ -33,9 +33,11 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
 
     static final int FS_RESULT_NO_SUCCESSOR = -1;
 
+    private final short id;
     @CompilationFinal(dimensions = 1) protected final short[] successors;
 
-    DFAAbstractStateNode(short[] successors) {
+    DFAAbstractStateNode(short id, short[] successors) {
+        this.id = id;
         this.successors = successors;
     }
 
@@ -49,7 +51,9 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
      */
     public abstract DFAAbstractStateNode createNodeSplitCopy(short copyID);
 
-    public abstract short getId();
+    public final short getId() {
+        return id;
+    }
 
     public final short[] getSuccessors() {
         return successors;

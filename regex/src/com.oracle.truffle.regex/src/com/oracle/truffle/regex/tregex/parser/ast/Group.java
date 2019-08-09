@@ -73,7 +73,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
 
     /**
      * Creates an empty capturing group.
-     * 
+     *
      * @param groupNumber The number of this capturing group.
      */
     Group(int groupNumber) {
@@ -111,7 +111,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
     /**
      * Sets whether or this group should loop. If the group is set to be looping, this updates the
      * 'next' and 'prev' pointers on the non-empty alternatives to point to the group itself.
-     * 
+     *
      * @param loop true if this group should loop
      * @see #isLoop()
      */
@@ -122,7 +122,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
     /**
      * Indicates whether this {@link Group} was inserted into the AST as the result of expanding
      * quantifier syntax (*, +, ?, {n,m}).
-     * 
+     *
      * E.g., if A is some group, then:
      * <ul>
      * <li>A* is expanded as (A|)*
@@ -145,7 +145,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
     /**
      * Marks this {@link Group} as being inserted into the AST as part of expanding quantifier
      * syntax (*, +, ?, {n,m}).
-     * 
+     *
      * @see #isExpandedQuantifier()
      */
     public void setExpandedQuantifier(boolean expandedQuantifier) {
@@ -206,7 +206,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
 
     /**
      * Marks this {@link Group} as capturing and sets its group number.
-     * 
+     *
      * @param groupNumber
      */
     public void setGroupNumber(int groupNumber) {
@@ -296,7 +296,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
     /**
      * Adds a new alternative to this group. The new alternative will be <em>appended to the
      * end</em>, meaning it will have the <em>lowest priority</em> among all the alternatives.
-     * 
+     *
      * @param sequence
      */
     public void add(Sequence sequence) {
@@ -308,7 +308,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
      * Inserts a new alternative to this group. The new alternative will be <em>inserted at the
      * beginning</em>, meaning it will have the <em>highest priority</em> among all the
      * alternatives.
-     * 
+     *
      * @param sequence
      */
     public void insertFirst(Sequence sequence) {
@@ -318,7 +318,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
 
     /**
      * Creates a new empty alternatives and adds it to the end of the list of alternatives.
-     * 
+     *
      * @param ast The AST that the new alternative should belong to
      * @return The newly created alternative
      */
@@ -334,22 +334,6 @@ public final class Group extends Term implements RegexASTVisitorIterable {
 
     public boolean isLiteral() {
         return alternatives.size() == 1 && alternatives.get(0).isLiteral();
-    }
-
-    /**
-     * Marks the node as dead, i.e. unmatchable.
-     * <p>
-     * Note that using this setter also traverses the ancestors and children of this node and
-     * updates their "dead" status as well.
-     */
-    @Override
-    public void markAsDead() {
-        super.markAsDead();
-        for (Sequence s : alternatives) {
-            if (!s.isDead()) {
-                s.markAsDead();
-            }
-        }
     }
 
     @Override
