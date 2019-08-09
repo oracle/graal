@@ -39,6 +39,7 @@ import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
@@ -733,7 +734,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             if (!constant.isCompressed()) { // the result is expected to be uncompressed
                 Register baseReg = getBaseRegister(crb);
                 assert !baseReg.equals(Register.None) || getShift() != 0 : "no compression in place";
-                masm.loadAddress(resultReg, AArch64Address.createRegisterOffsetAddress(baseReg, resultReg, false), 8);
+                masm.add(64, resultReg, baseReg, resultReg, ShiftType.LSL, getShift());
             }
         }
     }
