@@ -1037,7 +1037,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public @Host(byte[].class) StaticObject JVM_GetMethodTypeAnnotations(@Host(java.lang.reflect.Method.class /* or Constructor */ ) StaticObject guestReflectionMethod) {
+    public @Host(byte[].class) StaticObject JVM_GetMethodTypeAnnotations(@Host(java.lang.reflect.Method.class) StaticObject guestReflectionMethod) {
+        // guestReflectionMethod can be either a Method or a Constructor.
         if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().Method)) {
             StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
             assert methodRoot != null;
