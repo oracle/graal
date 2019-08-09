@@ -183,7 +183,13 @@ public final class ClassfileParser {
             return parseClassImpl();
         } catch (EspressoException e) {
             throw e;
+        } catch (ClassFormatError | VerifyError e) {
+            // These exceptions are expected.
+            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         } catch (Throwable e) {
+            // Warn that some unexpected host-guest exception conversion happened.
+            System.err.println("Unexpected host exception " + e + " thrown during class parsing, re-throwing as guest exception.");
+            e.printStackTrace();
             throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
         }
     }
