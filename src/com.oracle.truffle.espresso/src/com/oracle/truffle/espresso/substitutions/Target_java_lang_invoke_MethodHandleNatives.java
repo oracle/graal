@@ -46,6 +46,7 @@ import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -353,6 +354,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         memberName.setIntField(flagField, getMethodFlags(target, refKind));
     }
 
+    @TruffleBoundary
     private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Method target = defKlass.lookupMethod(name, sig, callerKlass);
         if (target == null) {
@@ -366,6 +368,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         memberName.setIntField(flagField, getMethodFlags(target, refKind));
     }
 
+    @TruffleBoundary
     private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Field field = defKlass.lookupField(name, type);
         if (field == null) {

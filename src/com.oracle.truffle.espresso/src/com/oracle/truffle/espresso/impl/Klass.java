@@ -269,7 +269,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * 
      * Interface check is still slow, though.
      */
-    @TruffleBoundary
     public final boolean isAssignableFrom(Klass other) {
         if (this == other) {
             return true;
@@ -280,11 +279,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             return this == other;
         }
         if (this.isArray() && other.isArray()) {
-            return this.getComponentType().isAssignableFrom(other.getComponentType());
+            return ((ArrayKlass) this).arrayTypeChecks((ArrayKlass) other);
         }
         if (isInterface()) {
             return checkInterfaceSubclassing(other);
-
         }
         int depth = getHierarchyDepth();
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
@@ -294,7 +292,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return ID;
     }
 
-    private boolean checkInterfaceSubclassing(Klass other) {
+    boolean checkInterfaceSubclassing(Klass other) {
         Klass[] interfaces = other.getTransitiveInterfacesList();
         if (interfaces.length < 5) {
             for (Klass k : interfaces) {
@@ -418,7 +416,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             initialize();
         } catch (EspressoException e) {
             StaticObject cause = e.getException();
-            if (getMeta().Exception.isAssignableFrom(cause.getKlass())) {
+            if (!InterpreterToVM.instanceOf(cause, getMeta().Error)) {
                 throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
             } else {
                 throw e;
@@ -457,8 +455,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private Klass[] supertypesWithSelfCache;
 
     // index 0 is Object, index hierarchyDepth is this
-    @TruffleBoundary
-    private Klass[] getSuperTypes() {
+    Klass[] getSuperTypes() {
         Klass[] supertypes = supertypesWithSelfCache;
         if (supertypes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -478,7 +475,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return supertypes;
     }
 
-    private int getHierarchyDepth() {
+    int getHierarchyDepth() {
         int result = hierarchyDepth;
         if (result == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -495,7 +492,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     @CompilationFinal(dimensions = 1) private Klass[] transitiveInterfaceCache;
 
-    @TruffleBoundary
     protected final Klass[] getTransitiveInterfacesList() {
         Klass[] transitiveInterfaces = transitiveInterfaceCache;
         if (transitiveInterfaces == null) {

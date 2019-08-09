@@ -508,28 +508,6 @@ public final class StaticObject implements TruffleObject {
         return U.compareAndSwapInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), before, after);
     }
 
-    public void setWordFieldVolatile(Field field, int value) {
-        assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        switch (field.getKind()) {
-            case Boolean:
-            case Byte:
-                setByteFieldVolatile(field, (byte) value);
-                break;
-            case Char:
-                setCharFieldVolatile(field, (char) value);
-                break;
-            case Short:
-                setShortFieldVolatile(field, (short) value);
-                break;
-            case Int:
-            case Float:
-                setIntFieldVolatile(field, value);
-                break;
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
-
     // End subword field handling
     // start big words field handling
 
@@ -787,14 +765,18 @@ public final class StaticObject implements TruffleObject {
     }
 
     public static long getArrayByteOffset(int index) {
-        return Unsafe.ARRAY_INT_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET + Unsafe.ARRAY_BYTE_INDEX_SCALE * (long) index;
+    }
+
+    static {
+        // Assert a byte array has the same representation as a boolean array.
+        assert (Unsafe.ARRAY_BYTE_BASE_OFFSET == Unsafe.ARRAY_BOOLEAN_BASE_OFFSET &&
+                        Unsafe.ARRAY_BYTE_INDEX_SCALE == Unsafe.ARRAY_BOOLEAN_INDEX_SCALE);
     }
 
     public void setArrayByte(byte value, int index, Meta meta) {
+        assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
         if (index >= 0 && index < length()) {
-            // Assert a byte array has the same representation as a boolean array.
-            assert (Unsafe.ARRAY_BYTE_BASE_OFFSET == Unsafe.ARRAY_BOOLEAN_BASE_OFFSET &&
-                            Unsafe.ARRAY_BYTE_INDEX_SCALE == Unsafe.ARRAY_BOOLEAN_INDEX_SCALE);
             U.putByte(fields, getArrayByteOffset(index), value);
         } else {
             throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
@@ -802,10 +784,8 @@ public final class StaticObject implements TruffleObject {
     }
 
     public byte getArrayByte(int index, Meta meta) {
+        assert isArray() && (fields instanceof byte[] || fields instanceof boolean[]);
         if (index >= 0 && index < length()) {
-            // Assert a byte array has the same representation as a boolean array.
-            assert (Unsafe.ARRAY_BYTE_BASE_OFFSET == Unsafe.ARRAY_BOOLEAN_BASE_OFFSET &&
-                            Unsafe.ARRAY_BYTE_INDEX_SCALE == Unsafe.ARRAY_BOOLEAN_INDEX_SCALE);
             return U.getByte(fields, getArrayByteOffset(index));
         } else {
             throw meta.throwEx(ArrayIndexOutOfBoundsException.class);

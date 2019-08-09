@@ -348,6 +348,8 @@ public final class Symbol<T> extends ByteSequence {
         // Finalizer is not public.
         public static final Symbol<Type> java_lang_ref_Finalizer = StaticSymbols.putType("Ljava/lang/ref/Finalizer;");
         public static final Symbol<Type> StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
+
+        public static final Symbol<Type> Error = StaticSymbols.putType(Error.class);
         public static final Symbol<Type> NoSuchFieldError = StaticSymbols.putType(NoSuchFieldError.class);
         public static final Symbol<Type> NoSuchMethodError = StaticSymbols.putType(NoSuchMethodError.class);
         public static final Symbol<Type> IllegalAccessError = StaticSymbols.putType(IllegalAccessError.class);

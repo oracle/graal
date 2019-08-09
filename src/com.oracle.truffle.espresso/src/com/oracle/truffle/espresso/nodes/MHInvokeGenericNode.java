@@ -24,22 +24,15 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class MHInvokeGenericNode extends EspressoBaseNode {
-    private final int argCount;
     private final StaticObject appendix;
     @Child private DirectCallNode callNode;
-    private final JavaKind rKind;
 
     public MHInvokeGenericNode(Method method, StaticObject memberName, StaticObject appendix) {
         super(method);
-        this.argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
-        this.rKind = getMethod().getReturnKind();
         this.appendix = appendix;
         Method target = (Method) memberName.getHiddenField(method.getMeta().HIDDEN_VMTARGET);
         this.callNode = DirectCallNode.create(target.getCallTarget());
@@ -47,34 +40,10 @@ public class MHInvokeGenericNode extends EspressoBaseNode {
 
     @Override
     public Object invokeNaked(VirtualFrame frame) {
-        Object[] args = new Object[argCount + 2];
-        assert (getMethod().hasReceiver());
-        args[0] = frame.getArguments()[0];
-        copyOfRange(frame.getArguments(), 1, args, 1, argCount);
+        Object[] args = frame.getArguments();
+        // The quick node gave us the room to append the appendix.
+        assert args[args.length - 1] == null;
         args[args.length - 1] = appendix;
-        return unbasic(callNode.call(args), rKind);
-    }
-
-    @ExplodeLoop
-    private static void copyOfRange(Object[] src, int from, Object[] dst, int start, final int length) {
-        assert (src.length >= from + length && dst.length >= start + length);
-        for (int i = 0; i < length; ++i) {
-            dst[i + start] = src[i + from];
-        }
-    }
-
-    private static Object unbasic(Object obj, JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-                return ((int) obj != 0);
-            case Byte:
-                return ((byte) (int) obj);
-            case Char:
-                return ((char) (int) obj);
-            case Short:
-                return ((short) (int) obj);
-            default:
-                return obj;
-        }
+        return callNode.call(args);
     }
 }
