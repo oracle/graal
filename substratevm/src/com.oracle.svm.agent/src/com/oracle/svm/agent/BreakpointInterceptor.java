@@ -464,7 +464,7 @@ final class BreakpointInterceptor {
             }
         }
         boolean allowed = enclosing.equal(nullHandle()) || accessVerifier == null || accessVerifier.verifyGetEnclosingMethod(jni, holder, name, signature, enclosing, callerClass);
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, allowed ? result : false);
+        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, (allowed && enclosing.notEqual(nullHandle())) ? result : false);
         if (!allowed) {
             jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), nullHandle());
         }
