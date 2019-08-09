@@ -47,11 +47,11 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class ClassfileParser {
@@ -179,6 +179,22 @@ public final class ClassfileParser {
     }
 
     public ParserKlass parseClass() {
+        try {
+            return parseClassImpl();
+        } catch (EspressoException e) {
+            throw e;
+        } catch (ClassFormatError | VerifyError e) {
+            // These exceptions are expected.
+            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+        } catch (Throwable e) {
+            // Warn that some unexpected host-guest exception conversion happened.
+            System.err.println("Unexpected host exception " + e + " thrown during class parsing, re-throwing as guest exception.");
+            e.printStackTrace();
+            throw context.getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+        }
+    }
+
+    public ParserKlass parseClassImpl() {
         // magic
         int magic = stream.readS4();
         if (magic != MAGIC) {
@@ -476,7 +492,7 @@ public final class ClassfileParser {
             }
             return new FullFrame(frameType, offsetDelta, locals, stack);
         }
-        throw EspressoError.shouldNotReachHere();
+        throw new ClassFormatError("Unrecognized StackMapFrame tag: " + frameType);
     }
 
     private VerificationTypeInfo parseVerificationTypeInfo() {
@@ -492,7 +508,7 @@ public final class ClassfileParser {
             case ITEM_NewObject:
                 return new UninitializedVariable(tag, stream.readU2());
             default:
-                throw EspressoError.shouldNotReachHere();
+                throw new ClassFormatError("Unrecognized verification type info tag: " + tag);
         }
     }
 
