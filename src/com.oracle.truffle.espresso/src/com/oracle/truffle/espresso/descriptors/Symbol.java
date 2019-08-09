@@ -223,6 +223,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
         public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
         public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
+        public static final Symbol<Name> Synthetic = StaticSymbols.putName("Synthetic");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal.
         public static final Symbol<Name> HIDDEN_VMTARGET = StaticSymbols.putName("0HIDDEN_VMTARGET");
