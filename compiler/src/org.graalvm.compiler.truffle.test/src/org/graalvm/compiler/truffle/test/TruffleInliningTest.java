@@ -200,7 +200,7 @@ public abstract class TruffleInliningTest {
         private void buildTargets() {
             for (String targetName : targetInstructions.keySet()) {
                 TargetInstruction instruction = targetInstructions.get(targetName);
-                OptimizedCallTarget newTarget = GraalTruffleRuntime.getRuntime().createOptimizedCallTarget(null, new InlineTestRootNode(instruction.size, targetName));
+                OptimizedCallTarget newTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(new InlineTestRootNode(instruction.size, targetName));
                 for (int i = 0; i < instruction.execCount; i++) {
                     newTarget.call(0);
                 }
