@@ -1136,12 +1136,14 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
     with open(join(jvmci_dir, 'compiler-name'), 'w') as fp:
         print('graal', file=fp)
 
-    if mx.get_os() == 'darwin':
-        libjvm_dir = join(jre_dir, 'lib', 'server')
+    if jdk.javaCompliance < '9' and mx.get_os() not in ['darwin', 'windows']:
+        # On JDK 8, the server directory containing the JVM library is
+        # in an architecture specific directory (except for Darwin and Windows).
+        libjvm_dir = join(jre_dir, 'lib', mx.get_arch(), 'server')
     elif mx.get_os() == 'windows':
         libjvm_dir = join(jre_dir, 'bin', 'server')
     else:
-        libjvm_dir = join(jre_dir, 'lib', mx.get_arch(), 'server')
+        libjvm_dir = join(jre_dir, 'lib', 'server')
     mx.ensure_dir_exists(libjvm_dir)
     jvmlib = join(libjvm_dir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
 
