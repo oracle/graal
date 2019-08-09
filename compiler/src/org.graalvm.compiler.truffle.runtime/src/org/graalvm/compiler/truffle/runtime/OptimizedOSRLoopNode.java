@@ -380,18 +380,15 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         @Child protected OptimizedOSRLoopNode loopNode;
 
-        private final SourceSection sourceSection;
-
         OSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
             super(null, frameDescriptor);
             this.loopNode = loop;
             this.clazz = clazz;
-            this.sourceSection = loop.getSourceSection();
         }
 
         @Override
         public SourceSection getSourceSection() {
-            return sourceSection;
+            return loopNode.getSourceSection();
         }
 
         public static Object callProxy(OSRRootNode target, VirtualFrame frame) {
