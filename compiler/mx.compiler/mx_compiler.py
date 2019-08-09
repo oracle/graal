@@ -1120,6 +1120,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
         for src_jar in _graal_config().boot_jars:
             dst_dir = truffle_dir if basename(src_jar) == 'truffle-api.jar' else boot_dir
             _update_file(src_jar, join(dst_dir, basename(src_jar)))
+        with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
+            fp.write(join('..', 'truffle', 'truffle-api.jar'))
 
     else:
         module_dists = _graal_config().dists
