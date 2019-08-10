@@ -61,7 +61,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
 
     @APIOption(name = "static")//
-    @Option(help = "Build statically linked executable (requires static libc and zlib)")//
+    @Option(help = "Build statically linked executable (at the moment includes static libc and zlib only in your executable, hence requires them both. At the moment only supports Linux).")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
 
     public static final int ForceFallback = 10;
