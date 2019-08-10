@@ -45,7 +45,6 @@ import mx_sdk
 import mx_subst
 import mx_vm_benchmark
 import mx_vm_gate
-from mx_javamodules import as_java_module
 
 import sys
 if sys.version_info[0] < 3:

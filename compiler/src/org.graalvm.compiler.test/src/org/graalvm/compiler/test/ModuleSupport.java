@@ -54,6 +54,13 @@ public class ModuleSupport {
     }
 
     /**
+     * Exports and opens all packages in the module named {@code name} to all unnamed modules.
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenAllPackagesToUnnamed(String name) {
+    }
+
+    /**
      * Gets the names of the classes in the JDK image (i.e. lib/modules) that implement Graal.
      *
      * @throws IOException

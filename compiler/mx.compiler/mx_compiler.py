@@ -155,11 +155,11 @@ def _get_XX_option_value(vmargs, name, default):
 
 def _is_jvmci_enabled(vmargs):
     """
-    Determines if JVMCI is enabled according to the given VM arguments and whether JDK > 8.
+    Determines if JVMCI is enabled according to the given VM arguments and the default value of EnableJVMCI.
 
     :param list vmargs: VM arguments to inspect
     """
-    return _get_XX_option_value(vmargs, 'EnableJVMCI', isJDK8)
+    return _get_XX_option_value(vmargs, 'EnableJVMCI', mx_sdk.jdk_enables_jvmci_by_default(jdk))
 
 def _nodeCostDump(args, extraVMarguments=None):
     """list the costs associated with each Node type"""
@@ -209,7 +209,8 @@ def _ctw_jvmci_export_args():
     if isJDK8:
         return ['-XX:-UseJVMCIClassLoader']
     else:
-        return ['--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
+        return ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
@@ -218,8 +219,8 @@ def _ctw_system_properties_suffix():
     out = mx.OutputCapture()
     out.data = 'System properties for CTW:\n\n'
     args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args()
-    args.extend(['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk),
-            '-DCompileTheWorld.Help=true', 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
+    cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
+    args.extend(['-cp', cp, '-DCompileTheWorld.Help=true', 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
     run_java(args, out=out, addDefaultArgs=False)
     return out.data
 
@@ -255,18 +256,12 @@ def ctw(args, extraVMarguments=None):
             vmargs.append('-XX:+BootstrapJVMCI')
 
     mainClassAndArgs = []
-    if isJDK8:
-        if not _is_jvmci_enabled(vmargs):
-            vmargs.append('-XX:+CompileTheWorld')
-            if cp is not None:
-                vmargs.append('-Xbootclasspath/p:' + cp)
-        else:
-            if cp is not None:
-                vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-            vmargs.extend(_ctw_jvmci_export_args() + ['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
-            mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
+    if not _is_jvmci_enabled(vmargs):
+        vmargs.append('-XX:+CompileTheWorld')
+        if isJDK8 and cp is not None:
+            vmargs.append('-Xbootclasspath/p:' + cp)
     else:
-        if _is_jvmci_enabled(vmargs):
+        if not isJDK8:
             # To be able to load all classes in the JRT with Class.forName,
             # all JDK modules need to be made root modules.
             limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
@@ -275,12 +270,11 @@ def ctw(args, extraVMarguments=None):
                 vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
             if args.limitmods:
                 vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
-            if cp is not None:
-                vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-            vmargs.extend(_ctw_jvmci_export_args() + ['-cp', mx.classpath('org.graalvm.compiler.hotspot.test', jdk=jdk)])
-            mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
-        else:
-            vmargs.append('-XX:+CompileTheWorld')
+        if cp is not None:
+            vmargs.append('-DCompileTheWorld.Classpath=' + cp)
+        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
+        vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
+        mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
 
     run_vm(vmargs + _remove_empty_entries(extraVMarguments) + mainClassAndArgs)
 
@@ -672,36 +666,42 @@ mx_gate.add_gate_argument('--extra-vm-argument', action=ShellEscapedStringAction
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
     run_vm(vmArgs + [mainClass] + mainClassArgs)
 
+def _remove_redundant_entries(cp):
+    """
+    Removes entries from the class path `cp` that are in Graal or on the boot class path.
+    """
+
+    # Remove all duplicates in cp and convert it to a list of entries
+    seen = set()
+    cp = [e for e in cp.split(os.pathsep) if e not in seen and seen.add(e) is None]
+
+    if isJDK8:
+        # Remove entries from class path that are in Graal or on the boot class path
+        redundantClasspathEntries = set()
+        for dist in _graal_config().jvmci_dists:
+            redundantClasspathEntries.update((d.output_dir() for d in dist.archived_deps() if d.isJavaProject()))
+            redundantClasspathEntries.add(dist.path)
+    else:
+        redundantClasspathEntries = set()
+        for dist in _graal_config().dists:
+            redundantClasspathEntries.update(mx.classpath(dist, preferProjects=False, jdk=jdk).split(os.pathsep))
+            redundantClasspathEntries.update(mx.classpath(dist, preferProjects=True, jdk=jdk).split(os.pathsep))
+            if hasattr(dist, 'overlaps'):
+                for o in dist.overlaps:
+                    od = mx.distribution(o, fatalIfMissing=False)
+                    if od:
+                        path = od.classpath_repr()
+                        if path:
+                            redundantClasspathEntries.add(path)
+    return os.pathsep.join([e for e in cp if e not in redundantClasspathEntries])
+
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     cpIndex, cp = mx.find_classpath_arg(vmArgs)
     if cp:
-        cp = _uniqify(cp.split(os.pathsep))
-        if isJDK8:
-            # Remove entries from class path that are in Graal or on the boot class path
-            redundantClasspathEntries = set()
-            for dist in _graal_config().jvmci_dists:
-                redundantClasspathEntries.update((d.output_dir() for d in dist.archived_deps() if d.isJavaProject()))
-                redundantClasspathEntries.add(dist.path)
-            cp = os.pathsep.join([e for e in cp if e not in redundantClasspathEntries])
-            vmArgs[cpIndex] = cp
-        else:
-            redundantClasspathEntries = set()
-            for dist in _graal_config().dists:
-                redundantClasspathEntries.update(mx.classpath(dist, preferProjects=False, jdk=jdk).split(os.pathsep))
-                redundantClasspathEntries.update(mx.classpath(dist, preferProjects=True, jdk=jdk).split(os.pathsep))
-                if hasattr(dist, 'overlaps'):
-                    for o in dist.overlaps:
-                        od = mx.distribution(o, fatalIfMissing=False)
-                        if od:
-                            path = od.classpath_repr()
-                            if path:
-                                redundantClasspathEntries.add(path)
-
-            # Remove entries from the class path that are in the deployed modules
-            cp = [classpathEntry for classpathEntry in cp if classpathEntry not in redundantClasspathEntries]
-            vmArgs[cpIndex] = os.pathsep.join(cp)
-
+        cp = _remove_redundant_entries(cp)
+        vmArgs[cpIndex] = cp
+        if not isJDK8:
             # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
             # for the junit harness which uses reflection to find @Test methods. In addition, the
             # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
@@ -725,16 +725,6 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 mx_unittest.set_vm_launcher('JDK VM launcher', _unittest_vm_launcher, jdk)
-
-def _uniqify(alist):
-    """
-    Processes given list to remove all duplicate entries, preserving only the first unique instance for each entry.
-
-    :param list alist: the list to process
-    :return: `alist` with all duplicates removed
-    """
-    seen = set()
-    return [e for e in alist if e not in seen and seen.add(e) is None]
 
 def _record_last_updated_jar(dist, path):
     last_updated_jar = join(dist.suite.get_output_root(), dist.name + '.lastUpdatedJar')

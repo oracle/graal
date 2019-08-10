@@ -69,6 +69,16 @@ public class ModuleSupport {
         }
     }
 
+    @SuppressWarnings("unused")
+    public static void exportAndOpenAllPackagesToUnnamed(String name) {
+        Module module = ModuleLayer.boot().findModule(name).orElseThrow();
+        Set<String> packages = module.getPackages();
+        for (String pkg : packages) {
+            Modules.addExportsToAllUnnamed(module, pkg);
+            Modules.addOpensToAllUnnamed(module, pkg);
+        }
+    }
+
     public static List<String> getJRTGraalClassNames() throws IOException {
         List<String> classNames = new ArrayList<>();
         FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap());
