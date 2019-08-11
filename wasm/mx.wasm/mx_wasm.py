@@ -38,4 +38,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+import mx
 import mx_wasm_benchmark  # pylint: disable=unused-import
+
+_suite = mx.suite('wasm')

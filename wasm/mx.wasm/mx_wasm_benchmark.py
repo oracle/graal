@@ -39,7 +39,8 @@
 # SOFTWARE.
 #
 import mx_wasm
-from mx_benchmark import JMHDistBenchmarkSuite, add_bm_suite
+from mx_benchmark import JMHDistBenchmarkSuite
+from mx_benchmark import add_bm_suite
 
 
 class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
