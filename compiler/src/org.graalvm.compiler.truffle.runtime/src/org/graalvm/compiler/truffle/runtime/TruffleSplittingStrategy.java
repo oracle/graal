@@ -323,7 +323,7 @@ final class TruffleSplittingStrategy {
                 rt.log(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
             }
         }
-        
+
         public static <K, T> Map<K, Integer> sortByIntegerValue(Map<K, Integer> map) {
             List<Entry<K, Integer>> list = new ArrayList<>(map.entrySet());
             list.sort((x, y) -> y.getValue().compareTo(x.getValue()));
