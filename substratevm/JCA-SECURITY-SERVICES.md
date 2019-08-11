@@ -31,6 +31,8 @@ It is loaded at run time via `System.loadLibrary("sunec")`, the first time servi
 To use this provider's services the `java.library.path` system property needs to be set accordingly to point to a location that contains `libsunec.so`.
 Note that if `java.library.path` is not set it defaults to the current working directory.
 
+Ensure the version of the `libsunec.so` static object library is from GraalVM's JDK for the native-image to work (it is found in the `${GRAALVM_HOME}/jre/lib/amd64` for Linux, does not work for MacOS yet).
+
 ### Alternative to `--enable-all-security-services`
 
 Registering *all* security services doesn't come for free.

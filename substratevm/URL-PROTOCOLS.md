@@ -22,7 +22,7 @@ Thus when `https` is enabled `--enable-all-security-services` is set by default.
 This adds to the generated image the code required by the JCA.
 It also enables JNI by default since some providers like SunEC are implemented in native code.
 However, it doesn't include the corresponding native library in the image, i.e., `libsunec.so` for SunEC.
-You need to ship that with the image and set the `java.library.path` system property accordingly.
+You need to ship that with the image and set the `java.library.path` system property accordingly. Ensure the version of the `libsunec.so` static object library is from GraalVM's JDK for the native-image to work (it is found in the `${GRAALVM_HOME}/jre/lib/amd64` for Linux, does not work for MacOS yet).
 See the [documentation on security services](JCA-SECURITY-SERVICES.md) for more details.
 
 ### Not tested
