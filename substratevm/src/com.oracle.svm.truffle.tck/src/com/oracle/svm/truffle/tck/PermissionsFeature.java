@@ -93,8 +93,6 @@ public class PermissionsFeature implements Feature {
         @Option(help = "Path to file where to store report of Truffle language privilege access.") public static final HostedOptionKey<String> TruffleLanguagePermissionsReportFile = new HostedOptionKey<>(
                         null);
 
-        @Option(help = "Comma separated list of language packages.") public static final HostedOptionKey<String> TruffleLanguagePermissionsLanguagePackages = new HostedOptionKey<>(null);
-
         @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<String[]> TruffleLanguagePermissionsExcludeFiles = new HostedOptionKey<>(null);
 
         @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxStackTraceDepth = new HostedOptionKey<>(
@@ -117,15 +115,23 @@ public class PermissionsFeature implements Feature {
     /**
      * List of safe packages.
      */
-    private static final Set<String> compilerPkgs;
+    private static final Set<String> compilerPackages;
     static {
-        compilerPkgs = new HashSet<>();
-        compilerPkgs.add("org.graalvm.");
-        compilerPkgs.add("com.oracle.graalvm.");
-        compilerPkgs.add("com.oracle.truffle.api.");
-        compilerPkgs.add("com.oracle.truffle.polyglot.");
-        compilerPkgs.add("com.oracle.truffle.nfi.");
-        compilerPkgs.add("com.oracle.truffle.object.");
+        compilerPackages = new HashSet<>();
+        compilerPackages.add("org.graalvm.");
+        compilerPackages.add("com.oracle.graalvm.");
+        compilerPackages.add("com.oracle.truffle.api.");
+        compilerPackages.add("com.oracle.truffle.polyglot.");
+        compilerPackages.add("com.oracle.truffle.nfi.");
+        compilerPackages.add("com.oracle.truffle.object.");
+    }
+
+    private static final Set<ClassLoader> systemClassLoaders;
+    static {
+        systemClassLoaders = new HashSet<>();
+        for (ClassLoader cl = ClassLoader.getSystemClassLoader(); cl != null; cl = cl.getParent()) {
+            systemClassLoaders.add(cl);
+        }
     }
 
     /**
@@ -133,13 +139,14 @@ public class PermissionsFeature implements Feature {
      */
     private Path reportFilePath;
     /**
-     * List of language packages including nested packages.
-     */
-    private Set<String> languagePackages;
-    /**
      * Methods which are allowed to do privileged calls without being reported.
      */
     private Set<AnalysisMethod> whiteList;
+
+    /**
+     * Marker interface for SVM generated accessor classes which are opaque for permission analysis.
+     */
+    private AnalysisType reflectionProxy;
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -151,14 +158,6 @@ public class PermissionsFeature implements Feature {
             UserError.abort("Path to report file must be given by -H:TruffleLanguagePermissionsReportFile option.");
         }
         reportFilePath = Paths.get(reportFile);
-        String pkgs = Options.TruffleLanguagePermissionsLanguagePackages.getValue();
-        if (pkgs == null) {
-            UserError.abort("Language packages must be given by -H:TruffleLanguagePermissionsLanguagePackages option.");
-        }
-        languagePackages = new HashSet<>();
-        for (String pkg : pkgs.split(",")) {
-            languagePackages.add(pkg + ".");
-        }
     }
 
     @Override
@@ -181,6 +180,10 @@ public class PermissionsFeature implements Feature {
                             Options.TruffleLanguagePermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
+            reflectionProxy = bigbang.forClass("com.oracle.svm.reflect.helpers.ReflectionProxy");
+            if (reflectionProxy == null) {
+                UserError.abort("Cannot load ReflectionProxy type");
+            }
             whiteList = parser.getLoadedWhiteList();
             Set<AnalysisMethod> importantMethods = findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check"));
             if (!importantMethods.isEmpty()) {
@@ -310,13 +313,13 @@ public class PermissionsFeature implements Feature {
      * @param path the current call path
      * @return {@code true} if the call path up to given {@code method} contains a language method.
      */
-    private boolean hasLanguageMethodOnCallPath(AnalysisMethod method, Deque<AnalysisMethod> path) {
+    private static boolean hasLanguageMethodOnCallPath(AnalysisMethod method, Deque<AnalysisMethod> path) {
         for (Iterator<AnalysisMethod> it = path.descendingIterator(); it.hasNext();) {
             AnalysisMethod pe = it.next();
             if (method.equals(pe)) {
                 return false;
             }
-            if (isLanguageClass(pe)) {
+            if (!isCompilerClass(pe) && !isSystemClass(pe)) {
                 return true;
             }
         }
@@ -364,7 +367,7 @@ public class PermissionsFeature implements Feature {
                     if (!callers.isEmpty()) {
                         useNoReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
-                } else if (isLanguageClass(m)) {
+                } else if (!isSystemClass(m) && !isReflectionProxy(m)) {
                     List<AnalysisMethod> callPath = new ArrayList<>(visited);
                     report.add(callPath);
                     useNoReports++;
@@ -386,12 +389,30 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Tests if the given {@link AnalysisMethod} is from language class.
+     * Tests if the given {@link AnalysisMethod} comes from {@code ReflectionProxy} implementation.
      *
      * @param method the {@link AnalysisMethod} to check
      */
-    private boolean isLanguageClass(AnalysisMethod method) {
-        return isClassInPackage(getClassName(method), languagePackages);
+    private boolean isReflectionProxy(AnalysisMethod method) {
+        for (AnalysisType iface : method.getDeclaringClass().getInterfaces()) {
+            if (iface.equals(reflectionProxy)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Tests if the given {@link AnalysisMethod} is from system {@link ClassLoader}.
+     *
+     * @param method the {@link AnalysisMethod} to check
+     */
+    private static boolean isSystemClass(AnalysisMethod method) {
+        Class<?> clz = method.getDeclaringClass().getJavaClass();
+        if (clz == null) {
+            return false;
+        }
+        return clz.getClassLoader() == null || systemClassLoaders.contains(clz.getClassLoader());
     }
 
     /**
@@ -401,7 +422,7 @@ public class PermissionsFeature implements Feature {
      * @param method the {@link AnalysisMethod} to check
      */
     private static boolean isCompilerClass(AnalysisMethod method) {
-        return isClassInPackage(getClassName(method), compilerPkgs);
+        return isClassInPackage(getClassName(method), compilerPackages);
     }
 
     /**
@@ -533,7 +554,7 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Filters out {@code AccessController#doPrivileged} calls not done by the language.
+     * Filters out {@code AccessController#doPrivileged} done by JRE.
      */
     private final class SafePrivilegedRecognizer implements CallGraphFilter {
 
@@ -545,7 +566,10 @@ public class PermissionsFeature implements Feature {
 
         @Override
         public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
-            return this.dopriviledged.contains(method) && !isLanguageClass(caller);
+            if (!dopriviledged.contains(method)) {
+                return false;
+            }
+            return isCompilerClass(caller) || isSystemClass(caller);
         }
     }
 

@@ -202,7 +202,7 @@ def gate_python(tasks):
             python_suite = mx.suite("graalpython")
             python_suite.extensions.run_python_unittests(python_svm_image_path)
 
-def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, language_packages):
+def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
     cp = None
     for dist in svm_suite.dists:
         if 'SVM_TRUFFLE_TCK' == dist.name:
@@ -225,7 +225,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
             '--no-server',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleLanguagePermissionsReportFile={}'.format(report_file.name),
-            '-H:TruffleLanguagePermissionsLanguagePackages={}'.format(','.join(language_packages)),
             'com.oracle.svm.truffle.tck.MockMain'
         ]
         if excludes:
@@ -246,4 +245,4 @@ def gate_svm_truffle_tck_js(tasks):
                 mx.abort("Cannot resolve graal-js suite.")
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                _svm_truffle_tck(native_image, svm.suite, js_suite, 'js', ['com.oracle.truffle.js', 'com.oracle.truffle.regex'])
+                _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')
