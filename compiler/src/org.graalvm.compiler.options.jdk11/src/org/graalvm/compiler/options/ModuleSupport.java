@@ -29,7 +29,12 @@ import java.util.ServiceLoader;
 public class ModuleSupport {
 
     static Iterable<OptionDescriptors> getOptionsLoader() {
-        // On JDK 9+, Graal and its extensions are in the same module layer.
-        return ServiceLoader.load(ModuleSupport.class.getModule().getLayer(), OptionDescriptors.class);
+        /*
+         * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class loader
+         * as of JDK 9. Modules that depend on and extend Graal are loaded by the app class loader.
+         * As such, we need to start the provider search at the app class loader instead of the
+         * platform class loader.
+         */
+        return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
     }
 }
