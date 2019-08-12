@@ -46,9 +46,11 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * Resolved non-primitive, non-array types in Espresso.
@@ -58,6 +60,8 @@ public final class ObjectKlass extends Klass {
     public static final ObjectKlass[] EMPTY_ARRAY = new ObjectKlass[0];
 
     public static final JavaKind FIELD_REPRESENTATION = JavaKind.Byte;
+
+    private final Object initializationLock = new Object();
 
     private final EnclosingMethodAttribute enclosingMethod;
 
@@ -206,88 +210,107 @@ public final class ObjectKlass extends Klass {
     }
 
     @ExplodeLoop
-    private synchronized void actualInit() {
-        if (!(isInitializedOrPrepared())) { // Check under lock
-            if (initState == ERRONEOUS) {
-                throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
-            }
-            initState = PREPARED;
-            verifyKlass();
-            if (getSuperKlass() != null) {
-                getSuperKlass().initialize();
-            }
-            /**
-             * Spec fragment: Then, initialize each final static field of C with the constant value
-             * in its ConstantValue attribute (§4.7.2), in the order the fields appear in the
-             * ClassFile structure.
-             *
-             * ...
-             *
-             * Next, execute the class or interface initialization method of C.
-             */
-            for (Field f : declaredFields) {
-                if (f.isStatic()) {
-                    ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
-                    if (a == null) {
-                        continue;
-                    }
-                    switch (f.getKind()) {
-                        case Boolean: {
-                            boolean c = getConstantPool().intAt(a.getConstantvalueIndex()) != 0;
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Byte: {
-                            byte c = (byte) getConstantPool().intAt(a.getConstantvalueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Short: {
-                            short c = (short) getConstantPool().intAt(a.getConstantvalueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Char: {
-                            char c = (char) getConstantPool().intAt(a.getConstantvalueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Int: {
-                            int c = getConstantPool().intAt(a.getConstantvalueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Float: {
-                            float c = getConstantPool().floatAt(a.getConstantvalueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Long: {
-                            long c = getConstantPool().longAt(a.getConstantvalueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Double: {
-                            double c = getConstantPool().doubleAt(a.getConstantvalueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        case Object: {
-                            StaticObject c = getConstantPool().resolvedStringAt(a.getConstantvalueIndex());
-                            f.set(getStatics(), c);
-                            break;
-                        }
-                        default:
-                            EspressoError.shouldNotReachHere("invalid constant field kind");
-                    }
+    private void actualInit() {
+        synchronized (initializationLock) {
+            if (!(isInitializedOrPrepared())) { // Check under lock
+                if (initState == ERRONEOUS) {
+                    throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
                 }
+                initState = PREPARED;
+                verifyKlass();
+                try {
+                    if (getSuperKlass() != null) {
+                        getSuperKlass().initialize();
+                    }
+                    /**
+                     * Spec fragment: Then, initialize each final static field of C with the
+                     * constant value in its ConstantValue attribute (§4.7.2), in the order the
+                     * fields appear in the ClassFile structure.
+                     *
+                     * ...
+                     *
+                     * Next, execute the class or interface initialization method of C.
+                     */
+                    for (Field f : declaredFields) {
+                        if (f.isStatic()) {
+                            ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
+                            if (a == null) {
+                                continue;
+                            }
+                            switch (f.getKind()) {
+                                case Boolean: {
+                                    boolean c = getConstantPool().intAt(a.getConstantvalueIndex()) != 0;
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                case Byte: {
+                                    byte c = (byte) getConstantPool().intAt(a.getConstantvalueIndex());
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                case Short: {
+                                    short c = (short) getConstantPool().intAt(a.getConstantvalueIndex());
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                case Char: {
+                                    char c = (char) getConstantPool().intAt(a.getConstantvalueIndex());
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                case Int: {
+                                    int c = getConstantPool().intAt(a.getConstantvalueIndex());
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                case Float: {
+                                    float c = getConstantPool().floatAt(a.getConstantvalueIndex());
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                case Long: {
+                                    long c = getConstantPool().longAt(a.getConstantvalueIndex());
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                case Double: {
+                                    double c = getConstantPool().doubleAt(a.getConstantvalueIndex());
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                case Object: {
+                                    StaticObject c = getConstantPool().resolvedStringAt(a.getConstantvalueIndex());
+                                    f.set(getStatics(), c);
+                                    break;
+                                }
+                                default:
+                                    throw EspressoError.shouldNotReachHere("invalid constant field kind");
+                            }
+                        }
+                    }
+                    Method clinit = getClassInitializer();
+                    if (clinit != null) {
+                        clinit.getCallTarget().call();
+                    }
+                } catch (EspressoException e) {
+                    setErroneous();
+                    StaticObject cause = e.getException();
+                    if (!InterpreterToVM.instanceOf(cause, getMeta().Error)) {
+                        throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
+                    } else {
+                        throw e;
+                    }
+                } catch (Throwable e) {
+                    System.err.println("Host exception happened during class initialization");
+                    setErroneous();
+                    throw e;
+                }
+                if (initState == ERRONEOUS) {
+                    throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
+                }
+                initState = INITIALIZED;
+                assert isInitialized();
             }
-            Method clinit = getClassInitializer();
-            if (clinit != null) {
-                clinit.getCallTarget().call();
-            }
-            initState = INITIALIZED;
-            assert isInitialized();
         }
     }
 
@@ -561,8 +584,10 @@ public final class ObjectKlass extends Klass {
                         // new BytecodeStream(m.getCodeAttribute().getCode()).printBytecode(this);
                         setErroneous();
                         throw getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+                    } catch (EspressoException e) {
+                        throw e;
                     } catch (Throwable e) {
-                        e.printStackTrace();
+                        System.err.println("Unexpected host exception happened during bytecode verification: " + e);
                         throw EspressoError.shouldNotReachHere(e.toString());
                     }
                 }
