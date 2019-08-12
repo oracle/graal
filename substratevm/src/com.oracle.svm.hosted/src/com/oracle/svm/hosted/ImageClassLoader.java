@@ -145,7 +145,7 @@ public final class ImageClassLoader {
             if (!Files.exists(javaHome)) {
                 throw new AssertionError("Java home is not reachable.");
             }
-            Path list = javaHome.resolve(Paths.get("lib", "jvmci", "native-image-modules.list"));
+            Path list = javaHome.resolve(Paths.get("lib", "native-image-modules.list"));
             if (Files.exists(list)) {
                 try {
                     Files.readAllLines(list).stream().map(s -> s.trim()).filter(s -> !s.isEmpty() && !s.startsWith("#")).forEach(modules::add);
