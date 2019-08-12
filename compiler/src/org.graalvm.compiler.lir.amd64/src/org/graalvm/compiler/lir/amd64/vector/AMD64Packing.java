@@ -35,6 +35,7 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -101,22 +102,22 @@ public final class AMD64Packing {
             final PlatformKind pc = result.getPlatformKind();
             final int alignment = pc.getSizeInBytes() / pc.getVectorLength();
             final AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(byteBuffer.array(), alignment);
-            switch (byteBuffer.capacity()) {
-                case 4:  // TODO: Avoid using a constant here.
+            switch (AVXKind.AVXSize.fromBytes(byteBuffer.capacity())) {
+                case DWORD:
                     VMOVD.emit(masm, DWORD, asRegister(result), address);
                     break;
-                case 8:  // TODO: Avoid using a constant here.
+                case QWORD:
                     VMOVQ.emit(masm, QWORD, asRegister(result), address);
                     break;
-                case 16: // TODO: Avoid using a constant here.
+                case XMM:
                     masm.movdqu(asRegister(result), address);
                     break;
-                case 32: // TODO: Avoid using a constant here.
+                case YMM:
                     assert ((AMD64) masm.target.arch).getFeatures().contains(AMD64.CPUFeature.AVX) : "AVX is unsupported";
                     masm.vmovdqu(asRegister(result), address);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere("Unsupported constant size '" + AVXKind.AVXSize.fromBytes(byteBuffer.capacity()));
             }
         }
     }
