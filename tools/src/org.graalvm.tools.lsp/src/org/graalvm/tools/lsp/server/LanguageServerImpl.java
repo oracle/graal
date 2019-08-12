@@ -26,7 +26,6 @@ package org.graalvm.tools.lsp.server;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.Writer;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URI;
@@ -44,64 +43,52 @@ import java.util.concurrent.ThreadFactory;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import org.eclipse.lsp4j.CodeAction;
-import org.eclipse.lsp4j.CodeActionParams;
-import org.eclipse.lsp4j.CodeLens;
-import org.eclipse.lsp4j.CodeLensOptions;
-import org.eclipse.lsp4j.CodeLensParams;
-import org.eclipse.lsp4j.Command;
-import org.eclipse.lsp4j.CompletionItem;
-import org.eclipse.lsp4j.CompletionList;
-import org.eclipse.lsp4j.CompletionOptions;
-import org.eclipse.lsp4j.CompletionParams;
-import org.eclipse.lsp4j.DidChangeConfigurationParams;
-import org.eclipse.lsp4j.DidChangeTextDocumentParams;
-import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
-import org.eclipse.lsp4j.DidCloseTextDocumentParams;
-import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.DidSaveTextDocumentParams;
-import org.eclipse.lsp4j.DocumentFormattingParams;
-import org.eclipse.lsp4j.DocumentHighlight;
-import org.eclipse.lsp4j.DocumentOnTypeFormattingParams;
-import org.eclipse.lsp4j.DocumentRangeFormattingParams;
-import org.eclipse.lsp4j.DocumentSymbol;
-import org.eclipse.lsp4j.DocumentSymbolParams;
-import org.eclipse.lsp4j.ExecuteCommandOptions;
-import org.eclipse.lsp4j.ExecuteCommandParams;
-import org.eclipse.lsp4j.Hover;
-import org.eclipse.lsp4j.InitializeParams;
-import org.eclipse.lsp4j.InitializeResult;
-import org.eclipse.lsp4j.Location;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.ReferenceParams;
-import org.eclipse.lsp4j.RenameParams;
-import org.eclipse.lsp4j.ServerCapabilities;
-import org.eclipse.lsp4j.SignatureHelp;
-import org.eclipse.lsp4j.SignatureHelpOptions;
-import org.eclipse.lsp4j.SymbolInformation;
-import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
-import org.eclipse.lsp4j.TextDocumentPositionParams;
-import org.eclipse.lsp4j.TextDocumentSyncKind;
-import org.eclipse.lsp4j.TextEdit;
-import org.eclipse.lsp4j.WorkspaceEdit;
-import org.eclipse.lsp4j.WorkspaceSymbolParams;
-import org.eclipse.lsp4j.jsonrpc.Launcher;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.eclipse.lsp4j.launch.LSPLauncher;
-import org.eclipse.lsp4j.services.LanguageClient;
-import org.eclipse.lsp4j.services.LanguageClientAware;
-import org.eclipse.lsp4j.services.LanguageServer;
-import org.eclipse.lsp4j.services.TextDocumentService;
-import org.eclipse.lsp4j.services.WorkspaceService;
+import org.graalvm.tools.lsp.server.types.CodeAction;
+import org.graalvm.tools.lsp.server.types.CodeActionParams;
+import org.graalvm.tools.lsp.server.types.CodeLens;
+import org.graalvm.tools.lsp.server.types.CodeLensOptions;
+import org.graalvm.tools.lsp.server.types.CodeLensParams;
+import org.graalvm.tools.lsp.server.types.Command;
+import org.graalvm.tools.lsp.server.types.CompletionItem;
+import org.graalvm.tools.lsp.server.types.CompletionList;
+import org.graalvm.tools.lsp.server.types.CompletionOptions;
+import org.graalvm.tools.lsp.server.types.CompletionParams;
+import org.graalvm.tools.lsp.server.types.DidChangeTextDocumentParams;
+import org.graalvm.tools.lsp.server.types.DidCloseTextDocumentParams;
+import org.graalvm.tools.lsp.server.types.DidOpenTextDocumentParams;
+import org.graalvm.tools.lsp.server.types.DidSaveTextDocumentParams;
+import org.graalvm.tools.lsp.server.types.DocumentFormattingParams;
+import org.graalvm.tools.lsp.server.types.DocumentHighlight;
+import org.graalvm.tools.lsp.server.types.DocumentOnTypeFormattingParams;
+import org.graalvm.tools.lsp.server.types.DocumentRangeFormattingParams;
+import org.graalvm.tools.lsp.server.types.DocumentSymbolParams;
+import org.graalvm.tools.lsp.server.types.ExecuteCommandOptions;
+import org.graalvm.tools.lsp.server.types.ExecuteCommandParams;
+import org.graalvm.tools.lsp.server.types.Hover;
+import org.graalvm.tools.lsp.server.types.InitializeParams;
+import org.graalvm.tools.lsp.server.types.InitializeResult;
+import org.graalvm.tools.lsp.server.types.LanguageClient;
+import org.graalvm.tools.lsp.server.types.LanguageServer;
+import org.graalvm.tools.lsp.server.types.Location;
+import org.graalvm.tools.lsp.server.types.ShowMessageParams;
+import org.graalvm.tools.lsp.server.types.MessageType;
+import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
+import org.graalvm.tools.lsp.server.types.Range;
+import org.graalvm.tools.lsp.server.types.ReferenceParams;
+import org.graalvm.tools.lsp.server.types.RenameParams;
+import org.graalvm.tools.lsp.server.types.ServerCapabilities;
+import org.graalvm.tools.lsp.server.types.SignatureHelp;
+import org.graalvm.tools.lsp.server.types.SignatureHelpOptions;
+import org.graalvm.tools.lsp.server.types.SymbolInformation;
+import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
+import org.graalvm.tools.lsp.server.types.TextDocumentPositionParams;
+import org.graalvm.tools.lsp.server.types.TextDocumentSyncKind;
+import org.graalvm.tools.lsp.server.types.TextEdit;
+import org.graalvm.tools.lsp.server.types.WorkspaceEdit;
+import org.graalvm.tools.lsp.server.types.WorkspaceSymbolParams;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
-
-import com.google.gson.JsonPrimitive;
 
 import com.oracle.truffle.api.TruffleLogger;
 
@@ -109,7 +96,7 @@ import com.oracle.truffle.api.TruffleLogger;
  * A LSP4J {@link LanguageServer} implementation using TCP sockets as transportation layer for the
  * JSON-RPC requests. It delegates all requests to {@link TruffleAdapter}.
  */
-public final class LanguageServerImpl implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService {
+public final class LanguageServerImpl extends LanguageServer {
 
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, LanguageServer.class);
 
@@ -126,8 +113,8 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     private final Map<URI, String> openedFileUri2LangId = new HashMap<>();
     private ExecutorService clientConnectionExecutor;
 
-    private final Hover emptyHover = new Hover();
-    private final SignatureHelp emptySignatureHelp = new SignatureHelp();
+    private final Hover emptyHover = Hover.create(Collections.emptyList());
+    private final SignatureHelp emptySignatureHelp = SignatureHelp.create(Collections.emptyList(), null, null);
 
     private LanguageServerImpl(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
         this.truffleAdapter = adapter;
@@ -148,34 +135,29 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
         List<String> signatureTriggerChars = waitForResultAndHandleExceptions(truffleAdapter.getSignatureHelpTriggerCharactersOfAllLanguages());
         List<String> triggerCharacters = waitForResultAndHandleExceptions(truffleAdapter.getCompletionTriggerCharactersOfAllLanguages());
 
-        ServerCapabilities capabilities = new ServerCapabilities();
+        ServerCapabilities capabilities = ServerCapabilities.create();
         capabilities.setTextDocumentSync(TEXT_DOCUMENT_SYNC_KIND);
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);
         capabilities.setDefinitionProvider(true);
         capabilities.setDocumentHighlightProvider(true);
-        capabilities.setCodeLensProvider(new CodeLensOptions(false));
-        CompletionOptions completionOptions = new CompletionOptions();
-        completionOptions.setResolveProvider(false);
-        completionOptions.setTriggerCharacters(triggerCharacters);
-        capabilities.setCompletionProvider(completionOptions);
+        capabilities.setCodeLensProvider(CodeLensOptions.create().setResolveProvider(false));
+        capabilities.setCompletionProvider(CompletionOptions.create().setTriggerCharacters(triggerCharacters).setResolveProvider(false));
         capabilities.setCodeActionProvider(true);
-        SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(signatureTriggerChars);
-        capabilities.setSignatureHelpProvider(signatureHelpOptions);
+        capabilities.setSignatureHelpProvider(SignatureHelpOptions.create().setTriggerCharacters(signatureTriggerChars));
         capabilities.setHoverProvider(true);
         capabilities.setReferencesProvider(true);
-
-        capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
+        capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(ANALYSE_COVERAGE, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
 
         CompletableFuture.runAsync(() -> parseWorkspace(params.getRootUri()));
 
-        return CompletableFuture.completedFuture(new InitializeResult(capabilities));
+        return CompletableFuture.completedFuture(InitializeResult.create(capabilities));
     }
 
     @Override
     public CompletableFuture<Object> shutdown() {
         info.println("[Graal LSP] Shutting down server...");
-        return CompletableFuture.completedFuture(new Object());
+        return CompletableFuture.completedFuture(null);
     }
 
     @Override
@@ -185,29 +167,19 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     }
 
     @Override
-    public TextDocumentService getTextDocumentService() {
-        return this;
-    }
-
-    @Override
-    public WorkspaceService getWorkspaceService() {
-        return this;
-    }
-
-    @Override
     public void connect(@SuppressWarnings("hiding") LanguageClient client) {
         this.client = client;
     }
 
     @Override
-    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams position) {
+    public CompletableFuture<CompletionList> completion(CompletionParams position) {
         Future<CompletionList> futureCompletionList = truffleAdapter.completion(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
                         position.getPosition().getCharacter(), position.getContext());
-        return CompletableFuture.supplyAsync(() -> Either.forRight(waitForResultAndHandleExceptions(futureCompletionList, truffleAdapter.completionHandler.emptyList)));
+        return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureCompletionList, truffleAdapter.completionHandler.emptyList));
     }
 
     @Override
-    public CompletableFuture<CompletionItem> resolveCompletionItem(CompletionItem unresolved) {
+    public CompletableFuture<CompletionItem> resolveCompletion(CompletionItem unresolved) {
         // TODO Auto-generated method stub
         return null;
     }
@@ -249,38 +221,34 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     }
 
     @Override
-    public CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(DocumentSymbolParams params) {
-        Future<List<Either<SymbolInformation, DocumentSymbol>>> future = truffleAdapter.documentSymbol(URI.create(params.getTextDocument().getUri()));
-        Supplier<List<Either<SymbolInformation, DocumentSymbol>>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
+    public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
+        Future<List<? extends SymbolInformation>> future = truffleAdapter.documentSymbol(URI.create(params.getTextDocument().getUri()));
+        Supplier<List<? extends SymbolInformation>> supplier = () -> waitForResultAndHandleExceptions(future, Collections.emptyList());
         return CompletableFuture.supplyAsync(supplier);
     }
 
     @Override
-    public CompletableFuture<List<Either<Command, CodeAction>>> codeAction(CodeActionParams params) {
+    public CompletableFuture<List<? extends CodeAction>> codeAction(CodeActionParams params) {
         return CompletableFuture.completedFuture(Collections.emptyList());
     }
 
     @Override
     public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params) {
         return CompletableFuture.supplyAsync(() -> {
-            CodeLens codeLens = new CodeLens(new Range(new Position(), new Position()));
-            Command command = new Command("Analyse coverage", ANALYSE_COVERAGE);
-            command.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+            CodeLens codeLens = CodeLens.create(Range.create(0, 0, 0, 0), null);
+            Command command = Command.create("Analyse coverage", ANALYSE_COVERAGE, Arrays.asList(params.getTextDocument().getUri()));
             codeLens.setCommand(command);
 
-            CodeLens codeLensShowCoverage = new CodeLens(new Range(new Position(), new Position()));
-            Command commandShowCoverage = new Command("Highlight uncovered code", SHOW_COVERAGE);
-            commandShowCoverage.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+            CodeLens codeLensShowCoverage = CodeLens.create(Range.create(0, 0, 0, 0), null);
+            Command commandShowCoverage = Command.create("Highlight uncovered code", SHOW_COVERAGE, Arrays.asList(params.getTextDocument().getUri()));
             codeLensShowCoverage.setCommand(commandShowCoverage);
 
-            CodeLens codeLensClear = new CodeLens(new Range(new Position(), new Position()));
-            Command commandClear = new Command("Clear coverage", CLEAR_COVERAGE);
-            commandClear.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+            CodeLens codeLensClear = CodeLens.create(Range.create(0, 0, 0, 0), null);
+            Command commandClear = Command.create("Clear coverage", CLEAR_COVERAGE, Arrays.asList(params.getTextDocument().getUri()));
             codeLensClear.setCommand(commandClear);
 
-            CodeLens codeLensClearAll = new CodeLens(new Range(new Position(), new Position()));
-            Command commandClearAll = new Command("Clear coverage (all files)", CLEAR_ALL_COVERAGE);
-            commandClearAll.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+            CodeLens codeLensClearAll = CodeLens.create(Range.create(0, 0, 0, 0), null);
+            Command commandClearAll = Command.create("Clear coverage (all files)", CLEAR_ALL_COVERAGE, Arrays.asList(params.getTextDocument().getUri()));
             codeLensClearAll.setCommand(commandClearAll);
 
             return Arrays.asList(codeLens, codeLensShowCoverage, codeLensClear, codeLensClearAll);
@@ -322,7 +290,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
         URI uri = URI.create(params.getTextDocument().getUri());
 
         if (!uri.getScheme().equals("file")) {
-            client.showMessage(new MessageParams(MessageType.Error, "URI with schema other than 'file' are not supported yet. uri=" + uri.toString()));
+            client.showMessage(ShowMessageParams.create(MessageType.Error, "URI with schema other than 'file' are not supported yet. uri=" + uri.toString()));
             return;
         }
 
@@ -392,40 +360,31 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
     }
 
     @Override
-    public void didChangeConfiguration(DidChangeConfigurationParams params) {
-        // TODO(ds) client configs are not used yet
-    }
-
-    @Override
-    public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
-    }
-
-    @Override
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
         switch (params.getCommand()) {
             case ANALYSE_COVERAGE:
-                client.showMessage(new MessageParams(MessageType.Info, "Running Coverage analysis..."));
-                String uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
+                client.showMessage(ShowMessageParams.create(MessageType.Info, "Running Coverage analysis..."));
+                String uri = (String) params.getArguments().get(0);
 
                 Future<Boolean> future = truffleAdapter.runCoverageAnalysis(URI.create(uri));
                 return CompletableFuture.supplyAsync(() -> {
                     Boolean result = waitForResultAndHandleExceptions(future, Boolean.FALSE);
                     if (result) {
-                        client.showMessage(new MessageParams(MessageType.Info, "Coverage analysis done."));
+                        client.showMessage(ShowMessageParams.create(MessageType.Info, "Coverage analysis done."));
                         Future<?> futureShowCoverage = truffleAdapter.showCoverage(URI.create(uri));
                         waitForResultAndHandleExceptions(futureShowCoverage);
                     } else {
-                        client.showMessage(new MessageParams(MessageType.Error, "Coverage analysis failed."));
+                        client.showMessage(ShowMessageParams.create(MessageType.Error, "Coverage analysis failed."));
                     }
                     return new Object();
                 });
             case SHOW_COVERAGE:
-                uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
+                uri = (String) params.getArguments().get(0);
 
                 Future<?> futureCoverage = truffleAdapter.showCoverage(URI.create(uri));
                 return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureCoverage));
             case CLEAR_COVERAGE:
-                uri = ((JsonPrimitive) params.getArguments().get(0)).getAsString();
+                uri = (String) params.getArguments().get(0);
 
                 Future<?> futureClear = truffleAdapter.clearCoverage(URI.create(uri));
                 return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClear));
@@ -436,6 +395,26 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
                 err.println("Unkown command: " + params.getCommand());
                 return CompletableFuture.completedFuture(new Object());
         }
+    }
+
+    @Override
+    public LoggerProxy getLogger() {
+        return new LoggerProxy() {
+            @Override
+            public boolean isLoggable(Level level) {
+                return LOG.isLoggable(level);
+            }
+
+            @Override
+            public void log(Level level, String msg) {
+                LOG.log(level, msg);
+            }
+
+            @Override
+            public void log(Level level, String msg, Throwable thrown) {
+                LOG.log(level, msg, thrown);
+            }
+        };
     }
 
     private void parseWorkspace(String rootUri) {
@@ -460,7 +439,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
             if (uriToClearDiagnostics != null) {
                 // No exceptions occurred during future execution, so clear diagnostics (e.g. after
                 // fixing a syntax error etc.)
-                client.publishDiagnostics(new PublishDiagnosticsParams(uriToClearDiagnostics.toString(), Collections.emptyList()));
+                client.publishDiagnostics(PublishDiagnosticsParams.create(uriToClearDiagnostics.toString(), Collections.emptyList()));
             }
             return result;
         } catch (InterruptedException e) {
@@ -469,7 +448,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
             if (e.getCause() instanceof UnknownLanguageException) {
                 String message = "Unknown language: " + e.getCause().getMessage();
                 LOG.fine(message);
-                client.showMessage(new MessageParams(MessageType.Error, message));
+                client.showMessage(ShowMessageParams.create(MessageType.Error, message));
             } else if (e.getCause() instanceof DiagnosticsNotification) {
                 for (PublishDiagnosticsParams params : ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection()) {
                     client.publishDiagnostics(params);
@@ -517,32 +496,7 @@ public final class LanguageServerImpl implements LanguageServer, LanguageClientA
                         }
                     });
 
-                    Launcher.Builder<LanguageClient> launcherBuilder = new LSPLauncher.Builder<LanguageClient>() //
-                                    .setLocalService(LanguageServerImpl.this) //
-                                    .setRemoteInterface(LanguageClient.class) //
-                                    .setInput(clientSocket.getInputStream()) //
-                                    .setOutput(clientSocket.getOutputStream()) //
-                                    .setExecutorService(lspRequestExecutor);
-                    if (LOG.isLoggable(Level.FINER)) {
-                        launcherBuilder.traceMessages(new PrintWriter(new Writer() {
-                            @Override
-                            public void write(char[] cbuf, int off, int len) throws IOException {
-                                LOG.finer(new String(cbuf, off, len));
-                            }
-
-                            @Override
-                            public void flush() throws IOException {
-                            }
-
-                            @Override
-                            public void close() throws IOException {
-                            }
-                        }));
-                    }
-                    Launcher<LanguageClient> launcher = launcherBuilder.create();
-
-                    LanguageServerImpl.this.connect(launcher.getRemoteProxy());
-                    Future<?> listenFuture = launcher.startListening();
+                    Future<?> listenFuture = Session.connect(LanguageServerImpl.this, clientSocket.getInputStream(), clientSocket.getOutputStream(), lspRequestExecutor);
                     try {
                         listenFuture.get();
                     } catch (InterruptedException | ExecutionException e) {

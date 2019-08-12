@@ -31,11 +31,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.graalvm.options.OptionValues;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
+import org.graalvm.tools.lsp.server.types.Position;
+import org.graalvm.tools.lsp.server.types.Range;
+import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLogger;
@@ -93,7 +93,7 @@ public final class SourceUtils {
 
     public static Range sourceSectionToRange(SourceSection section) {
         if (section == null) {
-            return new Range(new Position(), new Position());
+            return Range.create(0, 0, 0, 0); // TODO: LSP4J removal
         }
         int endColumn = section.getEndColumn();
         if (section.getCharacters().toString().endsWith("\n")) {
@@ -101,9 +101,7 @@ public final class SourceUtils {
             // working
             endColumn -= 1;
         }
-        return new Range(
-                        new Position(section.getStartLine() - 1, section.getStartColumn() - 1),
-                        new Position(section.getEndLine() - 1, endColumn));
+        return Range.create(section.getStartLine() - 1, section.getStartColumn() - 1, section.getEndLine() - 1, endColumn);
     }
 
     public static SourceSection findSourceLocation(TruffleInstrument.Env env, Object object, LanguageInfo defaultLanguageInfo) {
@@ -117,8 +115,9 @@ public final class SourceUtils {
     public static SourceFix removeLastTextInsertion(TextDocumentSurrogate surrogate, int originalCharacter) {
         TextDocumentContentChangeEvent lastChange = surrogate.getLastChange();
         Range range = lastChange.getRange();
-        TextDocumentContentChangeEvent replacementEvent = new TextDocumentContentChangeEvent(
-                        new Range(range.getStart(), new Position(range.getEnd().getLine(), range.getEnd().getCharacter() + lastChange.getText().length())), lastChange.getText().length(), "");
+        TextDocumentContentChangeEvent replacementEvent = TextDocumentContentChangeEvent.create("") //
+                        .setRange(Range.create(range.getStart(), Position.create(range.getEnd().getLine(), range.getEnd().getCharacter() + lastChange.getText().length()))) //
+                        .setRangeLength(lastChange.getText().length());
         String codeBeforeLastChange = applyTextDocumentChanges(Arrays.asList(replacementEvent), surrogate.getSource(), surrogate);
         int characterIdx = originalCharacter - (originalCharacter - range.getStart().getCharacter());
 
@@ -189,7 +188,7 @@ public final class SourceUtils {
     }
 
     public static Range getRangeFrom(TruffleException te) {
-        Range range = new Range(new Position(), new Position());
+        Range range = Range.create(0, 0, 0, 0); // TODO: LSP4J removal
         SourceSection sourceLocation = te.getSourceLocation() != null ? te.getSourceLocation()
                         : (te.getLocation() != null ? te.getLocation().getEncapsulatingSourceSection() : null);
         if (sourceLocation != null && sourceLocation.isAvailable()) {

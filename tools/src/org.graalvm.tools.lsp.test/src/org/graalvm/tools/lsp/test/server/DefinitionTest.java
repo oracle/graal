@@ -25,15 +25,16 @@
 package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.eclipse.lsp4j.Location;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
+import org.graalvm.tools.lsp.server.types.Location;
+import org.graalvm.tools.lsp.server.types.Position;
+import org.graalvm.tools.lsp.server.types.Range;
 import org.junit.Test;
 
 public class DefinitionTest extends TruffleLSPTest {
@@ -44,7 +45,7 @@ public class DefinitionTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ, "sl", uri);
         futureOpen.get();
 
-        Range abcRange = new Range(new Position(5, 9), new Position(9, 1));
+        Range abcRange = Range.create(Position.create(5, 9), Position.create(9, 1));
 
         int line = 1;
         for (int i = 4; i <= 9; i++) {
@@ -77,7 +78,7 @@ public class DefinitionTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         futureOpen.get();
 
-        checkDefinitions(uri, 12, 3, 1, new Range(new Position(5, 9), new Position(9, 1)));
+        checkDefinitions(uri, 12, 3, 1, Range.create(Position.create(5, 9), Position.create(9, 1)));
     }
 
     private void checkNoDefinitions(URI uri, int line, int character) throws InterruptedException, ExecutionException {
@@ -90,7 +91,7 @@ public class DefinitionTest extends TruffleLSPTest {
         assertEquals(defSize, definitions.size());
         if (defSize != 0) {
             Location location = definitions.get(0);
-            assertEquals(locationRange, location.getRange());
+            assertTrue(rangeCheck(locationRange, location.getRange()));
         }
     }
 }

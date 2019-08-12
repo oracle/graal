@@ -38,11 +38,11 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
+import org.graalvm.tools.lsp.server.types.Diagnostic;
+import org.graalvm.tools.lsp.server.types.Position;
+import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
+import org.graalvm.tools.lsp.server.types.Range;
+import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
@@ -115,33 +115,33 @@ public class ParsingTest extends TruffleLSPTest {
         futureParse.get();
 
         // Insert +4
-        checkChange(uri, new Range(new Position(0, 27), new Position(0, 27)), "+4",
+        checkChange(uri, Range.create(Position.create(0, 27), Position.create(0, 27)), "+4",
                         "function main() {return 3+3+4;}");
 
         // Delete
-        checkChange(uri, new Range(new Position(0, 24), new Position(0, 26)), "",
+        checkChange(uri, Range.create(Position.create(0, 24), Position.create(0, 26)), "",
                         "function main() {return 3+4;}");
 
         // Replace
-        checkChange(uri, new Range(new Position(0, 17), new Position(0, 29)), "\n  return 42;\n}",
+        checkChange(uri, Range.create(Position.create(0, 17), Position.create(0, 29)), "\n  return 42;\n}",
                         "function main() {\n  return 42;\n}");
 
         // Insert at the end
-        checkChange(uri, new Range(new Position(2, 1), new Position(2, 1)), "\n",
+        checkChange(uri, Range.create(Position.create(2, 1), Position.create(2, 1)), "\n",
                         "function main() {\n  return 42;\n}\n");
-        checkChange(uri, new Range(new Position(3, 0), new Position(3, 0)), " ",
+        checkChange(uri, Range.create(Position.create(3, 0), Position.create(3, 0)), " ",
                         "function main() {\n  return 42;\n}\n ");
 
         // Multiline replace
-        checkChange(uri, new Range(new Position(0, 16), new Position(3, 1)), "{return 1;}",
+        checkChange(uri, Range.create(Position.create(0, 16), Position.create(3, 1)), "{return 1;}",
                         "function main() {return 1;}");
 
         // No change
-        surrogate = checkChange(uri, new Range(new Position(0, 1), new Position(0, 1)), "",
+        surrogate = checkChange(uri, Range.create(Position.create(0, 1), Position.create(0, 1)), "",
                         "function main() {return 1;}");
         // Replace to empty
         try {
-            checkChange(uri, new Range(new Position(0, 0), new Position(0, 30)), "", null);
+            checkChange(uri, Range.create(Position.create(0, 0), Position.create(0, 30)), "", null);
             fail();
         } catch (ExecutionException e) {
             Collection<PublishDiagnosticsParams> diagnosticParamsCollection = ((DiagnosticsNotification) e.getCause()).getDiagnosticParamsCollection();
@@ -154,7 +154,7 @@ public class ParsingTest extends TruffleLSPTest {
     }
 
     private TextDocumentSurrogate checkChange(URI uri, Range range, String change, String editorText) throws InterruptedException, ExecutionException {
-        TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, change.length(), change);
+        TextDocumentContentChangeEvent event = TextDocumentContentChangeEvent.create(change).setRange(range).setRangeLength(change.length());
         Future<TextDocumentSurrogate> future = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
         TextDocumentSurrogate surrogate = future.get();
         assertEquals(editorText, surrogate.getEditorText());
@@ -177,7 +177,7 @@ public class ParsingTest extends TruffleLSPTest {
             assertEquals(1, diagnosticParamsCollection.size());
             PublishDiagnosticsParams diagnosticsParams = diagnosticParamsCollection.iterator().next();
             assertEquals(1, diagnosticsParams.getDiagnostics().size());
-            assertEquals(new Range(new Position(0, 26), new Position(0, 27)), diagnosticsParams.getDiagnostics().get(0).getRange());
+            assertTrue(rangeCheck(0, 26, 0, 27, diagnosticsParams.getDiagnostics().get(0).getRange()));
         }
     }
 }

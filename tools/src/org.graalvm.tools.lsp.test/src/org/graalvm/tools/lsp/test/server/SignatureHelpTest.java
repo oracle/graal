@@ -30,7 +30,7 @@ import java.net.URI;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.eclipse.lsp4j.SignatureHelp;
+import org.graalvm.tools.lsp.server.types.SignatureHelp;
 import org.junit.Test;
 
 public class SignatureHelpTest extends TruffleLSPTest {

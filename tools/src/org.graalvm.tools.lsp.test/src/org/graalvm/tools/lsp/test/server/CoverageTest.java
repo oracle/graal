@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
+import org.graalvm.tools.lsp.server.types.Diagnostic;
+import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
 import org.junit.Test;
 
 public class CoverageTest extends TruffleLSPTest {
@@ -59,13 +59,13 @@ public class CoverageTest extends TruffleLSPTest {
             assertEquals(uri.toString(), diagnosticsParams.getUri());
             List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
             assertEquals(7, diagnostics.size());
-            assertEquals(range(1, 4, 1, 13), diagnostics.get(0).getRange());
-            assertEquals(range(2, 4, 2, 12), diagnostics.get(1).getRange());
-            assertEquals(range(6, 2, 6, 13), diagnostics.get(2).getRange());
-            assertEquals(range(7, 2, 7, 11), diagnostics.get(3).getRange());
-            assertEquals(range(8, 2, 8, 12), diagnostics.get(4).getRange());
-            assertEquals(range(12, 2, 12, 7), diagnostics.get(5).getRange());
-            assertEquals(range(13, 2, 13, 14), diagnostics.get(6).getRange());
+            assertTrue(rangeCheck(1, 4, 1, 13, diagnostics.get(0).getRange()));
+            assertTrue(rangeCheck(2, 4, 2, 12, diagnostics.get(1).getRange()));
+            assertTrue(rangeCheck(6, 2, 6, 13, diagnostics.get(2).getRange()));
+            assertTrue(rangeCheck(7, 2, 7, 11, diagnostics.get(3).getRange()));
+            assertTrue(rangeCheck(8, 2, 8, 12, diagnostics.get(4).getRange()));
+            assertTrue(rangeCheck(12, 2, 12, 7, diagnostics.get(5).getRange()));
+            assertTrue(rangeCheck(13, 2, 13, 14, diagnostics.get(6).getRange()));
         }
 
         Future<Boolean> future = truffleAdapter.runCoverageAnalysis(uri);
@@ -84,8 +84,8 @@ public class CoverageTest extends TruffleLSPTest {
             assertEquals(uri.toString(), diagnosticsParams.getUri());
             List<Diagnostic> diagnostics = diagnosticsParams.getDiagnostics();
             assertEquals(2, diagnostics.size());
-            assertEquals(range(12, 2, 12, 7), diagnostics.get(0).getRange());
-            assertEquals(range(13, 2, 13, 14), diagnostics.get(1).getRange());
+            assertTrue(rangeCheck(12, 2, 12, 7, diagnostics.get(0).getRange()));
+            assertTrue(rangeCheck(13, 2, 13, 14, diagnostics.get(1).getRange()));
         }
     }
 }

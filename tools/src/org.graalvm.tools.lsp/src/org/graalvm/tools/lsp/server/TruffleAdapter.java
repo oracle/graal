@@ -41,15 +41,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 
-import org.eclipse.lsp4j.CompletionContext;
-import org.eclipse.lsp4j.CompletionList;
-import org.eclipse.lsp4j.DocumentHighlight;
-import org.eclipse.lsp4j.Hover;
-import org.eclipse.lsp4j.Location;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.SignatureHelp;
-import org.eclipse.lsp4j.SymbolInformation;
-import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
+import org.graalvm.tools.lsp.server.types.CompletionContext;
+import org.graalvm.tools.lsp.server.types.CompletionList;
+import org.graalvm.tools.lsp.server.types.DocumentHighlight;
+import org.graalvm.tools.lsp.server.types.Hover;
+import org.graalvm.tools.lsp.server.types.Location;
+import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
+import org.graalvm.tools.lsp.server.types.SignatureHelp;
+import org.graalvm.tools.lsp.server.types.SymbolInformation;
+import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.api.ContextAwareExecutorRegistry;
 import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
@@ -72,13 +72,12 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-import org.eclipse.lsp4j.DocumentSymbol;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 
 /**
  * This class delegates LSP requests of {@link LanguageServerImpl} to specific implementations of
@@ -162,7 +161,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
             Map<String, LanguageInfo> mimeType2LangInfo = futureMimeTypes.get();
             Map<String, List<String>> langId2CompletionTriggerCharacters = futureCompletionTriggerCharacters.get();
 
-            this.surrogateMap = new TextDocumentSurrogateMap(langId2CompletionTriggerCharacters, mimeType2LangInfo);
+            this.surrogateMap = new TextDocumentSurrogateMap(env, langId2CompletionTriggerCharacters, mimeType2LangInfo);
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
@@ -183,7 +182,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
     }
 
     protected CallTarget parseWithEnteredContext(final String text, final String langId, final URI uri) throws DiagnosticsNotification {
-        LanguageInfo languageInfo = findLanguageInfo(langId, uri);
+        LanguageInfo languageInfo = findLanguageInfo(langId, env.getTruffleFile(uri));
         TextDocumentSurrogate surrogate = getOrCreateSurrogate(uri, text, languageInfo);
         return parseWithEnteredContext(surrogate);
     }
@@ -204,7 +203,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
      * @param uri of the concerning file
      * @return a language info
      */
-    private LanguageInfo findLanguageInfo(final String langId, final URI uri) {
+    private LanguageInfo findLanguageInfo(final String langId, final TruffleFile truffleFile) {
         Map<String, LanguageInfo> languages = env.getLanguages();
         LanguageInfo langInfo = languages.get(langId);
         if (langInfo != null) {
@@ -215,7 +214,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
         String actualLangId = Source.findLanguage(possibleMimeType);
         if (actualLangId == null) {
             try {
-                actualLangId = Source.findLanguage(uri.toURL());
+                actualLangId = Source.findLanguage(truffleFile);
             } catch (IOException e) {
             }
 
@@ -269,7 +268,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
             throw new IllegalArgumentException("Root URI is not referencing a directory. URI: " + rootUri);
         }
 
-        Future<Map<String, LanguageInfo>> futureMimeTypes = contextAwareExecutor.executeWithDefaultContext(() -> {
+        Future<List<Future<?>>> futureTasks = contextAwareExecutor.executeWithDefaultContext(() -> {
             Map<String, LanguageInfo> mimeType2LangInfo = new HashMap<>();
             for (LanguageInfo langInfo : env.getLanguages().values()) {
                 if (langInfo.isInternal()) {
@@ -277,19 +276,18 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
                 }
                 langInfo.getMimeTypes().stream().forEach(mimeType -> mimeType2LangInfo.put(mimeType, langInfo));
             }
-            return mimeType2LangInfo;
-        });
-
-        try {
-            Map<String, LanguageInfo> mimeTypesAllLang = futureMimeTypes.get();
             try {
-                WorkspaceWalker walker = new WorkspaceWalker(mimeTypesAllLang);
+                WorkspaceWalker walker = new WorkspaceWalker(mimeType2LangInfo);
                 LOG.log(Level.FINE, "Start walking file tree at: {0}", rootPath);
                 Files.walkFileTree(rootPath, walker);
                 return walker.parsingTasks;
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        });
+
+        try {
+            return futureTasks.get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
@@ -316,7 +314,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
         @Override
         public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
             URI uri = file.toUri();
-            String mimeType = Source.findMimeType(uri.toURL());
+            String mimeType = Source.findMimeType(env.getTruffleFile(uri));
             if (!mimeTypesAllLang.containsKey(mimeType)) {
                 return FileVisitResult.CONTINUE;
             }
@@ -337,7 +335,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
 
     }
 
-    public Future<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(URI uri) {
+    public Future<List<? extends SymbolInformation>> documentSymbol(URI uri) {
         return contextAwareExecutor.executeWithDefaultContext(() -> symbolHandler.documentSymbolWithEnteredContext(uri));
     }
 
@@ -431,7 +429,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
                 surrogate.clearCoverage();
                 try {
                     sourceCodeEvaluator.parse(surrogate);
-                    params.add(new PublishDiagnosticsParams(surrogate.getUri().toString(), Collections.emptyList()));
+                    params.add(PublishDiagnosticsParams.create(surrogate.getUri().toString(), Collections.emptyList()));
                 } catch (DiagnosticsNotification e) {
                     params.addAll(e.getDiagnosticParamsCollection());
                 }
@@ -458,7 +456,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
             surrogate.clearCoverage();
             sourceCodeEvaluator.parse(surrogate);
 
-            throw new DiagnosticsNotification(new PublishDiagnosticsParams(uri.toString(), Collections.emptyList()));
+            throw new DiagnosticsNotification(PublishDiagnosticsParams.create(uri.toString(), Collections.emptyList()));
         });
     }
 

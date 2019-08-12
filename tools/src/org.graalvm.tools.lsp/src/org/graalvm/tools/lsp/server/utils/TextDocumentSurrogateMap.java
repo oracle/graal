@@ -32,15 +32,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 
 public final class TextDocumentSurrogateMap {
+    private final TruffleInstrument.Env env;
     private final Map<URI, TextDocumentSurrogate> uri2TextDocumentSurrogate = new HashMap<>();
     private final Map<String, List<String>> langId2CompletionTriggerCharacters;
     private final Map<String, LanguageInfo> mimeType2LangInfo;
 
-    public TextDocumentSurrogateMap(Map<String, List<String>> langId2CompletionTriggerCharacters, Map<String, LanguageInfo> mimeType2LangInfo) {
+    public TextDocumentSurrogateMap(TruffleInstrument.Env env, Map<String, List<String>> langId2CompletionTriggerCharacters, Map<String, LanguageInfo> mimeType2LangInfo) {
+        this.env = env;
         this.langId2CompletionTriggerCharacters = langId2CompletionTriggerCharacters;
         this.mimeType2LangInfo = mimeType2LangInfo;
     }
@@ -55,14 +58,14 @@ public final class TextDocumentSurrogateMap {
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, LanguageInfo languageInfo) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
-                        (anUri) -> new TextDocumentSurrogate(anUri, languageInfo, getCompletionTriggerCharacters(languageInfo.getId())));
+                        (anUri) -> new TextDocumentSurrogate(env.getTruffleFile(anUri), languageInfo, getCompletionTriggerCharacters(languageInfo.getId())));
     }
 
     public TextDocumentSurrogate getOrCreateSurrogate(URI uri, Supplier<LanguageInfo> languageInfoSupplier) {
         return uri2TextDocumentSurrogate.computeIfAbsent(uri,
                         (anUri) -> {
                             LanguageInfo languageInfo = languageInfoSupplier.get();
-                            return new TextDocumentSurrogate(anUri, languageInfo, getCompletionTriggerCharacters(languageInfo.getId()));
+                            return new TextDocumentSurrogate(env.getTruffleFile(anUri), languageInfo, getCompletionTriggerCharacters(languageInfo.getId()));
                         });
     }
 

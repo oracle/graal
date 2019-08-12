@@ -32,16 +32,15 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
 
-import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.EvaluationResultException;
 import org.graalvm.tools.lsp.exceptions.InvalidCoverageScriptURI;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
+import org.graalvm.tools.lsp.server.types.Diagnostic;
+import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
+import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.utils.CoverageData;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
@@ -103,7 +102,8 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             surrogate.notifyParsingSuccessful(callTarget);
         } catch (Exception e) {
             if (e instanceof TruffleException) {
-                throw DiagnosticsNotification.create(surrogate.getUri(), new Diagnostic(SourceUtils.getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, "Graal"));
+                throw DiagnosticsNotification.create(surrogate.getUri(),
+                                Diagnostic.create(SourceUtils.getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, null, "Graal", null));
             } else {
                 // TODO(ds) throw an Exception which the LSPServer can catch to send a client
                 // notification
@@ -328,8 +328,7 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
             runScriptUri = RunScriptUtils.extractScriptPath(surrogateOfOpenedFile);
         } catch (InvalidCoverageScriptURI e) {
             throw DiagnosticsNotification.create(surrogateOfOpenedFile.getUri(),
-                            new Diagnostic(new Range(new Position(0, e.getIndex()), new Position(0, e.getLength())), e.getReason(), DiagnosticSeverity.Error,
-                                            "Graal LSP"));
+                            Diagnostic.create(Range.create(0, e.getIndex(), 0, e.getLength()), e.getReason(), DiagnosticSeverity.Error, null, "Graal LSP", null));
         }
 
         if (runScriptUri == null) {

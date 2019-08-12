@@ -25,11 +25,14 @@
 package org.graalvm.tools.lsp.exceptions;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
-import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.graalvm.tools.lsp.server.types.Diagnostic;
+import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
 
 public final class DiagnosticsNotification extends Exception {
 
@@ -38,7 +41,7 @@ public final class DiagnosticsNotification extends Exception {
     private final Collection<PublishDiagnosticsParams> paramsCollection;
 
     public static DiagnosticsNotification create(URI uri, Diagnostic diagnostic) {
-        PublishDiagnosticsParams params = new PublishDiagnosticsParams(uri.toString(), Arrays.asList(diagnostic));
+        PublishDiagnosticsParams params = PublishDiagnosticsParams.create(uri.toString(), Arrays.asList(diagnostic));
         return new DiagnosticsNotification(params);
     }
 
@@ -48,6 +51,13 @@ public final class DiagnosticsNotification extends Exception {
 
     public DiagnosticsNotification(Collection<PublishDiagnosticsParams> paramsCollection) {
         this.paramsCollection = paramsCollection;
+    }
+
+    public DiagnosticsNotification(Map<URI, List<Diagnostic>> paramsMap) {
+        this.paramsCollection = new ArrayList<>(paramsMap.size());
+        for (Map.Entry<URI, List<Diagnostic>> entry : paramsMap.entrySet()) {
+            this.paramsCollection.add(PublishDiagnosticsParams.create(entry.getKey().toString(), entry.getValue()));
+        }
     }
 
     public Collection<PublishDiagnosticsParams> getDiagnosticParamsCollection() {

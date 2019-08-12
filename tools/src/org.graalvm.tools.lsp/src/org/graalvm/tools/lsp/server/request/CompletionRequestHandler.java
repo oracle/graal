@@ -25,7 +25,9 @@
 package org.graalvm.tools.lsp.server.request;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,16 +35,15 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import org.eclipse.lsp4j.CompletionContext;
-import org.eclipse.lsp4j.CompletionItem;
-import org.eclipse.lsp4j.CompletionItemKind;
-import org.eclipse.lsp4j.CompletionList;
-import org.eclipse.lsp4j.CompletionTriggerKind;
-import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.MarkupContent;
-import org.eclipse.lsp4j.MarkupKind;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.graalvm.tools.lsp.server.types.CompletionContext;
+import org.graalvm.tools.lsp.server.types.CompletionItem;
+import org.graalvm.tools.lsp.server.types.CompletionItemKind;
+import org.graalvm.tools.lsp.server.types.CompletionList;
+import org.graalvm.tools.lsp.server.types.CompletionTriggerKind;
+import org.graalvm.tools.lsp.server.types.Diagnostic;
+import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
+import org.graalvm.tools.lsp.server.types.MarkupContent;
+import org.graalvm.tools.lsp.server.types.MarkupKind;
 
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
@@ -96,7 +97,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         GLOBALS_AND_LOCALS
     }
 
-    public final CompletionList emptyList = new CompletionList();
+    public final CompletionList emptyList = CompletionList.create(Collections.emptyList(), false);
 
     private static final int SORTING_PRIORITY_LOCALS = 1;
     private static final int SORTING_PRIORITY_GLOBALS = 2;
@@ -167,8 +168,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
     }
 
     private CompletionList createCompletions(TextDocumentSurrogate surrogate, int line, int character, CompletionKind completionKind) throws DiagnosticsNotification {
-        CompletionList completions = new CompletionList();
-        completions.setIsIncomplete(false);
+        List<CompletionItem> completions = new ArrayList<>();
 
         if (completionKind == CompletionKind.GLOBALS_AND_LOCALS) {
             fillCompletionsWithGlobalsAndLocals(line, surrogate, character, completions);
@@ -176,10 +176,10 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             fillCompletionsWithObjectProperties(surrogate, line, character, completions);
         }
 
-        return completions;
+        return CompletionList.create(completions, false);
     }
 
-    private void fillCompletionsWithGlobalsAndLocals(int line, TextDocumentSurrogate surrogate, int character, CompletionList completions) {
+    private void fillCompletionsWithGlobalsAndLocals(int line, TextDocumentSurrogate surrogate, int character, List<CompletionItem> completions) {
         Node nearestNode = findNearestNode(surrogate.getSourceWrapper(), line, character);
 
         if (nearestNode == null) {
@@ -226,7 +226,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return nearestNodeHolder.getNode();
     }
 
-    private void fillCompletionsWithObjectProperties(TextDocumentSurrogate surrogate, int line, int character, CompletionList completions) throws DiagnosticsNotification {
+    private void fillCompletionsWithObjectProperties(TextDocumentSurrogate surrogate, int line, int character, List<CompletionItem> completions) throws DiagnosticsNotification {
         SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
         Source source = sourceWrapper.getSource();
         Class<?>[] tags = LanguageSpecificHacks.getSupportedTags(surrogate.getLanguageInfo());
@@ -248,16 +248,16 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                     if (evalResult.getResult() instanceof TruffleException) {
                         TruffleException te = (TruffleException) evalResult.getResult();
                         throw DiagnosticsNotification.create(surrogate.getUri(),
-                                        new Diagnostic(SourceUtils.sourceSectionToRange(te.getSourceLocation()), "An error occurred during execution: " + te.toString(),
-                                                        DiagnosticSeverity.Warning, "Graal"));
+                                        Diagnostic.create(SourceUtils.sourceSectionToRange(te.getSourceLocation()), "An error occurred during execution: " + te.toString(),
+                                                        DiagnosticSeverity.Warning, null, "Graal", null));
                     } else {
                         ((Exception) evalResult.getResult()).printStackTrace(err);
                     }
                 }
             } else {
                 throw DiagnosticsNotification.create(surrogate.getUri(),
-                                new Diagnostic(SourceUtils.sourceSectionToRange(nearestNode.getSourceSection()), "No type information available for this source section.",
-                                                DiagnosticSeverity.Information, "Graal"));
+                                Diagnostic.create(SourceUtils.sourceSectionToRange(nearestNode.getSourceSection()), "No type information available for this source section.",
+                                                DiagnosticSeverity.Information, null, "Graal", null));
             }
         } else {
             LOG.fine("No object property completion possible. Caret is not directly at the end of a source section. Nearest section: " + nearestNode.getSourceSection());
@@ -293,18 +293,18 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return getCompletionKind(String.valueOf(charAtOffset), completionTriggerCharacters);
     }
 
-    private void fillCompletionsWithLocals(final TextDocumentSurrogate surrogate, Node nearestNode, CompletionList completions, VirtualFrame frame) {
+    private void fillCompletionsWithLocals(final TextDocumentSurrogate surrogate, Node nearestNode, List<CompletionItem> completions, VirtualFrame frame) {
         fillCompletionsWithScopesValues(surrogate, completions, env.findLocalScopes(nearestNode, frame), CompletionItemKind.Variable, SORTING_PRIORITY_LOCALS);
     }
 
-    private void fillCompletionsWithGlobals(final TextDocumentSurrogate surrogate, CompletionList completions) {
+    private void fillCompletionsWithGlobals(final TextDocumentSurrogate surrogate, List<CompletionItem> completions) {
         fillCompletionsWithScopesValues(surrogate, completions, env.findTopScopes(surrogate.getLanguageId()), null, SORTING_PRIORITY_GLOBALS);
     }
 
-    private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, CompletionList completions, Iterable<Scope> scopes,
+    private void fillCompletionsWithScopesValues(TextDocumentSurrogate surrogate, List<CompletionItem> completions, Iterable<Scope> scopes,
                     CompletionItemKind completionItemKindDefault, int displayPriority) {
         LanguageInfo langInfo = surrogate.getLanguageInfo();
-        String[] existingCompletions = completions.getItems().stream().map((item) -> item.getLabel()).toArray(String[]::new);
+        String[] existingCompletions = completions.stream().map((item) -> item.getLabel()).toArray(String[]::new);
         // Filter duplicates
         Set<String> completionKeys = new HashSet<>(Arrays.asList(existingCompletions));
         int scopeCounter = 0;
@@ -343,7 +343,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                     LOG.log(Level.CONFIG, variables.toString(), t);
                     continue;
                 }
-                CompletionItem completion = new CompletionItem(key);
+                CompletionItem completion = CompletionItem.create(key);
                 // Inner scopes should be displayed first, so sort by priority and scopeCounter
                 // (the innermost scope has the lowest counter)
                 completion.setSortText(String.format("%d.%04d.%s", displayPriority, scopeCounter, key));
@@ -352,7 +352,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 completion.setDetail(createCompletionDetail(object, langInfo));
                 completion.setDocumentation(createDocumentation(object, surrogate.getLanguageInfo(), "in " + scope.getName()));
 
-                completions.getItems().add(completion);
+                completions.add(completion);
             }
         }
     }
@@ -367,7 +367,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return null;
     }
 
-    protected boolean fillCompletionsFromTruffleObject(CompletionList completions, LanguageInfo langInfo, Object object) {
+    protected boolean fillCompletionsFromTruffleObject(List<CompletionItem> completions, LanguageInfo langInfo, Object object) {
         if (object == null) {
             return false;
         }
@@ -417,7 +417,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                 LOG.log(Level.CONFIG, boxedObject.toString(), t);
                 continue;
             }
-            CompletionItem completion = new CompletionItem(key);
+            CompletionItem completion = CompletionItem.create(key);
             ++counter;
             // Keep the order in which the keys were provided
             completion.setSortText(String.format("%06d.%s", counter, key));
@@ -426,16 +426,15 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
             completion.setDetail(createCompletionDetail(value, langInfo));
             completion.setDocumentation(createDocumentation(value, langInfo, "of meta object: `" + metaObject + "`"));
 
-            completions.getItems().add(completion);
+            completions.add(completion);
         }
 
         return counter > 0;
     }
 
-    private Either<String, MarkupContent> createDocumentation(Object value, LanguageInfo langInfo, String scopeInformation) {
-        Either<String, MarkupContent> documentation = getDocumentation(value, langInfo);
+    private Object createDocumentation(Object value, LanguageInfo langInfo, String scopeInformation) {
+        Object documentation = getDocumentation(value, langInfo);
         if (documentation == null) {
-            MarkupContent markup = new MarkupContent();
             String markupStr = escapeMarkdown(scopeInformation);
 
             SourceSection section = env.findSourceLocation(langInfo, value);
@@ -445,9 +444,7 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
                     markupStr += "\n\n```\n" + section.getCharacters().toString() + "\n```";
                 }
             }
-            markup.setKind(MarkupKind.MARKDOWN);
-            markup.setValue(markupStr);
-            documentation = Either.forRight(markup);
+            documentation = MarkupContent.create(MarkupKind.Markdown, markupStr);
         }
         return documentation;
     }
@@ -490,27 +487,26 @@ public final class CompletionRequestHandler extends AbstractRequestHandler {
         return detailText;
     }
 
-    public Either<String, MarkupContent> getDocumentation(Object value, LanguageInfo langInfo) {
+    public Object getDocumentation(Object value, LanguageInfo langInfo) {
         if (!(value instanceof TruffleObject) || INTEROP.isNull(value)) {
             return null;
         }
         try {
             Object docu = LSP_INTEROP.getDocumentation(value);
             if (docu instanceof String && !((String) docu).isEmpty()) {
-                return Either.forLeft((String) docu);
+                return docu;
             } else {
                 if (docu instanceof TruffleObject) {
                     TruffleObject markup = (TruffleObject) docu;
-                    MarkupContent content = new MarkupContent();
+                    MarkupKind kind;
                     try {
-                        docu = INTEROP.invokeMember(markup, MarkupKind.MARKDOWN);
-                        content.setKind(MarkupKind.MARKDOWN);
+                        docu = INTEROP.invokeMember(markup, MarkupKind.Markdown.getStringValue());
+                        kind = MarkupKind.Markdown;
                     } catch (InteropException e) {
-                        docu = INTEROP.invokeMember(markup, MarkupKind.PLAINTEXT);
-                        content.setKind(MarkupKind.PLAINTEXT);
+                        docu = INTEROP.invokeMember(markup, MarkupKind.PlainText.getStringValue());
+                        kind = MarkupKind.PlainText;
                     }
-                    content.setValue(env.toString(langInfo, docu));
-                    return Either.forRight(content);
+                    return MarkupContent.create(kind, env.toString(langInfo, docu));
                 }
             }
         } catch (UnsupportedMessageException | UnsupportedTypeException e) {

@@ -30,10 +30,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.eclipse.lsp4j.DocumentHighlight;
-import org.eclipse.lsp4j.Location;
-import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
+import org.graalvm.tools.lsp.server.types.DocumentHighlight;
+import org.graalvm.tools.lsp.server.types.Location;
+import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
@@ -94,7 +94,7 @@ public final class ReferencesRequestHandler extends AbstractRequestHandler {
                                 if (normalizedSymbolToFindRef.equals(normalizedSymbol)) {
                                     Range range = SourceUtils.sourceSectionToRange(node.getSourceSection());
                                     URI fixedUri = SourceUtils.getOrFixFileUri(node.getSourceSection().getSource());
-                                    locations.add(new Location(fixedUri.toString(), range));
+                                    locations.add(Location.create(fixedUri.toString(), range));
                                 }
                             }
                         }, true).dispose();
@@ -104,7 +104,7 @@ public final class ReferencesRequestHandler extends AbstractRequestHandler {
     private List<? extends Location> referencesForVariableNode(TextDocumentSurrogate surrogate, InstrumentableNode nodeAtCaret) {
         List<? extends DocumentHighlight> readOrWrites = highlightHandler.findOtherReadOrWrites(surrogate, nodeAtCaret);
         return readOrWrites.stream() //
-                        .map(highlight -> new Location(surrogate.getUri().toString(), highlight.getRange())) //
+                        .map(highlight -> Location.create(surrogate.getUri().toString(), highlight.getRange())) //
                         .collect(Collectors.toList());
     }
 

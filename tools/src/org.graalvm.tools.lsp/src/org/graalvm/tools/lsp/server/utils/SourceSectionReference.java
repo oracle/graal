@@ -26,7 +26,7 @@ package org.graalvm.tools.lsp.server.utils;
 
 import java.util.Objects;
 
-import org.eclipse.lsp4j.Range;
+import org.graalvm.tools.lsp.server.types.Range;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;

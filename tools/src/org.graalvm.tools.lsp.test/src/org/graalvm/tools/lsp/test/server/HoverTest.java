@@ -28,12 +28,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.eclipse.lsp4j.Hover;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
+import org.graalvm.tools.lsp.server.types.Hover;
+import org.graalvm.tools.lsp.server.types.MarkedString;
+import org.graalvm.tools.lsp.server.types.Position;
+import org.graalvm.tools.lsp.server.types.Range;
 import org.junit.Test;
 
 public class HoverTest extends TruffleLSPTest {
@@ -44,9 +46,9 @@ public class HoverTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ, "sl", uri);
         futureOpen.get();
 
-        checkHover(uri, 1, 5, new Range(new Position(1, 4), new Position(1, 7)));
-        checkHover(uri, 1, 8, new Range(new Position(1, 4), new Position(1, 9)));
-        checkHover(uri, 0, 10, new Range(new Position(0, 9), new Position(3, 1)));
+        checkHover(uri, 1, 5, Range.create(Position.create(1, 4), Position.create(1, 7)));
+        checkHover(uri, 1, 8, Range.create(Position.create(1, 4), Position.create(1, 9)));
+        checkHover(uri, 0, 10, Range.create(Position.create(0, 9), Position.create(3, 1)));
     }
 
     @Test
@@ -58,18 +60,19 @@ public class HoverTest extends TruffleLSPTest {
         Future<Boolean> futureCoverage = truffleAdapter.runCoverageAnalysis(uri);
         assertTrue(futureCoverage.get());
 
-        Hover hover = checkHover(uri, 8, 10, new Range(new Position(8, 9), new Position(8, 12)));
-        assertEquals(new Range(new Position(8, 9), new Position(8, 12)), hover.getRange());
-        assertEquals(3, hover.getContents().getLeft().size());
-        assertEquals("obj", hover.getContents().getLeft().get(0).getRight().getValue());
-        assertEquals("Object", hover.getContents().getLeft().get(1).getLeft());
-        assertEquals("meta-object: Object", hover.getContents().getLeft().get(2).getLeft());
+        Hover hover = checkHover(uri, 8, 10, Range.create(Position.create(8, 9), Position.create(8, 12)));
+        assertTrue(hover.getContents() instanceof List);
+        assertEquals(3, ((List) hover.getContents()).size());
+        assertTrue(((List) hover.getContents()).get(0) instanceof MarkedString);
+        assertEquals("obj", ((MarkedString) ((List) hover.getContents()).get(0)).getValue());
+        assertEquals("Object", ((List) hover.getContents()).get(1));
+        assertEquals("meta-object: Object", ((List) hover.getContents()).get(2));
     }
 
     private Hover checkHover(URI uri, int line, int column, Range range) throws InterruptedException, ExecutionException {
         Future<Hover> future = truffleAdapter.hover(uri, line, column);
         Hover hover = future.get();
-        assertEquals(range, hover.getRange());
+        assertTrue(rangeCheck(range, hover.getRange()));
         return hover;
     }
 }

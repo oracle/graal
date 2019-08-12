@@ -32,13 +32,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.eclipse.lsp4j.DocumentSymbol;
-import org.eclipse.lsp4j.Location;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.SymbolInformation;
-import org.eclipse.lsp4j.SymbolKind;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
+import org.graalvm.tools.lsp.server.types.Range;
+import org.graalvm.tools.lsp.server.types.SymbolInformation;
+import org.graalvm.tools.lsp.server.types.SymbolKind;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 
@@ -64,14 +61,9 @@ public final class SymbolRequestHandler extends AbstractRequestHandler {
         super(env, surrogateMap, contextAwareExecutor);
     }
 
-    public List<Either<SymbolInformation, DocumentSymbol>> documentSymbolWithEnteredContext(URI uri) {
+    public List<? extends SymbolInformation> documentSymbolWithEnteredContext(URI uri) {
         SourcePredicate srcPredicate = newDefaultSourcePredicateBuilder().uriOrTruffleName(uri).build();
-        Collection<? extends SymbolInformation> symbols = symbolWithEnteredContext(srcPredicate);
-        List<Either<SymbolInformation, DocumentSymbol>> symbolList = new ArrayList<>(symbols.size());
-        for (SymbolInformation symbolInfo : symbols) {
-            symbolList.add(Either.forLeft(symbolInfo));
-        }
-        return symbolList;
+        return new ArrayList<>(symbolWithEnteredContext(srcPredicate));
     }
 
     Collection<? extends SymbolInformation> symbolWithEnteredContext(SourcePredicate srcPredicate) {
@@ -105,8 +97,7 @@ public final class SymbolRequestHandler extends AbstractRequestHandler {
                                     return;
                                 }
                                 URI fixedUri = SourceUtils.getOrFixFileUri(node.getSourceSection().getSource());
-                                SymbolInformation si = new SymbolInformation(name, kind != null ? kind : SymbolKind.Null, new Location(fixedUri.toString(), range),
-                                                container);
+                                SymbolInformation si = SymbolInformation.create(name, kind != null ? kind : SymbolKind.Null, range, fixedUri.toString(), container);
                                 symbolInformation.add(si);
                             }
 
@@ -135,7 +126,7 @@ public final class SymbolRequestHandler extends AbstractRequestHandler {
                                     SymbolKind kind = SymbolKind.Function;
                                     Range range = SourceUtils.sourceSectionToRange(node.getSourceSection());
                                     URI fixedUri = SourceUtils.getOrFixFileUri(node.getSourceSection().getSource());
-                                    SymbolInformation si = new SymbolInformation(node.getRootNode().getName(), kind, new Location(fixedUri.toString(), range));
+                                    SymbolInformation si = SymbolInformation.create(node.getRootNode().getName(), kind, range, fixedUri.toString(), null);
                                     symbolInformation.add(si);
                                 }
                             }, true).dispose();

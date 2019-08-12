@@ -33,11 +33,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.eclipse.lsp4j.DocumentSymbol;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.SymbolInformation;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.graalvm.tools.lsp.server.types.SymbolInformation;
 import org.junit.Test;
 
 public class DocumentSmybolTest extends TruffleLSPTest {
@@ -48,18 +44,16 @@ public class DocumentSmybolTest extends TruffleLSPTest {
         Future<?> futureOpen = truffleAdapter.parse(PROG_OBJ, "sl", uri);
         futureOpen.get();
 
-        Future<List<Either<SymbolInformation, DocumentSymbol>>> futureSymbol = truffleAdapter.documentSymbol(uri);
-        List<? extends Either<SymbolInformation, DocumentSymbol>> symbols = futureSymbol.get();
+        Future<List<? extends SymbolInformation>> futureSymbol = truffleAdapter.documentSymbol(uri);
+        List<? extends SymbolInformation> symbols = futureSymbol.get();
 
         assertEquals(2, symbols.size());
 
-        Optional<? extends Either<SymbolInformation, DocumentSymbol>> symbolOptMain = symbols.stream().filter(symbol -> symbol.getLeft().getName().equals("main")).findFirst();
+        Optional<? extends SymbolInformation> symbolOptMain = symbols.stream().filter(symbol -> symbol.getName().equals("main")).findFirst();
         assertTrue(symbolOptMain.isPresent());
-        Range rangeMain = new Range(new Position(0, 9), new Position(3, 1));
-        assertEquals(rangeMain, symbolOptMain.get().getLeft().getLocation().getRange());
+        assertTrue(rangeCheck(0, 9, 3, 1, symbolOptMain.get().getLocation().getRange()));
 
-        Optional<? extends Either<SymbolInformation, DocumentSymbol>> symbolOptAbc = symbols.stream().filter(symbol -> symbol.getLeft().getName().equals("abc")).findFirst();
-        Range rangeAbc = new Range(new Position(5, 9), new Position(9, 1));
-        assertEquals(rangeAbc, symbolOptAbc.get().getLeft().getLocation().getRange());
+        Optional<? extends SymbolInformation> symbolOptAbc = symbols.stream().filter(symbol -> symbol.getName().equals("abc")).findFirst();
+        assertTrue(rangeCheck(5, 9, 9, 1, symbolOptAbc.get().getLocation().getRange()));
     }
 }

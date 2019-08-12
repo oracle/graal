@@ -27,17 +27,18 @@ package org.graalvm.tools.lsp.server.request;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import org.eclipse.lsp4j.ParameterInformation;
-import org.eclipse.lsp4j.SignatureHelp;
-import org.eclipse.lsp4j.SignatureInformation;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
+import org.graalvm.tools.lsp.api.interop.LSPLibrary;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
-import org.graalvm.tools.lsp.api.interop.LSPLibrary;
+import org.graalvm.tools.lsp.server.types.ParameterInformation;
+import org.graalvm.tools.lsp.server.types.SignatureHelp;
+import org.graalvm.tools.lsp.server.types.SignatureInformation;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
@@ -60,9 +61,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-import org.eclipse.lsp4j.MarkupContent;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
-
 public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, SignatureHelpRequestHandler.class);
@@ -84,66 +82,65 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
     public SignatureHelp signatureHelpWithEnteredContext(URI uri, int line, int originalCharacter) throws DiagnosticsNotification {
         TextDocumentSurrogate surrogate = surrogateMap.get(uri);
-        if (!isSignatureHelpTriggerCharOfLanguage(surrogate, line, originalCharacter)) {
-            return new SignatureHelp();
-        }
-        InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, originalCharacter, StandardTags.CallTag.class);
-        if (nodeAtCaret != null) {
-            SourceSection signatureSection = ((Node) nodeAtCaret).getSourceSection();
-            SourceSectionFilter.Builder builder = SourceCodeEvaluator.createSourceSectionFilter(surrogate.getUri(), signatureSection);
-            SourceSectionFilter eventFilter = builder.tagIs(StandardTags.CallTag.class).build();
-            SourceSectionFilter inputFilter = SourceSectionFilter.ANY;
-            EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, signatureSection, eventFilter, inputFilter);
-            // TODO: Are we asking for the signature on the correct object?
-            if (evalResult.isEvaluationDone() && !evalResult.isError()) {
-                Object result = evalResult.getResult();
-                if (result instanceof TruffleObject) {
-                    try {
-                        Object signature = LSP_INTEROP.getSignature(result);
-                        LanguageInfo langInfo = surrogate.getLanguageInfo();
-                        String label = env.toString(langInfo, signature);
-                        SignatureInformation info = new SignatureInformation(label);
-                        if (signature instanceof TruffleObject && INTEROP.isMemberReadable(signature, PROP_DOCUMENTATION)) {
-                            Object doc = INTEROP.readMember(signature, PROP_DOCUMENTATION);
-                            Either<String, MarkupContent> documentation = completionHandler.getDocumentation(doc, langInfo);
-                            if (documentation != null) {
-                                info.setDocumentation(documentation);
-                            }
-                            if (INTEROP.isMemberReadable(signature, PROP_PARAMETERS)) {
-                                Object paramsObject = INTEROP.readMember(signature, PROP_PARAMETERS);
-                                if (paramsObject instanceof TruffleObject && INTEROP.hasArrayElements(paramsObject)) {
-                                    long size = INTEROP.getArraySize(paramsObject);
-                                    List<ParameterInformation> paramInfos = new ArrayList<>((int) size);
-                                    for (long i = 0; i < size; i++) {
-                                        if (!INTEROP.isArrayElementReadable(paramsObject, i)) {
-                                            continue;
-                                        }
-                                        Object param = INTEROP.readArrayElement(paramsObject, i);
-                                        if (param instanceof TruffleObject) {
-                                            ParameterInformation paramInfo = getParameterInformation(param, label, langInfo);
-                                            if (paramInfo != null) {
-                                                paramInfos.add(paramInfo);
+        if (isSignatureHelpTriggerCharOfLanguage(surrogate, line, originalCharacter)) {
+            InstrumentableNode nodeAtCaret = findNodeAtCaret(surrogate, line, originalCharacter, StandardTags.CallTag.class);
+            if (nodeAtCaret != null) {
+                SourceSection signatureSection = ((Node) nodeAtCaret).getSourceSection();
+                SourceSectionFilter.Builder builder = SourceCodeEvaluator.createSourceSectionFilter(surrogate.getUri(), signatureSection);
+                SourceSectionFilter eventFilter = builder.tagIs(StandardTags.CallTag.class).build();
+                SourceSectionFilter inputFilter = SourceSectionFilter.ANY;
+                EvaluationResult evalResult = sourceCodeEvaluator.runToSectionAndEval(surrogate, signatureSection, eventFilter, inputFilter);
+                // TODO: Are we asking for the signature on the correct object?
+                if (evalResult.isEvaluationDone() && !evalResult.isError()) {
+                    Object result = evalResult.getResult();
+                    if (result instanceof TruffleObject) {
+                        try {
+                            Object signature = LSP_INTEROP.getSignature(result);
+                            LanguageInfo langInfo = surrogate.getLanguageInfo();
+                            String label = env.toString(langInfo, signature);
+                            SignatureInformation info = SignatureInformation.create(label, null, null);
+                            if (signature instanceof TruffleObject && INTEROP.isMemberReadable(signature, PROP_DOCUMENTATION)) {
+                                Object doc = INTEROP.readMember(signature, PROP_DOCUMENTATION);
+                                Object documentation = completionHandler.getDocumentation(doc, langInfo);
+                                if (documentation != null) {
+                                    info.setDocumentation(documentation);
+                                }
+                                if (INTEROP.isMemberReadable(signature, PROP_PARAMETERS)) {
+                                    Object paramsObject = INTEROP.readMember(signature, PROP_PARAMETERS);
+                                    if (paramsObject instanceof TruffleObject && INTEROP.hasArrayElements(paramsObject)) {
+                                        long size = INTEROP.getArraySize(paramsObject);
+                                        List<ParameterInformation> paramInfos = new ArrayList<>((int) size);
+                                        for (long i = 0; i < size; i++) {
+                                            if (!INTEROP.isArrayElementReadable(paramsObject, i)) {
+                                                continue;
+                                            }
+                                            Object param = INTEROP.readArrayElement(paramsObject, i);
+                                            if (param instanceof TruffleObject) {
+                                                ParameterInformation paramInfo = getParameterInformation(param, label, langInfo);
+                                                if (paramInfo != null) {
+                                                    paramInfos.add(paramInfo);
+                                                }
                                             }
                                         }
+                                        info.setParameters(paramInfos);
                                     }
-                                    info.setParameters(paramInfos);
                                 }
                             }
+                            Object nodeObject = nodeAtCaret.getNodeObject();
+                            Integer numberOfArguments = InteropUtils.getNumberOfArguments(nodeObject);
+                            // TODO: Support multiple signatures, the active one and find the active
+                            // parameter
+                            return SignatureHelp.create(Arrays.asList(info), 0, numberOfArguments != null ? numberOfArguments - 1 : 0);
+                        } catch (UnsupportedMessageException e) {
+                            LOG.log(Level.FINEST, "GET_SIGNATURE message not supported for TruffleObject: {0}", result);
+                        } catch (InteropException e) {
+                            e.printStackTrace(err);
                         }
-                        Object nodeObject = nodeAtCaret.getNodeObject();
-                        Integer numberOfArguments = InteropUtils.getNumberOfArguments(nodeObject);
-                        // TODO: Support multiple signatures, the active one and find the active
-                        // parameter
-                        return new SignatureHelp(Arrays.asList(info), 0, numberOfArguments != null ? numberOfArguments - 1 : 0);
-                    } catch (UnsupportedMessageException e) {
-                        LOG.log(Level.FINEST, "GET_SIGNATURE message not supported for TruffleObject: {0}", result);
-                    } catch (InteropException e) {
-                        e.printStackTrace(err);
                     }
                 }
             }
         }
-        return new SignatureHelp();
+        return SignatureHelp.create(Collections.emptyList(), null, null);
     }
 
     private ParameterInformation getParameterInformation(Object param, String label, LanguageInfo langInfo) throws UnsupportedMessageException, UnknownIdentifierException, InvalidArrayIndexException {
@@ -169,15 +166,13 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
             LOG.fine("ERROR: Unknown label object: " + paramLabelObject + " in " + param);
             return null;
         }
+        ParameterInformation info = ParameterInformation.create(paramLabel, null);
         Object doc = INTEROP.isMemberReadable(param, PROP_DOCUMENTATION) ? INTEROP.readMember(param, PROP_DOCUMENTATION) : null;
-        Either<String, MarkupContent> documentation = completionHandler.getDocumentation(doc, langInfo);
-        if (documentation == null) {
-            return new ParameterInformation(paramLabel, (String) null);
-        } else if (documentation.isLeft()) {
-            return new ParameterInformation(paramLabel, documentation.getLeft());
-        } else {
-            return new ParameterInformation(paramLabel, documentation.getRight());
+        Object documentation = completionHandler.getDocumentation(doc, langInfo);
+        if (documentation != null) {
+            info.setDocumentation(documentation);
         }
+        return info;
     }
 
     private boolean isSignatureHelpTriggerCharOfLanguage(TextDocumentSurrogate surrogate, int line, int charOffset) {

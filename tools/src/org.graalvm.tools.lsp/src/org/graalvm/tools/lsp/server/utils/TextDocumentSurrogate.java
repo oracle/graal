@@ -25,7 +25,6 @@
 package org.graalvm.tools.lsp.server.utils;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,9 +35,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
+import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
@@ -51,7 +51,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 public final class TextDocumentSurrogate {
 
-    private final URI uri;
+    private final TruffleFile truffleFile;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing;
     private final Map<SourceSectionReference, List<CoverageData>> section2coverageData;
     private String editorText;
@@ -62,7 +62,7 @@ public final class TextDocumentSurrogate {
     private final LanguageInfo languageInfo;
 
     private TextDocumentSurrogate(TextDocumentSurrogate blueprint) {
-        this.uri = blueprint.uri;
+        this.truffleFile = blueprint.truffleFile;
         this.section2coverageData = blueprint.section2coverageData;
         this.changeEventsSinceLastSuccessfulParsing = blueprint.changeEventsSinceLastSuccessfulParsing;
         this.editorText = blueprint.editorText;
@@ -72,8 +72,8 @@ public final class TextDocumentSurrogate {
         this.languageInfo = blueprint.languageInfo;
     }
 
-    public TextDocumentSurrogate(final URI uri, final LanguageInfo languageInfo, final List<String> completionTriggerCharacters) {
-        this.uri = uri;
+    public TextDocumentSurrogate(final TruffleFile truffleFile, final LanguageInfo languageInfo, final List<String> completionTriggerCharacters) {
+        this.truffleFile = truffleFile;
         this.completionTriggerCharacters = completionTriggerCharacters;
         this.section2coverageData = new HashMap<>();
         this.changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
@@ -81,7 +81,7 @@ public final class TextDocumentSurrogate {
     }
 
     public URI getUri() {
-        return uri;
+        return truffleFile.toUri();
     }
 
     public String getLanguageId() {
@@ -89,7 +89,11 @@ public final class TextDocumentSurrogate {
     }
 
     public String getEditorText() {
-        return editorText != null ? editorText : (editorText = buildSource().getCharacters().toString());
+        if (editorText != null) {
+            return editorText;
+        }
+        Source source = getSource();
+        return source == null ? null : (editorText = source.getCharacters().toString());
     }
 
     public void setEditorText(String editorText) {
@@ -118,7 +122,7 @@ public final class TextDocumentSurrogate {
 
     @Override
     public int hashCode() {
-        return uri.hashCode();
+        return truffleFile.hashCode();
     }
 
     public TextDocumentContentChangeEvent getLastChange() {
@@ -132,7 +136,7 @@ public final class TextDocumentSurrogate {
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof TextDocumentSurrogate) {
-            return uri.equals(((TextDocumentSurrogate) obj).uri);
+            return truffleFile.equals(((TextDocumentSurrogate) obj).truffleFile);
         }
         return false;
     }
@@ -199,19 +203,15 @@ public final class TextDocumentSurrogate {
     }
 
     public Source buildSource() {
-        try {
-            SourceBuilder builder = Source.newBuilder(languageInfo.getId(), uri.toURL()).name(uri.toString()).cached(false);
-            if (editorText != null) {
-                return builder.content(editorText).build();
-            }
+        SourceBuilder builder = Source.newBuilder(languageInfo.getId(), truffleFile).cached(false);
+        if (editorText != null) {
+            return builder.content(editorText).build();
+        }
 
-            try {
-                // No content defined, need to read content from file
-                return builder.build();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } catch (MalformedURLException e) {
+        try {
+            // No content defined, need to read content from file
+            return builder.build();
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

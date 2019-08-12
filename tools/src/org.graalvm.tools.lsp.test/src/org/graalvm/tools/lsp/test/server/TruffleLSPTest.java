@@ -32,8 +32,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
@@ -42,6 +40,8 @@ import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.launcher.filesystem.LSPFileSystem;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
+import org.graalvm.tools.lsp.server.types.Position;
+import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.test.instrument.TruffleAdapterProvider;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -165,7 +165,11 @@ public abstract class TruffleLSPTest {
         }
     }
 
-    protected Range range(int startLine, int startColumn, int endLine, int endColumn) {
-        return new Range(new Position(startLine, startColumn), new Position(endLine, endColumn));
+    protected boolean rangeCheck(Range orig, Range range) {
+        return rangeCheck(orig.getStart().getLine(), orig.getStart().getCharacter(), orig.getEnd().getLine(), orig.getEnd().getCharacter(), range);
+    }
+
+    protected boolean rangeCheck(int startLine, int startColumn, int endLine, int endColumn, Range range) {
+        return startLine == range.getStart().getLine() && startColumn == range.getStart().getCharacter() && endLine == range.getEnd().getLine() && endColumn == range.getEnd().getCharacter();
     }
 }

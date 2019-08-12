@@ -30,10 +30,10 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.eclipse.lsp4j.DocumentHighlight;
-import org.eclipse.lsp4j.DocumentHighlightKind;
-import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
+import org.graalvm.tools.lsp.server.types.DocumentHighlight;
+import org.graalvm.tools.lsp.server.types.DocumentHighlightKind;
+import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
 import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogate;
@@ -85,7 +85,7 @@ public final class HighlightRequestHandler extends AbstractRequestHandler {
                                         if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
                                             Range range = SourceUtils.sourceSectionToRange(sourceSection);
                                             DocumentHighlightKind kind = instrumentableNode.hasTag(StandardTags.WriteVariableTag.class) ? DocumentHighlightKind.Write : DocumentHighlightKind.Read;
-                                            DocumentHighlight highlight = new DocumentHighlight(range, kind);
+                                            DocumentHighlight highlight = DocumentHighlight.create(range, kind);
                                             highlights.add(highlight);
                                         }
                                     }

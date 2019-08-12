@@ -34,11 +34,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
 
-import org.eclipse.lsp4j.Location;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.SymbolInformation;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
+import org.graalvm.tools.lsp.server.types.Location;
+import org.graalvm.tools.lsp.server.types.Range;
+import org.graalvm.tools.lsp.server.types.SymbolInformation;
 import org.graalvm.tools.lsp.server.utils.EvaluationResult;
 import org.graalvm.tools.lsp.server.utils.InteropUtils;
 import org.graalvm.tools.lsp.server.utils.SourceUtils;
@@ -118,7 +118,7 @@ public final class DefinitionRequestHandler extends AbstractRequestHandler {
                 if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
                     Range range = SourceUtils.sourceSectionToRange(sourceSection);
                     URI definitionUri = SourceUtils.getOrFixFileUri(sourceSection.getSource());
-                    locations.add(new Location(definitionUri.toString(), range));
+                    locations.add(Location.create(definitionUri.toString(), range));
                 }
                 return locations;
             }
@@ -142,7 +142,7 @@ public final class DefinitionRequestHandler extends AbstractRequestHandler {
             if (SourceUtils.isValidSourceSection(sourceSection, env.getOptions())) {
                 Range range = SourceUtils.sourceSectionToRange(sourceSection);
                 URI definitionUri = SourceUtils.getOrFixFileUri(sourceSection.getSource());
-                locations.add(new Location(definitionUri.toString(), range));
+                locations.add(Location.create(definitionUri.toString(), range));
             }
             if (!locations.isEmpty()) {
                 return locations;

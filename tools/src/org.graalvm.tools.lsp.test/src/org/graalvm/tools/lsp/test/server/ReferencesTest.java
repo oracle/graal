@@ -25,13 +25,14 @@
 package org.graalvm.tools.lsp.test.server;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.eclipse.lsp4j.Location;
+import org.graalvm.tools.lsp.server.types.Location;
 import org.junit.Test;
 
 public class ReferencesTest extends TruffleLSPTest {
@@ -45,8 +46,8 @@ public class ReferencesTest extends TruffleLSPTest {
         Future<List<? extends Location>> future = truffleAdapter.references(uri, 1, 4);
         List<? extends Location> definitions = future.get();
         assertEquals(2, definitions.size());
-        assertEquals(range(1, 4, 1, 9), definitions.get(0).getRange());
-        assertEquals(range(2, 8, 2, 13), definitions.get(1).getRange());
+        assertTrue(rangeCheck(1, 4, 1, 9, definitions.get(0).getRange()));
+        assertTrue(rangeCheck(2, 8, 2, 13, definitions.get(1).getRange()));
     }
 
     @Test
@@ -58,8 +59,8 @@ public class ReferencesTest extends TruffleLSPTest {
         Future<List<? extends Location>> future = truffleAdapter.references(uri, 13, 10);
         List<? extends Location> definitions = future.get();
         assertEquals(3, definitions.size());
-        assertEquals(range(1, 8, 1, 13), definitions.get(0).getRange());
-        assertEquals(range(12, 2, 12, 7), definitions.get(1).getRange());
-        assertEquals(range(13, 9, 13, 14), definitions.get(2).getRange());
+        assertTrue(rangeCheck(1, 8, 1, 13, definitions.get(0).getRange()));
+        assertTrue(rangeCheck(12, 2, 12, 7, definitions.get(1).getRange()));
+        assertTrue(rangeCheck(13, 9, 13, 14, definitions.get(2).getRange()));
     }
 }

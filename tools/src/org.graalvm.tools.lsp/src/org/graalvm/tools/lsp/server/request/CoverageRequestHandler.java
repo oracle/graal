@@ -28,17 +28,17 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticSeverity;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.Range;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
+import org.graalvm.tools.lsp.server.types.Diagnostic;
+import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
+import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
+import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
 import org.graalvm.tools.lsp.server.utils.SourceSectionReference;
 import org.graalvm.tools.lsp.server.utils.SourcePredicateBuilder;
@@ -129,7 +129,7 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
                     uriOfErronousSource = uri;
                 }
                 throw DiagnosticsNotification.create(uriOfErronousSource,
-                                new Diagnostic(SourceUtils.getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, "Coverage analysis"));
+                                Diagnostic.create(SourceUtils.getRangeFrom((TruffleException) e), e.getMessage(), DiagnosticSeverity.Error, null, "Coverage analysis", null));
             }
 
             throw e;
@@ -160,26 +160,29 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
                             .tagIs(StatementTag.class) //
                             .build();
             Set<SourceSection> duplicateFilter = new HashSet<>();
-            Map<URI, PublishDiagnosticsParams> mapDiagnostics = new HashMap<>();
+            Map<URI, List<Diagnostic>> mapDiagnostics = new HashMap<>();
             env.getInstrumenter().attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
 
                 public void onLoad(LoadSourceSectionEvent event) {
                     SourceSection section = event.getSourceSection();
                     if (!surrogate.isLocationCovered(SourceSectionReference.from(section)) && !duplicateFilter.contains(section)) {
                         duplicateFilter.add(section);
-                        Diagnostic diag = new Diagnostic(SourceUtils.sourceSectionToRange(section),
+                        Diagnostic diag = Diagnostic.create(SourceUtils.sourceSectionToRange(section),
                                         "Not covered",
                                         DiagnosticSeverity.Warning,
-                                        "Coverage Analysis");
-                        PublishDiagnosticsParams params = mapDiagnostics.computeIfAbsent(uri, _uri -> new PublishDiagnosticsParams(_uri.toString(), new ArrayList<>()));
-                        params.getDiagnostics().add(diag);
+                                        null,
+                                        "Coverage Analysis",
+                                        null);
+                        List<Diagnostic> params = mapDiagnostics.computeIfAbsent(uri, _uri -> new ArrayList<Diagnostic>());
+                        params.add(diag);
                     }
                 }
             }, true).dispose();
-            throw new DiagnosticsNotification(mapDiagnostics.values());
+            throw new DiagnosticsNotification(mapDiagnostics);
         } else {
             throw DiagnosticsNotification.create(uri,
-                            new Diagnostic(new Range(new Position(), new Position()), "No coverage information available", DiagnosticSeverity.Error, "Coverage Analysis"));
+                            Diagnostic.create(Range.create(0, 0, 0, 0), // TODO: LSP4J removal
+                                            "No coverage information available", DiagnosticSeverity.Error, null, "Coverage Analysis", null));
         }
     }
 }

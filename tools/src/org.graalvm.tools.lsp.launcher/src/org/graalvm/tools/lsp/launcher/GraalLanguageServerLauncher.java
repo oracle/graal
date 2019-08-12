@@ -94,7 +94,7 @@ public final class GraalLanguageServerLauncher extends AbstractLanguageLauncher 
         }
 
         org.graalvm.polyglot.Engine.Builder newBuilder = Engine.newBuilder();
-        newBuilder.option("lsp", "").option("lsp.Languagespecific.hacks", "true");
+        newBuilder.allowExperimentalOptions(true).option("lsp", "").option("lsp.Languagespecific.hacks", "true");
         for (String arg : lspargs) {
             int index = arg.indexOf('=');
             if (index != -1) {

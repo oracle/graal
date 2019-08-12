@@ -38,14 +38,15 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import org.eclipse.lsp4j.CompletionItem;
-import org.eclipse.lsp4j.CompletionItemKind;
-import org.eclipse.lsp4j.CompletionList;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
+import org.graalvm.tools.lsp.server.types.CompletionItem;
+import org.graalvm.tools.lsp.server.types.CompletionItemKind;
+import org.graalvm.tools.lsp.server.types.CompletionList;
+import org.graalvm.tools.lsp.server.types.Position;
+import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
+import org.graalvm.tools.lsp.server.types.Range;
+import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -125,7 +126,7 @@ public class CompletionTest extends TruffleLSPTest {
         Future<?> future = truffleAdapter.parse(PROG_OBJ_NOT_CALLED, "sl", uri);
         future.get();
 
-        replace(uri, new Range(new Position(2, 12), new Position(2, 12)), ".", "extraneous input '.'");
+        replace(uri, Range.create(Position.create(2, 12), Position.create(2, 12)), ".", "extraneous input '.'");
         Future<CompletionList> futureC = truffleAdapter.completion(uri, 2, 13, null);
         CompletionList completionList = futureC.get();
         assertEquals(1, completionList.getItems().size());
@@ -133,9 +134,9 @@ public class CompletionTest extends TruffleLSPTest {
         assertEquals("p", item.getLabel());
         assertEquals("Number", item.getDetail());
         assertEquals(CompletionItemKind.Property, item.getKind());
-        replace(uri, new Range(new Position(2, 12), new Position(2, 13)), "", null);
+        replace(uri, Range.create(Position.create(2, 12), Position.create(2, 13)), "", null);
 
-        replace(uri, new Range(new Position(12, 7), new Position(12, 7)), ".", "missing IDENTIFIER");
+        replace(uri, Range.create(Position.create(12, 7), Position.create(12, 7)), ".", "missing IDENTIFIER");
         futureC = truffleAdapter.completion(uri, 12, 8, null);
         try {
             futureC.get();
@@ -146,7 +147,7 @@ public class CompletionTest extends TruffleLSPTest {
     }
 
     private void replace(URI uri, Range range, String replacement, String diagMessage) throws InterruptedException {
-        TextDocumentContentChangeEvent event = new TextDocumentContentChangeEvent(range, replacement.length(), replacement);
+        TextDocumentContentChangeEvent event = TextDocumentContentChangeEvent.create(replacement).setRange(range).setRangeLength(replacement.length());
         Future<?> future = truffleAdapter.processChangesAndParse(Arrays.asList(event), uri);
         try {
             future.get();
@@ -169,7 +170,7 @@ public class CompletionTest extends TruffleLSPTest {
         Future<Boolean> futureCoverage = truffleAdapter.runCoverageAnalysis(uri);
         futureCoverage.get();
 
-        replace(uri, new Range(new Position(8, 12), new Position(8, 12)), ".", "extraneous input '.'");
+        replace(uri, Range.create(Position.create(8, 12), Position.create(8, 12)), ".", "extraneous input '.'");
         Future<CompletionList> futureC = truffleAdapter.completion(uri, 8, 13, null);
         CompletionList completionList = futureC.get();
         assertEquals(1, completionList.getItems().size());
