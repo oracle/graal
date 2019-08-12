@@ -51,6 +51,24 @@ public final class CoverageTest {
         return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").buildLiteral();
     }
 
+    private static void assertCoverage(RootCoverage root, int expectedLoaded, int expectedCovered, String name, boolean covered) {
+        Assert.assertEquals("Wrong root name!", name, root.getName());
+        Assert.assertEquals("Unexpected \"" + name + "\" root coverage", covered, root.isCovered());
+        final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
+        Assert.assertEquals("Unexpected number of statements loaded ", expectedLoaded, sectionCoverage.length);
+        Assert.assertEquals("Unexpected number of statements covered", expectedCovered, countCovered(sectionCoverage));
+    }
+
+    private static int countCovered(SectionCoverage[] sectionCoverage) {
+        int count = 0;
+        for (SectionCoverage coverage : sectionCoverage) {
+            if (coverage.isCovered()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     @Test
     public void testBasic() {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -78,23 +96,5 @@ public final class CoverageTest {
                     break;
             }
         }
-    }
-
-    private static void assertCoverage(RootCoverage root, int expectedLoaded, int expectedCovered, String name, boolean covered) {
-        Assert.assertEquals("Wrong root name!", name, root.getName());
-        Assert.assertEquals("Unexpected \"" + name + "\" root coverage", covered, root.isCovered());
-        final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
-        Assert.assertEquals("Unexpected number of statements loaded ", expectedLoaded, sectionCoverage.length);
-        Assert.assertEquals("Unexpected number of statements covered", expectedCovered, countCovered(sectionCoverage));
-    }
-
-    private static int countCovered(SectionCoverage[] sectionCoverage) {
-        int count = 0;
-        for (SectionCoverage coverage : sectionCoverage) {
-            if (coverage.isCovered()) {
-                count++;
-            }
-        }
-        return count;
     }
 }
