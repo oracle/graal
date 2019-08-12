@@ -26,22 +26,20 @@ package com.oracle.truffle.tools.coverage;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-final class CoverageNode extends ExecutionEventNode {
-    final SourceSection sourceSection;
-    final Node instrumentedNode;
-    final boolean isRoot;
-    final boolean isStatement;
+final class CoverageNode extends AbstractCoverageNode {
+
     @CompilerDirectives.CompilationFinal volatile boolean covered;
 
     CoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
-        this.sourceSection = sourceSection;
-        this.instrumentedNode = instrumentedNode;
-        this.isRoot = isRoot;
-        this.isStatement = isStatement;
+        super(sourceSection, instrumentedNode, isRoot, isStatement);
+    }
+
+    @Override
+    boolean isCovered() {
+        return covered;
     }
 
     @Override

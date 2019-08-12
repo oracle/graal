@@ -24,29 +24,31 @@
  */
 package com.oracle.truffle.tools.coverage;
 
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-public final class SectionCoverage {
+public class CountingCoverageNode extends AbstractCoverageNode {
 
-    private final SourceSection sourceSection;
-    private final boolean covered;
-    private final long count;
+    private AtomicLong count = new AtomicLong(0);
 
-    public SectionCoverage(SourceSection sourceSection, boolean covered, long count) {
-        this.sourceSection = sourceSection;
-        this.covered = covered;
-        this.count = count;
+    CountingCoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
+        super(sourceSection, instrumentedNode, isRoot, isStatement);
     }
 
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    @Override
+    boolean isCovered() {
+        return count.get() != 0;
     }
 
-    public boolean isCovered() {
-        return covered;
+    @Override
+    public void onReturnValue(VirtualFrame vFrame, Object result) {
+        this.count.incrementAndGet();
     }
 
     public long getCount() {
-        return count;
+        return count.get();
     }
 }

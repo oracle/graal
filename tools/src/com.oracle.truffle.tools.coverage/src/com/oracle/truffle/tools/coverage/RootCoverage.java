@@ -30,12 +30,14 @@ public final class RootCoverage {
 
     private final SectionCoverage[] sectionCoverage;
     private final boolean covered;
+    private final long count;
     private final SourceSection sourceSection;
     private final String name;
 
-    RootCoverage(SectionCoverage[] sectionCoverage, boolean covered, SourceSection sourceSection, String name) {
+    RootCoverage(SectionCoverage[] sectionCoverage, boolean covered, long count, SourceSection sourceSection, String name) {
         this.sectionCoverage = sectionCoverage;
         this.covered = covered;
+        this.count = count;
         this.sourceSection = sourceSection;
         this.name = name;
     }
@@ -54,5 +56,9 @@ public final class RootCoverage {
 
     public String getName() {
         return name;
+    }
+
+    public long getCount() {
+        return count;
     }
 }

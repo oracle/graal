@@ -77,6 +77,9 @@ class JSONPrinter {
         rootJson.put("source_section", sourceSectionJson(coverage.getSourceSection()));
         rootJson.put("name", coverage.getName());
         rootJson.put("sections", sectionsJson(coverage.getSectionCoverage()));
+        if (coverage.getCount() != -1) {
+            rootJson.put("count", coverage.getCount());
+        }
         return rootJson;
     }
 
@@ -91,7 +94,10 @@ class JSONPrinter {
     private static JSONObject sectionJson(SectionCoverage coverage) {
         JSONObject sectionJson = new JSONObject();
         sectionJson.put("covered", coverage.isCovered());
-        sectionJson.put("covered", sourceSectionJson(coverage.getSourceSection()));
+        if (coverage.getCount() != -1) {
+            sectionJson.put("count", coverage.getCount());
+        }
+        sectionJson.put("source_section", sourceSectionJson(coverage.getSourceSection()));
         return sectionJson;
     }
 

@@ -24,29 +24,23 @@
  */
 package com.oracle.truffle.tools.coverage;
 
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-public final class SectionCoverage {
+abstract class AbstractCoverageNode extends ExecutionEventNode {
 
-    private final SourceSection sourceSection;
-    private final boolean covered;
-    private final long count;
+    final SourceSection sourceSection;
+    final Node instrumentedNode;
+    final boolean isRoot;
+    final boolean isStatement;
 
-    public SectionCoverage(SourceSection sourceSection, boolean covered, long count) {
+    AbstractCoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
         this.sourceSection = sourceSection;
-        this.covered = covered;
-        this.count = count;
+        this.instrumentedNode = instrumentedNode;
+        this.isRoot = isRoot;
+        this.isStatement = isStatement;
     }
 
-    public SourceSection getSourceSection() {
-        return sourceSection;
-    }
-
-    public boolean isCovered() {
-        return covered;
-    }
-
-    public long getCount() {
-        return count;
-    }
+    abstract boolean isCovered();
 }
