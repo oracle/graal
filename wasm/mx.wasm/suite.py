@@ -131,7 +131,10 @@ suite = {
     },
     "WASM_BENCHMARKS" : {
       "subDir" : "src",
-      "dependencies" : ["mx:JMH_1_21"],
+      "dependencies" : [
+        "com.oracle.truffle.wasm.benchmark",
+        "mx:JMH_1_21",
+      ],
     },
   }
 }
