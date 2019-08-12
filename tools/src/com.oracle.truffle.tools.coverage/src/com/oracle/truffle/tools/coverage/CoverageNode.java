@@ -49,4 +49,5 @@ final class CoverageNode extends AbstractCoverageNode {
             covered = true;
         }
     }
+
 }

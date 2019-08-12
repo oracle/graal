@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.tools.coverage;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -43,4 +45,11 @@ abstract class AbstractCoverageNode extends ExecutionEventNode {
     }
 
     abstract boolean isCovered();
+
+    @Override
+    protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+        if (exception instanceof ControlFlowException) {
+            onReturnValue(frame, null);
+        }
+    }
 }

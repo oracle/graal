@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.coverage;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -48,7 +49,7 @@ public class CountingCoverageNode extends AbstractCoverageNode {
         this.count.incrementAndGet();
     }
 
-    public long getCount() {
+    long getCount() {
         return count.get();
     }
 }
