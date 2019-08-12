@@ -480,6 +480,9 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                         module_info_java])
                 with ZipFile(module_jar, 'w') as zf:
                     zf.write(module_info_class, basename(module_info_class))
+                if exists(jmd.get_jmod_path()):
+                    os.remove(jmd.get_jmod_path())
+                mx.run([jdk.javac.replace('javac', 'jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
 
             modules.extend(extra_modules)
             all_module_names = frozenset([m.name for m in jdk.get_modules()] + [m.name for m in modules])
@@ -511,7 +514,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
             dst_src_zip_contents[jmd.name + '/module-info.java'] = jmd.as_module_info(extras_as_comments=False)
 
         # Now build the new JDK image with jlink
-        jlink = [mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))]
+        jlink = [jdk.javac.replace('javac', 'jlink')]
 
         if jdk_enables_jvmci_by_default(jdk):
             # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
@@ -526,7 +529,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
 
         module_path = jmods_dir
         if modules:
-            module_path = os.pathsep.join((m.jarpath for m in modules)) + os.pathsep + module_path
+            module_path = os.pathsep.join((m.get_jmod_path() for m in modules)) + os.pathsep + module_path
         jlink.append('--module-path=' + module_path)
         jlink.append('--output=' + dst_jdk_dir)
 
