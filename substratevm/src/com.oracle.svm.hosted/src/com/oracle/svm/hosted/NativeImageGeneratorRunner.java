@@ -38,7 +38,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
@@ -466,8 +465,9 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     public static class JDK9Plus {
 
         public static void main(String[] args) {
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle");
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             NativeImageGeneratorRunner.main(args);
         }
     }

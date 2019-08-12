@@ -27,6 +27,7 @@ package com.oracle.svm.util;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
@@ -68,9 +69,12 @@ public final class ModuleSupport {
 
     /**
      * Exports and opens all packages in the module named {@code name} to all unnamed modules.
+     *
+     * @param optional if {@code false} and there is no module named {@code name},
+     *            {@link NoSuchElementException} is thrown
      */
     @SuppressWarnings("unused")
-    public static void exportAndOpenAllPackagesToUnnamed(String name) {
+    public static void exportAndOpenAllPackagesToUnnamed(String name, boolean optional) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
     }

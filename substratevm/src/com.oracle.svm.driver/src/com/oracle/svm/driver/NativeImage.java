@@ -1640,7 +1640,8 @@ public class NativeImage {
     public static class JDK9Plus {
 
         public static void main(String[] args) {
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
             NativeImage.main(args, DEFAULT_GENERATOR_CLASS_NAME + "$JDK9Plus");
         }
     }
