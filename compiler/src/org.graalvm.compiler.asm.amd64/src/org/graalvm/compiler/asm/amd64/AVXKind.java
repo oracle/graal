@@ -41,26 +41,36 @@ import jdk.vm.ci.amd64.AMD64Kind;
 public final class AVXKind {
 
     public enum AVXSize {
-        DWORD,
-        QWORD,
-        XMM,
-        YMM,
-        ZMM;
+        DWORD(4),
+        QWORD(8),
+        XMM(16),
+        YMM(32),
+        ZMM(64);
 
-        public int getBytes() {
-            switch (this) {
-                case DWORD:
-                    return 4;
-                case QWORD:
-                    return 8;
-                case XMM:
-                    return 16;
-                case YMM:
-                    return 32;
-                case ZMM:
-                    return 64;
+        public final int bytes;
+
+        AVXSize(int bytes) {
+            this.bytes = bytes;
+        }
+
+        public final int getBytes() {
+            return bytes;
+        }
+
+        public static AVXSize fromBytes(final int byteCount) {
+            switch (byteCount) {
+                case 4:
+                    return DWORD;
+                case 8:
+                    return QWORD;
+                case 16:
+                    return XMM;
+                case 32:
+                    return YMM;
+                case 64:
+                    return ZMM;
                 default:
-                    return 0;
+                    throw GraalError.shouldNotReachHere("unsupported size in bytes: " + byteCount);
             }
         }
     }
