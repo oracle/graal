@@ -330,7 +330,7 @@ public class ContextAPITest {
     public void testMultithreadedEnterLeave() throws InterruptedException, ExecutionException {
         Context context = Context.create();
         Set<Reference<Thread>> threads = new HashSet<>();
-        int counter[] = { 1 };
+        int[] counter = {1};
         ExecutorService service = Executors.newFixedThreadPool(20, (run) -> {
             class CollectibleThread extends Thread {
                 CollectibleThread(Runnable target) {
