@@ -949,10 +949,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                     break;
             }
             if (r != null) {
-                assert r.getRegisterCategory().equals(rCategory) : "r register " + r.name + " with category " + r.getRegisterCategory() + " does not match expected category " + rCategory;
+                assert r.getRegisterCategory().equals(rCategory);
             }
             if (v != null) {
-                assert v.getRegisterCategory().equals(vCategory) : "v register " + v.name + " with category " + v.getRegisterCategory() + " does not match expected category " + vCategory;
+                assert v.getRegisterCategory().equals(vCategory);
             }
             if (m != null) {
                 assert m.getRegisterCategory().equals(mCategory);
@@ -1147,10 +1147,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static final class VexRMIOp extends VexOp implements VexRRIOp {
         // @formatter:off
-        public static final VexRMIOp VPERMQ   = new VexRMIOp("VPERMQ",     P_66, M_0F3A, W1,  0x00, VEXOpAssertion.AVX2_256ONLY);
-        public static final VexRMIOp VPSHUFLW = new VexRMIOp("VPSHUFLW",   P_F2, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
-        public static final VexRMIOp VPSHUFHW = new VexRMIOp("VPSHUFHW",   P_F3, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
-        public static final VexRMIOp VPSHUFD  = new VexRMIOp("VPSHUFD",    P_66, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
+        public static final VexRMIOp VPERMQ   = new VexRMIOp("VPERMQ",   P_66, M_0F3A, W1,  0x00, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexRMIOp VPSHUFLW = new VexRMIOp("VPSHUFLW", P_F2, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
+        public static final VexRMIOp VPSHUFHW = new VexRMIOp("VPSHUFHW", P_F3, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
+        public static final VexRMIOp VPSHUFD  = new VexRMIOp("VPSHUFD",  P_66, M_0F,   WIG, 0x70, VEXOpAssertion.AVX1_2);
         // @formatter:on
 
         private VexRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {

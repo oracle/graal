@@ -235,10 +235,6 @@ public final class ComponentInstaller {
                 ch.init(env, env);
             });
 
-            forSoftwareChannels(true, (ch) -> {
-                ch.init(env, env);
-            });
-
             int srcCount = 0;
             if (optValues.containsKey(Commands.OPTION_FILES)) {
                 srcCount++;
@@ -327,7 +323,7 @@ public final class ComponentInstaller {
      * <p/>
      * The location is sanity checked and the method throws {@link FailedOperationException} if not
      * proper Graal dir.
-     * 
+     *
      * @return existing Graal home
      */
     Path finddGraalHome() {
