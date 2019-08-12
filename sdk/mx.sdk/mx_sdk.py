@@ -39,6 +39,7 @@
 # SOFTWARE.
 #
 
+from __future__ import print_function
 from abc import ABCMeta
 
 import mx
@@ -46,11 +47,14 @@ import mx_gate
 import mx_subst
 import datetime
 import os
+import shutil
+
+from os.path import join, exists, isfile, isdir, basename
+from zipfile import ZipFile, ZIP_DEFLATED
 
 from mx_gate import Task
 from mx_unittest import unittest
-from os.path import join, exists, isfile, isdir
-from mx_javamodules import as_java_module
+from mx_javamodules import as_java_module, JavaModuleDescriptor
 
 def _with_metaclass(meta, *bases):
     """Create a base class with a metaclass."""
@@ -411,7 +415,7 @@ def jdk_enables_jvmci_by_default(jdk):
         setattr(jdk, '.enables_jvmci_by_default', any('EnableJVMCI' in line and 'true' in line for line in out.lines))
     return getattr(jdk, '.enables_jvmci_by_default')
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None):
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create'):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -422,6 +426,11 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None):
     :param list root_module_names: list of strings naming the module root set for the new JDK image.
                      The named modules must either be in `module_dists` or in `jdk`. If None, then
                      the root set will be all the modules in ``module_dists` and `jdk`.
+    :param str missing_export_target_action: the action to perform for a qualifed export target that
+                     is not present in `module_dists`. The choices are:
+                       "create" - an empty module is created
+                        "error" - raise an error
+                           None - do nothing
 
     """
     if jdk.javaCompliance < '9':
@@ -432,48 +441,136 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None):
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since it appears to be a developer build with exploded modules')
 
     jimage = join(jdk.home, 'lib', 'modules')
-    jmods = join(jdk.home, 'jmods')
+    jmods_dir = join(jdk.home, 'jmods')
     if not isfile(jimage):
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jimage + ' is missing or is not an ordinary file')
-    if not isdir(jmods):
-        mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods + ' is missing or is not a directory')
+    if not isdir(jmods_dir):
+        mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods_dir + ' is missing or is not a directory')
 
     modules = [as_java_module(dist, jdk) for dist in module_dists]
     all_module_names = frozenset([m.name for m in jdk.get_modules()] + [m.name for m in modules])
 
-    jlink = [mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))]
-    if jdk_enables_jvmci_by_default(jdk):
-        # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
-        jlink.append('-J-XX:-EnableJVMCI')
-    if root_module_names is not None:
-        missing = frozenset(root_module_names) - all_module_names
-        if missing:
-            mx.abort('Invalid module(s): {}.\nAvailable modules: {}'.format(','.join(missing), ','.join(sorted(all_module_names))))
-        jlink.append('--add-modules=' + ','.join(root_module_names))
-    else:
-        jlink.append('--add-modules=' + ','.join(sorted(all_module_names)))
-    module_path = jmods
-    if module_dists:
-        module_path = os.pathsep.join((m.jarpath for m in modules))  + os.pathsep + module_path
-    jlink.append('--module-path=' + module_path)
-    jlink.append('--output=' + dst_jdk_dir)
+    build_dir = mx.ensure_dir_exists(join(dst_jdk_dir + ".build"))
+    try:
+        # Handle targets of qualified exports that are not present in `modules`
+        target_requires = {}
+        for jmd in modules:
+            for targets in jmd.exports.values():
+                for target in targets:
+                    if target not in all_module_names:
+                        target_requires.setdefault(target, set()).add(jmd.name)
+        if target_requires and missing_export_target_action is not None:
+            if missing_export_target_action == 'error':
+                mx.abort('Target(s) of qualified exports cannot be resolved: ' + '.'.join(target_requires.keys()))
+            assert missing_export_target_action == 'create', 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
 
-    # These options are inspired by how OpenJDK runs jlink to produce the final runtime image.
-    jlink.extend(['-J-XX:+UseSerialGC', '-J-Xms32M', '-J-Xmx512M', '-J-XX:TieredStopAtLevel=1'])
-    jlink.append('-J-Dlink.debug=true')
-    jlink.append('--dedup-legal-notices=error-if-not-same-content')
-    jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+            extra_modules = []
+            for name, requires in target_requires.items():
+                module_jar = join(build_dir, name + '.jar')
+                jmd = JavaModuleDescriptor(name, {}, requires={module : [] for module in requires}, uses=set(), provides={}, jarpath=module_jar)
+                extra_modules.append(jmd)
+                module_build_dir = mx.ensure_dir_exists(join(build_dir, name))
+                module_info_java = join(module_build_dir, 'module-info.java')
+                module_info_class = join(module_build_dir, 'module-info.class')
+                with open(module_info_java, 'w') as fp:
+                    print(jmd.as_module_info(), file=fp)
+                mx.run([jdk.javac, '-d', module_build_dir, \
+                        '--limit-modules=java.base,' + ','.join(jmd.requires.keys()), \
+                        '--module-path=' + os.pathsep.join((m.jarpath for m in modules)), \
+                        module_info_java])
+                with ZipFile(module_jar, 'w') as zf:
+                    zf.write(module_info_class, basename(module_info_class))
 
-    # TODO: investigate the options below used by OpenJDK to see if they should be used:
-    # --release-info: this allow extra properties to be written to the <jdk>/release file
-    # --order-resources: specifies order of resources in generated lib/modules file.
-    #       This is apparently not so important if a CDS archive is available.
-    # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
-    #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
-    mx.run(jlink)
+            modules.extend(extra_modules)
+            all_module_names = frozenset([m.name for m in jdk.get_modules()] + [m.name for m in modules])
+
+        # Extract src.zip from source JDK
+        jdk_src_zip = join(jdk.home, 'lib', 'src.zip')
+        dst_src_zip_contents = {}
+        if isfile(jdk_src_zip):
+            mx.logv('[Extracting ' + jdk_src_zip + ']')
+            with ZipFile(jdk_src_zip, 'r') as zf:
+                for name in zf.namelist():
+                    if not name.endswith('/'):
+                        dst_src_zip_contents[name] = zf.read(name)
+
+        for jmd in modules:
+            # Remove existing sources for module
+            dst_src_zip_contents = {key : dst_src_zip_contents[key] for key in dst_src_zip_contents if not key.startswith(jmd.name)}
+
+            # Extract module sources
+            jmd_src_zip = jmd.jarpath[0:-len('.jar')] + '.src.zip'
+            if isfile(jmd_src_zip):
+                mx.logv('[Extracting ' + jmd_src_zip + ']')
+                with ZipFile(jmd_src_zip, 'r') as zf:
+                    for name in zf.namelist():
+                        if not name.endswith('/'):
+                            dst_src_zip_contents[jmd.name + '/' + name] = zf.read(name)
+
+            # As module-info.java to sources
+            dst_src_zip_contents[jmd.name + '/module-info.java'] = jmd.as_module_info(extras_as_comments=False)
+
+        # Now build the new JDK image with jlink
+        jlink = [mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))]
+
+        if jdk_enables_jvmci_by_default(jdk):
+            # On JDK 9+, +EnableJVMCI forces jdk.internal.vm.ci to be in the root set
+            jlink.append('-J-XX:-EnableJVMCI')
+        if root_module_names is not None:
+            missing = frozenset(root_module_names) - all_module_names
+            if missing:
+                mx.abort('Invalid module(s): {}.\nAvailable modules: {}'.format(','.join(missing), ','.join(sorted(all_module_names))))
+            jlink.append('--add-modules=' + ','.join(root_module_names))
+        else:
+            jlink.append('--add-modules=' + ','.join(sorted(all_module_names)))
+
+        module_path = jmods_dir
+        if modules:
+            module_path = os.pathsep.join((m.jarpath for m in modules)) + os.pathsep + module_path
+        jlink.append('--module-path=' + module_path)
+        jlink.append('--output=' + dst_jdk_dir)
+
+        # These options are inspired by how OpenJDK runs jlink to produce the final runtime image.
+        jlink.extend(['-J-XX:+UseSerialGC', '-J-Xms32M', '-J-Xmx512M', '-J-XX:TieredStopAtLevel=1'])
+        jlink.append('-J-Dlink.debug=true')
+        jlink.append('--dedup-legal-notices=error-if-not-same-content')
+        jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
+
+        # TODO: investigate the options below used by OpenJDK to see if they should be used:
+        # --release-info: this allow extra properties to be written to the <jdk>/release file
+        # --order-resources: specifies order of resources in generated lib/modules file.
+        #       This is apparently not so important if a CDS archive is available.
+        # --generate-jli-classes: pre-generates a set of java.lang.invoke classes.
+        #       See https://github.com/openjdk/jdk/blob/master/make/GenerateLinkOptData.gmk
+        mx.logv('[Creating JDK image]')
+        mx.run(jlink)
+
+        # Create lib/src.zip in new JDK
+        def add_to_zip(zf, path, zippath):
+            if os.path.isfile(path):
+                zf.write(path, zippath, ZIP_DEFLATED)
+            elif os.path.isdir(path):
+                if zippath:
+                    zf.write(path, zippath)
+                for nm in os.listdir(path):
+                    add_to_zip(zf,
+                            os.path.join(path, nm), os.path.join(zippath, nm))
+
+        dst_src_zip = join(dst_jdk_dir, 'lib', 'src.zip')
+        mx.logv('[Creating ' + dst_src_zip + ']')
+        with ZipFile(dst_src_zip, 'w', allowZip64=True) as zf:
+            for name, contents in sorted(dst_src_zip_contents.items()):
+                zf.writestr(name, contents)
+
+    finally:
+        if not mx.get_opts().verbose:
+            # Preserve build directory so that javac command can be re-executed
+            # by cutting and pasting verbose output.
+            shutil.rmtree(build_dir)
 
     # Create CDS archive (https://openjdk.java.net/jeps/341).
     out = mx.OutputCapture()
+    mx.logv('[Creating CDS shared archive]')
     if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
         mx.log(out.data)
         mx.abort('Error generating CDS shared archive')
