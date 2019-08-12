@@ -50,7 +50,7 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
         private final String input;
         private final int fromIndex;
-        private final int initialIndex;
+        private int initialIndex;
         private final int maxIndex;
         private final List<RecordedTransition> transitions;
 
@@ -60,6 +60,10 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
             this.initialIndex = initialIndex;
             this.maxIndex = maxIndex;
             transitions = new ArrayList<>();
+        }
+
+        public void setInitialIndex(int initialIndex) {
+            this.initialIndex = initialIndex;
         }
 
         private int getLowestIndex() {
@@ -87,7 +91,7 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
         @TruffleBoundary
         public void recordCGPartialTransition(int currentIndex, int cgPartialTransitionIndex) {
             initUpToIndex(currentIndex);
-            getTransition(currentIndex).addCgPartialTransitionIDs(cgPartialTransitionIndex);
+            getTransition(currentIndex).setCgPartialTransitionID(cgPartialTransitionIndex);
         }
 
         @TruffleBoundary
@@ -105,7 +109,7 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
         private final int currentIndex;
         private int transitionID = -1;
-        private List<Integer> cgPartialTransitionIDs;
+        private int cgPartialTransitionID = -1;
 
         private RecordedTransition(int currentIndex) {
             this.currentIndex = currentIndex;
@@ -115,11 +119,9 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
             this.transitionID = transitionID;
         }
 
-        public void addCgPartialTransitionIDs(int partialTransitionID) {
-            if (cgPartialTransitionIDs == null) {
-                cgPartialTransitionIDs = new ArrayList<>();
-            }
-            cgPartialTransitionIDs.add(partialTransitionID);
+        public void setCgPartialTransitionID(int cgPartialTransitionID) {
+            assert this.cgPartialTransitionID == -1;
+            this.cgPartialTransitionID = cgPartialTransitionID;
         }
 
         @TruffleBoundary
@@ -127,8 +129,7 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
         public JsonValue toJson() {
             return Json.obj(Json.prop("currentIndex", currentIndex),
                             Json.prop("transitionID", transitionID),
-                            Json.prop("cgPartialTransitionIDs", Json.array(
-                                            cgPartialTransitionIDs == null ? new int[0] : cgPartialTransitionIDs.stream().mapToInt(x -> x).toArray())));
+                            Json.prop("cgPartialTransitionID", cgPartialTransitionID));
         }
     }
 
@@ -146,6 +147,10 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
     private Recording curRecording() {
         return recordings.get(recordings.size() - 1);
+    }
+
+    public void setInitialIndex(int initialIndex) {
+        curRecording().setInitialIndex(initialIndex);
     }
 
     @TruffleBoundary

@@ -155,7 +155,7 @@ public final class NFAGenerator {
 
     private void findDeadStates(ArrayList<NFAState> deadStates) {
         for (NFAState state : nfaStates.values()) {
-            if (!state.isForwardFinalState() && (state.getNext().isEmpty() || state.getNext().size() == 1 && state.getNext().get(0).getTarget() == state)) {
+            if (state.isDead(true)) {
                 deadStates.add(state);
             }
         }

@@ -69,7 +69,7 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
         this.getReverseOp = getReverseOp;
         this.inputBits = inputBits;
         this.resultBits = resultBits;
-        assert ((PrimitiveStamp) input.stamp(NodeView.DEFAULT)).getBits() == inputBits;
+        assert PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) == 0 || PrimitiveStamp.getBits(input.stamp(NodeView.DEFAULT)) == inputBits;
     }
 
     public int getInputBits() {

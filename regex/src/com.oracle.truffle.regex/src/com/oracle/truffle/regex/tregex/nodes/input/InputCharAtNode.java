@@ -24,12 +24,14 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -61,5 +63,11 @@ public abstract class InputCharAtNode extends Node {
             // should never be reached
             throw new RuntimeException(e);
         }
+    }
+
+    public static char charAtWithMask(TruffleObject input, int indexInput, String mask, int indexMask, InputCharAtNode charAtNode) {
+        CompilerAsserts.partialEvaluationConstant(mask == null);
+        char c = charAtNode.execute(input, indexInput);
+        return (mask == null ? c : (char) (c | mask.charAt(indexMask)));
     }
 }

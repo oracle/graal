@@ -59,6 +59,7 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     protected RegexASTNode(RegexASTNode copy) {
         flags = copy.flags;
         minPath = copy.minPath;
+        maxPath = copy.maxPath;
         sourceSection = copy.sourceSection;
     }
 
@@ -127,11 +128,6 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
     /**
      * Marks the node as dead, i.e. unmatchable.
-     *
-     * @see Term#markAsDead()
-     * @see Group#markAsDead()
-     * @see Sequence#markAsDead()
-     * @see RegexASTSubtreeRootNode#markAsDead()
      */
     public void markAsDead() {
         setFlag(FLAG_DEAD);

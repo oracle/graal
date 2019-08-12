@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jni.hosted;
+package com.oracle.svm.test;
 
-import java.util.Collections;
-import java.util.List;
+// Checkstyle: allow reflection
 
-import org.graalvm.nativeimage.hosted.Feature;
+import java.lang.reflect.Array;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.configure.ConfigurationFiles;
+import org.junit.Assert;
+import org.junit.Test;
 
-/**
- * Automatically enables {@link JNIFeature} when specific options are set.
- */
-@AutomaticFeature
-public class JNIAutomaticFeature implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.JNI.getValue() || ConfigurationFiles.Options.JNIConfigurationFiles.getValue() != null ||
-                        ConfigurationFiles.Options.JNIConfigurationResources.getValue() != null;
+public class ArraySetTest {
+
+    @Test
+    public void testObjectArraySetWithNull() {
+        String[] array = new String[]{
+                        "a",
+                        "b",
+                        "c",
+                        "d"
+        };
+
+        Array.set(array, 0, null);
+
+        Assert.assertNull(array[0]);
+        Assert.assertEquals("b", array[1]);
+        Assert.assertEquals("c", array[2]);
+        Assert.assertEquals("d", array[3]);
     }
 
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(JNIFeature.class);
-    }
 }
