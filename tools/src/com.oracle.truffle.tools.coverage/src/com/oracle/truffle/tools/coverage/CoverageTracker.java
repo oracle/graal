@@ -189,9 +189,7 @@ public final class CoverageTracker implements AutoCloseable {
         loadedBinding = instrumenter.attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
             @Override
             public void onLoad(LoadSourceSectionEvent event) {
-                synchronized (CoverageTracker.this) {
-                    loadedEvents.add(event);
-                }
+                add(event);
             }
         }, true);
         coveredBinding = instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
@@ -205,6 +203,10 @@ public final class CoverageTracker implements AutoCloseable {
             }
         });
 
+    }
+
+    private synchronized void add(LoadSourceSectionEvent event) {
+        loadedEvents.add(event);
     }
 
     private void disposeBindings() {
