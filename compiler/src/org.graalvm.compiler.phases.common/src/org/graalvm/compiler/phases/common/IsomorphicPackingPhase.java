@@ -118,20 +118,27 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     private static final class Instance {
         private final LowTierContext context;
         private final DebugContext debug;
-        private final NodeMap<Block> nodeToBlockMap;
-        private final BlockMap<List<Node>> blockToNodesMap;
+        private final Graph graph;
         private final Block currentBlock;
         private final NodeView view;
+        private final NodeMap<Block> nodeToBlockMap;
+        private final BlockMap<List<Node>> blockToNodesMap;
 
-        private final Map<Node, Integer> alignmentMap = new HashMap<>();
+        private final NodeMap<Integer> alignmentMap;
+        private final NodeMap<Integer> depthMap;
 
-        private Instance(LowTierContext context, DebugContext debug, NodeMap<Block> nodeToBlockMap, BlockMap<List<Node>> blockToNodesMap, Block currentBlock, NodeView view) {
+        private Instance(LowTierContext context, DebugContext debug, StructuredGraph graph, Block currentBlock, NodeView view) {
             this.context = context;
             this.debug = debug;
-            this.nodeToBlockMap = nodeToBlockMap;
-            this.blockToNodesMap = blockToNodesMap;
+            this.graph = graph;
             this.currentBlock = currentBlock;
             this.view = view;
+
+            this.nodeToBlockMap = graph.getLastSchedule().getNodeToBlockMap();
+            this.blockToNodesMap = graph.getLastSchedule().getBlockToNodesMap();
+
+            this.alignmentMap = new NodeMap<>(graph);
+            this.depthMap = new NodeMap<>(graph);
         }
 
         // Utilities
@@ -271,7 +278,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             // Are left & right the same action?
             if (!left.getNodeClass().equals(right.getNodeClass())) {
-                return false; // TODO: support subclasses
+                return false;
             }
 
             // Is the input count the same? (accounts for inputs that are null)
@@ -293,6 +300,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         private int findDepth(Node node) {
+            Integer depth = depthMap.get(node);
+            if (depth == null) {
+                depth = findDepthImpl(node);
+                depthMap.put(node, depth);
+            }
+
+            return depth;
+        }
+
+        private int findDepthImpl(Node node) {
             int depth = 0;
             for (Node current : currentBlock.getNodes()) {
                 if (current.equals(node)) {
@@ -313,9 +330,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return false; // Stop infinite/deep recursion
             }
 
-            // TODO: pre-compute depth information
-            // TODO: calculate depth information to avoid recursing too far, doing unnecessary calculations
-            // TODO: verify that at this stage it's even possible to get dependency cycles
+            final int shallowDepth = findDepth(shallow);
 
             for (Node pred : deep.inputs()) {
                 if (notInBlock(pred)) { // ensure that the predecessor is in the block
@@ -326,7 +341,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     return false;
                 }
 
-                if (/* pred is below shallow && */ !hasNoPath(shallow, pred, iterationDepth + 1)) {
+                if (shallowDepth < findDepth(pred) && !hasNoPath(shallow, pred, iterationDepth + 1)) {
                     return false;
                 }
             }
@@ -343,7 +358,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @return Are the two statements independent? Only independent statements may be packed.
          */
         private boolean independent(Node left, Node right) {
-            // Calculate depth from how far into block.getNodes() we are. TODO: this is a hack.
+            // Calculate depth from how far into block.getNodes() we are.
             final int leftDepth = findDepth(left);
             final int rightDepth = findDepth(right);
 
@@ -351,9 +366,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return !left.equals(right);
             }
 
-            int shallowDepth = Math.min(leftDepth, rightDepth);
-            Node deep = leftDepth == shallowDepth ? right : left;
-            Node shallow = leftDepth == shallowDepth ? left : right;
+            final int shallowDepth = Math.min(leftDepth, rightDepth);
+            final Node deep = leftDepth == shallowDepth ? right : left;
+            final Node shallow = leftDepth == shallowDepth ? left : right;
 
             return hasNoPath(shallow, deep);
         }
@@ -537,8 +552,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 if (align.isPresent()) {
                     setAlignment(bestPack.getLeft(), bestPack.getRight(), align.get());
                 } else {
-                    alignmentMap.remove(bestPack.getLeft());
-                    alignmentMap.remove(bestPack.getRight());
+                    alignmentMap.removeKey(bestPack.getLeft());
+                    alignmentMap.removeKey(bestPack.getRight());
                 }
 
                 return packSet.add(bestPack);
@@ -620,7 +635,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         /**
          * Create the initial seed packSet of operations that are adjacent.
-         * TODO: CHECK THAT VECTOR ELEMENT TYPE IS THE SAME
          * @param packSet PackSet to populate.
          */
         private void findAdjRefs(Set<Pair<ValueNode, ValueNode>> packSet) {
@@ -939,18 +953,21 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             final Set<Pack> combinedPackSet = new HashSet<>();
 
             findAdjRefs(packSet);
-            if (!packSet.isEmpty()) {
-                debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", currentBlock.toString(), packSet.size());
+            if (packSet.isEmpty()) {
+                return;
             }
 
+            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", currentBlock.toString(), packSet.size());
+
             extendPacklist(packSet);
-            if (!packSet.isEmpty()) {
-                debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", currentBlock.toString(), packSet.size());
+            if (packSet.isEmpty()) {
+                return;
             }
+
+            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", currentBlock.toString(), packSet.size());
 
             // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
-
             if (combinedPackSet.size() < 2) {
                 return;
             }
@@ -988,7 +1005,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         for (Block block : cfg.reversePostOrder()) {
             try (DebugContext.Scope s = debug.scope("slpExtract")) {
-                new Instance(context, debug, graph.getLastSchedule().getNodeToBlockMap(), graph.getLastSchedule().getBlockToNodesMap(), block, view).slpExtract();
+                new Instance(context, debug, graph, block, view).slpExtract();
             } catch (Throwable t) {
                 throw debug.handle(t);
             }
