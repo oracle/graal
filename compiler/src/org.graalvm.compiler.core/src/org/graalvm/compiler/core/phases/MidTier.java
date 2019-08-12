@@ -35,6 +35,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.GuardTargets;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.core.phases.LowTier.Options.Autovectorize;
 
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
@@ -82,7 +83,9 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         appendPhase(new LoopSafepointInsertionPhase());
 
-        appendPhase(new LoopPartialUnrollPhase(new VectorizationLoopPolicies(), canonicalizer));
+        if (Autovectorize.getValue(options)) {
+            appendPhase(new LoopPartialUnrollPhase(new VectorizationLoopPolicies(), canonicalizer));
+        }
 
         appendPhase(new GuardLoweringPhase());
 

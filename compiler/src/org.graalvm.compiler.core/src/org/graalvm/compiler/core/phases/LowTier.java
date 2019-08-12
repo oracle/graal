@@ -56,7 +56,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         @Option(help = "", type = OptionType.Debug)
         public static final OptionKey<Boolean> ProfileCompiledMethods = new OptionKey<>(false);
 
-        @Option(help = "", type = OptionType.User)
+        @Option(help = "Enable autovectorization", type = OptionType.Expert)
         public static final OptionKey<Boolean> Autovectorize = new OptionKey<>(true);
         // @formatter:on
 
