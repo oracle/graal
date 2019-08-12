@@ -64,6 +64,12 @@ public final class AMD64Packing {
 
     private AMD64Packing() { }
 
+    /**
+     * This helper function doubles the size of an AMD64Kind.
+     *
+     * @param kind The kind we want to double.
+     * @return An AMD64Kind with twice the size of the input kind.
+     */
     private static AMD64Kind twice(AMD64Kind kind) {
         switch (kind) {
             case BYTE:
@@ -75,7 +81,7 @@ public final class AMD64Packing {
             case SINGLE:
                 return AMD64Kind.QWORD;
             default:
-                return kind;
+                throw GraalError.shouldNotReachHere("Unable to double AMD64Kind '" + kind.toString() + "'");
         }
     }
 
