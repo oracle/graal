@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
@@ -250,19 +249,23 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     private void handleClasspathError(String message) {
+        // Checkstyle: stop
         if (this.allowIncompleteClasspath) {
             System.out.println("WARNING: " + message);
         } else {
-            throw new UnresolvedElementException(composeErrorMessage(message));
+            throw new NoClassDefFoundError(composeErrorMessage(message));
         }
+        // Checkstyle: resume
     }
 
     private void handleParsingError(String message) {
+        // Checkstyle: stop
         if (this.allowIncompleteClasspath) {
             System.out.println("WARNING: " + message);
         } else {
             throw new JSONParserException(composeErrorMessage(message));
         }
+        // Checkstyle: resume
     }
 
     private String composeErrorMessage(String message) {

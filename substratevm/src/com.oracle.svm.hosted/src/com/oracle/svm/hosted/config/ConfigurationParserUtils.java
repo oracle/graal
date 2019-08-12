@@ -42,7 +42,6 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
@@ -131,7 +130,7 @@ public final class ConfigurationParserUtils {
     private static void doParseAndRegister(ConfigurationParser parser, Reader reader, String featureName, Object location, HostedOptionKey<String[]> option) {
         try {
             parser.parseAndRegister(reader);
-        } catch (UnresolvedElementException e) {
+        } catch (NoClassDefFoundError e) {
             String errorMessage = unwrapErrorMessage(e);
             throw UserError.abort(errorMessage);
         } catch (IOException | JSONParserException e) {
