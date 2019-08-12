@@ -38,6 +38,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VEXTRACTF128;
@@ -51,11 +52,11 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VINSERTPS;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRQ;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRRMIOp.VPINSRW;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRW;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTF128;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTI128;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPD;
@@ -519,10 +520,10 @@ public class AMD64VectorShuffle {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(source)) {
-                VPINSRB.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
+                VPINSRB.emit(masm, XMM, asRegister(vector), Register.None, asRegister(source), selector);
             } else {
                 assert isStackSlot(source);
-                VPINSRB.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
+                VPINSRB.emit(masm, XMM, asRegister(vector), Register.None, (AMD64Address) crb.asAddress(source), selector);
             }
         }
     }
@@ -544,10 +545,10 @@ public class AMD64VectorShuffle {
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             if (isRegister(source)) {
-                VPINSRW.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
+                VPINSRW.emit(masm, XMM, asRegister(vector), Register.None, asRegister(source), selector);
             } else {
                 assert isStackSlot(source);
-                VPINSRW.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
+                VPINSRW.emit(masm, XMM, asRegister(vector), Register.None, (AMD64Address) crb.asAddress(source), selector);
             }
         }
     }
@@ -572,14 +573,14 @@ public class AMD64VectorShuffle {
                 if (selector == 0) {
                     VMOVD.emit(masm, XMM, asRegister(vector), asRegister(source));
                 } else {
-                    VPINSRD.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
+                    VPINSRD.emit(masm, XMM, asRegister(vector), Register.None, asRegister(source), selector);
                 }
             } else {
                 assert isStackSlot(source);
                 if (selector == 0) {
                     VMOVD.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source));
                 } else {
-                    VPINSRD.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
+                    VPINSRD.emit(masm, XMM, asRegister(vector), Register.None, (AMD64Address) crb.asAddress(source), selector);
                 }
             }
         }
@@ -605,14 +606,14 @@ public class AMD64VectorShuffle {
                 if (selector == 0) {
                     VMOVQ.emit(masm, XMM, asRegister(vector), asRegister(source));
                 } else {
-                    VPINSRQ.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
+                    VPINSRQ.emit(masm, XMM, asRegister(vector), Register.None, asRegister(source), selector);
                 }
             } else {
                 assert isStackSlot(source);
                 if (selector == 0) {
                     VMOVQ.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source));
                 } else {
-                    VPINSRQ.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
+                    VPINSRQ.emit(masm, XMM, asRegister(vector), Register.None, (AMD64Address) crb.asAddress(source), selector);
                 }
             }
         }
@@ -638,14 +639,14 @@ public class AMD64VectorShuffle {
                 if (selector == 0) {
                     VMOVSS.emit(masm, XMM, asRegister(vector), asRegister(source));
                 } else {
-                    VINSERTPS.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
+                    VINSERTPS.emit(masm, XMM, asRegister(vector), Register.None, asRegister(source), selector);
                 }
             } else {
                 assert isStackSlot(source);
                 if (selector == 0) {
                     VMOVSS.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source));
                 } else {
-                    VINSERTPS.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
+                    VINSERTPS.emit(masm, XMM, asRegister(vector), Register.None, (AMD64Address) crb.asAddress(source), selector);
                 }
             }
         }
@@ -671,14 +672,14 @@ public class AMD64VectorShuffle {
                 if (selector == 0) {
                     VMOVSD.emit(masm, XMM, asRegister(vector), asRegister(source));
                 } else {
-                    VPINSRQ.emit(masm, XMM, asRegister(vector), asRegister(source), selector);
+                    VPINSRQ.emit(masm, XMM, asRegister(vector), Register.None, asRegister(source), selector);
                 }
             } else {
                 assert isStackSlot(source);
                 if (selector == 0) {
                     VMOVSD.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source));
                 } else {
-                    VPINSRQ.emit(masm, XMM, asRegister(vector), (AMD64Address) crb.asAddress(source), selector);
+                    VPINSRQ.emit(masm, XMM, asRegister(vector), Register.None, (AMD64Address) crb.asAddress(source), selector);
                 }
             }
         }

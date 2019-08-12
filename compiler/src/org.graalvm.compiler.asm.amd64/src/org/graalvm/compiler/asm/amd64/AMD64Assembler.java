@@ -1176,40 +1176,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     /**
-     * VEX-encoded instructions with an operand order of RRMI.
-     */
-    public static final class VexRRMIOp extends VexOp implements VexRRIOp {
-        // @formatter:off
-        public static final VexRRMIOp VPINSRB  = new VexRRMIOp("VPINSRB",    P_66, M_0F3A, W0,  0x20, VEXOpAssertion.XMM_CPU);
-        public static final VexRRMIOp VPINSRW  = new VexRRMIOp("VPINSRW",    P_66, M_0F,   W0,  0xC4, VEXOpAssertion.XMM_CPU);
-        public static final VexRRMIOp VPINSRD  = new VexRRMIOp("VPINSRD",    P_66, M_0F3A, W0,  0x22, VEXOpAssertion.XMM_CPU);
-        public static final VexRRMIOp VPINSRQ  = new VexRRMIOp("VPINSRQ",    P_66, M_0F3A, W1,  0x22, VEXOpAssertion.XMM_CPU);
-        public static final VexRRMIOp VINSERTPS= new VexRRMIOp("VINSERTPS",  P_66, M_0F3A, WIG, 0x21, VEXOpAssertion.XMM_CPU);
-        // @formatter:on
-
-        private VexRRMIOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
-            super(opcode, pp, mmmmm, w, op, assertion);
-        }
-
-        @Override
-        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
-            asm.vexPrefix(dst, dst, src, size, pp, mmmmm, w, false);
-            asm.emitByte(op);
-            asm.emitModRM(dst, src);
-            asm.emitByte(imm8);
-        }
-
-        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
-            asm.vexPrefix(dst, dst, src, size, pp, mmmmm, w, false);
-            asm.emitByte(op);
-            asm.emitOperandHelper(dst, src, 1);
-            asm.emitByte(imm8);
-        }
-    }
-
-    /**
      * VEX-encoded instructions with an operand order of MRI.
      */
     public static final class VexMRIOp extends VexOp implements VexRRIOp {
@@ -1541,6 +1507,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMIOp VSHUFPD     = new VexRVMIOp("VSHUFPD",     P_66, M_0F,   WIG, 0xC6);
         public static final VexRVMIOp VINSERTF128 = new VexRVMIOp("VINSERTF128", P_66, M_0F3A, W0,  0x18, VEXOpAssertion.AVX1_256ONLY);
         public static final VexRVMIOp VINSERTI128 = new VexRVMIOp("VINSERTI128", P_66, M_0F3A, W0,  0x38, VEXOpAssertion.AVX2_256ONLY);
+        public static final VexRVMIOp VPINSRB     = new VexRVMIOp("VPINSRB",     P_66, M_0F3A, W0,  0x20, VEXOpAssertion.XMM_CPU);
+        public static final VexRVMIOp VPINSRW     = new VexRVMIOp("VPINSRW",     P_66, M_0F,   W0,  0xC4, VEXOpAssertion.XMM_CPU);
+        public static final VexRVMIOp VPINSRD     = new VexRVMIOp("VPINSRD",     P_66, M_0F3A, W0,  0x22, VEXOpAssertion.XMM_CPU);
+        public static final VexRVMIOp VPINSRQ     = new VexRVMIOp("VPINSRQ",     P_66, M_0F3A, W1,  0x22, VEXOpAssertion.XMM_CPU);
+        public static final VexRVMIOp VINSERTPS   = new VexRVMIOp("VINSERTPS",   P_66, M_0F3A, WIG, 0x21, VEXOpAssertion.XMM_CPU);
         // @formatter:on
 
         private VexRVMIOp(String opcode, int pp, int mmmmm, int w, int op) {
