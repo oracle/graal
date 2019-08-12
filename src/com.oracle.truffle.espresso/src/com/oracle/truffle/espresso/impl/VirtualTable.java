@@ -71,6 +71,9 @@ public class VirtualTable {
         if (!overrides.isEmpty()) {
             int count = 1;
             for (Method override : overrides) {
+                if (override.isFinalFlagSet()) {
+                    throw new VerifyError("Overriding final method: " + override);
+                }
                 int pos = override.getVTableIndex();
                 if (count > 1) {
                     toSet = new Method(m);
