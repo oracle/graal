@@ -85,14 +85,25 @@ public final class AMD64Packing {
         }
     }
 
+    /**
+     * This operation packs a buffer of serialized constants into a vector register.
+     */
     public static final class PackConstantsOp extends AMD64LIRInstruction {
 
         public static final LIRInstructionClass<PackConstantsOp> TYPE = LIRInstructionClass.create(PackConstantsOp.class);
 
         private final ByteBuffer byteBuffer;
 
+        // We only permit registers. Since constants are already in memory, and vector arithmetic
+        // performed only between registers, we shouldn't ever be moving a vector constant to a
+        // memory location.
         @Def({REG}) private AllocatableValue result;
 
+        /**
+         * Creates a PackConstantsOp.
+         * @param result The destination of the operation - in other words, the vector value we are packing.
+         * @param byteBuffer The constants we want to pack, serialized in buffer form.
+         */
         public PackConstantsOp(AllocatableValue result, ByteBuffer byteBuffer) {
             this(TYPE, result, byteBuffer);
         }
@@ -108,6 +119,10 @@ public final class AMD64Packing {
             final PlatformKind pc = result.getPlatformKind();
             final int alignment = pc.getSizeInBytes() / pc.getVectorLength();
             final AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(byteBuffer.array(), alignment);
+
+            // Based on the size of the constants, we use one of several memory-to-register
+            // instructions. The buffer should be aligned to one of these sizes by this point, and
+            // we throw an exception otherwise.
             switch (AVXKind.AVXSize.fromBytes(byteBuffer.capacity())) {
                 case DWORD:
                     VMOVD.emit(masm, DWORD, asRegister(result), address);
