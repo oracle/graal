@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+mx --dy /compiler benchmark wasm:WASM_BENCHMARKS -- -Dwasmtest.watToWasmExecutable=/usr/local/bin/wat2wasm -Dwasmtest.testSourcePath="src/com.oracle.truffle.wasm.test/src/tests" --jvm server --jvm-config graal-core
