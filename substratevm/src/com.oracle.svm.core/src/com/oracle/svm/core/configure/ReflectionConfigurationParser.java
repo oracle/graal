@@ -268,7 +268,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         // Checkstyle: resume
     }
 
-    private String composeErrorMessage(String message) {
+    private static String composeErrorMessage(String message) {
         return message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath";
     }
 }
