@@ -6,6 +6,10 @@ import static com.oracle.truffle.wasm.benchmark.WasmBenchmark.Defaults.WARMUP_IT
 
 import com.oracle.truffle.wasm.benchmark.options.WasmBenchmarkOptions;
 import com.oracle.truffle.wasm.benchmark.util.WasmBenchmarkToolkit;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Setup;
@@ -35,15 +39,18 @@ public class WasmBenchmark {
         return WasmBenchmarkToolkit.compileWatFile(watFile);
     }
 
-    public static class WasmBenchmarkState {
-
-        {
-
-        }
+    public abstract static class WasmBenchmarkState {
+        protected Value function;
 
         @Setup
-        public void setup() {
-
+        public void setup() throws IOException, InterruptedException {
+            byte[] binary = getBinary(testName());
+            Context context = Context.create();
+            Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "benchmark").build();
+            context.eval(source);
+            function = context.getBindings("wasm").getMember("_main");
         }
+
+        abstract String testName();
     }
 }
