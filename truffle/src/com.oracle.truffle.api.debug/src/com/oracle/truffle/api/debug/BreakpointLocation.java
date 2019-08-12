@@ -81,6 +81,10 @@ abstract class BreakpointLocation {
 
     abstract SourceFilter createSourceFilter();
 
+    abstract Predicate<Source> createSourcePredicate();
+
+    abstract boolean canAdjustLocation();
+
     abstract SourceSection adjustLocation(Source source, TruffleInstrument.Env env, SuspendAnchor suspendAnchor);
 
     abstract SourceSectionFilter createLocationFilter(Source source, SuspendAnchor suspendAnchor);
@@ -141,13 +145,28 @@ abstract class BreakpointLocation {
         @Override
         SourceFilter createSourceFilter() {
             if (key == null) {
-                return SourceFilter.ANY;
+                return null;
             }
             SourceFilter.Builder f = SourceFilter.newBuilder();
             if (key instanceof URI) {
+                f.sourceIs(createSourcePredicate());
+            } else {
+                assert key instanceof Source;
+                Source s = (Source) key;
+                f.sourceIs(s);
+            }
+            return f.build();
+        }
+
+        @Override
+        Predicate<Source> createSourcePredicate() {
+            if (key == null) {
+                return null;
+            }
+            if (key instanceof URI) {
                 final URI sourceUri = (URI) key;
                 final String sourceRawPath = sourceUri.getRawPath() != null ? sourceUri.getRawPath() : sourceUri.getRawSchemeSpecificPart();
-                f.sourceIs(new Predicate<Source>() {
+                return new Predicate<Source>() {
                     @Override
                     public boolean test(Source s) {
                         URI uri = s.getURI();
@@ -162,13 +181,22 @@ abstract class BreakpointLocation {
                     public String toString() {
                         return "URI equals " + sourceUri;
                     }
-                });
+                };
             } else {
                 assert key instanceof Source;
-                Source s = (Source) key;
-                f.sourceIs(s);
+                Source source = (Source) key;
+                return new Predicate<Source>() {
+                    @Override
+                    public boolean test(Source s) {
+                        return source.equals(s);
+                    }
+                };
             }
-            return f.build();
+        }
+
+        @Override
+        boolean canAdjustLocation() {
+            return key != null;
         }
 
         @Override
@@ -268,6 +296,16 @@ abstract class BreakpointLocation {
         @Override
         SourceFilter createSourceFilter() {
             return null;
+        }
+
+        @Override
+        Predicate<Source> createSourcePredicate() {
+            return null;
+        }
+
+        @Override
+        boolean canAdjustLocation() {
+            return false;
         }
 
         @Override

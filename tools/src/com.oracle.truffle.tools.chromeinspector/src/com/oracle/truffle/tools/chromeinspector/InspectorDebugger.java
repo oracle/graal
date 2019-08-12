@@ -256,6 +256,12 @@ public final class InspectorDebugger extends DebuggerDomain {
                 l2 = l1;
                 c2 = source.getLineLength(l2);
             }
+            if (c2 == 0) {
+                c2 = 1; // 1-based column on zero-length line
+            }
+            if (l1 == l2 && c2 < c1) {
+                c1 = c2;
+            }
             SourceSection range = source.createSection(l1, c1, l2, c2);
             Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, debuggerSession, context.getEnv());
             for (SourceSection ss : locations) {
