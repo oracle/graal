@@ -93,6 +93,8 @@ public class CoverageInstrument extends TruffleInstrument {
 
                         }
                     });
+
+    // @formatter:off
     @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
     @Option(name = "Output", help = "", category = OptionCategory.USER, stability = OptionStability.STABLE)
@@ -109,8 +111,8 @@ public class CoverageInstrument extends TruffleInstrument {
     static final OptionKey<Boolean> TRACK_INTERNAL = new OptionKey<>(false);
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
+    // @formatter:on
 
-    // @formatter:off
     private static Function<Env, CoverageTracker> factory;
 
     static {
