@@ -88,7 +88,9 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         appendPhase(new UseTrappingNullChecksPhase());
 
-        if (Options.Autovectorize.getValue(options)) appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST)));
+        if (Options.Autovectorize.getValue(options)) {
+            appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST)));
+        }
 
         appendPhase(canonicalizer);
 
