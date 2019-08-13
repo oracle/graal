@@ -347,16 +347,32 @@ public final class AMD64Packing {
         }
     }
 
+    /**
+     * This operation stores a vector register into an array. It does so with
+     * the aid of some temporary stack space to minimize expensive vector instructions.
+     */
     public static final class StoreStackOp extends AMD64LIRInstruction {
-
-        private static final int YMM_LENGTH_IN_BYTES = 32;
         public static final LIRInstructionClass<StoreStackOp> TYPE = LIRInstructionClass.create(StoreStackOp.class);
 
+        // The array we're writing to.
         @Alive({COMPOSITE}) private AMD64AddressValue result;
+
+        // We need a scratch register for any possible memory-to-memory moves (see move(...) above).
         @Temp({REG}) private AllocatableValue scratch;
+
+        // Our input should always be a register.
         @Use({REG}) private AllocatableValue input;
+
         private final int valcount;
 
+        /**
+         * Creates a StoreStackOp.
+         *
+         * @param tool
+         * @param result The array value we're storing the vector into.
+         * @param input The vector value we're taking a value from.
+         * @param valcount The number of scalar elements in the vector we're storing.
+         */
         public StoreStackOp(LIRGeneratorTool tool, AMD64AddressValue result, AllocatableValue input, int valcount) {
             this(TYPE, tool, result, input, valcount);
         }
@@ -365,9 +381,12 @@ public final class AMD64Packing {
             super(c);
             assert valcount > 0 : "vector store must store at least one element";
             this.result = result;
-            this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.input = input;
             this.valcount = valcount;
+
+            // scratch is a QWORD in size, not XMM size, because it only needs to be as large as a
+            // single scalar value. We don't want to pack anything larger than a QWORD at a time.
+            this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         }
 
         @Override
@@ -378,44 +397,52 @@ public final class AMD64Packing {
             final int sizeInBytes = valcount * scalarKind.getSizeInBytes();
 
             final AMD64Address outputAddress = result.toAddress();
+
+            // If we can fill an entire YMM register, we can just perform a single move and skip
+            // more complicated packing logic.
             // TODO: support XMM-only platforms
-            if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
+            if (sizeInBytes == YMM.getBytes()) {
                 masm.vmovdqu(outputAddress, asRegister(input));
             } else {
-                // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
-                final int amt = (int) Math.ceil(((double) sizeInBytes) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
+                // Allocate a register-width of stack space for us to dump our values to.
+                masm.subq(rsp, YMM.getBytes());
 
-                // Open scratch space for us to dump our values to.
-                masm.subq(rsp, amt);
-
-                // Write memory from vector register.
+                // Write to temporary stack space from the vector register.
                 masm.vmovdqu(new AMD64Address(rsp, 0), asRegister(input));
 
-                int offset = 0;
+                int stackOffset = 0;
                 for (int i = 0; i < valcount;) {
+                    // Number of array elements to be moved in a single instruction.
+                    int elements = 1;
                     AMD64Kind movKind = scalarKind;
-                    int movSize = movKind.getSizeInBytes();
-                    while (i + (movSize / scalarKind.getSizeInBytes()) * 2 <= valcount && movSize < 8) {
-                        final AMD64Kind prev = movKind;
+
+                    // While we have room, we try to double the number of elements we pack in a
+                    // single move. We will never try and move more than a QWORD at once, since
+                    // that's how large our scratch register is.
+                    //
+                    // For example, this code might compress six MOVB instructions instructions to a
+                    // MOVD and MOVW.
+                    while (i + elements * 2 <= valcount && elements * movKind.getSizeInBytes() < QWORD.getBytes()) {
                         movKind = twice(movKind);
-                        movSize = movKind.getSizeInBytes();
-                        if (prev == movKind) {
-                            break;
-                        }
+                        elements *= 2;
                     }
 
-                    final AMD64Address source = new AMD64Address(rsp, offset);
-                    final AMD64Address target = new AMD64Address(outputAddress.getBase(), outputAddress.getIndex(), outputAddress.getScale(), outputAddress.getDisplacement() + offset);
+                    // We compute the addresses we're going to move between.
+                    final AMD64Address src = new AMD64Address(rsp, stackOffset);
+                    final AMD64Address dst = new AMD64Address(outputAddress.getBase(), outputAddress.getIndex(), outputAddress.getScale(), outputAddress.getDisplacement() + stackOffset);
 
-                    addr2reg(crb, masm, movKind, asRegister(scratch), source);
-                    reg2addr(crb, masm, movKind, target, asRegister(scratch));
-                    offset += movSize;
+                    // Perform the move.
+                    addr2reg(crb, masm, movKind, asRegister(scratch), src);
+                    reg2addr(crb, masm, movKind, dst, asRegister(scratch));
 
-                    i += movSize / scalarKind.getSizeInBytes();
+                    // Increment both stack offset and number of elements packed, so that we can
+                    // proceed with the loop.
+                    stackOffset += movKind.getSizeInBytes();
+                    i += elements;
                 }
 
                 // Pop scratch space.
-                masm.addq(rsp, amt);
+                masm.addq(rsp, YMM.getBytes());
             }
         }
     }
