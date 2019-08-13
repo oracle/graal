@@ -495,31 +495,64 @@ _DACAPO_EXTRA_PROFILE_ARGS = [
     '-Dnative-image.benchmark.extra-profile-run-arg=5'
 ]
 
+'''
+Benchmarks from DaCapo suite may require one or more zip archives from `dat` directory on the classpath.
+After the agent run we have all necessary resources (from `jar` and `dat` folders inside DaCapo fat jar).
+We don't support nested archives and classes directories in a jar so we have to specify them directly on the classpath.
+Since we don't have produced config files available in the suite, we will store paths in `_dacapo_resources`,
+load all resources from specified archives, and collect them on a benchmark classpath.
+'''
 _dacapo_resources = {
-    "avrora"     : ['dat/avrora.zip'],
-    "batik"      : [],
-    "eclipse"    : [],
-    "fop"        : [],
-    "h2"         : [],
-    "jython"     : [],
-    "luindex"    : [],
-    "lusearch"   : [],
-    "pmd"        : [],
-    "sunflow"    : [],
-    "tomcat"     : [],
-    "tradebeans" : [],
-    "tradesoap"  : [],
-    "xalan"      : [],
+    'avrora'     : ['dat/avrora.zip'],
+    'batik'      : ['dat/batik.zip'],
+    'eclipse'    : ['dat/eclipse.zip'],
+    'fop'        : ['dat/fop.zip'],
+    'h2'         : [],
+    'jython'     : ['dat/jython.zip'],
+    'luindex'    : ['dat/luindex.zip'],
+    'lusearch'   : ['dat/lusearch.zip'],
+    'pmd'        : ['dat/pmd.zip'],
+    'sunflow'    : [],
+    'tomcat'     : ['dat/tomcat.zip'],
+    'tradebeans' : ['dat/daytrader.zip'],
+    'tradesoap'  : ['dat/daytrader.zip'],
+    'xalan'      : ['dat/xalan.zip'],
+}
+
+_daCapo_iterations = {
+    'avrora'     : 20,
+    'batik'      : 40,
+    'eclipse'    : -1, # Not supported on Hotspot
+    'fop'        : 40,
+    'h2'         : 25,
+    'jython'     : -1, # Dynamically generates classes, hence can't be supported on SVM for now
+    'luindex'    : 15,
+    'lusearch'   : 40,
+    'pmd'        : 30,
+    'sunflow'    : 35,
+    'tomcat'     : -1, # Not supported on Hotspot
+    'tradebeans' : -1, # Not supported on Hotspot
+    'tradesoap'  : -1, # Not supported on Hotspot
+    'xalan'      : 30,
 }
 
 
-class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite):
+class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
     def name(self):
         return 'dacapo-native-image'
 
+    '''
+    Some methods in DaCapo source are modified because they relied on the jar's nested structure,
+    e.g. loading all configuration files for benchmarks from a nested directory.
+    Therefore, this library is built from the source.
+    '''
     def dacapo_libname(self):
         return 'DACAPO_SVM'
 
+    '''
+    `SetBuildInfo` method in DaCapo source contains code not supported on SVM.
+     As a result, instead of the implementation version, it returns `unknown`.
+    '''
     def daCapoSuiteTitle(self):
         return "DaCapo unknown"
 
@@ -528,6 +561,12 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite):
         if lib:
             return lib.get_path(True)
         return None
+
+    def benchSuiteName(self):
+        return 'dacapo'
+
+    def daCapoIterations(self):
+        return _daCapo_iterations
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         bench_arg = ""
@@ -541,11 +580,11 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite):
         pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
 
         run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
-        vm_args = self.vmArgs(bmSuiteArgs) + _DACAPO_EXTRA_VM_ARGS[bench_arg]
+        vm_args = self.vmArgs(bmSuiteArgs) + (_DACAPO_EXTRA_VM_ARGS[bench_arg] if bench_arg in _DACAPO_EXTRA_VM_ARGS else [])
         return agent_args + pgo_args + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.daCapoPath()] + [bench_arg] + run_args
 
     def create_classpath(self, benchmark):
-        dacapo_nested_jars = []
+        dacapo_nested_resources = []
         dacapo_dat_resources = []
         dacapo_extracted = self.extract_dacapo()
         benchmark_resources = _dacapo_resources[benchmark]
@@ -553,9 +592,10 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite):
             for resource in benchmark_resources:
                 dacapo_dat_resource = extract_archive(mx.join(dacapo_extracted, resource), benchmark)
                 dacapo_dat_resources.append(dacapo_dat_resource)
-                dacapo_nested_jars += self.collect_nested_dependencies(dacapo_dat_resource)
+                #collects nested jar files and classes directories
+                dacapo_nested_resources += self.collect_nested_dependencies(dacapo_dat_resource)
         dacapo_jars = self.collect_dependencies(os.path.join(dacapo_extracted, 'jar'))
-        cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_jars)
+        cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
         return cp
 
     def collect_dependencies(self, path):
