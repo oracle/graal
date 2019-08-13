@@ -80,13 +80,19 @@ public final class MachOObjectFile extends ObjectFile {
      * Create an empty Mach-O object file.
      */
     public MachOObjectFile() {
-        if ("aarch64".equals(System.getProperty("svm.targetArch")) || "arm64".equals(System.getProperty("svm.targetArch"))) {
-            cpuType = MachOCpuType.ARM64;
-            cpuSubType = 0;
-        } else {
-            cpuType = MachOCpuType.X86_64;
-            cpuSubType = 3;
+        this(MachOCpuType.from(System.getProperty("svm.targetArch") == null ? System.getProperty("os.arch") : System.getProperty("svm.targetArch")));
+    }
+
+    public MachOObjectFile(MachOCpuType cpuType) {
+        this.cpuType = cpuType;
+        switch (cpuType) {
+            case X86_64:
+                cpuSubType = 3;
+                break;
+            default:
+                cpuSubType = 0;
         }
+
         header = new MachOHeader("MachOHeader");
         setByteOrder(ByteOrder.nativeOrder());
 
