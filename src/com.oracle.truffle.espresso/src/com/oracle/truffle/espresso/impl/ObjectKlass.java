@@ -59,8 +59,6 @@ public final class ObjectKlass extends Klass {
 
     public static final JavaKind FIELD_REPRESENTATION = JavaKind.Byte;
 
-    private final Object hostLock = new Object();
-
     private final EnclosingMethodAttribute enclosingMethod;
 
     private final RuntimeConstantPool pool;
@@ -209,7 +207,7 @@ public final class ObjectKlass extends Klass {
 
     @ExplodeLoop
     private void actualInit() {
-        synchronized (hostLock) {
+        synchronized (this) {
             if (!(isInitializedOrPrepared())) { // Check under lock
                 if (initState == ERRONEOUS) {
                     throw getMeta().throwExWithMessage(NoClassDefFoundError.class, "Erroneous class: " + getName());
@@ -575,7 +573,7 @@ public final class ObjectKlass extends Klass {
 
     private void verifyKlass() {
         if (!isVerified()) {
-            synchronized (hostLock) {
+            synchronized (this) {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setVerificationStatus(VERIFYING);

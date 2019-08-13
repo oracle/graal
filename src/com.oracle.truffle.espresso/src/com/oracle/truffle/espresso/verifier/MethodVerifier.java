@@ -424,17 +424,17 @@ public final class MethodVerifier implements ContextAccess {
 
     // Indicates that a particular BCI should never be reached by normal control flow (e.g.: the
     // bytecode of a WIDE instruction, or any BCI between two successive instructions)
-    static private final byte UNREACHABLE = 0;
+    static private final int UNREACHABLE = 0;
     // Indicates a BCI that has not yet been reached by control flow. After verification, if such a
     // BCI still exists, it means that this BCI will never be reached during execution.
-    static private final byte UNSEEN = 1;
+    static private final int UNSEEN = 1;
     // Indicates previous iteration of a verification successfully verified this particular BCI.
     // Further verification can therefore stop their execution if merging its state into the state
     // of this BCI is successful.
-    static private final byte DONE = 2;
+    static private final int DONE = 2;
     // Indicates that a particular BCI is the target of a jump, therefore requiring a stack map to
     // be provided fo this BCI.
-    static private final byte JUMP_TARGET = 4;
+    static private final int JUMP_TARGET = 4;
 
     // Exception handler target states
     static private final byte UNENCOUNTERED = 1;
@@ -450,11 +450,11 @@ public final class MethodVerifier implements ContextAccess {
 
     static private final int RETURN_MASK = 0xFFFF0000;
 
-    static private boolean checkStatus(int status, byte toCheck) {
+    static private boolean checkStatus(int status, int toCheck) {
         return (status & toCheck) != 0;
     }
 
-    static private int setStatus(int status, byte toSet) {
+    static private int setStatus(int status, int toSet) {
         return (status & RETURN_MASK) | toSet;
     }
 
@@ -876,16 +876,14 @@ public final class MethodVerifier implements ContextAccess {
     private static class QueueElement {
         final int BCI;
         final StackFrame frame;
-        final SubroutineModificationStack subroutineModifs;
         final boolean constructorCalled;
 
         QueueElement prev;
         QueueElement next;
 
-        QueueElement(int BCI, StackFrame frame, SubroutineModificationStack sms, boolean calledConstructor) {
+        QueueElement(int BCI, StackFrame frame, boolean calledConstructor) {
             this.BCI = BCI;
             this.frame = frame;
-            this.subroutineModifs = sms;
             this.constructorCalled = calledConstructor;
         }
     }
@@ -919,7 +917,7 @@ public final class MethodVerifier implements ContextAccess {
                 QueueElement toVerify = queue.pop();
                 calledConstructor = toVerify.constructorCalled;
                 locals = toVerify.frame.extractLocals();
-                locals.subRoutineModifications = toVerify.subroutineModifs;
+                locals.subRoutineModifications = toVerify.frame.subroutineModificationStack;
                 startVerify(toVerify.BCI, toVerify.frame.extractStack(maxStack), locals);
             }
             // Performs verification of reachable handlers
@@ -1049,7 +1047,7 @@ public final class MethodVerifier implements ContextAccess {
             // state can change.
             BCIstates[BCI] = setStatus(BCIstates[BCI], JUMP_TARGET);
             stackFrames[BCI] = frame;
-            QueueElement toPush = new QueueElement(BCI, frame, locals.subRoutineModifications, calledConstructor);
+            QueueElement toPush = new QueueElement(BCI, frame, calledConstructor);
             queue.push(BCI, toPush);
         }
     }
@@ -2338,15 +2336,16 @@ public final class MethodVerifier implements ContextAccess {
                 }
             }
         }
+        stackMap.mergeSubroutines(locals.subRoutineModifications);
         if (mergedStack == null && mergedLocals == null) {
             // Merge success
             return stackMap;
         }
         // Merge failed
         if (mergedStack == null) {
-            return new StackFrame(stack, mergedLocals);
+            return new StackFrame(stack, mergedLocals, stackMap.subroutineModificationStack);
         }
-        return new StackFrame(mergedStack, stack.size, stack.top, mergedLocals == null ? locals.registers : mergedLocals);
+        return new StackFrame(mergedStack, stack.size, stack.top, mergedLocals == null ? locals.registers : mergedLocals, stackMap.subroutineModificationStack);
     }
 
     private static StackFrame spawnStackFrame(Stack stack, Locals locals) {
