@@ -31,7 +31,13 @@ It is loaded at run time via `System.loadLibrary("sunec")`, the first time servi
 To use this provider's services the `java.library.path` system property needs to be set accordingly to point to a location that contains `libsunec.so`.
 Note that if `java.library.path` is not set it defaults to the current working directory.
 
-Ensure the version of the `libsunec.so` static object library is from GraalVM's JDK for the native-image to work (it is found in the `${GRAALVM_HOME}/jre/lib/amd64` for Linux, does not work for MacOS yet).
+You need to ship that with the image and set the `java.library.path` system property accordingly. The `libsunec.{so|dylib}` static object library is from a JDK for the native app to work (it is found in the `${JAVA_HOME}/jre/lib/amd64` for Linux, `${JAVA_HOME}/jre/lib` for MacOS).
+
+Note: if `libsunec.{so|dylib}` from GraalVM's JDK is bundled, then you do not need to additionally bundle `${JAVA_HOME}/jre/lib/security/cacerts` with the native app, otherwise we need to bundle it to avoid encountering the `Unexpected error - SSLException: java.lang.RuntimeException: Unexpected error: java.security.InvalidAlgorithmParameterException: the trustAnchors parameter must be non-empty` error. In addition to bundling `cacerts`, the native app must be invoked like this:
+
+```bash
+   $ native-app -Djavax.net.ssl.trustStore=[/path/to/]cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+```
 
 ### Alternative to `--enable-all-security-services`
 

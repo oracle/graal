@@ -22,7 +22,15 @@ Thus when `https` is enabled `--enable-all-security-services` is set by default.
 This adds to the generated image the code required by the JCA.
 It also enables JNI by default since some providers like SunEC are implemented in native code.
 However, it doesn't include the corresponding native library in the image, i.e., `libsunec.so` for SunEC.
-You need to ship that with the image and set the `java.library.path` system property accordingly. Ensure the version of the `libsunec.so` static object library is from GraalVM's JDK for the native-image to work (it is found in the `${GRAALVM_HOME}/jre/lib/amd64` for Linux, does not work for MacOS yet).
+
+You need to ship that with the image and set the `java.library.path` system property accordingly. The `libsunec.{so|dylib}` static object library is from a JDK for the native app to work (it is found in the `${JAVA_HOME}/jre/lib/amd64` for Linux, `${JAVA_HOME}/jre/lib` for MacOS).
+
+Note: if `libsunec.{so|dylib}` from GraalVM's JDK is bundled, then you do not need to additionally bundle `${JAVA_HOME}/jre/lib/security/cacerts` with the native app, otherwise we need to bundle it to avoid encountering the `Unexpected error - SSLException: java.lang.RuntimeException: Unexpected error: java.security.InvalidAlgorithmParameterException: the trustAnchors parameter must be non-empty` error. In addition to bundling `cacerts`, the native app must be invoked like this: 
+
+```bash
+   $ native-app -Djavax.net.ssl.trustStore=[/path/to/]cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+```
+
 See the [documentation on security services](JCA-SECURITY-SERVICES.md) for more details.
 
 ### Not tested
