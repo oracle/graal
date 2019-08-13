@@ -58,4 +58,14 @@ public final class StringCompareToAVX512Test extends GraalCompilerTest {
         test("compareTo", latin1, utf16);
         test("compareTo", utf16, latin1);
     }
+
+    @Test
+    public void testLatin1() {
+        StringBuilder latin1Builder = new StringBuilder();
+        for (int j = 0; j <= 255; ++j) {
+            latin1Builder.append((char) j);
+        }
+        String latin1 = latin1Builder.toString();
+        test("compareTo", latin1, String.valueOf(latin1.toCharArray()));
+    }
 }
