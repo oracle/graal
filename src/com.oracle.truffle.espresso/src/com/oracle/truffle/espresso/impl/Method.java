@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_0;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETFIELD;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETSTATIC;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
@@ -41,6 +45,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -72,6 +77,8 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method implements TruffleObject, ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
+    private static final byte GETTER_LENGTH = 5;
+    private static final byte STATIC_GETTER_LENGTH = 4;
 
     private final LinkedMethod linkedMethod;
     private final RuntimeConstantPool pool;
@@ -672,5 +679,30 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     public boolean isMethodHandleIntrinsic() {
         return isNative() && declaringKlass == getMeta().MethodHandle && MethodHandleIntrinsics.getId(this) != MethodHandleIntrinsics.PolySigIntrinsics.None;
+    }
+
+    public boolean isInlinableGetter() {
+        if (getSubstitutions().get(this) == null) {
+            if (getParameterCount() == 0 && !isAbstract() && !isNative()) {
+                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || declaringKlass.leafAssumption() || isStatic()) {
+                    return hasGetterBytecodes();
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean hasGetterBytecodes() {
+        byte[] code = codeAttribute.getCode();
+        if (isStatic()) {
+            if (code.length == STATIC_GETTER_LENGTH && getExceptionHandlers().length == 0) {
+                return (code[0] == (byte) GETSTATIC) && (Bytecodes.isReturn(code[3]));
+            }
+        } else {
+            if (code.length == GETTER_LENGTH && getExceptionHandlers().length == 0) {
+                return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) GETFIELD) && (Bytecodes.isReturn(code[4])) && code[4] != (byte) RETURN;
+            }
+        }
+        return false;
     }
 }
