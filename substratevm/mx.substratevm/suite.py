@@ -72,7 +72,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.core",
-                "com.oracle.svm.util",
             ],
             "imports" : [
                 "jdk.internal.module",
