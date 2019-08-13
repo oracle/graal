@@ -35,6 +35,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -79,6 +80,8 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     public static final Method[] EMPTY_ARRAY = new Method[0];
     private static final byte GETTER_LENGTH = 5;
     private static final byte STATIC_GETTER_LENGTH = 4;
+
+    private final Assumption isLeaf;
 
     private final LinkedMethod linkedMethod;
     private final RuntimeConstantPool pool;
@@ -163,6 +166,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         // Allows for not duplicating the codeAttribute
         this.proxy = method.proxy == null ? method : method.proxy;
         this.poisonPill = method.poisonPill;
+        this.isLeaf = method.isLeaf;
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod) {
@@ -191,6 +195,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
         initRefKind();
         this.proxy = null;
+        this.isLeaf = Truffle.getRuntime().createAssumption();
     }
 
     public final int getRefKind() {
@@ -684,7 +689,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     public boolean isInlinableGetter() {
         if (getSubstitutions().get(this) == null) {
             if (getParameterCount() == 0 && !isAbstract() && !isNative()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || declaringKlass.leafAssumption() || isStatic()) {
+                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || leafAssumption() || isStatic()) {
                     return hasGetterBytecodes();
                 }
             }
@@ -704,5 +709,13 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
             }
         }
         return false;
+    }
+
+    public boolean leafAssumption() {
+        return isLeaf.isValid();
+    }
+
+    public void invalidateLeaf() {
+        isLeaf.invalidate();
     }
 }
