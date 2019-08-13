@@ -134,6 +134,7 @@ For example:
       }
     }
 
+**Note: when prompted with a suggestion at runtime to use `org.graalvm.nativeimage.hosted.RuntimeReflection` to make a specific class available for reflective access, it can be resolved using the method described in _the former half of [Manual Configuration](REFLECTION.md#manual-configuration)_ and it is NOT mandatory to use the method described in _the latter half of [Manual Configuration](REFLECTION.md#manual-configuration)_. Even though the hint in the runtime suggestion might appear to be indicating to use the latter. In short, you can resolve the error by merely amending `reflect-config.json` for the respective class as opposed to trying to fix it programmatically (via source code changes).** 
 
 ## Use during Native Image Generation
 Reflection can be used without restrictions during native image generation, for example in static initializers.
