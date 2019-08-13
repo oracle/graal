@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
+import com.oracle.svm.util.ModuleSupport;
 
 @AutomaticFeature
 public class ClassLoaderFeature implements Feature {
@@ -41,6 +42,7 @@ public class ClassLoaderFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         ClassLoaderSupport.getInstance().createClassLoaders(ClassLoader.getSystemClassLoader());
         ClassLoaderSupport.getInstance().systemClassLoader = ClassLoaderSupport.getInstance().classLoaders.get(ClassLoader.getSystemClassLoader());
+        ModuleSupport.registerPlatformClassLoader();
     }
 
     @Override

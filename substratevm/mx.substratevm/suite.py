@@ -71,6 +71,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
+                "com.oracle.svm.core",
                 "com.oracle.svm.util",
             ],
             "imports" : [
@@ -293,23 +294,6 @@ suite = {
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
-            "annotationProcessors": [
-                "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
-                "compiler:GRAAL_OPTIONS_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-        },
-        "com.oracle.svm.hosted.jdk11": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "javaCompliance": "11+",
-            "checkstyleVersion" : "8.8",
-            "multiReleaseJarVersion": "11",
-            "overlayTarget" : "com.oracle.svm.util",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
                 "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
