@@ -513,15 +513,29 @@ public final class AMD64Packing {
         }
     }
 
+    /**
+     * This operation packs a vector register with arbitrary values (e.g. not necessarily
+     * contiguous). It uses SSE/AVX insert instructions and avoids the use of extra memory.
+     */
     public static final class PackOp extends AMD64LIRInstruction {
-
-        private static final int XMM_LENGTH_IN_BYTES = 16;
         public static final LIRInstructionClass<PackOp> TYPE = LIRInstructionClass.create(PackOp.class);
 
+        // Our destination must be a register.
         @Def({REG}) private AllocatableValue result;
+
+        // We need an auxiliary vector register to fill up and insert into the result.
         @Temp({REG}) private AllocatableValue temp;
+
+        // The values we want to pack.
         @Use({REG, STACK}) private AllocatableValue[] values;
 
+        /**
+         * Creates a PackOp.
+         *
+         * @param tool
+         * @param result The vector value we're packing.
+         * @param values The values we want to pack into the vector.
+         */
         public PackOp(LIRGeneratorTool tool, AllocatableValue result, List<AllocatableValue> values) {
             this(TYPE, tool, result, values);
         }
@@ -539,17 +553,32 @@ public final class AMD64Packing {
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
 
-            // How many scalars can we fit into an XMM register?
-            final int xmmLengthInElements = XMM_LENGTH_IN_BYTES / scalarKind.getSizeInBytes();
+            // SSE/AVX insert operations can move a scalar value into a vector register at a
+            // particular index. However, they can only do this for the bottom 128 bits of a
+            // vector register. In AVX mode, this means we can "overflow" this space. When this
+            // happens, we take the 128 bits we've just filled up, and use a VINSERT128 instruction
+            // to move those 128 bits into place in the larger register. Then we fill the bottom
+            // up again. This is why we allocate a "temp" vector register in this op.
+
+            // Determine the number of times we'll need to overflow.
+            final int xmmLengthInElements = XMM.getBytes() / scalarKind.getSizeInBytes();
             final int numOverflows = values.length / xmmLengthInElements;
 
+            // If we don't exceed the bottom 128 bits, we can directly write to the result.
+            // Otherwise, we write to temp and move temp into result later.
             final AllocatableValue target = numOverflows > 0 ? temp : result;
 
             for (int i = 0; i < values.length; i++) {
-                // If we've filled up the bottom 128 bits.
+                // If we've filled up the bottom 128 bits, position them appropriately within
+                // the larger vector register.
+                // (i / xmmLengthInElements) represents the number of overflows we've done and
+                // also the index we should move the bottom 128 bits into.
                 if (i > 0 && i % xmmLengthInElements == 0) {
                     new AMD64VectorShuffle.Insert128Op(result, target, result, i / xmmLengthInElements).emitCode(crb, masm);
                 }
+
+                // Otherwise, we find the index within the bottom 128 bits, and pick a correct
+                // insert instruction to move a scalar into the vector register.
 
                 final int targetIndex = i % xmmLengthInElements;
                 final AllocatableValue scalarValue = values[i];
@@ -576,7 +605,8 @@ public final class AMD64Packing {
                 }
             }
 
-            // If we're using a scratch register, write it into the result.
+            // If we've used the temp register to take care of overflows previously, write any
+            // remaining values in the temp register into the result register.
             if (numOverflows > 0) {
                 new AMD64VectorShuffle.Insert128Op(result, target, result, numOverflows).emitCode(crb, masm);
             }
