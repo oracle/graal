@@ -31,6 +31,7 @@ import java.util.Map;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.ComponentCollection;
+import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
@@ -47,10 +48,18 @@ public class UpgradeCommand implements InstallerCommand {
     private CommandInput input;
     private Feedback feedback;
     private UpgradeProcess helper;
+    private boolean verifyJars = true;
 
     static {
         options.put(Commands.OPTION_IGNORE_MISSING_COMPONENTS, "");
         options.put(Commands.LONG_OPTION_IGNORE_MISSING_COMPONENTS, Commands.OPTION_IGNORE_MISSING_COMPONENTS);
+        options.put(Commands.OPTION_NO_VERIFY_JARS, "");
+
+        options.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
+        options.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
+        options.put(Commands.LONG_OPTION_NO_VERIFY_JARS, Commands.OPTION_NO_VERIFY_JARS);
+
+        options.putAll(ComponentInstaller.componentOptions);
     }
 
     public UpgradeCommand(boolean allowDistUpgrades) {
@@ -80,6 +89,9 @@ public class UpgradeCommand implements InstallerCommand {
         if (input.optValue(Commands.OPTION_IGNORE_MISSING_COMPONENTS) != null) {
             helper.setAllowMissing(true);
         }
+        if (input.optValue(Commands.OPTION_NO_VERIFY_JARS) != null) {
+            verifyJars = false;
+        }
     }
 
     @Override
@@ -91,6 +103,7 @@ public class UpgradeCommand implements InstallerCommand {
     }
 
     ComponentInfo configureProcess() throws IOException {
+        input.existingFiles().setVerifyJars(verifyJars);
         Version min = input.getLocalRegistry().getGraalVersion();
 
         String s = input.peekParameter();
