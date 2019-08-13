@@ -526,6 +526,9 @@ public final class MethodVerifier implements ContextAccess {
                     initSwitch(bci, opcode);
                 }
                 bci = code.nextBCI(bci);
+                if (opcode == JSR || opcode == JSR_W) {
+                    BCIstates[bci] = JUMP_TARGET;
+                }
             }
         }
     }
