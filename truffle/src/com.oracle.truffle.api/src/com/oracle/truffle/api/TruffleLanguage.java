@@ -50,6 +50,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -2378,6 +2380,150 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public Map<String, String> getEnvironment() {
             return LanguageAccessor.engineAccess().getProcessEnvironment(vmObject);
+        }
+
+        /**
+         * Creates a new empty file in the specified directory, using the given prefix and suffix to
+         * generate its name.
+         *
+         * <p>
+         * This method provides only part of a temporary file facility. To arrange for a file
+         * created by this method to be deleted automatically the resulting file must be opened
+         * using the {@link StandardOpenOption#DELETE_ON_CLOSE DELETE_ON_CLOSE} option. In this case
+         * the file is deleted when the appropriate {@code close} method is invoked. Alternatively,
+         * a {@link Runtime#addShutdownHook shutdown hook} may be used to delete the file
+         * automatically.
+         *
+         * @param dir the directory in which the file should be created
+         * @param prefix the prefix to generate the file's name or {@code null}
+         * @param suffix the suffix to generate the file's name or {@code null} in which case
+         *            "{@code .tmp}" is used
+         * @param attrs the optional attributes to set atomically when creating the file
+         * @return the {@link TruffleFile} representing the newly created file that did not exist
+         *         before this method was invoked
+         * @throws IOException in case of IO error
+         * @throws IllegalArgumentException if the prefix or suffix cannot be used to generate a
+         *             valid file name
+         * @throws UnsupportedOperationException if the attributes contain an attribute which cannot
+         *             be set atomically
+         * @throws SecurityException if the {@link FileSystem} denied the operation
+         * @since 19.3.0
+         */
+        @TruffleBoundary
+        public TruffleFile createTempFile(TruffleFile dir, String prefix, String suffix, FileAttribute<?>... attrs) throws IOException {
+            try {
+                return TruffleFile.createTempFile(dir, prefix, suffix, false, attrs);
+            } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+            }
+        }
+
+        /**
+         * Creates a new empty file in the default temporary directory, using the given prefix and
+         * suffix to generate its name.
+         *
+         * <p>
+         * This method provides only part of a temporary file facility. To arrange for a file
+         * created by this method to be deleted automatically the resulting file must be opened
+         * using the {@link StandardOpenOption#DELETE_ON_CLOSE DELETE_ON_CLOSE} option. In this case
+         * the file is deleted when the appropriate {@code close} method is invoked. Alternatively,
+         * a {@link Runtime#addShutdownHook shutdown hook} may be used to delete the file
+         * automatically.
+         *
+         * @param prefix the prefix to generate the file's name or {@code null}
+         * @param suffix the suffix to generate the file's name or {@code null} in which case
+         *            "{@code .tmp}" is used
+         * @param attrs the optional attributes to set atomically when creating the file
+         * @return the {@link TruffleFile} representing the newly created file that did not exist
+         *         before this method was invoked
+         * @throws IOException in case of IO error
+         * @throws IllegalArgumentException if the prefix or suffix cannot be used to generate a
+         *             valid file name
+         * @throws UnsupportedOperationException if the attributes contain an attribute which cannot
+         *             be set atomically or {@link FileSystem} does not support default temporary
+         *             directory
+         * @throws SecurityException if the {@link FileSystem} denied the operation
+         * @since 19.3.0
+         */
+        @TruffleBoundary
+        public TruffleFile createTempFile(String prefix, String suffix, FileAttribute<?>... attrs) throws IOException {
+            try {
+                TruffleFile tmpDir = new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.getTempDirectory());
+                return TruffleFile.createTempFile(tmpDir, prefix, suffix, false, attrs);
+            } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+            }
+        }
+
+        /**
+         * Creates a new directory in the specified directory, using the given prefix to generate
+         * its name.
+         *
+         * <p>
+         * This method provides only part of a temporary file facility. A
+         * {@link Runtime#addShutdownHook shutdown hook} may be used to delete the directory
+         * automatically.
+         *
+         * @param dir the directory in which the directory should be created
+         * @param prefix the prefix to generate the directory's name or {@code null}
+         * @param attrs the optional attributes to set atomically when creating the directory
+         * @return the {@link TruffleFile} representing the newly created directory that did not
+         *         exist before this method was invoked
+         * @throws IOException in case of IO error
+         * @throws IllegalArgumentException if the prefix cannot be used to generate a valid file
+         *             name
+         * @throws UnsupportedOperationException if the attributes contain an attribute which cannot
+         *             be set atomically
+         * @throws SecurityException if the {@link FileSystem} denied the operation
+         * @since 19.3.0
+         */
+        @TruffleBoundary
+        public TruffleFile createTempDirectory(TruffleFile dir, String prefix, FileAttribute<?>... attrs) throws IOException {
+            try {
+                return TruffleFile.createTempFile(dir, prefix, null, true, attrs);
+            } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+            }
+        }
+
+        /**
+         * Creates a new directory in the default temporary directory, using the given prefix to
+         * generate its name.
+         *
+         * <p>
+         * This method provides only part of a temporary file facility. A
+         * {@link Runtime#addShutdownHook shutdown hook} may be used to delete the directory
+         * automatically.
+         *
+         * @param prefix the prefix to generate the directory's name or {@code null}
+         * @param attrs the optional attributes to set atomically when creating the directory
+         * @return the {@link TruffleFile} representing the newly created directory that did not
+         *         exist before this method was invoked
+         * @throws IOException in case of IO error
+         * @throws IllegalArgumentException if the prefix cannot be used to generate a valid file
+         *             name
+         * @throws UnsupportedOperationException if the attributes contain an attribute which cannot
+         *             be set atomically or {@link FileSystem} does not support default temporary
+         *             directory
+         * @throws SecurityException if the {@link FileSystem} denied the operation
+         * @since 19.3.0
+         */
+        @TruffleBoundary
+        public TruffleFile createTempDirectory(String prefix, FileAttribute<?>... attrs) throws IOException {
+            try {
+                TruffleFile tmpDir = new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.getTempDirectory());
+                return TruffleFile.createTempFile(tmpDir, prefix, null, true, attrs);
+            } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
+                throw e;
+            } catch (Throwable t) {
+                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+            }
         }
 
         @SuppressWarnings("rawtypes")

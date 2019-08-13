@@ -138,6 +138,7 @@ public class VirtualizedFileSystemTest {
     private static final String FILE_NEW_COPY = "new_copy.txt";
     private static final String FOLDER_NEW_COPY = "folder_copy";
     private static final String FILE_CHANGE_ATTRS = "existing_attrs.txt";
+    private static final String FILE_TMP_DIR = "tmpfolder";
 
     private static Collection<Configuration> cfgs;
     private static Consumer<Env> languageAction;
@@ -1614,6 +1615,127 @@ public class VirtualizedFileSystemTest {
         ctx.eval(LANGUAGE_ID, "");
     }
 
+    @Test
+    public void testCreateTempFile() {
+        final Context ctx = cfg.getContext();
+        languageAction = (Env env) -> {
+            try {
+                TruffleFile tmpf1 = env.createTempFile("prefix", ".ext");
+                Assert.assertTrue(tmpf1.exists());
+                Assert.assertTrue(tmpf1.isRegularFile());
+                Assert.assertTrue(tmpf1.getName().startsWith("prefix"));
+                Assert.assertTrue(tmpf1.getName().endsWith(".ext"));
+                TruffleFile tmpf2 = env.createTempFile("prefix", ".ext");
+                Assert.assertTrue(tmpf2.exists());
+                Assert.assertTrue(tmpf2.isRegularFile());
+                Assert.assertTrue(tmpf2.getName().startsWith("prefix"));
+                Assert.assertTrue(tmpf2.getName().endsWith(".ext"));
+                TruffleFile tmpf3 = env.createTempFile("prefix", null);
+                Assert.assertTrue(tmpf3.exists());
+                Assert.assertTrue(tmpf3.isRegularFile());
+                Assert.assertTrue(tmpf3.getName().startsWith("prefix"));
+                Assert.assertTrue(tmpf3.getName().endsWith(".tmp"));
+                Assert.assertNotEquals(tmpf1, tmpf2);
+                Assert.assertNotEquals(tmpf1, tmpf3);
+                Assert.assertNotEquals(tmpf2, tmpf3);
+            } catch (SecurityException se) {
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testCreateTempFileInFolder() {
+        final Context ctx = cfg.getContext();
+        final Path path = cfg.getPath();
+        final boolean canWrite = cfg.canWrite();
+        languageAction = (Env env) -> {
+            final TruffleFile root = cfg.resolve(env, path.toString());
+            try {
+                final TruffleFile tmpDir = root.resolve(FILE_TMP_DIR);
+                TruffleFile tmpf1 = env.createTempFile(tmpDir, "prefix", ".ext");
+                Assert.assertTrue(tmpf1.exists());
+                Assert.assertTrue(tmpf1.isRegularFile());
+                Assert.assertEquals(tmpDir, tmpf1.getParent());
+                Assert.assertTrue(tmpf1.getName().startsWith("prefix"));
+                Assert.assertTrue(tmpf1.getName().endsWith(".ext"));
+                TruffleFile tmpf2 = env.createTempFile(tmpDir, "prefix", ".ext");
+                Assert.assertTrue(tmpf2.exists());
+                Assert.assertTrue(tmpf2.isRegularFile());
+                Assert.assertEquals(tmpDir, tmpf2.getParent());
+                Assert.assertTrue(tmpf2.getName().startsWith("prefix"));
+                Assert.assertTrue(tmpf2.getName().endsWith(".ext"));
+                TruffleFile tmpf3 = env.createTempFile(tmpDir, "prefix", null);
+                Assert.assertEquals(tmpDir, tmpf3.getParent());
+                Assert.assertTrue(tmpf3.exists());
+                Assert.assertTrue(tmpf3.isRegularFile());
+                Assert.assertTrue(tmpf3.getName().startsWith("prefix"));
+                Assert.assertTrue(tmpf3.getName().endsWith(".tmp"));
+                Assert.assertNotEquals(tmpf1, tmpf2);
+                Assert.assertNotEquals(tmpf1, tmpf3);
+                Assert.assertNotEquals(tmpf2, tmpf3);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canWrite);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testCreateTempDirectory() {
+        final Context ctx = cfg.getContext();
+        languageAction = (Env env) -> {
+            try {
+                TruffleFile tmpf1 = env.createTempDirectory("prefix");
+                Assert.assertTrue(tmpf1.exists());
+                Assert.assertTrue(tmpf1.isDirectory());
+                Assert.assertTrue(tmpf1.getName().startsWith("prefix"));
+                TruffleFile tmpf2 = env.createTempDirectory("prefix");
+                Assert.assertTrue(tmpf2.exists());
+                Assert.assertTrue(tmpf2.isDirectory());
+                Assert.assertTrue(tmpf2.getName().startsWith("prefix"));
+                Assert.assertNotEquals(tmpf1, tmpf2);
+            } catch (SecurityException se) {
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testCreateTempDirectoryInFolder() {
+        final Context ctx = cfg.getContext();
+        final Path path = cfg.getPath();
+        final boolean canWrite = cfg.canWrite();
+        languageAction = (Env env) -> {
+            final TruffleFile root = cfg.resolve(env, path.toString());
+            try {
+                final TruffleFile tmpDir = root.resolve(FILE_TMP_DIR);
+                TruffleFile tmpf1 = env.createTempDirectory(tmpDir, "prefix");
+                Assert.assertTrue(tmpf1.exists());
+                Assert.assertTrue(tmpf1.isDirectory());
+                Assert.assertEquals(tmpDir, tmpf1.getParent());
+                Assert.assertTrue(tmpf1.getName().startsWith("prefix"));
+                TruffleFile tmpf2 = env.createTempDirectory(tmpDir, "prefix");
+                Assert.assertTrue(tmpf2.exists());
+                Assert.assertTrue(tmpf2.isDirectory());
+                Assert.assertEquals(tmpDir, tmpf2.getParent());
+                Assert.assertTrue(tmpf2.getName().startsWith("prefix"));
+                Assert.assertNotEquals(tmpf1, tmpf2);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canWrite);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            }
+        };
+        ctx.eval(LANGUAGE_ID, "");
+    }
+
     static boolean verifyPermissions(Set<PosixFilePermission> permissions, int mode) {
         int perms = 0;
         for (PosixFilePermission perm : permissions) {
@@ -1886,6 +2008,7 @@ public class VirtualizedFileSystemTest {
             // File system does not support optional symbolic links or required privilege is not
             // held by the client on Windows, the test will be ignored
         }
+        mkdirs(folder.resolve(FILE_TMP_DIR), fs);
         return folder;
     }
 
@@ -2110,6 +2233,11 @@ public class VirtualizedFileSystemTest {
         @Override
         public Charset getEncoding(Path path) {
             return delegate.getEncoding(path);
+        }
+
+        @Override
+        public Path getTempDirectory() {
+            return delegate.getTempDirectory();
         }
     }
 

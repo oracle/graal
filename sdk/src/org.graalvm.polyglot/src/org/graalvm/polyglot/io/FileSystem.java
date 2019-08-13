@@ -386,4 +386,13 @@ public interface FileSystem {
     default Charset getEncoding(Path path) {
         return null;
     }
+
+    /**
+     * Returns the default temporary directory.
+     *
+     * @since 19.3.0
+     */
+    default Path getTempDirectory() {
+        throw new UnsupportedOperationException("Temporary directories not supported");
+    }
 }
