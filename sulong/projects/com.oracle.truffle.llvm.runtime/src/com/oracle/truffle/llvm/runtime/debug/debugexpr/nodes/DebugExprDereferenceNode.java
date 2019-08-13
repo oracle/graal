@@ -30,11 +30,10 @@
 
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
@@ -46,10 +45,8 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue.Builder;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public class DebugExprDereferenceNode extends LLVMExpressionNode {
+public class DebugExprDereferenceNode extends LLVMExpressionNode implements MemberAccessible {
     @Child private LLVMExpressionNode pointerNode;
 
     public DebugExprDereferenceNode(LLVMExpressionNode pointerNode) {
@@ -58,12 +55,30 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
+        Object executedPointerNode = pointerNode.executeGeneric(frame);
+        return getMemberAndType(executedPointerNode).getLeft();
+    }
+
+    @Override
+    public DebugExprType getType() {
+        if (pointerNode instanceof MemberAccessible) {
+            MemberAccessible ma = (MemberAccessible) pointerNode;
+            Object member = ma.getMember();
+            return getMemberAndType(member).getRight();
+        }
+        throw DebugExprException.create(this, "member " + pointerNode + " is not accessible");
+    }
+
+    private Pair<Object, DebugExprType> getMemberAndType(Object executedPointerNode) {
         InteropLibrary library = InteropLibrary.getFactory().getUncached();
-        Object llvmDebugValue = pointerNode.executeGeneric(frame);
+        if (executedPointerNode == null) {
+            throw DebugExprException.create(this, "debugObject to dereference is null");
+        }
         try {
-            LLVMDebuggerValue llvmDebuggerValue = (LLVMDebuggerValue) llvmDebugValue;
+            LLVMDebuggerValue llvmDebuggerValue = (LLVMDebuggerValue) executedPointerNode;
             Builder builder = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createDebugValueBuilder();
             Object metaObj = llvmDebuggerValue.getMetaObject();
+            // type handling
             DebugExprType pointerType = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
             if (!pointerType.isPointer()) {
                 throw DebugExprException.create(this, llvmDebuggerValue + " is no pointer");
@@ -71,40 +86,41 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode {
             DebugExprType type = pointerType.getInnerType();
             LLVMSourcePointerType llvmSourcePointerType = (LLVMSourcePointerType) metaObj;
             LLVMSourcePointerType newLLVMSourcePointerType = new LLVMSourcePointerType(llvmSourcePointerType.getSize(),
-                            llvmSourcePointerType.getAlign(), llvmSourcePointerType.getOffset(), true,
-                            llvmSourcePointerType.isReference(), llvmSourcePointerType.getLocation());
+                            llvmSourcePointerType.getAlign(), llvmSourcePointerType.getOffset(), true, true,
+                            llvmSourcePointerType.getLocation());
             LLVMSourceType llvmSourceType = llvmSourcePointerType.getBaseType();
-            LLVMDebugObject llvmPointerObject = (LLVMDebugObject) llvmDebugValue;
-            LLVMDebugValue pointerValue = builder.build(pointerNode.executeGeneric(frame));
 
-            LLVMDebugObject pointerObject = LLVMDebugObject.instantiate(newLLVMSourcePointerType, 0L, pointerValue, null);
+            // value handling
+            if (!library.isPointer(executedPointerNode)) {
+                // throw DebugExprException.create(this, executedPointerNode + " is no pointer!");
+            }
+            // long pointerAddress = library.asPointer(executedPointerNode);
+            // LLVMDebugObject pointerObject = LLVMDebugObject.instantiate(newLLVMSourcePointerType,
+            // pointerAddress, builder.build(0), null);
+            LLVMDebugObject llvmPointerObject = (LLVMDebugObject) executedPointerNode;
+            LLVMManagedPointer llvmManagedPointer = (LLVMManagedPointer) llvmPointerObject.getValue();
+
+            LLVMDebugValue pointerValue = builder.build(llvmManagedPointer);
             LLVMDebugValue dereferencedValue = pointerValue.dereferencePointer(0);
-            LLVMDebugObject dereferencedObject = LLVMDebugObject.instantiate(llvmSourceType, 0L, dereferencedValue, null);
-            System.out.println("pointerValue.toString =" + pointerValue);
-            System.out.println("pointerValue.class = " + pointerValue.getClass().getName());
-            System.out.println("pointerObject.toString =" + pointerObject);
-            System.out.println("pointerObject.class = " + pointerObject.getClass().getName());
-            System.out.println("pointerNode.generic.toString = " + llvmDebugValue);
-            System.out.println("pointerNode.generec.getClass = " + llvmDebugValue.getClass().getName());
 
-            if (dereferencedValue != null) {
-                System.out.println("dereferencedValue.toString =" + dereferencedValue);
-                System.out.println("dereferencedValue.class = " + dereferencedValue.getClass().getName());
-            }
-            if (dereferencedObject != null) {
-                System.out.println("dereferencedObject.toString =" + dereferencedObject);
-                System.out.println("dereferencedObject.class = " + dereferencedObject.getClass().getName());
-                // return type.parse(dereferencedObject);
-            }
+            LLVMDebugObject llvmDebugObject = LLVMDebugObject.instantiate(llvmSourceType, 0L,
+                            dereferencedValue, null);
+            return Pair.create(type.parse(llvmDebugObject), type);
 
-            // throw DebugExprException.create(this, llvmDebugValue + " is of type " +
-            // llvmSourceType + "*");
         } catch (ClassCastException e) {
             e.printStackTrace();
         }
+        throw DebugExprException.create(this, executedPointerNode + " cannot be casted to LLVMManagedPointer ");
+    }
 
-        throw DebugExprException.create(this, llvmDebugValue + " is of type " +
-                        llvmDebugValue.getClass().getName());
+    @Override
+    public Object getMember() {
+        if (pointerNode instanceof MemberAccessible) {
+            MemberAccessible ma = (MemberAccessible) pointerNode;
+            Object member = ma.getMember();
+            return getMemberAndType(member).getLeft();
+        }
+        throw DebugExprException.create(this, "member " + pointerNode + " is not accessible");
     }
 
 }
