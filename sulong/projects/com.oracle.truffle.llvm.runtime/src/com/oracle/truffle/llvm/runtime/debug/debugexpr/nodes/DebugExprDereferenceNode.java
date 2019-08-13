@@ -33,7 +33,6 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
@@ -44,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue.Builder;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public class DebugExprDereferenceNode extends LLVMExpressionNode implements MemberAccessible {
     @Child private LLVMExpressionNode pointerNode;
@@ -70,47 +68,32 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode implements Memb
     }
 
     private Pair<Object, DebugExprType> getMemberAndType(Object executedPointerNode) {
-        InteropLibrary library = InteropLibrary.getFactory().getUncached();
         if (executedPointerNode == null) {
             throw DebugExprException.create(this, "debugObject to dereference is null");
         }
         try {
             LLVMDebuggerValue llvmDebuggerValue = (LLVMDebuggerValue) executedPointerNode;
-            Builder builder = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createDebugValueBuilder();
             Object metaObj = llvmDebuggerValue.getMetaObject();
-            // type handling
             DebugExprType pointerType = DebugExprType.getTypeFromSymbolTableMetaObject(metaObj);
             if (!pointerType.isPointer()) {
                 throw DebugExprException.create(this, llvmDebuggerValue + " is no pointer");
             }
-            DebugExprType type = pointerType.getInnerType();
             LLVMSourcePointerType llvmSourcePointerType = (LLVMSourcePointerType) metaObj;
-            LLVMSourcePointerType newLLVMSourcePointerType = new LLVMSourcePointerType(llvmSourcePointerType.getSize(),
-                            llvmSourcePointerType.getAlign(), llvmSourcePointerType.getOffset(), true, true,
-                            llvmSourcePointerType.getLocation());
             LLVMSourceType llvmSourceType = llvmSourcePointerType.getBaseType();
 
-            // value handling
-            if (!library.isPointer(executedPointerNode)) {
-                // throw DebugExprException.create(this, executedPointerNode + " is no pointer!");
-            }
-            // long pointerAddress = library.asPointer(executedPointerNode);
-            // LLVMDebugObject pointerObject = LLVMDebugObject.instantiate(newLLVMSourcePointerType,
-            // pointerAddress, builder.build(0), null);
             LLVMDebugObject llvmPointerObject = (LLVMDebugObject) executedPointerNode;
-            LLVMManagedPointer llvmManagedPointer = (LLVMManagedPointer) llvmPointerObject.getValue();
-
-            LLVMDebugValue pointerValue = builder.build(llvmManagedPointer);
-            LLVMDebugValue dereferencedValue = pointerValue.dereferencePointer(0);
-
+            Object llvmPointerValue = llvmPointerObject.getValue();
+            Builder builder = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createDebugDeclarationBuilder();
+            LLVMDebugValue dereferencedValue = builder.build(llvmPointerValue);
             LLVMDebugObject llvmDebugObject = LLVMDebugObject.instantiate(llvmSourceType, 0L,
                             dereferencedValue, null);
+            DebugExprType type = pointerType.getInnerType();
             return Pair.create(type.parse(llvmDebugObject), type);
 
         } catch (ClassCastException e) {
-            e.printStackTrace();
+            // throw cast exception of executedPointerNode (2 lines below)
         }
-        throw DebugExprException.create(this, executedPointerNode + " cannot be casted to LLVMManagedPointer ");
+        throw DebugExprException.create(this, executedPointerNode + " cannot be casted to pointer ");
     }
 
     @Override
