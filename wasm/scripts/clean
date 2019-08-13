@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+mx --dynamicimports /compiler,/truffle clean
