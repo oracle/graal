@@ -26,8 +26,10 @@ package com.oracle.truffle.espresso.classfile;
 import static com.oracle.truffle.espresso.classfile.ClassfileParser.JAVA_6_VERSION;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
@@ -111,5 +113,17 @@ public final class CodeAttribute extends Attribute {
 
     public int getMajorVersion() {
         return majorVersion;
+    }
+
+    public void print(Klass klass) {
+        try {
+            new BytecodeStream(code).printBytecode(klass);
+            System.err.println("\n");
+            if (getStackMapFrame() != null) {
+                getStackMapFrame().print(klass);
+            }
+        } catch (Throwable e) {
+            System.err.println("Throw during printing. Aborting...");
+        }
     }
 }

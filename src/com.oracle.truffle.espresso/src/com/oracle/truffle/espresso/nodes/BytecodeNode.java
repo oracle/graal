@@ -907,6 +907,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                     EspressoException stackOverflow = getContext().getStackOverflow();
                     stackOverflow.getException().setHiddenField(getMeta().HIDDEN_FRAMES, new VM.StackTrace());
                     throw stackOverflow;
+                } catch (ThreadDeath e) {
+                    throw getMeta().throwEx(e.getClass());
                 } catch (RuntimeException e) {
                     CompilerDirectives.transferToInterpreter();
                     if (DEBUG_GENERAL) {

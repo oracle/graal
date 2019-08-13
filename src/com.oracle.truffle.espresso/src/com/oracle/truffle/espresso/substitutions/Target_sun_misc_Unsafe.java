@@ -90,7 +90,6 @@ public final class Target_sun_misc_Unsafe {
     }
 
     private static ObjectKlass defineAnonymousKlass(ParserKlass parserKlass, EspressoContext context, StaticObject classLoader, int thisKlassIndex, Klass hostKlass) {
-
         Symbol<Symbol.Type> superKlassType = parserKlass.getSuperKlass();
         ClassRegistries classRegistry = context.getRegistries();
 
@@ -121,6 +120,7 @@ public final class Target_sun_misc_Unsafe {
         LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
 
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, classLoader, hostKlass);
+
         klass.getConstantPool().setKlassAt(thisKlassIndex, klass);
 
         return klass;
