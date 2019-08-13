@@ -47,7 +47,7 @@ public final class AVXKind {
         YMM(32),
         ZMM(64);
 
-        public final int bytes;
+        private final int bytes;
 
         AVXSize(int bytes) {
             this.bytes = bytes;
