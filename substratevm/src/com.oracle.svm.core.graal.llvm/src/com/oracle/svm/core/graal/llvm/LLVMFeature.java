@@ -264,3 +264,72 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
         });
     }
 }
+
+@AutomaticFeature
+@Platforms(Platform.AArch64.class)
+class LLVMAArch64TargetSpecificFeature implements Feature {
+    private static final int AARCH64_FP_IDX = 29;
+    private static final int AARCH64_SP_IDX = 31;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return CompilerBackend.getValue().equals("llvm");
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(TargetSpecific.class, new TargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "MOV $0, " + getLLVMRegisterName(register);
+            }
+
+            @Override
+            public String getJumpInlineAsm() {
+                return "BR $0";
+            }
+
+            @Override
+            public String getLLVMArchName() {
+                return "aarch64";
+            }
+
+            /*
+             * The return address is not saved on the stack on ARM, so the stack frames have no
+             * space inbetween them.
+             */
+            @Override
+            public int getCallFrameSeparation() {
+                return 0;
+            }
+
+            /*
+             * The frame pointer is stored below the saved value for the link register.
+             */
+            @Override
+            public int getFramePointerOffset() {
+                return -2 * FrameAccess.wordSize();
+            }
+
+            @Override
+            public int getStackPointerDwarfRegNum() {
+                return AARCH64_SP_IDX;
+            }
+
+            @Override
+            public int getFramePointerDwarfRegNum() {
+                return AARCH64_FP_IDX;
+            }
+
+            @Override
+            public List<String> getLLCAdditionalOptions() {
+                return Collections.singletonList("--frame-pointer=all");
+            }
+
+            @Override
+            public String getLLVMRegisterName(String register) {
+                return register.replace("r", "x");
+            }
+        });
+    }
+}
