@@ -50,7 +50,7 @@ public class DebugExprArrayElementNode extends LLVMExpressionNode {
     public DebugExprArrayElementNode(DebugExpressionPair basePair, LLVMExpressionNode indexNode) {
         this.indexNode = indexNode;
         this.baseNode = basePair.getNode();
-        this.type = basePair.getType();
+        this.type = basePair.getType() == null ? DebugExprType.getVoidType() : basePair.getType().getInnerType();
     }
 
     public DebugExprType getType() {
@@ -80,7 +80,8 @@ public class DebugExprArrayElementNode extends LLVMExpressionNode {
                 if (library.isArrayElementReadable(getmembers, idx)) {
                     Object arrayElement = library.readArrayElement(getmembers, idx);
                     if (library.isMemberReadable(baseMember, arrayElement.toString())) {
-                        return library.readMember(baseMember, arrayElement.toString());
+                        Object member = library.readMember(baseMember, arrayElement.toString());
+                        return type.parse(member);
                     }
                 }
             } catch (UnsupportedMessageException e) {

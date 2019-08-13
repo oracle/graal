@@ -310,7 +310,8 @@ BaseType<out DebugExprType ty>						(. ty=null; boolean signed=false;.)
 |
 "void" 												(. ty = DebugExprType.getVoidType(); .)
 |
-"typeof" "(" ident ")"
+"typeof" "(" ident 									(. ty = NF.getUserdefinedType(t.val); .)
+         ")"
 |
 (
 	 "signed" 										(. signed = true; .)

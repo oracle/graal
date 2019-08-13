@@ -31,9 +31,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct {
+typedef struct liststruct {
 	int a;
-	struct List* next;
+	struct liststruct* next;
 } List;
 
 List* createNode(int a) {

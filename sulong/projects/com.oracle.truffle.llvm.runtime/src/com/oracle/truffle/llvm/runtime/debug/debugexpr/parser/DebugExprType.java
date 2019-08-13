@@ -1,6 +1,8 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser;
 
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map.Entry;
 
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
@@ -18,6 +20,7 @@ public class DebugExprType {
     private final Kind kind;
     private DebugExprType innerType; // used for arrays, pointers, ...
     private static EnumMap<Kind, DebugExprType> map = new EnumMap<>(Kind.class);
+    private static HashMap<String, DebugExprType> structMap = new HashMap<>();
     private int nElems;
 
     private DebugExprType(Kind kind, DebugExprType innerType) {
@@ -118,6 +121,14 @@ public class DebugExprType {
                 } else {
                     return new PointerType(innerType.getLLVMRuntimeType());
                 }
+            case STRUCT:
+                String identifier = null;
+                for (Entry<String, DebugExprType> e : structMap.entrySet()) {
+                    if (e.getValue() == this) {
+                        identifier = e.getKey();
+                    }
+                }
+                new StructureType(identifier, true, new Type[]{});
             default:
                 return VoidType.INSTANCE;
         }
@@ -147,6 +158,38 @@ public class DebugExprType {
             return t1;
         }
         return getVoidType();
+    }
+
+    public boolean canBeCastTo(DebugExprType other) {
+        switch (kind) {
+            case VOID:
+                return false;
+            case BOOL:
+                return other.isIntegerType();
+            case UNSIGNED_CHAR:
+            case SIGNED_CHAR:
+            case UNSIGNED_SHORT:
+            case SIGNED_SHORT:
+            case UNSIGNED_INT:
+            case SIGNED_INT:
+            case UNSIGNED_LONG:
+            case SIGNED_LONG:
+                return other.isIntegerType() || other.isFloatingType();
+            case FLOAT:
+            case DOUBLE:
+            case LONG_DOUBLE:
+                return other.isIntegerType() || other.isFloatingType();
+            case POINTER:
+                return other.isPointer();
+            case ARRAY:
+                return other.kind == Kind.ARRAY && innerType.canBeCastTo(other.innerType) && nElems == other.nElems;
+            case STRUCT:
+                return false;
+            case FUNCTION:
+                return false;
+            default:
+                return false;
+        }
     }
 
     public int getBitSize() {
@@ -206,6 +249,15 @@ public class DebugExprType {
             return map.get(Kind.VOID);
         DebugExprType t = new DebugExprType(Kind.VOID, null);
         map.put(Kind.VOID, t);
+        return t;
+    }
+
+    public static DebugExprType getStructType(String ident) {
+        if (structMap.containsKey(ident)) {
+            return structMap.get(ident);
+        }
+        DebugExprType t = new DebugExprType(Kind.STRUCT, null);
+        structMap.put(ident, t);
         return t;
     }
 
@@ -296,8 +348,6 @@ public class DebugExprType {
                 case FLOATING:
                     return DebugExprType.getFloatType(typeSize);
                 default:
-                    System.out.println("metaObj.getClass() = " + metaObj.getClass().getName());
-                    // TODO for pointers
                     return DebugExprType.getVoidType();
             }
         } else if (metaObj instanceof LLVMSourceArrayLikeType) {
@@ -414,6 +464,41 @@ public class DebugExprType {
             return kind.hashCode() ^ innerType.hashCode();
         }
         return kind.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        switch (kind) {
+            case VOID:
+            case BOOL:
+            case UNSIGNED_CHAR:
+            case SIGNED_CHAR:
+            case UNSIGNED_SHORT:
+            case SIGNED_SHORT:
+            case UNSIGNED_INT:
+            case SIGNED_INT:
+            case UNSIGNED_LONG:
+            case SIGNED_LONG:
+            case FLOAT:
+            case DOUBLE:
+            case LONG_DOUBLE:
+                return kind.name().toLowerCase();
+            case POINTER:
+                return innerType.toString() + "*";
+            case ARRAY:
+                return innerType.toString() + "[" + (nElems >= 0 ? nElems : "") + "]";
+            case STRUCT:
+                for (Entry<String, DebugExprType> e : structMap.entrySet()) {
+                    if (e.getValue() == this) {
+                        return kind.name() + " " + e.getKey();
+                    }
+                }
+                return kind.name().toLowerCase();
+            case FUNCTION:
+                return kind.name().toLowerCase();
+            default:
+                return super.toString();
+        }
     }
 
 }
