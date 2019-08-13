@@ -447,15 +447,32 @@ public final class AMD64Packing {
         }
     }
 
+    /**
+     * This operation will pack a vector register with arbitrary values (e.g. not necessarily
+     * contiguous). It does so with the aid of some temporary stack space to minimize expensive
+     * vector instructions.
+     */
     public static final class PackStackOp extends AMD64LIRInstruction {
 
         private static final int YMM_LENGTH_IN_BYTES = 32;
         public static final LIRInstructionClass<PackStackOp> TYPE = LIRInstructionClass.create(PackStackOp.class);
 
+        // Our destination should always be a register.
         @Def({REG}) private AllocatableValue result;
+
+        // We need a scratch register for any possible memory-to-memory moves (see move(...) above).
         @Temp({REG}) private AllocatableValue scratch;
+
+        // The values we're going to be packing.
         @Use({REG, STACK}) private AllocatableValue[] values;
 
+        /**
+         * Creates a PackStackOp.
+         *
+         * @param tool
+         * @param result The vector value we're packing.
+         * @param values The values we want to pack into the result.
+         */
         public PackStackOp(LIRGeneratorTool tool, AllocatableValue result, List<AllocatableValue> values) {
             this(TYPE, tool, result, values);
         }
@@ -464,7 +481,7 @@ public final class AMD64Packing {
             super(c);
             assert !values.isEmpty() : "values to pack for pack op cannot be empty";
             this.result = result;
-            this.scratch = tool.newVariable(result.getValueKind());
+            this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.values = values.toArray(new AllocatableValue[0]);
         }
 
@@ -474,23 +491,25 @@ public final class AMD64Packing {
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
 
-            // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
-            int amt = (int) Math.ceil(values.length * scalarKind.getSizeInBytes() / (double) YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
+            // Allocate a register-width of stack space for us to dump our values to.
+            masm.subq(rsp, YMM.getBytes());
 
-            // Open scratch space for us to dump our values to.
-            masm.subq(rsp, amt);
-            int offset = 0;
+            int stackOffset = 0;
             for (AllocatableValue value : values) {
-                AMD64Address target = new AMD64Address(rsp, offset);
+                // Move value into the temporary stack space.
+                AMD64Address target = new AMD64Address(rsp, stackOffset);
                 move(crb, masm, target, value, scalarKind, asRegister(scratch));
-                offset += scalarKind.getSizeInBytes();
+
+                // Increment address offset so that we place the next value further into the
+                // temporary space.
+                stackOffset += scalarKind.getSizeInBytes();
             }
 
             // Write memory into vector register.
             masm.vmovdqu(asRegister(result), new AMD64Address(rsp, 0));
 
             // Pop scratch space.
-            masm.addq(rsp, amt);
+            masm.addq(rsp, YMM.getBytes());
         }
     }
 
