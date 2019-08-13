@@ -1639,9 +1639,15 @@ public class NativeImage {
      */
     public static class JDK9Plus {
 
+        // Must be distinct from NativeImage.IS_AOT since the module
+        // exporting must be executed prior to NativeImage being loaded.
+        private static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
+
         public static void main(String[] args) {
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
-            ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+            if (!IS_AOT) {
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+            }
             NativeImage.main(args, DEFAULT_GENERATOR_CLASS_NAME + "$JDK9Plus");
         }
     }

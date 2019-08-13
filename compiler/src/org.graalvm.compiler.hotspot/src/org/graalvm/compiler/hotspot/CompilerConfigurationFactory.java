@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;

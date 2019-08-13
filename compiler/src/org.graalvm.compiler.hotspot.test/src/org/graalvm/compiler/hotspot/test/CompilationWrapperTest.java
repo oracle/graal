@@ -52,7 +52,7 @@ import org.junit.Test;
 public class CompilationWrapperTest extends GraalCompilerTest {
 
     private static List<String> join(List<String> l1, List<String> l2) {
-        ArrayList<String> result = new ArrayList<String>(l1.size() + l2.size());
+        ArrayList<String> result = new ArrayList<>(l1.size() + l2.size());
         result.addAll(l1);
         result.addAll(l2);
         return result;

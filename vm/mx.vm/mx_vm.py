@@ -38,7 +38,6 @@ import pprint
 import re
 import subprocess
 
-from mx import StringIO
 import mx
 import mx_gate
 import mx_sdk
@@ -174,8 +173,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         _src_jdk_base, _jdk_dir = _get_jdk_dir()
         _src_jdk_base = _src_jdk_base if add_jdk_base else '.'
 
-        _src_jdk_has_jre = not _src_jdk.version.parts[0] >= 11
-        _src_jdk_has_jimage = _src_jdk.version.parts[0] >= 9
+        _src_jdk_has_jre = not _src_jdk.version.parts[0] >= 9
+        _src_jdk_has_jimage = not _src_jdk_has_jre
 
         if base_dir != '.':
             self.jdk_base = '/'.join([base_dir, _src_jdk_base]) if _src_jdk_base and _src_jdk_base != '.' else base_dir
@@ -341,7 +340,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     ] if mx.get_os() == 'darwin' else [])
                 })
             else:
-                _add(layout, base_dir + '/', {
+                # TODO(GR-8329): add exclusions
+                _add(layout, self.jdk_base + '/', {
                     'source_type': 'dependency',
                     'dependency': 'graalvm-jimage',
                     'path': '*',
