@@ -153,7 +153,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     rootExpr = root;
                     try {
                         // try to execute node
-                        return String.valueOf(rootExpr.executeGeneric(frame));
+                        Object objectToDisplay = rootExpr.executeGeneric(frame);
+                        if (objectToDisplay instanceof LLVMDebuggerValue) {
+                            return objectToDisplay;
+                        } else {
+                            return String.valueOf(objectToDisplay);
+                        }
                     } catch (DebugExprException | LLVMParserException e) {
                         // return message of exception that occurred during AST execution
                         return e.getMessage();
