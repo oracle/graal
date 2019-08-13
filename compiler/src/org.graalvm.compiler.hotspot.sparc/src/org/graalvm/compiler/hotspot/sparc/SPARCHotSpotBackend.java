@@ -59,7 +59,6 @@ import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
@@ -132,7 +131,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
         }
     }
 
-    private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
+    @Override
+    protected FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         FrameMap frameMap = new SPARCFrameMap(getCodeCache(), registerConfigNonNull, this);
         return new SPARCFrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
@@ -141,12 +141,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
         return new SPARCHotSpotLIRGenerator(getProviders(), getRuntime().getVMConfig(), lirGenRes);
-    }
-
-    @Override
-    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterConfig registerConfig, StructuredGraph graph, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerConfig), makeCallingConvention(graph, (Stub) stub), stub,
-                        config.requiresReservedStackCheck(graph.getMethods()));
     }
 
     @Override
