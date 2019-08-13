@@ -175,6 +175,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return stamp.javaType(context.getMetaAccess()).getJavaKind().getByteCount();
         }
 
+        private int vectorWidth(ValueNode node) {
+            final Stamp stamp = getStamp(node);
+            return dataSize(stamp) * context.getTargetProvider().getVectorDescription().maxVectorWidth(stamp);
+        }
+
         /**
          * Get the alignment of a vector memory reference.
          */
@@ -186,7 +191,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             final int byteCount = dataSize(stamp);
-            // TODO: velt may be different to type at address
             final int vectorWidthInBytes = byteCount * context.getTargetProvider().getVectorDescription().maxVectorWidth(stamp);
 
             // If each vector element is less than 2 bytes, no need to vectorize
@@ -194,15 +198,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return ALIGNMENT_BOTTOM;
             }
 
-            final int baseOffset = context.getMetaAccess().getArrayBaseOffset(accessJavaKind);
             final int offset = (int) access.getAddress().getMaxConstantDisplacement() + ivAdjust * byteCount;
+            final int offsetRemainder = offset % vectorWidthInBytes;
 
-            // Access is to the array header rather than elements of the array
-            if (offset < baseOffset) {
-                return ALIGNMENT_BOTTOM;
-            }
-
-            final int offsetRemainder = (offset - baseOffset) % vectorWidthInBytes;
             return offsetRemainder >= 0 ? offsetRemainder : offsetRemainder + vectorWidthInBytes;
         }
 
@@ -235,13 +233,13 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         /**
-         * Determine whether two nodes are accesses to the same array.
+         * Determine whether two nodes are accesses with the same base address.
          * @param left Left access node
          * @param right Right access node
-         * @return Boolean indicating whether same array.
+         * @return Boolean indicating whether base is the same.
          *         If nodes are not access nodes, this is false.
          */
-        private static boolean sameArray(Node left, Node right) {
+        private static boolean sameBaseAddress(Node left, Node right) {
             if (!(left instanceof FixedAccessNode) || !(right instanceof FixedAccessNode)) {
                 return false;
             }
@@ -291,7 +289,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // Ensure that both fixed access nodes are accessing the same array
-            if (left instanceof FixedAccessNode && !sameArray(left, right)) {
+            if (left instanceof FixedAccessNode && !sameBaseAddress(left, right)) {
                 return false;
             }
 
@@ -630,6 +628,104 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return Math.max(saveIn, saveUse);
         }
 
+        private int getIvAdjustment(FixedAccessNode alignmentReference) {
+            final int offset = (int) alignmentReference.getAddress().getMaxConstantDisplacement();
+            final int elementSize = dataSize(getStamp(alignmentReference));
+            final int vectorWidth = vectorWidth(alignmentReference);
+
+            // TODO: support different scale factors
+
+            return (vectorWidth - offset % vectorWidth) / elementSize;
+        }
+
+        /**
+         * Find the memory reference to align other memory references to.
+         * This reference should have the largest number of memory references similar to it.
+         *
+         * First we look at stores, then at loads.
+         * This alignment analysis is largely inspired by C2's superword.cpp implementation.
+         */
+        private FixedAccessNode findAlignToRef(List<FixedAccessNode> memoryNodes) {
+            // Count the number of comparable memory operations
+            // How many memory operations can we compare another one to?
+            // Comparable means isomorphic, part of the same array (which we handle as one)
+
+            int[] accessCount = new int[memoryNodes.size()];
+
+            for (int i = 0; i < memoryNodes.size(); i++) {
+                final FixedAccessNode s1 = memoryNodes.get(i);
+                for (int j = i + 1; j < memoryNodes.size(); j++) {
+                    final FixedAccessNode s2 = memoryNodes.get(j);
+                    if (isomorphic(s1, s2) && sameBaseAddress(s1, s2)) {
+                        accessCount[i]++;
+                        accessCount[j]++;
+                    }
+                }
+            }
+
+            int maxCount = 0;
+            int maxVectorWidth = 0;
+            int maxIndex = -1;
+            int minSize = Integer.MAX_VALUE;
+            int minIvOffset = Integer.MAX_VALUE;
+
+            // Look at Writes
+            for (int i = 0; i < memoryNodes.size(); i++) {
+                final FixedAccessNode s = memoryNodes.get(i);
+                if (!(s instanceof WriteNode)) {
+                    continue;
+                }
+
+                final Stamp stamp = getStamp(s);
+                final int dataSize = dataSize(stamp);
+                final int vectorWidthInBytes = vectorWidth(s);
+                final int offset = (int) s.getAddress().getMaxConstantDisplacement();
+
+                // if the access count is greater than the max count
+                // if the ac is the same as the max but the vector width is greater
+                // if the ac & vw same but the data size is smaller than the min
+                // if the ac & vw & ds same but the pointer offset smaller than min iv offset
+                if (accessCount[i] > maxCount || (accessCount[i] == maxCount && (vectorWidthInBytes > maxVectorWidth || (vectorWidthInBytes == maxVectorWidth && (dataSize < minSize || (dataSize == minSize && offset < minIvOffset)))))) {
+                    maxCount = accessCount[i];
+                    maxVectorWidth = vectorWidthInBytes;
+                    maxIndex = i;
+                    minSize = dataSize;
+                    minIvOffset = offset;
+                }
+            }
+
+            // Look at Reads
+            for (int i = 0; i < memoryNodes.size(); i++) {
+                final FixedAccessNode s = memoryNodes.get(i);
+                if (!(s instanceof ReadNode)) {
+                    continue;
+                }
+
+                final Stamp stamp = getStamp(s);
+                final int dataSize = dataSize(stamp);
+                final int vectorWidthInBytes = vectorWidth(s);
+                final int offset = (int) s.getAddress().getMaxConstantDisplacement();
+
+                // if the access count is greater than the max count
+                // if the ac is the same as the max but the vector width is greater
+                // if the ac & vw same but the data size is smaller than the min
+                // if the ac & vw & ds same but the pointer offset smaller than min iv offset
+                if (accessCount[i] > maxCount || (accessCount[i] == maxCount && (vectorWidthInBytes > maxVectorWidth || (vectorWidthInBytes == maxVectorWidth && (dataSize < minSize || (dataSize == minSize && offset < minIvOffset)))))) {
+                    maxCount = accessCount[i];
+                    maxVectorWidth = vectorWidthInBytes;
+                    maxIndex = i;
+                    minSize = dataSize;
+                    minIvOffset = offset;
+                }
+            }
+
+            if (maxCount == 0) {
+                return null;
+            }
+
+            return memoryNodes.get(maxIndex);
+        }
+
         // Core
 
         /**
@@ -646,18 +742,43 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                             filter(x -> getStamp(x).getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).
                             collect(Collectors.toList());
 
-            // TODO: Align relative to best reference rather than setting alignment for all
-            for (FixedAccessNode node : memoryNodes) {
-                setAlignment(node, memoryAlignment((FixedAccessNode & LIRLowerableAccess) node, 0));
-            }
+            while (!memoryNodes.isEmpty()) {
+                final FixedAccessNode alignmentReference = findAlignToRef(memoryNodes);
+                if (alignmentReference == null) {
+                    return; // we can't find a reference to align to, packSet is complete
+                }
+                final int ivAdjust = getIvAdjustment(alignmentReference);
 
-            for (FixedAccessNode s1 : memoryNodes) {
-                for (FixedAccessNode s2 : memoryNodes) {
-                    if (adjacent(s1, s2)) {
-                        final Optional<Integer> alignS1 = getAlignment(s1);
-                        if (stmtsCanPack(packSet, s1, s2, alignS1.orElse(null))) {
+                for (int i = memoryNodes.size() - 1; i >= 0; i--) {
+                    final FixedAccessNode s = memoryNodes.get(i);
+                    if (isomorphic(s, alignmentReference) && sameBaseAddress(s, alignmentReference)) {
+                        setAlignment(s, memoryAlignment((FixedAccessNode & LIRLowerableAccess) s, ivAdjust));
+                    }
+                }
+
+                // create a pack
+                for (FixedAccessNode s1 : memoryNodes) {
+                    final Optional<Integer> alignS1 = getAlignment(s1);
+                    if (!alignS1.isPresent()) {
+                        continue;
+                    }
+
+                    for (FixedAccessNode s2 : memoryNodes) {
+                        if (!getAlignment(s2).isPresent()) {
+                            continue;
+                        }
+
+                        if (s1 != s2 && adjacent(s1, s2) && stmtsCanPack(packSet, s1, s2, alignS1.orElse(null))) {
                             packSet.add(Pair.create(s1, s2));
                         }
+                    }
+                }
+
+                // remove unused memory nodes
+                for (int i = memoryNodes.size() - 1; i >= 0; i--) {
+                    final FixedAccessNode s = memoryNodes.get(i);
+                    if (getAlignment(s).isPresent()) {
+                        memoryNodes.remove(i);
                     }
                 }
             }
