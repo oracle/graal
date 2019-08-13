@@ -231,14 +231,11 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     private OptimizedCallTarget compileImpl(VirtualFrame frame) {
         RootNode root = getRootNode();
-        Node parent = getParent();
         if (speculationLog == null) {
             speculationLog = GraalTruffleRuntime.getRuntime().createSpeculationLog();
         }
-        OptimizedCallTarget osrTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(createRootNodeImpl(root, frame.getClass()));
+        OptimizedCallTarget osrTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(createRootNodeImpl(root, frame.getClass()));
         osrTarget.setSpeculationLog(speculationLog);
-        // let the old parent re-adopt the children
-        parent.adoptChildren();
         osrTarget.compile(true);
         return osrTarget;
     }
@@ -378,20 +375,18 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         protected final Class<? extends VirtualFrame> clazz;
 
+        /** Not adopted by the OSRRootNode; belongs to another RootNode. */
         @Child protected OptimizedOSRLoopNode loopNode;
-
-        private final SourceSection sourceSection;
 
         OSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
             super(null, frameDescriptor);
             this.loopNode = loop;
             this.clazz = clazz;
-            this.sourceSection = loop.getSourceSection();
         }
 
         @Override
         public SourceSection getSourceSection() {
-            return sourceSection;
+            return loopNode.getSourceSection();
         }
 
         public static Object callProxy(OSRRootNode target, VirtualFrame frame) {
