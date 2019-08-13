@@ -54,6 +54,8 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
@@ -143,6 +145,38 @@ public final class AMD64Packing {
         }
     }
 
+    /**
+     * This method and the three following it are basic move operations, as found in AMD64Move,
+     * but operating on raw AMD64Addresses instead of AMD64AddressValues. They're here to bypass the
+     * register allocator's requirements when we want to move values to temporary stack space, as
+     * seen in PackStackOp, LoadStackOp, and StoreStackOp.
+     *
+     * Note that this move assumes that dst is always an address, meaning we can't move to
+     * registers using this scheme. For now, this is unnecessary - the only time we ever move
+     * from a memory location is in StoreStackOp, and the target in that case is always an array.
+     * If we want to implement a stack-based unpacking instruction, though, this might be worth
+     * considering.
+     *
+     * @param crb
+     * @param masm
+     * @param dst The address we want to move to.
+     * @param src The value we want to move from. Can be a register, stack variable, or constant.
+     * @param srcKind The AMD64Kind of the src value.
+     * @param scratch A scratch register to use if necessary. Must be allocated by the caller as an @Temp.
+     */
+    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, AMD64Kind srcKind, Register scratch) {
+        if (isRegister(src)) {
+            reg2addr(crb, masm, srcKind, dst, asRegister(src));
+        } else if (isStackSlot(src)) {
+            // We move first to the scratch register, then to our destination.
+            // Is there a faster solution?
+            addr2reg(crb, masm, srcKind, scratch, (AMD64Address) crb.asAddress(src));
+            reg2addr(crb, masm, srcKind, dst, scratch);
+        } else if (isJavaConstant(src)) {
+            const2addr(crb, masm, srcKind, dst, asJavaConstant(src));
+        }
+    }
+
     private static void reg2addr(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, AMD64Address dst, Register src) {
         switch (kind) {
             case BYTE:
@@ -212,27 +246,32 @@ public final class AMD64Packing {
         }
     }
 
-    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, AMD64Kind srcKind, Register scratch) {
-        if (isRegister(src)) {
-            reg2addr(crb, masm, srcKind, dst, asRegister(src));
-        } else if (isStackSlot(src)) {
-            addr2reg(crb, masm, srcKind, scratch, (AMD64Address) crb.asAddress(src));
-            reg2addr(crb, masm, srcKind, dst, scratch);
-        } else if (isJavaConstant(src)) {
-            const2addr(crb, masm, srcKind, dst, asJavaConstant(src));
-        }
-    }
-
+    /**
+     * This operation loads a vector register with contiguous values from an array. It does so with
+     * the aid of some temporary stack space to minimize expensive vector instructions.
+     */
     public static final class LoadStackOp extends AMD64LIRInstruction {
-
-        private static final int YMM_LENGTH_IN_BYTES = 32;
         public static final LIRInstructionClass<LoadStackOp> TYPE = LIRInstructionClass.create(LoadStackOp.class);
 
+        // Our destination should always be a register.
         @Def({REG}) private AllocatableValue result;
+
+        // We need a scratch register for any possible memory-to-memory moves (see move(...) above).
         @Temp({REG}) private AllocatableValue scratch;
+
+        // The array we're loading from.
         @Alive({COMPOSITE}) private AMD64AddressValue input;
+
         private final int valcount;
 
+        /**
+         * Creates a LoadStackOp.
+         *
+         * @param tool
+         * @param result The vector value we want to load a value into.
+         * @param input The array value we want to load a value from.
+         * @param valcount The number of array elements we are loading.
+         */
         public LoadStackOp(LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int valcount) {
             this(TYPE, tool, result, input, valcount);
         }
@@ -242,54 +281,68 @@ public final class AMD64Packing {
             assert valcount > 0 : "vector store must store at least one element";
             this.result = result;
             this.input = input;
-            this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.valcount = valcount;
+
+            // scratch is a QWORD in size, not XMM size, because it only needs to be as large as a
+            // single scalar value. We don't want to pack anything larger than a QWORD at a time.
+            this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             assert isRegister(scratch) : "scratch must be a register";
+
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
             final int sizeInBytes = valcount * scalarKind.getSizeInBytes();
 
             final AMD64Address inputAddress = input.toAddress();
-            if (sizeInBytes == YMM_LENGTH_IN_BYTES) {
+
+            // If we can fill an entire YMM register, we can just perform a single move and skip
+            // more complicated packing logic.
+            // TODO: support XMM-only platforms
+            if (sizeInBytes == YMM.getBytes()) {
                 masm.vmovdqu(asRegister(result), inputAddress);
             } else {
-                // Lowest multiple of YMM_LENGTH_IN_BYTES that can fit all elements.
-                int amt = (int) Math.ceil(((double) sizeInBytes) / YMM_LENGTH_IN_BYTES) * YMM_LENGTH_IN_BYTES;
+                // Allocate a register-width of stack space for us to dump our values to.
+                masm.subq(rsp, YMM.getBytes());
+                int stackOffset = 0;
 
-                // Open scratch space for us to dump our values to.
-                masm.subq(rsp, amt);
-                int offset = 0;
                 for (int i = 0; i < valcount;) {
+                    // Number of array elements to be moved in a single instruction.
+                    int elements = 1;
                     AMD64Kind movKind = scalarKind;
-                    int movSize = movKind.getSizeInBytes();
-                    while (i + (movSize / scalarKind.getSizeInBytes()) * 2 <= valcount && movSize < 8) {
-                        AMD64Kind prev = movKind;
+
+                    // While we have room, we try to double the number of elements we pack in a
+                    // single move. We will never try and move more than a QWORD at once, since
+                    // that's how large our scratch register is.
+                    //
+                    // For example, this code might compress six MOVB instructions instructions to a
+                    // MOVD and MOVW.
+                    while (i + elements * 2 <= valcount && elements * movKind.getSizeInBytes() < QWORD.getBytes()) {
                         movKind = twice(movKind);
-                        movSize = movKind.getSizeInBytes();
-                        if (prev == movKind) {
-                            break;
-                        }
+                        elements *= 2;
                     }
 
-                    final AMD64Address source = new AMD64Address(inputAddress.getBase(), inputAddress.getIndex(), inputAddress.getScale(), inputAddress.getDisplacement() + offset);
-                    final AMD64Address target = new AMD64Address(rsp, offset);
+                    // We compute the addresses we're going to move between.
+                    final AMD64Address src = new AMD64Address(inputAddress.getBase(), inputAddress.getIndex(), inputAddress.getScale(), inputAddress.getDisplacement() + stackOffset);
+                    final AMD64Address dst = new AMD64Address(rsp, stackOffset);
 
-                    addr2reg(crb, masm, movKind, asRegister(scratch), source);
-                    reg2addr(crb, masm, movKind, target, asRegister(scratch));
-                    offset += movSize;
+                    // Perform the move.
+                    addr2reg(crb, masm, movKind, asRegister(scratch), src);
+                    reg2addr(crb, masm, movKind, dst, asRegister(scratch));
 
-                    i += movSize / scalarKind.getSizeInBytes();
+                    // Increment both stack offset and number of elements packed, so that we can
+                    // proceed with the loop.
+                    stackOffset += movKind.getSizeInBytes();
+                    i += elements;
                 }
 
                 // Write memory into vector register.
                 masm.vmovdqu(asRegister(result), new AMD64Address(rsp, 0));
 
                 // Pop scratch space.
-                masm.addq(rsp, amt);
+                masm.addq(rsp, YMM.getBytes());
             }
         }
     }
