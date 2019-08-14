@@ -595,15 +595,15 @@ public class BinaryReader extends BinaryStreamReader {
                 case I64_LOAD32_S:
                 case I64_LOAD32_U: {
                     readUnsignedInt32(bytesConsumed);  // align
-                    // we don't store the `align` literal, as our implementation does not make use of it,
-                    // but we need to store it's byte length, so that we can skip it during execution
+                    // We don't store the `align` literal, as our implementation does not make use of it,
+                    // but we need to store it's byte length, so that we can skip it during execution.
                     state.useByteConstant(bytesConsumed[0]);
                     int offset = readUnsignedInt32(bytesConsumed);  // offset
                     state.saveNumericLiteral(offset);
                     state.useByteConstant(bytesConsumed[0]);
                     Assert.assertLarger(state.stackSize(), 0, String.format("load instruction 0x%02X requires at least one element in the stack", opcode));
-                    state.pop();   // base address
-                    state.push();  // loaded value
+                    state.pop();   // Base address.
+                    state.push();  // Loaded value.
                     break;
                 }
                 case I32_STORE:
@@ -615,15 +615,15 @@ public class BinaryReader extends BinaryStreamReader {
                 case I64_STORE_16:
                 case I64_STORE_32: {
                     readUnsignedInt32(bytesConsumed);  // align
-                    // we don't store the `align` literal, as our implementation does not make use of it,
-                    // but we need to store it's byte length, so that we can skip it during execution
+                    // We don't store the `align` literal, as our implementation does not make use of it,
+                    // but we need to store it's byte length, so that we can skip it during execution.
                     state.useByteConstant(bytesConsumed[0]);
                     int offset = readUnsignedInt32(bytesConsumed);  // offset
                     state.saveNumericLiteral(offset);
                     state.useByteConstant(bytesConsumed[0]);
                     Assert.assertLarger(state.stackSize(), 1, String.format("store instruction 0x%02X requires at least two elements in the stack", opcode));
-                    state.pop();  // value to store
-                    state.pop();  // base address
+                    state.pop();  // Value to store.
+                    state.pop();  // Base address.
                     break;
                 }
                 case MEMORY_SIZE: {
@@ -889,7 +889,8 @@ public class BinaryReader extends BinaryStreamReader {
             falseBranch = new WasmEmptyNode(wasmModule, codeEntry, 0);
         }
 
-        return new WasmIfNode(wasmModule, codeEntry, trueBranchBlock, falseBranch, offset() - startOffset, blockTypeId, initialStackPointer, state.byteConstantOffset() - initialByteConstantOffset, state.numericLiteralOffset() - initialNumericLiteralOffset);
+        return new WasmIfNode(wasmModule, codeEntry, trueBranchBlock, falseBranch, offset() - startOffset, blockTypeId, initialStackPointer,
+                state.byteConstantOffset() - initialByteConstantOffset, state.numericLiteralOffset() - initialNumericLiteralOffset);
     }
 
     private void readElementSection() {
