@@ -29,6 +29,7 @@ import java.util.List;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -325,7 +326,8 @@ public final class AMD64Packing {
                     }
 
                     // We compute the addresses we're going to move between.
-                    final AMD64Address src = new AMD64Address(inputAddress.getBase(), inputAddress.getIndex(), inputAddress.getScale(), inputAddress.getDisplacement() + stackOffset);
+                    final AMD64Address src = new AMD64Address(inputAddress.getBase(), inputAddress.getIndex(), inputAddress.getScale(),
+                        inputAddress.getDisplacement() + stackOffset + (inputAddress.getBase() == AMD64.rsp ? YMM.getBytes() : 0));
                     final AMD64Address dst = new AMD64Address(rsp, stackOffset);
 
                     // Perform the move.
@@ -429,7 +431,8 @@ public final class AMD64Packing {
 
                     // We compute the addresses we're going to move between.
                     final AMD64Address src = new AMD64Address(rsp, stackOffset);
-                    final AMD64Address dst = new AMD64Address(outputAddress.getBase(), outputAddress.getIndex(), outputAddress.getScale(), outputAddress.getDisplacement() + stackOffset);
+                    final AMD64Address dst = new AMD64Address(outputAddress.getBase(), outputAddress.getIndex(), outputAddress.getScale(),
+                        outputAddress.getDisplacement() + stackOffset + (outputAddress.getBase() == AMD64.rsp ? YMM.getBytes() : 0));
 
                     // Perform the move.
                     addr2reg(crb, masm, movKind, asRegister(scratch), src);
@@ -496,9 +499,19 @@ public final class AMD64Packing {
 
             int stackOffset = 0;
             for (AllocatableValue value : values) {
+
                 // Move value into the temporary stack space.
                 AMD64Address target = new AMD64Address(rsp, stackOffset);
-                move(crb, masm, target, value, scalarKind, asRegister(scratch));
+                if (isStackSlot(value) && ((AMD64Address)crb.asAddress(value)).getBase() == AMD64.rsp) {
+                    // If the value is rsp-relative, we need to adjust it, accounting for the extra
+                    // space we just allocated.
+                    final AMD64Address original = (AMD64Address)crb.asAddress(value);
+                    final AMD64Address adjusted = new AMD64Address(original.getBase(), original.getIndex(), original.getScale(),
+                        original.getDisplacement() + YMM.getBytes());
+                    addr2reg(crb, masm, scalarKind, asRegister(scratch), adjusted);
+                    reg2addr(crb, masm, scalarKind, target, asRegister(scratch));
+                }
+                else move(crb, masm, target, value, scalarKind, asRegister(scratch));
 
                 // Increment address offset so that we place the next value further into the
                 // temporary space.
