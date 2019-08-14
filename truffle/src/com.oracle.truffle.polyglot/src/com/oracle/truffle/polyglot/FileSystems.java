@@ -306,6 +306,11 @@ final class FileSystems {
             return delegate.getMimeType(unwrap(path));
         }
 
+        @Override
+        public Path getTempDirectory() {
+            return wrap(delegate.getTempDirectory());
+        }
+
         Path wrap(Path path) {
             return path == null ? null : factory.apply(path);
         }
@@ -580,6 +585,7 @@ final class FileSystems {
         private final FileSystemProvider delegate;
         private final boolean explicitUserDir;
         private volatile Path userDir;
+        private volatile Path tmpDir;
 
         NIOFileSystem(final FileSystemProvider fileSystemProvider) {
             this(fileSystemProvider, false, null);
@@ -715,6 +721,20 @@ final class FileSystems {
             return resolvedPath.toRealPath(linkOptions);
         }
 
+        @Override
+        public Path getTempDirectory() {
+            Path result = tmpDir;
+            if (result == null) {
+                String propValue = System.getProperty("java.io.tmpdir");
+                if (propValue == null) {
+                    throw new IllegalStateException("The java.io.tmpdir is not set.");
+                }
+                result = parsePath(propValue);
+                tmpDir = result;
+            }
+            return result;
+        }
+
         private Path resolveRelative(Path path) {
             return !path.isAbsolute() && userDir != null ? toAbsolutePath(path) : path;
         }
@@ -796,6 +816,11 @@ final class FileSystems {
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
             throw forbidden(path);
+        }
+
+        @Override
+        public Path getTempDirectory() {
+            throw forbidden(null);
         }
     }
 
@@ -1031,6 +1056,6 @@ final class FileSystems {
     }
 
     private static SecurityException forbidden(final Path path) {
-        throw new SecurityException("Operation is not allowed for: " + path);
+        throw new SecurityException(path == null ? "Operation is not allowed." : "Operation is not allowed for: " + path);
     }
 }
