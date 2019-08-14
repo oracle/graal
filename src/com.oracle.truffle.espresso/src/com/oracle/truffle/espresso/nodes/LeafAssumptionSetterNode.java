@@ -5,13 +5,13 @@ import com.oracle.truffle.espresso.impl.Method;
 
 public class LeafAssumptionSetterNode extends InlinedSetterNode {
 
-    protected final int opCode;
-    protected final int curBCI;
+    private final int curBCI;
+    private final int opcode;
 
     protected LeafAssumptionSetterNode(Method inlinedMethod, int opCode, int curBCI) {
-        super(inlinedMethod);
-        this.opCode = opCode;
+        super(inlinedMethod, opCode);
         this.curBCI = curBCI;
+        this.opcode = opCode;
     }
 
     @Override
@@ -19,9 +19,9 @@ public class LeafAssumptionSetterNode extends InlinedSetterNode {
         BytecodeNode root = (BytecodeNode) getParent();
         if (inlinedMethod.leafAssumption()) {
             setFieldNode.setField(frame, root, top);
-            return -slotCount;
+            return -slotCount + stackEffect;
         } else {
-            return root.reQuickenInvoke(frame, top, curBCI, opCode, inlinedMethod);
+            return root.reQuickenInvoke(frame, top, curBCI, opcode, inlinedMethod);
         }
     }
 

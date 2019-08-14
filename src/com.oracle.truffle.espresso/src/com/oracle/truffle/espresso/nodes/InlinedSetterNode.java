@@ -2,6 +2,7 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.object.DebugCounter;
@@ -16,14 +17,16 @@ public class InlinedSetterNode extends QuickNode {
 
     final Field field;
     final Method inlinedMethod;
+    protected final int stackEffect;
     final int slotCount;
 
     @Child ChildSetFieldNode setFieldNode;
 
-    InlinedSetterNode(Method inlinedMethod) {
+    InlinedSetterNode(Method inlinedMethod, int opcode) {
         this.inlinedMethod = inlinedMethod;
         this.field = getInlinedField(inlinedMethod);
         this.slotCount = field.getKind().getSlotCount();
+        this.stackEffect = Bytecodes.stackEffectOf(opcode);
         setFieldNode = ChildSetFieldNode.create(this.field);
         assert field.isStatic() == inlinedMethod.isStatic();
     }
@@ -31,7 +34,7 @@ public class InlinedSetterNode extends QuickNode {
     public static InlinedSetterNode create(Method inlinedMethod, int opCode, int curBCI) {
         setterNodes.inc();
         if (inlinedMethod.isFinalFlagSet() || inlinedMethod.getDeclaringKlass().isFinalFlagSet()) {
-            return new InlinedSetterNode(inlinedMethod);
+            return new InlinedSetterNode(inlinedMethod, opCode);
         } else {
             leafSetterNodes.inc();
             return new LeafAssumptionSetterNode(inlinedMethod, opCode, curBCI);
@@ -42,7 +45,7 @@ public class InlinedSetterNode extends QuickNode {
     public int invoke(VirtualFrame frame, int top) {
         BytecodeNode root = (BytecodeNode) getParent();
         setFieldNode.setField(frame, root, top);
-        return -slotCount;
+        return -slotCount + stackEffect;
     }
 
     private static Field getInlinedField(Method inlinedMethod) {

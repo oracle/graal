@@ -694,7 +694,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     public boolean isInlinableGetter() {
         if (getSubstitutions().get(this) == null) {
-            if (getParameterCount() == 0 && !isAbstract() && !isNative()) {
+            if (getParameterCount() == 0 && !isAbstract() && !isNative() && !isSynchronized()) {
                 if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || leafAssumption() || isStatic()) {
                     return hasGetterBytecodes();
                 }
@@ -719,7 +719,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
 
     public boolean isInlinableSetter() {
         if (getSubstitutions().get(this) == null) {
-            if (getParameterCount() == 1 && !isAbstract() && !isNative()) {
+            if (getParameterCount() == 1 && !isAbstract() && !isNative() && !isSynchronized()) {
                 if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || leafAssumption() || isStatic()) {
                     return hasSetterBytecodes();
                 }
