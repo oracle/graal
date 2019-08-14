@@ -235,8 +235,11 @@ public abstract class LayoutStrategy {
         }
     }
 
-    /** @since 0.17 or earlier */
     protected ShapeImpl directReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {
+        return directReplaceProperty(shape, oldProperty, newProperty, true);
+    }
+
+    protected ShapeImpl directReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty, boolean ensureValid) {
         assert oldProperty.getKey().equals(newProperty.getKey());
         if (oldProperty.equals(newProperty)) {
             return shape;
@@ -247,7 +250,7 @@ public abstract class LayoutStrategy {
         Transition replacePropertyTransition = new Transition.DirectReplacePropertyTransition(oldProperty, newProperty);
         ShapeImpl cachedShape = shape.queryTransition(replacePropertyTransition);
         if (cachedShape != null) {
-            return ensureValid(cachedShape);
+            return ensureValid ? ensureValid(cachedShape) : cachedShape;
         }
         PropertyMap newPropertyMap = shape.getPropertyMap().replaceCopy(oldProperty, newProperty);
         BaseAllocator allocator = shape.allocator().addLocation(newProperty.getLocation());
@@ -304,7 +307,7 @@ public abstract class LayoutStrategy {
                 oldProperty = shape.getProperty(oldProperty.getKey());
                 newProperty = newProperty.relocate(shape.allocator().moveLocation(newProperty.getLocation()));
             }
-            return directReplaceProperty(shape, oldProperty, newProperty);
+            return directReplaceProperty(shape, oldProperty, newProperty, append);
         } else {
             throw new UnsupportedOperationException(transition.getClass().getName());
         }
