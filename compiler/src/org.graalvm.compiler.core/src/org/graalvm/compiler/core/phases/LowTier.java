@@ -24,8 +24,7 @@
  */
 package org.graalvm.compiler.core.phases;
 
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
+import java.util.Arrays;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -48,6 +47,9 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
+
 public class LowTier extends PhaseSuite<LowTierContext> {
 
     static class Options {
@@ -58,6 +60,9 @@ public class LowTier extends PhaseSuite<LowTierContext> {
 
         @Option(help = "Enable autovectorization", type = OptionType.Expert)
         public static final OptionKey<Boolean> Autovectorize = new OptionKey<>(true);
+
+        @Option(help = "Substring of methods and/or classes that should be excluded", type = OptionType.Debug)
+        public static final OptionKey<String> AVExclusions = new OptionKey<>("");
         // @formatter:on
 
     }
@@ -89,7 +94,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new UseTrappingNullChecksPhase());
 
         if (Options.Autovectorize.getValue(options)) {
-            appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST)));
+            appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST), Arrays.asList(Options.AVExclusions.getValue(options).split(","))));
         }
 
         appendPhase(canonicalizer);

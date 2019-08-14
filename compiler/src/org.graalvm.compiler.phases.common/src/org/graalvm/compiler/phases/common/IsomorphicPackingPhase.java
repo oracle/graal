@@ -83,6 +83,7 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * A phase to identify isomorphisms within basic blocks.
@@ -1104,14 +1105,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     }
 
     private final SchedulePhase schedulePhase;
+    private final List<String> exclusions;
     private final NodeView view;
 
-    public IsomorphicPackingPhase(SchedulePhase schedulePhase) {
-        this(schedulePhase, NodeView.DEFAULT);
+    public IsomorphicPackingPhase(SchedulePhase schedulePhase, List<String> exclusions) {
+        this(schedulePhase, exclusions, NodeView.DEFAULT);
     }
 
-    public IsomorphicPackingPhase(SchedulePhase schedulePhase, NodeView view) {
+    public IsomorphicPackingPhase(SchedulePhase schedulePhase, List<String> exclusions, NodeView view) {
         this.schedulePhase = schedulePhase;
+        this.exclusions = exclusions;
         this.view = view;
     }
 
@@ -1123,12 +1126,17 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         final ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         final DebugContext debug = graph.getDebug();
 
-        for (Block block : cfg.reversePostOrder()) {
-            try (DebugContext.Scope s = debug.scope("slpExtract")) {
-                new Instance(context, debug, graph, block, view).slpExtract();
-            } catch (Throwable t) {
-                throw debug.handle(t);
+        final ResolvedJavaMethod method = graph.method();
+        if (method != null) {
+            final String name = String.format("%s.%s", method.getDeclaringClass().toJavaName(), method.getName());
+            if (exclusions.stream().anyMatch(name::contains)) {
+                debug.log(DebugContext.VERBOSE_LEVEL, String.format("Skipping compilation of excluded %s", name));
+                return;
             }
+        }
+
+        for (Block block : cfg.reversePostOrder()) {
+            new Instance(context, debug, graph, block, view).slpExtract();
         }
     }
 }
