@@ -319,6 +319,9 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     @CompilationFinal(dimensions = 1) //
     private final int[] SOEinfo;
 
+    @CompilationFinal(dimensions = 2) //
+    private int[][] JSRbci = null;
+
     private final BytecodeStream bs;
 
     @TruffleBoundary
@@ -734,6 +737,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         case GOTO_W: // fall through
                         case IFNULL: // fall through
                         case IFNONNULL:
+                            // @formatter:on
+                            // Checkstyle: resume
                             if (takeBranch(frame, top, curOpcode)) {
                                 int targetBCI = bs.readBranchDest(curBCI);
                                 top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
@@ -744,23 +749,39 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
                         case JSR: // fall through
                         case JSR_W: {
-                            CompilerDirectives.bailout("JSR/RET bytecodes not supported");
                             putReturnAddress(frame, top, bs.nextBCI(curBCI));
                             int targetBCI = bs.readBranchDest(curBCI);
+                            CompilerAsserts.partialEvaluationConstant(targetBCI);
                             top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                             curBCI = targetBCI;
                             continue loop;
                         }
                         case RET: {
-                            CompilerDirectives.bailout("JSR/RET bytecodes not supported");
                             int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex(curBCI));
+                            if (JSRbci == null) {
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                JSRbci = new int[bs.endBCI()][];
+                            }
+                            if (JSRbci[curBCI] == null) {
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                JSRbci[curBCI] = new int[]{targetBCI};
+                            }
+                            for (int jsr : JSRbci[curBCI]) {
+                                if (jsr == targetBCI) {
+                                    CompilerAsserts.partialEvaluationConstant(jsr);
+                                    top = checkBackEdge(curBCI, jsr, top, curOpcode);
+                                    curBCI = jsr;
+                                    continue loop;
+                                }
+                            }
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            JSRbci[curBCI] = Arrays.copyOf(JSRbci[curBCI], JSRbci[curBCI].length + 1);
+                            JSRbci[curBCI][JSRbci[curBCI].length - 1] = targetBCI;
                             top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
                             curBCI = targetBCI;
                             continue loop;
                         }
 
-                        // @formatter:on
-                        // Checkstyle: resume
                         case TABLESWITCH: {
                             int index = peekInt(frame, top - 1);
                             BytecodeTableSwitch switchHelper = bs.getBytecodeTableSwitch();
