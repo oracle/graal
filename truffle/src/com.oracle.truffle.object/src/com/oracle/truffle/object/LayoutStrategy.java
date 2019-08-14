@@ -259,6 +259,10 @@ public abstract class LayoutStrategy {
         assert newProperty.isSame(newShape.getProperty(newProperty.getKey())) : newShape.getProperty(newProperty.getKey());
 
         shape.addDirectTransition(replacePropertyTransition, newShape);
+        if (!shape.isValid()) {
+            newShape.invalidateValidAssumption();
+            return ensureValid ? ensureValid(newShape) : newShape;
+        }
         return newShape;
     }
 
@@ -281,6 +285,10 @@ public abstract class LayoutStrategy {
 
         ShapeImpl newShape = ShapeImpl.makeShapeWithAddedProperty(oldShape, addTransition);
         oldShape.addDirectTransition(addTransition, newShape);
+        if (!oldShape.isValid()) {
+            newShape.invalidateValidAssumption();
+            return ensureValid ? ensureValid(newShape) : newShape;
+        }
         return newShape;
     }
 
