@@ -790,7 +790,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
 ))
 
-def _launcher_extra_jvm_args():
+def _native_image_launcher_main_class():
+    """
+    Gets the name of the entry point for running com.oracle.svm.driver.NativeImage.
+    """
+    return "com.oracle.svm.driver.NativeImage" + ("" if svm_java8() else "$JDK9Plus")
+
+def _native_image_launcher_extra_jvm_args():
     """
     Gets the extra JVM args needed for running com.oracle.svm.driver.NativeImage.
     """
@@ -816,9 +822,9 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         mx_sdk.LauncherConfig(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
-            main_class="com.oracle.svm.driver.NativeImage" + ("" if svm_java8() else "$JDK9Plus"),
+            main_class=_native_image_launcher_main_class(),
             build_args=[],
-            extra_jvm_args=_launcher_extra_jvm_args(),
+            extra_jvm_args=_native_image_launcher_extra_jvm_args(),
         ),
         mx_sdk.LauncherConfig(
             destination="bin/<exe:native-image-configure>",
