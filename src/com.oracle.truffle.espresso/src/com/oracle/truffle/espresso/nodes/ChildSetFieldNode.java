@@ -47,7 +47,7 @@ public abstract class ChildSetFieldNode extends Node {
     }
 }
 
-class IntSetFieldNode extends ChildSetFieldNode {
+final class IntSetFieldNode extends ChildSetFieldNode {
     IntSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Int;
@@ -61,7 +61,7 @@ class IntSetFieldNode extends ChildSetFieldNode {
     }
 }
 
-class BooleanSetFieldNode extends ChildSetFieldNode {
+final class BooleanSetFieldNode extends ChildSetFieldNode {
     BooleanSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Boolean;
@@ -75,7 +75,7 @@ class BooleanSetFieldNode extends ChildSetFieldNode {
     }
 }
 
-class CharSetFieldNode extends ChildSetFieldNode {
+final class CharSetFieldNode extends ChildSetFieldNode {
     CharSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Char;
@@ -89,7 +89,7 @@ class CharSetFieldNode extends ChildSetFieldNode {
     }
 }
 
-class ShortSetFieldNode extends ChildSetFieldNode {
+final class ShortSetFieldNode extends ChildSetFieldNode {
     ShortSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Short;
@@ -103,7 +103,7 @@ class ShortSetFieldNode extends ChildSetFieldNode {
     }
 }
 
-class ByteSetFieldNode extends ChildSetFieldNode {
+final class ByteSetFieldNode extends ChildSetFieldNode {
     ByteSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Byte;
@@ -117,7 +117,7 @@ class ByteSetFieldNode extends ChildSetFieldNode {
     }
 }
 
-class LongSetFieldNode extends ChildSetFieldNode {
+final class LongSetFieldNode extends ChildSetFieldNode {
     LongSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Long;
@@ -131,7 +131,7 @@ class LongSetFieldNode extends ChildSetFieldNode {
     }
 }
 
-class FloatSetFieldNode extends ChildSetFieldNode {
+final class FloatSetFieldNode extends ChildSetFieldNode {
     FloatSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Float;
@@ -145,7 +145,7 @@ class FloatSetFieldNode extends ChildSetFieldNode {
     }
 }
 
-class DoubleSetFieldNode extends ChildSetFieldNode {
+final class DoubleSetFieldNode extends ChildSetFieldNode {
     DoubleSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Double;
@@ -159,7 +159,7 @@ class DoubleSetFieldNode extends ChildSetFieldNode {
     }
 }
 
-class ObjectSetFieldNode extends ChildSetFieldNode {
+final class ObjectSetFieldNode extends ChildSetFieldNode {
     ObjectSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Object;

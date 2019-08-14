@@ -37,7 +37,7 @@ public abstract class ChildGetFieldNode extends Node {
     }
 }
 
-class IntGetFieldNode extends ChildGetFieldNode {
+final class IntGetFieldNode extends ChildGetFieldNode {
     IntGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Int;
@@ -50,7 +50,7 @@ class IntGetFieldNode extends ChildGetFieldNode {
     }
 }
 
-class BooleanGetFieldNode extends ChildGetFieldNode {
+final class BooleanGetFieldNode extends ChildGetFieldNode {
     BooleanGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Boolean;
@@ -63,7 +63,7 @@ class BooleanGetFieldNode extends ChildGetFieldNode {
     }
 }
 
-class CharGetFieldNode extends ChildGetFieldNode {
+final class CharGetFieldNode extends ChildGetFieldNode {
     CharGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Char;
@@ -76,7 +76,7 @@ class CharGetFieldNode extends ChildGetFieldNode {
     }
 }
 
-class ShortGetFieldNode extends ChildGetFieldNode {
+final class ShortGetFieldNode extends ChildGetFieldNode {
     ShortGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Short;
@@ -89,7 +89,7 @@ class ShortGetFieldNode extends ChildGetFieldNode {
     }
 }
 
-class ByteGetFieldNode extends ChildGetFieldNode {
+final class ByteGetFieldNode extends ChildGetFieldNode {
     ByteGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Byte;
@@ -102,7 +102,7 @@ class ByteGetFieldNode extends ChildGetFieldNode {
     }
 }
 
-class LongGetFieldNode extends ChildGetFieldNode {
+final class LongGetFieldNode extends ChildGetFieldNode {
     LongGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Long;
@@ -115,7 +115,7 @@ class LongGetFieldNode extends ChildGetFieldNode {
     }
 }
 
-class FloatGetFieldNode extends ChildGetFieldNode {
+final class FloatGetFieldNode extends ChildGetFieldNode {
     FloatGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Float;
@@ -128,7 +128,7 @@ class FloatGetFieldNode extends ChildGetFieldNode {
     }
 }
 
-class DoubleGetFieldNode extends ChildGetFieldNode {
+final class DoubleGetFieldNode extends ChildGetFieldNode {
     DoubleGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Double;
@@ -141,7 +141,7 @@ class DoubleGetFieldNode extends ChildGetFieldNode {
     }
 }
 
-class ObjectGetFieldNode extends ChildGetFieldNode {
+final class ObjectGetFieldNode extends ChildGetFieldNode {
     ObjectGetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Object;
