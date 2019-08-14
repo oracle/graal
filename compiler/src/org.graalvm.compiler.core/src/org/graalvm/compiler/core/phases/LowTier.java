@@ -24,7 +24,9 @@
  */
 package org.graalvm.compiler.core.phases;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -94,7 +96,12 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new UseTrappingNullChecksPhase());
 
         if (Options.Autovectorize.getValue(options)) {
-            appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST), Arrays.asList(Options.AVExclusions.getValue(options).split(","))));
+            final String exclusionsValue = Options.AVExclusions.getValue(options).trim();
+            List<String> exclusions = new ArrayList<>();
+            if (!exclusionsValue.isEmpty()) {
+                exclusions = Arrays.asList(exclusionsValue.split(","));
+            }
+            appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST), exclusions));
         }
 
         appendPhase(canonicalizer);
