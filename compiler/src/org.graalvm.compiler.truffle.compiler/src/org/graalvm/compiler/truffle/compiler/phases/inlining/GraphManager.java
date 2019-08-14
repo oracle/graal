@@ -24,11 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -49,6 +44,12 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 public class GraphManager {
 
@@ -102,6 +103,10 @@ public class GraphManager {
                         "cost-benefit analysis", "AgnosticInliningPhase");
     }
 
+    public CoreProviders getCoreProviders() {
+        return partialEvaluator.getProviders();
+    }
+
     static class Entry {
         final StructuredGraph graph;
         final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke;
@@ -110,10 +115,6 @@ public class GraphManager {
             this.graph = graph;
             this.truffleCallNodeToInvoke = truffleCallNodeToInvoke;
         }
-    }
-
-    public CoreProviders getCoreProviders() {
-        return partialEvaluator.getProviders();
     }
 
     private static class PEAgnosticInlineInvokePlugin extends PartialEvaluator.PEInlineInvokePlugin {

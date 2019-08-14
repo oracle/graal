@@ -48,30 +48,53 @@ import org.graalvm.compiler.truffle.common.TruffleCallNode;
 public class CallNode extends Node {
 
     private static final NodeClass<CallNode> TYPE = NodeClass.create(CallNode.class);
-
-    public enum State {
-        Cutoff,
-        Expanded,
-        Inlined,
-        Removed,
-        Indirect
-    }
-
-    private State state;
-    @Successor private NodeSuccessorList<CallNode> children;
     private final InliningPolicy policy;
-    InliningPolicy.CallNodeData data;
     private final double rootRelativeFrequency;
-    private int recursionDepth;
     private final TruffleCallNode truffleCallNode;
     private final CompilableTruffleAST truffleAST;
     private final TruffleCallNode[] truffleCallNodes;
+    InliningPolicy.CallNodeData data;
+    private State state;
+    @Successor private NodeSuccessorList<CallNode> children;
+    private int recursionDepth;
     /*
      * The ir field and the childInvokes fields are initially null and empty collection, and
      * populated once the node is partially evaluated;
      */
     private StructuredGraph ir;
     private EconomicMap<CallNode, Invoke> childInvokes;
+
+    // Needs to be protected because of the @NodeInfo annotation
+    protected CallNode(CallTree tree, TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency, InliningPolicy policy) {
+        super(TYPE);
+        this.state = State.Cutoff;
+        this.recursionDepth = -1;
+        this.rootRelativeFrequency = rootRelativeFrequency;
+        this.truffleCallNode = truffleCallNode;
+        this.truffleAST = truffleAST;
+        truffleCallNodes = truffleAST.getCallNodes();
+        this.ir = ir;
+        this.childInvokes = EconomicMap.create();
+        this.children = new NodeSuccessorList<>(this, 0);
+        this.policy = policy;
+        tree.add(this);
+    }
+
+    /**
+     * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
+     */
+    static CallNode makeRoot(CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
+        Objects.requireNonNull(callTree);
+        Objects.requireNonNull(truffleAST);
+        Objects.requireNonNull(ir);
+        final CallNode root = new CallNode(callTree, null, truffleAST, ir, 1, policy);
+        root.data = policy.newCallNodeData(root);
+        assert root.state == State.Cutoff : "Cannot expand a non-cutoff node. State is " + root.state;
+        root.addChildren();
+        root.partiallyEvaluateRoot();
+        policy.afterExpand(root);
+        return root;
+    }
 
     void putProperties(Map<Object, Object> properties) {
         properties.put("Frequency", rootRelativeFrequency);
@@ -108,38 +131,6 @@ public class CallNode extends Node {
         } else {
             return parentDepth;
         }
-    }
-
-    /**
-     * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
-     */
-    static CallNode makeRoot(CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
-        Objects.requireNonNull(callTree);
-        Objects.requireNonNull(truffleAST);
-        Objects.requireNonNull(ir);
-        final CallNode root = new CallNode(callTree, null, truffleAST, ir, 1, policy);
-        root.data = policy.newCallNodeData(root);
-        assert root.state == State.Cutoff : "Cannot expand a non-cutoff node. State is " + root.state;
-        root.addChildren();
-        root.partiallyEvaluateRoot();
-        policy.afterExpand(root);
-        return root;
-    }
-
-    // Needs to be protected because of the @NodeInfo annotation
-    protected CallNode(CallTree tree, TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency, InliningPolicy policy) {
-        super(TYPE);
-        this.state = State.Cutoff;
-        this.recursionDepth = -1;
-        this.rootRelativeFrequency = rootRelativeFrequency;
-        this.truffleCallNode = truffleCallNode;
-        this.truffleAST = truffleAST;
-        truffleCallNodes = truffleAST.getCallNodes();
-        this.ir = ir;
-        this.childInvokes = EconomicMap.create();
-        this.children = new NodeSuccessorList<>(this, 0);
-        this.policy = policy;
-        tree.add(this);
     }
 
     private void addChildren() {
@@ -347,5 +338,13 @@ public class CallNode extends Node {
                         ", truffleCallNode=" + truffleCallNode +
                         ", truffleAST=" + truffleAST +
                         '}';
+    }
+
+    public enum State {
+        Cutoff,
+        Expanded,
+        Inlined,
+        Removed,
+        Indirect
     }
 }

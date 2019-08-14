@@ -24,11 +24,11 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 
 public class DefaultPolicy implements InliningPolicy {
 

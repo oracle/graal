@@ -37,14 +37,10 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 public class AgnosticInliningPhase extends BasePhase<CoreProviders> {
-    private final PartialEvaluator partialEvaluator;
-    private final CallNodeProvider callNodeProvider;
-    private final CompilableTruffleAST compilableTruffleAST;
+
     private static final InliningPolicyProvider POLICY_PROVIDER;
+
     static {
         final Iterable<InliningPolicyProvider> services = GraalServices.load(InliningPolicyProvider.class);
         final ArrayList<InliningPolicyProvider> providers = new ArrayList<>();
@@ -53,6 +49,16 @@ public class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         }
         final String policy = TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleInliningPolicy);
         POLICY_PROVIDER = policy.equals("") ? maxPriorityProvider(providers) : chosenProvider(providers, policy);
+    }
+
+    private final PartialEvaluator partialEvaluator;
+    private final CallNodeProvider callNodeProvider;
+    private final CompilableTruffleAST compilableTruffleAST;
+
+    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST compilableTruffleAST) {
+        this.partialEvaluator = partialEvaluator;
+        this.callNodeProvider = callNodeProvider;
+        this.compilableTruffleAST = compilableTruffleAST;
     }
 
     private static InliningPolicyProvider chosenProvider(ArrayList<InliningPolicyProvider> providers, String name) {
@@ -67,12 +73,6 @@ public class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     private static InliningPolicyProvider maxPriorityProvider(ArrayList<InliningPolicyProvider> providers) {
         Collections.sort(providers);
         return providers.get(0);
-    }
-
-    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST compilableTruffleAST) {
-        this.partialEvaluator = partialEvaluator;
-        this.callNodeProvider = callNodeProvider;
-        this.compilableTruffleAST = compilableTruffleAST;
     }
 
     @Override

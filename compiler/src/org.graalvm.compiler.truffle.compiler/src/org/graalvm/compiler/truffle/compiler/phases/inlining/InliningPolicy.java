@@ -36,9 +36,6 @@ public interface InliningPolicy {
     default void removedNode(CallNode callNode, CallNode child) {
     }
 
-    interface CallNodeData {
-    }
-
     @SuppressWarnings("unused")
     default CallNodeData newCallNodeData(CallNode callNode) {
         return new CallNodeData() {
@@ -59,5 +56,8 @@ public interface InliningPolicy {
 
     @SuppressWarnings("unused")
     default void run(CallTree tree) {
+    }
+
+    interface CallNodeData {
     }
 }

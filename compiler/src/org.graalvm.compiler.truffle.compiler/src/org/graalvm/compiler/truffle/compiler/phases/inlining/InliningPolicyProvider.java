@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler.phases.inlining;
 import org.graalvm.compiler.options.OptionValues;
 
 public abstract class InliningPolicyProvider implements Comparable<InliningPolicyProvider> {
+
     private final int priority;
     private final String name;
 
