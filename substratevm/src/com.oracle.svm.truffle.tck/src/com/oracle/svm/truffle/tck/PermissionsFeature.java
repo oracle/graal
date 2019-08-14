@@ -79,10 +79,9 @@ import org.graalvm.nativeimage.hosted.Feature;
  * <p>
  * To execute the {@code PermissionsFeature} you need to enable it using
  * {@code --features=com.oracle.svm.truffle.tck.PermissionsFeature} native-image option, specify
- * report file using {@code -H:TruffleLanguagePermissionsReportFile} option and specify the language
- * packages by {@code -H:TruffleLanguagePermissionsLanguagePackages} option. You also need to
- * disable folding of {@code System.getSecurityManager} using {@code -H:-FoldSecurityManagerGetter}
- * option.
+ * report file using {@code -H:TruffleTCKPermissionsReportFile} option and specify the language
+ * packages by {@code -H:TruffleTCKPermissionsLanguagePackages} option. You also need to disable
+ * folding of {@code System.getSecurityManager} using {@code -H:-FoldSecurityManagerGetter} option.
  */
 @AutomaticFeature
 public class PermissionsFeature implements Feature {
@@ -90,15 +89,15 @@ public class PermissionsFeature implements Feature {
     private static final String CONFIG = "truffle-language-permissions-config.json";
 
     public static class Options {
-        @Option(help = "Path to file where to store report of Truffle language privilege access.") public static final HostedOptionKey<String> TruffleLanguagePermissionsReportFile = new HostedOptionKey<>(
+        @Option(help = "Path to file where to store report of Truffle language privilege access.") public static final HostedOptionKey<String> TruffleTCKPermissionsReportFile = new HostedOptionKey<>(
                         null);
 
-        @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<String[]> TruffleLanguagePermissionsExcludeFiles = new HostedOptionKey<>(null);
+        @Option(help = "Comma separated list of exclude files.") public static final HostedOptionKey<String[]> TruffleTCKPermissionsExcludeFiles = new HostedOptionKey<>(null);
 
-        @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxStackTraceDepth = new HostedOptionKey<>(
+        @Option(help = "Maximal depth of a stack trace.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxStackTraceDepth = new HostedOptionKey<>(
                         -1);
 
-        @Option(help = "Maximum number of errounous privileged accesses reported.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleLanguagePermissionsMaxErrors = new HostedOptionKey<>(
+        @Option(help = "Maximum number of errounous privileged accesses reported.", type = OptionType.Expert) public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(
                         100);
     }
 
@@ -153,9 +152,9 @@ public class PermissionsFeature implements Feature {
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
             UserError.abort(getClass().getSimpleName() + " requires -H:-FoldSecurityManagerGetter option.");
         }
-        String reportFile = Options.TruffleLanguagePermissionsReportFile.getValue();
+        String reportFile = Options.TruffleTCKPermissionsReportFile.getValue();
         if (reportFile == null) {
-            UserError.abort("Path to report file must be given by -H:TruffleLanguagePermissionsReportFile option.");
+            UserError.abort("Path to report file must be given by -H:TruffleTCKPermissionsReportFile option.");
         }
         reportFilePath = Paths.get(reportFile);
     }
@@ -173,11 +172,10 @@ public class PermissionsFeature implements Feature {
         try (DebugContext.Scope s = debugContext.scope(getClass().getSimpleName())) {
             BigBang bigbang = accessImpl.getBigBang();
             WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bigbang);
-            ConfigurationParserUtils.parseAndRegisterConfigurations(
-                            parser,
+            ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
                             accessImpl.getImageClassLoader(),
                             getClass().getSimpleName(),
-                            Options.TruffleLanguagePermissionsExcludeFiles,
+                            Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
             reflectionProxy = bigbang.forClass("com.oracle.svm.reflect.helpers.ReflectionProxy");
@@ -191,13 +189,13 @@ public class PermissionsFeature implements Feature {
                 List<List<AnalysisMethod>> report = new ArrayList<>();
                 Set<CallGraphFilter> contextFilters = new HashSet<>();
                 Collections.addAll(contextFilters, new SafeInterruptRecognizer(bigbang), new SafePrivilegedRecognizer(bigbang));
-                int maxStackDepth = Options.TruffleLanguagePermissionsMaxStackTraceDepth.getValue();
+                int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
                 maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
                 for (AnalysisMethod importantMethod : importantMethods) {
                     if (cg.containsKey(importantMethod)) {
                         collectViolations(report, importantMethod,
                                         maxStackDepth,
-                                        Options.TruffleLanguagePermissionsMaxErrors.getValue(),
+                                        Options.TruffleTCKPermissionsMaxErrors.getValue(),
                                         cg, contextFilters,
                                         new LinkedHashSet<>(), 1, 0);
                     }

@@ -224,11 +224,11 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             cp,
             '--no-server',
             '-H:-FoldSecurityManagerGetter',
-            '-H:TruffleLanguagePermissionsReportFile={}'.format(report_file.name),
+            '-H:TruffleTCKPermissionsReportFile={}'.format(report_file.name),
             'com.oracle.svm.truffle.tck.MockMain'
         ]
         if excludes:
-            options.append('-H:TruffleLanguagePermissionsExcludeFiles={}'.format(','.join(excludes)))
+            options.append('-H:TruffleTCKPermissionsExcludeFiles={}'.format(','.join(excludes)))
         native_image(options)
         if isfile(report_file.name) and getsize(report_file.name) > 0:
             message = "Failed: Language {} performs following privileged calls:\n\n".format(language_id)
