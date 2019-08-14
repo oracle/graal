@@ -773,6 +773,10 @@ public final class Bytecodes {
         return opcode >= (byte) IRETURN && opcode <= (byte) RETURN;
     }
 
+    public static boolean isLoad1(byte opcode) {
+        return opcode == (byte) ALOAD_1 || opcode == (byte) ILOAD_1 || opcode == (byte) LLOAD_1 || opcode == (byte) FLOAD_1 || opcode == (byte) DLOAD_1;
+    }
+
     /**
      * Determines if a given opcode denotes a conditional branch.
      *

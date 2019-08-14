@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ALOAD_0;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.GETSTATIC;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
+import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
@@ -78,8 +80,12 @@ import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method implements TruffleObject, ModifiersProvider, ContextAccess {
     public static final Method[] EMPTY_ARRAY = new Method[0];
+
     private static final byte GETTER_LENGTH = 5;
     private static final byte STATIC_GETTER_LENGTH = 4;
+
+    private static final byte SETTER_LENGTH = 6;
+    private static final byte STATIC_SETTER_LENGTH = 5;
 
     private final Assumption isLeaf;
 
@@ -701,11 +707,36 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         byte[] code = codeAttribute.getCode();
         if (isStatic()) {
             if (code.length == STATIC_GETTER_LENGTH && getExceptionHandlers().length == 0) {
-                return (code[0] == (byte) GETSTATIC) && (Bytecodes.isReturn(code[3]));
+                return (code[0] == (byte) GETSTATIC) && (Bytecodes.isReturn(code[3])) && code[3] != (byte) RETURN;
             }
         } else {
             if (code.length == GETTER_LENGTH && getExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) GETFIELD) && (Bytecodes.isReturn(code[4])) && code[4] != (byte) RETURN;
+            }
+        }
+        return false;
+    }
+
+    public boolean isInlinableSetter() {
+        if (getSubstitutions().get(this) == null) {
+            if (getParameterCount() == 1 && !isAbstract() && !isNative()) {
+                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || leafAssumption() || isStatic()) {
+                    return hasSetterBytecodes();
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean hasSetterBytecodes() {
+        byte[] code = codeAttribute.getCode();
+        if (isStatic()) {
+            if (code.length == STATIC_SETTER_LENGTH && getExceptionHandlers().length == 0) {
+                return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) PUTSTATIC) && (code[4] == (byte) RETURN);
+            }
+        } else {
+            if (code.length == SETTER_LENGTH && getExceptionHandlers().length == 0) {
+                return (code[0] == (byte) ALOAD_0) && (Bytecodes.isLoad1(code[1])) && (code[2] == (byte) PUTFIELD) && (code[5] == (byte) RETURN);
             }
         }
         return false;

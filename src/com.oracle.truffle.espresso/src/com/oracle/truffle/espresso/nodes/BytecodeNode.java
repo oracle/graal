@@ -385,7 +385,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         }
     }
 
-    private int peekInt(VirtualFrame frame, int slot) {
+    int peekInt(VirtualFrame frame, int slot) {
         return (int) FrameUtil.getLongSafe(frame, stackSlots[slot]);
     }
 
@@ -397,19 +397,19 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     // Boxed value.
-    private Object peekValue(VirtualFrame frame, int slot) {
+    Object peekValue(VirtualFrame frame, int slot) {
         return frame.getValue(stackSlots[slot]);
     }
 
-    private float peekFloat(VirtualFrame frame, int slot) {
+    float peekFloat(VirtualFrame frame, int slot) {
         return Float.intBitsToFloat((int) FrameUtil.getLongSafe(frame, stackSlots[slot]));
     }
 
-    private long peekLong(VirtualFrame frame, int slot) {
+    long peekLong(VirtualFrame frame, int slot) {
         return FrameUtil.getLongSafe(frame, stackSlots[slot]);
     }
 
-    private double peekDouble(VirtualFrame frame, int slot) {
+    double peekDouble(VirtualFrame frame, int slot) {
         return Double.longBitsToDouble(FrameUtil.getLongSafe(frame, stackSlots[slot]));
     }
 
@@ -1394,6 +1394,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
                 if (resolutionSeed.isInlinableGetter()) {
                     invoke = InlinedGetterNode.create(resolutionSeed, opCode, curBCI);
+                } else if (resolutionSeed.isInlinableSetter()) {
+                    invoke = InlinedSetterNode.create(resolutionSeed, opCode, curBCI);
                 } else if (resolutionSeed.isMethodHandleIntrinsic()) {
                     invoke = new MethodHandleInvokeNode(resolutionSeed);
                 } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
