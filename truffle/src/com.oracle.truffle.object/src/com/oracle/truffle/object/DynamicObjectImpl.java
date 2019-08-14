@@ -313,18 +313,6 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
 
     /** @since 0.17 or earlier */
     @Override
-    public int size() {
-        return getShape().getPropertyCount();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public boolean isEmpty() {
-        return size() == 0;
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
     public final boolean updateShape() {
         return getShapeImpl().getLayout().getStrategy().updateShape(this);
     }
