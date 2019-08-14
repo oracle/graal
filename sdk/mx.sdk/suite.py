@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.226.3",
+  "mxversion" : "5.231.0",
   "name" : "sdk",
   "version" : "19.3.0",
   "release" : False,
@@ -211,6 +211,7 @@ suite = {
       "javadocType": "api",
       "moduleInfo" : {
         "name" : "org.graalvm.sdk",
+        "requires" : ["java.logging"],
         "exports" : [
           "org.graalvm.collections",
           "org.graalvm.nativeimage.hosted",
