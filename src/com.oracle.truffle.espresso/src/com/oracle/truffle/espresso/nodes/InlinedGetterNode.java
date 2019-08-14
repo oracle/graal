@@ -15,12 +15,12 @@ public class InlinedGetterNode extends QuickNode {
     private static final int INSTANCE_GETTER_BCI = 1;
     private static final int STATIC_GETTER_BCI = 0;
 
-    protected final Field field;
-    protected final Method inlinedMethod;
+    final Field field;
+    final Method inlinedMethod;
 
     @Child ChildGetFieldNode getFieldNode;
 
-    protected InlinedGetterNode(Method inlinedMethod) {
+    InlinedGetterNode(Method inlinedMethod) {
         this.inlinedMethod = inlinedMethod;
         this.field = getInlinedField(inlinedMethod);
         getFieldNode = ChildGetFieldNode.create(this.field);

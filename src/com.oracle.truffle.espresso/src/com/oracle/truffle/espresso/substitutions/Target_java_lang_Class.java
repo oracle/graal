@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -100,7 +101,9 @@ public final class Target_java_lang_Class {
         } catch (EspressoException e) {
             throw e;
         } catch (Throwable e) {
-            throw meta.throwExWithMessage(meta.ClassNotFoundException, name);
+            CompilerDirectives.transferToInterpreter();
+            System.err.println("Host exception happened in Class.forName: " + e);
+            throw e;
         }
     }
 
