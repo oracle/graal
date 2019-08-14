@@ -263,4 +263,10 @@ public final class Target_java_lang_Thread {
             hostThread.stop();
         }
     }
+
+    @Substitution(hasReceiver = true)
+    public static void setNativeName(@Host(Object.class) StaticObject self, @Host(String.class) StaticObject name) {
+        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        hostThread.setName(Meta.toHostString(name));
+    }
 }

@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -37,6 +38,7 @@ public final class ArrayKlass extends Klass {
 
     private final Klass componentType;
     private final Klass elementalType;
+    private final int dimension;
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
@@ -46,6 +48,7 @@ public final class ArrayKlass extends Klass {
                         componentType.getMeta().ARRAY_SUPERINTERFACES);
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
+        this.dimension = Types.getArrayDimensions(getType());
     }
 
     @Override
@@ -129,9 +132,9 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
         methodLookupCount.inc();
-        return getSuperKlass().lookupMethod(methodName, signature);
+        return getSuperKlass().lookupMethod(methodName, signature, accessingKlass);
     }
 
     @Override
@@ -152,5 +155,38 @@ public final class ArrayKlass extends Klass {
     @Override
     public ConstantPool getConstantPool() {
         return getElementalType().getConstantPool();
+    }
+
+    public int getDimension() {
+        return dimension;
+    }
+
+    boolean arrayTypeChecks(ArrayKlass other) {
+        assert isArray();
+        int thisDim = getDimension();
+        int otherDim = other.getDimension();
+        if (otherDim > thisDim) {
+            Klass thisElemental = this.getElementalType();
+            return thisElemental == getMeta().Object || thisElemental == getMeta().Serializable || thisElemental == getMeta().Cloneable;
+        } else if (thisDim == otherDim) {
+            Klass klass = getElementalType();
+            Klass other1 = other.getElementalType();
+            if (klass == other1) {
+                return true;
+            }
+            if (klass.isPrimitive() || other1.isPrimitive()) {
+                // Reference equality is enough within the same context.
+                assert klass.getContext() == other1.getContext();
+                return klass == other1;
+            }
+            if (klass.isInterface()) {
+                return klass.checkInterfaceSubclassing(other1);
+            }
+            int depth = klass.getHierarchyDepth();
+            return other1.getHierarchyDepth() >= depth && other1.getSuperTypes()[depth] == klass;
+        } else {
+            assert thisDim > otherDim;
+            return false;
+        }
     }
 }

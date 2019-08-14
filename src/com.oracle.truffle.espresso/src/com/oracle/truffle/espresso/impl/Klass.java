@@ -269,7 +269,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * 
      * Interface check is still slow, though.
      */
-    @TruffleBoundary
     public final boolean isAssignableFrom(Klass other) {
         if (this == other) {
             return true;
@@ -280,11 +279,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             return this == other;
         }
         if (this.isArray() && other.isArray()) {
-            return this.getComponentType().isAssignableFrom(other.getComponentType());
+            return ((ArrayKlass) this).arrayTypeChecks((ArrayKlass) other);
         }
         if (isInterface()) {
             return checkInterfaceSubclassing(other);
-
         }
         int depth = getHierarchyDepth();
         return other.getHierarchyDepth() >= depth && other.getSuperTypes()[depth] == this;
@@ -294,7 +292,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return ID;
     }
 
-    private boolean checkInterfaceSubclassing(Klass other) {
+    boolean checkInterfaceSubclassing(Klass other) {
         Klass[] interfaces = other.getTransitiveInterfacesList();
         if (interfaces.length < 5) {
             for (Klass k : interfaces) {
@@ -418,7 +416,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             initialize();
         } catch (EspressoException e) {
             StaticObject cause = e.getException();
-            if (getMeta().Exception.isAssignableFrom(cause.getKlass())) {
+            if (!InterpreterToVM.instanceOf(cause, getMeta().Error)) {
                 throw getMeta().throwExWithCause(ExceptionInInitializerError.class, cause);
             } else {
                 throw e;
@@ -457,8 +455,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     private Klass[] supertypesWithSelfCache;
 
     // index 0 is Object, index hierarchyDepth is this
-    @TruffleBoundary
-    private Klass[] getSuperTypes() {
+    Klass[] getSuperTypes() {
         Klass[] supertypes = supertypesWithSelfCache;
         if (supertypes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -478,7 +475,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return supertypes;
     }
 
-    private int getHierarchyDepth() {
+    int getHierarchyDepth() {
         int result = hierarchyDepth;
         if (result == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -495,7 +492,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
 
     @CompilationFinal(dimensions = 1) private Klass[] transitiveInterfaceCache;
 
-    @TruffleBoundary
     protected final Klass[] getTransitiveInterfacesList() {
         Klass[] transitiveInterfaces = transitiveInterfaceCache;
         if (transitiveInterfaces == null) {
@@ -564,23 +560,31 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature);
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        return lookupMethod(methodName, signature, null);
+    }
+
+    /**
+     * Give the accessing klass if there is a chance the method to be resolved is a method handle
+     * intrinsics.
+     */
+    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass);
 
     public abstract Method vtableLookup(int vtableIndex);
 
-    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+    public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
         if (methodName == Name.invoke || methodName == Name.invokeExact) {
-            return findMethodHandleIntrinsic(methodName, signature, InvokeGeneric);
+            return findMethodHandleIntrinsic(methodName, signature, InvokeGeneric, accessingKlass);
         } else if (methodName == Name.invokeBasic) {
-            return findMethodHandleIntrinsic(methodName, signature, InvokeBasic);
+            return findMethodHandleIntrinsic(methodName, signature, InvokeBasic, accessingKlass);
         } else if (methodName == Name.linkToInterface) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToInterface);
+            return findMethodHandleIntrinsic(methodName, signature, LinkToInterface, accessingKlass);
         } else if (methodName == Name.linkToSpecial) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToSpecial);
+            return findMethodHandleIntrinsic(methodName, signature, LinkToSpecial, accessingKlass);
         } else if (methodName == Name.linkToStatic) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToStatic);
+            return findMethodHandleIntrinsic(methodName, signature, LinkToStatic, accessingKlass);
         } else if (methodName == Name.linkToVirtual) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToVirtual);
+            return findMethodHandleIntrinsic(methodName, signature, LinkToVirtual, accessingKlass);
         }
         for (Method m : getDeclaredMethods()) {
             if (m.isNative() && m.isVarargs() && m.getName() == methodName) {
@@ -591,14 +595,17 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
-    private Method findMethodHandleIntrinsic(@SuppressWarnings("unused") Symbol<Name> methodName, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
+    private Method findMethodHandleIntrinsic(Symbol<Name> methodName,
+                    Symbol<Signature> signature,
+                    MethodHandleIntrinsics.PolySigIntrinsics id,
+                    Klass accessingKlass) {
         if (id == InvokeGeneric) {
             return (methodName == Name.invoke ? getMeta().invoke : getMeta().invokeExact).findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
                 // TODO(garcia) Create a whole new Node to handle MH invokes.
                 @Override
                 public EspressoBaseNode apply(Method method) {
                     // TODO(garcia) true access checks
-                    ObjectKlass callerKlass = getMeta().Object;
+                    Klass callerKlass = accessingKlass == null ? getMeta().Object : accessingKlass;
                     StaticObject appendixBox = StaticObject.createArray(getMeta().Object_array, new Object[1]);
                     StaticObject memberName = (StaticObject) getMeta().linkMethod.invokeDirect(
                                     null,

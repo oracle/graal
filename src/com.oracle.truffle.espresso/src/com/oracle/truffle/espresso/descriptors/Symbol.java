@@ -223,6 +223,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
         public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
         public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
+        public static final Symbol<Name> Synthetic = StaticSymbols.putName("Synthetic");
 
         // Hidden field names. Starts with a 0 in order for the names to be illegal.
         public static final Symbol<Name> HIDDEN_VMTARGET = StaticSymbols.putName("0HIDDEN_VMTARGET");
@@ -348,6 +349,8 @@ public final class Symbol<T> extends ByteSequence {
         // Finalizer is not public.
         public static final Symbol<Type> java_lang_ref_Finalizer = StaticSymbols.putType("Ljava/lang/ref/Finalizer;");
         public static final Symbol<Type> StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
+
+        public static final Symbol<Type> Error = StaticSymbols.putType(Error.class);
         public static final Symbol<Type> NoSuchFieldError = StaticSymbols.putType(NoSuchFieldError.class);
         public static final Symbol<Type> NoSuchMethodError = StaticSymbols.putType(NoSuchMethodError.class);
         public static final Symbol<Type> IllegalAccessError = StaticSymbols.putType(IllegalAccessError.class);

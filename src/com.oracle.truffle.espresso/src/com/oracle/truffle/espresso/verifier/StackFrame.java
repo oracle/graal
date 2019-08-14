@@ -15,6 +15,9 @@ class StackFrame {
     final int stackSize;
     final int top;
     final Operand[] locals;
+    final SubroutineModificationStack subroutineModificationStack;
+
+    // For stackMap extraction
     int lastLocal;
 
     StackFrame(Stack stack, Locals locals) {
@@ -22,6 +25,7 @@ class StackFrame {
         this.stackSize = stack.size;
         this.top = stack.top;
         this.locals = locals.extract();
+        this.subroutineModificationStack = locals.subRoutineModifications;
     }
 
     StackFrame(Stack stack, Operand[] locals) {
@@ -29,6 +33,15 @@ class StackFrame {
         this.stackSize = stack.size;
         this.top = stack.top;
         this.locals = locals;
+        this.subroutineModificationStack = null;
+    }
+
+    StackFrame(Stack stack, Operand[] locals, SubroutineModificationStack sms) {
+        this.stack = stack.extract();
+        this.stackSize = stack.size;
+        this.top = stack.top;
+        this.locals = locals;
+        this.subroutineModificationStack = sms;
     }
 
     StackFrame(MethodVerifier mv) {
@@ -47,6 +60,15 @@ class StackFrame {
         this.stackSize = stackSize;
         this.top = top;
         this.locals = locals;
+        this.subroutineModificationStack = null;
+    }
+
+    StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals, SubroutineModificationStack sms) {
+        this.stack = stack;
+        this.stackSize = stackSize;
+        this.top = top;
+        this.locals = locals;
+        this.subroutineModificationStack = sms;
     }
 
     Stack extractStack(int maxStack) {
@@ -58,7 +80,20 @@ class StackFrame {
     }
 
     Locals extractLocals() {
-        return new Locals(locals.clone());
+        Locals newLocals = new Locals(locals.clone());
+        newLocals.subRoutineModifications = subroutineModificationStack;
+        return newLocals;
+    }
+
+    void mergeSubroutines(SubroutineModificationStack other) {
+        if (subroutineModificationStack == null) {
+            return;
+        }
+        if (other == subroutineModificationStack) {
+            return;
+        }
+        assert subroutineModificationStack.depth() == other.depth();
+        subroutineModificationStack.merge(other);
     }
 }
 
@@ -358,7 +393,7 @@ class Stack {
             throw new VerifyError("Inconsistent stack height: " + top + " != " + stackFrame.stack.length);
         }
         for (int i = 0; i < top; i++) {
-            if (!stack[i].compliesWith(stackFrame.stack[i])) {
+            if (!stack[i].compliesWithInMerge(stackFrame.stack[i])) {
                 return i;
             }
         }
@@ -475,7 +510,7 @@ class Locals {
         Operand[] frameLocals = frame.locals;
 
         for (int i = 0; i < registers.length; i++) {
-            if (!registers[i].compliesWith(frameLocals[i])) {
+            if (!registers[i].compliesWithInMerge(frameLocals[i])) {
                 return i;
             }
         }
@@ -494,18 +529,37 @@ class Locals {
 class SubroutineModificationStack {
     SubroutineModificationStack next;
     boolean[] subRoutineModifications;
-    int jsr;
+    int subroutineBCI;
+    int depth;
 
     SubroutineModificationStack(SubroutineModificationStack next, boolean[] subRoutineModifications, int bci) {
         this.next = next;
+        if (next == null) {
+            depth = 1;
+        } else {
+            depth = 1 + next.depth();
+        }
         this.subRoutineModifications = subRoutineModifications;
-        this.jsr = bci;
+        this.subroutineBCI = bci;
     }
 
     static SubroutineModificationStack copy(SubroutineModificationStack tocopy) {
         if (tocopy == null) {
             return null;
         }
-        return new SubroutineModificationStack(tocopy.next, tocopy.subRoutineModifications.clone(), tocopy.jsr);
+        return new SubroutineModificationStack(tocopy.next, tocopy.subRoutineModifications.clone(), tocopy.subroutineBCI);
+    }
+
+    public void merge(SubroutineModificationStack other) {
+        assert other.subRoutineModifications.length == subRoutineModifications.length;
+        for (int i = 0; i < subRoutineModifications.length; i++) {
+            if (other.subRoutineModifications[i] && !subRoutineModifications[i]) {
+                subRoutineModifications[i] = true;
+            }
+        }
+    }
+
+    public int depth() {
+        return depth;
     }
 }

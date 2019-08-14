@@ -95,14 +95,24 @@ public abstract class ClassRegistry implements ContextAccess {
         return defineKlass(type, bytes, null);
     }
 
-    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes, Symbol<Type> instigator) {
+    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, Symbol<Type> instigator) {
 
         Meta meta = getMeta();
-        if (classes.containsKey(type)) {
-            throw meta.throwExWithMessage(LinkageError.class, "Class " + type + " already defined in the BCL");
+        if (typeOrNull != null && classes.containsKey(typeOrNull)) {
+            throw meta.throwExWithMessage(LinkageError.class, "Class " + typeOrNull + " already defined in the BCL");
         }
 
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), type.toString(), null, context);
+        String strType = null;
+        if (typeOrNull != null) {
+            strType = typeOrNull.toString();
+        }
+
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
+
+        Symbol<Type> type = typeOrNull;
+        if (type == null) {
+            type = parserKlass.getType();
+        }
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
@@ -115,10 +125,6 @@ public abstract class ClassRegistry implements ContextAccess {
                         // Should only be an ObjectKlass, not primitives nor arrays.
                         ? (ObjectKlass) loadKlass(superKlassType, (instigator == null) ? type : instigator)
                         : null;
-
-        if (superKlass != null && superKlass.isFinalFlagSet()) {
-            throw getMeta().throwEx(VerifyError.class);
-        }
 
         assert superKlass == null || !superKlass.isInterface();
 

@@ -27,6 +27,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
@@ -62,7 +63,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         return false;
     }
 
-    private static PolySigIntrinsics getId(Method m) {
+    public static PolySigIntrinsics getId(Method m) {
         Symbol<Name> name = m.getName();
         if (name == Name.invoke || name == Name.invokeExact) {
             return PolySigIntrinsics.InvokeGeneric;
@@ -87,13 +88,13 @@ public final class MethodHandleIntrinsics implements ContextAccess {
 
     private final EspressoContext context;
 
-    private final ConcurrentHashMap<Symbol<Symbol.Signature>, Method> invokeIntrinsics;
-    private final ConcurrentHashMap<Symbol<Symbol.Signature>, Method> invokeExactIntrinsics;
-    private final ConcurrentHashMap<Symbol<Symbol.Signature>, Method> invokeBasicIntrinsics;
-    private final ConcurrentHashMap<Symbol<Symbol.Signature>, Method> linkToStaticIntrinsics;
-    private final ConcurrentHashMap<Symbol<Symbol.Signature>, Method> linkToVirtualIntrinsics;
-    private final ConcurrentHashMap<Symbol<Symbol.Signature>, Method> linkToSpecialIntrinsics;
-    private final ConcurrentHashMap<Symbol<Symbol.Signature>, Method> linkToInterfaceIntrinsics;
+    private final ConcurrentHashMap<Symbol<Signature>, Method> invokeIntrinsics;
+    private final ConcurrentHashMap<Symbol<Signature>, Method> invokeExactIntrinsics;
+    private final ConcurrentHashMap<Symbol<Signature>, Method> invokeBasicIntrinsics;
+    private final ConcurrentHashMap<Symbol<Signature>, Method> linkToStaticIntrinsics;
+    private final ConcurrentHashMap<Symbol<Signature>, Method> linkToVirtualIntrinsics;
+    private final ConcurrentHashMap<Symbol<Signature>, Method> linkToSpecialIntrinsics;
+    private final ConcurrentHashMap<Symbol<Signature>, Method> linkToInterfaceIntrinsics;
 
     MethodHandleIntrinsics(EspressoContext context) {
         this.context = context;
@@ -111,8 +112,8 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         return context;
     }
 
-    public Method findIntrinsic(Method thisMethod, Symbol<Symbol.Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory, PolySigIntrinsics id) {
-        ConcurrentHashMap<Symbol<Symbol.Signature>, Method> intrinsics = getIntrinsicMap(id, thisMethod);
+    public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory, PolySigIntrinsics id) {
+        ConcurrentHashMap<Symbol<Signature>, Method> intrinsics = getIntrinsicMap(id, thisMethod);
         Method method = intrinsics.get(signature);
         if (method != null) {
             return method;
@@ -126,7 +127,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         return method;
     }
 
-    private ConcurrentHashMap<Symbol<Symbol.Signature>, Method> getIntrinsicMap(PolySigIntrinsics id, Method thisMethod) {
+    private ConcurrentHashMap<Symbol<Signature>, Method> getIntrinsicMap(PolySigIntrinsics id, Method thisMethod) {
         switch (id) {
             case InvokeBasic:
                 return invokeBasicIntrinsics;

@@ -29,7 +29,6 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
 
 import java.lang.reflect.Array;
-import java.lang.reflect.Field;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.LongBuffer;
@@ -37,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +47,7 @@ import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.substitutions.GuestCall;
+import com.oracle.truffle.espresso.impl.Field;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
@@ -310,12 +311,16 @@ public final class VM extends NativeEnv implements ContextAccess {
                         return defaultValue(m.returnType());
                     }
                     throw EspressoError.shouldNotReachHere(e);
-                } catch (RuntimeException e) {
+                } catch (StackOverflowError | OutOfMemoryError e) {
+                    if (isJni) {
+                        // This will most likely SOE again. Nothing we can do about that
+                        // unfortunately.
+                        jniEnv.getThreadLocalPendingException().set(getMeta().initEx(e.getClass()));
+                        return defaultValue(m.returnType());
+                    }
                     throw e;
-                } catch (StackOverflowError soe) {
-                    throw getContext().getStackOverflow();
-                } catch (OutOfMemoryError oom) {
-                    throw getContext().getOutOfMemory();
+                } catch (RuntimeException | VirtualMachineError e) {
+                    throw e;
                 } catch (ThreadDeath e) {
                     throw getMeta().throwEx(ThreadDeath.class);
                 } catch (Throwable e) {
@@ -368,7 +373,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     public static boolean JVM_SupportsCX8() {
         try {
             Class<?> klass = Class.forName("java.util.concurrent.atomic.AtomicLong");
-            Field field = klass.getDeclaredField("VM_SUPPORTS_LONG_CAS");
+            java.lang.reflect.Field field = klass.getDeclaredField("VM_SUPPORTS_LONG_CAS");
             field.setAccessible(true);
             return field.getBoolean(null);
         } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException e) {
@@ -435,56 +440,65 @@ public final class VM extends NativeEnv implements ContextAccess {
         return JniEnv.JNI_OK;
     }
 
+    public static class StackElement {
+        private final Method m;
+        private final int bci;
+
+        public StackElement(Method m, int bci) {
+            this.m = m;
+            this.bci = bci;
+        }
+
+        public Method getMethod() {
+            return m;
+        }
+
+        public int getBCI() {
+            return bci;
+        }
+    }
+
+    public static class StackTrace {
+        public StackElement[] trace;
+        public int size;
+        public int capacity;
+
+        public StackTrace() {
+            this.trace = new StackElement[EspressoContext.DEFAULT_STACK_SIZE];
+            this.capacity = EspressoContext.DEFAULT_STACK_SIZE;
+            this.size = 0;
+        }
+
+        public void add(StackElement e) {
+            if (size < capacity) {
+                trace[size++] = e;
+            } else {
+                trace = Arrays.copyOf(trace, capacity <<= 1);
+                trace[size++] = e;
+            }
+        }
+    }
+
     // endregion JNI Invocation Interface
     @VmImpl
     @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
-        final ArrayList<Method> callers = new ArrayList<>(32);
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Method>() {
-            @Override
-            public Method visitFrame(FrameInstance frameInstance) {
-                CallTarget callTarget = frameInstance.getCallTarget();
-                if (callTarget instanceof RootCallTarget) {
-                    RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
-                    if (rootNode instanceof EspressoRootNode) {
-                        callers.add(((EspressoRootNode) rootNode).getMethod());
-                    }
-                }
-                return null;
-            }
-        });
-        // Avoid printing the Throwable initialization
-        int nonThrowableInitStartIndex = 0;
-        boolean skipFillInStackTrace = true;
-        boolean skipThrowableInit = true;
-        for (Method m : callers) {
-            if (skipFillInStackTrace) {
-                if (!((m.getName() == Name.fillInStackTrace) || (m.getName() == Name.fillInStackTrace0))) {
-                    skipFillInStackTrace = false;
-                }
-            } else if (skipThrowableInit) {
-                if (!(m.getName() == Name.INIT) || !m.getMeta().Throwable.isAssignableFrom(m.getDeclaringKlass())) {
-                    skipThrowableInit = false;
-                    break;
-                }
-            }
-            nonThrowableInitStartIndex++;
-        }
-        self.setHiddenField(getMeta().HIDDEN_FRAMES, callers.subList(nonThrowableInitStartIndex, callers.size()).toArray(Method.EMPTY_ARRAY));
-
-        getMeta().Throwable_backtrace.set(self, self);
+        assert EspressoException.isUnwinding(self, getMeta());
+        self.setHiddenField(getMeta().HIDDEN_FRAMES, new StackTrace());
         return self;
     }
 
     @VmImpl
     @JniImpl
+    @SuppressWarnings("unchecked")
     public int JVM_GetStackTraceDepth(@Host(Throwable.class) StaticObject self) {
         Meta meta = getMeta();
-        StaticObject backtrace = (StaticObject) meta.Throwable_backtrace.get(self);
-        if (StaticObject.isNull(backtrace)) {
-            return 0;
+        StackTrace frames = (StackTrace) self.getHiddenField(meta.HIDDEN_FRAMES);
+        if (EspressoException.isUnwinding(self, meta)) {
+            InterpreterToVM.fillInStackTrace(self, false, meta);
         }
-        return ((Method[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES)).length;
+        assert !EspressoException.isUnwinding(self, meta);
+        return frames.size;
     }
 
     @VmImpl
@@ -492,20 +506,31 @@ public final class VM extends NativeEnv implements ContextAccess {
     public @Host(StackTraceElement.class) StaticObject JVM_GetStackTraceElement(@Host(Throwable.class) StaticObject self, int index,
                     @GuestCall DirectCallNode StackTraceElement_init) {
         Meta meta = getMeta();
+        if (index < 0) {
+            throw meta.throwEx(IndexOutOfBoundsException.class);
+        }
         StaticObject ste = meta.StackTraceElement.allocateInstance();
-        StaticObject backtrace = (StaticObject) meta.Throwable_backtrace.get(self);
-        Method[] allCallers = ((Method[]) backtrace.getHiddenField(meta.HIDDEN_FRAMES));
-        Method caller = allCallers[index];
-        if (caller == null) {
+        StackTrace frames = EspressoException.getFrames(self, meta);
+        if (EspressoException.isUnwinding(self, meta)) {
+            InterpreterToVM.fillInStackTrace(self, false, meta);
+        }
+        assert !EspressoException.isUnwinding(self, meta);
+        if (index >= frames.size) {
+            throw meta.throwEx(IndexOutOfBoundsException.class);
+        }
+        StackElement stackElement = frames.trace[index];
+        Method method = stackElement.getMethod();
+        if (method == null) {
             return StaticObject.NULL;
         }
+        int bci = stackElement.getBCI();
 
         StackTraceElement_init.call(
                         /* this */ ste,
-                        /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(caller.getDeclaringKlass().getType().toString(), true, true)),
-                        /* methodName */ meta.toGuestString(caller.getName()),
-                        /* fileName */ StaticObject.NULL,
-                        /* lineNumber */ -1);
+                        /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(method.getDeclaringKlass().getType().toString(), true, true)),
+                        /* methodName */ meta.toGuestString(method.getName()),
+                        /* fileName */ meta.toGuestString(method.getSourceFile()),
+                        /* lineNumber */ method.BCItoLineNumber(bci));
 
         return ste;
     }
@@ -567,7 +592,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         buf.get(bytes);
 
         // TODO(peterssen): Name is in binary form, but separator can be either / or . .
-        Symbol<Type> type = getTypes().fromClassGetName(name);
+        Symbol<Type> type = null;
+        if (name != null) {
+            type = getTypes().fromClassGetName(name);
+        }
 
         StaticObject clazz = getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
         assert pd != null;
@@ -604,7 +632,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     public long JVM_LoadLibrary(String name) {
         try {
             TruffleObject lib = NativeLibrary.loadLibrary(Paths.get(name));
-            Field f = lib.getClass().getDeclaredField("handle");
+            java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
             f.setAccessible(true);
             long handle = (long) f.get(lib);
             handle2Lib.put(handle, lib);
@@ -919,7 +947,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return guestBox(elem);
     }
 
-    private static StaticObject getGuestReflectiveMethodRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
+    private static @Host(java.lang.reflect.Method.class) StaticObject getGuestReflectiveMethodRoot(@Host(java.lang.reflect.Method.class) StaticObject seed) {
         Meta meta = seed.getKlass().getMeta();
         StaticObject curMethod = seed;
         Method target = null;
@@ -930,6 +958,32 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         }
         return curMethod;
+    }
+
+    private static @Host(java.lang.reflect.Constructor.class) StaticObject getGuestReflectiveFieldRoot(@Host(java.lang.reflect.Constructor.class) StaticObject seed) {
+        Meta meta = seed.getKlass().getMeta();
+        StaticObject curField = seed;
+        Field target = null;
+        while (target == null) {
+            target = (Field) curField.getHiddenField(meta.HIDDEN_FIELD_KEY);
+            if (target == null) {
+                curField = (StaticObject) meta.Field_root.get(curField);
+            }
+        }
+        return curField;
+    }
+
+    private static StaticObject getGuestReflectiveConstructorRoot(@Host(java.lang.reflect.Field.class) StaticObject seed) {
+        Meta meta = seed.getKlass().getMeta();
+        StaticObject curConstructor = seed;
+        Method target = null;
+        while (target == null) {
+            target = (Method) curConstructor.getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
+            if (target == null) {
+                curConstructor = (StaticObject) meta.Constructor_root.get(curConstructor);
+            }
+        }
+        return curConstructor;
     }
 
     @VmImpl
@@ -1001,10 +1055,28 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public static Object JVM_GetMethodTypeAnnotations(@Host(Object.class) StaticObject guestReflectionMethod) {
-        StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
-        assert methodRoot != null;
-        return methodRoot.getHiddenField(methodRoot.getKlass().getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+    public @Host(byte[].class) StaticObject JVM_GetMethodTypeAnnotations(@Host(java.lang.reflect.Executable.class) StaticObject guestReflectionMethod) {
+        // guestReflectionMethod can be either a Method or a Constructor.
+        if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().Method)) {
+            StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
+            assert methodRoot != null;
+            return (StaticObject) methodRoot.getHiddenField(methodRoot.getKlass().getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        } else if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().Constructor)) {
+            StaticObject constructorRoot = getGuestReflectiveConstructorRoot(guestReflectionMethod);
+            assert constructorRoot != null;
+            return (StaticObject) constructorRoot.getHiddenField(constructorRoot.getKlass().getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
+        } else {
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Host(byte[].class) StaticObject JVM_GetFieldTypeAnnotations(@Host(java.lang.reflect.Field.class) StaticObject guestReflectionField) {
+        assert InterpreterToVM.instanceOf(guestReflectionField, getMeta().Field);
+        StaticObject fieldRoot = getGuestReflectiveFieldRoot(guestReflectionField);
+        assert fieldRoot != null;
+        return (StaticObject) fieldRoot.getHiddenField(fieldRoot.getKlass().getMeta().HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
     }
 
     private StaticObject guestBox(Object elem) {

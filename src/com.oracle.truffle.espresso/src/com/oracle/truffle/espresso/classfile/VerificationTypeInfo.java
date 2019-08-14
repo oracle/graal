@@ -22,7 +22,15 @@
 
 package com.oracle.truffle.espresso.classfile;
 
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Bogus;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Double;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Float;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Integer;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
 
 public abstract class VerificationTypeInfo {
     private int tag;
@@ -42,6 +50,31 @@ public abstract class VerificationTypeInfo {
     public int getConstantPoolOffset() {
         throw EspressoError.shouldNotReachHere("Asking for CPI of non reference verification_type_info");
     }
+
+    public String toString(Klass klass) {
+        // Note: JSR/RET is mutually exclusive with stack maps.
+        switch (getTag()) {
+            case ITEM_Bogus:
+                return "invalid";
+            case ITEM_Integer:
+                return "int";
+            case ITEM_Float:
+                return "float";
+            case ITEM_Double:
+                return "double";
+            case ITEM_Long:
+                return "long";
+            case ITEM_Null:
+                return "null";
+            default:
+                return fromCP(klass);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected String fromCP(Klass klass) {
+        return "";
+    }
 }
 
 class PrimitiveTypeInfo extends VerificationTypeInfo {
@@ -53,6 +86,11 @@ class PrimitiveTypeInfo extends VerificationTypeInfo {
 class UninitializedThis extends VerificationTypeInfo {
     public UninitializedThis(int tag) {
         super(tag);
+    }
+
+    @Override
+    protected String fromCP(Klass klass) {
+        return "newThis";
     }
 }
 
@@ -68,6 +106,11 @@ class UninitializedVariable extends VerificationTypeInfo {
     public int getNewOffset() {
         return newOffset;
     }
+
+    @Override
+    protected String fromCP(Klass klass) {
+        return "new " + klass.getConstantPool().classAt(newOffset).getName(klass.getConstantPool());
+    }
 }
 
 class ReferenceVariable extends VerificationTypeInfo {
@@ -81,5 +124,10 @@ class ReferenceVariable extends VerificationTypeInfo {
     @Override
     public int getConstantPoolOffset() {
         return constantPoolOffset;
+    }
+
+    @Override
+    protected String fromCP(Klass klass) {
+        return "" + klass.getConstantPool().classAt(constantPoolOffset).getName(klass.getConstantPool());
     }
 }

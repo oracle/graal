@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_getField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_getStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
@@ -49,6 +47,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -95,10 +94,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             Klass fieldKlass = ref.getField(meta.Field_class).getMirrorKlass();
             self.setField(meta.MNclazz, fieldKlass.mirror());
         } else if (targetKlass.getType() == Type.Constructor) {
-            Klass defKlass = ref.getField(meta.Constructor_clazz).getMirrorKlass();
-            Symbol<Signature> constructorSig = context.getSignatures().lookupValidSignature(Meta.toHostString(ref.getField(meta.Constructor_signature)));
-            plantMethodMemberName(self, constructorSig, defKlass, Name.INIT, meta.MNflags, REF_invokeSpecial, meta);
-            self.setField(meta.MNclazz, defKlass.mirror());
+            Method target = Method.getHostReflectiveConstructorRoot(ref);
+            int refKind = target.getRefKind();
+            plantResolvedMethod(self, target, refKind, meta.MNflags, meta);
+            self.setField(meta.MNclazz, target.getDeclaringKlass().mirror());
         } else {
             throw EspressoError.shouldNotReachHere("invalid argument for MemberName.init: " + ref.getKlass());
         }
@@ -272,31 +271,30 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 }
             }
         }
-        // TODO(garcia) access checks ?
-        // StaticObject callerKlass = (StaticObject.isNull(caller) ? meta.Object.mirror() : caller;
+
+        Klass callerKlass = StaticObject.isNull(caller) ? meta.Object : caller.getMirrorKlass();
         String desc = Meta.toHostString(type);
         switch (flags & ALL_KINDS) {
             case MN_IS_CONSTRUCTOR:
                 Symbol<Signature> constructorSignature = meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc);
-                plantMethodMemberName(memberName, constructorSignature, defKlass, methodName, flagField, refKind, meta);
+                plantMethodMemberName(memberName, constructorSignature, defKlass, callerKlass, methodName, flagField, refKind, meta);
                 memberName.setHiddenField(meta.HIDDEN_VMINDEX, -3_000_000L);
                 break;
             case MN_IS_METHOD:
                 Signatures signatures = meta.getEspressoLanguage().getSignatures();
                 Symbol<Signature> sig = signatures.lookupValidSignature(desc);
                 if (refKind == REF_invokeStatic || refKind == REF_invokeInterface) {
-                    plantMethodMemberName(memberName, sig, defKlass, methodName, flagField, refKind, meta);
+                    plantMethodMemberName(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
 
                 } else if (mhMethodId != None) {
                     assert (!isStaticSigPoly(mhMethodId.value));
                     if (isIntrinsicPolySig(mhMethodId)) {
-                        Method target = meta.invokeBasic;
-                        plantInvokeBasic(memberName, target, defKlass, methodName, flagField, refKind, meta);
+                        plantInvokeBasic(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
                     } else {
                         throw EspressoError.shouldNotReachHere("Should never need to resolve invokeGeneric MemberName");
                     }
                 } else if (refKind == REF_invokeVirtual || refKind == REF_invokeSpecial) {
-                    plantMethodMemberName(memberName, sig, defKlass, methodName, flagField, refKind, meta);
+                    plantMethodMemberName(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
                 }
                 flags = memberName.getIntField(flagField);
                 refKind = (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
@@ -351,15 +349,16 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     // MemberName planting
 
-    private static void plantInvokeBasic(StaticObject memberName, Method target, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
+    private static void plantInvokeBasic(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         assert (name == Name.invokeBasic);
-        assert (defKlass.getType() == target.getContext().getMeta().MethodHandle.getType() && target.getName() == target.getContext().getMeta().invokeBasic.getName());
+        Method target = defKlass.lookupMethod(name, sig, callerKlass);
         memberName.setHiddenField(meta.HIDDEN_VMTARGET, target);
         memberName.setIntField(flagField, getMethodFlags(target, refKind));
     }
 
-    private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
-        Method target = defKlass.lookupMethod(name, sig);
+    @TruffleBoundary
+    private static void plantMethodMemberName(StaticObject memberName, Symbol<Signature> sig, Klass defKlass, Klass callerKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
+        Method target = defKlass.lookupMethod(name, sig, callerKlass);
         if (target == null) {
             throw defKlass.getContext().getMeta().throwEx(NoSuchMethodError.class);
         }
@@ -371,6 +370,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         memberName.setIntField(flagField, getMethodFlags(target, refKind));
     }
 
+    @TruffleBoundary
     private static void plantFieldMemberName(StaticObject memberName, Symbol<Type> type, Klass defKlass, Symbol<Name> name, Field flagField, int refKind, Meta meta) {
         Field field = defKlass.lookupField(name, type);
         if (field == null) {
@@ -431,24 +431,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         if (name == Name.linkToSpecial)
             return LinkToSpecial;
         return None;
-    }
-
-    @SuppressWarnings("unused")
-    private static boolean isMHinvoke(Klass klass, Symbol<Name> name) {
-        if (klass == null) {
-            return false;
-        }
-        if (!(klass.getType() == Type.MethodHandle)) {
-            return false;
-        }
-        Symbol<Signature> sig = Signature.Object_ObjectArray;
-        Method m = klass.lookupMethod(name, sig);
-        if (m == null) {
-            return false;
-        }
-        int required = ACC_NATIVE | ACC_VARARGS;
-        int flags = m.getModifiers();
-        return (flags & required) == required;
     }
 
     private static boolean isStaticSigPoly(int id) {
