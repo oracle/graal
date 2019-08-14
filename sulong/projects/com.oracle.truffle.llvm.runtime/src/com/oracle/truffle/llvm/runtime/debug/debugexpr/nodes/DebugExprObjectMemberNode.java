@@ -100,8 +100,9 @@ public class DebugExprObjectMemberNode extends LLVMExpressionNode implements Mem
         Object baseMember = baseNode.executeGeneric(frame);
         Pair<Object, DebugExprType> pair = findMemberAndType(baseMember);
         Object member = pair.getLeft();
-        if (member != null)
+        if (member != null) {
             return pair.getRight().parse(member);
+        }
         throw DebugExprException.symbolNotFound(this, fieldName, baseMember);
     }
 }

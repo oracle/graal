@@ -75,7 +75,7 @@ public abstract class DebugExprShortCircuitEvaluationNode extends LLVMExpression
 
     /**
      * Based on the value of the first term (='leftValue'), this method tells if the second term
-     * (='rightValue') is needed for the (short circuit) evaluation of the expression
+     * (='rightValue') is needed for the (short circuit) evaluation of the expression.
      */
     protected abstract boolean shouldEvaluateRight(boolean leftValue);
 
