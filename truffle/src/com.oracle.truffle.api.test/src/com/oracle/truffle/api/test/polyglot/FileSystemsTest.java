@@ -115,7 +115,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assume;
 
 @RunWith(Parameterized.class)
-public class VirtualizedFileSystemTest {
+public class FileSystemsTest {
 
     private static final String LANGUAGE_ID = "virtualised-fs-lang";
     private static final String FOLDER_EXISTING = "folder";
@@ -151,41 +151,34 @@ public class VirtualizedFileSystemTest {
         final List<Configuration> result = new ArrayList<>();
         final FileSystem fullIO = FileSystemProviderTest.newFullIOFileSystem();
         // Full IO
-        Path accessibleDir = createContent(
-                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+        Path accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
         Context ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).build();
         setCwd(ctx, accessibleDir, null);
         result.add(new Configuration("Full IO", ctx, accessibleDir, fullIO, true, true, true, true));
         // No IO
         ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
-        Path privateDir = createContent(
-                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+        Path privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
         result.add(new Configuration("No IO", ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, false, false, false, false));
         // No IO under language home - public file
         ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
-        privateDir = createContent(
-                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
         setCwd(ctx, privateDir, privateDir);
         result.add(new Configuration("No IO under language home - public file", ctx, privateDir, fullIO, false, false, false, false));
         // No IO under language home - internal file
         ctx = Context.newBuilder(LANGUAGE_ID).allowIO(false).build();
-        privateDir = createContent(
-                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
         setCwd(ctx, privateDir, privateDir);
         result.add(new Configuration("No IO under language home - internal file", ctx, privateDir, privateDir, fullIO, false, true, false, false, true, (env, p) -> env.getInternalTruffleFile(p)));
         // Checked IO
-        accessibleDir = createContent(
-                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+        accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
-        Path readOnlyDir = createContent(
-                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+        Path readOnlyDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
-        privateDir = createContent(
-                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
         AccessPredicate read = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
         AccessPredicate write = new AccessPredicate(Arrays.asList(accessibleDir, readOnlyDir));
@@ -220,7 +213,7 @@ public class VirtualizedFileSystemTest {
 
         // PreInitializeContextFileSystem in image build time
         fileSystem = createPreInitializeContextFileSystem();
-        Path workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()).toString()), fileSystem);
+        Path workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toString()), fileSystem);
         fileSystem.setCurrentWorkingDirectory(workDir);
         createContent(workDir, fileSystem);
         ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
@@ -228,7 +221,7 @@ public class VirtualizedFileSystemTest {
 
         // PreInitializeContextFileSystem in image execution time
         fileSystem = createPreInitializeContextFileSystem();
-        workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()).toString()), fileSystem);
+        workDir = mkdirs(fileSystem.parsePath(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toString()), fileSystem);
         fileSystem.setCurrentWorkingDirectory(workDir);
         switchToImageExecutionTime(fileSystem, workDir);
         createContent(workDir, fileSystem);
@@ -249,7 +242,7 @@ public class VirtualizedFileSystemTest {
         }
     }
 
-    public VirtualizedFileSystemTest(final Configuration cfg) {
+    public FileSystemsTest(final Configuration cfg) {
         this.cfg = cfg;
     }
 
@@ -419,7 +412,7 @@ public class VirtualizedFileSystemTest {
     }
 
     @Test
-    public void testCreateDirectoryTest() {
+    public void testCreateDirectory() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
@@ -443,7 +436,7 @@ public class VirtualizedFileSystemTest {
     }
 
     @Test
-    public void testCreateFileTest() {
+    public void testCreateFile() {
         final Context ctx = cfg.getContext();
         final Path path = cfg.getPath();
         final boolean canRead = cfg.canRead();
@@ -1620,17 +1613,17 @@ public class VirtualizedFileSystemTest {
         final Context ctx = cfg.getContext();
         languageAction = (Env env) -> {
             try {
-                TruffleFile tmpf1 = env.createTempFile("prefix", ".ext");
+                TruffleFile tmpf1 = env.createTempFile(null, "prefix", ".ext");
                 Assert.assertTrue(tmpf1.exists());
                 Assert.assertTrue(tmpf1.isRegularFile());
                 Assert.assertTrue(tmpf1.getName().startsWith("prefix"));
                 Assert.assertTrue(tmpf1.getName().endsWith(".ext"));
-                TruffleFile tmpf2 = env.createTempFile("prefix", ".ext");
+                TruffleFile tmpf2 = env.createTempFile(null, "prefix", ".ext");
                 Assert.assertTrue(tmpf2.exists());
                 Assert.assertTrue(tmpf2.isRegularFile());
                 Assert.assertTrue(tmpf2.getName().startsWith("prefix"));
                 Assert.assertTrue(tmpf2.getName().endsWith(".ext"));
-                TruffleFile tmpf3 = env.createTempFile("prefix", null);
+                TruffleFile tmpf3 = env.createTempFile(null, "prefix", null);
                 Assert.assertTrue(tmpf3.exists());
                 Assert.assertTrue(tmpf3.isRegularFile());
                 Assert.assertTrue(tmpf3.getName().startsWith("prefix"));
@@ -1690,11 +1683,11 @@ public class VirtualizedFileSystemTest {
         final Context ctx = cfg.getContext();
         languageAction = (Env env) -> {
             try {
-                TruffleFile tmpf1 = env.createTempDirectory("prefix");
+                TruffleFile tmpf1 = env.createTempDirectory(null, "prefix");
                 Assert.assertTrue(tmpf1.exists());
                 Assert.assertTrue(tmpf1.isDirectory());
                 Assert.assertTrue(tmpf1.getName().startsWith("prefix"));
-                TruffleFile tmpf2 = env.createTempDirectory("prefix");
+                TruffleFile tmpf2 = env.createTempDirectory(null, "prefix");
                 Assert.assertTrue(tmpf2.exists());
                 Assert.assertTrue(tmpf2.isDirectory());
                 Assert.assertTrue(tmpf2.getName().startsWith("prefix"));
@@ -2076,7 +2069,7 @@ public class VirtualizedFileSystemTest {
 
     private static void resetLanguageHomes() {
         try {
-            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, VirtualizedFileSystemTest.class.getClassLoader());
+            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, FileSystemsTest.class.getClassLoader());
             final Method reset = langCacheClz.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
             reset.setAccessible(true);
             reset.invoke(null);

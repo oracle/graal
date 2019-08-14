@@ -1608,12 +1608,14 @@ public final class TruffleFile {
             TruffleFile target;
             try {
                 target = createUniquePath(targetDirectory, prefix, suffix);
-                if (dir) {
-                    target.createDirectory(attrs);
-                } else {
-                    target.createFile(attrs);
+                if (!target.exists()) {
+                    if (dir) {
+                        target.createDirectory(attrs);
+                    } else {
+                        target.createFile(attrs);
+                    }
+                    return target;
                 }
-                return target;
             } catch (InvalidPathException e) {
                 throw new IllegalArgumentException("Prefix (" + prefix + ") or suffix (" + suffix + ") are not valid file name components");
             } catch (FileAlreadyExistsException e) {

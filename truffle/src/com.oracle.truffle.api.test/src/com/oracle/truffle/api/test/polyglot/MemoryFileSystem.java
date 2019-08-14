@@ -1131,7 +1131,7 @@ public final class MemoryFileSystem implements FileSystem {
         }
 
         static Path getRootDirectory() {
-            List<? extends Path> rootDirectories = VirtualizedFileSystemTest.getRootDirectories();
+            List<? extends Path> rootDirectories = FileSystemsTest.getRootDirectories();
             if (rootDirectories.isEmpty()) {
                 throw new IllegalStateException("No root directory.");
             }
