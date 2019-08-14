@@ -40,55 +40,60 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.LinkedList;
 
 final class PolyglotThreadInfo {
 
     static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null);
 
-    final Thread thread;
+    private final Reference<Thread> thread;
 
     private int enteredCount;
     final LinkedList<Object> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
 
     PolyglotThreadInfo(Thread thread) {
-        this.thread = thread;
+        this.thread = new WeakReference<>(thread);
+    }
+
+    Thread getThread() {
+        return thread.get();
     }
 
     boolean isCurrent() {
-        return thread == Thread.currentThread();
+        return getThread() == Thread.currentThread();
     }
 
     void enter() {
-        assert Thread.currentThread() == thread;
+        assert Thread.currentThread() == getThread();
         enteredCount++;
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
-        if (thread instanceof PolyglotThread) {
-            return ((PolyglotThread) thread).isOwner(c);
+        if (getThread() instanceof PolyglotThread) {
+            return ((PolyglotThread) getThread()).isOwner(c);
         }
         return false;
     }
 
     void leave() {
-        assert Thread.currentThread() == thread;
+        assert Thread.currentThread() == getThread();
         --enteredCount;
     }
 
     boolean isLastActive() {
-        assert Thread.currentThread() == thread;
-        return thread != null && enteredCount == 1 && !cancelled;
+        assert Thread.currentThread() == getThread();
+        return getThread() != null && enteredCount == 1 && !cancelled;
     }
 
     boolean isActive() {
-        return thread != null && enteredCount > 0 && !cancelled;
+        return getThread() != null && enteredCount > 0 && !cancelled;
     }
 
     @Override
     public String toString() {
-        return super.toString() + "[thread=" + thread + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
+        return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
     }
-
 }

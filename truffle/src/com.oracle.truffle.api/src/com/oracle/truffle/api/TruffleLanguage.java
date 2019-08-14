@@ -48,6 +48,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.StandardOpenOption;
@@ -939,7 +940,8 @@ public abstract class TruffleLanguage<C> {
      * languages that deny access from multiple threads at the same time, multiple threads may be
      * initialized if they are used sequentially. This method will be invoked before the context is
      * {@link #initializeContext(Object) initialized} for the thread the context will be initialized
-     * with.
+     * with. If the thread is stored in the context it must be referenced using
+     * {@link WeakReference} to avoid leaking thread objects.
      * <p>
      * The {@link Thread#currentThread() current thread} may differ from the initialized thread.
      * <p>
@@ -958,12 +960,12 @@ public abstract class TruffleLanguage<C> {
      * Invoked the last time code will be executed for this thread and context. This allows the
      * language to perform cleanup actions for each thread and context. Threads might be disposed
      * before after or while a context is disposed. The {@link Thread#currentThread() current
-     * thread} may differ from the disposed thread.
-     * <p>
+     * thread} may differ from the disposed thread. Disposal of threads is only guaranteed for
+     * threads that were created by guest languages, so called {@link Env#createThread(Runnable)
+     * polyglot threads}. Other threads, created by the embedder, may be collected by the garbage
+     * collector before they can be disposed and may therefore not be disposed.
      *
-     * <b>Example multi-threaded language implementation: </b>
-     * {@link TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread}
-     *
+     * @see #initializeThread(Object, Thread) For usage details.
      * @since 0.28
      */
     @SuppressWarnings("unused")
