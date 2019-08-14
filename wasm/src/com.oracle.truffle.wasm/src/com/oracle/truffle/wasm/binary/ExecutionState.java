@@ -31,6 +31,7 @@ package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 import com.oracle.truffle.wasm.collection.IntArrayList;
+import com.oracle.truffle.wasm.collection.LongArrayList;
 
 public class ExecutionState {
     private int stackSize;
@@ -38,6 +39,7 @@ public class ExecutionState {
     private ByteArrayList byteConstants;
     private IntArrayList intConstants;
     private IntArrayList stackStates;
+    private LongArrayList numericLiterals;
 
     public ExecutionState() {
         this.stackSize = 0;
@@ -45,6 +47,7 @@ public class ExecutionState {
         this.byteConstants = new ByteArrayList();
         this.intConstants = new IntArrayList();
         this.stackStates = new IntArrayList();
+        this.numericLiterals = new LongArrayList();
     }
 
     public void push() {
@@ -107,5 +110,17 @@ public class ExecutionState {
 
     public int[] intConstants() {
         return intConstants.toArray();
+    }
+
+    public void saveNumericLiteral(long literal) {
+        numericLiterals.add(literal);
+    }
+
+    public int numericLiteralOffset() {
+        return numericLiterals.size();
+    }
+
+    public long[] numericLiterals() {
+        return numericLiterals.toArray();
     }
 }

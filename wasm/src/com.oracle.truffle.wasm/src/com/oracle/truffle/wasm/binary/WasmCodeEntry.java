@@ -42,6 +42,7 @@ public class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private byte[] localTypes;
     @CompilationFinal(dimensions = 1) private byte[] byteConstants;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
+    @CompilationFinal(dimensions = 1) private long[] numericLiterals;
 
     public WasmCodeEntry(int functionIndex, byte[] data) {
         this.functionIndex = functionIndex;
@@ -51,6 +52,7 @@ public class WasmCodeEntry {
         this.localTypes = null;
         this.byteConstants = null;
         this.intConstants = null;
+        this.numericLiterals = null;
     }
 
     public byte[] data() {
@@ -119,6 +121,26 @@ public class WasmCodeEntry {
 
     public void setIntConstants(int[] intConstants) {
         this.intConstants = intConstants;
+    }
+
+    public long numericLiteral(int index) {
+        return numericLiterals[index];
+    }
+
+    public int numericLiteralAsInt(int index) {
+        return (int) numericLiterals[index];
+    }
+
+    public float numericLiteralAsFloat(int index) {
+        return Float.intBitsToFloat(numericLiteralAsInt(index));
+    }
+
+    public double numericLiteralAsDouble(int index) {
+        return Double.longBitsToDouble(numericLiterals[index]);
+    }
+
+    public void setNumericLiterals(long[] numericLiterals) {
+        this.numericLiterals = numericLiterals;
     }
 
     public int numLocals() {

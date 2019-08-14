@@ -50,15 +50,21 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
     @CompilationFinal private int byteConstantLength;
 
     /**
-     * The number of bytes in the int constant table used by this node.
+     * The number of integers in the int constant table used by this node.
      */
     @CompilationFinal private int intConstantLength;
 
-    public WasmNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength, int byteConstantLength) {
+    /**
+     * The number of literals in the numeric literals table used by this node.
+     */
+    @CompilationFinal private int numericLiteralLength;
+
+    public WasmNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength, int byteConstantLength, int numericLiteralLength) {
         this.wasmModule = wasmModule;
         this.codeEntry = codeEntry;
         this.byteLength = byteLength;
         this.byteConstantLength = byteConstantLength;
+        this.numericLiteralLength = numericLiteralLength;
     }
 
     /**
@@ -113,5 +119,13 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
 
     public void setIntConstantLength(int intConstantLength) {
         this.intConstantLength = intConstantLength;
+    }
+
+    public int numericLiteralLength() {
+        return numericLiteralLength;
+    }
+
+    public void setNumericLiteralLength(int numericLiteralLength) {
+        this.numericLiteralLength = numericLiteralLength;
     }
 }

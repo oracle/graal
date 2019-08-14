@@ -27,40 +27,55 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+package com.oracle.truffle.wasm.collection;
 
-package com.oracle.truffle.wasm.binary;
+public class LongArrayList {
+    private static final long[] EMPTY_LONG_ARRAY = new long[0];
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
+    private long[] array;
+    private int offset;
 
-public class WasmIfNode extends WasmNode {
-    @CompilationFinal private final byte returnTypeId;
-    @CompilationFinal private final int initialStackPointer;
-    @Child WasmNode trueBranch;
-    @Child WasmNode falseBranch;
-
-    public WasmIfNode(WasmModule wasmModule, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer, int byteConstantLength, int numericLiteralLength) {
-        super(wasmModule, codeEntry, byteLength, byteConstantLength, numericLiteralLength);
-        this.returnTypeId = returnTypeId;
-        this.initialStackPointer = initialStackPointer;
-        this.trueBranch = trueBranch;
-        this.falseBranch = falseBranch;
+    public LongArrayList() {
+        this.array = null;
+        this.offset = 0;
     }
 
-    @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
-        int stackPointer = initialStackPointer - 1;
-        int condition = popInt(frame, stackPointer);
-        if (condition != 0) {
-            return trueBranch.execute(context, frame);
-        } else {
-            return falseBranch.execute(context, frame);
+    public void add(long n) {
+        ensureSize();
+        array[offset] = n;
+        offset++;
+    }
+
+    public long popBack() {
+        offset--;
+        return array[offset];
+    }
+
+    public long get(int index) {
+        return array[index];
+    }
+
+    public int size() {
+        return offset;
+    }
+
+    private void ensureSize() {
+        if (array == null) {
+            array = new long[4];
+        } else if (offset == array.length) {
+            long[] narray = new long[array.length * 2];
+            System.arraycopy(array, 0, narray, 0, offset);
+            array = narray;
         }
     }
 
-    @Override
-    public byte returnTypeId() {
-        return returnTypeId;
+    public long[] toArray() {
+        long[] result = new long[offset];
+        if (array != null) {
+            System.arraycopy(array, 0, result, 0, offset);
+            return result;
+        } else {
+            return EMPTY_LONG_ARRAY;
+        }
     }
-
 }

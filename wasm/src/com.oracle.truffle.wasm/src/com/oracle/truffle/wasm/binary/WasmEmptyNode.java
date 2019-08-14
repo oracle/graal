@@ -36,7 +36,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public class WasmEmptyNode extends WasmNode {
 
     public WasmEmptyNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength) {
-        super(wasmModule, codeEntry, byteLength, 0);
+        super(wasmModule, codeEntry, byteLength, 0, 0);
     }
 
     @Override

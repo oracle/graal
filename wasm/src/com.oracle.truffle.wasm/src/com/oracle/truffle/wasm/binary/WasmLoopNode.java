@@ -39,7 +39,7 @@ public class WasmLoopNode extends WasmNode {
     @CompilationFinal private final LoopNode loopNode;
 
     WasmLoopNode(WasmBlockNode block) {
-        super(block.wasmModule(), block.codeEntry(), block.byteLength(), block.byteConstantLength());
+        super(block.wasmModule(), block.codeEntry(), block.byteLength(), block.byteConstantLength(), block.numericLiteralLength());
         this.loopNode = Truffle.getRuntime().createLoopNode(block);
     }
 
