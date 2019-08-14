@@ -160,12 +160,20 @@ UnaryOp<out char kind>								(. kind='\0'; .)
 )
 													(. kind = t.val.charAt(0); .)
 .
-CastExpr<out DebugExpressionPair p>					(. DebugExprType typeP=null; .)
+CastExpr<out DebugExpressionPair p>					(. DebugExprType typeP=null; DebugExprTypeofNode typeNode=null; .)
 =
 [
-	IF (IsCast()) "(" DType<out typeP> ")"
+	IF (IsCast()) "(" 
+		(
+			DType<out typeP>
+		|
+			"typeof" "(" ident						(. typeNode = NF.createTypeofNode(t.val); .)
+			")" 
+		) 
+		")"
 ]
-UnaryExpr<out p> 								(. if(typeP!=null) { p = NF.createCastIfNecessary(p, typeP); } .)
+UnaryExpr<out p> 									(. if(typeP!=null) { p = NF.createCastIfNecessary(p, typeP); }
+														if(typeNode!=null) {p = NF.createPointerCastNode(p, typeNode);} .)
 .
 
 MultExpr<out DebugExpressionPair p>					(. DebugExpressionPair p1=null; .)
@@ -310,9 +318,7 @@ BaseType<out DebugExprType ty>						(. ty=null; boolean signed=false;.)
 |
 "void" 												(. ty = DebugExprType.getVoidType(); .)
 |
-"typeof" "(" ident 									(. ty = NF.getUserdefinedType(t.val); .)
-         ")"
-|
+
 (
 	 "signed" 										(. signed = true; .)
 	

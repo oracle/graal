@@ -4,7 +4,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CompareOperator;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -271,12 +270,15 @@ public final class DebugExprNodeFactory {
         return DebugExpressionPair.create(node, array.getType().getInnerType());
     }
 
-    public DebugExprType getUserdefinedType(String structName) {
-        for (Scope s : globalScopes) {
+    public DebugExprTypeofNode createTypeofNode(String ident) {
+        return new DebugExprTypeofNode(ident, scopes);
+    }
 
-        }
-        // TODO find type of type name 'structName'
-        return DebugExprType.getStructType(structName);
+    @SuppressWarnings("static-method")
+    public DebugExpressionPair createPointerCastNode(DebugExpressionPair pair, DebugExprTypeofNode typeNode) {
+        checkError(pair, "pointer cast");
+        DebugExprPointerCastNode node = new DebugExprPointerCastNode(pair.getNode(), typeNode);
+        return DebugExpressionPair.create(node, node.getType());
     }
 
     public enum CompareKind {

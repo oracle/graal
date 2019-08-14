@@ -121,14 +121,6 @@ public class DebugExprType {
                 } else {
                     return new PointerType(innerType.getLLVMRuntimeType());
                 }
-            case STRUCT:
-                String identifier = null;
-                for (Entry<String, DebugExprType> e : structMap.entrySet()) {
-                    if (e.getValue() == this) {
-                        identifier = e.getKey();
-                    }
-                }
-                new StructureType(identifier, true, new Type[]{});
             default:
                 return VoidType.INSTANCE;
         }
@@ -362,7 +354,6 @@ public class DebugExprType {
             DebugExprType baseType = getTypeFromSymbolTableMetaObject(pointerType.getBaseType());
             return new DebugExprType(Kind.POINTER, baseType);
         } else {
-            System.out.println(metaObj + " is type of " + metaObj.getClass().getName());
             return DebugExprType.getVoidType();
         }
     }
