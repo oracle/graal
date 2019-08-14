@@ -199,7 +199,6 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;

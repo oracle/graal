@@ -77,17 +77,17 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             case ValueTypes.VOID_TYPE:
                 return WasmVoidResult.getInstance();
             case ValueTypes.I32_TYPE:
-                Assert.assertEquals(returnValue >>> 32, 0, "Expected i32 value, popped value was larger than 32 bits.");
+                assert returnValue >>> 32 == 0;
                 return (int) returnValue;
             case ValueTypes.I64_TYPE:
                 return returnValue;
             case ValueTypes.F32_TYPE:
-                Assert.assertEquals(returnValue >>> 32, 0, "Expected f32 value, popped value was larger than 32 bits.");
+                assert returnValue >>> 32 == 0;
                 return Float.intBitsToFloat((int) returnValue);
             case ValueTypes.F64_TYPE:
                 return Double.longBitsToDouble(returnValue);
             default:
-                Assert.fail(String.format("Unknown type: 0x%02X", body.returnTypeId()));
+                assert false;
                 return null;
         }
     }
@@ -96,7 +96,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     private void argumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         int numArgs = body.wasmModule().symbolTable().function(codeEntry().functionIndex()).numArguments();
-        Assert.assertEquals(args.length, numArgs, "Invalid number of arguments for function call");
+        assert args.length == numArgs;
         for (int i = 0; i != numArgs; ++i) {
             FrameSlot slot = codeEntry.localSlot(i);
             FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(slot);
