@@ -44,14 +44,15 @@ public final class OptimizedLoopNode extends LoopNode {
         return repeatingNode;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void executeLoop(VirtualFrame frame) {
-        executeLoopWithStatus(frame);
+        executeLoopWithValue(frame);
     }
 
     @Override
-    public int executeLoopWithStatus(VirtualFrame frame) {
-        int status;
+    public Object executeLoopWithValue(VirtualFrame frame) {
+        Object status;
         int loopCount = 0;
         try {
             while ((status = repeatingNode.executeRepeatingWithStatus(frame)) == CONTINUE_LOOP_STATUS) {

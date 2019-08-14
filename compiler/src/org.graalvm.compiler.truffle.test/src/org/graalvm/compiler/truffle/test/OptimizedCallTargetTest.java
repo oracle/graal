@@ -360,7 +360,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    loopChild.executeLoop(frame);
+                    loopChild.executeLoopWithValue(frame);
                     return super.execute(frame);
                 }
 
@@ -400,7 +400,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    loopChild.executeLoop(frame);
+                    loopChild.executeLoopWithValue(frame);
                     return super.execute(frame);
                 }
 

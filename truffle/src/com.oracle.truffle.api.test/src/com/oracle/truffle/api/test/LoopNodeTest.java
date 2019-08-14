@@ -214,7 +214,7 @@ public class LoopNodeTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            loop.executeLoop(frame);
+            loop.executeLoopWithValue(frame);
             return null;
         }
 
