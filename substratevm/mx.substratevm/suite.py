@@ -47,7 +47,12 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
             "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
             "packedResource": True,
-        }
+        },
+
+        "DACAPO_SVM" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
+            "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
+        },
     },
 
     "projects": {
