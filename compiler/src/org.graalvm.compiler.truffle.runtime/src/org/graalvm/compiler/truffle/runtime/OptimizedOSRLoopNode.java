@@ -44,6 +44,8 @@ import com.oracle.truffle.api.source.SourceSection;
 import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.options.OptionValues;
 
+import static com.oracle.truffle.api.nodes.RepeatingNode.CONTINUE_LOOP_STATUS;
+
 /**
  * Loop node implementation that supports on-stack-replacement with compiled code.
  *
@@ -105,42 +107,47 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     }
 
     @Override
-    public void executeLoop(VirtualFrame frame) {
+    public int executeLoopWithStatus(VirtualFrame frame) {
         if (CompilerDirectives.inInterpreter()) {
             try {
-                boolean done = false;
-                while (!done) {
+                int status = CONTINUE_LOOP_STATUS;
+                while (status == CONTINUE_LOOP_STATUS) {
                     if (compiledOSRLoop == null) {
-                        done = profilingLoop(frame);
+                        status = profilingLoop(frame);
                     } else {
-                        done = compilingLoop(frame);
+                        status = compilingLoop(frame);
                     }
                 }
+                return status;
             } finally {
                 baseLoopCount = 0;
             }
         } else {
-            while (repeatableNode.executeRepeating(frame)) {
+            int status;
+            while ((status = repeatableNode.executeRepeatingWithStatus(frame)) == CONTINUE_LOOP_STATUS) {
                 if (CompilerDirectives.inInterpreter()) {
                     // compiled method got invalidated. We might need OSR again.
-                    executeLoop(frame);
-                    return;
+                    return executeLoopWithStatus(frame);
                 }
             }
+            return status;
         }
     }
 
-    private boolean profilingLoop(VirtualFrame frame) {
+    private int profilingLoop(VirtualFrame frame) {
         int iterations = 0;
         try {
-            while (repeatableNode.executeRepeating(frame)) {
+            int status;
+            while ((status = repeatableNode.executeRepeatingWithStatus(frame)) == CONTINUE_LOOP_STATUS) {
                 // the baseLoopCount might be updated from a child loop during an iteration.
                 if (++iterations + baseLoopCount > osrThreshold) {
                     compileLoop(frame);
-                    return false;
+                    // The status returned here is CONTINUE_LOOP_STATUS.
+                    return status;
                 }
             }
-            return true;
+            // The status returned here is different than CONTINUE_LOOP_STATUS.
+            return status;
         } finally {
             baseLoopCount += iterations;
             reportParentLoopCount(iterations);
@@ -172,40 +179,43 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         return compiledOSRLoop;
     }
 
-    private boolean compilingLoop(VirtualFrame frame) {
+    private int compilingLoop(VirtualFrame frame) {
         int iterations = 0;
         try {
+            int status;
             do {
                 OptimizedCallTarget target = compiledOSRLoop;
                 if (target == null) {
-                    return false;
+                    return CONTINUE_LOOP_STATUS;
                 }
                 if (target.isValid()) {
                     return callOSR(target, frame);
                 }
                 if (!target.isCompiling()) {
                     invalidateOSRTarget(this, "OSR compilation failed or cancelled");
-                    return false;
+                    return CONTINUE_LOOP_STATUS;
                 }
 
                 iterations++;
 
-            } while (repeatableNode.executeRepeating(frame));
-            return true;
+            } while ((status = repeatableNode.executeRepeatingWithStatus(frame)) == CONTINUE_LOOP_STATUS);
+            return status;
         } finally {
             baseLoopCount += iterations;
             reportParentLoopCount(iterations);
         }
     }
 
-    private boolean callOSR(OptimizedCallTarget target, VirtualFrame frame) {
-        if (target.callOSR(frame) == Boolean.TRUE) {
-            return true;
+    private int callOSR(OptimizedCallTarget target, VirtualFrame frame) {
+        Integer continueStatus = Integer.valueOf(CONTINUE_LOOP_STATUS);
+        Object status = target.callOSR(frame);
+        if (!continueStatus.equals(status)) {
+            return (int) status;
         } else {
             if (!target.isValid()) {
                 invalidateOSRTarget(this, "OSR compilation got invalidated");
             }
-            return false;
+            return (int) status;
         }
     }
 
@@ -395,12 +405,13 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         protected Object executeImpl(VirtualFrame frame) {
             VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
-            while (loopNode.getRepeatingNode().executeRepeating(parentFrame)) {
+            int status;
+            while ((status = loopNode.getRepeatingNode().executeRepeatingWithStatus(parentFrame)) == CONTINUE_LOOP_STATUS) {
                 if (CompilerDirectives.inInterpreter()) {
-                    return Boolean.FALSE;
+                    return CONTINUE_LOOP_STATUS;
                 }
             }
-            return Boolean.TRUE;
+            return status;
         }
 
         @Override
@@ -475,12 +486,13 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             FrameWithoutBoxing parentFrame = (FrameWithoutBoxing) (loopFrame.getArguments()[0]);
             executeTransfer(parentFrame, loopFrame, readFrameSlots, readFrameSlotsTags);
             try {
-                while (loopNode.getRepeatingNode().executeRepeating(loopFrame)) {
+                int status;
+                while ((status = loopNode.getRepeatingNode().executeRepeatingWithStatus(loopFrame)) == CONTINUE_LOOP_STATUS) {
                     if (CompilerDirectives.inInterpreter()) {
-                        return Boolean.FALSE;
+                        return CONTINUE_LOOP_STATUS;
                     }
                 }
-                return Boolean.TRUE;
+                return status;
             } finally {
                 executeTransfer(loopFrame, parentFrame, writtenFrameSlots, writtenFrameSlotsTags);
             }
