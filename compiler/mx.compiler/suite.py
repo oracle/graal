@@ -304,6 +304,14 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.code",
+          "jdk.vm.ci.services",
+          "jdk.vm.ci.runtime",
+        ],
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "13+",
       "checkPackagePrefix" : "false",
