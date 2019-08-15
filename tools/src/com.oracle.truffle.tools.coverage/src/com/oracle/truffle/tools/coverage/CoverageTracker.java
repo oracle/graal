@@ -38,7 +38,6 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
@@ -65,12 +64,14 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     private final List<AbstractCoverageNode> coverageNodes = new ArrayList<>();
-    private final List<LoadSourceSectionEvent> loadedEvents = new ArrayList<>();
+    private final List<LoadSourceSectionEvent> loadedRoots = new ArrayList<>();
+    private final List<LoadSourceSectionEvent> loadedStatements = new ArrayList<>();
     private final Env env;
     private boolean tracking;
     private boolean closed;
-    private EventBinding<LoadSourceSectionListener> loadedBinding;
+    private EventBinding<LoadSourceSectionListener> loadedRootsBinding;
     private EventBinding<ExecutionEventNodeFactory> coveredBinding;
+    private EventBinding<LoadSourceSectionListener> loadedStatementBinding;
 
     private CoverageTracker(Env env) {
         this.env = env;
@@ -117,6 +118,10 @@ public final class CoverageTracker implements AutoCloseable {
         }
     }
 
+    private static long getCount(AbstractCoverageNode coverageNode) {
+        return coverageNode instanceof CountingCoverageNode ? ((CountingCoverageNode) coverageNode).getCount() : -1;
+    }
+
     public synchronized void start(Config config) {
         if (closed) {
             throw new IllegalStateException("Coverage Tracker is closed");
@@ -149,26 +154,33 @@ public final class CoverageTracker implements AutoCloseable {
     }
 
     private void processLoaded(Map<Source, Map<SourceSection, RootData>> sourceCoverage) {
-        for (LoadSourceSectionEvent loadedEvent : loadedEvents) {
+        processLoadedRoots(sourceCoverage);
+        processLoadedSections(sourceCoverage);
+    }
+
+    private void processLoadedSections(Map<Source, Map<SourceSection, RootData>> sourceCoverage) {
+        for (LoadSourceSectionEvent loadedEvent : loadedStatements) {
+            final SourceSection section = loadedEvent.getSourceSection();
+            final Source source = section.getSource();
+            final Node node = loadedEvent.getNode();
+            final RootNode rootNode = node.getRootNode();
+            final Map<SourceSection, RootData> perRootData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
+            final RootData rootData = perRootData.get(rootNode.getSourceSection());
+            rootData.loadedStatements.add(section);
+        }
+    }
+
+    private void processLoadedRoots(Map<Source, Map<SourceSection, RootData>> sourceCoverage) {
+        for (LoadSourceSectionEvent loadedEvent : loadedRoots) {
             final SourceSection section = loadedEvent.getSourceSection();
             final Source source = section.getSource();
             final Map<SourceSection, RootData> perRootData = sourceCoverage.computeIfAbsent(source, s -> new HashMap<>());
             final Node node = loadedEvent.getNode();
-            final InstrumentableNode instrumentableNode = (InstrumentableNode) node;
             final RootNode rootNode = node.getRootNode();
             if (rootNode == null) {
                 continue;
             }
-            if (instrumentableNode.hasTag(StandardTags.RootTag.class)) {
-                perRootData.put(rootNode.getSourceSection(), new RootData(section, rootNode.getName()));
-                continue;
-            }
-            if (instrumentableNode.hasTag(StandardTags.StatementTag.class)) {
-                final RootData rootData = perRootData.get(rootNode.getSourceSection());
-                rootData.loadedStatements.add(section);
-                continue;
-            }
-            throw new IllegalStateException("Found a node without adequate tag: " + instrumentableNode);
+            perRootData.put(rootNode.getSourceSection(), new RootData(section, rootNode.getName()));
         }
     }
 
@@ -196,10 +208,6 @@ public final class CoverageTracker implements AutoCloseable {
         }
     }
 
-    private static long getCount(AbstractCoverageNode coverageNode) {
-        return coverageNode instanceof CountingCoverageNode ? ((CountingCoverageNode) coverageNode).getCount() : -1;
-    }
-
     @Override
     public synchronized void close() {
         closed = true;
@@ -213,13 +221,14 @@ public final class CoverageTracker implements AutoCloseable {
         if (f == null) {
             f = DEFAULT_FILTER;
         }
+        instrumentLoadedRoots(instrumenter, f);
+        instrumentLoadedStatements(instrumenter, f);
+        instrumentExecution(config, instrumenter, f);
+
+    }
+
+    private void instrumentExecution(Config config, Instrumenter instrumenter, SourceSectionFilter f) {
         final SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.StatementTag.class).and(f).build();
-        loadedBinding = instrumenter.attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
-            @Override
-            public void onLoad(LoadSourceSectionEvent event) {
-                add(event);
-            }
-        }, true);
         coveredBinding = instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
@@ -228,15 +237,39 @@ public final class CoverageTracker implements AutoCloseable {
                 return coverageNode;
             }
         });
-
     }
 
-    private synchronized void add(LoadSourceSectionEvent event) {
-        loadedEvents.add(event);
+    private void instrumentLoadedStatements(Instrumenter instrumenter, SourceSectionFilter f) {
+        final SourceSectionFilter statemtnFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).and(f).build();
+        loadedStatementBinding = instrumenter.attachLoadSourceSectionListener(statemtnFilter, new LoadSourceSectionListener() {
+            @Override
+            public void onLoad(LoadSourceSectionEvent event) {
+                addStatement(event);
+            }
+        }, true);
+    }
+
+    private void instrumentLoadedRoots(Instrumenter instrumenter, SourceSectionFilter f) {
+        final SourceSectionFilter rootFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).and(f).build();
+        loadedRootsBinding = instrumenter.attachLoadSourceSectionListener(rootFilter, new LoadSourceSectionListener() {
+            @Override
+            public void onLoad(LoadSourceSectionEvent event) {
+                addRoot(event);
+            }
+        }, true);
+    }
+
+    private synchronized void addRoot(LoadSourceSectionEvent event) {
+        loadedRoots.add(event);
+    }
+
+    private synchronized void addStatement(LoadSourceSectionEvent event) {
+        loadedStatements.add(event);
     }
 
     private void disposeBindings() {
-        loadedBinding.dispose();
+        loadedRootsBinding.dispose();
+        loadedStatementBinding.dispose();
         coveredBinding.dispose();
     }
 
