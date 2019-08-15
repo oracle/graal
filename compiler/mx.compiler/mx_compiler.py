@@ -1072,6 +1072,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
                             the GraalJDK was update/created (True) or was already up to date (False)
 
     """
+    update_reason = None
     if dst_jdk_dir is None:
         graaljdks_dir = mx.ensure_dir_exists(join(_suite.get_output_root(platformDependent=True), 'graaljdks'))
         jdk_suffix = '-'.join([d.short_name for d in _graalvm_components])
@@ -1085,11 +1086,36 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
         if dst_jdk_dir == src_jdk.home:
             mx.abort("Cannot overwrite source JDK: {}".format(src_jdk))
 
+    # When co-developing JVMCI/JDK changes with Graal, the source JDK
+    # may have changed and we want to pick up these changes.
+    source_jdk_timestamps_file = dst_jdk_dir + '.source_jdk_timestamps'
+    timestamps = []
+    for root, _, filenames in os.walk(jdk.home):
+        for name in filenames:
+            ts = mx.TimeStampFile(join(root, name))
+            timestamps.append(str(ts))
+    jdk_timestamps = os.linesep.join(timestamps)
+    if exists(source_jdk_timestamps_file):
+        with open(source_jdk_timestamps_file) as fp:
+            old_jdk_timestamps = fp.read()
+        if old_jdk_timestamps != jdk_timestamps:
+            update_reason = 'source JDK was updated'
+    with open(source_jdk_timestamps_file, 'w') as fp:
+        fp.write(jdk_timestamps)
+
     jvmci_release_file = mx.TimeStampFile(join(dst_jdk_dir, 'release.jvmci'))
-    newer = [e for e in _graal_config().jars if jvmci_release_file.isOlderThan(e)]
-    if not newer:
+    if update_reason is None:
+        if not exists(dst_jdk_dir):
+            update_reason = dst_jdk_dir + ' does not exist'
+        else:
+            newer = [e for e in _graal_config().jars if jvmci_release_file.isOlderThan(e)]
+            if newer:
+                update_reason = '{} is older than {}'.format(jvmci_release_file, mx.TimeStampFile(newer[0]))
+
+    if update_reason is None:
         return dst_jdk_dir, False
 
+    mx.log('Updating/creating {} from {} since {}'.format(dst_jdk_dir, src_jdk.home, update_reason))
     def _update_file(src, dst):
         if mx.TimeStampFile(dst).isOlderThan(mx.TimeStampFile(src)):
             mx.log('Copying {} to {}'.format(src, dst))
@@ -1098,7 +1124,6 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
     if isJDK8:
         jre_dir = join(dst_jdk_dir, 'jre')
         if not exists(dst_jdk_dir):
-            mx.log('Creating {} from {}'.format(dst_jdk_dir, src_jdk.home))
             shutil.copytree(src_jdk.home, dst_jdk_dir)
 
         boot_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'boot'))
@@ -1118,7 +1143,6 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
         _check_using_latest_jars(module_dists)
         if exists(dst_jdk_dir):
             shutil.rmtree(dst_jdk_dir)
-        mx.log('Updating/creating {} from {} since {} is older than {}'.format(dst_jdk_dir, src_jdk.home, jvmci_release_file, mx.TimeStampFile(newer[0])))
         jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names)
         jre_dir = dst_jdk_dir
         jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
