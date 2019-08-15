@@ -9,12 +9,12 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import static com.oracle.truffle.espresso.nodes.QuickNode.nullCheck;
 
-public abstract class ChildSetFieldNode extends Node {
+public abstract class AbstractSetFieldNode extends Node {
     final Field field;
-    final boolean isStatic;
-    final int slotCount;
+    private final boolean isStatic;
+    private final int slotCount;
 
-    ChildSetFieldNode(Field field) {
+    AbstractSetFieldNode(Field field) {
         this.field = field;
         this.slotCount = field.getKind().getSlotCount();
         this.isStatic = field.isStatic();
@@ -22,7 +22,7 @@ public abstract class ChildSetFieldNode extends Node {
 
     public abstract void setField(VirtualFrame frame, BytecodeNode root, int top);
 
-    public static ChildSetFieldNode create(Field f) {
+    public static AbstractSetFieldNode create(Field f) {
         // @formatter:off
         switch (f.getKind()) {
             case Boolean: return new BooleanSetFieldNode(f);
@@ -41,13 +41,13 @@ public abstract class ChildSetFieldNode extends Node {
     }
 
     StaticObject getReceiver(VirtualFrame frame, BytecodeNode root, int top) {
-        return field.isStatic()
+        return isStatic
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(root.peekObject(frame, top - slotCount - 1));
+                        : nullCheck(root.peekObject(frame, top - 1 - slotCount));
     }
 }
 
-final class IntSetFieldNode extends ChildSetFieldNode {
+final class IntSetFieldNode extends AbstractSetFieldNode {
     IntSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Int;
@@ -55,13 +55,13 @@ final class IntSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        int value = root.peekInt(frame, top - slotCount);
+        int value = root.peekInt(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setIntField(field, value);
     }
 }
 
-final class BooleanSetFieldNode extends ChildSetFieldNode {
+final class BooleanSetFieldNode extends AbstractSetFieldNode {
     BooleanSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Boolean;
@@ -69,13 +69,13 @@ final class BooleanSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        boolean value = root.peekInt(frame, top - slotCount) != 0;
+        boolean value = root.peekInt(frame, top - 1) != 0;
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setBooleanField(field, value);
     }
 }
 
-final class CharSetFieldNode extends ChildSetFieldNode {
+final class CharSetFieldNode extends AbstractSetFieldNode {
     CharSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Char;
@@ -83,13 +83,13 @@ final class CharSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        char value = (char) root.peekInt(frame, top - slotCount);
+        char value = (char) root.peekInt(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setCharField(field, value);
     }
 }
 
-final class ShortSetFieldNode extends ChildSetFieldNode {
+final class ShortSetFieldNode extends AbstractSetFieldNode {
     ShortSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Short;
@@ -97,13 +97,13 @@ final class ShortSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        short value = (short) root.peekInt(frame, top - slotCount);
+        short value = (short) root.peekInt(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setShortField(field, value);
     }
 }
 
-final class ByteSetFieldNode extends ChildSetFieldNode {
+final class ByteSetFieldNode extends AbstractSetFieldNode {
     ByteSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Byte;
@@ -111,13 +111,13 @@ final class ByteSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        byte value = (byte) root.peekInt(frame, top - slotCount);
+        byte value = (byte) root.peekInt(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setByteField(field, value);
     }
 }
 
-final class LongSetFieldNode extends ChildSetFieldNode {
+final class LongSetFieldNode extends AbstractSetFieldNode {
     LongSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Long;
@@ -125,13 +125,13 @@ final class LongSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        long value = root.peekLong(frame, top - slotCount);
+        long value = root.peekLong(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setLongField(field, value);
     }
 }
 
-final class FloatSetFieldNode extends ChildSetFieldNode {
+final class FloatSetFieldNode extends AbstractSetFieldNode {
     FloatSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Float;
@@ -139,13 +139,13 @@ final class FloatSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        float value = root.peekFloat(frame, top - slotCount);
+        float value = root.peekFloat(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setFloatField(field, value);
     }
 }
 
-final class DoubleSetFieldNode extends ChildSetFieldNode {
+final class DoubleSetFieldNode extends AbstractSetFieldNode {
     DoubleSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Double;
@@ -153,13 +153,13 @@ final class DoubleSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        double value = root.peekDouble(frame, top - slotCount);
+        double value = root.peekDouble(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setDoubleField(field, value);
     }
 }
 
-final class ObjectSetFieldNode extends ChildSetFieldNode {
+final class ObjectSetFieldNode extends AbstractSetFieldNode {
     ObjectSetFieldNode(Field f) {
         super(f);
         assert f.getKind() == JavaKind.Object;
@@ -167,7 +167,7 @@ final class ObjectSetFieldNode extends ChildSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        Object value = root.peekObject(frame, top - slotCount);
+        StaticObject value = root.peekObject(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setField(field, value);
     }

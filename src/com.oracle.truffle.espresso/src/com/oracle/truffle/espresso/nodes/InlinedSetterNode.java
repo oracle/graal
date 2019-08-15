@@ -20,14 +20,15 @@ public class InlinedSetterNode extends QuickNode {
     protected final int stackEffect;
     final int slotCount;
 
-    @Child ChildSetFieldNode setFieldNode;
+    @Child
+    AbstractSetFieldNode setFieldNode;
 
     InlinedSetterNode(Method inlinedMethod, int opcode) {
         this.inlinedMethod = inlinedMethod;
         this.field = getInlinedField(inlinedMethod);
         this.slotCount = field.getKind().getSlotCount();
         this.stackEffect = Bytecodes.stackEffectOf(opcode);
-        setFieldNode = ChildSetFieldNode.create(this.field);
+        setFieldNode = AbstractSetFieldNode.create(this.field);
         assert field.isStatic() == inlinedMethod.isStatic();
     }
 
