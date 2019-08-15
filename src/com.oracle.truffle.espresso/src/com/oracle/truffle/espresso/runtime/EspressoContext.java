@@ -379,6 +379,7 @@ public final class EspressoContext {
     // region Options
 
     public final boolean InlineFieldAccessors = getEnv().getOptions().get(EspressoOptions.InlineFieldAccessors);
+    public final EspressoOptions.VerifyMode Verify = getEnv().getOptions().get(EspressoOptions.Verify);
 
     // endregion Options
 }
