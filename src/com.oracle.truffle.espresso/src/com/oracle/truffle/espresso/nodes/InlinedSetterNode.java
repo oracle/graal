@@ -20,8 +20,7 @@ public class InlinedSetterNode extends QuickNode {
     protected final int stackEffect;
     final int slotCount;
 
-    @Child
-    AbstractSetFieldNode setFieldNode;
+    @Child AbstractSetFieldNode setFieldNode;
 
     InlinedSetterNode(Method inlinedMethod, int opcode) {
         this.inlinedMethod = inlinedMethod;
