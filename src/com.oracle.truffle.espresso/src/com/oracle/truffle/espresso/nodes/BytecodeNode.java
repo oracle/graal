@@ -1389,7 +1389,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Method resolutionSeed = resolveMethod(opCode, bs.readCPI(curBCI));
-                QuickNode invoke = dispatchQuickened(curBCI, opCode, resolutionSeed, true);
+                QuickNode invoke = dispatchQuickened(curBCI, opCode, resolutionSeed, getContext().InlineFieldAccessors);
                 quick = injectQuick(curBCI, invoke);
             }
         }
@@ -1397,6 +1397,10 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
     }
 
+    /**
+     * Revert speculative quickening e.g. revert inlined fields accessors to a normal invoke.
+     * INVOKEVIRTUAL -> QUICK (InlinedGetter/SetterNode) -> QUICK (InvokeVirtualNode)
+     */
     int reQuickenInvoke(final VirtualFrame frame, int top, int curBCI, int opCode, Method resolutionSeed) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opCode);
@@ -1412,6 +1416,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     private static QuickNode dispatchQuickened(int curBCI, int opCode, Method resolutionSeed, boolean allowFieldAccessInlining) {
+        assert !allowFieldAccessInlining || EspressoLanguage.getCurrentContext().InlineFieldAccessors;
         QuickNode invoke;
         if (allowFieldAccessInlining && resolutionSeed.isInlinableGetter()) {
             invoke = InlinedGetterNode.create(resolutionSeed, opCode, curBCI);

@@ -375,4 +375,10 @@ public final class EspressoContext {
     public void unregisterThread(Thread thread) {
         activeThreads.remove(thread);
     }
+
+    // region Options
+
+    public final boolean InlineFieldAccessors = getEnv().getOptions().get(EspressoOptions.InlineFieldAccessors);
+
+    // endregion Options
 }

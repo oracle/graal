@@ -135,6 +135,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<VerifyMode> Verify = new OptionKey<>(VerifyMode.REMOTE, VERIFY_MODE_OPTION_TYPE);
 
+    @Option(help = "Speculatively inline field accessors.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> InlineFieldAccessors = new OptionKey<>(false);
+
     // Threads are enabled by default.
     public static final boolean ENABLE_THREADS = (System.getProperty("espresso.EnableThreads") == null) || Boolean.getBoolean("espresso.EnableThreads");
 
