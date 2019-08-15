@@ -483,13 +483,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public long GetFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
         assert name != null && type != null;
         Klass klass = clazz.getMirrorKlass();
-        klass.safeInitialize();
+
         Field field = null;
         Symbol<Name> fieldName = getNames().lookup(name);
         if (fieldName != null) {
             Symbol<Type> fieldType = getTypes().lookup(type);
             if (fieldType != null) {
                 // Lookup only if name and type are known symbols.
+                klass.safeInitialize();
                 field = klass.lookupField(fieldName, fieldType);
                 assert field == null || field.getType().equals(fieldType);
             }
@@ -882,7 +883,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         if (resolutionSeed.getDeclaringKlass().isInterface()) {
             target = ((ObjectKlass) receiver.getKlass()).itableLookup(resolutionSeed.getDeclaringKlass(), resolutionSeed.getITableIndex());
         } else {
-            target = receiver.getKlass().vtableLookup(resolutionSeed.getVTableIndex());
+            if (resolutionSeed.isConstructor()) {
+                target = resolutionSeed;
+            } else {
+                target = receiver.getKlass().vtableLookup(resolutionSeed.getVTableIndex());
+            }
         }
 
         assert target != null;
