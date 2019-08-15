@@ -26,14 +26,7 @@ package org.graalvm.compiler.lir.amd64.vector;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.Value;
+
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind;
@@ -45,12 +38,17 @@ import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.Value;
+
 import static java.lang.Double.doubleToRawLongBits;
 import static java.lang.Float.floatToRawIntBits;
-import static jdk.vm.ci.amd64.AMD64.rsp;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
@@ -62,6 +60,10 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 public final class AMD64Packing {
 
@@ -264,6 +266,7 @@ public final class AMD64Packing {
         @Alive({COMPOSITE}) private AMD64AddressValue input;
 
         private final int valcount;
+        @Temp({STACK}) private AllocatableValue packSpace;
 
         /**
          * Creates a LoadStackOp.
@@ -287,11 +290,13 @@ public final class AMD64Packing {
             // scratch is a QWORD in size, not XMM size, because it only needs to be as large as a
             // single scalar value. We don't want to pack anything larger than a QWORD at a time.
             this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+            this.packSpace = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.V256_BYTE));
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             assert isRegister(scratch) : "scratch must be a register";
+            assert isStackSlot(packSpace) : "pack space must be stack slot";
 
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
@@ -305,10 +310,9 @@ public final class AMD64Packing {
             if (sizeInBytes == YMM.getBytes()) {
                 masm.vmovdqu(asRegister(result), inputAddress);
             } else {
-                // Allocate a register-width of stack space for us to dump our values to.
-                masm.subq(rsp, YMM.getBytes());
-                int stackOffset = 0;
+                final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
 
+                int stackOffset = 0;
                 for (int i = 0; i < valcount;) {
                     // Number of array elements to be moved in a single instruction.
                     int elements = 1;
@@ -326,9 +330,9 @@ public final class AMD64Packing {
                     }
 
                     // We compute the addresses we're going to move between.
-                    final AMD64Address src = new AMD64Address(inputAddress.getBase(), inputAddress.getIndex(), inputAddress.getScale(),
-                        inputAddress.getDisplacement() + stackOffset + (inputAddress.getBase() == AMD64.rsp ? YMM.getBytes() : 0));
-                    final AMD64Address dst = new AMD64Address(rsp, stackOffset);
+                    // TODO: create helper for offsetting address
+                    final AMD64Address src = new AMD64Address(inputAddress.getBase(), inputAddress.getIndex(), inputAddress.getScale(), inputAddress.getDisplacement() + stackOffset);
+                    final AMD64Address dst = new AMD64Address(packSpaceAddress.getBase(), packSpaceAddress.getIndex(), packSpaceAddress.getScale(), packSpaceAddress.getDisplacement() + stackOffset);
 
                     // Perform the move.
                     addr2reg(crb, masm, movKind, asRegister(scratch), src);
@@ -341,10 +345,7 @@ public final class AMD64Packing {
                 }
 
                 // Write memory into vector register.
-                masm.vmovdqu(asRegister(result), new AMD64Address(rsp, 0));
-
-                // Pop scratch space.
-                masm.addq(rsp, YMM.getBytes());
+                masm.vmovdqu(asRegister(result), packSpaceAddress);
             }
         }
     }
@@ -366,6 +367,7 @@ public final class AMD64Packing {
         @Use({REG}) private AllocatableValue input;
 
         private final int valcount;
+        @Temp({STACK}) private AllocatableValue packSpace;
 
         /**
          * Creates a StoreStackOp.
@@ -389,11 +391,14 @@ public final class AMD64Packing {
             // scratch is a QWORD in size, not XMM size, because it only needs to be as large as a
             // single scalar value. We don't want to pack anything larger than a QWORD at a time.
             this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
+            this.packSpace = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.V256_BYTE));
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             assert isRegister(scratch) : "scratch must be a register";
+            assert isStackSlot(packSpace) : "pack space must be stack slot";
+
             final AMD64Kind vectorKind = (AMD64Kind) input.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
             final int sizeInBytes = valcount * scalarKind.getSizeInBytes();
@@ -406,11 +411,10 @@ public final class AMD64Packing {
             if (sizeInBytes == YMM.getBytes()) {
                 masm.vmovdqu(outputAddress, asRegister(input));
             } else {
-                // Allocate a register-width of stack space for us to dump our values to.
-                masm.subq(rsp, YMM.getBytes());
+                final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
 
                 // Write to temporary stack space from the vector register.
-                masm.vmovdqu(new AMD64Address(rsp, 0), asRegister(input));
+                masm.vmovdqu(packSpaceAddress, asRegister(input));
 
                 int stackOffset = 0;
                 for (int i = 0; i < valcount;) {
@@ -430,9 +434,8 @@ public final class AMD64Packing {
                     }
 
                     // We compute the addresses we're going to move between.
-                    final AMD64Address src = new AMD64Address(rsp, stackOffset);
-                    final AMD64Address dst = new AMD64Address(outputAddress.getBase(), outputAddress.getIndex(), outputAddress.getScale(),
-                        outputAddress.getDisplacement() + stackOffset + (outputAddress.getBase() == AMD64.rsp ? YMM.getBytes() : 0));
+                    final AMD64Address src = new AMD64Address(packSpaceAddress.getBase(), packSpaceAddress.getIndex(), packSpaceAddress.getScale(), packSpaceAddress.getDisplacement() + stackOffset);
+                    final AMD64Address dst = new AMD64Address(outputAddress.getBase(), outputAddress.getIndex(), outputAddress.getScale(), outputAddress.getDisplacement() + stackOffset);
 
                     // Perform the move.
                     addr2reg(crb, masm, movKind, asRegister(scratch), src);
@@ -443,9 +446,6 @@ public final class AMD64Packing {
                     stackOffset += movKind.getSizeInBytes();
                     i += elements;
                 }
-
-                // Pop scratch space.
-                masm.addq(rsp, YMM.getBytes());
             }
         }
     }
@@ -457,7 +457,6 @@ public final class AMD64Packing {
      */
     public static final class PackStackOp extends AMD64LIRInstruction {
 
-        private static final int YMM_LENGTH_IN_BYTES = 32;
         public static final LIRInstructionClass<PackStackOp> TYPE = LIRInstructionClass.create(PackStackOp.class);
 
         // Our destination should always be a register.
@@ -468,6 +467,7 @@ public final class AMD64Packing {
 
         // The values we're going to be packing.
         @Use({REG, STACK}) private AllocatableValue[] values;
+        @Temp({STACK}) private AllocatableValue packSpace;
 
         /**
          * Creates a PackStackOp.
@@ -486,32 +486,25 @@ public final class AMD64Packing {
             this.result = result;
             this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.values = values.toArray(new AllocatableValue[0]);
+
+            this.packSpace = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.V256_BYTE));
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             assert isRegister(scratch) : "scratch must be a register";
+            assert isStackSlot(packSpace) : "pack space must be stack slot";
+
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
 
-            // Allocate a register-width of stack space for us to dump our values to.
-            masm.subq(rsp, YMM.getBytes());
+            final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
 
             int stackOffset = 0;
             for (AllocatableValue value : values) {
-
                 // Move value into the temporary stack space.
-                AMD64Address target = new AMD64Address(rsp, stackOffset);
-                if (isStackSlot(value) && ((AMD64Address)crb.asAddress(value)).getBase() == AMD64.rsp) {
-                    // If the value is rsp-relative, we need to adjust it, accounting for the extra
-                    // space we just allocated.
-                    final AMD64Address original = (AMD64Address)crb.asAddress(value);
-                    final AMD64Address adjusted = new AMD64Address(original.getBase(), original.getIndex(), original.getScale(),
-                        original.getDisplacement() + YMM.getBytes());
-                    addr2reg(crb, masm, scalarKind, asRegister(scratch), adjusted);
-                    reg2addr(crb, masm, scalarKind, target, asRegister(scratch));
-                }
-                else move(crb, masm, target, value, scalarKind, asRegister(scratch));
+                final AMD64Address target = new AMD64Address(packSpaceAddress.getBase(), packSpaceAddress.getIndex(), packSpaceAddress.getScale(), packSpaceAddress.getDisplacement() + stackOffset);
+                move(crb, masm, target, value, scalarKind, asRegister(scratch));
 
                 // Increment address offset so that we place the next value further into the
                 // temporary space.
@@ -519,10 +512,7 @@ public final class AMD64Packing {
             }
 
             // Write memory into vector register.
-            masm.vmovdqu(asRegister(result), new AMD64Address(rsp, 0));
-
-            // Pop scratch space.
-            masm.addq(rsp, YMM.getBytes());
+            masm.vmovdqu(asRegister(result), packSpaceAddress);
         }
     }
 
