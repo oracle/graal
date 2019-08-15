@@ -308,6 +308,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     public static final DebugCounter resolveKlassCount = DebugCounter.create("resolveKlassCount");
     public static final DebugCounter resolveMethodCount = DebugCounter.create("resolveMethodCount");
 
+    public static final DebugCounter invokeNodes = DebugCounter.create("total invoke nodes");
+
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
 
     @CompilationFinal(dimensions = 1) //
@@ -386,7 +388,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         }
     }
 
-    private int peekInt(VirtualFrame frame, int slot) {
+    int peekInt(VirtualFrame frame, int slot) {
         return (int) FrameUtil.getLongSafe(frame, stackSlots[slot]);
     }
 
@@ -398,19 +400,19 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     // Boxed value.
-    private Object peekValue(VirtualFrame frame, int slot) {
+    Object peekValue(VirtualFrame frame, int slot) {
         return frame.getValue(stackSlots[slot]);
     }
 
-    private float peekFloat(VirtualFrame frame, int slot) {
+    float peekFloat(VirtualFrame frame, int slot) {
         return Float.intBitsToFloat((int) FrameUtil.getLongSafe(frame, stackSlots[slot]));
     }
 
-    private long peekLong(VirtualFrame frame, int slot) {
+    long peekLong(VirtualFrame frame, int slot) {
         return FrameUtil.getLongSafe(frame, stackSlots[slot]);
     }
 
-    private double peekDouble(VirtualFrame frame, int slot) {
+    double peekDouble(VirtualFrame frame, int slot) {
         return Double.longBitsToDouble(FrameUtil.getLongSafe(frame, stackSlots[slot]));
     }
 
@@ -424,7 +426,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         frame.setObject(stackSlots[slot], ReturnAddress.create(targetBCI));
     }
 
-    private void putObject(VirtualFrame frame, int slot, StaticObject value) {
+    void putObject(VirtualFrame frame, int slot, StaticObject value) {
         frame.setObject(stackSlots[slot], value);
     }
 
@@ -433,20 +435,20 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         frame.setObject(stackSlots[slot], value);
     }
 
-    private void putInt(VirtualFrame frame, int slot, int value) {
+    void putInt(VirtualFrame frame, int slot, int value) {
         frame.setLong(stackSlots[slot], value);
     }
 
-    private void putFloat(VirtualFrame frame, int slot, float value) {
+    void putFloat(VirtualFrame frame, int slot, float value) {
         frame.setLong(stackSlots[slot], Float.floatToRawIntBits(value));
     }
 
-    private void putLong(VirtualFrame frame, int slot, long value) {
+    void putLong(VirtualFrame frame, int slot, long value) {
         // frame.setObject(stackSlots[slot], StaticObject.NULL);
         frame.setLong(stackSlots[slot + 1], value);
     }
 
-    private void putDouble(VirtualFrame frame, int slot, double value) {
+    void putDouble(VirtualFrame frame, int slot, double value) {
         // frame.setObject(stackSlots[slot], StaticObject.NULL);
         frame.setLong(stackSlots[slot + 1], Double.doubleToRawLongBits(value));
     }
@@ -1399,6 +1401,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     private int quickenInvoke(final VirtualFrame frame, int top, int curBCI, int opCode) {
+        invokeNodes.inc();
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opCode);
         QuickNode quick;
@@ -1407,35 +1410,61 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
                 Method resolutionSeed = resolveMethod(opCode, bs.readCPI(curBCI));
-
-                QuickNode invoke = null;
-
-                if (resolutionSeed.isMethodHandleIntrinsic()) {
-                    invoke = new MethodHandleInvokeNode(resolutionSeed);
-                } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
-                    // Can happen in old classfiles that calls j.l.Object on interfaces.
-                    invoke = InvokeVirtualNodeGen.create(resolutionSeed);
-                } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
-                    invoke = new InvokeSpecialNode(resolutionSeed);
-                } else {
-                    // @formatter:off
-                    // Checkstyle: stop
-                    switch (opCode) {
-                        case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed);          break;
-                        case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
-                        case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
-                        case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed);         break;
-                        default              :
-                            throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
-                    }
-                    // @formatter:on
-                    // Checkstyle: resume
-                }
+                QuickNode invoke = dispatchQuickened(curBCI, opCode, resolutionSeed, getContext().InlineFieldAccessors);
                 quick = injectQuick(curBCI, invoke);
             }
         }
         // Perform the call outside of the lock.
         return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+    }
+
+    /**
+     * Revert speculative quickening e.g. revert inlined fields accessors to a normal invoke.
+     * INVOKEVIRTUAL -> QUICK (InlinedGetter/SetterNode) -> QUICK (InvokeVirtualNode)
+     */
+    int reQuickenInvoke(final VirtualFrame frame, int top, int curBCI, int opCode, Method resolutionSeed) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert Bytecodes.isInvoke(opCode);
+        QuickNode invoke = null;
+        synchronized (this) {
+            assert bs.currentBC(curBCI) == QUICK;
+            invoke = dispatchQuickened(curBCI, opCode, resolutionSeed, false);
+            char cpi = bs.readCPI(curBCI);
+            nodes[cpi] = nodes[cpi].replace(invoke);
+        }
+        // Perform the call outside of the lock.
+        return invoke.invoke(frame, top);
+    }
+
+    private static QuickNode dispatchQuickened(int curBCI, int opCode, Method resolutionSeed, boolean allowFieldAccessInlining) {
+        assert !allowFieldAccessInlining || EspressoLanguage.getCurrentContext().InlineFieldAccessors;
+        QuickNode invoke;
+        if (allowFieldAccessInlining && resolutionSeed.isInlinableGetter()) {
+            invoke = InlinedGetterNode.create(resolutionSeed, opCode, curBCI);
+        } else if (allowFieldAccessInlining && resolutionSeed.isInlinableSetter()) {
+            invoke = InlinedSetterNode.create(resolutionSeed, opCode, curBCI);
+        } else if (resolutionSeed.isMethodHandleIntrinsic()) {
+            invoke = new MethodHandleInvokeNode(resolutionSeed);
+        } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
+            // Can happen in old classfiles that calls j.l.Object on interfaces.
+            invoke = InvokeVirtualNodeGen.create(resolutionSeed);
+        } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
+            invoke = new InvokeSpecialNode(resolutionSeed);
+        } else {
+            // @formatter:off
+            // Checkstyle: stop
+            switch (opCode) {
+                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed);          break;
+                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
+                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
+                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed);         break;
+                default              :
+                    throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
+            }
+            // @formatter:on
+            // Checkstyle: resume
+        }
+        return invoke;
     }
 
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opCode) {

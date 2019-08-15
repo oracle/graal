@@ -106,6 +106,9 @@ public final class EspressoContext {
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
+
+        this.InlineFieldAccessors = env.getOptions().get(EspressoOptions.InlineFieldAccessors);
+        this.Verify = env.getOptions().get(EspressoOptions.Verify);
     }
 
     public ClassRegistries getRegistries() {
@@ -375,4 +378,11 @@ public final class EspressoContext {
     public void unregisterThread(Thread thread) {
         activeThreads.remove(thread);
     }
+
+    // region Options
+
+    public final boolean InlineFieldAccessors;
+    public final EspressoOptions.VerifyMode Verify;
+
+    // endregion Options
 }
