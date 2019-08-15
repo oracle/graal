@@ -1409,6 +1409,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             if (bs.currentBC(curBCI) == QUICK) {
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
+                // During resolution of the symbolic reference to the method, any of the exceptions
+                // pertaining to method resolution (§5.4.3.3) can be thrown.
                 Method resolutionSeed = resolveMethod(opCode, bs.readCPI(curBCI));
                 QuickNode invoke = dispatchQuickened(curBCI, opCode, resolutionSeed, getContext().InlineFieldAccessors);
                 quick = injectQuick(curBCI, invoke);
@@ -1436,9 +1438,47 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         return invoke.invoke(frame, top);
     }
 
-    private static QuickNode dispatchQuickened(int curBCI, int opCode, Method resolutionSeed, boolean allowFieldAccessInlining) {
+    private QuickNode dispatchQuickened(int curBCI, int opCode, Method resolutionSeed, boolean allowFieldAccessInlining) {
         assert !allowFieldAccessInlining || EspressoLanguage.getCurrentContext().InlineFieldAccessors;
         QuickNode invoke;
+
+        switch (opCode) {
+            case INVOKESTATIC:
+                // Otherwise, if the resolved method is an instance method, the invokestatic
+                // instruction throws an IncompatibleClassChangeError.
+                if (!resolutionSeed.isStatic()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getMeta().throwEx(IncompatibleClassChangeError.class);
+                }
+                break;
+            case INVOKEINTERFACE:
+                // Otherwise, if the resolved method is static or private, the invokeinterface
+                // instruction throws an IncompatibleClassChangeError.
+                if (resolutionSeed.isStatic() || resolutionSeed.isPrivate()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getMeta().throwEx(IncompatibleClassChangeError.class);
+                }
+                break;
+            case INVOKEVIRTUAL:
+                // Otherwise, if the resolved method is a class (static) method, the invokevirtual
+                // instruction throws an IncompatibleClassChangeError.
+                if (resolutionSeed.isStatic()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getMeta().throwEx(IncompatibleClassChangeError.class);
+                }
+                break;
+            case INVOKESPECIAL:
+                if (resolutionSeed.isConstructor()) {
+                    if (resolutionSeed.getDeclaringKlass().getName() != getConstantPool().methodAt(bs.readCPI(curBCI)).getHolderKlassName(getConstantPool())) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw getMeta().throwEx(NoSuchMethodError.class);
+                    }
+                }
+                break;
+            default:
+                throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
+        }
+
         if (allowFieldAccessInlining && resolutionSeed.isInlinableGetter()) {
             invoke = InlinedGetterNode.create(resolutionSeed, opCode, curBCI);
         } else if (allowFieldAccessInlining && resolutionSeed.isInlinableSetter()) {
@@ -1768,9 +1808,49 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private int putField(final VirtualFrame frame, int top, Field field, int opcode) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
         assert field.isStatic() == (opcode == PUTSTATIC);
+
+        if (opcode == PUTFIELD) {
+            // Otherwise, if the resolved field is a static field, putfield throws an
+            // IncompatibleClassChangeError.
+            if (field.isStatic()) {
+                CompilerDirectives.transferToInterpreter();
+                throw getMeta().throwEx(IncompatibleClassChangeError.class);
+            }
+            // Otherwise, if the field is final, it must be declared in the current class, and
+            // the instruction must occur in an instance initialization method (<init>) of the
+            // current class. Otherwise, an IllegalAccessError is thrown.
+            if (field.isFinalFlagSet()) {
+                // && getMethod().isConstructor()
+                // Enforced in class files >= v53 (9).
+                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass())) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getMeta().throwEx(IllegalAccessError.class);
+                }
+            }
+        } else if (opcode == PUTSTATIC) {
+            // Otherwise, if the resolved field is not a static (class) field or an interface
+            // field, putstatic throws an IncompatibleClassChange
+            if (!field.isStatic()) {
+                CompilerDirectives.transferToInterpreter();
+                throw getMeta().throwEx(IncompatibleClassChangeError.class);
+            }
+            // Otherwise, if the field is final, it must be declared in the current class, and the
+            // instruction must occur in the <clinit> method of the current class. Otherwise, an
+            // IllegalAccessError is thrown.
+            if (field.isFinalFlagSet()) {
+                // && getMethod().isClassInitializer()
+                // Enforced in class files >= v53 (9).
+                if (!(field.getDeclaringKlass() == getMethod().getDeclaringKlass())) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getMeta().throwEx(IllegalAccessError.class);
+                }
+            }
+        }
+
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(peekObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
+
         // @formatter:off
         // Checkstyle: stop
         switch (field.getKind()) {
@@ -1805,6 +1885,22 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         assert opcode == GETFIELD || opcode == GETSTATIC;
         assert field.isStatic() == (opcode == GETSTATIC);
         CompilerAsserts.partialEvaluationConstant(field);
+
+        if (opcode == GETFIELD) {
+            // Otherwise, if the resolved field is a static field, getfield throws an
+            // IncompatibleClassChangeError.
+            if (field.isStatic()) {
+                CompilerDirectives.transferToInterpreter();
+                throw getMeta().throwEx(IncompatibleClassChangeError.class);
+            }
+        } else if (opcode == GETSTATIC) {
+            // Otherwise, if the resolved field is not a static (class) field or an interface
+            // field, getstatic throws an IncompatibleClassChangeError.
+            if (!field.isStatic()) {
+                CompilerDirectives.transferToInterpreter();
+                throw getMeta().throwEx(IncompatibleClassChangeError.class);
+            }
+        }
 
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
