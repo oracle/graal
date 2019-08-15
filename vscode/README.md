@@ -18,6 +18,8 @@ cd graalvm-r; npm install; vsce package
 cd graalvm-ruby; npm install; vsce package
 ```
 
+Alternatively, invoke `mx build` to create a zip file distribution with all extensions contained.
+
 ## Installation
 
 To install the GraalVM extensions into Visual Studio Code, take the following steps:
