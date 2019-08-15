@@ -1089,9 +1089,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
-            if (combinedPackSet.size() < 2) {
-                return;
-            }
 
             debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", currentBlock.toString(), combinedPackSet.size());
 
