@@ -46,7 +46,7 @@ class VmGateTasks:
     compiler = 'compiler'
     substratevm = 'substratevm'
     sulong = 'sulong'
-    Graal_js_all = 'graal-js'
+    graal_js_all = 'graal-js'
     graal_js_smoke = 'graal-js-smoke'
     graal_js_tests = 'graal-js-tests'
     graal_js_tests_compiled = 'graal-js-tests-compiled'
