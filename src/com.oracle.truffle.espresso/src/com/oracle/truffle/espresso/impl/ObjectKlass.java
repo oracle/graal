@@ -507,7 +507,7 @@ public final class ObjectKlass extends Klass {
 
     final List<Method> lookupVirtualMethodOverrides(Symbol<Name> name, Symbol<Signature> signature, Klass subKlass, List<Method> result) {
         for (Method m : vtable) {
-            if (!m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
+            if (!m.isStatic() && !m.isPrivate() && m.getName() == name && m.getRawSignature() == signature) {
                 if (m.isProtected() || m.isPublic()) {
                     result.add(m);
                 } else if (this.sameRuntimePackage(subKlass)) {
@@ -520,19 +520,48 @@ public final class ObjectKlass extends Klass {
 
     public final Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
         assert isInterface();
-        for (Klass k : iKlassTable) {
-            for (Method m : k.getDeclaredMethods()) {
-                if (name == m.getName() && signature == m.getRawSignature()) {
-                    return m;
-                }
+        // 2. Otherwise, if C declares a method with the name and descriptor specified by the
+        // interface method reference, method lookup succeeds.
+        for (Method m : getDeclaredMethods()) {
+            if (name == m.getName() && signature == m.getRawSignature()) {
+                return m;
             }
         }
+
+        // 3. Otherwise, if the class Object declares a method with the name and descriptor
+        // specified by the interface method reference, which has its ACC_PUBLIC flag set and does
+        // not have its ACC_STATIC flag set, method lookup succeeds.
         assert getSuperKlass().getType() == Type.Object;
         Method m = getSuperKlass().lookupDeclaredMethod(name, signature);
         if (m != null && m.isPublic() && !m.isStatic()) {
             return m;
         }
-        return null;
+
+        Method resolved = null;
+        // Interfaces are sorted, superinterfaces first; traverse in reverse order to get
+        // most-specific first.
+        for (int i = iKlassTable.length - 1; i >= 0; i--) {
+            Klass k = iKlassTable[i];
+            for (Method superM : k.getDeclaredMethods()) {
+                if (name == superM.getName() && signature == superM.getRawSignature()) {
+                    if (!superM.isAbstract()) {
+                        // 4. Otherwise, if the maximally-specific superinterface methods (§5.4.3.3)
+                        // of C for the name and descriptor specified by the method reference
+                        // include exactly one method that does not have its ACC_ABSTRACT flag set,
+                        // then this method is chosen and method lookup succeeds.
+                        return superM;
+                    }
+                    // 5. Otherwise, if any superinterface of C declares a method with the name and
+                    // descriptor specified by the method reference that has neither its ACC_PRIVATE
+                    // flag nor its ACC_STATIC flag set, one of these is arbitrarily chosen and
+                    // method lookup succeeds.
+                    if (!superM.isPrivate() && !superM.isStatic()) {
+                        resolved = superM;
+                    }
+                }
+            }
+        }
+        return resolved;
     }
 
     @Override

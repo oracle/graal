@@ -80,7 +80,7 @@ public interface MemberRefConstant extends PoolConstant {
             return pool.classAt(classIndex).getName(pool);
         }
 
-        protected Klass getResolvedHolderKlass(Klass accessingKlass, RuntimeConstantPool pool) {
+        public Klass getResolvedHolderKlass(Klass accessingKlass, RuntimeConstantPool pool) {
             return pool.resolvedKlassAt(accessingKlass, classIndex);
         }
 

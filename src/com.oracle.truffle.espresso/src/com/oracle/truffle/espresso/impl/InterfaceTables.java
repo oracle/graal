@@ -136,7 +136,12 @@ class InterfaceTables {
                 }
             }
         }
-        return tmpKlassTable.toArray(Klass.EMPTY_ARRAY);
+        Klass[] sortedInterfaces = tmpKlassTable.toArray(Klass.EMPTY_ARRAY);
+        // Interfaces must be sorted, superinterfaces first.
+        // The Klass.ID (class loading counter) can be used, since parent classes/interfaces are
+        // always loaded first.
+        Arrays.sort(sortedInterfaces, Klass.COMPARATOR);
+        return sortedInterfaces;
     }
 
     // @formatter:off

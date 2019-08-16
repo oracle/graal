@@ -113,6 +113,8 @@ public interface InterfaceMethodRefConstant extends MethodRefConstant {
             Symbol<Name> name = getName(pool);
 
             Meta meta = context.getMeta();
+            // 1. If C is not an interface, interface method resolution throws an
+            // IncompatibleClassChangeError.
             if (!holderInterface.isInterface()) {
                 throw meta.throwExWithMessage(meta.IncompatibleClassChangeError, meta.toGuestString(name));
             }
