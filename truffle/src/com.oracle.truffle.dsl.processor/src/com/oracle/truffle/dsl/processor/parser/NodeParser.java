@@ -644,7 +644,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
         List<ExecutableTypeData> validExecutableType = new ArrayList<>();
         for (ExecutableTypeData executableType : node.getExecutableTypes()) {
-            if (executableType.getMethod() != null && executableType.getEvaluatedCount() == node.getExecutionCount()) {
+            if (executableType.getMethod() != null && executableType.getEvaluatedCount() >= node.getExecutionCount()) {
                 validExecutableType.add(executableType);
                 break;
             }

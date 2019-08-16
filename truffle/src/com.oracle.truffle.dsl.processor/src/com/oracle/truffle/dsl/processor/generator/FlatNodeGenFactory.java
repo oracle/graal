@@ -1794,6 +1794,18 @@ public class FlatNodeGenFactory {
     private CodeTree executeFastPathGroup(final CodeTreeBuilder parent, FrameState frameState, final ExecutableTypeData currentType, SpecializationGroup group, int sharedExecutes,
                     List<SpecializationData> allowedSpecializations) {
         CodeTreeBuilder builder = parent.create();
+        if (currentType.getMethod() != null && currentType.getMethod().isVarArgs()) {
+            int readVarargsCount = node.getSignatureSize() - (currentType.getEvaluatedCount() - 1);
+            int offset = node.getSignatureSize() - 1;
+            for (int i = 0; i < readVarargsCount; i++) {
+                NodeExecutionData execution = node.getChildExecutions().get(offset + i);
+                LocalVariable var = frameState.getValue(execution);
+                if (var != null) {
+                    builder.tree(var.createDeclaration(var.createReference()));
+                    frameState.setValue(execution, var.accessWith(null));
+                }
+            }
+        }
         FrameState originalFrameState = frameState.copy();
 
         for (NodeExecutionData execution : node.getChildExecutions()) {
