@@ -1355,18 +1355,39 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     // endregion New*Array
 
+    /**
+     * <h3>jclass GetObjectClass(JNIEnv *env, jobject obj);</h3>
+     *
+     * Returns the class of an object.
+     *
+     * @param self a Java object (must not be NULL).
+     */
     @JniImpl
-    public static StaticObject GetObjectClass(StaticObject self) {
+    public static @Host(Class.class) StaticObject GetObjectClass(@Host(Object.class) StaticObject self) {
         return self.getKlass().mirror();
     }
 
+    /**
+     * <h3>jclass GetSuperclass(JNIEnv *env, jclass clazz);</h3>
+     *
+     * If clazz represents any class other than the class Object, then this function returns the
+     * object that represents the superclass of the class specified by clazz. If clazz specifies the
+     * class Object, or clazz represents an interface, this function returns NULL.
+     *
+     * @param clazz a Java class object. Returns the superclass of the class represented by clazz,
+     *            or NULL.
+     */
     @JniImpl
-    public static StaticObject GetSuperclass(StaticObject self) {
-        return self.getKlass().getSuperKlass().mirror();
+    public static StaticObject GetSuperclass(@Host(Class.class) StaticObject clazz) {
+        Klass klass = clazz.getMirrorKlass();
+        if (klass.isInterface() || klass.isJavaLangObject()) {
+            return StaticObject.NULL;
+        }
+        return klass.getSuperKlass().mirror();
     }
 
     @JniImpl
-    public Object NewObjectVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
+    public @Host(Object.class) StaticObject NewObjectVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
         Klass klass = clazz.getMirrorKlass();
         Method method = methodIds.getObject(methodHandle);
         assert method.isConstructor();
@@ -1521,6 +1542,46 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return byteBufferAddress(region);
     }
 
+    /**
+     * <h3>const jchar * GetStringChars(JNIEnv *env, jstring string, jboolean *isCopy);</h3>
+     *
+     * Returns a pointer to the array of Unicode characters of the string. This pointer is valid
+     * until ReleaseStringChars() is called.
+     *
+     * If isCopy is not NULL, then *isCopy is set to JNI_TRUE if a copy is made; or it is set to
+     * JNI_FALSE if no copy is made.
+     *
+     * @param string a Java string object.
+     * @param isCopyPtr a pointer to a boolean. Returns a pointer to a Unicode string, or NULL if
+     *            the operation fails.
+     */
+    @JniImpl
+    public long GetStringChars(@Host(String.class) StaticObject string, long isCopyPtr) {
+        if (isCopyPtr != 0L) {
+            ByteBuffer isCopyBuf = directByteBuffer(isCopyPtr, 1);
+            isCopyBuf.put((byte) 1); // always copy since pinning is not supported
+        }
+        char[] chars = ((StaticObject) getMeta().String_value.get(string)).unwrap();
+        ByteBuffer region = allocateDirect(chars.length, JavaKind.Char);
+        region.asCharBuffer().put(chars);
+        return byteBufferAddress(region);
+    }
+
+    /**
+     * <h3>void ReleaseStringChars(JNIEnv *env, jstring string, const jchar *chars);</h3>
+     *
+     * Informs the VM that the native code no longer needs access to chars. The chars argument is a
+     * pointer obtained from string using GetStringChars().
+     *
+     * @param string a Java string object.
+     * @param charsPtr a pointer to a Unicode string.
+     */
+    @JniImpl
+    public void ReleaseStringChars(@SuppressWarnings("unused") @Host(String.class) StaticObject string, long charsPtr) {
+        assert nativeBuffers.containsKey(charsPtr);
+        nativeBuffers.remove(charsPtr);
+    }
+
     @JniImpl
     public void ReleaseStringUTFChars(@SuppressWarnings("unused") @Host(String.class) StaticObject str, long charsPtr) {
         assert nativeBuffers.containsKey(charsPtr);
@@ -1603,8 +1664,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public static int MonitorExit(@Host(Object.class) StaticObject object) {
-        InterpreterToVM.monitorExit(object);
+    public int MonitorExit(@Host(Object.class) StaticObject object) {
+        try {
+            InterpreterToVM.monitorExit(object);
+        } catch (EspressoException e) {
+            // assert InterpreterToVM.instanceOf(e.getException(), getMeta().Ill
+            getThreadLocalPendingException().set(e.getException());
+            return JNI_ERR;
+        }
         return JNI_OK;
     }
 
@@ -1634,11 +1701,21 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         return guestString;
     }
 
+    /**
+     * <h3>void GetStringRegion(JNIEnv *env, jstring str, jsize start, jsize len, jchar *buf);</h3>
+     *
+     * Copies len number of Unicode characters beginning at offset start to the given buffer buf.
+     *
+     * Throws StringIndexOutOfBoundsException on index overflow.
+     */
     @JniImpl
     public void GetStringRegion(@Host(String.class) StaticObject str, int start, int len, long bufPtr) {
-        StaticObject chars = (StaticObject) getMeta().String_value.get(str);
+        char[] chars = ((StaticObject) getMeta().String_value.get(str)).unwrap();
+        if (start < 0 || start + (long) len > chars.length) {
+            throw getMeta().throwEx(StringIndexOutOfBoundsException.class);
+        }
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.put(chars.<char[]> unwrap(), start, len);
+        buf.put(chars, start, len);
     }
 
     private static String nfiSignature(final Symbol<Type>[] signature, boolean isJni) {
@@ -1693,7 +1770,11 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public static void GetStringUTFRegion(@Host(String.class) StaticObject str, int start, int len, long bufPtr) {
+    public void GetStringUTFRegion(@Host(String.class) StaticObject str, int start, int len, long bufPtr) {
+        int length = Utf8.UTFLength(Meta.toHostString(str));
+        if (start < 0 || start + (long) len > length) {
+            throw getMeta().throwEx(StringIndexOutOfBoundsException.class);
+        }
         byte[] bytes = Utf8.asUTF(Meta.toHostString(str), start, len, true); // always 0 terminated.
         ByteBuffer buf = directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);
@@ -2045,5 +2126,81 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             return -1L;
         }
         return (int) getMeta().Buffer_capacity.get(buf);
+    }
+
+    /**
+     * <h3>void ExceptionDescribe(JNIEnv *env);</h3>
+     *
+     * Prints an exception and a backtrace of the stack to a system error-reporting channel, such as
+     * stderr. This is a convenience routine provided for debugging.
+     */
+    @JniImpl
+    public void ExceptionDescribe() {
+        StaticObject ex = getThreadLocalPendingException().get();
+        if (ex != null) {
+            assert InterpreterToVM.instanceOf(ex, getMeta().Throwable);
+            // Dynamic lookup.
+            Method printStackTrace = ex.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
+            printStackTrace.invokeDirect(ex);
+            // Restore exception cleared by invokeDirect.
+            getThreadLocalPendingException().set(ex);
+        }
+    }
+
+    /**
+     * <h3>jobject AllocObject(JNIEnv *env, jclass clazz);</h3>
+     *
+     * Allocates a new Java object without invoking any of the constructors for the object. Returns
+     * a reference to the object.
+     *
+     * The clazz argument must not refer to an array class.
+     * 
+     * @param clazz a Java class object.
+     * 
+     *            Returns a Java object, or NULL if the object cannot be constructed.
+     * 
+     *            Throws InstantiationException if the class is an interface or an abstract class.
+     * @throws OutOfMemoryError if the system runs out of memory.
+     */
+    @JniImpl
+    public @Host(Object.class) StaticObject AllocObject(@Host(Class.class) StaticObject clazz) {
+        Klass klass = clazz.getMirrorKlass();
+        if (klass.isInterface() || klass.isAbstract()) {
+            throw getMeta().throwEx(InstantiationException.class);
+        }
+        return klass.allocateInstance();
+    }
+
+    /**
+     * <h3>jfieldID FromReflectedField(JNIEnv *env, jobject field);</h3>
+     *
+     * Converts a java.lang.reflect.Field to a field ID.
+     */
+    @JniImpl
+    public long FromReflectedField(@Host(java.lang.reflect.Field.class) StaticObject field) {
+        assert InterpreterToVM.instanceOf(field, getMeta().Field);
+        Field guestField = Field.getReflectiveFieldRoot(field);
+        guestField.getDeclaringKlass().initialize();
+        return fieldIds.handlify(guestField);
+    }
+
+    /**
+     * <h3>jmethodID FromReflectedMethod(JNIEnv *env, jobject method);</h3>
+     *
+     * Converts a java.lang.reflect.Method or java.lang.reflect.Constructor object to a method ID.
+     */
+    @JniImpl
+    public long FromReflectedMethod(@Host(java.lang.reflect.Executable.class) StaticObject method) {
+        assert InterpreterToVM.instanceOf(method, getMeta().Method) || InterpreterToVM.instanceOf(method, getMeta().Constructor);
+        Method guestMethod;
+        if (InterpreterToVM.instanceOf(method, getMeta().Method)) {
+            guestMethod = Method.getHostReflectiveMethodRoot(method);
+        } else if (InterpreterToVM.instanceOf(method, getMeta().Constructor)) {
+            guestMethod = Method.getHostReflectiveConstructorRoot(method);
+        } else {
+            throw EspressoError.shouldNotReachHere();
+        }
+        guestMethod.getDeclaringKlass().initialize();
+        return methodIds.handlify(guestMethod);
     }
 }
