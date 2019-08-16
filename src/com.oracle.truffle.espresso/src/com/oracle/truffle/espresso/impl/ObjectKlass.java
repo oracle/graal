@@ -555,7 +555,9 @@ public final class ObjectKlass extends Klass {
                     // descriptor specified by the method reference that has neither its ACC_PRIVATE
                     // flag nor its ACC_STATIC flag set, one of these is arbitrarily chosen and
                     // method lookup succeeds.
-                    resolved = superM;
+                    if (!superM.isPrivate() && !superM.isStatic()) {
+                        resolved = superM;
+                    }
                 }
             }
         }
