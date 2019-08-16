@@ -283,7 +283,7 @@ public final class AMD64Packing {
                 //
                 // For example, this code might compress six MOVB instructions instructions to a
                 // MOVD and MOVW.
-                while (i + elements * 2 <= numElements && elements * movKind.getSizeInBytes() < QWORD.getBytes()) {
+                while (i + elements * 2 <= numElements && movKind.getSizeInBytes() < QWORD.getBytes()) {
                     movKind = twice(movKind);
                     elements *= 2;
                 }
