@@ -623,66 +623,66 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region GetStatic*Field
 
     @JniImpl
-    public Object GetStaticObjectField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public Object GetStaticObjectField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return field.get(clazz.getMirrorKlass().getStatics());
+        return field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public boolean GetStaticBooleanField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public boolean GetStaticBooleanField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return (boolean) field.get(clazz.getMirrorKlass().getStatics());
+        return (boolean) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public byte GetStaticByteField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public byte GetStaticByteField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return (byte) field.get(clazz.getMirrorKlass().getStatics());
+        return (byte) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public char GetStaticCharField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public char GetStaticCharField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return (char) field.get(clazz.getMirrorKlass().getStatics());
+        return (char) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public short GetStaticShortField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public short GetStaticShortField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return (short) field.get(clazz.getMirrorKlass().getStatics());
+        return (short) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public int GetStaticIntField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public int GetStaticIntField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return (int) field.get(clazz.getMirrorKlass().getStatics());
+        return (int) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public long GetStaticLongField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public long GetStaticLongField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return (long) field.get(clazz.getMirrorKlass().getStatics());
+        return (long) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public float GetStaticFloatField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public float GetStaticFloatField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return (float) field.get(clazz.getMirrorKlass().getStatics());
+        return (float) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     @JniImpl
-    public double GetStaticDoubleField(@Host(Class.class) StaticObject clazz, long fieldHandle) {
+    public double GetStaticDoubleField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        return (double) field.get(clazz.getMirrorKlass().getStatics());
+        return (double) field.get(field.getDeclaringKlass().tryInitializeAndGetStatics());
     }
 
     // endregion GetStatic*Field
@@ -748,66 +748,66 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region SetStatic*Field
 
     @JniImpl
-    public void SetStaticObjectField(@Host(Class.class) StaticObject clazz, long fieldHandle, Object val) {
+    public void SetStaticObjectField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, Object val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticBooleanField(@Host(Class.class) StaticObject clazz, long fieldHandle, boolean val) {
+    public void SetStaticBooleanField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, boolean val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticByteField(@Host(Class.class) StaticObject clazz, long fieldHandle, byte val) {
+    public void SetStaticByteField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, byte val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticCharField(@Host(Class.class) StaticObject clazz, long fieldHandle, char val) {
+    public void SetStaticCharField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, char val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticShortField(@Host(Class.class) StaticObject clazz, long fieldHandle, short val) {
+    public void SetStaticShortField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, short val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticIntField(@Host(Class.class) StaticObject clazz, long fieldHandle, int val) {
+    public void SetStaticIntField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, int val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticLongField(@Host(Class.class) StaticObject clazz, long fieldHandle, long val) {
+    public void SetStaticLongField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, long val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticFloatField(@Host(Class.class) StaticObject clazz, long fieldHandle, float val) {
+    public void SetStaticFloatField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, float val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     @JniImpl
-    public void SetStaticDoubleField(@Host(Class.class) StaticObject clazz, long fieldHandle, double val) {
+    public void SetStaticDoubleField(@SuppressWarnings("unused") @Host(Class.class) StaticObject unused, long fieldHandle, double val) {
         Field field = fieldIds.getObject(fieldHandle);
         assert field.isStatic();
-        field.set(clazz.getMirrorKlass().getStatics(), val);
+        field.set(field.getDeclaringKlass().tryInitializeAndGetStatics(), val);
     }
 
     // endregion SetStatic*Field
@@ -1138,54 +1138,78 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Get*ArrayRegion
 
     @JniImpl
-    public static void GetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void GetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, long bufPtr) {
+        boolean[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
-        boolean[] booleans = array.unwrap();
         for (int i = 0; i < len; ++i) {
-            buf.put(booleans[start + i] ? (byte) 1 : (byte) 0);
+            buf.put(contents[start + i] ? (byte) 1 : (byte) 0);
+        }
+    }
+
+    private void boundsCheck(int start, int len, int arrayLength) {
+        assert arrayLength >= 0;
+        if (start < 0 || start + (long) len > arrayLength) {
+            throw getMeta().throwEx(ArrayIndexOutOfBoundsException.class);
         }
     }
 
     @JniImpl
-    public static void GetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void GetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
+        char[] contents = array.unwrap();
+        if (start < 0 || start + (long) len > contents.length) {
+            throw getMeta().throwEx(ArrayIndexOutOfBoundsException.class);
+        }
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.put(array.<char[]> unwrap(), start, len);
+        buf.put(contents, start, len);
     }
 
     @JniImpl
-    public static void GetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void GetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, long bufPtr) {
+        byte[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
-        buf.put((array).unwrap(), start, len);
+        buf.put(contents, start, len);
     }
 
     @JniImpl
-    public static void GetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void GetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, long bufPtr) {
+        short[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         ShortBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
-        buf.put((array).unwrap(), start, len);
+        buf.put(contents, start, len);
     }
 
     @JniImpl
-    public static void GetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void GetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, long bufPtr) {
+        int[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         IntBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
-        buf.put((array).unwrap(), start, len);
+        buf.put(contents, start, len);
     }
 
     @JniImpl
-    public static void GetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void GetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, long bufPtr) {
+        float[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         FloatBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
-        buf.put((array).unwrap(), start, len);
+        buf.put(contents, start, len);
     }
 
     @JniImpl
-    public static void GetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void GetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, long bufPtr) {
+        double[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         DoubleBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
-        buf.put((array).unwrap(), start, len);
+        buf.put(contents, start, len);
     }
 
     @JniImpl
-    public static void GetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void GetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, long bufPtr) {
+        long[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         LongBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
-        buf.put((array).unwrap(), start, len);
+        buf.put(contents, start, len);
     }
 
     // endregion Get*ArrayRegion
@@ -1193,54 +1217,69 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region Set*ArrayRegion
 
     @JniImpl
-    public static void SetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void SetBooleanArrayRegion(@Host(boolean[].class) StaticObject array, int start, int len, long bufPtr) {
+        boolean[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
-        boolean[] booleans = array.unwrap();
         for (int i = 0; i < len; ++i) {
-            booleans[start + i] = buf.get() != 0;
+            contents[start + i] = buf.get() != 0;
         }
     }
 
     @JniImpl
-    public static void SetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void SetCharArrayRegion(@Host(char[].class) StaticObject array, int start, int len, long bufPtr) {
+        char[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         CharBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Char).asCharBuffer();
-        buf.get(array.<char[]> unwrap(), start, len);
+        buf.get(contents, start, len);
     }
 
     @JniImpl
-    public static void SetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void SetByteArrayRegion(@Host(byte[].class) StaticObject array, int start, int len, long bufPtr) {
+        byte[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         ByteBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Byte);
-        buf.get((array).unwrap(), start, len);
+        buf.get(contents, start, len);
     }
 
     @JniImpl
-    public static void SetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void SetShortArrayRegion(@Host(short[].class) StaticObject array, int start, int len, long bufPtr) {
+        short[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         ShortBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Short).asShortBuffer();
-        buf.get((array).unwrap(), start, len);
+        buf.get(contents, start, len);
     }
 
     @JniImpl
-    public static void SetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void SetIntArrayRegion(@Host(int[].class) StaticObject array, int start, int len, long bufPtr) {
+        int[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         IntBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Int).asIntBuffer();
-        buf.get((array).unwrap(), start, len);
+        buf.get(contents, start, len);
     }
 
     @JniImpl
-    public static void SetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void SetFloatArrayRegion(@Host(float[].class) StaticObject array, int start, int len, long bufPtr) {
+        float[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         FloatBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Float).asFloatBuffer();
-        buf.get((array).unwrap(), start, len);
+        buf.get(contents, start, len);
     }
 
     @JniImpl
-    public static void SetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void SetDoubleArrayRegion(@Host(double[].class) StaticObject array, int start, int len, long bufPtr) {
+        double[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         DoubleBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Double).asDoubleBuffer();
-        buf.get((array).unwrap(), start, len);
+        buf.get(contents, start, len);
     }
 
     @JniImpl
-    public static void SetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, long bufPtr) {
+    public void SetLongArrayRegion(@Host(long[].class) StaticObject array, int start, int len, long bufPtr) {
+        long[] contents = array.unwrap();
+        boundsCheck(start, len, contents.length);
         LongBuffer buf = directByteBuffer(bufPtr, len, JavaKind.Long).asLongBuffer();
-        buf.get((array).unwrap(), start, len);
+        buf.get(contents, start, len);
     }
 
     // endregion Set*ArrayRegion
