@@ -24,8 +24,7 @@
  */
 package org.graalvm.libgraal;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.Services;
@@ -35,30 +34,30 @@ import jdk.vm.ci.services.Services;
  */
 public class LibGraal {
 
-    static final MethodHandle runtimeUnhandMethod;
-    static final MethodHandle runtimeTranslateMethod;
-    static final MethodHandle runtimeRegisterNativeMethods;
-    static final MethodHandle runtimeIsCurrentThreadAttached;
-    static final MethodHandle runtimeAttachCurrentThread;
-    static final MethodHandle runtimeDetachCurrentThread;
+    static final Method runtimeUnhand;
+    static final Method runtimeTranslate;
+    static final Method runtimeRegisterNativeMethods;
+    static final Method runtimeIsCurrentThreadAttached;
+    static final Method runtimeAttachCurrentThread;
+    static final Method runtimeDetachCurrentThread;
 
     static {
-        MethodHandle unhand = null;
-        MethodHandle translate = null;
-        MethodHandle registerNativeMethods = null;
-        MethodHandle isCurrentThreadAttached = null;
-        MethodHandle attachCurrentThread = null;
-        MethodHandle detachCurrentThread = null;
+        Method unhand = null;
+        Method translate = null;
+        Method registerNativeMethods = null;
+        Method isCurrentThreadAttached = null;
+        Method attachCurrentThread = null;
+        Method detachCurrentThread = null;
         boolean firstFound = false;
         try {
             Class<?> runtimeClass = HotSpotJVMCIRuntime.class;
-            unhand = MethodHandles.lookup().unreflect(runtimeClass.getDeclaredMethod("unhand", Class.class, Long.TYPE));
+            unhand = runtimeClass.getDeclaredMethod("unhand", Class.class, Long.TYPE);
             firstFound = true;
-            translate = MethodHandles.lookup().unreflect(runtimeClass.getDeclaredMethod("translate", Object.class));
-            registerNativeMethods = MethodHandles.lookup().unreflect(runtimeClass.getDeclaredMethod("registerNativeMethods", Class.class));
-            isCurrentThreadAttached = MethodHandles.lookup().unreflect(runtimeClass.getDeclaredMethod("isCurrentThreadAttached"));
-            attachCurrentThread = MethodHandles.lookup().unreflect(runtimeClass.getDeclaredMethod("attachCurrentThread", Boolean.TYPE));
-            detachCurrentThread = MethodHandles.lookup().unreflect(runtimeClass.getDeclaredMethod("detachCurrentThread"));
+            translate = runtimeClass.getDeclaredMethod("translate", Object.class);
+            registerNativeMethods = runtimeClass.getDeclaredMethod("registerNativeMethods", Class.class);
+            isCurrentThreadAttached = runtimeClass.getDeclaredMethod("isCurrentThreadAttached");
+            attachCurrentThread = runtimeClass.getDeclaredMethod("attachCurrentThread", Boolean.TYPE);
+            detachCurrentThread = runtimeClass.getDeclaredMethod("detachCurrentThread");
         } catch (Exception e) {
             // If the very first method is unavailable assume nothing is available. Otherwise only
             // some are missing so complain about it.
@@ -67,8 +66,8 @@ public class LibGraal {
             }
         }
 
-        runtimeUnhandMethod = unhand;
-        runtimeTranslateMethod = translate;
+        runtimeUnhand = unhand;
+        runtimeTranslate = translate;
         runtimeRegisterNativeMethods = registerNativeMethods;
         runtimeIsCurrentThreadAttached = isCurrentThreadAttached;
         runtimeAttachCurrentThread = attachCurrentThread;
@@ -107,12 +106,13 @@ public class LibGraal {
             throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
         }
         try {
-            return (long) runtimeTranslateMethod.invoke(runtime, obj);
+            return (long) runtimeTranslate.invoke(runtime, obj);
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> T unhand(HotSpotJVMCIRuntime runtime, Class<T> type, long handle) {
         if (!isAvailable()) {
             throw new IllegalStateException();
@@ -121,7 +121,7 @@ public class LibGraal {
             throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
         }
         try {
-            return (T) runtimeUnhandMethod.invoke(runtime, type, handle);
+            return (T) runtimeUnhand.invoke(runtime, type, handle);
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
