@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import static org.graalvm.libgraal.jni.JNIUtil.GetStaticMethodID;
-import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
-
 import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,7 +39,6 @@ import javax.management.ReflectionException;
 import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
-import org.graalvm.libgraal.jni.JNI.JMethodID;
 import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -50,54 +46,11 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.WordFactory;
 
 public final class HotSpotToSVMEntryPoints {
 
-    private static final String HS_BEAN_CLASS_NAME = null;
-    private static final byte[] HS_BEAN_CLASS = null;
-    private static final String HS_BEAN_FACTORY_CLASS_NAME = null;
-    private static final byte[] HS_BEAN_FACTORY_CLASS = null;
-    private static final String HS_SVM_CALLS_CLASS_NAME = null;
-    private static final byte[] HS_SVM_CALLS_CLASS = null;
-    private static final String HS_PUSHBACK_ITER_CLASS_NAME = null;
-    private static final byte[] HS_PUSHBACK_ITER_CLASS = null;
-
     private HotSpotToSVMEntryPoints() {
-    }
-
-    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_JMXInitializer_init")
-    @SuppressWarnings("try")
-    public static void init(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JObject classLoader) {
-        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.Init, env)) {
-            if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
-                throw new InternalError("Failed to define HotSpotToSVMCalls class.");
-            }
-
-            if (defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS).isNull()) {
-                throw new InternalError("Failed to define HotSpotToSVMCalls class.");
-            }
-
-            if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
-                throw new InternalError("Failed to define MXBean class.");
-            }
-            JNI.JClass factoryClass = defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
-            if (factoryClass.isNull()) {
-                throw new InternalError("Failed to define Factory class.");
-            }
-            JMethodID createId;
-            try (CCharPointerHolder name = toCString("create"); CCharPointerHolder sig = toCString("()Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/Factory;")) {
-                createId = GetStaticMethodID(env, factoryClass, name.get(), sig.get());
-                if (createId.isNull()) {
-                    throw new InternalError("No such method: create");
-                }
-            }
-            JNI.JObject result = env.getFunctions().getCallStaticObjectMethodA().call(env, factoryClass, createId, WordFactory.nullPointer());
-            if (result.isNull()) {
-                throw new InternalError("Failed to initiate Factory.");
-            }
-        }
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_pollRegistrations")
@@ -290,22 +243,6 @@ public final class HotSpotToSVMEntryPoints {
         }
         return mapToRaw(env, values);
     }
-
-    private static JNI.JClass defineClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String clazzName, byte[] clazz) {
-        CCharPointer classData = UnmanagedMemory.malloc(clazz.length);
-        ByteBuffer buffer = CTypeConversion.asByteBuffer(classData, clazz.length);
-        buffer.put(clazz);
-        try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(clazzName)) {
-            return JNIUtil.DefineClass(
-                            env,
-                            className.get(),
-                            classLoader,
-                            classData,
-                            clazz.length);
-        } finally {
-            UnmanagedMemory.free(classData);
-        }
-    }
 }
 
 enum Id {
@@ -313,7 +250,7 @@ enum Id {
     GetAttributes,
     GetMBeanInfo,
     GetRegistrationName,
-    Init,
+    Initialize,
     Invoke,
     PollRegistrations,
     SetAttributes

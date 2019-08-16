@@ -24,34 +24,61 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 
 import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.libgraal.jni.HotSpotToSVMScope;
+import org.graalvm.libgraal.jni.JNI;
+import org.graalvm.libgraal.jni.JNIUtil;
+import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.WordFactory;
 
 @ServiceProvider(HotSpotGraalManagementRegistration.class)
 public final class HotSpotGraalManagement implements HotSpotGraalManagementRegistration {
 
+    private static final String HS_BEAN_CLASS_NAME = null;
+    private static final byte[] HS_BEAN_CLASS = null;
+    private static final String HS_BEAN_FACTORY_CLASS_NAME = null;
+    private static final byte[] HS_BEAN_FACTORY_CLASS = null;
+    private static final String HS_SVM_CALLS_CLASS_NAME = null;
+    private static final byte[] HS_SVM_CALLS_CLASS = null;
+    private static final String HS_PUSHBACK_ITER_CLASS_NAME = null;
+    private static final byte[] HS_PUSHBACK_ITER_CLASS = null;
+
+    private static final AtomicBoolean needsToDefineHSClasses = new AtomicBoolean();
+    private static long jniEnvOffset;
+
     private HotSpotGraalRuntimeMBean bean;
     private String name;
     private volatile boolean needsRegistration = true;
-    HotSpotGraalManagement nextDeferred;
 
     public HotSpotGraalManagement() {
     }
 
     @Override
-    public void initialize(HotSpotGraalRuntime runtime) {
+    public void initialize(HotSpotGraalRuntime runtime, GraalHotSpotVMConfig config) {
+        if (needsToDefineHSClasses.compareAndSet(false, true)) {
+            jniEnvOffset = config.jniEnvironmentOffset;
+            createHotSpotMXBean(getCurrentJNIEnv());
+        }
+
         if (bean == null) {
             if (runtime.getManagement() != this) {
                 throw new IllegalArgumentException("Cannot initialize a second management object for runtime " + runtime.getName());
@@ -86,6 +113,58 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
 
     String getName() {
         return name;
+    }
+
+    private static void createHotSpotMXBean(JNI.JNIEnv env) {
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.Initialize, env)) {
+            JNI.JObject classLoader = SVMToHotSpotCalls.getJVMCIClassLoader(env);
+            if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
+                throw throwDefineClassError(HS_PUSHBACK_ITER_CLASS_NAME);
+            }
+
+            if (defineClassInHotSpot(env, classLoader, HS_SVM_CALLS_CLASS_NAME, HS_SVM_CALLS_CLASS).isNull()) {
+                throw throwDefineClassError(HS_SVM_CALLS_CLASS_NAME);
+            }
+
+            if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
+                throw throwDefineClassError(HS_BEAN_CLASS_NAME);
+            }
+            JNI.JClass factoryClass = defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
+            if (factoryClass.isNull()) {
+                throw throwDefineClassError(HS_BEAN_FACTORY_CLASS_NAME);
+            }
+            if (SVMToHotSpotCalls.createFactory(env, factoryClass).isNull()) {
+                throw new InternalError("Failed to initiate Factory.");
+            }
+        }
+    }
+
+    private static JNI.JClass defineClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, String clazzName, byte[] clazz) {
+        CCharPointer classData = UnmanagedMemory.malloc(clazz.length);
+        ByteBuffer buffer = CTypeConversion.asByteBuffer(classData, clazz.length);
+        buffer.put(clazz);
+        try (CTypeConversion.CCharPointerHolder className = CTypeConversion.toCString(clazzName)) {
+            return JNIUtil.DefineClass(
+                            env,
+                            className.get(),
+                            classLoader,
+                            classData,
+                            clazz.length);
+        } finally {
+            UnmanagedMemory.free(classData);
+        }
+    }
+
+    private static JNI.JNIEnv getCurrentJNIEnv() {
+        if (jniEnvOffset == 0) {
+            throw new IllegalStateException("JniEnvOffset is not yet initialized.");
+        }
+        long currentJavaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
+        return WordFactory.pointer(currentJavaThreadAddr + jniEnvOffset);
+    }
+
+    private static RuntimeException throwDefineClassError(String name) {
+        throw new InternalError(String.format("Failed to define %s.", name));
     }
 
     static final class Factory implements Supplier<HotSpotGraalManagementRegistration> {

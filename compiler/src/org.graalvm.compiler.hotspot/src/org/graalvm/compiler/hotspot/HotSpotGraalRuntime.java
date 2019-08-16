@@ -172,7 +172,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
         }
         if (management != null) {
-            management.initialize(this);
+            management.initialize(this, config);
         }
 
         BackendMap backendMap = compilerConfigurationFactory.createBackendMap();

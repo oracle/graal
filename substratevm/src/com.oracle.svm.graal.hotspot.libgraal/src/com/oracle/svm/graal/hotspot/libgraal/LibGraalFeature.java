@@ -662,8 +662,8 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.management.libgraal.HotSpotToSVMEntryPoints", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints {
+@TargetClass(className = "org.graalvm.compiler.hotspot.management.libgraal.HotSpotGraalManagement", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement {
 
     @Target(ElementType.FIELD)
     @Retention(RetentionPolicy.RUNTIME)
@@ -672,21 +672,21 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVM
     }
 
     // Checkstyle: stop
-    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMHotSpotGraalRuntimeMBean") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassNameComputer.class, isFinal = true) private static String HS_BEAN_CLASS_NAME;
+    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMHotSpotGraalRuntimeMBean") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.ClassNameComputer.class, isFinal = true) private static String HS_BEAN_CLASS_NAME;
 
-    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMHotSpotGraalRuntimeMBean") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassDataComputer.class, isFinal = true) private static byte[] HS_BEAN_CLASS;
+    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMHotSpotGraalRuntimeMBean") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.ClassDataComputer.class, isFinal = true) private static byte[] HS_BEAN_CLASS;
 
-    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.Factory") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassNameComputer.class, isFinal = true) private static String HS_BEAN_FACTORY_CLASS_NAME;
+    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.Factory") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.ClassNameComputer.class, isFinal = true) private static String HS_BEAN_FACTORY_CLASS_NAME;
 
-    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.Factory") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassDataComputer.class, isFinal = true) private static byte[] HS_BEAN_FACTORY_CLASS;
+    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.Factory") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.ClassDataComputer.class, isFinal = true) private static byte[] HS_BEAN_FACTORY_CLASS;
 
-    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.HotSpotToSVMCalls") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassNameComputer.class, isFinal = true) private static String HS_SVM_CALLS_CLASS_NAME;
+    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.HotSpotToSVMCalls") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.ClassNameComputer.class, isFinal = true) private static String HS_SVM_CALLS_CLASS_NAME;
 
-    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.HotSpotToSVMCalls") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassDataComputer.class, isFinal = true) private static byte[] HS_SVM_CALLS_CLASS;
+    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.HotSpotToSVMCalls") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.ClassDataComputer.class, isFinal = true) private static byte[] HS_SVM_CALLS_CLASS;
 
-    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.PushBackIterator") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassNameComputer.class, isFinal = true) private static String HS_PUSHBACK_ITER_CLASS_NAME;
+    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.PushBackIterator") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.ClassNameComputer.class, isFinal = true) private static String HS_PUSHBACK_ITER_CLASS_NAME;
 
-    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.PushBackIterator") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotToSVMEntryPoints.ClassDataComputer.class, isFinal = true) private static byte[] HS_PUSHBACK_ITER_CLASS;
+    @Alias @ClassData("org.graalvm.compiler.hotspot.management.libgraal.runtime.PushBackIterator") @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_org_graalvm_compiler_hotspot_management_libgraal_HotSpotGraalManagement.ClassDataComputer.class, isFinal = true) private static byte[] HS_PUSHBACK_ITER_CLASS;
     // Checkstyle: resume
 
     static final class ClassDataComputer implements RecomputeFieldValue.CustomFieldValueComputer {
