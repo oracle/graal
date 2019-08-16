@@ -91,6 +91,7 @@ import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfNode;
@@ -167,15 +168,17 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration proxyRegistration = new Registration(plugins, System.class);
-        proxyRegistration.register0("getSecurityManager", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                /* System.getSecurityManager() always returns null. */
-                b.addPush(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(null), metaAccess, b.getGraph()));
-                return true;
-            }
-        });
+        if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
+            Registration proxyRegistration = new Registration(plugins, System.class);
+            proxyRegistration.register0("getSecurityManager", new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    /* System.getSecurityManager() always returns null. */
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(null), metaAccess, b.getGraph()));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerImageInfoPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {

@@ -715,7 +715,6 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
-
         "com.oracle.svm.agent": {
             "subDir": "src",
             "sourceDirs": [
@@ -736,6 +735,19 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
+        },
+        "com.oracle.svm.truffle.tck" : {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "checkstyle" : "com.oracle.svm.truffle",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "1.8",
         },
     },
 
@@ -1029,6 +1041,14 @@ suite = {
                 "compiler:GRAAL_LLVM"
             ],
             "maven" : False,
-        }
+        },
+
+        "SVM_TRUFFLE_TCK" : {
+            "subDir" : "src",
+            "description" : "Truffle TCK",
+            "dependencies" : ["com.oracle.svm.truffle.tck"],
+            "distDependencies" : ["SVM"],
+            "maven" : True,
+        },
     },
 }

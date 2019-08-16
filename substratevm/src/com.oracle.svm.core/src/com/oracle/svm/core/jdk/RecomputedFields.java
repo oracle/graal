@@ -55,6 +55,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -348,6 +349,15 @@ class AtomicFieldUpdaterFeature implements Feature {
     }
 }
 
+@AutomaticFeature
+class InnocuousForkJoinWorkerThreadFeature implements Feature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
+                        "innocuousThreadGroup must be initialized at run time");
+    }
+}
+
 @TargetClass(java.util.concurrent.ForkJoinPool.class)
 @SuppressWarnings("unused") //
 final class Target_java_util_concurrent_ForkJoinPool {
@@ -522,23 +532,6 @@ class ExchangerABASEComputer implements RecomputeFieldValue.CustomFieldValueComp
 
         return abase;
     }
-}
-
-@TargetClass(className = "java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread")
-final class Target_java_util_concurrent_ForkJoinWorkerThread_InnocuousForkJoinWorkerThread {
-
-    /**
-     * TODO: ForkJoinWorkerThread.InnocuousForkJoinWorkerThread.innocuousThreadGroup is initialized
-     * by calling ForkJoinWorkerThread.InnocuousForkJoinWorkerThread.createThreadGroup() which uses
-     * runtime reflection to (I think) create a ThreadGroup that is a child of the ThreadGroup of
-     * the current thread. I do not think I want the ThreadGroup that was created to initialize this
-     * field during native image generation. Since SubstrateVM does not implement runtime
-     * reflection, I can not call createThreadGroup() to initialize this field later. If it turns
-     * out that this field is used, then I will have to think about what to do here. For now, I
-     * annotate the field as being deleted to catch an attempts to use the field.
-     */
-    @Delete //
-    private static ThreadGroup innocuousThreadGroup;
 }
 
 /** Dummy class to have a class with the file's name. */
