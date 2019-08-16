@@ -60,4 +60,8 @@ public final class ModuleSupport {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
     }
+
+    public static ClassLoader getPlatformClassLoader() {
+        return ClassLoader.getSystemClassLoader();
+    }
 }

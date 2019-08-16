@@ -71,7 +71,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
+                "com.oracle.svm.util",
             ],
             "imports" : [
                 "jdk.internal.module",
@@ -932,7 +932,6 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM static analysis to find ahead-of-time the code",
             "dependencies": [
-                "com.oracle.svm.core",
                 "com.oracle.svm.util",
                 "com.oracle.graal.pointsto",
             ],

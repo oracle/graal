@@ -42,7 +42,7 @@ public class ClassLoaderFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         ClassLoaderSupport.getInstance().createClassLoaders(ClassLoader.getSystemClassLoader());
         ClassLoaderSupport.getInstance().systemClassLoader = ClassLoaderSupport.getInstance().classLoaders.get(ClassLoader.getSystemClassLoader());
-        ModuleSupport.registerPlatformClassLoader();
+        ClassLoaderSupport.getInstance().platformClassLoader = ClassLoaderSupport.getInstance().classLoaders.get(ModuleSupport.getPlatformClassLoader());
     }
 
     @Override

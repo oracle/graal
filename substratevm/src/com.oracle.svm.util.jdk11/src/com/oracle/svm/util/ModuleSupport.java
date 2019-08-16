@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.util;
 
-import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassLoaderSupport;
-
 import java.io.IOException;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReader;
@@ -61,8 +59,8 @@ public final class ModuleSupport {
         }
     }
 
-    public static void registerPlatformClassLoader() {
-        ClassLoaderSupport.getInstance().platformClassLoader = ClassLoaderSupport.getInstance().classLoaders.get(ClassLoader.getPlatformClassLoader());
+    public static ClassLoader getPlatformClassLoader() {
+        return ClassLoader.getPlatformClassLoader();
     }
 
 }
