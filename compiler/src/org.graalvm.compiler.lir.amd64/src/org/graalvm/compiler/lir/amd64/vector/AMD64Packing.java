@@ -261,10 +261,6 @@ public final class AMD64Packing {
 
         final int numElements;
 
-        StackOp(LIRGeneratorTool tool, int numElements, boolean load) {
-            this(TYPE, tool, numElements);
-        }
-
         StackOp(LIRInstructionClass<? extends StackOp> c, LIRGeneratorTool tool, int numElements) {
             super(c);
             assert numElements > 0 : "vector stack op must have at least one element";
