@@ -259,26 +259,22 @@ public final class AMD64Packing {
         @Temp({REG}) AllocatableValue scratch;
         @Temp({STACK}) AllocatableValue packSpace;
 
-        protected final int numElements;
-        private final boolean load;
+        final int numElements;
 
         StackOp(LIRGeneratorTool tool, int numElements, boolean load) {
-            this(TYPE, tool, numElements, load);
+            this(TYPE, tool, numElements);
         }
 
-        protected StackOp(LIRInstructionClass<? extends StackOp> c, LIRGeneratorTool tool, int numElements, boolean load) {
+        StackOp(LIRInstructionClass<? extends StackOp> c, LIRGeneratorTool tool, int numElements) {
             super(c);
             assert numElements > 0 : "vector stack op must have at least one element";
             this.numElements = numElements;
-            this.load = load;
 
             this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.packSpace = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.V256_BYTE));
         }
 
-        protected void stackMove(CompilationResultBuilder crb, AMD64MacroAssembler masm, Value input, Value result, AMD64Kind scalarKind) {
-            final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
-
+        void stackMove(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind scalarKind) {
             int stackOffset = 0;
             for (int i = 0; i < numElements;) {
                 // Number of array elements to be moved in a single instruction.
@@ -299,8 +295,8 @@ public final class AMD64Packing {
                 // We compute the addresses we're going to move between.
                 // TODO: create helper for offsetting address
 
-                final AMD64Address src = displace(load ? ((AMD64AddressValue) input).toAddress() : packSpaceAddress, stackOffset);
-                final AMD64Address dst = displace(load ? packSpaceAddress : ((AMD64AddressValue) result).toAddress(), stackOffset);
+                final AMD64Address src = displace(getSourceAddress(crb), stackOffset);
+                final AMD64Address dst = displace(getDestinationAddress(crb), stackOffset);
 
                 // Perform the move.
                 addr2reg(crb, masm, movKind, asRegister(scratch), src);
@@ -311,6 +307,14 @@ public final class AMD64Packing {
                 stackOffset += movKind.getSizeInBytes();
                 i += elements;
             }
+        }
+
+        AMD64Address getSourceAddress(CompilationResultBuilder crb) {
+            return (AMD64Address) crb.asAddress(packSpace);
+        }
+
+        AMD64Address getDestinationAddress(CompilationResultBuilder crb) {
+            return (AMD64Address) crb.asAddress(packSpace);
         }
 
     }
@@ -341,7 +345,7 @@ public final class AMD64Packing {
         }
 
         protected LoadStackOp(LIRInstructionClass<? extends LoadStackOp> c, LIRGeneratorTool tool, AllocatableValue result, AMD64AddressValue input, int numElements) {
-            super(c, tool, numElements, true);
+            super(c, tool, numElements);
             this.result = result;
             this.input = input;
         }
@@ -363,11 +367,16 @@ public final class AMD64Packing {
             } else {
                 final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
 
-                stackMove(crb, masm, input, result, scalarKind);
+                stackMove(crb, masm, scalarKind);
 
                 // Write memory into vector register.
                 masm.vmovdqu(asRegister(result), packSpaceAddress);
             }
+        }
+
+        @Override
+        AMD64Address getSourceAddress(CompilationResultBuilder crb) {
+            return input.toAddress();
         }
     }
 
@@ -397,7 +406,7 @@ public final class AMD64Packing {
         }
 
         protected StoreStackOp(LIRInstructionClass<? extends StoreStackOp> c, LIRGeneratorTool tool, AMD64AddressValue result, AllocatableValue input, int numElements) {
-            super(c, tool, numElements, false);
+            super(c, tool, numElements);
             this.result = result;
             this.input = input;
         }
@@ -422,8 +431,13 @@ public final class AMD64Packing {
                 // Write to temporary stack space from the vector register.
                 masm.vmovdqu(packSpaceAddress, asRegister(input));
 
-                stackMove(crb, masm, input, result, scalarKind);
+                stackMove(crb, masm, scalarKind);
             }
+        }
+
+        @Override
+        AMD64Address getDestinationAddress(CompilationResultBuilder crb) {
+            return result.toAddress();
         }
     }
 
