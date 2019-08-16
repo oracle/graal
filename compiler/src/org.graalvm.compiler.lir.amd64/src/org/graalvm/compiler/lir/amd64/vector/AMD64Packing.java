@@ -89,96 +89,6 @@ public final class AMD64Packing {
         }
     }
 
-    /**
-     * This operation packs a buffer of serialized constants into a vector register.
-     */
-    public static final class PackConstantsOp extends AMD64LIRInstruction {
-
-        public static final LIRInstructionClass<PackConstantsOp> TYPE = LIRInstructionClass.create(PackConstantsOp.class);
-
-        private final ByteBuffer byteBuffer;
-
-        // We only permit registers. Since constants are already in memory, and vector arithmetic
-        // performed only between registers, we shouldn't ever be moving a vector constant to a
-        // memory location.
-        @Def({REG}) private AllocatableValue result;
-
-        /**
-         * Creates a PackConstantsOp.
-         * @param result The destination of the operation - in other words, the vector value we are packing.
-         * @param byteBuffer The constants we want to pack, serialized in buffer form.
-         */
-        public PackConstantsOp(AllocatableValue result, ByteBuffer byteBuffer) {
-            this(TYPE, result, byteBuffer);
-        }
-
-        protected PackConstantsOp(LIRInstructionClass<? extends PackConstantsOp> c, AllocatableValue result, ByteBuffer byteBuffer) {
-            super(c);
-            this.result = result;
-            this.byteBuffer = byteBuffer;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            final PlatformKind pc = result.getPlatformKind();
-            final int alignment = pc.getSizeInBytes() / pc.getVectorLength();
-            final AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(byteBuffer.array(), alignment);
-
-            // Based on the size of the constants, we use one of several memory-to-register
-            // instructions. The buffer should be aligned to one of these sizes by this point, and
-            // we throw an exception otherwise.
-            switch (AVXKind.AVXSize.fromBytes(byteBuffer.capacity())) {
-                case DWORD:
-                    VMOVD.emit(masm, DWORD, asRegister(result), address);
-                    break;
-                case QWORD:
-                    VMOVQ.emit(masm, QWORD, asRegister(result), address);
-                    break;
-                case XMM:
-                    masm.movdqu(asRegister(result), address);
-                    break;
-                case YMM:
-                    assert ((AMD64) masm.target.arch).getFeatures().contains(AMD64.CPUFeature.AVX) : "AVX is unsupported";
-                    masm.vmovdqu(asRegister(result), address);
-                    break;
-                default:
-                    throw GraalError.shouldNotReachHere("Unsupported constant size '" + AVXKind.AVXSize.fromBytes(byteBuffer.capacity()));
-            }
-        }
-    }
-
-    /**
-     * This method and the three following it are basic move operations, as found in AMD64Move,
-     * but operating on raw AMD64Addresses instead of AMD64AddressValues. They're here to bypass the
-     * register allocator's requirements when we want to move values to temporary stack space, as
-     * seen in PackStackOp, LoadStackOp, and StoreStackOp.
-     *
-     * Note that this move assumes that dst is always an address, meaning we can't move to
-     * registers using this scheme. For now, this is unnecessary - the only time we ever move
-     * from a memory location is in StoreStackOp, and the target in that case is always an array.
-     * If we want to implement a stack-based unpacking instruction, though, this might be worth
-     * considering.
-     *
-     * @param crb
-     * @param masm
-     * @param dst The address we want to move to.
-     * @param src The value we want to move from. Can be a register, stack variable, or constant.
-     * @param srcKind The AMD64Kind of the src value.
-     * @param scratch A scratch register to use if necessary. Must be allocated by the caller as an @Temp.
-     */
-    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, AMD64Kind srcKind, Register scratch) {
-        if (isRegister(src)) {
-            reg2addr(crb, masm, srcKind, dst, asRegister(src));
-        } else if (isStackSlot(src)) {
-            // We move first to the scratch register, then to our destination.
-            // Is there a faster solution?
-            addr2reg(crb, masm, srcKind, scratch, (AMD64Address) crb.asAddress(src));
-            reg2addr(crb, masm, srcKind, dst, scratch);
-        } else if (isJavaConstant(src)) {
-            const2addr(crb, masm, srcKind, dst, asJavaConstant(src));
-        }
-    }
-
     private static void reg2addr(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Kind kind, AMD64Address dst, Register src) {
         switch (kind) {
             case BYTE:
@@ -248,8 +158,98 @@ public final class AMD64Packing {
         }
     }
 
+    /**
+     * This method and the three following it are basic move operations, as found in AMD64Move,
+     * but operating on raw AMD64Addresses instead of AMD64AddressValues. They're here to bypass the
+     * register allocator's requirements when we want to move values to temporary stack space, as
+     * seen in PackStackOp, LoadStackOp, and StoreStackOp.
+     *
+     * Note that this move assumes that dst is always an address, meaning we can't move to
+     * registers using this scheme. For now, this is unnecessary - the only time we ever move
+     * from a memory location is in StoreStackOp, and the target in that case is always an array.
+     * If we want to implement a stack-based unpacking instruction, though, this might be worth
+     * considering.
+     *
+     * @param crb
+     * @param masm
+     * @param dst The address we want to move to.
+     * @param src The value we want to move from. Can be a register, stack variable, or constant.
+     * @param srcKind The AMD64Kind of the src value.
+     * @param scratch A scratch register to use if necessary. Must be allocated by the caller as an @Temp.
+     */
+    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, AMD64Kind srcKind, Register scratch) {
+        if (isRegister(src)) {
+            reg2addr(crb, masm, srcKind, dst, asRegister(src));
+        } else if (isStackSlot(src)) {
+            // We move first to the scratch register, then to our destination.
+            // Is there a faster solution?
+            addr2reg(crb, masm, srcKind, scratch, (AMD64Address) crb.asAddress(src));
+            reg2addr(crb, masm, srcKind, dst, scratch);
+        } else if (isJavaConstant(src)) {
+            const2addr(crb, masm, srcKind, dst, asJavaConstant(src));
+        }
+    }
+
     private static AMD64Address displace(AMD64Address address, int displacement) {
         return new AMD64Address(address.getBase(), address.getIndex(), address.getScale(), address.getDisplacement() + displacement);
+    }
+
+    /**
+     * This operation packs a buffer of serialized constants into a vector register.
+     */
+    public static final class PackConstantsOp extends AMD64LIRInstruction {
+
+        public static final LIRInstructionClass<PackConstantsOp> TYPE = LIRInstructionClass.create(PackConstantsOp.class);
+
+        private final ByteBuffer byteBuffer;
+
+        // We only permit registers. Since constants are already in memory, and vector arithmetic
+        // performed only between registers, we shouldn't ever be moving a vector constant to a
+        // memory location.
+        @Def({REG}) private AllocatableValue result;
+
+        /**
+         * Creates a PackConstantsOp.
+         * @param result The destination of the operation - in other words, the vector value we are packing.
+         * @param byteBuffer The constants we want to pack, serialized in buffer form.
+         */
+        public PackConstantsOp(AllocatableValue result, ByteBuffer byteBuffer) {
+            this(TYPE, result, byteBuffer);
+        }
+
+        protected PackConstantsOp(LIRInstructionClass<? extends PackConstantsOp> c, AllocatableValue result, ByteBuffer byteBuffer) {
+            super(c);
+            this.result = result;
+            this.byteBuffer = byteBuffer;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            final PlatformKind pc = result.getPlatformKind();
+            final int alignment = pc.getSizeInBytes() / pc.getVectorLength();
+            final AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(byteBuffer.array(), alignment);
+
+            // Based on the size of the constants, we use one of several memory-to-register
+            // instructions. The buffer should be aligned to one of these sizes by this point, and
+            // we throw an exception otherwise.
+            switch (AVXKind.AVXSize.fromBytes(byteBuffer.capacity())) {
+                case DWORD:
+                    VMOVD.emit(masm, DWORD, asRegister(result), address);
+                    break;
+                case QWORD:
+                    VMOVQ.emit(masm, QWORD, asRegister(result), address);
+                    break;
+                case XMM:
+                    masm.movdqu(asRegister(result), address);
+                    break;
+                case YMM:
+                    assert ((AMD64) masm.target.arch).getFeatures().contains(AMD64.CPUFeature.AVX) : "AVX is unsupported";
+                    masm.vmovdqu(asRegister(result), address);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere("Unsupported constant size '" + AVXKind.AVXSize.fromBytes(byteBuffer.capacity()));
+            }
+        }
     }
 
     private abstract static class StackOp extends AMD64LIRInstruction {
