@@ -488,7 +488,7 @@ public final class AMD64Packing {
             int stackOffset = 0;
             for (AllocatableValue value : values) {
                 // Move value into the temporary stack space.
-                final AMD64Address target = new AMD64Address(packSpaceAddress.getBase(), packSpaceAddress.getIndex(), packSpaceAddress.getScale(), packSpaceAddress.getDisplacement() + stackOffset);
+                final AMD64Address target = displace(packSpaceAddress, stackOffset);
                 move(crb, masm, target, value, scalarKind, asRegister(scratch));
 
                 // Increment address offset so that we place the next value further into the
