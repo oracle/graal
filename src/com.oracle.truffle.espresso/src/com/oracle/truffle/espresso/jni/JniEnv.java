@@ -495,7 +495,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 assert field == null || field.getType().equals(fieldType);
             }
         }
-        if (field == null) {
+        if (field == null || field.isStatic()) {
             throw getMeta().throwExWithMessage(getMeta().NoSuchFieldError, getMeta().toGuestString(name));
         }
         assert !field.isStatic();
@@ -523,15 +523,15 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public long GetStaticFieldID(@Host(Class.class) StaticObject clazz, String name, String type) {
         assert name != null && type != null;
-        Klass klass = clazz.getMirrorKlass();
-        klass.safeInitialize();
         Field field = null;
         Symbol<Name> fieldName = getNames().lookup(name);
         if (fieldName != null) {
             Symbol<Type> fieldType = getTypes().lookup(type);
             if (fieldType != null) {
+                Klass klass = clazz.getMirrorKlass();
+                klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                field = klass.lookupDeclaredField(fieldName, fieldType);
+                field = klass.lookupField(fieldName, fieldType, true);
                 assert field.getType().equals(fieldType);
             }
         }
@@ -564,13 +564,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public long GetMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         assert name != null && signature != null;
-        Klass klass = clazz.getMirrorKlass();
-        klass.safeInitialize();
+
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
         if (methodName != null) {
             Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(signature);
             if (methodSignature != null) {
+                Klass klass = clazz.getMirrorKlass();
+                klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
                 method = klass.lookupMethod(methodName, methodSignature, klass);
             }
@@ -601,13 +602,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public long GetStaticMethodID(@Host(Class.class) StaticObject clazz, String name, String signature) {
         assert name != null && signature != null;
-        Klass klass = clazz.getMirrorKlass();
-        klass.safeInitialize();
         Method method = null;
         Symbol<Name> methodName = getNames().lookup(name);
         if (methodName != null) {
             Symbol<Signature> methodSignature = getSignatures().lookupValidSignature(signature);
             if (methodSignature != null) {
+                Klass klass = clazz.getMirrorKlass();
+                klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
                 method = klass.lookupMethod(methodName, methodSignature, klass);
             }
