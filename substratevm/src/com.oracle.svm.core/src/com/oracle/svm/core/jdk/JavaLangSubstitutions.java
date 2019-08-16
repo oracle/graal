@@ -826,6 +826,7 @@ class JavaLangSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.IOException.class);
             JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
+            JNIRuntimeAccess.register(java.io.FileNotFoundException.class.getDeclaredConstructor(String.class, String.class));
             if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
                 JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
