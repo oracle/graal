@@ -289,8 +289,6 @@ public final class AMD64Packing {
                 }
 
                 // We compute the addresses we're going to move between.
-                // TODO: create helper for offsetting address
-
                 final AMD64Address src = displace(getSourceAddress(crb), stackOffset);
                 final AMD64Address dst = displace(getDestinationAddress(crb), stackOffset);
 
