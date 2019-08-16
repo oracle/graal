@@ -58,7 +58,7 @@ public final class SLWhileNode extends SLStatementNode {
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        loopNode.executeLoopWithValue(frame);
+        loopNode.execute(frame);
     }
 
 }

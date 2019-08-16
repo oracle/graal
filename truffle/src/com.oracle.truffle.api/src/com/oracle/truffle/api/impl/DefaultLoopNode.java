@@ -63,13 +63,13 @@ public final class DefaultLoopNode extends LoopNode {
     @SuppressWarnings("deprecation")
     @Override
     public void executeLoop(VirtualFrame frame) {
-        executeLoopWithValue(frame);
+        execute(frame);
     }
 
     @Override
-    public Object executeLoopWithValue(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         Object status;
-        while ((status = repeatNode.executeRepeatingWithStatus(frame)) == CONTINUE_LOOP_STATUS) {
+        while ((status = repeatNode.executeRepeatingWithValue(frame)) == CONTINUE_LOOP_STATUS) {
             // Empty
         }
         return status;

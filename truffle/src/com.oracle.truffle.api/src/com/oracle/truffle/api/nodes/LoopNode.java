@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -141,7 +140,7 @@ public abstract class LoopNode extends Node {
      * @param frame the current execution frame or null if the repeating node does not require a
      *            frame
      * @since 0.8 or earlier
-     * @deprecated use {@link #executeLoopWithValue(VirtualFrame)} instead
+     * @deprecated use {@link #execute(VirtualFrame)} instead
      */
     @Deprecated
     public abstract void executeLoop(VirtualFrame frame);
@@ -157,8 +156,8 @@ public abstract class LoopNode extends Node {
      * @return a value different than {@link RepeatingNode#CONTINUE_LOOP_STATUS}, which can be
      *             used in a language-specific way (for example, to encode structured jumps)
      */
-    public Object executeLoopWithValue(VirtualFrame frame) {
-        throw new RuntimeException("Must be overridden in concrete subclasses.");
+    public Object execute(VirtualFrame frame) {
+        throw new AbstractMethodError("This method must be overridden in concrete subclasses.");
     }
 
     /**
