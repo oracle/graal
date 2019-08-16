@@ -1471,6 +1471,7 @@ public abstract class TruffleLanguage<C> {
          * @see #isPolyglotBindingsAccessAllowed()
          * @since 0.32
          */
+        @TruffleBoundary
         public Object getPolyglotBindings() {
             if (!isPolyglotBindingsAccessAllowed()) {
                 throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
