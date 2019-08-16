@@ -130,8 +130,8 @@ public class LibGraal {
     }
 
     /**
-     * Determines if the current thread is {@linkplain #attachCurrentThread(HotSpotJVMCIRuntime)
-     * attached} to the peer runtime.
+     * Determines if the current thread is
+     * {@linkplain #attachCurrentThread(HotSpotJVMCIRuntime, boolean) attached} to the peer runtime.
      */
     @SuppressWarnings("unused")
     static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
@@ -145,7 +145,7 @@ public class LibGraal {
      *         thread was already attached
      */
     @SuppressWarnings("unused")
-    static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime) {
+    public static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime, boolean isDaemon) {
         throw shouldNotReachHere();
     }
 
@@ -153,7 +153,7 @@ public class LibGraal {
      * Detaches the current thread from the peer runtime.
      */
     @SuppressWarnings("unused")
-    static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
+    public static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
         throw shouldNotReachHere();
     }
 

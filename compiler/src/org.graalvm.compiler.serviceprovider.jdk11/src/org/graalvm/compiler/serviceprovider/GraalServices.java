@@ -33,7 +33,6 @@ import java.io.InputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -200,6 +199,10 @@ public final class GraalServices {
      * trusted code.
      */
     public static boolean isToStringTrusted(Class<?> c) {
+        if (IS_IN_NATIVE_IMAGE) {
+            return true;
+        }
+
         Module module = c.getModule();
         Module jvmciModule = JVMCI_MODULE;
         assert jvmciModule.getPackages().contains("jdk.vm.ci.runtime");
@@ -216,12 +219,8 @@ public final class GraalServices {
             try {
                 Object[] flattened = adapter.flatten(context);
                 return encodedSpeculationReasonConstructor.newInstance(groupId, groupName, flattened);
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
             }
         }
         return new UnencodedSpeculationReason(groupId, groupName, context);
