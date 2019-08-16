@@ -1428,9 +1428,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Host(Object.class) StaticObject NewObjectVarargs(@Host(Class.class) StaticObject clazz, long methodHandle, long varargsPtr) {
-        Klass klass = clazz.getMirrorKlass();
         Method method = methodIds.getObject(methodHandle);
         assert method.isConstructor();
+        Klass klass = clazz.getMirrorKlass();
+        if (klass.isInterface() || klass.isAbstract()) {
+            throw getMeta().throwEx(InstantiationException.class);
+        }
+        klass.initialize();
         StaticObject instance = klass.allocateInstance();
         method.invokeDirect(instance, popVarArgs(varargsPtr, method.getParsedSignature()));
         return instance;
