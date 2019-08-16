@@ -719,7 +719,7 @@ public class CompileQueue {
             if (plugin != null && !plugin.inlineOnly()) {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
                 // DebugContext debug = new DebugContext(options, providers.getSnippetReflection());
-                graph = new SubstrateIntrinsicGraphBuilder(debug.getOptions(), debug, providers, code).buildGraph(plugin);
+                graph = new SubstrateIntrinsicGraphBuilder(getCustomizedOptions(debug), debug, providers, code).buildGraph(plugin);
             }
         }
         if (graph == null && method.isNative() && NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
@@ -727,7 +727,7 @@ public class CompileQueue {
         }
         if (graph == null) {
             needParsing = true;
-            graph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
+            graph = new StructuredGraph.Builder(getCustomizedOptions(debug), debug).method(method).build();
         }
 
         try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {
@@ -771,6 +771,10 @@ public class CompileQueue {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    protected OptionValues getCustomizedOptions(DebugContext debug) {
+        return debug.getOptions();
     }
 
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
