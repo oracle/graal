@@ -495,7 +495,7 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
     }
 
     /** Is the given value Word aligned? */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isWordAligned(UnsignedWord offset) {
         return offset.unsignedRemainder(ConfigurationValues.getTarget().wordSize).equal(0);
     }

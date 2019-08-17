@@ -320,24 +320,24 @@ public final class Safepoint {
         safepointRequested.setVolatile(vmThread, value);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static int getSafepointRequested(IsolateThread vmThread) {
         return safepointRequested.get(vmThread); // need not be volatile
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setSafepointRequested(int value) {
         safepointRequested.setVolatile(value);
     }
 
     private static final FastThreadLocalInt safepointRequestedValueBeforeSafepoint = FastThreadLocalFactory.createInt();
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setSafepointRequestedValueBeforeSafepoint(IsolateThread vmThread, int value) {
         safepointRequestedValueBeforeSafepoint.setVolatile(vmThread, value);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getSafepointRequestedValueBeforeSafepoint(IsolateThread vmThread) {
         return safepointRequestedValueBeforeSafepoint.get(vmThread);
     }
