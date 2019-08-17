@@ -477,11 +477,6 @@ final class Target_java_util_concurrent_ForkJoinTask {
          */
         exceptionTable = new Target_java_util_concurrent_ForkJoinTask_ExceptionNode[32];
     }
-
-    @Substitute
-    private Throwable getThrowableException() {
-        throw VMError.unimplemented();
-    }
 }
 
 @TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "ExceptionNode")
