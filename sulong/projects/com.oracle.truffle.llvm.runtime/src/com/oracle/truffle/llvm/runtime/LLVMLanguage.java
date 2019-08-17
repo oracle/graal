@@ -141,7 +141,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
         Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
-        final DebugExprParser d = new DebugExprParser(request, getContextReference(), globalScopes);
+        final DebugExprParser d = new DebugExprParser(request, globalScopes);
         try {
             LLVMExpressionNode root = d.parse();
             // no error found during parsing
