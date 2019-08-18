@@ -40,6 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -886,6 +887,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public AnalysisField[] getStaticFields() {
         return convertFields(wrapped.getStaticFields(), new ArrayList<>(), false);
+    }
+
+    public AnalysisField[] getStaticFields(final Predicate<? super ResolvedJavaField> fieldToAnalisis) {
+        ResolvedJavaField[] fields = Arrays.stream(wrapped.getStaticFields())
+                        .filter(fieldToAnalisis)
+                        .toArray(ResolvedJavaField[]::new);
+
+        return convertFields(fields, new ArrayList<>(), false);
     }
 
     @Override

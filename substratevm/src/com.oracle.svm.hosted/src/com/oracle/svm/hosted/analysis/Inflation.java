@@ -197,21 +197,9 @@ public class Inflation extends BigBang {
                      * value is via a reflective field access, and we even have to guess the field
                      * name.
                      */
-                    AnalysisField found = null;
-                    for (AnalysisField f : type.getStaticFields()) {
-                        if (f.getName().endsWith("$VALUES")) {
-                            if (found != null) {
-                                /*
-                                 * Enumeration has more than one static field with enumeration
-                                 * values. Bailout and use Class.getEnumConstants() to get the value
-                                 * instead.
-                                 */
-                                found = null;
-                                break;
-                            }
-                            found = f;
-                        }
-                    }
+                    AnalysisField[] foundFields = type.getStaticFields(f -> f.getName().endsWith("$VALUES"));
+                    AnalysisField found = foundFields.length != 1 ? null : foundFields[0];
+
                     Enum<?>[] enumConstants;
                     if (found == null) {
                         /*
