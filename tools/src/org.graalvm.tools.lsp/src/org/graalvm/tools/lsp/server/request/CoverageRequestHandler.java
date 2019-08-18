@@ -37,7 +37,6 @@ import org.graalvm.tools.lsp.api.ContextAwareExecutor;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.server.types.Diagnostic;
 import org.graalvm.tools.lsp.server.types.DiagnosticSeverity;
-import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
 import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.utils.CoverageEventNode;
 import org.graalvm.tools.lsp.server.utils.SourceSectionReference;
@@ -173,7 +172,7 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
                                         null,
                                         "Coverage Analysis",
                                         null);
-                        List<Diagnostic> params = mapDiagnostics.computeIfAbsent(uri, _uri -> new ArrayList<Diagnostic>());
+                        List<Diagnostic> params = mapDiagnostics.computeIfAbsent(uri, _uri -> new ArrayList<>());
                         params.add(diag);
                     }
                 }

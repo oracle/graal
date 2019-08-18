@@ -120,12 +120,12 @@ public class ColorPresentation {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 23 * hash + Objects.hashCode(this.getLabel());
+        hash = 97 * hash + Objects.hashCode(this.getLabel());
         if (this.getTextEdit() != null) {
-            hash = 23 * hash + Objects.hashCode(this.getTextEdit());
+            hash = 97 * hash + Objects.hashCode(this.getTextEdit());
         }
         if (this.getAdditionalTextEdits() != null) {
-            hash = 23 * hash + Objects.hashCode(this.getAdditionalTextEdits());
+            hash = 97 * hash + Objects.hashCode(this.getAdditionalTextEdits());
         }
         return hash;
     }

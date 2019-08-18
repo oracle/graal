@@ -28,7 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * The parameters send in a close text document notification
+ * The parameters send in a close text document notification.
  */
 public class DidCloseTextDocumentParams {
 
@@ -70,8 +70,8 @@ public class DidCloseTextDocumentParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 29 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 2;
+        hash = 67 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }
 

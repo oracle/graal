@@ -32,9 +32,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a reference to a command. Provides a title which
- * will be used to represent a command in the UI and, optionally,
- * an array of arguments which will be passed to the command handler
+ * Represents a reference to a command. Provides a title which will be used to represent a command
+ * in the UI and, optionally, an array of arguments which will be passed to the command handler
  * function when invoked.
  */
 public class Command {
@@ -70,8 +69,7 @@ public class Command {
     }
 
     /**
-     * Arguments that the command handler should be
-     * invoked with.
+     * Arguments that the command handler should be invoked with.
      */
     public List<Object> getArguments() {
         final JSONArray json = jsonData.optJSONArray("arguments");
@@ -88,7 +86,7 @@ public class Command {
     public Command setArguments(List<Object> arguments) {
         if (arguments != null) {
             final JSONArray json = new JSONArray();
-            for (Object object: arguments) {
+            for (Object object : arguments) {
                 json.put(object);
             }
             jsonData.put("arguments", json);
@@ -122,11 +120,11 @@ public class Command {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 31 * hash + Objects.hashCode(this.getTitle());
-        hash = 31 * hash + Objects.hashCode(this.getCommand());
+        int hash = 7;
+        hash = 53 * hash + Objects.hashCode(this.getTitle());
+        hash = 53 * hash + Objects.hashCode(this.getCommand());
         if (this.getArguments() != null) {
-            hash = 31 * hash + Objects.hashCode(this.getArguments());
+            hash = 53 * hash + Objects.hashCode(this.getArguments());
         }
         return hash;
     }
@@ -134,10 +132,17 @@ public class Command {
     /**
      * Creates a new Command literal.
      */
-    public static Command create(String title, String command, List<Object> args) {
+    public static Command create(String title, String command, Object... args) {
         final JSONObject json = new JSONObject();
         json.put("title", title);
         json.put("command", command);
+        if (args != null) {
+            JSONArray jsonArr = new JSONArray();
+            for (Object arg : args) {
+                jsonArr.put(arg);
+            }
+            json.put("arguments", jsonArr);
+        }
         return new Command(json);
     }
 }

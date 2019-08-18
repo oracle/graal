@@ -28,28 +28,18 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * A `MarkupContent` literal represents a string value which content is interpreted base on its
- * kind flag. Currently the protocol supports `plaintext` and `markdown` as markup kinds.
+ * A `MarkupContent` literal represents a string value which content is interpreted base on its kind
+ * flag. Currently the protocol supports `plaintext` and `markdown` as markup kinds.
  *
  * If the kind is `markdown` then the value can contain fenced code blocks like in GitHub issues.
  * See https://help.github.com/articles/creating-and-highlighting-code-blocks/#syntax-highlighting
  *
- * Here is an example how such a string can be constructed using JavaScript / TypeScript:
- * ```ts
- * let markdown: MarkdownContent = {
- *  kind: MarkupKind.Markdown,
- *	value: [
- *		'# Header',
- *		'Some text',
- *		'```typescript',
- *		'someCode();',
- *		'```'
- *	].join('\n')
- * };
- * ```
+ * Here is an example how such a string can be constructed using JavaScript / TypeScript: ```ts let
+ * markdown: MarkdownContent = { kind: MarkupKind.Markdown, value: [ '# Header', 'Some text',
+ * '```typescript', 'someCode();', '```' ].join('\n') }; ```
  *
- * *Please Note* that clients might sanitize the return markdown. A client could decide to
- * remove HTML from the markdown to avoid script execution.
+ * *Please Note* that clients might sanitize the return markdown. A client could decide to remove
+ * HTML from the markdown to avoid script execution.
  */
 public class MarkupContent {
 
@@ -60,7 +50,7 @@ public class MarkupContent {
     }
 
     /**
-     * The type of the Markup
+     * The type of the Markup.
      */
     public MarkupKind getKind() {
         return MarkupKind.get(jsonData.getString("kind"));
@@ -72,7 +62,7 @@ public class MarkupContent {
     }
 
     /**
-     * The content itself
+     * The content itself.
      */
     public String getValue() {
         return jsonData.getString("value");
@@ -106,9 +96,9 @@ public class MarkupContent {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 59 * hash + Objects.hashCode(this.getKind());
-        hash = 59 * hash + Objects.hashCode(this.getValue());
+        int hash = 3;
+        hash = 97 * hash + Objects.hashCode(this.getKind());
+        hash = 97 * hash + Objects.hashCode(this.getValue());
         return hash;
     }
 

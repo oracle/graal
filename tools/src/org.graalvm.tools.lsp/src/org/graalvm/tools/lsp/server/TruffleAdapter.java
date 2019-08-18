@@ -200,7 +200,7 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
      * Special handling needed, because some LSP clients send a MIME type as langId.
      *
      * @param langId an id for a language, e.g. "sl" or "python", or a MIME type
-     * @param uri of the concerning file
+     * @param truffleFile of the concerning file
      * @return a language info
      */
     private LanguageInfo findLanguageInfo(final String langId, final TruffleFile truffleFile) {

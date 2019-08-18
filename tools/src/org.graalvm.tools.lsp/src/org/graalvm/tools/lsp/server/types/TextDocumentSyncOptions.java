@@ -48,8 +48,8 @@ public class TextDocumentSyncOptions {
     }
 
     /**
-     * Change notifications are sent to the server. See TextDocumentSyncKind.None, TextDocumentSyncKind.Full
-     * and TextDocumentSyncKind.Incremental.
+     * Change notifications are sent to the server. See TextDocumentSyncKind.None,
+     * TextDocumentSyncKind.Full and TextDocumentSyncKind.Incremental.
      */
     public TextDocumentSyncKind getChange() {
         return TextDocumentSyncKind.get(jsonData.optInt("change"));
@@ -130,19 +130,19 @@ public class TextDocumentSyncOptions {
     public int hashCode() {
         int hash = 7;
         if (this.getOpenClose() != null) {
-            hash = 31 * hash + Boolean.hashCode(this.getOpenClose());
+            hash = 23 * hash + Boolean.hashCode(this.getOpenClose());
         }
         if (this.getChange() != null) {
-            hash = 31 * hash + Objects.hashCode(this.getChange());
+            hash = 23 * hash + Objects.hashCode(this.getChange());
         }
         if (this.getWillSave() != null) {
-            hash = 31 * hash + Boolean.hashCode(this.getWillSave());
+            hash = 23 * hash + Boolean.hashCode(this.getWillSave());
         }
         if (this.getWillSaveWaitUntil() != null) {
-            hash = 31 * hash + Boolean.hashCode(this.getWillSaveWaitUntil());
+            hash = 23 * hash + Boolean.hashCode(this.getWillSaveWaitUntil());
         }
         if (this.getSave() != null) {
-            hash = 31 * hash + Objects.hashCode(this.getSave());
+            hash = 23 * hash + Objects.hashCode(this.getSave());
         }
         return hash;
     }

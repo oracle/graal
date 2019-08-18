@@ -40,28 +40,28 @@ public class Color {
     /**
      * The red component of this color in the range [0-1].
      */
-    public int getRed() {
+    public double getRed() {
         return jsonData.getInt("red");
     }
 
     /**
      * The green component of this color in the range [0-1].
      */
-    public int getGreen() {
+    public double getGreen() {
         return jsonData.getInt("green");
     }
 
     /**
      * The blue component of this color in the range [0-1].
      */
-    public int getBlue() {
+    public double getBlue() {
         return jsonData.getInt("blue");
     }
 
     /**
      * The alpha component of this color in the range [0-1].
      */
-    public int getAlpha() {
+    public double getAlpha() {
         return jsonData.getInt("alpha");
     }
 
@@ -94,18 +94,18 @@ public class Color {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 53 * hash + Integer.hashCode(this.getRed());
-        hash = 53 * hash + Integer.hashCode(this.getGreen());
-        hash = 53 * hash + Integer.hashCode(this.getBlue());
-        hash = 53 * hash + Integer.hashCode(this.getAlpha());
+        int hash = 7;
+        hash = 13 * hash + Double.hashCode(this.getRed());
+        hash = 13 * hash + Double.hashCode(this.getGreen());
+        hash = 13 * hash + Double.hashCode(this.getBlue());
+        hash = 13 * hash + Double.hashCode(this.getAlpha());
         return hash;
     }
 
     /**
      * Creates a new Color literal.
      */
-    public static Color create(int red, int green, int blue, int alpha) {
+    public static Color create(double red, double green, double blue, double alpha) {
         final JSONObject json = new JSONObject();
         json.put("red", red);
         json.put("green", green);

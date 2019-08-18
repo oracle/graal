@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The message type
+ * The message type.
  */
 public enum MessageType {
 

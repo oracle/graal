@@ -60,9 +60,8 @@ public class RenameParams {
     }
 
     /**
-     * The new name of the symbol. If the given name is not valid the
-     * request must return a [ResponseError](#ResponseError) with an
-     * appropriate message set.
+     * The new name of the symbol. If the given name is not valid the request must return a
+     * [ResponseError](#ResponseError) with an appropriate message set.
      */
     public String getNewName() {
         return jsonData.getString("newName");
@@ -99,10 +98,10 @@ public class RenameParams {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 37 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 37 * hash + Objects.hashCode(this.getPosition());
-        hash = 37 * hash + Objects.hashCode(this.getNewName());
+        int hash = 5;
+        hash = 29 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 29 * hash + Objects.hashCode(this.getPosition());
+        hash = 29 * hash + Objects.hashCode(this.getNewName());
         return hash;
     }
 

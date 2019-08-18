@@ -28,7 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Params for the CodeActionRequest
+ * Params for the CodeActionRequest.
  */
 public class CodeActionParams {
 
@@ -100,10 +100,10 @@ public class CodeActionParams {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 97 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 97 * hash + Objects.hashCode(this.getRange());
-        hash = 97 * hash + Objects.hashCode(this.getContext());
+        int hash = 2;
+        hash = 79 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 79 * hash + Objects.hashCode(this.getRange());
+        hash = 79 * hash + Objects.hashCode(this.getContext());
         return hash;
     }
 

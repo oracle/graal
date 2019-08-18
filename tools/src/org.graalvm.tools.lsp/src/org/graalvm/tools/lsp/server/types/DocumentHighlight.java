@@ -28,9 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * A document highlight is a range inside a text document which deserves
- * special attention. Usually a document highlight is visualized by changing
- * the background color of its range.
+ * A document highlight is a range inside a text document which deserves special attention. Usually
+ * a document highlight is visualized by changing the background color of its range.
  */
 public class DocumentHighlight {
 
@@ -87,16 +86,17 @@ public class DocumentHighlight {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 73 * hash + Objects.hashCode(this.getRange());
+        int hash = 2;
+        hash = 37 * hash + Objects.hashCode(this.getRange());
         if (this.getKind() != null) {
-            hash = 73 * hash + Objects.hashCode(this.getKind());
+            hash = 37 * hash + Objects.hashCode(this.getKind());
         }
         return hash;
     }
 
     /**
      * Create a DocumentHighlight object.
+     *
      * @param range The range the highlight applies to.
      */
     public static DocumentHighlight create(Range range, DocumentHighlightKind kind) {

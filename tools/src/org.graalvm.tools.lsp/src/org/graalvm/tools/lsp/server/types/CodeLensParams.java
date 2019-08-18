@@ -70,8 +70,8 @@ public class CodeLensParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 5;
+        hash = 19 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }
 

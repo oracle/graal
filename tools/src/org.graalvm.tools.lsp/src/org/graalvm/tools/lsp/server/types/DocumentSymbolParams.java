@@ -70,7 +70,7 @@ public class DocumentSymbolParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 7;
         hash = 37 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }

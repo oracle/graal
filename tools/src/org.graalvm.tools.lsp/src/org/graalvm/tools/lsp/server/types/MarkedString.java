@@ -39,6 +39,7 @@ import java.util.Objects;
  *
  * @deprecated use MarkupContent instead.
  */
+@Deprecated
 public class MarkedString {
 
     final JSONObject jsonData;

@@ -70,8 +70,8 @@ public class FoldingRangeParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 73 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 3;
+        hash = 17 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }
 

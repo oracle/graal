@@ -48,7 +48,7 @@ public class DocumentRangeFormattingParams {
     }
 
     /**
-     * The range to format
+     * The range to format.
      */
     public Range getRange() {
         return new Range(jsonData.getJSONObject("range"));
@@ -60,7 +60,7 @@ public class DocumentRangeFormattingParams {
     }
 
     /**
-     * The format options
+     * The format options.
      */
     public FormattingOptions getOptions() {
         return new FormattingOptions(jsonData.getJSONObject("options"));

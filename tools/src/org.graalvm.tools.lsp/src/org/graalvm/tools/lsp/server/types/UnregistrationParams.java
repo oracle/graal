@@ -50,7 +50,7 @@ public class UnregistrationParams {
 
     public UnregistrationParams setUnregisterations(List<Unregistration> unregisterations) {
         final JSONArray json = new JSONArray();
-        for (Unregistration unregistration: unregisterations) {
+        for (Unregistration unregistration : unregisterations) {
             json.put(unregistration.jsonData);
         }
         jsonData.put("unregisterations", json);
@@ -78,14 +78,14 @@ public class UnregistrationParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 53 * hash + Objects.hashCode(this.getUnregisterations());
+        hash = 37 * hash + Objects.hashCode(this.getUnregisterations());
         return hash;
     }
 
     public static UnregistrationParams create(List<Unregistration> unregisterations) {
         final JSONObject json = new JSONObject();
         JSONArray unregisterationsJsonArr = new JSONArray();
-        for(Unregistration unregistration: unregisterations) {
+        for (Unregistration unregistration : unregisterations) {
             unregisterationsJsonArr.put(unregistration.jsonData);
         }
         json.put("unregisterations", unregisterationsJsonArr);

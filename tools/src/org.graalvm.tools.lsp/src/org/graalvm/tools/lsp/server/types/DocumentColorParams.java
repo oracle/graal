@@ -70,8 +70,8 @@ public class DocumentColorParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 71 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 5;
+        hash = 61 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }
 

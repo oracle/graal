@@ -45,7 +45,6 @@ public class InitializedParams {
         if (this.getClass() != obj.getClass()) {
             return false;
         }
-        InitializedParams other = (InitializedParams) obj;
         return true;
     }
 

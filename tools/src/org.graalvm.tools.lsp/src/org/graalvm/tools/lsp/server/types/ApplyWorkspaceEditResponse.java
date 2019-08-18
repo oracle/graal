@@ -25,6 +25,7 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
 /**
  * A response returned from the apply workspace edit request.
@@ -50,9 +51,9 @@ public class ApplyWorkspaceEditResponse {
     }
 
     /**
-     * Depending on the client's failure handling strategy `failedChange` might
-     * contain the index of the change that failed. This property is only available
-     * if the client signals a `failureHandlingStrategy` in its client capabilities.
+     * Depending on the client's failure handling strategy `failedChange` might contain the index of
+     * the change that failed. This property is only available if the client signals a
+     * `failureHandlingStrategy` in its client capabilities.
      */
     public Integer getFailedChange() {
         return jsonData.optInt("failedChange");
@@ -78,7 +79,7 @@ public class ApplyWorkspaceEditResponse {
         if (this.isApplied() != other.isApplied()) {
             return false;
         }
-        if (this.getFailedChange() != other.getFailedChange()) {
+        if (!Objects.equals(this.getFailedChange(), other.getFailedChange())) {
             return false;
         }
         return true;
@@ -87,9 +88,9 @@ public class ApplyWorkspaceEditResponse {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 97 * hash + Boolean.hashCode(this.isApplied());
+        hash = 37 * hash + Boolean.hashCode(this.isApplied());
         if (this.getFailedChange() != null) {
-            hash = 97 * hash + Integer.hashCode(this.getFailedChange());
+            hash = 37 * hash + Integer.hashCode(this.getFailedChange());
         }
         return hash;
     }

@@ -28,7 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Completion parameters
+ * Completion parameters.
  */
 public class CompletionParams extends TextDocumentPositionParams {
 
@@ -37,8 +37,8 @@ public class CompletionParams extends TextDocumentPositionParams {
     }
 
     /**
-     * The completion context. This is only available it the client specifies
-     * to send this using `ClientCapabilities.textDocument.completion.contextSupport === true`
+     * The completion context. This is only available it the client specifies to send this using
+     * `ClientCapabilities.textDocument.completion.contextSupport === true`
      */
     public CompletionContext getContext() {
         return jsonData.has("context") ? new CompletionContext(jsonData.optJSONObject("context")) : null;
@@ -77,10 +77,10 @@ public class CompletionParams extends TextDocumentPositionParams {
     public int hashCode() {
         int hash = 7;
         if (this.getContext() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getContext());
+            hash = 47 * hash + Objects.hashCode(this.getContext());
         }
-        hash = 97 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 97 * hash + Objects.hashCode(this.getPosition());
+        hash = 47 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 47 * hash + Objects.hashCode(this.getPosition());
         return hash;
     }
 

@@ -85,9 +85,9 @@ public class ColorInformation {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 17 * hash + Objects.hashCode(this.getRange());
-        hash = 17 * hash + Objects.hashCode(this.getColor());
+        int hash = 7;
+        hash = 89 * hash + Objects.hashCode(this.getRange());
+        hash = 89 * hash + Objects.hashCode(this.getColor());
         return hash;
     }
 

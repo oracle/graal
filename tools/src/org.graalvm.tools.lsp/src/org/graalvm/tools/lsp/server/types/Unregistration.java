@@ -39,8 +39,8 @@ public class Unregistration {
     }
 
     /**
-     * The id used to unregister the request or notification. Usually an id
-     * provided during the register request.
+     * The id used to unregister the request or notification. Usually an id provided during the
+     * register request.
      */
     public String getId() {
         return jsonData.getString("id");
@@ -87,8 +87,8 @@ public class Unregistration {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 37 * hash + Objects.hashCode(this.getId());
-        hash = 37 * hash + Objects.hashCode(this.getMethod());
+        hash = 31 * hash + Objects.hashCode(this.getId());
+        hash = 31 * hash + Objects.hashCode(this.getMethod());
         return hash;
     }
 

@@ -82,12 +82,12 @@ public class ConfigurationItem {
 
     @Override
     public int hashCode() {
-        int hash = 2;
+        int hash = 5;
         if (this.getScopeUri() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getScopeUri());
+            hash = 37 * hash + Objects.hashCode(this.getScopeUri());
         }
         if (this.getSection() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getSection());
+            hash = 37 * hash + Objects.hashCode(this.getSection());
         }
         return hash;
     }

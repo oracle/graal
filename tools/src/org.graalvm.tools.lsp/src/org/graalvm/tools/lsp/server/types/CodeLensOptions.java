@@ -71,7 +71,7 @@ public class CodeLensOptions {
     public int hashCode() {
         int hash = 7;
         if (this.getResolveProvider() != null) {
-            hash = 43 * hash + Boolean.hashCode(this.getResolveProvider());
+            hash = 79 * hash + Boolean.hashCode(this.getResolveProvider());
         }
         return hash;
     }

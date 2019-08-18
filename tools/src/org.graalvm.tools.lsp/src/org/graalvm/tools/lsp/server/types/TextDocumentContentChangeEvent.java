@@ -28,8 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * An event describing a change to a text document. If range and rangeLength are omitted
- * the new text is considered to be the full content of the document.
+ * An event describing a change to a text document. If range and rangeLength are omitted the new
+ * text is considered to be the full content of the document.
  */
 public class TextDocumentContentChangeEvent {
 
@@ -90,7 +90,7 @@ public class TextDocumentContentChangeEvent {
         if (!Objects.equals(this.getRange(), other.getRange())) {
             return false;
         }
-        if (this.getRangeLength() != other.getRangeLength()) {
+        if (!Objects.equals(this.getRangeLength(), other.getRangeLength())) {
             return false;
         }
         if (!Objects.equals(this.getText(), other.getText())) {
@@ -103,12 +103,12 @@ public class TextDocumentContentChangeEvent {
     public int hashCode() {
         int hash = 7;
         if (this.getRange() != null) {
-            hash = 79 * hash + Objects.hashCode(this.getRange());
+            hash = 53 * hash + Objects.hashCode(this.getRange());
         }
         if (this.getRangeLength() != null) {
-            hash = 79 * hash + Integer.hashCode(this.getRangeLength());
+            hash = 53 * hash + Integer.hashCode(this.getRangeLength());
         }
-        hash = 79 * hash + Objects.hashCode(this.getText());
+        hash = 53 * hash + Objects.hashCode(this.getText());
         return hash;
     }
 

@@ -112,11 +112,11 @@ public class DocumentOnTypeFormattingParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 11 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 11 * hash + Objects.hashCode(this.getPosition());
-        hash = 11 * hash + Objects.hashCode(this.getCh());
-        hash = 11 * hash + Objects.hashCode(this.getOptions());
+        int hash = 3;
+        hash = 41 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 41 * hash + Objects.hashCode(this.getPosition());
+        hash = 41 * hash + Objects.hashCode(this.getCh());
+        hash = 41 * hash + Objects.hashCode(this.getOptions());
         return hash;
     }
 

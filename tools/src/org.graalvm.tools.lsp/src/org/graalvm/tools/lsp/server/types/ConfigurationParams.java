@@ -53,7 +53,7 @@ public class ConfigurationParams {
 
     public ConfigurationParams setItems(List<ConfigurationItem> items) {
         final JSONArray json = new JSONArray();
-        for (ConfigurationItem configurationItem: items) {
+        for (ConfigurationItem configurationItem : items) {
             json.put(configurationItem.jsonData);
         }
         jsonData.put("items", json);
@@ -81,14 +81,14 @@ public class ConfigurationParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 43 * hash + Objects.hashCode(this.getItems());
+        hash = 89 * hash + Objects.hashCode(this.getItems());
         return hash;
     }
 
     public static ConfigurationParams create(List<ConfigurationItem> items) {
         final JSONObject json = new JSONObject();
         JSONArray itemsJsonArr = new JSONArray();
-        for(ConfigurationItem configurationItem: items) {
+        for (ConfigurationItem configurationItem : items) {
             itemsJsonArr.put(configurationItem.jsonData);
         }
         json.put("items", itemsJsonArr);

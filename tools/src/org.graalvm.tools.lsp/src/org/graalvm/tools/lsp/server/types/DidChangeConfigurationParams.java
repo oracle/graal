@@ -39,7 +39,7 @@ public class DidChangeConfigurationParams {
     }
 
     /**
-     * The actual changed settings
+     * The actual changed settings.
      */
     public Object getSettings() {
         return jsonData.get("settings");
@@ -70,8 +70,8 @@ public class DidChangeConfigurationParams {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 97 * hash + Objects.hashCode(this.getSettings());
+        int hash = 5;
+        hash = 37 * hash + Objects.hashCode(this.getSettings());
         return hash;
     }
 

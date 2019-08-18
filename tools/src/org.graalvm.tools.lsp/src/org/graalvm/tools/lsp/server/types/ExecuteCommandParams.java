@@ -69,7 +69,7 @@ public class ExecuteCommandParams {
     public ExecuteCommandParams setArguments(List<Object> arguments) {
         if (arguments != null) {
             final JSONArray json = new JSONArray();
-            for (Object object: arguments) {
+            for (Object object : arguments) {
                 json.put(object);
             }
             jsonData.put("arguments", json);
@@ -100,10 +100,10 @@ public class ExecuteCommandParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 11 * hash + Objects.hashCode(this.getCommand());
+        int hash = 7;
+        hash = 67 * hash + Objects.hashCode(this.getCommand());
         if (this.getArguments() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getArguments());
+            hash = 67 * hash + Objects.hashCode(this.getArguments());
         }
         return hash;
     }

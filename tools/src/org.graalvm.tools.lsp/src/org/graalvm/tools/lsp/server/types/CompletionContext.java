@@ -51,8 +51,8 @@ public class CompletionContext {
     }
 
     /**
-     * The trigger character (a single character) that has trigger code complete.
-     * Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
+     * The trigger character (a single character) that has trigger code complete. Is undefined if
+     * `triggerKind !== CompletionTriggerKind.TriggerCharacter`
      */
     public String getTriggerCharacter() {
         return jsonData.optString("triggerCharacter");
@@ -87,9 +87,9 @@ public class CompletionContext {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 41 * hash + Objects.hashCode(this.getTriggerKind());
+        hash = 17 * hash + Objects.hashCode(this.getTriggerKind());
         if (this.getTriggerCharacter() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getTriggerCharacter());
+            hash = 17 * hash + Objects.hashCode(this.getTriggerCharacter());
         }
         return hash;
     }

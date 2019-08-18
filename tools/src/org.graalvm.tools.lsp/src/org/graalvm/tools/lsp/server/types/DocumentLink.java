@@ -28,8 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * A document link is a range in a text document that links to an internal or external resource, like another
- * text document or a web site.
+ * A document link is a range in a text document that links to an internal or external resource,
+ * like another text document or a web site.
  */
 public class DocumentLink {
 
@@ -64,8 +64,8 @@ public class DocumentLink {
     }
 
     /**
-     * A data entry field that is preserved on a document link between a
-     * DocumentLinkRequest and a DocumentLinkResolveRequest.
+     * A data entry field that is preserved on a document link between a DocumentLinkRequest and a
+     * DocumentLinkResolveRequest.
      */
     public Object getData() {
         return jsonData.opt("data");
@@ -103,12 +103,12 @@ public class DocumentLink {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 53 * hash + Objects.hashCode(this.getRange());
+        hash = 67 * hash + Objects.hashCode(this.getRange());
         if (this.getTarget() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getTarget());
+            hash = 67 * hash + Objects.hashCode(this.getTarget());
         }
         if (this.getData() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getData());
+            hash = 67 * hash + Objects.hashCode(this.getData());
         }
         return hash;
     }

@@ -28,8 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Defines whether the insert text in a completion item should be interpreted as
- * plain text or a snippet.
+ * Defines whether the insert text in a completion item should be interpreted as plain text or a
+ * snippet.
  */
 public enum InsertTextFormat {
 
@@ -40,12 +40,14 @@ public enum InsertTextFormat {
     /**
      * The primary text to be inserted is treated as a snippet.
      *
-     * A snippet can define tab stops and placeholders with `$1`, `$2`
-     * and `${3:foo}`. `$0` defines the final tab stop, it defaults to
-     * the end of the snippet. Placeholders with equal identifiers are linked,
-     * that is typing in one will update others too.
+     * A snippet can define tab stops and placeholders with `$1`, `$2` and `${3:foo}`. `$0` defines
+     * the final tab stop, it defaults to the end of the snippet. Placeholders with equal
+     * identifiers are linked, that is typing in one will update others too.
      *
-     * See also: https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/snippet.md
+     * @see <a href=
+     *      "https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/snippet.md">
+     *      https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/
+     *      snippet.md</a>
      */
     Snippet(2);
 

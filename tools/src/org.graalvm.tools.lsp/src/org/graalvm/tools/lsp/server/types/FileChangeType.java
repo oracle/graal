@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The file event type
+ * The file event type.
  */
 public enum FileChangeType {
 

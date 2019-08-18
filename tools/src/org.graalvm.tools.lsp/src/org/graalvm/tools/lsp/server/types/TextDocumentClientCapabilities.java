@@ -55,7 +55,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/completion`
+     * Capabilities specific to the `textDocument/completion`.
      */
     public CompletionCapabilities getCompletion() {
         return jsonData.has("completion") ? new CompletionCapabilities(jsonData.optJSONObject("completion")) : null;
@@ -67,7 +67,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/hover`
+     * Capabilities specific to the `textDocument/hover`.
      */
     public HoverCapabilities getHover() {
         return jsonData.has("hover") ? new HoverCapabilities(jsonData.optJSONObject("hover")) : null;
@@ -79,7 +79,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/signatureHelp`
+     * Capabilities specific to the `textDocument/signatureHelp`.
      */
     public SignatureHelpCapabilities getSignatureHelp() {
         return jsonData.has("signatureHelp") ? new SignatureHelpCapabilities(jsonData.optJSONObject("signatureHelp")) : null;
@@ -91,7 +91,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/references`
+     * Capabilities specific to the `textDocument/references`.
      */
     public ReferencesCapabilities getReferences() {
         return jsonData.has("references") ? new ReferencesCapabilities(jsonData.optJSONObject("references")) : null;
@@ -103,7 +103,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/documentHighlight`
+     * Capabilities specific to the `textDocument/documentHighlight`.
      */
     public DocumentHighlightCapabilities getDocumentHighlight() {
         return jsonData.has("documentHighlight") ? new DocumentHighlightCapabilities(jsonData.optJSONObject("documentHighlight")) : null;
@@ -115,7 +115,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/documentSymbol`
+     * Capabilities specific to the `textDocument/documentSymbol`.
      */
     public DocumentSymbolCapabilities getDocumentSymbol() {
         return jsonData.has("documentSymbol") ? new DocumentSymbolCapabilities(jsonData.optJSONObject("documentSymbol")) : null;
@@ -127,7 +127,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/formatting`
+     * Capabilities specific to the `textDocument/formatting`.
      */
     public FormattingCapabilities getFormatting() {
         return jsonData.has("formatting") ? new FormattingCapabilities(jsonData.optJSONObject("formatting")) : null;
@@ -139,7 +139,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/rangeFormatting`
+     * Capabilities specific to the `textDocument/rangeFormatting`.
      */
     public RangeFormattingCapabilities getRangeFormatting() {
         return jsonData.has("rangeFormatting") ? new RangeFormattingCapabilities(jsonData.optJSONObject("rangeFormatting")) : null;
@@ -151,7 +151,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/onTypeFormatting`
+     * Capabilities specific to the `textDocument/onTypeFormatting`.
      */
     public OnTypeFormattingCapabilities getOnTypeFormatting() {
         return jsonData.has("onTypeFormatting") ? new OnTypeFormattingCapabilities(jsonData.optJSONObject("onTypeFormatting")) : null;
@@ -163,7 +163,19 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/definition`
+     * Capabilities specific to the `textDocument/declaration`.
+     */
+    public DeclarationCapabilities getDeclaration() {
+        return jsonData.has("declaration") ? new DeclarationCapabilities(jsonData.optJSONObject("declaration")) : null;
+    }
+
+    public TextDocumentClientCapabilities setDeclaration(DeclarationCapabilities declaration) {
+        jsonData.putOpt("declaration", declaration != null ? declaration.jsonData : null);
+        return this;
+    }
+
+    /**
+     * Capabilities specific to the `textDocument/definition`.
      */
     public DefinitionCapabilities getDefinition() {
         return jsonData.has("definition") ? new DefinitionCapabilities(jsonData.optJSONObject("definition")) : null;
@@ -175,7 +187,31 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/codeAction`
+     * Capabilities specific to the `textDocument/typeDefinition`.
+     */
+    public TypeDefinitionCapabilities getTypeDefinition() {
+        return jsonData.has("typeDefinition") ? new TypeDefinitionCapabilities(jsonData.optJSONObject("typeDefinition")) : null;
+    }
+
+    public TextDocumentClientCapabilities setTypeDefinition(TypeDefinitionCapabilities typeDefinition) {
+        jsonData.putOpt("typeDefinition", typeDefinition != null ? typeDefinition.jsonData : null);
+        return this;
+    }
+
+    /**
+     * Capabilities specific to the `textDocument/implementation`.
+     */
+    public ImplementationCapabilities getImplementation() {
+        return jsonData.has("implementation") ? new ImplementationCapabilities(jsonData.optJSONObject("implementation")) : null;
+    }
+
+    public TextDocumentClientCapabilities setImplementation(ImplementationCapabilities implementation) {
+        jsonData.putOpt("implementation", implementation != null ? implementation.jsonData : null);
+        return this;
+    }
+
+    /**
+     * Capabilities specific to the `textDocument/codeAction`.
      */
     public CodeActionCapabilities getCodeAction() {
         return jsonData.has("codeAction") ? new CodeActionCapabilities(jsonData.optJSONObject("codeAction")) : null;
@@ -187,7 +223,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/codeLens`
+     * Capabilities specific to the `textDocument/codeLens`.
      */
     public CodeLensCapabilities getCodeLens() {
         return jsonData.has("codeLens") ? new CodeLensCapabilities(jsonData.optJSONObject("codeLens")) : null;
@@ -199,7 +235,7 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/documentLink`
+     * Capabilities specific to the `textDocument/documentLink`.
      */
     public DocumentLinkCapabilities getDocumentLink() {
         return jsonData.has("documentLink") ? new DocumentLinkCapabilities(jsonData.optJSONObject("documentLink")) : null;
@@ -211,7 +247,19 @@ public class TextDocumentClientCapabilities {
     }
 
     /**
-     * Capabilities specific to the `textDocument/rename`
+     * Capabilities specific to the colorProvider.
+     */
+    public ColorProviderCapabilities getColorProvider() {
+        return jsonData.has("colorProvider") ? new ColorProviderCapabilities(jsonData.optJSONObject("colorProvider")) : null;
+    }
+
+    public TextDocumentClientCapabilities setColorProvider(ColorProviderCapabilities colorProvider) {
+        jsonData.putOpt("colorProvider", colorProvider != null ? colorProvider.jsonData : null);
+        return this;
+    }
+
+    /**
+     * Capabilities specific to the `textDocument/rename`.
      */
     public RenameCapabilities getRename() {
         return jsonData.has("rename") ? new RenameCapabilities(jsonData.optJSONObject("rename")) : null;
@@ -231,6 +279,18 @@ public class TextDocumentClientCapabilities {
 
     public TextDocumentClientCapabilities setPublishDiagnostics(PublishDiagnosticsCapabilities publishDiagnostics) {
         jsonData.putOpt("publishDiagnostics", publishDiagnostics != null ? publishDiagnostics.jsonData : null);
+        return this;
+    }
+
+    /**
+     * Capabilities specific to `textDocument/foldingRange` requests.
+     */
+    public FoldingRangeCapabilities getFoldingRange() {
+        return jsonData.has("foldingRange") ? new FoldingRangeCapabilities(jsonData.optJSONObject("foldingRange")) : null;
+    }
+
+    public TextDocumentClientCapabilities setFoldingRange(FoldingRangeCapabilities foldingRange) {
+        jsonData.putOpt("foldingRange", foldingRange != null ? foldingRange.jsonData : null);
         return this;
     }
 
@@ -276,7 +336,16 @@ public class TextDocumentClientCapabilities {
         if (!Objects.equals(this.getOnTypeFormatting(), other.getOnTypeFormatting())) {
             return false;
         }
+        if (!Objects.equals(this.getDeclaration(), other.getDeclaration())) {
+            return false;
+        }
         if (!Objects.equals(this.getDefinition(), other.getDefinition())) {
+            return false;
+        }
+        if (!Objects.equals(this.getTypeDefinition(), other.getTypeDefinition())) {
+            return false;
+        }
+        if (!Objects.equals(this.getImplementation(), other.getImplementation())) {
             return false;
         }
         if (!Objects.equals(this.getCodeAction(), other.getCodeAction())) {
@@ -288,10 +357,16 @@ public class TextDocumentClientCapabilities {
         if (!Objects.equals(this.getDocumentLink(), other.getDocumentLink())) {
             return false;
         }
+        if (!Objects.equals(this.getColorProvider(), other.getColorProvider())) {
+            return false;
+        }
         if (!Objects.equals(this.getRename(), other.getRename())) {
             return false;
         }
         if (!Objects.equals(this.getPublishDiagnostics(), other.getPublishDiagnostics())) {
+            return false;
+        }
+        if (!Objects.equals(this.getFoldingRange(), other.getFoldingRange())) {
             return false;
         }
         return true;
@@ -299,54 +374,69 @@ public class TextDocumentClientCapabilities {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 2;
         if (this.getSynchronization() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getSynchronization());
+            hash = 37 * hash + Objects.hashCode(this.getSynchronization());
         }
         if (this.getCompletion() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getCompletion());
+            hash = 37 * hash + Objects.hashCode(this.getCompletion());
         }
         if (this.getHover() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getHover());
+            hash = 37 * hash + Objects.hashCode(this.getHover());
         }
         if (this.getSignatureHelp() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getSignatureHelp());
+            hash = 37 * hash + Objects.hashCode(this.getSignatureHelp());
         }
         if (this.getReferences() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getReferences());
+            hash = 37 * hash + Objects.hashCode(this.getReferences());
         }
         if (this.getDocumentHighlight() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getDocumentHighlight());
+            hash = 37 * hash + Objects.hashCode(this.getDocumentHighlight());
         }
         if (this.getDocumentSymbol() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getDocumentSymbol());
+            hash = 37 * hash + Objects.hashCode(this.getDocumentSymbol());
         }
         if (this.getFormatting() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getFormatting());
+            hash = 37 * hash + Objects.hashCode(this.getFormatting());
         }
         if (this.getRangeFormatting() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getRangeFormatting());
+            hash = 37 * hash + Objects.hashCode(this.getRangeFormatting());
         }
         if (this.getOnTypeFormatting() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getOnTypeFormatting());
+            hash = 37 * hash + Objects.hashCode(this.getOnTypeFormatting());
+        }
+        if (this.getDeclaration() != null) {
+            hash = 37 * hash + Objects.hashCode(this.getDeclaration());
         }
         if (this.getDefinition() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getDefinition());
+            hash = 37 * hash + Objects.hashCode(this.getDefinition());
+        }
+        if (this.getTypeDefinition() != null) {
+            hash = 37 * hash + Objects.hashCode(this.getTypeDefinition());
+        }
+        if (this.getImplementation() != null) {
+            hash = 37 * hash + Objects.hashCode(this.getImplementation());
         }
         if (this.getCodeAction() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getCodeAction());
+            hash = 37 * hash + Objects.hashCode(this.getCodeAction());
         }
         if (this.getCodeLens() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getCodeLens());
+            hash = 37 * hash + Objects.hashCode(this.getCodeLens());
         }
         if (this.getDocumentLink() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getDocumentLink());
+            hash = 37 * hash + Objects.hashCode(this.getDocumentLink());
+        }
+        if (this.getColorProvider() != null) {
+            hash = 37 * hash + Objects.hashCode(this.getColorProvider());
         }
         if (this.getRename() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getRename());
+            hash = 37 * hash + Objects.hashCode(this.getRename());
         }
         if (this.getPublishDiagnostics() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getPublishDiagnostics());
+            hash = 37 * hash + Objects.hashCode(this.getPublishDiagnostics());
+        }
+        if (this.getFoldingRange() != null) {
+            hash = 37 * hash + Objects.hashCode(this.getFoldingRange());
         }
         return hash;
     }
@@ -389,9 +479,8 @@ public class TextDocumentClientCapabilities {
         }
 
         /**
-         * The client supports sending a will save request and
-         * waits for a response providing text edits which will
-         * be applied to the document before it is saved.
+         * The client supports sending a will save request and waits for a response providing text
+         * edits which will be applied to the document before it is saved.
          */
         public Boolean getWillSaveWaitUntil() {
             return jsonData.optBoolean("willSaveWaitUntil");
@@ -445,16 +534,16 @@ public class TextDocumentClientCapabilities {
         public int hashCode() {
             int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 59 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 71 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getWillSave() != null) {
-                hash = 59 * hash + Boolean.hashCode(this.getWillSave());
+                hash = 71 * hash + Boolean.hashCode(this.getWillSave());
             }
             if (this.getWillSaveWaitUntil() != null) {
-                hash = 59 * hash + Boolean.hashCode(this.getWillSaveWaitUntil());
+                hash = 71 * hash + Boolean.hashCode(this.getWillSaveWaitUntil());
             }
             if (this.getDidSave() != null) {
-                hash = 59 * hash + Boolean.hashCode(this.getDidSave());
+                hash = 71 * hash + Boolean.hashCode(this.getDidSave());
             }
             return hash;
         }
@@ -481,8 +570,7 @@ public class TextDocumentClientCapabilities {
         }
 
         /**
-         * The client supports the following `CompletionItem` specific
-         * capabilities.
+         * The client supports the following `CompletionItem` specific capabilities.
          */
         public CompletionItemCapabilities getCompletionItem() {
             return jsonData.has("completionItem") ? new CompletionItemCapabilities(jsonData.optJSONObject("completionItem")) : null;
@@ -546,16 +634,16 @@ public class TextDocumentClientCapabilities {
         public int hashCode() {
             int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 13 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 71 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getCompletionItem() != null) {
-                hash = 13 * hash + Objects.hashCode(this.getCompletionItem());
+                hash = 71 * hash + Objects.hashCode(this.getCompletionItem());
             }
             if (this.getCompletionItemKind() != null) {
-                hash = 13 * hash + Objects.hashCode(this.getCompletionItemKind());
+                hash = 71 * hash + Objects.hashCode(this.getCompletionItemKind());
             }
             if (this.getContextSupport() != null) {
-                hash = 13 * hash + Boolean.hashCode(this.getContextSupport());
+                hash = 71 * hash + Boolean.hashCode(this.getContextSupport());
             }
             return hash;
         }
@@ -571,10 +659,9 @@ public class TextDocumentClientCapabilities {
             /**
              * Client supports snippets as insert text.
              *
-             * A snippet can define tab stops and placeholders with `$1`, `$2`
-             * and `${3:foo}`. `$0` defines the final tab stop, it defaults to
-             * the end of the snippet. Placeholders with equal identifiers are linked,
-             * that is typing in one will update others too.
+             * A snippet can define tab stops and placeholders with `$1`, `$2` and `${3:foo}`. `$0`
+             * defines the final tab stop, it defaults to the end of the snippet. Placeholders with
+             * equal identifiers are linked, that is typing in one will update others too.
              */
             public Boolean getSnippetSupport() {
                 return jsonData.optBoolean("snippetSupport");
@@ -598,8 +685,8 @@ public class TextDocumentClientCapabilities {
             }
 
             /**
-             * Client supports the follow content formats for the documentation
-             * property. The order describes the preferred format of the client.
+             * Client supports the follow content formats for the documentation property. The order
+             * describes the preferred format of the client.
              */
             public List<MarkupKind> getDocumentationFormat() {
                 final JSONArray json = jsonData.optJSONArray("documentationFormat");
@@ -616,7 +703,7 @@ public class TextDocumentClientCapabilities {
             public CompletionItemCapabilities setDocumentationFormat(List<MarkupKind> documentationFormat) {
                 if (documentationFormat != null) {
                     final JSONArray json = new JSONArray();
-                    for (MarkupKind markupKind: documentationFormat) {
+                    for (MarkupKind markupKind : documentationFormat) {
                         json.put(markupKind.getStringValue());
                     }
                     jsonData.put("documentationFormat", json);
@@ -680,21 +767,21 @@ public class TextDocumentClientCapabilities {
 
             @Override
             public int hashCode() {
-                int hash = 2;
+                int hash = 7;
                 if (this.getSnippetSupport() != null) {
-                    hash = 29 * hash + Boolean.hashCode(this.getSnippetSupport());
+                    hash = 53 * hash + Boolean.hashCode(this.getSnippetSupport());
                 }
                 if (this.getCommitCharactersSupport() != null) {
-                    hash = 29 * hash + Boolean.hashCode(this.getCommitCharactersSupport());
+                    hash = 53 * hash + Boolean.hashCode(this.getCommitCharactersSupport());
                 }
                 if (this.getDocumentationFormat() != null) {
-                    hash = 29 * hash + Objects.hashCode(this.getDocumentationFormat());
+                    hash = 53 * hash + Objects.hashCode(this.getDocumentationFormat());
                 }
                 if (this.getDeprecatedSupport() != null) {
-                    hash = 29 * hash + Boolean.hashCode(this.getDeprecatedSupport());
+                    hash = 53 * hash + Boolean.hashCode(this.getDeprecatedSupport());
                 }
                 if (this.getPreselectSupport() != null) {
-                    hash = 29 * hash + Boolean.hashCode(this.getPreselectSupport());
+                    hash = 53 * hash + Boolean.hashCode(this.getPreselectSupport());
                 }
                 return hash;
             }
@@ -709,14 +796,12 @@ public class TextDocumentClientCapabilities {
             }
 
             /**
-             * The completion item kind values the client supports. When this
-             * property exists the client also guarantees that it will
-             * handle values outside its set gracefully and falls back
-             * to a default value when unknown.
+             * The completion item kind values the client supports. When this property exists the
+             * client also guarantees that it will handle values outside its set gracefully and
+             * falls back to a default value when unknown.
              *
-             * If this property is not present the client only supports
-             * the completion items kinds from `Text` to `Reference` as defined in
-             * the initial version of the protocol.
+             * If this property is not present the client only supports the completion items kinds
+             * from `Text` to `Reference` as defined in the initial version of the protocol.
              */
             public List<CompletionItemKind> getValueSet() {
                 final JSONArray json = jsonData.optJSONArray("valueSet");
@@ -733,7 +818,7 @@ public class TextDocumentClientCapabilities {
             public CompletionItemKindCapabilities setValueSet(List<CompletionItemKind> valueSet) {
                 if (valueSet != null) {
                     final JSONArray json = new JSONArray();
-                    for (CompletionItemKind completionItemKind: valueSet) {
+                    for (CompletionItemKind completionItemKind : valueSet) {
                         json.put(completionItemKind.getIntValue());
                     }
                     jsonData.put("valueSet", json);
@@ -761,9 +846,9 @@ public class TextDocumentClientCapabilities {
 
             @Override
             public int hashCode() {
-                int hash = 3;
+                int hash = 7;
                 if (this.getValueSet() != null) {
-                    hash = 53 * hash + Objects.hashCode(this.getValueSet());
+                    hash = 29 * hash + Objects.hashCode(this.getValueSet());
                 }
                 return hash;
             }
@@ -791,8 +876,8 @@ public class TextDocumentClientCapabilities {
         }
 
         /**
-         * Client supports the follow content formats for the content
-         * property. The order describes the preferred format of the client.
+         * Client supports the follow content formats for the content property. The order describes
+         * the preferred format of the client.
          */
         public List<MarkupKind> getContentFormat() {
             final JSONArray json = jsonData.optJSONArray("contentFormat");
@@ -809,7 +894,7 @@ public class TextDocumentClientCapabilities {
         public HoverCapabilities setContentFormat(List<MarkupKind> contentFormat) {
             if (contentFormat != null) {
                 final JSONArray json = new JSONArray();
-                for (MarkupKind markupKind: contentFormat) {
+                for (MarkupKind markupKind : contentFormat) {
                     json.put(markupKind.getStringValue());
                 }
                 jsonData.put("contentFormat", json);
@@ -842,10 +927,10 @@ public class TextDocumentClientCapabilities {
         public int hashCode() {
             int hash = 5;
             if (this.getDynamicRegistration() != null) {
-                hash = 79 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 53 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getContentFormat() != null) {
-                hash = 79 * hash + Objects.hashCode(this.getContentFormat());
+                hash = 53 * hash + Objects.hashCode(this.getContentFormat());
             }
             return hash;
         }
@@ -872,8 +957,7 @@ public class TextDocumentClientCapabilities {
         }
 
         /**
-         * The client supports the following `SignatureInformation`
-         * specific properties.
+         * The client supports the following `SignatureInformation` specific properties.
          */
         public SignatureInformationCapabilities getSignatureInformation() {
             return jsonData.has("signatureInformation") ? new SignatureInformationCapabilities(jsonData.optJSONObject("signatureInformation")) : null;
@@ -907,12 +991,12 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 7;
+            int hash = 3;
             if (this.getDynamicRegistration() != null) {
-                hash = 71 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 13 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getSignatureInformation() != null) {
-                hash = 71 * hash + Objects.hashCode(this.getSignatureInformation());
+                hash = 13 * hash + Objects.hashCode(this.getSignatureInformation());
             }
             return hash;
         }
@@ -926,8 +1010,8 @@ public class TextDocumentClientCapabilities {
             }
 
             /**
-             * Client supports the follow content formats for the documentation
-             * property. The order describes the preferred format of the client.
+             * Client supports the follow content formats for the documentation property. The order
+             * describes the preferred format of the client.
              */
             public List<MarkupKind> getDocumentationFormat() {
                 final JSONArray json = jsonData.optJSONArray("documentationFormat");
@@ -944,7 +1028,7 @@ public class TextDocumentClientCapabilities {
             public SignatureInformationCapabilities setDocumentationFormat(List<MarkupKind> documentationFormat) {
                 if (documentationFormat != null) {
                     final JSONArray json = new JSONArray();
-                    for (MarkupKind markupKind: documentationFormat) {
+                    for (MarkupKind markupKind : documentationFormat) {
                         json.put(markupKind.getStringValue());
                     }
                     jsonData.put("documentationFormat", json);
@@ -987,12 +1071,12 @@ public class TextDocumentClientCapabilities {
 
             @Override
             public int hashCode() {
-                int hash = 5;
+                int hash = 2;
                 if (this.getDocumentationFormat() != null) {
-                    hash = 73 * hash + Objects.hashCode(this.getDocumentationFormat());
+                    hash = 41 * hash + Objects.hashCode(this.getDocumentationFormat());
                 }
                 if (this.getParameterInformation() != null) {
-                    hash = 73 * hash + Objects.hashCode(this.getParameterInformation());
+                    hash = 41 * hash + Objects.hashCode(this.getParameterInformation());
                 }
                 return hash;
             }
@@ -1006,8 +1090,7 @@ public class TextDocumentClientCapabilities {
                 }
 
                 /**
-                 * The client supports processing label offsets instead of a
-                 * simple label string.
+                 * The client supports processing label offsets instead of a simple label string.
                  */
                 public Boolean getLabelOffsetSupport() {
                     return jsonData.optBoolean("labelOffsetSupport");
@@ -1040,7 +1123,7 @@ public class TextDocumentClientCapabilities {
                 public int hashCode() {
                     int hash = 2;
                     if (this.getLabelOffsetSupport() != null) {
-                        hash = 53 * hash + Boolean.hashCode(this.getLabelOffsetSupport());
+                        hash = 31 * hash + Boolean.hashCode(this.getLabelOffsetSupport());
                     }
                     return hash;
                 }
@@ -1088,9 +1171,9 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 2;
+            int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 47 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 17 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -1136,9 +1219,9 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 7;
+            int hash = 5;
             if (this.getDynamicRegistration() != null) {
-                hash = 47 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 73 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -1214,15 +1297,15 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 5;
+            int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 43 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 71 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getSymbolKind() != null) {
-                hash = 43 * hash + Objects.hashCode(this.getSymbolKind());
+                hash = 71 * hash + Objects.hashCode(this.getSymbolKind());
             }
             if (this.getHierarchicalDocumentSymbolSupport() != null) {
-                hash = 43 * hash + Boolean.hashCode(this.getHierarchicalDocumentSymbolSupport());
+                hash = 71 * hash + Boolean.hashCode(this.getHierarchicalDocumentSymbolSupport());
             }
             return hash;
         }
@@ -1236,14 +1319,12 @@ public class TextDocumentClientCapabilities {
             }
 
             /**
-             * The symbol kind values the client supports. When this
-             * property exists the client also guarantees that it will
-             * handle values outside its set gracefully and falls back
-             * to a default value when unknown.
+             * The symbol kind values the client supports. When this property exists the client also
+             * guarantees that it will handle values outside its set gracefully and falls back to a
+             * default value when unknown.
              *
-             * If this property is not present the client only supports
-             * the symbol kinds from `File` to `Array` as defined in
-             * the initial version of the protocol.
+             * If this property is not present the client only supports the symbol kinds from `File`
+             * to `Array` as defined in the initial version of the protocol.
              */
             public List<SymbolKind> getValueSet() {
                 final JSONArray json = jsonData.optJSONArray("valueSet");
@@ -1260,7 +1341,7 @@ public class TextDocumentClientCapabilities {
             public SymbolKindCapabilities setValueSet(List<SymbolKind> valueSet) {
                 if (valueSet != null) {
                     final JSONArray json = new JSONArray();
-                    for (SymbolKind symbolKind: valueSet) {
+                    for (SymbolKind symbolKind : valueSet) {
                         json.put(symbolKind.getIntValue());
                     }
                     jsonData.put("valueSet", json);
@@ -1290,7 +1371,7 @@ public class TextDocumentClientCapabilities {
             public int hashCode() {
                 int hash = 7;
                 if (this.getValueSet() != null) {
-                    hash = 67 * hash + Objects.hashCode(this.getValueSet());
+                    hash = 37 * hash + Objects.hashCode(this.getValueSet());
                 }
                 return hash;
             }
@@ -1339,7 +1420,7 @@ public class TextDocumentClientCapabilities {
         public int hashCode() {
             int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 67 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 37 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -1385,9 +1466,9 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 5;
+            int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 53 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 59 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -1433,9 +1514,77 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 3;
+            int hash = 5;
             if (this.getDynamicRegistration() != null) {
-                hash = 59 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 29 * hash + Boolean.hashCode(this.getDynamicRegistration());
+            }
+            return hash;
+        }
+    }
+
+    public static class DeclarationCapabilities {
+
+        final JSONObject jsonData;
+
+        DeclarationCapabilities(JSONObject jsonData) {
+            this.jsonData = jsonData;
+        }
+
+        /**
+         * Whether declaration supports dynamic registration. If this is set to `true` the client
+         * supports the new `(TextDocumentRegistrationOptions & StaticRegistrationOptions)` return
+         * value for the corresponding server capability as well.
+         */
+        public Boolean getDynamicRegistration() {
+            return jsonData.optBoolean("dynamicRegistration");
+        }
+
+        public DeclarationCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
+            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
+            return this;
+        }
+
+        /**
+         * The client supports additional metadata in the form of declaration links.
+         */
+        public Boolean getLinkSupport() {
+            return jsonData.optBoolean("linkSupport");
+        }
+
+        public DeclarationCapabilities setLinkSupport(Boolean linkSupport) {
+            jsonData.putOpt("linkSupport", linkSupport);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (this.getClass() != obj.getClass()) {
+                return false;
+            }
+            DeclarationCapabilities other = (DeclarationCapabilities) obj;
+            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+                return false;
+            }
+            if (this.getLinkSupport() != other.getLinkSupport()) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            if (this.getDynamicRegistration() != null) {
+                hash = 89 * hash + Boolean.hashCode(this.getDynamicRegistration());
+            }
+            if (this.getLinkSupport() != null) {
+                hash = 89 * hash + Boolean.hashCode(this.getLinkSupport());
             }
             return hash;
         }
@@ -1496,12 +1645,148 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 5;
+            int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 47 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 73 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getLinkSupport() != null) {
-                hash = 47 * hash + Boolean.hashCode(this.getLinkSupport());
+                hash = 73 * hash + Boolean.hashCode(this.getLinkSupport());
+            }
+            return hash;
+        }
+    }
+
+    public static class TypeDefinitionCapabilities {
+
+        final JSONObject jsonData;
+
+        TypeDefinitionCapabilities(JSONObject jsonData) {
+            this.jsonData = jsonData;
+        }
+
+        /**
+         * Whether implementation supports dynamic registration. If this is set to `true` the client
+         * supports the new `(TextDocumentRegistrationOptions & StaticRegistrationOptions)` return
+         * value for the corresponding server capability as well.
+         */
+        public Boolean getDynamicRegistration() {
+            return jsonData.optBoolean("dynamicRegistration");
+        }
+
+        public TypeDefinitionCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
+            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
+            return this;
+        }
+
+        /**
+         * The client supports additional metadata in the form of definition links.
+         */
+        public Boolean getLinkSupport() {
+            return jsonData.optBoolean("linkSupport");
+        }
+
+        public TypeDefinitionCapabilities setLinkSupport(Boolean linkSupport) {
+            jsonData.putOpt("linkSupport", linkSupport);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (this.getClass() != obj.getClass()) {
+                return false;
+            }
+            TypeDefinitionCapabilities other = (TypeDefinitionCapabilities) obj;
+            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+                return false;
+            }
+            if (this.getLinkSupport() != other.getLinkSupport()) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            if (this.getDynamicRegistration() != null) {
+                hash = 97 * hash + Boolean.hashCode(this.getDynamicRegistration());
+            }
+            if (this.getLinkSupport() != null) {
+                hash = 97 * hash + Boolean.hashCode(this.getLinkSupport());
+            }
+            return hash;
+        }
+    }
+
+    public static class ImplementationCapabilities {
+
+        final JSONObject jsonData;
+
+        ImplementationCapabilities(JSONObject jsonData) {
+            this.jsonData = jsonData;
+        }
+
+        /**
+         * Whether implementation supports dynamic registration. If this is set to `true` the client
+         * supports the new `(TextDocumentRegistrationOptions & StaticRegistrationOptions)` return
+         * value for the corresponding server capability as well.
+         */
+        public Boolean getDynamicRegistration() {
+            return jsonData.optBoolean("dynamicRegistration");
+        }
+
+        public ImplementationCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
+            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
+            return this;
+        }
+
+        /**
+         * The client supports additional metadata in the form of definition links.
+         */
+        public Boolean getLinkSupport() {
+            return jsonData.optBoolean("linkSupport");
+        }
+
+        public ImplementationCapabilities setLinkSupport(Boolean linkSupport) {
+            jsonData.putOpt("linkSupport", linkSupport);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (this.getClass() != obj.getClass()) {
+                return false;
+            }
+            ImplementationCapabilities other = (ImplementationCapabilities) obj;
+            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+                return false;
+            }
+            if (this.getLinkSupport() != other.getLinkSupport()) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            if (this.getDynamicRegistration() != null) {
+                hash = 97 * hash + Boolean.hashCode(this.getDynamicRegistration());
+            }
+            if (this.getLinkSupport() != null) {
+                hash = 97 * hash + Boolean.hashCode(this.getLinkSupport());
             }
             return hash;
         }
@@ -1528,8 +1813,8 @@ public class TextDocumentClientCapabilities {
         }
 
         /**
-         * The client support code action literals as a valid
-         * response of the `textDocument/codeAction` request.
+         * The client support code action literals as a valid response of the
+         * `textDocument/codeAction` request.
          */
         public CodeActionLiteralSupportCapabilities getCodeActionLiteralSupport() {
             return jsonData.has("codeActionLiteralSupport") ? new CodeActionLiteralSupportCapabilities(jsonData.optJSONObject("codeActionLiteralSupport")) : null;
@@ -1563,12 +1848,12 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 3;
+            int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 17 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 79 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getCodeActionLiteralSupport() != null) {
-                hash = 17 * hash + Objects.hashCode(this.getCodeActionLiteralSupport());
+                hash = 79 * hash + Objects.hashCode(this.getCodeActionLiteralSupport());
             }
             return hash;
         }
@@ -1582,8 +1867,7 @@ public class TextDocumentClientCapabilities {
             }
 
             /**
-             * The code action kind is support with the following value
-             * set.
+             * The code action kind is support with the following value set.
              */
             public CodeActionKindCapabilities getCodeActionKind() {
                 return new CodeActionKindCapabilities(jsonData.getJSONObject("codeActionKind"));
@@ -1615,7 +1899,7 @@ public class TextDocumentClientCapabilities {
             @Override
             public int hashCode() {
                 int hash = 3;
-                hash = 61 * hash + Objects.hashCode(this.getCodeActionKind());
+                hash = 73 * hash + Objects.hashCode(this.getCodeActionKind());
                 return hash;
             }
 
@@ -1628,10 +1912,9 @@ public class TextDocumentClientCapabilities {
                 }
 
                 /**
-                 * The code action kind values the client supports. When this
-                 * property exists the client also guarantees that it will
-                 * handle values outside its set gracefully and falls back
-                 * to a default value when unknown.
+                 * The code action kind values the client supports. When this property exists the
+                 * client also guarantees that it will handle values outside its set gracefully and
+                 * falls back to a default value when unknown.
                  */
                 public List<CodeActionKind> getValueSet() {
                     final JSONArray json = jsonData.getJSONArray("valueSet");
@@ -1644,7 +1927,7 @@ public class TextDocumentClientCapabilities {
 
                 public CodeActionKindCapabilities setValueSet(List<CodeActionKind> valueSet) {
                     final JSONArray json = new JSONArray();
-                    for (CodeActionKind codeActionKind: valueSet) {
+                    for (CodeActionKind codeActionKind : valueSet) {
                         json.put(codeActionKind.getStringValue());
                     }
                     jsonData.put("valueSet", json);
@@ -1671,8 +1954,8 @@ public class TextDocumentClientCapabilities {
 
                 @Override
                 public int hashCode() {
-                    int hash = 3;
-                    hash = 79 * hash + Objects.hashCode(this.getValueSet());
+                    int hash = 7;
+                    hash = 53 * hash + Objects.hashCode(this.getValueSet());
                     return hash;
                 }
             }
@@ -1719,9 +2002,9 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 3;
+            int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 79 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 83 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -1767,9 +2050,59 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 3;
+            int hash = 2;
             if (this.getDynamicRegistration() != null) {
-                hash = 53 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 97 * hash + Boolean.hashCode(this.getDynamicRegistration());
+            }
+            return hash;
+        }
+    }
+
+    public static class ColorProviderCapabilities {
+
+        final JSONObject jsonData;
+
+        ColorProviderCapabilities(JSONObject jsonData) {
+            this.jsonData = jsonData;
+        }
+
+        /**
+         * Whether implementation supports dynamic registration. If this is set to `true` the client
+         * supports the new `(ColorProviderOptions & TextDocumentRegistrationOptions &
+         * StaticRegistrationOptions)` return value for the corresponding server capability as well.
+         */
+        public Boolean getDynamicRegistration() {
+            return jsonData.optBoolean("dynamicRegistration");
+        }
+
+        public ColorProviderCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
+            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (this.getClass() != obj.getClass()) {
+                return false;
+            }
+            ColorProviderCapabilities other = (ColorProviderCapabilities) obj;
+            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            if (this.getDynamicRegistration() != null) {
+                hash = 37 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -1796,8 +2129,7 @@ public class TextDocumentClientCapabilities {
         }
 
         /**
-         * Client supports testing for validity of rename operations
-         * before execution.
+         * Client supports testing for validity of rename operations before execution.
          */
         public Boolean getPrepareSupport() {
             return jsonData.optBoolean("prepareSupport");
@@ -1833,10 +2165,10 @@ public class TextDocumentClientCapabilities {
         public int hashCode() {
             int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 53 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 41 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getPrepareSupport() != null) {
-                hash = 53 * hash + Boolean.hashCode(this.getPrepareSupport());
+                hash = 41 * hash + Boolean.hashCode(this.getPrepareSupport());
             }
             return hash;
         }
@@ -1882,9 +2214,98 @@ public class TextDocumentClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 5;
+            int hash = 2;
             if (this.getRelatedInformation() != null) {
-                hash = 89 * hash + Boolean.hashCode(this.getRelatedInformation());
+                hash = 67 * hash + Boolean.hashCode(this.getRelatedInformation());
+            }
+            return hash;
+        }
+    }
+
+    public static class FoldingRangeCapabilities {
+
+        final JSONObject jsonData;
+
+        FoldingRangeCapabilities(JSONObject jsonData) {
+            this.jsonData = jsonData;
+        }
+
+        /**
+         * Whether implementation supports dynamic registration for folding range providers. If this
+         * is set to `true` the client supports the new `(FoldingRangeProviderOptions &
+         * TextDocumentRegistrationOptions & StaticRegistrationOptions)` return value for the
+         * corresponding server capability as well.
+         */
+        public Boolean getDynamicRegistration() {
+            return jsonData.optBoolean("dynamicRegistration");
+        }
+
+        public FoldingRangeCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
+            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
+            return this;
+        }
+
+        /**
+         * The maximum number of folding ranges that the client prefers to receive per document. The
+         * value serves as a hint, servers are free to follow the limit.
+         */
+        public Integer getRangeLimit() {
+            return jsonData.optInt("rangeLimit");
+        }
+
+        public FoldingRangeCapabilities setRangeLimit(Integer rangeLimit) {
+            jsonData.putOpt("rangeLimit", rangeLimit);
+            return this;
+        }
+
+        /**
+         * If set, the client signals that it only supports folding complete lines. If set, client
+         * will ignore specified `startCharacter` and `endCharacter` properties in a FoldingRange.
+         */
+        public Boolean getLineFoldingOnly() {
+            return jsonData.optBoolean("lineFoldingOnly");
+        }
+
+        public FoldingRangeCapabilities setLineFoldingOnly(Boolean lineFoldingOnly) {
+            jsonData.putOpt("lineFoldingOnly", lineFoldingOnly);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (this.getClass() != obj.getClass()) {
+                return false;
+            }
+            FoldingRangeCapabilities other = (FoldingRangeCapabilities) obj;
+            if (this.getDynamicRegistration() != other.getDynamicRegistration()) {
+                return false;
+            }
+            if (!Objects.equals(this.getRangeLimit(), other.getRangeLimit())) {
+                return false;
+            }
+            if (this.getLineFoldingOnly() != other.getLineFoldingOnly()) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 2;
+            if (this.getDynamicRegistration() != null) {
+                hash = 97 * hash + Boolean.hashCode(this.getDynamicRegistration());
+            }
+            if (this.getRangeLimit() != null) {
+                hash = 97 * hash + Integer.hashCode(this.getRangeLimit());
+            }
+            if (this.getLineFoldingOnly() != null) {
+                hash = 97 * hash + Boolean.hashCode(this.getLineFoldingOnly());
             }
             return hash;
         }

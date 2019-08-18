@@ -40,7 +40,6 @@ import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.launcher.filesystem.LSPFileSystem;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
-import org.graalvm.tools.lsp.server.types.Position;
 import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.test.instrument.TruffleAdapterProvider;
 import org.graalvm.polyglot.Engine;

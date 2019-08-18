@@ -74,9 +74,9 @@ public class VersionedTextDocumentIdentifier extends TextDocumentIdentifier {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 29 * hash + Integer.hashCode(this.getVersion());
-        hash = 29 * hash + Objects.hashCode(this.getUri());
+        int hash = 7;
+        hash = 59 * hash + Integer.hashCode(this.getVersion());
+        hash = 59 * hash + Objects.hashCode(this.getUri());
         return hash;
     }
 
@@ -84,7 +84,7 @@ public class VersionedTextDocumentIdentifier extends TextDocumentIdentifier {
      * Creates a new VersionedTextDocumentIdentifier literal.
      *
      * @param uri The document's uri.
-     * @param uri The document's text.
+     * @param version The document's version.
      */
     public static VersionedTextDocumentIdentifier create(String uri, Integer version) {
         final JSONObject json = new JSONObject();

@@ -32,10 +32,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents programming constructs like variables, classes, interfaces etc.
- * that appear in a document. Document symbols can be hierarchical and they
- * have two ranges: one that encloses its definition and one that points to
- * its most interesting range, e.g. the range of an identifier.
+ * Represents programming constructs like variables, classes, interfaces etc. that appear in a
+ * document. Document symbols can be hierarchical and they have two ranges: one that encloses its
+ * definition and one that points to its most interesting range, e.g. the range of an identifier.
  */
 public class DocumentSymbol {
 
@@ -108,8 +107,8 @@ public class DocumentSymbol {
     }
 
     /**
-     * The range that should be selected and revealed when this symbol is being picked, e.g the name of a function.
-     * Must be contained by the the `range`.
+     * The range that should be selected and revealed when this symbol is being picked, e.g the name
+     * of a function. Must be contained by the the `range`.
      */
     public Range getSelectionRange() {
         return new Range(jsonData.getJSONObject("selectionRange"));
@@ -138,7 +137,7 @@ public class DocumentSymbol {
     public DocumentSymbol setChildren(List<DocumentSymbol> children) {
         if (children != null) {
             final JSONArray json = new JSONArray();
-            for (DocumentSymbol documentSymbol: children) {
+            for (DocumentSymbol documentSymbol : children) {
                 json.put(documentSymbol.jsonData);
             }
             jsonData.put("children", json);
@@ -184,19 +183,19 @@ public class DocumentSymbol {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 37 * hash + Objects.hashCode(this.getName());
+        int hash = 2;
+        hash = 11 * hash + Objects.hashCode(this.getName());
         if (this.getDetail() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getDetail());
+            hash = 11 * hash + Objects.hashCode(this.getDetail());
         }
-        hash = 37 * hash + Objects.hashCode(this.getKind());
+        hash = 11 * hash + Objects.hashCode(this.getKind());
         if (this.getDeprecated() != null) {
-            hash = 37 * hash + Boolean.hashCode(this.getDeprecated());
+            hash = 11 * hash + Boolean.hashCode(this.getDeprecated());
         }
-        hash = 37 * hash + Objects.hashCode(this.getRange());
-        hash = 37 * hash + Objects.hashCode(this.getSelectionRange());
+        hash = 11 * hash + Objects.hashCode(this.getRange());
+        hash = 11 * hash + Objects.hashCode(this.getSelectionRange());
         if (this.getChildren() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getChildren());
+            hash = 11 * hash + Objects.hashCode(this.getChildren());
         }
         return hash;
     }
@@ -220,7 +219,7 @@ public class DocumentSymbol {
         json.put("selectionRange", selectionRange.jsonData);
         if (children != null) {
             JSONArray childrenJsonArr = new JSONArray();
-            for(DocumentSymbol documentSymbol: children) {
+            for (DocumentSymbol documentSymbol : children) {
                 childrenJsonArr.put(documentSymbol.jsonData);
             }
             json.put("children", childrenJsonArr);

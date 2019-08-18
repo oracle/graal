@@ -36,14 +36,13 @@ public enum ErrorCodes {
     serverErrorEnd(-32000),
     ServerNotInitialized(-32002),
     UnknownErrorCode(-32001),
-
     // Defined by the protocol.
     RequestCancelled(-32800),
     ContentModified(-32801);
 
     private final int intValue;
 
-    private ErrorCodes(int intValue) {
+    ErrorCodes(int intValue) {
         this.intValue = intValue;
     }
 

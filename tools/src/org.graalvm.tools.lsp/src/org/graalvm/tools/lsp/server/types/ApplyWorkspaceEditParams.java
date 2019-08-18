@@ -39,9 +39,8 @@ public class ApplyWorkspaceEditParams {
     }
 
     /**
-     * An optional label of the workspace edit. This label is
-     * presented in the user interface for example on an undo
-     * stack to undo the workspace edit.
+     * An optional label of the workspace edit. This label is presented in the user interface for
+     * example on an undo stack to undo the workspace edit.
      */
     public String getLabel() {
         return jsonData.optString("label");
@@ -87,11 +86,11 @@ public class ApplyWorkspaceEditParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 5;
         if (this.getLabel() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getLabel());
+            hash = 11 * hash + Objects.hashCode(this.getLabel());
         }
-        hash = 29 * hash + Objects.hashCode(this.getEdit());
+        hash = 11 * hash + Objects.hashCode(this.getEdit());
         return hash;
     }
 

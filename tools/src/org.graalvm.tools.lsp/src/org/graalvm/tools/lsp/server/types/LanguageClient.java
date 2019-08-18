@@ -30,7 +30,6 @@ import java.util.concurrent.CompletableFuture;
 public interface LanguageClient {
 
     // Window related methods
-
     void showMessage(ShowMessageParams params);
 
     CompletableFuture<MessageActionItem> showMessageRequest(ShowMessageRequestParams params);
@@ -38,17 +37,14 @@ public interface LanguageClient {
     void logMessage(LogMessageParams params);
 
     // Telemetry related methods
-
     void event(Object object);
 
     // Client related methods
-
     CompletableFuture<Void> registerCapability(RegistrationParams params);
 
     CompletableFuture<Void> unregisterCapability(UnregistrationParams params);
 
     // Workspace related methods
-
     CompletableFuture<List<WorkspaceFolder>> workspaceFolders();
 
     CompletableFuture<List<Object>> configuration(ConfigurationParams params);
@@ -56,6 +52,5 @@ public interface LanguageClient {
     CompletableFuture<ApplyWorkspaceEditResponse> applyEdit(ApplyWorkspaceEditParams params);
 
     // Diagnostics related methods
-
     void publishDiagnostics(PublishDiagnosticsParams params);
 }

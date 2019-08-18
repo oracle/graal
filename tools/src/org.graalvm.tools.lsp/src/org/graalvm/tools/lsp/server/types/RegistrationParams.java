@@ -50,7 +50,7 @@ public class RegistrationParams {
 
     public RegistrationParams setRegistrations(List<Registration> registrations) {
         final JSONArray json = new JSONArray();
-        for (Registration registration: registrations) {
+        for (Registration registration : registrations) {
             json.put(registration.jsonData);
         }
         jsonData.put("registrations", json);
@@ -77,15 +77,15 @@ public class RegistrationParams {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 29 * hash + Objects.hashCode(this.getRegistrations());
+        int hash = 7;
+        hash = 73 * hash + Objects.hashCode(this.getRegistrations());
         return hash;
     }
 
     public static RegistrationParams create(List<Registration> registrations) {
         final JSONObject json = new JSONObject();
         JSONArray registrationsJsonArr = new JSONArray();
-        for(Registration registration: registrations) {
+        for (Registration registration : registrations) {
             registrationsJsonArr.put(registration.jsonData);
         }
         json.put("registrations", registrationsJsonArr);

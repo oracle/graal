@@ -51,7 +51,7 @@ public class LogMessageParams {
     }
 
     /**
-     * The actual message
+     * The actual message.
      */
     public String getMessage() {
         return jsonData.getString("message");
@@ -85,9 +85,9 @@ public class LogMessageParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 37 * hash + Objects.hashCode(this.getType());
-        hash = 37 * hash + Objects.hashCode(this.getMessage());
+        int hash = 7;
+        hash = 47 * hash + Objects.hashCode(this.getType());
+        hash = 47 * hash + Objects.hashCode(this.getMessage());
         return hash;
     }
 

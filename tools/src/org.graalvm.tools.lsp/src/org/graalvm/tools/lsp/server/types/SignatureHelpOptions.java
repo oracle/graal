@@ -43,8 +43,7 @@ public class SignatureHelpOptions {
     }
 
     /**
-     * The characters that trigger signature help
-     * automatically.
+     * The characters that trigger signature help automatically.
      */
     public List<String> getTriggerCharacters() {
         final JSONArray json = jsonData.optJSONArray("triggerCharacters");
@@ -61,7 +60,7 @@ public class SignatureHelpOptions {
     public SignatureHelpOptions setTriggerCharacters(List<String> triggerCharacters) {
         if (triggerCharacters != null) {
             final JSONArray json = new JSONArray();
-            for (String string: triggerCharacters) {
+            for (String string : triggerCharacters) {
                 json.put(string);
             }
             jsonData.put("triggerCharacters", json);
@@ -89,9 +88,9 @@ public class SignatureHelpOptions {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 3;
         if (this.getTriggerCharacters() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getTriggerCharacters());
+            hash = 37 * hash + Objects.hashCode(this.getTriggerCharacters());
         }
         return hash;
     }

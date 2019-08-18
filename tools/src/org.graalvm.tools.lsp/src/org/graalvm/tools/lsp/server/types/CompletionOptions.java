@@ -43,14 +43,14 @@ public class CompletionOptions {
     }
 
     /**
-     * Most tools trigger completion request automatically without explicitly requesting
-     * it using a keyboard shortcut (e.g. Ctrl+Space). Typically they do so when the user
-     * starts to type an identifier. For example if the user types `c` in a JavaScript file
-     * code complete will automatically pop up present `console` besides others as a
-     * completion item. Characters that make up identifiers don't need to be listed here.
+     * Most tools trigger completion request automatically without explicitly requesting it using a
+     * keyboard shortcut (e.g. Ctrl+Space). Typically they do so when the user starts to type an
+     * identifier. For example if the user types `c` in a JavaScript file code complete will
+     * automatically pop up present `console` besides others as a completion item. Characters that
+     * make up identifiers don't need to be listed here.
      *
-     * If code complete should automatically be trigger on characters not being valid inside
-     * an identifier (for example `.` in JavaScript) list them in `triggerCharacters`.
+     * If code complete should automatically be trigger on characters not being valid inside an
+     * identifier (for example `.` in JavaScript) list them in `triggerCharacters`.
      */
     public List<String> getTriggerCharacters() {
         final JSONArray json = jsonData.optJSONArray("triggerCharacters");
@@ -67,7 +67,7 @@ public class CompletionOptions {
     public CompletionOptions setTriggerCharacters(List<String> triggerCharacters) {
         if (triggerCharacters != null) {
             final JSONArray json = new JSONArray();
-            for (String string: triggerCharacters) {
+            for (String string : triggerCharacters) {
                 json.put(string);
             }
             jsonData.put("triggerCharacters", json);
@@ -76,8 +76,7 @@ public class CompletionOptions {
     }
 
     /**
-     * The server provides support to resolve additional
-     * information for a completion item.
+     * The server provides support to resolve additional information for a completion item.
      */
     public Boolean getResolveProvider() {
         return jsonData.optBoolean("resolveProvider");
@@ -111,12 +110,12 @@ public class CompletionOptions {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 2;
         if (this.getTriggerCharacters() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getTriggerCharacters());
+            hash = 29 * hash + Objects.hashCode(this.getTriggerCharacters());
         }
         if (this.getResolveProvider() != null) {
-            hash = 71 * hash + Boolean.hashCode(this.getResolveProvider());
+            hash = 29 * hash + Boolean.hashCode(this.getResolveProvider());
         }
         return hash;
     }

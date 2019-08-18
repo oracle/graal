@@ -25,7 +25,6 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
-import java.util.Objects;
 
 /**
  * Value-object describing what options formatting should use.
@@ -97,9 +96,9 @@ public class FormattingOptions {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 29 * hash + Integer.hashCode(this.getTabSize());
-        hash = 29 * hash + Boolean.hashCode(this.isInsertSpaces());
+        int hash = 7;
+        hash = 53 * hash + Integer.hashCode(this.getTabSize());
+        hash = 53 * hash + Boolean.hashCode(this.isInsertSpaces());
         return hash;
     }
 

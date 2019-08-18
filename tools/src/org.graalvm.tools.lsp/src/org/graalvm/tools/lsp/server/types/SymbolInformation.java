@@ -138,15 +138,15 @@ public class SymbolInformation {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 11 * hash + Objects.hashCode(this.getName());
-        hash = 11 * hash + Objects.hashCode(this.getKind());
+        int hash = 7;
+        hash = 97 * hash + Objects.hashCode(this.getName());
+        hash = 97 * hash + Objects.hashCode(this.getKind());
         if (this.getDeprecated() != null) {
-            hash = 11 * hash + Boolean.hashCode(this.getDeprecated());
+            hash = 97 * hash + Boolean.hashCode(this.getDeprecated());
         }
-        hash = 11 * hash + Objects.hashCode(this.getLocation());
+        hash = 97 * hash + Objects.hashCode(this.getLocation());
         if (this.getContainerName() != null) {
-            hash = 11 * hash + Objects.hashCode(this.getContainerName());
+            hash = 97 * hash + Objects.hashCode(this.getContainerName());
         }
         return hash;
     }

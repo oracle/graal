@@ -70,8 +70,8 @@ public class DidChangeWorkspaceFoldersParams {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 37 * hash + Objects.hashCode(this.getEvent());
+        int hash = 7;
+        hash = 11 * hash + Objects.hashCode(this.getEvent());
         return hash;
     }
 

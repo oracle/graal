@@ -27,8 +27,7 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 /**
- * Value-object that contains additional information when
- * requesting references.
+ * Value-object that contains additional information when requesting references.
  */
 public class ReferenceContext {
 
@@ -71,7 +70,7 @@ public class ReferenceContext {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 53 * hash + Boolean.hashCode(this.isIncludeDeclaration());
+        hash = 37 * hash + Boolean.hashCode(this.isIncludeDeclaration());
         return hash;
     }
 

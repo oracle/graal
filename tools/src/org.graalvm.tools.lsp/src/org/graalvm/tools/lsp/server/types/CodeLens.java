@@ -28,11 +28,11 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * A code lens represents a [command](#Command) that should be shown along with
- * source text, like the number of references, a way to run tests, etc.
+ * A code lens represents a [command](#Command) that should be shown along with source text, like
+ * the number of references, a way to run tests, etc.
  *
- * A code lens is _unresolved_ when no command is associated to it. For performance
- * reasons the creation of a code lens and resolving should be done to two stages.
+ * A code lens is _unresolved_ when no command is associated to it. For performance reasons the
+ * creation of a code lens and resolving should be done to two stages.
  */
 public class CodeLens {
 
@@ -67,9 +67,8 @@ public class CodeLens {
     }
 
     /**
-     * An data entry field that is preserved on a code lens item between
-     * a [CodeLensRequest](#CodeLensRequest) and a [CodeLensResolveRequest]
-     * (#CodeLensResolveRequest)
+     * An data entry field that is preserved on a code lens item between a
+     * [CodeLensRequest](#CodeLensRequest) and a [CodeLensResolveRequest] (#CodeLensResolveRequest).
      */
     public Object getData() {
         return jsonData.opt("data");
@@ -106,13 +105,13 @@ public class CodeLens {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 19 * hash + Objects.hashCode(this.getRange());
+        int hash = 3;
+        hash = 17 * hash + Objects.hashCode(this.getRange());
         if (this.getCommand() != null) {
-            hash = 19 * hash + Objects.hashCode(this.getCommand());
+            hash = 17 * hash + Objects.hashCode(this.getCommand());
         }
         if (this.getData() != null) {
-            hash = 19 * hash + Objects.hashCode(this.getData());
+            hash = 17 * hash + Objects.hashCode(this.getData());
         }
         return hash;
     }

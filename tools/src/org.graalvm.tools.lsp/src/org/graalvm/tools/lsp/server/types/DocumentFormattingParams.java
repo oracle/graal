@@ -48,7 +48,7 @@ public class DocumentFormattingParams {
     }
 
     /**
-     * The format options
+     * The format options.
      */
     public FormattingOptions getOptions() {
         return new FormattingOptions(jsonData.getJSONObject("options"));
@@ -82,9 +82,9 @@ public class DocumentFormattingParams {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 79 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 79 * hash + Objects.hashCode(this.getOptions());
+        int hash = 7;
+        hash = 37 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 37 * hash + Objects.hashCode(this.getOptions());
         return hash;
     }
 

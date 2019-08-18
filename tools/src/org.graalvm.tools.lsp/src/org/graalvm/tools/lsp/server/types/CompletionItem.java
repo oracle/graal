@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * A completion item represents a text snippet that is
- * proposed to complete text that is being typed.
+ * A completion item represents a text snippet that is proposed to complete text that is being
+ * typed.
  */
 public class CompletionItem {
 
@@ -44,8 +44,7 @@ public class CompletionItem {
     }
 
     /**
-     * The label of this completion item. By default
-     * also the text that is inserted when selecting
+     * The label of this completion item. By default also the text that is inserted when selecting
      * this completion.
      */
     public String getLabel() {
@@ -58,8 +57,7 @@ public class CompletionItem {
     }
 
     /**
-     * The kind of this completion item. Based of the kind
-     * an icon is chosen by the editor.
+     * The kind of this completion item. Based of the kind an icon is chosen by the editor.
      */
     public CompletionItemKind getKind() {
         return CompletionItemKind.get(jsonData.optInt("kind"));
@@ -71,8 +69,8 @@ public class CompletionItem {
     }
 
     /**
-     * A human-readable string with additional information
-     * about this item, like type or symbol information.
+     * A human-readable string with additional information about this item, like type or symbol
+     * information.
      */
     public String getDetail() {
         return jsonData.optString("detail");
@@ -118,9 +116,8 @@ public class CompletionItem {
     /**
      * Select this item when showing.
      *
-     * *Note* that only one completion item can be selected and that the
-     * tool / client decides which item that is. The rule is that the *first*
-     * item of those that match best is selected.
+     * *Note* that only one completion item can be selected and that the tool / client decides which
+     * item that is. The rule is that the *first* item of those that match best is selected.
      */
     public Boolean getPreselect() {
         return jsonData.optBoolean("preselect");
@@ -132,9 +129,8 @@ public class CompletionItem {
     }
 
     /**
-     * A string that should be used when comparing this item
-     * with other items. When `falsy` the [label](#CompletionItem.label)
-     * is used.
+     * A string that should be used when comparing this item with other items. When `falsy` the
+     * [label](#CompletionItem.label) is used.
      */
     public String getSortText() {
         return jsonData.optString("sortText");
@@ -146,9 +142,8 @@ public class CompletionItem {
     }
 
     /**
-     * A string that should be used when filtering a set of
-     * completion items. When `falsy` the [label](#CompletionItem.label)
-     * is used.
+     * A string that should be used when filtering a set of completion items. When `falsy` the
+     * [label](#CompletionItem.label) is used.
      */
     public String getFilterText() {
         return jsonData.optString("filterText");
@@ -160,19 +155,18 @@ public class CompletionItem {
     }
 
     /**
-     * A string that should be inserted into a document when selecting
-     * this completion. When `falsy` the [label](#CompletionItem.label)
-     * is used.
+     * A string that should be inserted into a document when selecting this completion. When `falsy`
+     * the [label](#CompletionItem.label) is used.
      *
-     * The `insertText` is subject to interpretation by the client side.
-     * Some tools might not take the string literally. For example
-     * VS Code when code complete is requested in this example `con<cursor position>`
-     * and a completion item with an `insertText` of `console` is provided it
-     * will only insert `sole`. Therefore it is recommended to use `textEdit` instead
-     * since it avoids additional client side interpretation.
+     * The `insertText` is subject to interpretation by the client side. Some tools might not take
+     * the string literally. For example VS Code when code complete is requested in this example
+     * `con<cursor position>` and a completion item with an `insertText` of `console` is provided it
+     * will only insert `sole`. Therefore it is recommended to use `textEdit` instead since it
+     * avoids additional client side interpretation.
      *
      * @deprecated Use textEdit instead.
      */
+    @Deprecated
     public String getInsertText() {
         return jsonData.optString("insertText");
     }
@@ -183,8 +177,8 @@ public class CompletionItem {
     }
 
     /**
-     * The format of the insert text. The format applies to both the `insertText` property
-     * and the `newText` property of a provided `textEdit`.
+     * The format of the insert text. The format applies to both the `insertText` property and the
+     * `newText` property of a provided `textEdit`.
      */
     public InsertTextFormat getInsertTextFormat() {
         return InsertTextFormat.get(jsonData.optInt("insertTextFormat"));
@@ -196,12 +190,11 @@ public class CompletionItem {
     }
 
     /**
-     * An [edit](#TextEdit) which is applied to a document when selecting
-     * this completion. When an edit is provided the value of
-     * [insertText](#CompletionItem.insertText) is ignored.
+     * An [edit](#TextEdit) which is applied to a document when selecting this completion. When an
+     * edit is provided the value of [insertText](#CompletionItem.insertText) is ignored.
      *
-     * *Note:* The text edit's range must be a [single line] and it must contain the position
-     * at which completion has been requested.
+     * *Note:* The text edit's range must be a [single line] and it must contain the position at
+     * which completion has been requested.
      */
     public TextEdit getTextEdit() {
         return jsonData.has("textEdit") ? new TextEdit(jsonData.optJSONObject("textEdit")) : null;
@@ -213,9 +206,9 @@ public class CompletionItem {
     }
 
     /**
-     * An optional array of additional [text edits](#TextEdit) that are applied when
-     * selecting this completion. Edits must not overlap (including the same insert position)
-     * with the main [edit](#CompletionItem.textEdit) nor with themselves.
+     * An optional array of additional [text edits](#TextEdit) that are applied when selecting this
+     * completion. Edits must not overlap (including the same insert position) with the main
+     * [edit](#CompletionItem.textEdit) nor with themselves.
      *
      * Additional text edits should be used to change text unrelated to the current cursor position
      * (for example adding an import statement at the top of the file if the completion item will
@@ -236,7 +229,7 @@ public class CompletionItem {
     public CompletionItem setAdditionalTextEdits(List<TextEdit> additionalTextEdits) {
         if (additionalTextEdits != null) {
             final JSONArray json = new JSONArray();
-            for (TextEdit textEdit: additionalTextEdits) {
+            for (TextEdit textEdit : additionalTextEdits) {
                 json.put(textEdit.jsonData);
             }
             jsonData.put("additionalTextEdits", json);
@@ -245,9 +238,9 @@ public class CompletionItem {
     }
 
     /**
-     * An optional set of characters that when pressed while this completion is active will accept it first and
-     * then type that character. *Note* that all commit characters should have `length=1` and that superfluous
-     * characters will be ignored.
+     * An optional set of characters that when pressed while this completion is active will accept
+     * it first and then type that character. *Note* that all commit characters should have
+     * `length=1` and that superfluous characters will be ignored.
      */
     public List<String> getCommitCharacters() {
         final JSONArray json = jsonData.optJSONArray("commitCharacters");
@@ -264,7 +257,7 @@ public class CompletionItem {
     public CompletionItem setCommitCharacters(List<String> commitCharacters) {
         if (commitCharacters != null) {
             final JSONArray json = new JSONArray();
-            for (String string: commitCharacters) {
+            for (String string : commitCharacters) {
                 json.put(string);
             }
             jsonData.put("commitCharacters", json);
@@ -273,8 +266,8 @@ public class CompletionItem {
     }
 
     /**
-     * An optional [command](#Command) that is executed *after* inserting this completion. *Note* that
-     * additional modifications to the current document should be described with the
+     * An optional [command](#Command) that is executed *after* inserting this completion. *Note*
+     * that additional modifications to the current document should be described with the
      * [additionalTextEdits](#CompletionItem.additionalTextEdits)-property.
      */
     public Command getCommand() {
@@ -287,9 +280,9 @@ public class CompletionItem {
     }
 
     /**
-     * An data entry field that is preserved on a completion item between
-     * a [CompletionRequest](#CompletionRequest) and a [CompletionResolveRequest]
-     * (#CompletionResolveRequest)
+     * An data entry field that is preserved on a completion item between a
+     * [CompletionRequest](#CompletionRequest) and a [CompletionResolveRequest]
+     * (#CompletionResolveRequest).
      */
     public Object getData() {
         return jsonData.opt("data");
@@ -363,54 +356,55 @@ public class CompletionItem {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 53 * hash + Objects.hashCode(this.getLabel());
+        hash = 17 * hash + Objects.hashCode(this.getLabel());
         if (this.getKind() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getKind());
+            hash = 17 * hash + Objects.hashCode(this.getKind());
         }
         if (this.getDetail() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getDetail());
+            hash = 17 * hash + Objects.hashCode(this.getDetail());
         }
         if (this.getDocumentation() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getDocumentation());
+            hash = 17 * hash + Objects.hashCode(this.getDocumentation());
         }
         if (this.getDeprecated() != null) {
-            hash = 53 * hash + Boolean.hashCode(this.getDeprecated());
+            hash = 17 * hash + Boolean.hashCode(this.getDeprecated());
         }
         if (this.getPreselect() != null) {
-            hash = 53 * hash + Boolean.hashCode(this.getPreselect());
+            hash = 17 * hash + Boolean.hashCode(this.getPreselect());
         }
         if (this.getSortText() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getSortText());
+            hash = 17 * hash + Objects.hashCode(this.getSortText());
         }
         if (this.getFilterText() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getFilterText());
+            hash = 17 * hash + Objects.hashCode(this.getFilterText());
         }
         if (this.getInsertText() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getInsertText());
+            hash = 17 * hash + Objects.hashCode(this.getInsertText());
         }
         if (this.getInsertTextFormat() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getInsertTextFormat());
+            hash = 17 * hash + Objects.hashCode(this.getInsertTextFormat());
         }
         if (this.getTextEdit() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getTextEdit());
+            hash = 17 * hash + Objects.hashCode(this.getTextEdit());
         }
         if (this.getAdditionalTextEdits() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getAdditionalTextEdits());
+            hash = 17 * hash + Objects.hashCode(this.getAdditionalTextEdits());
         }
         if (this.getCommitCharacters() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getCommitCharacters());
+            hash = 17 * hash + Objects.hashCode(this.getCommitCharacters());
         }
         if (this.getCommand() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getCommand());
+            hash = 17 * hash + Objects.hashCode(this.getCommand());
         }
         if (this.getData() != null) {
-            hash = 53 * hash + Objects.hashCode(this.getData());
+            hash = 17 * hash + Objects.hashCode(this.getData());
         }
         return hash;
     }
 
     /**
      * Create a completion item and seed it with a label.
+     *
      * @param label The completion item's label
      */
     public static CompletionItem create(String label) {

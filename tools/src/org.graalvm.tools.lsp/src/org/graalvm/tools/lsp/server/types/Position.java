@@ -27,14 +27,11 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 /**
- * Position in a text document expressed as zero-based line and character offset.
- * The offsets are based on a UTF-16 string representation. So a string of the form
- * `a𐐀b` the character offset of the character `a` is 0, the character offset of `𐐀`
- * is 1 and the character offset of b is 3 since `𐐀` is represented using two code
- * units in UTF-16.
+ * Position in a text document expressed as zero-based line and character offset. The offsets are
+ * based on a UTF-16 string representation.
  *
- * Positions are line end character agnostic. So you can not specify a position that
- * denotes `\r|\n` or `\n|` where `|` represents the character offset.
+ * Positions are line end character agnostic. So you can not specify a position that denotes `\r|\n`
+ * or `\n|` where `|` represents the character offset.
  */
 public class Position {
 
@@ -45,9 +42,9 @@ public class Position {
     }
 
     /**
-     * Line position in a document (zero-based).
-     * If a line number is greater than the number of lines in a document, it defaults back to the number of lines in the document.
-     * If a line number is negative, it defaults to 0.
+     * Line position in a document (zero-based). If a line number is greater than the number of
+     * lines in a document, it defaults back to the number of lines in the document. If a line
+     * number is negative, it defaults to 0.
      */
     public int getLine() {
         return jsonData.getInt("line");
@@ -59,12 +56,11 @@ public class Position {
     }
 
     /**
-     * Character offset on a line in a document (zero-based). Assuming that the line is
-     * represented as a string, the `character` value represents the gap between the
-     * `character` and `character + 1`.
+     * Character offset on a line in a document (zero-based). Assuming that the line is represented
+     * as a string, the `character` value represents the gap between the `character` and `character
+     * + 1`.
      *
-     * If the character value is greater than the line length it defaults back to the
-     * line length.
+     * If the character value is greater than the line length it defaults back to the line length.
      * If a line number is negative, it defaults to 0.
      */
     public int getCharacter() {
@@ -99,14 +95,15 @@ public class Position {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 47 * hash + Integer.hashCode(this.getLine());
-        hash = 47 * hash + Integer.hashCode(this.getCharacter());
+        int hash = 5;
+        hash = 37 * hash + Integer.hashCode(this.getLine());
+        hash = 37 * hash + Integer.hashCode(this.getCharacter());
         return hash;
     }
 
     /**
      * Creates a new Position literal from the given line and character.
+     *
      * @param line The position's line.
      * @param character The position's character.
      */

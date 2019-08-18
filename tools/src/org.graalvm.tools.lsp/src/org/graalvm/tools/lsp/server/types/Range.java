@@ -43,7 +43,7 @@ public class Range {
     }
 
     /**
-     * The range's start position
+     * The range's start position.
      */
     public Position getStart() {
         return new Position(jsonData.getJSONObject("start"));
@@ -89,9 +89,9 @@ public class Range {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 73 * hash + Objects.hashCode(this.getStart());
-        hash = 73 * hash + Objects.hashCode(this.getEnd());
+        int hash = 7;
+        hash = 47 * hash + Objects.hashCode(this.getStart());
+        hash = 47 * hash + Objects.hashCode(this.getEnd());
         return hash;
     }
 
@@ -121,7 +121,7 @@ public class Range {
     }
 
     public static Range create(Object one, Object two, Integer three, Integer four) {
-        if (one instanceof Integer && two instanceof Integer && three instanceof Integer && four instanceof Integer) {
+        if (one instanceof Integer && two instanceof Integer && three != null && four != null) {
             return create((Integer) one, (Integer) two, three, four);
         }
         if (one instanceof Position && two instanceof Position) {

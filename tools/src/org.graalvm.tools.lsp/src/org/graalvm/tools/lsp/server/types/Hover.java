@@ -43,8 +43,9 @@ public class Hover {
     }
 
     /**
-     * The hover's content
+     * The hover's content.
      */
+    @SuppressWarnings("deprecation")
     public Object getContents() {
         Object obj = jsonData.get("contents");
         if (obj instanceof JSONArray) {
@@ -64,10 +65,11 @@ public class Hover {
         return obj;
     }
 
+    @SuppressWarnings("deprecation")
     public Hover setContents(Object contents) {
         if (contents instanceof List) {
             final JSONArray json = new JSONArray();
-            for (Object obj : (List) contents) {
+            for (Object obj : (List<?>) contents) {
                 json.put(obj instanceof MarkedString ? ((MarkedString) obj).jsonData : obj);
             }
             jsonData.put("contents", json);
@@ -82,7 +84,7 @@ public class Hover {
     }
 
     /**
-     * An optional range
+     * An optional range.
      */
     public Range getRange() {
         return jsonData.has("range") ? new Range(jsonData.optJSONObject("range")) : null;
@@ -117,18 +119,19 @@ public class Hover {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 17 * hash + Objects.hashCode(this.getContents());
+        hash = 37 * hash + Objects.hashCode(this.getContents());
         if (this.getRange() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getRange());
+            hash = 37 * hash + Objects.hashCode(this.getRange());
         }
         return hash;
     }
 
+    @SuppressWarnings("deprecation")
     public static Hover create(Object contents) {
         final JSONObject json = new JSONObject();
         if (contents instanceof List) {
             final JSONArray jsonArr = new JSONArray();
-            for (Object obj : (List) contents) {
+            for (Object obj : (List<?>) contents) {
                 jsonArr.put(obj instanceof MarkedString ? ((MarkedString) obj).jsonData : obj);
             }
             json.put("contents", jsonArr);

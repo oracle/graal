@@ -69,9 +69,9 @@ public class SaveOptions {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 2;
         if (this.getIncludeText() != null) {
-            hash = 59 * hash + Boolean.hashCode(this.getIncludeText());
+            hash = 61 * hash + Boolean.hashCode(this.getIncludeText());
         }
         return hash;
     }

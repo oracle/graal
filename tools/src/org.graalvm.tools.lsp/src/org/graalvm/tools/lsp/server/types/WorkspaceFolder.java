@@ -48,8 +48,7 @@ public class WorkspaceFolder {
     }
 
     /**
-     * The name of the workspace folder. Defaults to the
-     * uri's basename.
+     * The name of the workspace folder. Defaults to the uri's basename.
      */
     public String getName() {
         return jsonData.getString("name");
@@ -84,8 +83,8 @@ public class WorkspaceFolder {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 59 * hash + Objects.hashCode(this.getUri());
-        hash = 59 * hash + Objects.hashCode(this.getName());
+        hash = 13 * hash + Objects.hashCode(this.getUri());
+        hash = 13 * hash + Objects.hashCode(this.getName());
         return hash;
     }
 

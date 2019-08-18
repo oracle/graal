@@ -43,7 +43,7 @@ public class WorkspaceFoldersChangeEvent {
     }
 
     /**
-     * The array of added workspace folders
+     * The array of added workspace folders.
      */
     public List<WorkspaceFolder> getAdded() {
         final JSONArray json = jsonData.getJSONArray("added");
@@ -56,7 +56,7 @@ public class WorkspaceFoldersChangeEvent {
 
     public WorkspaceFoldersChangeEvent setAdded(List<WorkspaceFolder> added) {
         final JSONArray json = new JSONArray();
-        for (WorkspaceFolder workspaceFolder: added) {
+        for (WorkspaceFolder workspaceFolder : added) {
             json.put(workspaceFolder.jsonData);
         }
         jsonData.put("added", json);
@@ -64,7 +64,7 @@ public class WorkspaceFoldersChangeEvent {
     }
 
     /**
-     * The array of the removed workspace folders
+     * The array of the removed workspace folders.
      */
     public List<WorkspaceFolder> getRemoved() {
         final JSONArray json = jsonData.getJSONArray("removed");
@@ -77,7 +77,7 @@ public class WorkspaceFoldersChangeEvent {
 
     public WorkspaceFoldersChangeEvent setRemoved(List<WorkspaceFolder> removed) {
         final JSONArray json = new JSONArray();
-        for (WorkspaceFolder workspaceFolder: removed) {
+        for (WorkspaceFolder workspaceFolder : removed) {
             json.put(workspaceFolder.jsonData);
         }
         jsonData.put("removed", json);
@@ -107,21 +107,21 @@ public class WorkspaceFoldersChangeEvent {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 29 * hash + Objects.hashCode(this.getAdded());
-        hash = 29 * hash + Objects.hashCode(this.getRemoved());
+        int hash = 5;
+        hash = 89 * hash + Objects.hashCode(this.getAdded());
+        hash = 89 * hash + Objects.hashCode(this.getRemoved());
         return hash;
     }
 
     public static WorkspaceFoldersChangeEvent create(List<WorkspaceFolder> added, List<WorkspaceFolder> removed) {
         final JSONObject json = new JSONObject();
         JSONArray addedJsonArr = new JSONArray();
-        for(WorkspaceFolder workspaceFolder: added) {
+        for (WorkspaceFolder workspaceFolder : added) {
             addedJsonArr.put(workspaceFolder.jsonData);
         }
         json.put("added", addedJsonArr);
         JSONArray removedJsonArr = new JSONArray();
-        for(WorkspaceFolder workspaceFolder: removed) {
+        for (WorkspaceFolder workspaceFolder : removed) {
             removedJsonArr.put(workspaceFolder.jsonData);
         }
         json.put("removed", removedJsonArr);

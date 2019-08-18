@@ -25,29 +25,13 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
-import java.util.Objects;
 
-/**
- * A literal to identify a text document in the client.
- */
-public class TextDocumentIdentifier {
+public class FoldingRangeProviderOptions {
 
     final JSONObject jsonData;
 
-    TextDocumentIdentifier(JSONObject jsonData) {
+    FoldingRangeProviderOptions(JSONObject jsonData) {
         this.jsonData = jsonData;
-    }
-
-    /**
-     * The text document's uri.
-     */
-    public String getUri() {
-        return jsonData.getString("uri");
-    }
-
-    public TextDocumentIdentifier setUri(String uri) {
-        jsonData.put("uri", uri);
-        return this;
     }
 
     @Override
@@ -61,28 +45,17 @@ public class TextDocumentIdentifier {
         if (this.getClass() != obj.getClass()) {
             return false;
         }
-        TextDocumentIdentifier other = (TextDocumentIdentifier) obj;
-        if (!Objects.equals(this.getUri(), other.getUri())) {
-            return false;
-        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 67 * hash + Objects.hashCode(this.getUri());
+        int hash = 7;
         return hash;
     }
 
-    /**
-     * Creates a new TextDocumentIdentifier literal.
-     *
-     * @param uri The document's uri.
-     */
-    public static TextDocumentIdentifier create(String uri) {
+    public static FoldingRangeProviderOptions create() {
         final JSONObject json = new JSONObject();
-        json.put("uri", uri);
-        return new TextDocumentIdentifier(json);
+        return new FoldingRangeProviderOptions(json);
     }
 }

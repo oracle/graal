@@ -28,8 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Defines how the host (editor) should sync
- * document changes to the language server.
+ * Defines how the host (editor) should sync document changes to the language server.
  */
 public enum TextDocumentSyncKind {
 
@@ -38,14 +37,12 @@ public enum TextDocumentSyncKind {
      */
     None(0),
     /**
-     * Documents are synced by always sending the full content
-     * of the document.
+     * Documents are synced by always sending the full content of the document.
      */
     Full(1),
     /**
-     * Documents are synced by sending the full content on open.
-     * After that only incremental updates to the document are
-     * send.
+     * Documents are synced by sending the full content on open. After that only incremental updates
+     * to the document are send.
      */
     Incremental(2);
 

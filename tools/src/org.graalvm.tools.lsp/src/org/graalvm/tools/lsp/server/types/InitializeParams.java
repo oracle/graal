@@ -24,11 +24,15 @@
  */
 package org.graalvm.tools.lsp.server.types;
 
+import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
- * The initialize parameters
+ * The initialize parameters.
  */
 public class InitializeParams {
 
@@ -39,8 +43,7 @@ public class InitializeParams {
     }
 
     /**
-     * The process Id of the parent process that started
-     * the server.
+     * The process Id of the parent process that started the server.
      */
     public int getProcessId() {
         return jsonData.getInt("processId");
@@ -52,11 +55,11 @@ public class InitializeParams {
     }
 
     /**
-     * The rootPath of the workspace. Is null
-     * if no folder is open.
+     * The rootPath of the workspace. Is null if no folder is open.
      *
      * @deprecated in favour of rootUri.
      */
+    @Deprecated
     public String getRootPath() {
         return jsonData.optString("rootPath");
     }
@@ -67,11 +70,8 @@ public class InitializeParams {
     }
 
     /**
-     * The rootUri of the workspace. Is null if no
-     * folder is open. If both `rootPath` and `rootUri` are set
-     * `rootUri` wins.
-     *
-     * @deprecated in favour of workspaceFolders.
+     * The rootUri of the workspace. Is null if no folder is open. If both `rootPath` and `rootUri`
+     * are set `rootUri` wins.
      */
     public String getRootUri() {
         return jsonData.getString("rootUri");
@@ -83,7 +83,7 @@ public class InitializeParams {
     }
 
     /**
-     * The capabilities provided by the client (editor or tool)
+     * The capabilities provided by the client (editor or tool).
      */
     public ClientCapabilities getCapabilities() {
         return new ClientCapabilities(jsonData.getJSONObject("capabilities"));
@@ -118,6 +118,34 @@ public class InitializeParams {
         return this;
     }
 
+    /**
+     * The workspace folders configured in the client when the server starts. This property is only
+     * available if the client supports workspace folders. It can be `null` if the client supports
+     * workspace folders but none are configured.
+     */
+    public List<WorkspaceFolder> getWorkspaceFolders() {
+        final JSONArray json = jsonData.optJSONArray("workspaceFolders");
+        if (json == null) {
+            return null;
+        }
+        final List<WorkspaceFolder> list = new ArrayList<>(json.length());
+        for (int i = 0; i < json.length(); i++) {
+            list.add(new WorkspaceFolder(json.getJSONObject(i)));
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    public InitializeParams setWorkspaceFolders(List<WorkspaceFolder> workspaceFolders) {
+        if (workspaceFolders != null) {
+            final JSONArray json = new JSONArray();
+            for (WorkspaceFolder workspaceFolder : workspaceFolders) {
+                json.put(workspaceFolder.jsonData);
+            }
+            jsonData.put("workspaceFolders", json);
+        }
+        return this;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -148,23 +176,29 @@ public class InitializeParams {
         if (!Objects.equals(this.getTrace(), other.getTrace())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkspaceFolders(), other.getWorkspaceFolders())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 59 * hash + Integer.hashCode(this.getProcessId());
+        hash = 67 * hash + Integer.hashCode(this.getProcessId());
         if (this.getRootPath() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getRootPath());
+            hash = 67 * hash + Objects.hashCode(this.getRootPath());
         }
-        hash = 59 * hash + Objects.hashCode(this.getRootUri());
-        hash = 59 * hash + Objects.hashCode(this.getCapabilities());
+        hash = 67 * hash + Objects.hashCode(this.getRootUri());
+        hash = 67 * hash + Objects.hashCode(this.getCapabilities());
         if (this.getInitializationOptions() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getInitializationOptions());
+            hash = 67 * hash + Objects.hashCode(this.getInitializationOptions());
         }
         if (this.getTrace() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getTrace());
+            hash = 67 * hash + Objects.hashCode(this.getTrace());
+        }
+        if (this.getWorkspaceFolders() != null) {
+            hash = 67 * hash + Objects.hashCode(this.getWorkspaceFolders());
         }
         return hash;
     }

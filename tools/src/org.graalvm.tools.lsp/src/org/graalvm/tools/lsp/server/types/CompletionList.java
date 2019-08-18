@@ -32,8 +32,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a collection of [completion items](#CompletionItem) to be presented
- * in the editor.
+ * Represents a collection of [completion items](#CompletionItem) to be presented in the editor.
  */
 public class CompletionList {
 
@@ -69,7 +68,7 @@ public class CompletionList {
 
     public CompletionList setItems(List<CompletionItem> items) {
         final JSONArray json = new JSONArray();
-        for (CompletionItem completionItem: items) {
+        for (CompletionItem completionItem : items) {
             json.put(completionItem.jsonData);
         }
         jsonData.put("items", json);
@@ -99,9 +98,9 @@ public class CompletionList {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 31 * hash + Boolean.hashCode(this.isIncomplete());
-        hash = 31 * hash + Objects.hashCode(this.getItems());
+        int hash = 3;
+        hash = 61 * hash + Boolean.hashCode(this.isIncomplete());
+        hash = 61 * hash + Objects.hashCode(this.getItems());
         return hash;
     }
 
@@ -115,7 +114,7 @@ public class CompletionList {
         final JSONObject json = new JSONObject();
         json.put("isIncomplete", isIncomplete);
         JSONArray itemsJsonArr = new JSONArray();
-        for(CompletionItem completionItem: items) {
+        for (CompletionItem completionItem : items) {
             itemsJsonArr.put(completionItem.jsonData);
         }
         json.put("items", itemsJsonArr);

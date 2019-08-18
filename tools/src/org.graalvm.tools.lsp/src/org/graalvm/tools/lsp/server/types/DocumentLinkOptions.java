@@ -27,7 +27,7 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 /**
- * Document link options
+ * Document link options.
  */
 public class DocumentLinkOptions {
 
@@ -69,9 +69,9 @@ public class DocumentLinkOptions {
 
     @Override
     public int hashCode() {
-        int hash = 3;
+        int hash = 7;
         if (this.getResolveProvider() != null) {
-            hash = 97 * hash + Boolean.hashCode(this.getResolveProvider());
+            hash = 29 * hash + Boolean.hashCode(this.getResolveProvider());
         }
         return hash;
     }

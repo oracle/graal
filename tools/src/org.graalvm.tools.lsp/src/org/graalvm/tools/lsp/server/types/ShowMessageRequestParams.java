@@ -52,7 +52,7 @@ public class ShowMessageRequestParams {
     }
 
     /**
-     * The actual message
+     * The actual message.
      */
     public String getMessage() {
         return jsonData.getString("message");
@@ -81,7 +81,7 @@ public class ShowMessageRequestParams {
     public ShowMessageRequestParams setActions(List<MessageActionItem> actions) {
         if (actions != null) {
             final JSONArray json = new JSONArray();
-            for (MessageActionItem messageActionItem: actions) {
+            for (MessageActionItem messageActionItem : actions) {
                 json.put(messageActionItem.jsonData);
             }
             jsonData.put("actions", json);
@@ -115,11 +115,11 @@ public class ShowMessageRequestParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 31 * hash + Objects.hashCode(this.getType());
-        hash = 31 * hash + Objects.hashCode(this.getMessage());
+        int hash = 5;
+        hash = 37 * hash + Objects.hashCode(this.getType());
+        hash = 37 * hash + Objects.hashCode(this.getMessage());
         if (this.getActions() != null) {
-            hash = 31 * hash + Objects.hashCode(this.getActions());
+            hash = 37 * hash + Objects.hashCode(this.getActions());
         }
         return hash;
     }

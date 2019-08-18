@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a diagnostic, such as a compiler error or warning. Diagnostic objects
- * are only valid in the scope of a resource.
+ * Represents a diagnostic, such as a compiler error or warning. Diagnostic objects are only valid
+ * in the scope of a resource.
  */
 public class Diagnostic {
 
@@ -44,7 +44,7 @@ public class Diagnostic {
     }
 
     /**
-     * The range at which the message applies
+     * The range at which the message applies.
      */
     public Range getRange() {
         return new Range(jsonData.getJSONObject("range"));
@@ -56,8 +56,8 @@ public class Diagnostic {
     }
 
     /**
-     * The diagnostic's severity. Can be omitted. If omitted it is up to the
-     * client to interpret diagnostics as error, warning, info or hint.
+     * The diagnostic's severity. Can be omitted. If omitted it is up to the client to interpret
+     * diagnostics as error, warning, info or hint.
      */
     public DiagnosticSeverity getSeverity() {
         return DiagnosticSeverity.get(jsonData.optInt("severity"));
@@ -81,9 +81,8 @@ public class Diagnostic {
     }
 
     /**
-     * A human-readable string describing the source of this
-     * diagnostic, e.g. 'typescript' or 'super lint'. It usually
-     * appears in the user interface.
+     * A human-readable string describing the source of this diagnostic, e.g. 'typescript' or 'super
+     * lint'. It usually appears in the user interface.
      */
     public String getSource() {
         return jsonData.optString("source");
@@ -107,8 +106,8 @@ public class Diagnostic {
     }
 
     /**
-     * An array of related diagnostic information, e.g. when symbol-names within
-     * a scope collide all definitions can be marked via this property.
+     * An array of related diagnostic information, e.g. when symbol-names within a scope collide all
+     * definitions can be marked via this property.
      */
     public List<DiagnosticRelatedInformation> getRelatedInformation() {
         final JSONArray json = jsonData.optJSONArray("relatedInformation");
@@ -125,7 +124,7 @@ public class Diagnostic {
     public Diagnostic setRelatedInformation(List<DiagnosticRelatedInformation> relatedInformation) {
         if (relatedInformation != null) {
             final JSONArray json = new JSONArray();
-            for (DiagnosticRelatedInformation diagnosticRelatedInformation: relatedInformation) {
+            for (DiagnosticRelatedInformation diagnosticRelatedInformation : relatedInformation) {
                 json.put(diagnosticRelatedInformation.jsonData);
             }
             jsonData.put("relatedInformation", json);
@@ -169,19 +168,19 @@ public class Diagnostic {
     @Override
     public int hashCode() {
         int hash = 2;
-        hash = 71 * hash + Objects.hashCode(this.getRange());
+        hash = 59 * hash + Objects.hashCode(this.getRange());
         if (this.getSeverity() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getSeverity());
+            hash = 59 * hash + Objects.hashCode(this.getSeverity());
         }
         if (this.getCode() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getCode());
+            hash = 59 * hash + Objects.hashCode(this.getCode());
         }
         if (this.getSource() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getSource());
+            hash = 59 * hash + Objects.hashCode(this.getSource());
         }
-        hash = 71 * hash + Objects.hashCode(this.getMessage());
+        hash = 59 * hash + Objects.hashCode(this.getMessage());
         if (this.getRelatedInformation() != null) {
-            hash = 71 * hash + Objects.hashCode(this.getRelatedInformation());
+            hash = 59 * hash + Objects.hashCode(this.getRelatedInformation());
         }
         return hash;
     }
@@ -198,7 +197,7 @@ public class Diagnostic {
         json.put("message", message);
         if (relatedInformation != null) {
             JSONArray relatedInformationJsonArr = new JSONArray();
-            for(DiagnosticRelatedInformation diagnosticRelatedInformation: relatedInformation) {
+            for (DiagnosticRelatedInformation diagnosticRelatedInformation : relatedInformation) {
                 relatedInformationJsonArr.put(diagnosticRelatedInformation.jsonData);
             }
             json.put("relatedInformation", relatedInformationJsonArr);

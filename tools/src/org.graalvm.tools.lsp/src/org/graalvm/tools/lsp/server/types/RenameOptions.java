@@ -27,7 +27,7 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 /**
- * Rename options
+ * Rename options.
  */
 public class RenameOptions {
 
@@ -71,7 +71,7 @@ public class RenameOptions {
     public int hashCode() {
         int hash = 7;
         if (this.getPrepareProvider() != null) {
-            hash = 89 * hash + Boolean.hashCode(this.getPrepareProvider());
+            hash = 97 * hash + Boolean.hashCode(this.getPrepareProvider());
         }
         return hash;
     }

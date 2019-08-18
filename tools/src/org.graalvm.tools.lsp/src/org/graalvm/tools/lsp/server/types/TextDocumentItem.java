@@ -28,8 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * An item to transfer a text document from the client to the
- * server.
+ * An item to transfer a text document from the client to the server.
  */
 public class TextDocumentItem {
 
@@ -52,7 +51,7 @@ public class TextDocumentItem {
     }
 
     /**
-     * The text document's language identifier
+     * The text document's language identifier.
      */
     public String getLanguageId() {
         return jsonData.getString("languageId");
@@ -64,8 +63,8 @@ public class TextDocumentItem {
     }
 
     /**
-     * The version number of this document (it will increase after each
-     * change, including undo/redo).
+     * The version number of this document (it will increase after each change, including
+     * undo/redo).
      */
     public int getVersion() {
         return jsonData.getInt("version");
@@ -117,16 +116,17 @@ public class TextDocumentItem {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 71 * hash + Objects.hashCode(this.getUri());
-        hash = 71 * hash + Objects.hashCode(this.getLanguageId());
-        hash = 71 * hash + Integer.hashCode(this.getVersion());
-        hash = 71 * hash + Objects.hashCode(this.getText());
+        int hash = 7;
+        hash = 17 * hash + Objects.hashCode(this.getUri());
+        hash = 17 * hash + Objects.hashCode(this.getLanguageId());
+        hash = 17 * hash + Integer.hashCode(this.getVersion());
+        hash = 17 * hash + Objects.hashCode(this.getText());
         return hash;
     }
 
     /**
      * Creates a new TextDocumentItem literal.
+     *
      * @param uri The document's uri.
      * @param languageId The document's language identifier.
      * @param version The document's version number.

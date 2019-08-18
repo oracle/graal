@@ -39,8 +39,7 @@ public class Registration {
     }
 
     /**
-     * The id used to register the request. The id can be used to deregister
-     * the request again.
+     * The id used to register the request. The id can be used to deregister the request again.
      */
     public String getId() {
         return jsonData.getString("id");
@@ -102,10 +101,10 @@ public class Registration {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.getId());
-        hash = 97 * hash + Objects.hashCode(this.getMethod());
+        hash = 59 * hash + Objects.hashCode(this.getId());
+        hash = 59 * hash + Objects.hashCode(this.getMethod());
         if (this.getRegisterOptions() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getRegisterOptions());
+            hash = 59 * hash + Objects.hashCode(this.getRegisterOptions());
         }
         return hash;
     }

@@ -28,9 +28,9 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Represents a related message and source code location for a diagnostic. This should be
- * used to point to code locations that cause or related to a diagnostics, e.g when duplicating
- * a symbol in a scope.
+ * Represents a related message and source code location for a diagnostic. This should be used to
+ * point to code locations that cause or related to a diagnostics, e.g when duplicating a symbol in
+ * a scope.
  */
 public class DiagnosticRelatedInformation {
 
@@ -88,8 +88,8 @@ public class DiagnosticRelatedInformation {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 29 * hash + Objects.hashCode(this.getLocation());
-        hash = 29 * hash + Objects.hashCode(this.getMessage());
+        hash = 23 * hash + Objects.hashCode(this.getLocation());
+        hash = 23 * hash + Objects.hashCode(this.getMessage());
         return hash;
     }
 

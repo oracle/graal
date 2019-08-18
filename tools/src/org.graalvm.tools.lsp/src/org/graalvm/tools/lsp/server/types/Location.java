@@ -28,8 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Represents a location inside a resource, such as a line
- * inside a text file.
+ * Represents a location inside a resource, such as a line inside a text file.
  */
 public class Location {
 
@@ -80,14 +79,15 @@ public class Location {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 97 * hash + Objects.hashCode(this.getUri());
-        hash = 97 * hash + Objects.hashCode(this.getRange());
+        int hash = 5;
+        hash = 41 * hash + Objects.hashCode(this.getUri());
+        hash = 41 * hash + Objects.hashCode(this.getRange());
         return hash;
     }
 
     /**
      * Creates a Location literal.
+     *
      * @param uri The location's uri.
      * @param range The location's range.
      */

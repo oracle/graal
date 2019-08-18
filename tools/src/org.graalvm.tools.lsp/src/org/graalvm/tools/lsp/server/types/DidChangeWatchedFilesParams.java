@@ -56,7 +56,7 @@ public class DidChangeWatchedFilesParams {
 
     public DidChangeWatchedFilesParams setChanges(List<FileEvent> changes) {
         final JSONArray json = new JSONArray();
-        for (FileEvent fileEvent: changes) {
+        for (FileEvent fileEvent : changes) {
             json.put(fileEvent.jsonData);
         }
         jsonData.put("changes", json);
@@ -84,14 +84,14 @@ public class DidChangeWatchedFilesParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 83 * hash + Objects.hashCode(this.getChanges());
+        hash = 29 * hash + Objects.hashCode(this.getChanges());
         return hash;
     }
 
     public static DidChangeWatchedFilesParams create(List<FileEvent> changes) {
         final JSONObject json = new JSONObject();
         JSONArray changesJsonArr = new JSONArray();
-        for(FileEvent fileEvent: changes) {
+        for (FileEvent fileEvent : changes) {
             changesJsonArr.put(fileEvent.jsonData);
         }
         json.put("changes", changesJsonArr);

@@ -38,6 +38,7 @@ import org.graalvm.tools.lsp.server.types.Position;
 import org.graalvm.tools.lsp.server.types.Range;
 import org.junit.Test;
 
+@SuppressWarnings("deprecation")
 public class HoverTest extends TruffleLSPTest {
 
     @Test
@@ -62,11 +63,11 @@ public class HoverTest extends TruffleLSPTest {
 
         Hover hover = checkHover(uri, 8, 10, Range.create(Position.create(8, 9), Position.create(8, 12)));
         assertTrue(hover.getContents() instanceof List);
-        assertEquals(3, ((List) hover.getContents()).size());
-        assertTrue(((List) hover.getContents()).get(0) instanceof MarkedString);
-        assertEquals("obj", ((MarkedString) ((List) hover.getContents()).get(0)).getValue());
-        assertEquals("Object", ((List) hover.getContents()).get(1));
-        assertEquals("meta-object: Object", ((List) hover.getContents()).get(2));
+        assertEquals(3, ((List<?>) hover.getContents()).size());
+        assertTrue(((List<?>) hover.getContents()).get(0) instanceof MarkedString);
+        assertEquals("obj", ((MarkedString) ((List<?>) hover.getContents()).get(0)).getValue());
+        assertEquals("Object", ((List<?>) hover.getContents()).get(1));
+        assertEquals("meta-object: Object", ((List<?>) hover.getContents()).get(2));
     }
 
     private Hover checkHover(URI uri, int line, int column, Range range) throws InterruptedException, ExecutionException {

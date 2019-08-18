@@ -47,12 +47,11 @@ import java.util.logging.Logger;
 public class LanguageServer {
 
     // General methods
-
-    public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
+    public CompletableFuture<InitializeResult> initialize(@SuppressWarnings("unused") InitializeParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public void initialized(InitializedParams params) {
+    public void initialized(@SuppressWarnings("unused") InitializedParams params) {
     }
 
     public CompletableFuture<Object> shutdown() {
@@ -63,144 +62,141 @@ public class LanguageServer {
     }
 
     // Workspace related methods
-
-    public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params) {
+    public void didChangeWorkspaceFolders(@SuppressWarnings("unused") DidChangeWorkspaceFoldersParams params) {
     }
 
-    public void didChangeConfiguration(DidChangeConfigurationParams params) {
+    public void didChangeConfiguration(@SuppressWarnings("unused") DidChangeConfigurationParams params) {
     }
 
-    public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
+    public void didChangeWatchedFiles(@SuppressWarnings("unused") DidChangeWatchedFilesParams params) {
     }
 
-    public CompletableFuture<List<? extends SymbolInformation>> symbol(WorkspaceSymbolParams params) {
+    public CompletableFuture<List<? extends SymbolInformation>> symbol(@SuppressWarnings("unused") WorkspaceSymbolParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
+    public CompletableFuture<Object> executeCommand(@SuppressWarnings("unused") ExecuteCommandParams params) {
         throw new UnsupportedOperationException();
     }
 
     // TextDocument related methods
-
-    public void didOpen(DidOpenTextDocumentParams params) {
+    public void didOpen(@SuppressWarnings("unused") DidOpenTextDocumentParams params) {
     }
 
-    public void didChange(DidChangeTextDocumentParams params) {
+    public void didChange(@SuppressWarnings("unused") DidChangeTextDocumentParams params) {
     }
 
-    public void willSave(WillSaveTextDocumentParams params) {
+    public void willSave(@SuppressWarnings("unused") WillSaveTextDocumentParams params) {
     }
 
-    public CompletableFuture<List<? extends TextEdit>> willSaveWaitUntil(WillSaveTextDocumentParams params) {
+    public CompletableFuture<List<? extends TextEdit>> willSaveWaitUntil(@SuppressWarnings("unused") WillSaveTextDocumentParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public void didSave(DidSaveTextDocumentParams params) {
+    public void didSave(@SuppressWarnings("unused") DidSaveTextDocumentParams params) {
     }
 
-    public void didClose(DidCloseTextDocumentParams params) {
+    public void didClose(@SuppressWarnings("unused") DidCloseTextDocumentParams params) {
     }
 
-    public CompletableFuture<CompletionList> completion(CompletionParams params) {
+    public CompletableFuture<CompletionList> completion(@SuppressWarnings("unused") CompletionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<CompletionItem> resolveCompletion(CompletionItem params) {
+    public CompletableFuture<CompletionItem> resolveCompletion(@SuppressWarnings("unused") CompletionItem params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<Hover> hover(TextDocumentPositionParams params) {
+    public CompletableFuture<Hover> hover(@SuppressWarnings("unused") TextDocumentPositionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<SignatureHelp> signatureHelp(TextDocumentPositionParams params) {
+    public CompletableFuture<SignatureHelp> signatureHelp(@SuppressWarnings("unused") TextDocumentPositionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends Location>> declaration(TextDocumentPositionParams params) {
+    public CompletableFuture<List<? extends Location>> declaration(@SuppressWarnings("unused") TextDocumentPositionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends Location>> definition(TextDocumentPositionParams params) {
+    public CompletableFuture<List<? extends Location>> definition(@SuppressWarnings("unused") TextDocumentPositionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends Location>> typeDefinition(TextDocumentPositionParams params) {
+    public CompletableFuture<List<? extends Location>> typeDefinition(@SuppressWarnings("unused") TextDocumentPositionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends Location>> implementation(TextDocumentPositionParams params) {
+    public CompletableFuture<List<? extends Location>> implementation(@SuppressWarnings("unused") TextDocumentPositionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends Location>> references(ReferenceParams params) {
+    public CompletableFuture<List<? extends Location>> references(@SuppressWarnings("unused") ReferenceParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends DocumentHighlight>> documentHighlight(TextDocumentPositionParams params) {
+    public CompletableFuture<List<? extends DocumentHighlight>> documentHighlight(@SuppressWarnings("unused") TextDocumentPositionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
+    public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(@SuppressWarnings("unused") DocumentSymbolParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends CodeAction>> codeAction(CodeActionParams params) {
+    public CompletableFuture<List<? extends CodeAction>> codeAction(@SuppressWarnings("unused") CodeActionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params) {
+    public CompletableFuture<List<? extends CodeLens>> codeLens(@SuppressWarnings("unused") CodeLensParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<CodeLens> resolveCodeLens(CodeLens unresolved) {
+    public CompletableFuture<CodeLens> resolveCodeLens(@SuppressWarnings("unused") CodeLens unresolved) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends DocumentLink>> documentLink(DocumentLinkParams params) {
+    public CompletableFuture<List<? extends DocumentLink>> documentLink(@SuppressWarnings("unused") DocumentLinkParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<DocumentLink> resolveDocumentLink(DocumentLink params) {
+    public CompletableFuture<DocumentLink> resolveDocumentLink(@SuppressWarnings("unused") DocumentLink params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<ColorInformation>> documentColor(DocumentColorParams params) {
+    public CompletableFuture<List<ColorInformation>> documentColor(@SuppressWarnings("unused") DocumentColorParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<ColorPresentation>> colorPresentation(ColorPresentationParams params) {
+    public CompletableFuture<List<ColorPresentation>> colorPresentation(@SuppressWarnings("unused") ColorPresentationParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends TextEdit>> formatting(DocumentFormattingParams params) {
+    public CompletableFuture<List<? extends TextEdit>> formatting(@SuppressWarnings("unused") DocumentFormattingParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends TextEdit>> rangeFormatting(DocumentRangeFormattingParams params) {
+    public CompletableFuture<List<? extends TextEdit>> rangeFormatting(@SuppressWarnings("unused") DocumentRangeFormattingParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends TextEdit>> onTypeFormatting(DocumentOnTypeFormattingParams params) {
+    public CompletableFuture<List<? extends TextEdit>> onTypeFormatting(@SuppressWarnings("unused") DocumentOnTypeFormattingParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<WorkspaceEdit> rename(RenameParams params) {
+    public CompletableFuture<WorkspaceEdit> rename(@SuppressWarnings("unused") RenameParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<Range> prepareRename(TextDocumentPositionParams params) {
+    public CompletableFuture<Range> prepareRename(@SuppressWarnings("unused") TextDocumentPositionParams params) {
         throw new UnsupportedOperationException();
     }
 
-    public CompletableFuture<List<? extends FoldingRange>> foldingRange(FoldingRangeParams params) {
+    public CompletableFuture<List<? extends FoldingRange>> foldingRange(@SuppressWarnings("unused") FoldingRangeParams params) {
         throw new UnsupportedOperationException();
     }
 
     // infrastructure methods
-
-    public void connect(LanguageClient client) {
+    public void connect(@SuppressWarnings("unused") LanguageClient client) {
     }
 
     public LoggerProxy getLogger() {
@@ -721,13 +717,13 @@ public class LanguageServer {
             return t instanceof CompletionException ? isCancel(t.getCause()) : t instanceof CancellationException;
         }
 
-        public static final Future<?> connect(LanguageServer server, InputStream in, OutputStream out, ExecutorService executors) {
+        public static Future<?> connect(LanguageServer server, InputStream in, OutputStream out, ExecutorService executors) {
             Session s = new Session(server, in, out);
             return executors.submit(s);
         }
     }
 
-    public static interface LoggerProxy {
+    public interface LoggerProxy {
 
         boolean isLoggable(Level level);
 

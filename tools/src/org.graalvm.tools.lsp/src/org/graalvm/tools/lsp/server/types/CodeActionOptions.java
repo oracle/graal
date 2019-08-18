@@ -45,8 +45,8 @@ public class CodeActionOptions {
     /**
      * CodeActionKinds that this server may return.
      *
-     * The list of kinds may be generic, such as `CodeActionKind.Refactor`, or the server
-     * may list out every specific kind they provide.
+     * The list of kinds may be generic, such as `CodeActionKind.Refactor`, or the server may list
+     * out every specific kind they provide.
      */
     public List<CodeActionKind> getCodeActionKinds() {
         final JSONArray json = jsonData.optJSONArray("codeActionKinds");
@@ -63,7 +63,7 @@ public class CodeActionOptions {
     public CodeActionOptions setCodeActionKinds(List<CodeActionKind> codeActionKinds) {
         if (codeActionKinds != null) {
             final JSONArray json = new JSONArray();
-            for (CodeActionKind codeActionKind: codeActionKinds) {
+            for (CodeActionKind codeActionKind : codeActionKinds) {
                 json.put(codeActionKind.getStringValue());
             }
             jsonData.put("codeActionKinds", json);
@@ -91,9 +91,9 @@ public class CodeActionOptions {
 
     @Override
     public int hashCode() {
-        int hash = 3;
+        int hash = 5;
         if (this.getCodeActionKinds() != null) {
-            hash = 23 * hash + Objects.hashCode(this.getCodeActionKinds());
+            hash = 37 * hash + Objects.hashCode(this.getCodeActionKinds());
         }
         return hash;
     }

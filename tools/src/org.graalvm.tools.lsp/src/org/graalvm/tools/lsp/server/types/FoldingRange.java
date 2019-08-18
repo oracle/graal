@@ -51,7 +51,8 @@ public class FoldingRange {
     }
 
     /**
-     * The zero-based character offset from where the folded range starts. If not defined, defaults to the length of the start line.
+     * The zero-based character offset from where the folded range starts. If not defined, defaults
+     * to the length of the start line.
      */
     public Integer getStartCharacter() {
         return jsonData.optInt("startCharacter");
@@ -75,7 +76,8 @@ public class FoldingRange {
     }
 
     /**
-     * The zero-based character offset before the folded range ends. If not defined, defaults to the length of the end line.
+     * The zero-based character offset before the folded range ends. If not defined, defaults to the
+     * length of the end line.
      */
     public Integer getEndCharacter() {
         return jsonData.optInt("endCharacter");
@@ -87,8 +89,8 @@ public class FoldingRange {
     }
 
     /**
-     * Describes the kind of the folding range such as `comment' or 'region'. The kind
-     * is used to categorize folding ranges and used by commands like 'Fold all comments'. See
+     * Describes the kind of the folding range such as `comment' or 'region'. The kind is used to
+     * categorize folding ranges and used by commands like 'Fold all comments'. See
      * [FoldingRangeKind](#FoldingRangeKind) for an enumeration of standardized kinds.
      */
     public String getKind() {
@@ -115,13 +117,13 @@ public class FoldingRange {
         if (this.getStartLine() != other.getStartLine()) {
             return false;
         }
-        if (this.getStartCharacter() != other.getStartCharacter()) {
+        if (!Objects.equals(this.getStartCharacter(), other.getStartCharacter())) {
             return false;
         }
         if (this.getEndLine() != other.getEndLine()) {
             return false;
         }
-        if (this.getEndCharacter() != other.getEndCharacter()) {
+        if (!Objects.equals(this.getEndCharacter(), other.getEndCharacter())) {
             return false;
         }
         if (!Objects.equals(this.getKind(), other.getKind())) {
@@ -133,16 +135,16 @@ public class FoldingRange {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 83 * hash + Integer.hashCode(this.getStartLine());
+        hash = 17 * hash + Integer.hashCode(this.getStartLine());
         if (this.getStartCharacter() != null) {
-            hash = 83 * hash + Integer.hashCode(this.getStartCharacter());
+            hash = 17 * hash + Integer.hashCode(this.getStartCharacter());
         }
-        hash = 83 * hash + Integer.hashCode(this.getEndLine());
+        hash = 17 * hash + Integer.hashCode(this.getEndLine());
         if (this.getEndCharacter() != null) {
-            hash = 83 * hash + Integer.hashCode(this.getEndCharacter());
+            hash = 17 * hash + Integer.hashCode(this.getEndCharacter());
         }
         if (this.getKind() != null) {
-            hash = 83 * hash + Objects.hashCode(this.getKind());
+            hash = 17 * hash + Objects.hashCode(this.getKind());
         }
         return hash;
     }

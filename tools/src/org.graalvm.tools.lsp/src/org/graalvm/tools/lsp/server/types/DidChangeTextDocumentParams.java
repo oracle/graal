@@ -43,9 +43,8 @@ public class DidChangeTextDocumentParams {
     }
 
     /**
-     * The document that did change. The version number points
-     * to the version after all provided content changes have
-     * been applied.
+     * The document that did change. The version number points to the version after all provided
+     * content changes have been applied.
      */
     public VersionedTextDocumentIdentifier getTextDocument() {
         return new VersionedTextDocumentIdentifier(jsonData.getJSONObject("textDocument"));
@@ -57,9 +56,9 @@ public class DidChangeTextDocumentParams {
     }
 
     /**
-     * The actual content changes. The content changes describe single state changes
-     * to the document. So if there are two content changes c1 and c2 for a document
-     * in state S then c1 move the document to S' and c2 to S''.
+     * The actual content changes. The content changes describe single state changes to the
+     * document. So if there are two content changes c1 and c2 for a document in state S then c1
+     * move the document to S' and c2 to S''.
      */
     public List<TextDocumentContentChangeEvent> getContentChanges() {
         final JSONArray json = jsonData.getJSONArray("contentChanges");
@@ -72,7 +71,7 @@ public class DidChangeTextDocumentParams {
 
     public DidChangeTextDocumentParams setContentChanges(List<TextDocumentContentChangeEvent> contentChanges) {
         final JSONArray json = new JSONArray();
-        for (TextDocumentContentChangeEvent textDocumentContentChangeEvent: contentChanges) {
+        for (TextDocumentContentChangeEvent textDocumentContentChangeEvent : contentChanges) {
             json.put(textDocumentContentChangeEvent.jsonData);
         }
         jsonData.put("contentChanges", json);
@@ -102,9 +101,9 @@ public class DidChangeTextDocumentParams {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 29 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 29 * hash + Objects.hashCode(this.getContentChanges());
+        int hash = 2;
+        hash = 37 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 37 * hash + Objects.hashCode(this.getContentChanges());
         return hash;
     }
 
@@ -112,7 +111,7 @@ public class DidChangeTextDocumentParams {
         final JSONObject json = new JSONObject();
         json.put("textDocument", textDocument.jsonData);
         JSONArray contentChangesJsonArr = new JSONArray();
-        for(TextDocumentContentChangeEvent textDocumentContentChangeEvent: contentChanges) {
+        for (TextDocumentContentChangeEvent textDocumentContentChangeEvent : contentChanges) {
             contentChangesJsonArr.put(textDocumentContentChangeEvent.jsonData);
         }
         json.put("contentChanges", contentChangesJsonArr);

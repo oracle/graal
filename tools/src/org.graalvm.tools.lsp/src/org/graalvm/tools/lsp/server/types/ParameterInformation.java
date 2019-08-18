@@ -28,8 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Represents a parameter of a callable-signature. A parameter can
- * have a label and a doc-comment.
+ * Represents a parameter of a callable-signature. A parameter can have a label and a doc-comment.
  */
 public class ParameterInformation {
 
@@ -42,9 +41,9 @@ public class ParameterInformation {
     /**
      * The label of this parameter information.
      *
-     * Either a string or inclusive start and exclusive end offsets within its containing
-     * [signature label](#SignatureInformation.label). *Note*: A label of type string must be
-     * a substring of its containing signature information's [label](#SignatureInformation.label).
+     * Either a string or inclusive start and exclusive end offsets within its containing [signature
+     * label](#SignatureInformation.label). *Note*: A label of type string must be a substring of
+     * its containing signature information's [label](#SignatureInformation.label).
      */
     public Object getLabel() {
         return jsonData.get("label");
@@ -56,8 +55,7 @@ public class ParameterInformation {
     }
 
     /**
-     * The human-readable doc-comment of this signature. Will be shown
-     * in the UI but can be omitted.
+     * The human-readable doc-comment of this signature. Will be shown in the UI but can be omitted.
      */
     public Object getDocumentation() {
         Object obj = jsonData.opt("documentation");
@@ -99,10 +97,10 @@ public class ParameterInformation {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 41 * hash + Objects.hashCode(this.getLabel());
+        int hash = 3;
+        hash = 23 * hash + Objects.hashCode(this.getLabel());
         if (this.getDocumentation() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getDocumentation());
+            hash = 23 * hash + Objects.hashCode(this.getDocumentation());
         }
         return hash;
     }

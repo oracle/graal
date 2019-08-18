@@ -28,8 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * A parameter literal used in requests to pass a text document and a position inside that
- * document.
+ * A parameter literal used in requests to pass a text document and a position inside that document.
  */
 public class TextDocumentPositionParams {
 
@@ -86,9 +85,9 @@ public class TextDocumentPositionParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 79 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 79 * hash + Objects.hashCode(this.getPosition());
+        int hash = 5;
+        hash = 83 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 83 * hash + Objects.hashCode(this.getPosition());
         return hash;
     }
 

@@ -39,7 +39,7 @@ public class WorkspaceSymbolParams {
     }
 
     /**
-     * A non-empty query string
+     * A non-empty query string.
      */
     public String getQuery() {
         return jsonData.getString("query");
@@ -70,8 +70,8 @@ public class WorkspaceSymbolParams {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 97 * hash + Objects.hashCode(this.getQuery());
+        int hash = 7;
+        hash = 13 * hash + Objects.hashCode(this.getQuery());
         return hash;
     }
 

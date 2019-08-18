@@ -25,29 +25,13 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
-import java.util.Objects;
 
-/**
- * A literal to identify a text document in the client.
- */
-public class TextDocumentIdentifier {
+public class ColorProviderOptions {
 
     final JSONObject jsonData;
 
-    TextDocumentIdentifier(JSONObject jsonData) {
+    ColorProviderOptions(JSONObject jsonData) {
         this.jsonData = jsonData;
-    }
-
-    /**
-     * The text document's uri.
-     */
-    public String getUri() {
-        return jsonData.getString("uri");
-    }
-
-    public TextDocumentIdentifier setUri(String uri) {
-        jsonData.put("uri", uri);
-        return this;
     }
 
     @Override
@@ -61,28 +45,17 @@ public class TextDocumentIdentifier {
         if (this.getClass() != obj.getClass()) {
             return false;
         }
-        TextDocumentIdentifier other = (TextDocumentIdentifier) obj;
-        if (!Objects.equals(this.getUri(), other.getUri())) {
-            return false;
-        }
         return true;
     }
 
     @Override
     public int hashCode() {
         int hash = 3;
-        hash = 67 * hash + Objects.hashCode(this.getUri());
         return hash;
     }
 
-    /**
-     * Creates a new TextDocumentIdentifier literal.
-     *
-     * @param uri The document's uri.
-     */
-    public static TextDocumentIdentifier create(String uri) {
+    public static ColorProviderOptions create() {
         final JSONObject json = new JSONObject();
-        json.put("uri", uri);
-        return new TextDocumentIdentifier(json);
+        return new ColorProviderOptions(json);
     }
 }

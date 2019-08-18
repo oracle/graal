@@ -68,7 +68,7 @@ public class PublishDiagnosticsParams {
 
     public PublishDiagnosticsParams setDiagnostics(List<Diagnostic> diagnostics) {
         final JSONArray json = new JSONArray();
-        for (Diagnostic diagnostic: diagnostics) {
+        for (Diagnostic diagnostic : diagnostics) {
             json.put(diagnostic.jsonData);
         }
         jsonData.put("diagnostics", json);
@@ -99,8 +99,8 @@ public class PublishDiagnosticsParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 67 * hash + Objects.hashCode(this.getUri());
-        hash = 67 * hash + Objects.hashCode(this.getDiagnostics());
+        hash = 97 * hash + Objects.hashCode(this.getUri());
+        hash = 97 * hash + Objects.hashCode(this.getDiagnostics());
         return hash;
     }
 
@@ -108,7 +108,7 @@ public class PublishDiagnosticsParams {
         final JSONObject json = new JSONObject();
         json.put("uri", uri);
         JSONArray diagnosticsJsonArr = new JSONArray();
-        for(Diagnostic diagnostic: diagnostics) {
+        for (Diagnostic diagnostic : diagnostics) {
             diagnosticsJsonArr.put(diagnostic.jsonData);
         }
         json.put("diagnostics", diagnosticsJsonArr);

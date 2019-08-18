@@ -28,7 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * The parameters send in a save text document notification
+ * The parameters send in a save text document notification.
  */
 public class DidSaveTextDocumentParams {
 
@@ -51,8 +51,8 @@ public class DidSaveTextDocumentParams {
     }
 
     /**
-     * Optional the content when saved. Depends on the includeText value
-     * when the save notification was requested.
+     * Optional the content when saved. Depends on the includeText value when the save notification
+     * was requested.
      */
     public String getText() {
         return jsonData.optString("text");
@@ -86,7 +86,7 @@ public class DidSaveTextDocumentParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
+        int hash = 5;
         hash = 43 * hash + Objects.hashCode(this.getTextDocument());
         if (this.getText() != null) {
             hash = 43 * hash + Objects.hashCode(this.getText());

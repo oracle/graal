@@ -32,9 +32,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Signature help represents the signature of something
- * callable. There can be multiple signature but only one
- * active and only one active parameter.
+ * Signature help represents the signature of something callable. There can be multiple signature
+ * but only one active and only one active parameter.
  */
 public class SignatureHelp {
 
@@ -58,7 +57,7 @@ public class SignatureHelp {
 
     public SignatureHelp setSignatures(List<SignatureInformation> signatures) {
         final JSONArray json = new JSONArray();
-        for (SignatureInformation signatureInformation: signatures) {
+        for (SignatureInformation signatureInformation : signatures) {
             json.put(signatureInformation.jsonData);
         }
         jsonData.put("signatures", json);
@@ -66,8 +65,7 @@ public class SignatureHelp {
     }
 
     /**
-     * The active signature. Set to `null` if no
-     * signatures exist.
+     * The active signature. Set to `null` if no signatures exist.
      */
     public int getActiveSignature() {
         return jsonData.getInt("activeSignature");
@@ -79,8 +77,8 @@ public class SignatureHelp {
     }
 
     /**
-     * The active parameter of the active signature. Set to `null`
-     * if the active signature has no parameters.
+     * The active parameter of the active signature. Set to `null` if the active signature has no
+     * parameters.
      */
     public int getActiveParameter() {
         return jsonData.getInt("activeParameter");
@@ -117,17 +115,17 @@ public class SignatureHelp {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.getSignatures());
-        hash = 97 * hash + Integer.hashCode(this.getActiveSignature());
-        hash = 97 * hash + Integer.hashCode(this.getActiveParameter());
+        int hash = 5;
+        hash = 67 * hash + Objects.hashCode(this.getSignatures());
+        hash = 67 * hash + Integer.hashCode(this.getActiveSignature());
+        hash = 67 * hash + Integer.hashCode(this.getActiveParameter());
         return hash;
     }
 
     public static SignatureHelp create(List<SignatureInformation> signatures, Integer activeSignature, Integer activeParameter) {
         final JSONObject json = new JSONObject();
         JSONArray signaturesJsonArr = new JSONArray();
-        for(SignatureInformation signatureInformation: signatures) {
+        for (SignatureInformation signatureInformation : signatures) {
             signaturesJsonArr.put(signatureInformation.jsonData);
         }
         json.put("signatures", signaturesJsonArr);

@@ -32,9 +32,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents the signature of something callable. A signature
- * can have a label, like a function-name, a doc-comment, and
- * a set of parameters.
+ * Represents the signature of something callable. A signature can have a label, like a
+ * function-name, a doc-comment, and a set of parameters.
  */
 public class SignatureInformation {
 
@@ -45,8 +44,7 @@ public class SignatureInformation {
     }
 
     /**
-     * The label of this signature. Will be shown in
-     * the UI.
+     * The label of this signature. Will be shown in the UI.
      */
     public String getLabel() {
         return jsonData.getString("label");
@@ -58,8 +56,7 @@ public class SignatureInformation {
     }
 
     /**
-     * The human-readable doc-comment of this signature. Will be shown
-     * in the UI but can be omitted.
+     * The human-readable doc-comment of this signature. Will be shown in the UI but can be omitted.
      */
     public Object getDocumentation() {
         Object obj = jsonData.opt("documentation");
@@ -96,7 +93,7 @@ public class SignatureInformation {
     public SignatureInformation setParameters(List<ParameterInformation> parameters) {
         if (parameters != null) {
             final JSONArray json = new JSONArray();
-            for (ParameterInformation parameterInformation: parameters) {
+            for (ParameterInformation parameterInformation : parameters) {
                 json.put(parameterInformation.jsonData);
             }
             jsonData.put("parameters", json);
@@ -130,24 +127,24 @@ public class SignatureInformation {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 43 * hash + Objects.hashCode(this.getLabel());
+        int hash = 2;
+        hash = 97 * hash + Objects.hashCode(this.getLabel());
         if (this.getDocumentation() != null) {
-            hash = 43 * hash + Objects.hashCode(this.getDocumentation());
+            hash = 97 * hash + Objects.hashCode(this.getDocumentation());
         }
         if (this.getParameters() != null) {
-            hash = 43 * hash + Objects.hashCode(this.getParameters());
+            hash = 97 * hash + Objects.hashCode(this.getParameters());
         }
         return hash;
     }
 
-    public static SignatureInformation create(String label, String documentation, List<ParameterInformation> parameters) {
+    public static SignatureInformation create(String label, String documentation, ParameterInformation... parameters) {
         final JSONObject json = new JSONObject();
         json.put("label", label);
         json.putOpt("documentation", documentation);
         if (parameters != null) {
             JSONArray parametersJsonArr = new JSONArray();
-            for(ParameterInformation parameterInformation: parameters) {
+            for (ParameterInformation parameterInformation : parameters) {
                 parametersJsonArr.put(parameterInformation.jsonData);
             }
             json.put("parameters", parametersJsonArr);

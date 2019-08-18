@@ -34,9 +34,9 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * A workspace edit represents changes to many resources managed in the workspace. The edit
- * should either provide `changes` or `documentChanges`. If documentChanges are present
- * they are preferred over `changes` if the client can handle versioned document edits.
+ * A workspace edit represents changes to many resources managed in the workspace. The edit should
+ * either provide `changes` or `documentChanges`. If documentChanges are present they are preferred
+ * over `changes` if the client can handle versioned document edits.
  */
 public class WorkspaceEdit {
 
@@ -68,7 +68,7 @@ public class WorkspaceEdit {
 
     public WorkspaceEdit setChanges(Map<String, List<TextEdit>> changes) {
         final JSONObject json = new JSONObject();
-        for(Map.Entry<String, List<TextEdit>> entry : changes.entrySet()) {
+        for (Map.Entry<String, List<TextEdit>> entry : changes.entrySet()) {
             final JSONArray jsonArr = new JSONArray();
             for (TextEdit textEdit : entry.getValue()) {
                 jsonArr.put(textEdit.jsonData);
@@ -80,16 +80,18 @@ public class WorkspaceEdit {
     }
 
     /**
-     * Depending on the client capability `workspace.workspaceEdit.resourceOperations` document changes
-     * are either an array of `TextDocumentEdit`s to express changes to n different text documents
-     * where each text document edit addresses a specific version of a text document. Or it can contain
-     * above `TextDocumentEdit`s mixed with create, rename and delete file / folder operations.
+     * Depending on the client capability `workspace.workspaceEdit.resourceOperations` document
+     * changes are either an array of `TextDocumentEdit`s to express changes to n different text
+     * documents where each text document edit addresses a specific version of a text document. Or
+     * it can contain above `TextDocumentEdit`s mixed with create, rename and delete file / folder
+     * operations.
      *
      * Whether a client supports versioned document edits is expressed via
      * `workspace.workspaceEdit.documentChanges` client capability.
      *
-     * If a client neither supports `documentChanges` nor `workspace.workspaceEdit.resourceOperations` then
-     * only plain `TextEdit`s using the `changes` property are supported.
+     * If a client neither supports `documentChanges` nor
+     * `workspace.workspaceEdit.resourceOperations` then only plain `TextEdit`s using the `changes`
+     * property are supported.
      */
     public List<Object> getDocumentChanges() {
         final JSONArray json = jsonData.optJSONArray("documentChanges");
@@ -106,7 +108,7 @@ public class WorkspaceEdit {
     public WorkspaceEdit setDocumentChanges(List<Object> documentChanges) {
         if (documentChanges != null) {
             final JSONArray json = new JSONArray();
-            for (Object object: documentChanges) {
+            for (Object object : documentChanges) {
                 json.put(object);
             }
             jsonData.put("documentChanges", json);

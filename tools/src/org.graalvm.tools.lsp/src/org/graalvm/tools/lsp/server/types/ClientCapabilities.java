@@ -100,15 +100,15 @@ public class ClientCapabilities {
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 7;
         if (this.getWorkspace() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getWorkspace());
+            hash = 31 * hash + Objects.hashCode(this.getWorkspace());
         }
         if (this.getTextDocument() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getTextDocument());
+            hash = 31 * hash + Objects.hashCode(this.getTextDocument());
         }
         if (this.getExperimental() != null) {
-            hash = 67 * hash + Objects.hashCode(this.getExperimental());
+            hash = 31 * hash + Objects.hashCode(this.getExperimental());
         }
         return hash;
     }

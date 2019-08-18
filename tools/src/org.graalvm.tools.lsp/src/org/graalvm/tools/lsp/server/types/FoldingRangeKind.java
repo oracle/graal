@@ -28,16 +28,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Enum of known range kinds
+ * Enum of known range kinds.
  */
 public enum FoldingRangeKind {
 
     /**
-     * Folding range for a comment
+     * Folding range for a comment.
      */
     Comment("comment"),
     /**
-     * Folding range for a imports or includes
+     * Folding range for a imports or includes.
      */
     Imports("imports"),
     /**

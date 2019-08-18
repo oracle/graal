@@ -43,7 +43,7 @@ public class ExecuteCommandOptions {
     }
 
     /**
-     * The commands to be executed on the server
+     * The commands to be executed on the server.
      */
     public List<String> getCommands() {
         final JSONArray json = jsonData.getJSONArray("commands");
@@ -56,7 +56,7 @@ public class ExecuteCommandOptions {
 
     public ExecuteCommandOptions setCommands(List<String> commands) {
         final JSONArray json = new JSONArray();
-        for (String string: commands) {
+        for (String string : commands) {
             json.put(string);
         }
         jsonData.put("commands", json);
@@ -84,14 +84,14 @@ public class ExecuteCommandOptions {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 89 * hash + Objects.hashCode(this.getCommands());
+        hash = 83 * hash + Objects.hashCode(this.getCommands());
         return hash;
     }
 
     public static ExecuteCommandOptions create(List<String> commands) {
         final JSONObject json = new JSONObject();
         JSONArray commandsJsonArr = new JSONArray();
-        for(String string: commands) {
+        for (String string : commands) {
             commandsJsonArr.put(string);
         }
         json.put("commands", commandsJsonArr);

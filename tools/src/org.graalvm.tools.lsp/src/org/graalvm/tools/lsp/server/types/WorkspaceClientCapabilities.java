@@ -43,9 +43,8 @@ public class WorkspaceClientCapabilities {
     }
 
     /**
-     * The client supports applying batch edits
-     * to the workspace by supporting the request
-     * 'workspace/applyEdit'
+     * The client supports applying batch edits to the workspace by supporting the request
+     * 'workspace/applyEdit'.
      */
     public Boolean getApplyEdit() {
         return jsonData.optBoolean("applyEdit");
@@ -57,7 +56,7 @@ public class WorkspaceClientCapabilities {
     }
 
     /**
-     * Capabilities specific to `WorkspaceEdit`s
+     * Capabilities specific to `WorkspaceEdit`s.
      */
     public WorkspaceEditCapabilities getWorkspaceEdit() {
         return jsonData.has("workspaceEdit") ? new WorkspaceEditCapabilities(jsonData.optJSONObject("workspaceEdit")) : null;
@@ -116,6 +115,30 @@ public class WorkspaceClientCapabilities {
         return this;
     }
 
+    /**
+     * The client has support for workspace folders.
+     */
+    public Boolean getWorkspaceFolders() {
+        return jsonData.optBoolean("workspaceFolders");
+    }
+
+    public WorkspaceClientCapabilities setWorkspaceFolders(Boolean workspaceFolders) {
+        jsonData.putOpt("workspaceFolders", workspaceFolders);
+        return this;
+    }
+
+    /**
+     * The client supports `workspace/configuration` requests.
+     */
+    public Boolean getConfiguration() {
+        return jsonData.optBoolean("configuration");
+    }
+
+    public WorkspaceClientCapabilities setConfiguration(Boolean configuration) {
+        jsonData.putOpt("configuration", configuration);
+        return this;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -146,29 +169,41 @@ public class WorkspaceClientCapabilities {
         if (!Objects.equals(this.getExecuteCommand(), other.getExecuteCommand())) {
             return false;
         }
+        if (this.getWorkspaceFolders() != other.getWorkspaceFolders()) {
+            return false;
+        }
+        if (this.getConfiguration() != other.getConfiguration()) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 7;
         if (this.getApplyEdit() != null) {
-            hash = 47 * hash + Boolean.hashCode(this.getApplyEdit());
+            hash = 13 * hash + Boolean.hashCode(this.getApplyEdit());
         }
         if (this.getWorkspaceEdit() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getWorkspaceEdit());
+            hash = 13 * hash + Objects.hashCode(this.getWorkspaceEdit());
         }
         if (this.getDidChangeConfiguration() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getDidChangeConfiguration());
+            hash = 13 * hash + Objects.hashCode(this.getDidChangeConfiguration());
         }
         if (this.getDidChangeWatchedFiles() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getDidChangeWatchedFiles());
+            hash = 13 * hash + Objects.hashCode(this.getDidChangeWatchedFiles());
         }
         if (this.getSymbol() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getSymbol());
+            hash = 13 * hash + Objects.hashCode(this.getSymbol());
         }
         if (this.getExecuteCommand() != null) {
-            hash = 47 * hash + Objects.hashCode(this.getExecuteCommand());
+            hash = 13 * hash + Objects.hashCode(this.getExecuteCommand());
+        }
+        if (this.getWorkspaceFolders() != null) {
+            hash = 13 * hash + Boolean.hashCode(this.getWorkspaceFolders());
+        }
+        if (this.getConfiguration() != null) {
+            hash = 13 * hash + Boolean.hashCode(this.getConfiguration());
         }
         return hash;
     }
@@ -187,7 +222,7 @@ public class WorkspaceClientCapabilities {
         }
 
         /**
-         * The client supports versioned document changes in `WorkspaceEdit`s
+         * The client supports versioned document changes in `WorkspaceEdit`s.
          */
         public Boolean getDocumentChanges() {
             return jsonData.optBoolean("documentChanges");
@@ -199,8 +234,8 @@ public class WorkspaceClientCapabilities {
         }
 
         /**
-         * The resource operations the client supports. Clients should at least
-         * support 'create', 'rename' and 'delete' files and folders.
+         * The resource operations the client supports. Clients should at least support 'create',
+         * 'rename' and 'delete' files and folders.
          */
         public List<ResourceOperationKind> getResourceOperations() {
             final JSONArray json = jsonData.optJSONArray("resourceOperations");
@@ -217,7 +252,7 @@ public class WorkspaceClientCapabilities {
         public WorkspaceEditCapabilities setResourceOperations(List<ResourceOperationKind> resourceOperations) {
             if (resourceOperations != null) {
                 final JSONArray json = new JSONArray();
-                for (ResourceOperationKind resourceOperationKind: resourceOperations) {
+                for (ResourceOperationKind resourceOperationKind : resourceOperations) {
                     json.put(resourceOperationKind.getStringValue());
                 }
                 jsonData.put("resourceOperations", json);
@@ -226,8 +261,7 @@ public class WorkspaceClientCapabilities {
         }
 
         /**
-         * The failure handling strategy of a client if applying the workspace edit
-         * failes.
+         * The failure handling strategy of a client if applying the workspace edit failes.
          */
         public FailureHandlingKind getFailureHandling() {
             return FailureHandlingKind.get(jsonData.optString("failureHandling"));
@@ -266,13 +300,13 @@ public class WorkspaceClientCapabilities {
         public int hashCode() {
             int hash = 7;
             if (this.getDocumentChanges() != null) {
-                hash = 73 * hash + Boolean.hashCode(this.getDocumentChanges());
+                hash = 41 * hash + Boolean.hashCode(this.getDocumentChanges());
             }
             if (this.getResourceOperations() != null) {
-                hash = 73 * hash + Objects.hashCode(this.getResourceOperations());
+                hash = 41 * hash + Objects.hashCode(this.getResourceOperations());
             }
             if (this.getFailureHandling() != null) {
-                hash = 73 * hash + Objects.hashCode(this.getFailureHandling());
+                hash = 41 * hash + Objects.hashCode(this.getFailureHandling());
             }
             return hash;
         }
@@ -318,9 +352,9 @@ public class WorkspaceClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 7;
+            int hash = 5;
             if (this.getDynamicRegistration() != null) {
-                hash = 41 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 67 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -366,9 +400,9 @@ public class WorkspaceClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 2;
+            int hash = 3;
             if (this.getDynamicRegistration() != null) {
-                hash = 41 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 59 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }
@@ -431,10 +465,10 @@ public class WorkspaceClientCapabilities {
         public int hashCode() {
             int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 41 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 37 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             if (this.getSymbolKind() != null) {
-                hash = 41 * hash + Objects.hashCode(this.getSymbolKind());
+                hash = 37 * hash + Objects.hashCode(this.getSymbolKind());
             }
             return hash;
         }
@@ -448,14 +482,12 @@ public class WorkspaceClientCapabilities {
             }
 
             /**
-             * The symbol kind values the client supports. When this
-             * property exists the client also guarantees that it will
-             * handle values outside its set gracefully and falls back
-             * to a default value when unknown.
+             * The symbol kind values the client supports. When this property exists the client also
+             * guarantees that it will handle values outside its set gracefully and falls back to a
+             * default value when unknown.
              *
-             * If this property is not present the client only supports
-             * the symbol kinds from `File` to `Array` as defined in
-             * the initial version of the protocol.
+             * If this property is not present the client only supports the symbol kinds from `File`
+             * to `Array` as defined in the initial version of the protocol.
              */
             public List<SymbolKind> getValueSet() {
                 final JSONArray json = jsonData.optJSONArray("valueSet");
@@ -472,7 +504,7 @@ public class WorkspaceClientCapabilities {
             public SymbolKindCapabilities setValueSet(List<SymbolKind> valueSet) {
                 if (valueSet != null) {
                     final JSONArray json = new JSONArray();
-                    for (SymbolKind symbolKind: valueSet) {
+                    for (SymbolKind symbolKind : valueSet) {
                         json.put(symbolKind.getIntValue());
                     }
                     jsonData.put("valueSet", json);
@@ -500,9 +532,9 @@ public class WorkspaceClientCapabilities {
 
             @Override
             public int hashCode() {
-                int hash = 3;
+                int hash = 7;
                 if (this.getValueSet() != null) {
-                    hash = 89 * hash + Objects.hashCode(this.getValueSet());
+                    hash = 79 * hash + Objects.hashCode(this.getValueSet());
                 }
                 return hash;
             }
@@ -549,9 +581,9 @@ public class WorkspaceClientCapabilities {
 
         @Override
         public int hashCode() {
-            int hash = 3;
+            int hash = 7;
             if (this.getDynamicRegistration() != null) {
-                hash = 43 * hash + Boolean.hashCode(this.getDynamicRegistration());
+                hash = 67 * hash + Boolean.hashCode(this.getDynamicRegistration());
             }
             return hash;
         }

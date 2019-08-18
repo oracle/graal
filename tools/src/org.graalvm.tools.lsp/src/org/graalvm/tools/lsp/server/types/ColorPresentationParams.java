@@ -101,9 +101,9 @@ public class ColorPresentationParams {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 61 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 61 * hash + Objects.hashCode(this.getColor());
-        hash = 61 * hash + Objects.hashCode(this.getRange());
+        hash = 23 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 23 * hash + Objects.hashCode(this.getColor());
+        hash = 23 * hash + Objects.hashCode(this.getRange());
         return hash;
     }
 
