@@ -28,11 +28,14 @@ import static org.bytedeco.javacpp.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.bytedeco.javacpp.LLVM;
+import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
-import org.bytedeco.javacpp.Pointer;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -67,22 +70,64 @@ public class LLVMUtils {
     }
 
     /**
-     * LLVM target-specific inline assembly snippets.
+     * LLVM target-specific inline assembly snippets and information.
      */
-    public abstract static class TargetSpecific {
-        public static TargetSpecific get() {
+    public interface TargetSpecific {
+        static TargetSpecific get() {
             return ImageSingletons.lookup(TargetSpecific.class);
         }
 
         /**
          * Snippet that gets the value of an arbitrary register.
          */
-        public abstract String getRegisterInlineAsm(String register);
+        String getRegisterInlineAsm(String register);
 
         /**
          * Snippet that jumps to a runtime-computed address.
          */
-        public abstract String getJumpInlineAsm();
+        String getJumpInlineAsm();
+
+        /**
+         * Name of the architecture to be passed to the LLVM compiler.
+         */
+        String getLLVMArchName();
+
+        /**
+         * Number of bytes separating two adjacent call frames. A call frame starts at the stack
+         * pointer and its size is as given by the LLVM stack map.
+         */
+        int getCallFrameSeparation();
+
+        /**
+         * Offset of the frame pointer relative to the first address outside the current call frame.
+         * This offset should be negative.
+         */
+        int getFramePointerOffset();
+
+        /**
+         * Register number of the stack pointer used by the LLVM stack maps.
+         */
+        int getStackPointerDwarfRegNum();
+
+        /**
+         * Register number of the frame pointer used by the LLVM stack maps.
+         */
+        int getFramePointerDwarfRegNum();
+
+        /**
+         * Additional target-specific options to be passed to the LLVM compiler.
+         */
+        default List<String> getLLCAdditionalOptions() {
+            return Collections.emptyList();
+        }
+
+        /**
+         * Transformation to be applied to the name of a register given by Graal to obtain the
+         * corresponding name in assembly.
+         */
+        default String getLLVMRegisterName(String register) {
+            return register;
+        }
     }
 
     static int getLLVMIntCond(Condition cond) {

@@ -38,4 +38,10 @@ public class LLVMOptions {
 
     @Option(help = "How many batches per thread should be used for LLVM compilation. 0 means a single batch, -1 means all functions separately", type = OptionType.Expert)//
     public static final HostedOptionKey<Integer> LLVMBatchesPerThread = new HostedOptionKey<>(1);
+
+    @Option(help = "Prevent the LLVM intermediary bitcode files to be deleted after compilation completes")//
+    public static final HostedOptionKey<Boolean> KeepLLVMBitcodeFiles = new HostedOptionKey<>(false);
+
+    @Option(help = "Path to a custom llc binary for LLVM compilation")//
+    public static final HostedOptionKey<String> CustomLLC = new HostedOptionKey<>("");
 }

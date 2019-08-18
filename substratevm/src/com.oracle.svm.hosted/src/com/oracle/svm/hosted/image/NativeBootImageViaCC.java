@@ -128,6 +128,13 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
+
+            additionalPreOptions.add("-arch");
+            if (Platform.includedIn(Platform.AMD64.class)) {
+                additionalPreOptions.add("x86_64");
+            } else if (Platform.includedIn(Platform.AArch64.class)) {
+                additionalPreOptions.add("arm64");
+            }
         }
 
         @Override
