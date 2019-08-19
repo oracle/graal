@@ -184,8 +184,6 @@ public final class Meta implements ContextAccess {
         // Guest reflection.
         Executable = knownKlass(Type.Executable);
         Constructor = knownKlass(Type.Constructor);
-        HIDDEN_CONSTRUCTOR_KEY = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_KEY);
-        HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = Constructor.lookupHiddenField(Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         Constructor_clazz = Constructor.lookupDeclaredField(Name.clazz, Type.Class);
         Constructor_root = Constructor.lookupDeclaredField(Name.root, Type.Constructor);
         Constructor_parameterTypes = Constructor.lookupDeclaredField(Name.parameterTypes, Type.Class_array);
@@ -385,8 +383,6 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass Executable;
 
     public final ObjectKlass Constructor;
-    public final Field HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS;
-    public final Field HIDDEN_CONSTRUCTOR_KEY;
     public final Field Constructor_clazz;
     public final Field Constructor_root;
     public final Field Constructor_parameterTypes;

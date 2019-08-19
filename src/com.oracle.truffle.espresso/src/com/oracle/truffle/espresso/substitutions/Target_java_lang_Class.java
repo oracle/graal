@@ -268,8 +268,8 @@ public final class Target_java_lang_Class {
                                 /* annotations */ runtimeVisibleAnnotations,
                                 /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
 
-                instance.setHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY, m);
-                instance.setHiddenField(meta.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
+                instance.setHiddenField(meta.HIDDEN_METHOD_KEY, m);
+                instance.setHiddenField(meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
 
                 return instance;
             }
