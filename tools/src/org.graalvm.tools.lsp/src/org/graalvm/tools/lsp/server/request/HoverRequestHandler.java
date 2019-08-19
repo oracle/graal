@@ -32,7 +32,6 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 
 import org.graalvm.tools.lsp.server.types.Hover;
-import org.graalvm.tools.lsp.server.types.MarkedString;
 import org.graalvm.tools.lsp.server.types.MarkupContent;
 import org.graalvm.tools.lsp.server.types.MarkupKind;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
@@ -180,7 +179,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
         String formattedSignature = completionHandler.getFormattedSignature(evalResult, langInfo);
         if (formattedSignature != null) {
             List<Object> contents = new ArrayList<>();
-            contents.add(MarkedString.create(langInfo.getId(), formattedSignature));
+            contents.add(org.graalvm.tools.lsp.server.types.MarkedString.create(langInfo.getId(), formattedSignature));
 
             Object documentation = completionHandler.getDocumentation(evalResult, langInfo);
             if (documentation instanceof String) {
@@ -190,7 +189,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
                 if (markup.getKind().equals(MarkupKind.PlainText)) {
                     contents.add(markup.getValue());
                 } else {
-                    contents.add(MarkedString.create(langInfo.getId(), markup.getValue()));
+                    contents.add(org.graalvm.tools.lsp.server.types.MarkedString.create(langInfo.getId(), markup.getValue()));
                 }
             }
             return Hover.create(contents).setRange(SourceUtils.sourceSectionToRange(hoverSection));
@@ -210,7 +209,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
 
     private List<Object> createDefaultHoverInfos(String textAtHoverPosition, Object evalResultObject, LanguageInfo langInfo) {
         List<Object> contents = new ArrayList<>();
-        contents.add(MarkedString.create(langInfo.getId(), textAtHoverPosition));
+        contents.add(org.graalvm.tools.lsp.server.types.MarkedString.create(langInfo.getId(), textAtHoverPosition));
         String result = evalResultObject != null ? env.toString(langInfo, evalResultObject) : "";
         if (!textAtHoverPosition.equals(result)) {
             String resultObjectString = evalResultObject instanceof String ? "\"" + result + "\"" : result;
@@ -227,7 +226,7 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
             if (markup.getKind().equals(MarkupKind.PlainText)) {
                 contents.add(markup.getValue());
             } else {
-                contents.add(MarkedString.create(langInfo.getId(), markup.getValue()));
+                contents.add(org.graalvm.tools.lsp.server.types.MarkedString.create(langInfo.getId(), markup.getValue()));
             }
         }
         return contents;

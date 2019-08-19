@@ -41,7 +41,6 @@ import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.launcher.filesystem.LSPFileSystem;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 import org.graalvm.tools.lsp.server.types.Range;
-import org.graalvm.tools.lsp.test.instrument.TruffleAdapterProvider;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.junit.After;
@@ -91,8 +90,8 @@ public abstract class TruffleLSPTest {
 
     @Before
     public void setup() {
-        engine = Engine.newBuilder().option("lspTestInstrument", "true").allowExperimentalOptions(true).build();
-        Instrument instrument = engine.getInstruments().get("lspTestInstrument");
+        engine = Engine.newBuilder().option("lsp", "").option("lsp.DeveloperMode", "true").allowExperimentalOptions(true).build();
+        Instrument instrument = engine.getInstruments().get("lsp");
         VirtualLanguageServerFileProvider lspFileProvider = instrument.lookup(VirtualLanguageServerFileProvider.class);
 
         Builder contextBuilder = Context.newBuilder();
@@ -142,7 +141,7 @@ public abstract class TruffleLSPTest {
         };
         registry.register(executorWrapper);
 
-        truffleAdapter = instrument.lookup(TruffleAdapterProvider.class).getTruffleAdapter();
+        truffleAdapter = (TruffleAdapter) registry;
         truffleAdapter.initialize();
     }
 

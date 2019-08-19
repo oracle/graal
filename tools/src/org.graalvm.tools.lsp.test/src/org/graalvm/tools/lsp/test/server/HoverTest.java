@@ -33,7 +33,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.graalvm.tools.lsp.server.types.Hover;
-import org.graalvm.tools.lsp.server.types.MarkedString;
 import org.graalvm.tools.lsp.server.types.Position;
 import org.graalvm.tools.lsp.server.types.Range;
 import org.junit.Test;
@@ -64,8 +63,8 @@ public class HoverTest extends TruffleLSPTest {
         Hover hover = checkHover(uri, 8, 10, Range.create(Position.create(8, 9), Position.create(8, 12)));
         assertTrue(hover.getContents() instanceof List);
         assertEquals(3, ((List<?>) hover.getContents()).size());
-        assertTrue(((List<?>) hover.getContents()).get(0) instanceof MarkedString);
-        assertEquals("obj", ((MarkedString) ((List<?>) hover.getContents()).get(0)).getValue());
+        assertTrue(((List<?>) hover.getContents()).get(0) instanceof org.graalvm.tools.lsp.server.types.MarkedString);
+        assertEquals("obj", ((org.graalvm.tools.lsp.server.types.MarkedString) ((List<?>) hover.getContents()).get(0)).getValue());
         assertEquals("Object", ((List<?>) hover.getContents()).get(1));
         assertEquals("meta-object: Object", ((List<?>) hover.getContents()).get(2));
     }
