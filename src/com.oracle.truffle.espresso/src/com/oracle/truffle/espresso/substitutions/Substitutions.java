@@ -208,6 +208,11 @@ public final class Substitutions implements ContextAccess {
         runtimeSubstitutions.put(key, factory);
     }
 
+    public void removeRuntimeSubstitution(Method method) {
+        MethodRef key = getMethodKey(method);
+        runtimeSubstitutions.remove(key);
+    }
+
     public EspressoRootNode get(Method method) {
         MethodRef key = getMethodKey(method);
         EspressoRootNodeFactory factory = STATIC_SUBSTITUTIONS.get(key);

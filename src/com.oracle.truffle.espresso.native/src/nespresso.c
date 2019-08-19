@@ -620,12 +620,15 @@ jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
 }
 
 jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {  
-  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;  
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
+  jint ret = JNI_OK;
   for (jint i = 0; i < nMethods; ++i) {    
-    nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, methods[i].fnPtr);
+    ret = nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, methods[i].fnPtr);
+    if (ret != JNI_OK) {
+        break;
+    }
   }
-  // TODO(peterssen): Always OK?.
-  return JNI_OK;
+  return ret;
 }
 
 jboolean IsSameObject(JNIEnv *env, jobject first, jobject second) {

@@ -66,6 +66,7 @@ import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
@@ -79,6 +80,9 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public static final int JVM_INTERFACE_VERSION = 4;
     public static final int JNI_TRUE = 1;
     public static final int JNI_FALSE = 0;
+
+    // This is an arbitrary constant. The hard limit is defined by the host VM.
+    private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 14;
 
     private final EspressoContext context;
 
@@ -1490,7 +1494,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public StaticObject FindClass(String name) {
         StaticObject internalName = getMeta().toGuestString(name);
         assert getMeta().Class_forName_String.isStatic();
-        return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);
+        try {
+            return (StaticObject) getMeta().Class_forName_String.invokeDirect(null, internalName);
+        } catch (EspressoException e) {
+            if (InterpreterToVM.instanceOf(e.getException(), getMeta().ClassNotFoundException)) {
+                throw getMeta().throwExWithMessage(NoClassDefFoundError.class, e.getMessage());
+            }
+            throw e;
+        }
     }
 
     /**
@@ -1638,9 +1649,26 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         nativeBuffers.remove(criticalRegionPtr);
     }
 
+    /**
+     * <h3>jint EnsureLocalCapacity(JNIEnv *env, jint capacity);</h3>
+     *
+     * Ensures that at least a given number of local references can be created in the current
+     * thread. Returns 0 on success; otherwise returns a negative number and throws an
+     * OutOfMemoryError.
+     *
+     * Before it enters a native method, the VM automatically ensures that at least 16 local
+     * references can be created.
+     *
+     * For backward compatibility, the VM allocates local references beyond the ensured capacity.
+     * (As a debugging support, the VM may give the user warnings that too many local references are
+     * being created. In the JDK, the programmer can supply the -verbose:jni command line option to
+     * turn on these messages.) The VM calls FatalError if no more local references can be created
+     * beyond the ensured capacity.
+     */
     @JniImpl
     public static int EnsureLocalCapacity(@SuppressWarnings("unused") int capacity) {
-        return JNI_OK;
+        // TODO(peterssen): HotSpot does NOT throw OoM.
+        return capacity < MAX_JNI_LOCAL_CAPACITY ? JNI_OK : JNI_ERR;
     }
 
     @JniImpl
@@ -1790,21 +1818,35 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     }
 
     @JniImpl
-    public int RegisterNative(@Host(Class.class) StaticObject clazz, String name, String signature, @NFIType("POINTER") TruffleObject closure) {
-        assert name != null && signature != null;
-        Symbol<Type> classType = clazz.getMirrorKlass().getType();
+    public int RegisterNative(@Host(Class.class) StaticObject clazz, String methodName, String methodSignature, @NFIType("POINTER") TruffleObject closure) {
+        assert methodName != null && methodSignature != null;
 
-        Symbol<Signature> sig = getSignatures().getOrCreateValidSignature(signature);
-        final TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(getSignatures().parsed(sig), true));
+        Symbol<Name> name = getNames().lookup(methodName);
+        Symbol<Signature> signature = getSignatures().lookupValidSignature(methodSignature);
 
+        if (name == null || signature == null) {
+            getThreadLocalPendingException().set(getMeta().initEx(NoSuchMethodError.class));
+            return JNI_ERR;
+        }
+
+        Method m = clazz.getMirrorKlass().lookupDeclaredMethod(name, signature);
+        if (m != null && m.isNative()) {
+            m.unregisterNative();
+            getSubstitutions().removeRuntimeSubstitution(m);
+        } else {
+            getThreadLocalPendingException().set(getMeta().initEx(NoSuchMethodError.class));
+            return JNI_ERR;
+        }
+
+        final TruffleObject boundNative = NativeLibrary.bind(closure, nfiSignature(getSignatures().parsed(signature), true));
         Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode spawnNode(Method method) {
                 return new EspressoRootNode(method, new NativeRootNode(boundNative, method, true));
             }
         };
-
-        getSubstitutions().registerRuntimeSubstitution(classType, getNames().getOrCreate(name), getSignatures().getOrCreateValidSignature(signature), factory, true);
+        Symbol<Type> classType = clazz.getMirrorKlass().getType();
+        getSubstitutions().registerRuntimeSubstitution(classType, name, signature, factory, true);
         return JNI_OK;
     }
 
@@ -2266,6 +2308,31 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public static void FatalError(String msg) {
         throw new EspressoError(msg);
+    }
+
+    /**
+     * <h3>jint UnregisterNatives(JNIEnv *env, jclass clazz);</h3>
+     *
+     * Unregisters native methods of a class. The class goes back to the state before it was linked
+     * or registered with its native method functions.
+     *
+     * This function should not be used in normal native code. Instead, it provides special programs
+     * a way to reload and relink native libraries.
+     *
+     * @param clazz a Java class object.
+     *
+     *            Returns “0” on success; returns a negative value on failure.
+     */
+    @JniImpl
+    public int UnregisterNatives(@Host(Class.class) StaticObject clazz) {
+        Klass klass = clazz.getMirrorKlass();
+        for (Method m : klass.getDeclaredMethods()) {
+            if (m.isNative()) {
+                getSubstitutions().removeRuntimeSubstitution(m);
+                m.unregisterNative();
+            }
+        }
+        return JNI_OK;
     }
 
     /**
