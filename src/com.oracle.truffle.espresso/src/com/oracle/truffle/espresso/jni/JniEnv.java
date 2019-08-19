@@ -2267,4 +2267,62 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public static void FatalError(String msg) {
         throw new EspressoError(msg);
     }
+
+    /**
+     * <h3>jobject ToReflectedMethod(JNIEnv *env, jclass cls, jmethodID methodID, jboolean
+     * isStatic);</h3>
+     *
+     * Converts a method ID derived from cls to a java.lang.reflect.Method or
+     * java.lang.reflect.Constructor object. isStatic must be set to JNI_TRUE if the method ID
+     * refers to a static field, and JNI_FALSE otherwise.
+     *
+     * Throws OutOfMemoryError and returns 0 if fails.
+     */
+    @JniImpl
+    public @Host(java.lang.reflect.Executable.class) StaticObject ToReflectedMethod(@Host(Class.class) StaticObject unused, long methodHandle, @SuppressWarnings("unused") boolean isStatic) {
+        Method method = methodIds.getObject(methodHandle);
+        assert method.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass());
+
+        StaticObject methods = null;
+        if (method.isConstructor()) {
+            methods = Target_java_lang_Class.getDeclaredConstructors0(method.getDeclaringKlass().mirror(), false);
+        } else {
+            methods = Target_java_lang_Class.getDeclaredMethods0(method.getDeclaringKlass().mirror(), false);
+        }
+
+        for (StaticObject declMethod : methods.<StaticObject[]> unwrap()) {
+            assert InterpreterToVM.instanceOf(declMethod, getMeta().Executable);
+            Method m = (Method) declMethod.getHiddenField(getMeta().HIDDEN_METHOD_KEY);
+            if (method == m) {
+                return declMethod;
+            }
+        }
+
+        throw EspressoError.shouldNotReachHere("Method/constructor not found " + method);
+    }
+
+    /**
+     * <h3>jobject ToReflectedField(JNIEnv *env, jclass cls, jfieldID fieldID, jboolean isStatic);
+     * </h3>
+     *
+     * Converts a field ID derived from cls to a java.lang.reflect.Field object. isStatic must be
+     * set to JNI_TRUE if fieldID refers to a static field, and JNI_FALSE otherwise.
+     *
+     * Throws OutOfMemoryError and returns 0 if fails.
+     */
+    @JniImpl
+    public @Host(java.lang.reflect.Field.class) StaticObject ToReflectedField(@Host(Class.class) StaticObject unused, long fieldHandle, @SuppressWarnings("unused") boolean isStatic) {
+        Field field = fieldIds.getObject(fieldHandle);
+        assert field.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass());
+        StaticObject fields = Target_java_lang_Class.getDeclaredFields0(field.getDeclaringKlass().mirror(), false);
+        for (StaticObject declField : fields.<StaticObject[]> unwrap()) {
+            assert InterpreterToVM.instanceOf(declField, getMeta().Field);
+            Field f = (Field) declField.getHiddenField(getMeta().HIDDEN_FIELD_KEY);
+            if (field == f) {
+                return declField;
+            }
+        }
+
+        throw EspressoError.shouldNotReachHere("Field not found " + field);
+    }
 }
