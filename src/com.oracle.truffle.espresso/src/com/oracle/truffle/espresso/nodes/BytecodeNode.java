@@ -1468,11 +1468,17 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 }
                 break;
             case INVOKESPECIAL:
+                // Otherwise, if the resolved method is an instance initialization method, and the class in which it is declared is not the class symbolically referenced by the instruction, a NoSuchMethodError is thrown.
                 if (resolutionSeed.isConstructor()) {
                     if (resolutionSeed.getDeclaringKlass().getName() != getConstantPool().methodAt(bs.readCPI(curBCI)).getHolderKlassName(getConstantPool())) {
                         CompilerDirectives.transferToInterpreter();
                         throw getMeta().throwEx(NoSuchMethodError.class);
                     }
+                }
+                // Otherwise, if the resolved method is a class (static) method, the invokespecial instruction throws an IncompatibleClassChangeError.
+                if (resolutionSeed.isStatic()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getMeta().throwEx(IncompatibleClassChangeError.class);
                 }
                 break;
             default:
