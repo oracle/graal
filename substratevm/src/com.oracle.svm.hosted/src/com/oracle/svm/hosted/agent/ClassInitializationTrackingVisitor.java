@@ -96,6 +96,7 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
         } else {
             return methodVisitor;
         }
+
     }
 
     private boolean clinitInstrumentationSupported() {
@@ -104,7 +105,7 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
 
     private static Set<String> trackedJDKClasses = new HashSet<>(Arrays.asList("java.lang.Thread", "java.util.zip.ZipFile", "java.nio.MappedByteBuffer", "java.io.FileDescriptor"));
 
-    private static int getJavaVersion() {
+    public static int getJavaVersion() {
         String version = System.getProperty("java.version");
         if (version.startsWith("1.")) {
             version = version.substring(2, 3);

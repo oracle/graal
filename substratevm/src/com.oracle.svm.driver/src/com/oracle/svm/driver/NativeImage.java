@@ -386,7 +386,7 @@ public class NativeImage {
             return false;
         }
 
-        default String getAgentJAR() {
+        default Path getAgentJAR() {
             return null;
         }
     }
@@ -545,8 +545,8 @@ public class NativeImage {
         }
 
         @Override
-        public String getAgentJAR() {
-            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar")).toAbsolutePath().toString();
+        public Path getAgentJAR() {
+            return rootDir.resolve(Paths.get("lib", "svm", "builder", "svm.jar"));
         }
 
     }
@@ -1010,10 +1010,7 @@ public class NativeImage {
             replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
         }
 
-        /* Enable class initializaiton tracing agent. */
-        if (traceClassInitialization()) {
-            imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR());
-        }
+        imageBuilderJavaArgs.add("-javaagent:" + config.getAgentJAR().toAbsolutePath().toString() + (traceClassInitialization() ? "=traceInitialization" : ""));
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
