@@ -955,8 +955,8 @@ public class BinaryReader extends BinaryStreamReader {
                         value = readFloatAsInt64();
                         break;
                     case GLOBAL_GET:
-                        // The global.get instructions in global initializers are only allowed to refer to imported globals.
-                        // Imported globals are not yet supported in our implementation.
+                        // The global.get instructions in constant expressions are only allowed to refer to
+                        // imported globals, which are not yet supported in our implementation.
                         throw new NotImplementedException();
                     case END:
                         break;
@@ -974,6 +974,7 @@ public class BinaryReader extends BinaryStreamReader {
         int numDataSections = readVectorLength();
         for (int i = 0; i != numDataSections; ++i) {
             int memIndex = readUnsignedInt32();
+            // At the moment, WebAssembly only supports one memory instance, thus the only valid memory index is 0.
             Assert.assertEquals(memIndex, 0, "Invalid memory index");
             long offset = 0;
             byte instruction;
@@ -988,7 +989,7 @@ public class BinaryReader extends BinaryStreamReader {
                         offset = readSignedInt32();
                         break;
                     case GLOBAL_GET:
-                        // The global.get instructions in data section offset initializers are only allowed to refer to
+                        // The global.get instructions in constant expressions are only allowed to refer to
                         // imported globals, which are not yet supported in our implementation.
                         throw new NotImplementedException();
                     case END:
