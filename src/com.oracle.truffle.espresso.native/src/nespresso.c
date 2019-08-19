@@ -379,7 +379,7 @@ static jfloat jvalues_pop_float(struct Varargs* varargs) {
 }
 static jdouble jvalues_pop_double(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
-    return a->args++->f;
+    return a->args++->d;
   
 }
 static jlong jvalues_pop_long(struct Varargs* varargs) {

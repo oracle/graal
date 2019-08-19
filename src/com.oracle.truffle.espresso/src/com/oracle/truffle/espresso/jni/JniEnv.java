@@ -1105,7 +1105,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         Method method = methodIds.getObject(methodHandle);
         assert method.isStatic();
         assert (clazz.getMirrorKlass()) == method.getDeclaringKlass();
-        return (float) method.invokeDirect(null, null, popVarArgs(varargsPtr, method.getParsedSignature()));
+        return (float) method.invokeDirect(null, popVarArgs(varargsPtr, method.getParsedSignature()));
     }
 
     @JniImpl
