@@ -1813,7 +1813,6 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
      */
     private int putField(final VirtualFrame frame, int top, Field field, int opcode) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
-        assert field.isStatic() == (opcode == PUTSTATIC);
 
         if (opcode == PUTFIELD) {
             // Otherwise, if the resolved field is a static field, putfield throws an
@@ -1853,6 +1852,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             }
         }
 
+        assert field.isStatic() == (opcode == PUTSTATIC);
+
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(peekObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
@@ -1889,7 +1890,6 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
      */
     private int getField(final VirtualFrame frame, int top, Field field, int opcode) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
-        assert field.isStatic() == (opcode == GETSTATIC);
         CompilerAsserts.partialEvaluationConstant(field);
 
         if (opcode == GETFIELD) {
@@ -1907,6 +1907,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 throw getMeta().throwEx(IncompatibleClassChangeError.class);
             }
         }
+
+        assert field.isStatic() == (opcode == GETSTATIC);
 
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
