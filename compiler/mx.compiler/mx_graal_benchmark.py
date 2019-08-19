@@ -1680,11 +1680,11 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             if args.r.isdigit():
                 return ["-r", args.r] + remaining
             if args.r == "-1":
-                return None
+                return remaining
         else:
             iterations = self.renaissanceIterations()[benchname]
             if iterations == -1:
-                return None
+                return remaining
             else:
                 return ["-r", str(iterations)] + remaining
 
