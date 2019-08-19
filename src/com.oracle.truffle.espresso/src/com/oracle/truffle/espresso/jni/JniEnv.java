@@ -2255,4 +2255,16 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         guestMethod.getDeclaringKlass().initialize();
         return methodIds.handlify(guestMethod);
     }
+
+    /**
+     * <h3>void FatalError(JNIEnv *env, const char *msg);</h3>
+     *
+     * Raises a fatal error and does not expect the VM to recover. This function does not return.
+     *
+     * @param msg an error message. The string is encoded in modified UTF-8.
+     */
+    @JniImpl
+    public static void FatalError(String msg) {
+        throw new EspressoError(msg);
+    }
 }
