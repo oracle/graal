@@ -93,11 +93,14 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
         if (isEntryPoint) {
             aliases.add(SubstrateUtil.mangleName(builder.getFunctionName()));
 
-            CEntryPointData entryPointData = (CEntryPointData) ((HostedMethod) method).getWrapped().getEntryPointData();
-            String entryPointSymbolName = entryPointData.getSymbolName();
-            assert !entryPointSymbolName.isEmpty();
-            if (entryPointData.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
-                aliases.add(entryPointSymbolName);
+            Object entryPointData = ((HostedMethod) method).getWrapped().getEntryPointData();
+            if (entryPointData instanceof CEntryPointData) {
+                CEntryPointData cEntryPointData = (CEntryPointData) entryPointData;
+                String entryPointSymbolName = cEntryPointData.getSymbolName();
+                assert !entryPointSymbolName.isEmpty();
+                if (cEntryPointData.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
+                    aliases.add(entryPointSymbolName);
+                }
             }
         }
 
