@@ -57,6 +57,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public interface RepeatingNode extends NodeInterface {
     /**
      * A value indicating that the loop should be repeated.
+     *
+     * @since 19.3
      */
     Object CONTINUE_LOOP_STATUS = new Object() {
         @Override
@@ -66,9 +68,11 @@ public interface RepeatingNode extends NodeInterface {
     };
 
     /**
-     * A value indicating that the loop should not be repeated.
-     * Any other value different than {@code CONTINUE_LOOP_STATUS}
-     * can also be used to indicate that the loop should not be repeated.
+     * A value indicating that the loop should not be repeated. Any other value different than
+     * {@code CONTINUE_LOOP_STATUS} can also be used to indicate that the loop should not be
+     * repeated.
+     *
+     * @since 19.3
      */
     Object BREAK_LOOP_STATUS = new Object() {
         @Override
@@ -89,13 +93,14 @@ public interface RepeatingNode extends NodeInterface {
     boolean executeRepeating(VirtualFrame frame);
 
     /**
-     * Repeatedly invoked by a {@link LoopNode loop node} implementation,
-     * but allows returning a language-specific loop exit status.
-     * Only languages that need to return custom loop statuses should override this method.
+     * Repeatedly invoked by a {@link LoopNode loop node} implementation, but allows returning a
+     * language-specific loop exit status. Only languages that need to return custom loop statuses
+     * should override this method.
      *
      * @param frame the current execution frame passed through the interpreter
-     * @return <code>CONTINUE_LOOP_STATUS</code> if the method should be executed again to
-     *         complete the loop and any other (language-specific) value if it must not.
+     * @return <code>CONTINUE_LOOP_STATUS</code> if the method should be executed again to complete
+     *         the loop and any other (language-specific) value if it must not.
+     * @since 19.3
      */
     default Object executeRepeatingWithValue(VirtualFrame frame) {
         if (executeRepeating(frame)) {

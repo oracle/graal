@@ -48,8 +48,7 @@ import static com.oracle.truffle.api.nodes.RepeatingNode.CONTINUE_LOOP_STATUS;
 
 public final class DefaultLoopNode extends LoopNode {
 
-    @Child
-    private RepeatingNode repeatNode;
+    @Child private RepeatingNode repeatNode;
 
     public DefaultLoopNode(RepeatingNode repeatNode) {
         this.repeatNode = repeatNode;
