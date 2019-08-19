@@ -46,7 +46,7 @@ import java.util.concurrent.locks.Lock;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.nodes.BlockNode.VoidElement;
+import com.oracle.truffle.api.nodes.BlockNode.NodeExecutor;
 
 final class NodeAccessor extends Accessor {
 
@@ -73,8 +73,8 @@ final class NodeAccessor extends Accessor {
     }
 
     @Override
-    protected <T extends Node & VoidElement> BlockNode<T> createBlockNode(T[] elements) {
-        return super.createBlockNode(elements);
+    protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, NodeExecutor<T> executor) {
+        return super.createBlockNode(elements, executor);
     }
 
     static final class AccessNodes extends NodeSupport {

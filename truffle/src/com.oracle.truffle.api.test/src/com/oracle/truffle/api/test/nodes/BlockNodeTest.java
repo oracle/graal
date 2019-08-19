@@ -53,15 +53,12 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.BlockNode.ElementExceptionHandler;
-import com.oracle.truffle.api.nodes.BlockNode.GenericElement;
-import com.oracle.truffle.api.nodes.BlockNode.TypedElement;
-import com.oracle.truffle.api.nodes.BlockNode.VoidElement;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -79,18 +76,16 @@ public class BlockNodeTest {
 
     @Test
     public void testErrors() {
-        assertFails(() -> BlockNode.create((TestVoidElement[]) null), NullPointerException.class);
+        assertFails(() -> BlockNode.create((TestBlockElement[]) null, new TestExecutor()), NullPointerException.class);
+        assertFails(() -> BlockNode.create(new TestBlockElement[1], null), NullPointerException.class);
 
-        BlockNode<?> invalidBlock = BlockNode.create(new TestVoidElement[1]);
-        assertFails(() -> mode.execute(invalidBlock, 0, null), NullPointerException.class);
-        assertFails(() -> mode.execute(invalidBlock), NullPointerException.class);
-
+        BlockNode<?> invalidBlock = BlockNode.create(new TestBlockElement[1], new TestExecutor());
+        assertFails(() -> mode.execute(invalidBlock, 0), NullPointerException.class);
         assertFails(() -> create(createElements(0)), IllegalArgumentException.class);
 
-        BlockNode<TestBlockElement> block1 = create(createElements(1));
-        assertFails(() -> mode.execute(block1, 1, null), IllegalArgumentException.class);
-        assertFails(() -> mode.execute(block1, -1, null), IllegalArgumentException.class);
-        mode.execute(block1, 0, null);
+        BlockNode<TestBlockElement> block1 = create(createElements(1), new StartsWithExecutor());
+        assertFails(() -> mode.execute(block1, 1), IllegalArgumentException.class);
+        mode.execute(block1, 0);
         assertEquals(1, block1.getElements()[0].allCounts);
         mode.assertCount(1, block1.getElements()[0]);
 
@@ -98,39 +93,23 @@ public class BlockNodeTest {
         assertEquals(2, block1.getElements()[0].allCounts);
         mode.assertCount(2, block1.getElements()[0]);
 
-        BlockNode<TestBlockElement> block4 = create(createElements(4));
-        assertFails(() -> mode.execute(block4, 4, null), IllegalArgumentException.class);
-        assertFails(() -> mode.execute(block4, -1, null), IllegalArgumentException.class);
+        BlockNode<TestBlockElement> block4 = create(createElements(4), new StartsWithExecutor());
+        assertFails(() -> mode.execute(block4, 4), IllegalArgumentException.class);
 
-        BlockNode<?> voidBlock = create(createVoidElements(2));
-        BlockNode<?> genericBlock = create(createGenericElements(2));
-        if (mode.isTyped()) {
-            assertFails(() -> mode.execute(voidBlock, 0, null), ClassCastException.class);
-            assertFails(() -> mode.execute(voidBlock), ClassCastException.class);
-            assertFails(() -> mode.execute(genericBlock, 0, null), ClassCastException.class);
-            assertFails(() -> mode.execute(genericBlock), ClassCastException.class);
-        } else if (mode.isGeneric()) {
-            assertFails(() -> mode.execute(voidBlock, 0, null), ClassCastException.class);
-            mode.execute(genericBlock, 0, null);
-            mode.execute(genericBlock);
-        } else {
-            mode.execute(voidBlock, 0, null);
-            mode.execute(voidBlock);
-            mode.execute(genericBlock, 0, null);
-            mode.execute(genericBlock);
-        }
+        BlockNode<?> block = create(createElements(2));
+        assertEquals(mode.getResult(1), mode.execute(block));
     }
 
     @Test
     public void testStartsWithExecute() {
         for (int blockLength = 1; blockLength < 50; blockLength++) {
-            BlockNode<TestBlockElement> block = create(createElements(blockLength));
+            BlockNode<TestBlockElement> block = create(createElements(blockLength), new StartsWithExecutor());
             TestBlockElement[] elements = block.getElements();
             Object result = mode.getResult(blockLength - 1);
 
             int[] expectedCounts = new int[blockLength];
             for (int i = 0; i < blockLength; i++) {
-                assertEquals(blockLength + ":" + i, result, mode.execute(block, i, null));
+                assertEquals(blockLength + ":" + i, result, mode.execute(block, i));
                 for (int j = i; j < blockLength; j++) {
                     expectedCounts[j]++;
                 }
@@ -161,15 +140,7 @@ public class BlockNodeTest {
         }
     }
 
-    static class OtherTestElementExceptionHandler implements ElementExceptionHandler {
-
-        public void onBlockElementException(VirtualFrame frame, Throwable e, int elementIndex) {
-
-        }
-
-    }
-
-    static class TestElementExceptionHandler implements ElementExceptionHandler {
+    static class TestElementExceptionHandler extends StartsWithExecutor {
 
         int exceptionCount;
         int seenElementIndex;
@@ -179,7 +150,107 @@ public class BlockNodeTest {
             this.expectedException = expectedException;
         }
 
-        public void onBlockElementException(VirtualFrame frame, Throwable e, int elementIndex) {
+        @Override
+        public void executeVoid(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) {
+            try {
+                super.executeVoid(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) {
+            try {
+                return super.executeGeneric(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public boolean executeBoolean(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            try {
+                return super.executeBoolean(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public byte executeByte(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            try {
+                return super.executeByte(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public short executeShort(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            try {
+                return super.executeShort(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public char executeChar(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            try {
+                return super.executeChar(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public int executeInt(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            try {
+                return super.executeInt(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public long executeLong(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            try {
+                return super.executeLong(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public float executeFloat(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            try {
+                return super.executeFloat(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        @Override
+        public double executeDouble(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            try {
+                return super.executeDouble(frame, node, elementIndex, startsWith);
+            } catch (Throwable t) {
+                onBlockElementException(t, elementIndex);
+                throw t;
+            }
+        }
+
+        void onBlockElementException(Throwable e, int elementIndex) {
             assertSame(expectedException, e);
             this.exceptionCount++;
             this.seenElementIndex = elementIndex;
@@ -189,17 +260,18 @@ public class BlockNodeTest {
     @Test
     public void testExceptionHandler() {
         for (int blockLength = 1; blockLength < 50; blockLength++) {
-            BlockNode<TestBlockElement> block = create(createElements(blockLength));
-            TestBlockElement[] elements = block.getElements();
-
             for (int startsWith = 0; startsWith < blockLength; startsWith++) {
+
                 TestException expectedException = new TestException();
+                TestElementExceptionHandler e = new TestElementExceptionHandler(expectedException);
+                BlockNode<TestBlockElement> block = create(createElements(blockLength), e);
+                TestBlockElement[] elements = block.getElements();
+
                 for (int j = 0; j < blockLength; j++) {
                     elements[j].exception = expectedException;
                 }
-                TestElementExceptionHandler e = new TestElementExceptionHandler(expectedException);
                 try {
-                    mode.execute(block, startsWith, e);
+                    mode.execute(block, startsWith);
                 } catch (TestException ex) {
                     assertSame(expectedException, ex);
                 }
@@ -216,42 +288,6 @@ public class BlockNodeTest {
     }
 
     @Test
-    public void testExceptionHandlerErrors0() {
-        BlockNode<TestBlockElement> block = create(createElements(14));
-        mode.execute(block, 0, null);
-        assertFails(() -> mode.execute(block, 0, new TestElementExceptionHandler(null)), IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testExceptionHandlerErrors1() {
-        BlockNode<TestBlockElement> block = create(createElements(11));
-        mode.execute(block);
-        assertFails(() -> mode.execute(block, 0, new TestElementExceptionHandler(null)), IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testExceptionHandlerErrors2() {
-        BlockNode<TestBlockElement> block = create(createElements(11));
-        mode.execute(block, 0, new TestElementExceptionHandler(null));
-        assertFails(() -> mode.execute(block, 0, null), IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testExceptionHandlerErrors3() {
-        BlockNode<TestBlockElement> block = create(createElements(11));
-        mode.execute(block, 0, new TestElementExceptionHandler(null));
-        assertFails(() -> mode.execute(block), IllegalArgumentException.class);
-    }
-
-    @Test
-    public void testExceptionHandlerErrors4() {
-        BlockNode<TestBlockElement> block = create(createElements(11));
-        mode.execute(block, 0, new TestElementExceptionHandler(null));
-        mode.execute(block, 0, new TestElementExceptionHandler(null));
-        assertFails(() -> mode.execute(block, 0, new OtherTestElementExceptionHandler()), IllegalArgumentException.class);
-    }
-
-    @Test
     public void testToString() {
         assertNotNull(create(createElements(4)).toString());
     }
@@ -264,26 +300,14 @@ public class BlockNodeTest {
         return elements;
     }
 
-    static TestVoidElement[] createVoidElements(int size) {
-        TestVoidElement[] elements = new TestVoidElement[size];
-        for (int i = 0; i < elements.length; i++) {
-            elements[i] = new TestVoidElement();
-        }
-        return elements;
-    }
-
-    static TestGenericElement[] createGenericElements(int size) {
-        TestGenericElement[] elements = new TestGenericElement[size];
-        for (int i = 0; i < elements.length; i++) {
-            elements[i] = new TestGenericElement();
-        }
-        return elements;
-    }
-
     @SuppressWarnings("unchecked")
-    static <T extends Node & VoidElement> BlockNode<T> create(T... elements) {
+    static BlockNode<TestBlockElement> create(TestBlockElement[] elements) {
+        return create(elements, new TestExecutor());
+    }
+
+    static BlockNode<TestBlockElement> create(TestBlockElement[] elements, BlockNode.NodeExecutor<TestBlockElement> executor) {
         DummyRootNode root = new DummyRootNode();
-        BlockNode<T> block = BlockNode.create(elements);
+        BlockNode<TestBlockElement> block = BlockNode.create(elements, executor);
         root.block = block;
         Truffle.getRuntime().createCallTarget(root);
         assertNotNull(root.block.getParent());
@@ -304,12 +328,12 @@ public class BlockNodeTest {
 
     enum Mode {
 
+        VOID,
         GENERIC,
         BYTE,
         SHORT,
         CHARACTER,
         INT,
-        VOID,
         FLOAT,
         DOUBLE,
         LONG,
@@ -370,60 +394,33 @@ public class BlockNodeTest {
         }
 
         Object execute(BlockNode<?> block) {
-            try {
-                switch (this) {
-                    case GENERIC:
-                        return block.execute(null);
-                    case VOID:
-                        block.executeVoid(null);
-                        return null;
-                    case BOOLEAN:
-                        return block.executeBoolean(null);
-                    case BYTE:
-                        return block.executeByte(null);
-                    case SHORT:
-                        return block.executeShort(null);
-                    case INT:
-                        return block.executeInt(null);
-                    case CHARACTER:
-                        return block.executeChar(null);
-                    case LONG:
-                        return block.executeLong(null);
-                    case FLOAT:
-                        return block.executeFloat(null);
-                    case DOUBLE:
-                        return block.executeDouble(null);
-                }
-            } catch (UnexpectedResultException e) {
-                throw new AssertionError(e);
-            }
-            throw new AssertionError();
+            return execute(block, BlockNode.NO_ARGUMENT);
         }
 
-        Object execute(BlockNode<?> block, int start, ElementExceptionHandler handler) {
+        Object execute(BlockNode<?> block, int arg) {
             try {
                 switch (this) {
                     case GENERIC:
-                        return block.execute(null, start, handler);
+                        return block.executeGeneric(null, arg);
                     case VOID:
-                        block.executeVoid(null, start, handler);
+                        block.executeVoid(null, arg);
                         return null;
                     case BOOLEAN:
-                        return block.executeBoolean(null, start, handler);
+                        return block.executeBoolean(null, arg);
                     case BYTE:
-                        return block.executeByte(null, start, handler);
+                        return block.executeByte(null, arg);
                     case SHORT:
-                        return block.executeShort(null, start, handler);
+                        return block.executeShort(null, arg);
                     case INT:
-                        return block.executeInt(null, start, handler);
+                        return block.executeInt(null, arg);
                     case CHARACTER:
-                        return block.executeChar(null, start, handler);
+                        return block.executeChar(null, arg);
                     case LONG:
-                        return block.executeLong(null, start, handler);
+                        return block.executeLong(null, arg);
                     case FLOAT:
-                        return block.executeFloat(null, start, handler);
+                        return block.executeFloat(null, arg);
                     case DOUBLE:
-                        return block.executeDouble(null, start, handler);
+                        return block.executeDouble(null, arg);
                 }
             } catch (UnexpectedResultException e) {
                 throw new AssertionError(e);
@@ -439,25 +436,11 @@ public class BlockNodeTest {
             super(null);
         }
 
-        @Child BlockNode<? extends VoidElement> block;
+        @Child BlockNode<TestBlockElement> block;
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return block.execute(frame, 0, null);
-        }
-
-    }
-
-    static class TestVoidElement extends Node implements VoidElement {
-
-        public void executeVoid(VirtualFrame frame) {
-        }
-    }
-
-    static class TestGenericElement extends Node implements GenericElement {
-
-        public Object execute(VirtualFrame frame) {
-            return null;
+            return block.executeGeneric(frame, 0);
         }
 
     }
@@ -466,7 +449,148 @@ public class BlockNodeTest {
     static class TestException extends ControlFlowException {
     }
 
-    static class TestBlockElement extends Node implements TypedElement {
+    static class StartsWithExecutor extends TestExecutor {
+
+        @Override
+        public void executeVoid(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) {
+            if (startsWith >= ((BlockNode<?>) node.getParent()).getElements().length) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalArgumentException();
+            }
+            if (elementIndex >= startsWith) {
+                super.executeVoid(frame, node, elementIndex, startsWith);
+            }
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) {
+            if (elementIndex >= startsWith) {
+                return super.executeGeneric(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+        @Override
+        public boolean executeBoolean(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            if (elementIndex >= startsWith) {
+                return super.executeBoolean(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+        @Override
+        public byte executeByte(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            if (elementIndex >= startsWith) {
+                return super.executeByte(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+        @Override
+        public short executeShort(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            if (elementIndex >= startsWith) {
+                return super.executeShort(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+        @Override
+        public char executeChar(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            if (elementIndex >= startsWith) {
+                return super.executeChar(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+        @Override
+        public int executeInt(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            if (elementIndex >= startsWith) {
+                return super.executeInt(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+        @Override
+        public long executeLong(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            if (elementIndex >= startsWith) {
+                return super.executeLong(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+        @Override
+        public float executeFloat(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            if (elementIndex >= startsWith) {
+                return super.executeFloat(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+        @Override
+        public double executeDouble(VirtualFrame frame, TestBlockElement node, int elementIndex, int startsWith) throws UnexpectedResultException {
+            if (elementIndex >= startsWith) {
+                return super.executeDouble(frame, node, elementIndex, startsWith);
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalArgumentException();
+        }
+
+    }
+
+    static class TestExecutor implements BlockNode.NodeExecutor<TestBlockElement> {
+
+        public void executeVoid(VirtualFrame frame, TestBlockElement node, int index, int argument) {
+            node.execute(Mode.VOID, Object.class);
+        }
+
+        public Object executeGeneric(VirtualFrame frame, TestBlockElement node, int index, int argument) {
+            return node.execute(Mode.GENERIC, Object.class);
+        }
+
+        public boolean executeBoolean(VirtualFrame frame, TestBlockElement node, int index, int argument) throws UnexpectedResultException {
+            return node.execute(Mode.BOOLEAN, Boolean.class);
+        }
+
+        public byte executeByte(VirtualFrame frame, TestBlockElement node, int index, int argument) throws UnexpectedResultException {
+            return node.execute(Mode.BYTE, Byte.class);
+        }
+
+        public short executeShort(VirtualFrame frame, TestBlockElement node, int index, int argument) throws UnexpectedResultException {
+            return node.execute(Mode.SHORT, Short.class);
+        }
+
+        public char executeChar(VirtualFrame frame, TestBlockElement node, int index, int argument) throws UnexpectedResultException {
+            return node.execute(Mode.CHARACTER, Character.class);
+        }
+
+        public int executeInt(VirtualFrame frame, TestBlockElement node, int index, int argument) throws UnexpectedResultException {
+            return node.execute(Mode.INT, Integer.class);
+        }
+
+        public long executeLong(VirtualFrame frame, TestBlockElement node, int index, int argument) throws UnexpectedResultException {
+            return node.execute(Mode.LONG, Long.class);
+        }
+
+        public float executeFloat(VirtualFrame frame, TestBlockElement node, int index, int argument) throws UnexpectedResultException {
+            return node.execute(Mode.FLOAT, Float.class);
+        }
+
+        public double executeDouble(VirtualFrame frame, TestBlockElement node, int index, int argument) throws UnexpectedResultException {
+            return node.execute(Mode.DOUBLE, Double.class);
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    static class TestBlockElement extends Node {
 
         final int index;
         final int[] counts = new int[Mode.values().length];
@@ -479,11 +603,7 @@ public class BlockNodeTest {
             this.index = index;
         }
 
-        public Object execute(VirtualFrame frame) {
-            return execute(Mode.GENERIC, Object.class);
-        }
-
-        private <T> T execute(Mode mode, Class<T> type) {
+        <T> T execute(Mode mode, Class<T> type) {
             counts[mode.ordinal()]++;
             allCounts++;
             if (exception != null) {
@@ -492,41 +612,6 @@ public class BlockNodeTest {
             return type.cast(mode.getResult(index));
         }
 
-        public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-            return execute(Mode.BOOLEAN, Boolean.class);
-        }
-
-        public byte executeByte(VirtualFrame frame) throws UnexpectedResultException {
-            return execute(Mode.BYTE, Byte.class);
-        }
-
-        public short executeShort(VirtualFrame frame) throws UnexpectedResultException {
-            return execute(Mode.SHORT, Short.class);
-        }
-
-        public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-            return execute(Mode.INT, Integer.class);
-        }
-
-        public char executeChar(VirtualFrame frame) throws UnexpectedResultException {
-            return execute(Mode.CHARACTER, Character.class);
-        }
-
-        public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
-            return execute(Mode.FLOAT, Float.class);
-        }
-
-        public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-            return execute(Mode.DOUBLE, Double.class);
-        }
-
-        public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-            return execute(Mode.LONG, Long.class);
-        }
-
-        public void executeVoid(VirtualFrame frame) {
-            execute(Mode.VOID, Void.class);
-        }
     }
 
 }

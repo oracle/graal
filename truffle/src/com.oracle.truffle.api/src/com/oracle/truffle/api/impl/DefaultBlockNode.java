@@ -40,319 +40,125 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.BlockNode.VoidElement;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-final class DefaultBlockNode<T extends Node & VoidElement> extends BlockNode<T> {
+final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
-    @CompilationFinal Class<? extends ElementExceptionHandler> exceptionHandlerClass = ElementExceptionHandler.class;
+    final NodeExecutor<T> executor;
 
-    DefaultBlockNode(T[] elements) {
+    DefaultBlockNode(T[] elements, NodeExecutor<T> executor) {
         super(elements);
+        this.executor = executor;
     }
 
     @Override
-    public Object execute(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) {
-        verifyStart(start, exceptionHandler);
+    public Object executeGeneric(VirtualFrame frame, int arg) {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        int i = start;
-        for (; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((GenericElement) e[last]).execute(frame);
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
+        return ex.executeGeneric(frame, e[last], last, arg);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        return execute(frame, 0, null);
-    }
-
-    private static void handleElementException(VirtualFrame frame, ElementExceptionHandler exceptionHandler, int index, Throwable ex) {
-        if (exceptionHandler != null) {
-            exceptionHandler.onBlockElementException(frame, ex, index);
-        }
-    }
-
-    @Override
-    public void executeVoid(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) {
-        verifyStart(start, exceptionHandler);
+    public void executeVoid(VirtualFrame frame, int arg) {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
-        int length = e.length;
-        for (int i = start; i < length; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < e.length; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
     }
 
     @Override
-    public void executeVoid(VirtualFrame frame) {
-        executeVoid(frame, 0, null);
-    }
-
-    @Override
-    public byte executeByte(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException {
-        verifyStart(start, exceptionHandler);
+    public byte executeByte(VirtualFrame frame, int arg) throws UnexpectedResultException {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        for (int i = start; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((TypedElement) e[last]).executeByte(frame);
-        } catch (UnexpectedResultException ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
+        return ex.executeByte(frame, e[last], last, arg);
     }
 
     @Override
-    public byte executeByte(VirtualFrame frame) throws UnexpectedResultException {
-        return executeByte(frame, 0, null);
-    }
-
-    @Override
-    public short executeShort(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException {
-        verifyStart(start, exceptionHandler);
+    public short executeShort(VirtualFrame frame, int arg) throws UnexpectedResultException {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        for (int i = start; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((TypedElement) e[last]).executeShort(frame);
-        } catch (UnexpectedResultException ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
+        return ex.executeShort(frame, e[last], last, arg);
     }
 
     @Override
-    public short executeShort(VirtualFrame frame) throws UnexpectedResultException {
-        return executeShort(frame, 0, null);
-    }
-
-    @Override
-    public int executeInt(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException {
-        verifyStart(start, exceptionHandler);
+    public char executeChar(VirtualFrame frame, int arg) throws UnexpectedResultException {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        for (int i = start; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((TypedElement) e[last]).executeInt(frame);
-        } catch (UnexpectedResultException ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
+        return ex.executeChar(frame, e[last], last, arg);
     }
 
     @Override
-    public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return executeInt(frame, 0, null);
-    }
-
-    @Override
-    public char executeChar(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException {
-        verifyStart(start, exceptionHandler);
+    public int executeInt(VirtualFrame frame, int arg) throws UnexpectedResultException {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        for (int i = start; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((TypedElement) e[last]).executeChar(frame);
-        } catch (UnexpectedResultException ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
+        return ex.executeInt(frame, e[last], last, arg);
     }
 
     @Override
-    public char executeChar(VirtualFrame frame) throws UnexpectedResultException {
-        return executeChar(frame, 0, null);
-    }
-
-    @Override
-    public long executeLong(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException {
-        verifyStart(start, exceptionHandler);
+    public long executeLong(VirtualFrame frame, int arg) throws UnexpectedResultException {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        for (int i = start; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((TypedElement) e[last]).executeLong(frame);
-        } catch (UnexpectedResultException ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
+        return ex.executeLong(frame, e[last], last, arg);
     }
 
     @Override
-    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return executeLong(frame, 0, null);
-    }
-
-    @Override
-    public float executeFloat(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException {
-        verifyStart(start, exceptionHandler);
+    public float executeFloat(VirtualFrame frame, int arg) throws UnexpectedResultException {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        for (int i = start; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((TypedElement) e[last]).executeFloat(frame);
-        } catch (UnexpectedResultException ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
+        return ex.executeFloat(frame, e[last], last, arg);
     }
 
     @Override
-    public float executeFloat(VirtualFrame frame) throws UnexpectedResultException {
-        return executeFloat(frame, 0, null);
-    }
-
-    @Override
-    public double executeDouble(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException {
-        verifyStart(start, exceptionHandler);
+    public double executeDouble(VirtualFrame frame, int arg) throws UnexpectedResultException {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        for (int i = start; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((TypedElement) e[last]).executeDouble(frame);
-        } catch (UnexpectedResultException ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
+        return ex.executeDouble(frame, e[last], last, arg);
     }
 
     @Override
-    public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        return executeDouble(frame, 0, null);
-    }
-
-    @Override
-    public boolean executeBoolean(VirtualFrame frame, int start, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException {
-        verifyStart(start, exceptionHandler);
+    public boolean executeBoolean(VirtualFrame frame, int arg) throws UnexpectedResultException {
+        NodeExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
-        for (int i = start; i < last; ++i) {
-            try {
-                e[i].executeVoid(frame);
-            } catch (Throwable ex) {
-                handleElementException(frame, exceptionHandler, i, ex);
-                throw ex;
-            }
+        for (int i = 0; i < last; ++i) {
+            ex.executeVoid(frame, e[i], i, arg);
         }
-        try {
-            return ((TypedElement) e[last]).executeBoolean(frame);
-        } catch (UnexpectedResultException ex) {
-            throw ex;
-        } catch (Throwable ex) {
-            handleElementException(frame, exceptionHandler, last, ex);
-            throw ex;
-        }
-    }
-
-    @Override
-    public boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
-        return executeBoolean(frame, 0, null);
-    }
-
-    private void verifyStart(int start, ElementExceptionHandler eh) {
-        if (start < 0 || start >= getElements().length) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException("Invalid startIndex " + start + " for block with " + getElements().length + " elements.");
-        }
-        assert assertExceptionHandler(eh);
-    }
-
-    private boolean assertExceptionHandler(ElementExceptionHandler eh) {
-        Class<? extends ElementExceptionHandler> cachedEhClass = this.exceptionHandlerClass;
-        Class<? extends ElementExceptionHandler> ehClass = eh == null ? null : eh.getClass();
-        if (cachedEhClass == ElementExceptionHandler.class) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            exceptionHandlerClass = cachedEhClass = ehClass;
-        }
-        if (cachedEhClass != ehClass) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalArgumentException(String.format("Block node must be invoked with a compilation final exception handler type. " +
-                            "Got type %s but was expecting type %s from a previous execution.", ehClass, cachedEhClass));
-        }
-        return true;
+        return ex.executeBoolean(frame, e[last], last, arg);
     }
 }

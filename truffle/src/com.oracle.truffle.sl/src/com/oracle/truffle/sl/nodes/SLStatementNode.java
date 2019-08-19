@@ -48,7 +48,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -63,7 +62,7 @@ import com.oracle.truffle.api.source.SourceSection;
 @NodeInfo(language = "SL", description = "The abstract base node for all SL statements")
 @GenerateWrapper
 @ReportPolymorphism
-public abstract class SLStatementNode extends Node implements InstrumentableNode, BlockNode.VoidElement {
+public abstract class SLStatementNode extends Node implements InstrumentableNode {
 
     private static final int NO_SOURCE = -1;
     private static final int UNAVAILABLE_SOURCE = -2;
@@ -161,7 +160,6 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
     /**
      * Execute this node as as statement, where no return value is necessary.
      */
-    @Override
     public abstract void executeVoid(VirtualFrame frame);
 
     /**

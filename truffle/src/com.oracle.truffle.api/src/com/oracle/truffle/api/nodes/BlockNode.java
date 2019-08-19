@@ -42,46 +42,29 @@ package com.oracle.truffle.api.nodes;
 
 import java.util.Objects;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.BlockNode.ElementExceptionHandler;
-import com.oracle.truffle.api.nodes.BlockNode.VoidElement;
+import com.oracle.truffle.api.nodes.BlockNode.NodeExecutor;
 
 /**
  * Represents a standard node for guest language blocks. Using standard blocks in a guest language
  * is not strictly necessary, but recommended as it allows the optimizing runtime to split
- * compilation of very big methods into multiple compilation units. Block nodes may be executed
- * using a start index to resume the execution at a particular location.
+ * compilation of very big methods into multiple compilation units. Block nodes may be executed with
+ * a customizable argument to resume the execution at a particular location.
  * <p>
- * The return value of execute methods return the return value of the last block element. Depending
- * on the needed return types, the last element should implement {@link VoidElement},
- * {@link GenericElement} and {@link TypedElement} and create new block nodes using
- * {@link #create(Node[])}. Callers of block nodes must only call supported execute methods of the
- * block. The following execute methods are supported if the last block element is of type:
- * <ul>
- * <li>{@link VoidElement}: Only {@link #executeVoid(VirtualFrame, int, ElementExceptionHandler)
- * void} execution is supported.
- * <li>{@link GenericElement}: {@link #executeVoid(VirtualFrame, int, ElementExceptionHandler) Void}
- * and {@link #execute(VirtualFrame, int, ElementExceptionHandler) generic} execution is supported.
- * <li>{@link TypedElement}: {@link #executeVoid(VirtualFrame, int, ElementExceptionHandler) Void},
- * {@link #execute(VirtualFrame, int, ElementExceptionHandler) generic},
- * {@link #executeBoolean(VirtualFrame, int, ElementExceptionHandler) boolean},
- * {@link #executeByte(VirtualFrame, int, ElementExceptionHandler) byte},
- * {@link #executeShort(VirtualFrame, int, ElementExceptionHandler) short},
- * {@link #executeInt(VirtualFrame, int, ElementExceptionHandler) int},
- * {@link #executeChar(VirtualFrame, int, ElementExceptionHandler) character},
- * {@link #executeLong(VirtualFrame, int, ElementExceptionHandler) long},
- * {@link #executeFloat(VirtualFrame, int, ElementExceptionHandler) float} and
- * {@link #executeDouble(VirtualFrame, int, ElementExceptionHandler) double} execution is supported.
- * </ul>
- * If an execution is not supported then a {@link ClassCastException} is thrown by the block execute
- * method at runtime. This class is intended to be implemented by Truffle runtime implementation
- * only and must not be subclassed by language or tool implementations.
+ * Elements are executed using the {@link NodeExecutor} provided when
+ * {@link #create(Node[], NodeExecutor) creating} the block node. When a block is executed then all
+ * elements are executed using {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)
+ * executeVoid} except the last element which will be executed using the typed execute method also
+ * used to execute the block node. This allows to implement boxing elimination of the return value
+ * of blocks in the interpreter. For example, if {@link #executeInt(VirtualFrame, int) executeInt}
+ * is invoked on the block , then all elements except the last one is executed using
+ * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int) executeVoid}, but the last one with
+ * {@link NodeExecutor#executeInt(VirtualFrame, Node, int, int) executeInt}.
  * <p>
  * The optimizing runtime may decide to group elements of a block into multiple block compilation
  * units. This may happen if the block is too big to be compiled with a single compilation unit. If
@@ -100,7 +83,9 @@ import com.oracle.truffle.api.nodes.BlockNode.VoidElement;
  * @param <T> the type of the block element node
  * @since 19.3
  */
-public abstract class BlockNode<T extends Node & VoidElement> extends Node {
+public abstract class BlockNode<T extends Node> extends Node {
+
+    public static final int NO_ARGUMENT = 0;
 
     @Children private final T[] elements;
 
@@ -116,272 +101,132 @@ public abstract class BlockNode<T extends Node & VoidElement> extends Node {
     }
 
     /**
-     * Executes the block using a start index and returns no return value.
+     * Executes the block and returns no value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom argument that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract void executeVoid(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler);
+    public abstract void executeVoid(VirtualFrame frame, int argument);
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns no value. This method should be preferred to calling
-     * {@linkplain #executeVoid(VirtualFrame, int, ElementExceptionHandler) executeVoid(frame, 0,
-     * null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract void executeVoid(VirtualFrame frame);
-
-    /**
-     * Executes the block using a start index and returns a generic value. This method requires the
-     * last block element node to implement {@link GenericElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns a generic value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeGeneric(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract Object execute(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler);
+    public abstract Object executeGeneric(VirtualFrame frame, int argument);
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns a generic value. This method should be preferred to calling
-     * {@linkplain #execute(VirtualFrame, int, ElementExceptionHandler) execute(frame, 0, null)} if
-     * possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract Object execute(VirtualFrame frame);
-
-    /**
-     * Executes the block using a start index and returns a byte value. This method requires the
-     * last block element node to implement {@link TypedElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns a byte value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeByte(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract byte executeByte(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException;
+    public abstract byte executeByte(VirtualFrame frame, int argument) throws UnexpectedResultException;
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns a byte value. This method should be preferred to calling
-     * {@linkplain #executeByte(VirtualFrame, int, ElementExceptionHandler) executeByte(frame, 0,
-     * null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract byte executeByte(VirtualFrame frame) throws UnexpectedResultException;
-
-    /**
-     * Executes the block using a start index and returns a short value. This method requires the
-     * last block element node to implement {@link TypedElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns a short value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeShort(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract short executeShort(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException;
+    public abstract short executeShort(VirtualFrame frame, int argument) throws UnexpectedResultException;
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns a short value. This method should be preferred to calling
-     * {@linkplain #executeShort(VirtualFrame, int, ElementExceptionHandler) executeShort(frame, 0,
-     * null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract short executeShort(VirtualFrame frame) throws UnexpectedResultException;
-
-    /**
-     * Executes the block using a start index and returns an int value. This method requires the
-     * last block element node to implement {@link TypedElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns an int value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeInt(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract int executeInt(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException;
+    public abstract int executeInt(VirtualFrame frame, int argument) throws UnexpectedResultException;
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns an int value. This method should be preferred to calling
-     * {@linkplain #executeInt(VirtualFrame, int, ElementExceptionHandler) executeInt(frame, 0,
-     * null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract int executeInt(VirtualFrame frame) throws UnexpectedResultException;
-
-    /**
-     * Executes the block using a start index and returns a char value. This method requires the
-     * last block element node to implement {@link TypedElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns a char value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeChar(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract char executeChar(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException;
+    public abstract char executeChar(VirtualFrame frame, int argument) throws UnexpectedResultException;
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns a char value. This method should be preferred to calling
-     * {@linkplain #executeChar(VirtualFrame, int, ElementExceptionHandler) executeChar(frame, 0,
-     * null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract char executeChar(VirtualFrame frame) throws UnexpectedResultException;
-
-    /**
-     * Executes the block using a start index and returns a float value. This method requires the
-     * last block element node to implement {@link TypedElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns a float value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeFloat(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract float executeFloat(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException;
+    public abstract float executeFloat(VirtualFrame frame, int argument) throws UnexpectedResultException;
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns a float value. This method should be preferred to calling
-     * {@linkplain #executeFloat(VirtualFrame, int, ElementExceptionHandler) executeFloat(frame, 0,
-     * null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract float executeFloat(VirtualFrame frame) throws UnexpectedResultException;
-
-    /**
-     * Executes the block using a start index and returns a double value. This method requires the
-     * last block element node to implement {@link TypedElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns a double value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeDouble(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract double executeDouble(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException;
+    public abstract double executeDouble(VirtualFrame frame, int argument) throws UnexpectedResultException;
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns a double value. This method should be preferred to calling
-     * {@linkplain #executeDouble(VirtualFrame, int, ElementExceptionHandler) executeDouble(frame,
-     * 0, null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract double executeDouble(VirtualFrame frame) throws UnexpectedResultException;
-
-    /**
-     * Executes the block using a start index and returns a long value. This method requires the
-     * last block element node to implement {@link TypedElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns a long value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeLong(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract long executeLong(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException;
+    public abstract long executeLong(VirtualFrame frame, int argument) throws UnexpectedResultException;
 
     /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns a long value. This method should be preferred to calling
-     * {@linkplain #executeLong(VirtualFrame, int, ElementExceptionHandler) executeLong(frame, 0,
-     * null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract long executeLong(VirtualFrame frame) throws UnexpectedResultException;
-
-    /**
-     * Executes the block using a start index and returns a boolean value. This method requires the
-     * last block element node to implement {@link TypedElement}, otherwise a
-     * {@link ClassCastException} is thrown.
+     * Executes the block and returns a boolean value. The block implementation calls
+     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * except the last element. The last element is executed using
+     * {@link NodeExecutor#executeBoolean(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
-     * @param startElementIndex the start index of execute. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
-     * @param exceptionHandler exception handler instance to invoke for each element or
-     *            <code>null</code> if not needed. Must be a
-     *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
-     *            constant}.
+     * @param argument a custom value that is forwarded to the executor as is. If no argument is
+     *            needed then {@link BlockNode#NO_ARGUMENT} should be used.
      * @since 19.3
      */
-    public abstract boolean executeBoolean(VirtualFrame frame, int startElementIndex, ElementExceptionHandler exceptionHandler) throws UnexpectedResultException;
-
-    /**
-     * This method executes the block from start index 0 without an element exception handler and
-     * returns a boolean value. This method should be preferred to calling
-     * {@linkplain #executeBoolean(VirtualFrame, int, ElementExceptionHandler) executeBoolean(frame,
-     * 0, null)} if possible, as it is more efficient to execute in the interpreter and to compile.
-     *
-     * @since 19.3
-     */
-    public abstract boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException;
+    public abstract boolean executeBoolean(VirtualFrame frame, int argument) throws UnexpectedResultException;
 
     /**
      * Returns the elements of the block node. Elements of block nodes are provided using
@@ -408,161 +253,168 @@ public abstract class BlockNode<T extends Node & VoidElement> extends Node {
     /**
      * Creates a new block node. The elements array of the block node must not be empty or an
      * {@link IllegalArgumentException} is thrown. Elements of a block must at least extend
-     * {@link Node} and implement {@link VoidElement}. The last element of a block might also
-     * implement {@link GenericElement} or {@link TypedElement} in order to provide a return value
-     * to the block.
+     * {@link Node}. An executor must be provided that allows the block node implementation to
+     * execute the block elements. The executor must not be <code>null</code>.
      *
      * @since 19.3
      */
-    public static <T extends Node & VoidElement> BlockNode<T> create(T[] elements) {
+    public static <T extends Node> BlockNode<T> create(T[] elements, NodeExecutor<T> executor) {
         Objects.requireNonNull(elements);
+        Objects.requireNonNull(executor);
         if (elements.length == 0) {
             throw new IllegalArgumentException("Empty blocks are not allowed.");
         }
-        return NodeAccessor.ACCESSOR.createBlockNode(elements);
+        return NodeAccessor.ACCESSOR.createBlockNode(elements, executor);
     }
 
-    /**
-     * Represents the minimal required interface for block node elements. This interface is intended
-     * to be implemented by language implementations and provide an implementation of
-     * {@link #executeVoid(VirtualFrame)}.
-     *
-     * @see BlockNode
-     * @since 19.3
-     */
-    public interface VoidElement extends NodeInterface {
-
+    public interface NodeExecutor<T extends Node> {
         /**
-         * Executes the block element, but does not provide any return value.
+         * Executes the block node element without expecting any return value.
          *
          * @since 19.3
          */
-        void executeVoid(VirtualFrame frame);
-
-    }
-
-    /**
-     * Represents the required interface for block node elements that may return values. This
-     * interface is intended to be implemented by language implementations and provide an
-     * implementation of {@link #execute(VirtualFrame)}.
-     *
-     * @see BlockNode
-     * @since 19.3
-     */
-    public interface GenericElement extends VoidElement {
+        void executeVoid(VirtualFrame frame, T node, int index, int argument);
 
         /**
-         * Executes the block element and returns a generic value.
+         * Executes the block node element and expects a generic value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeVoid(VirtualFrame, Node, int, int)} by default.
          *
          * @since 19.3
          */
-        Object execute(VirtualFrame frame);
-
-        /**
-         * {@inheritDoc}
-         *
-         * @since 19.3
-         */
-        @Override
-        default void executeVoid(VirtualFrame frame) {
-            execute(frame);
+        default Object executeGeneric(VirtualFrame frame, T node, int index, int argument) {
+            executeVoid(frame, node, index, argument);
+            return null;
         }
 
-    }
-
-    /**
-     * Represents the required interface for block node elements that may return typed values. This
-     * interface is intended to be implemented by language implementations and provide an
-     * implementation of {@link #execute(VirtualFrame)}.
-     *
-     * @see BlockNode
-     * @since 19.3
-     */
-    public interface TypedElement extends GenericElement {
-
         /**
-         * Executes the block element and returns a byte value if supported. If a byte value is not
-         * supported an {@link UnexpectedResultException} is thrown.
+         * Executes the block node element and expects a boolean value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeGeneric(VirtualFrame, Node, int, int)} by default and throws an
+         * {@link UnexpectedResultException} if the value is not a boolean.
          *
          * @since 19.3
          */
-        byte executeByte(VirtualFrame frame) throws UnexpectedResultException;
+        default boolean executeBoolean(VirtualFrame frame, T node, int index, int argument) throws UnexpectedResultException {
+            Object result = executeGeneric(frame, node, index, argument);
+            if (result instanceof Boolean) {
+                return (boolean) result;
+            }
+            throw new UnexpectedResultException(result);
+        }
 
         /**
-         * Executes the block element and returns a short value if supported. If a short value is
-         * not supported an {@link UnexpectedResultException} is thrown.
+         * Executes the block node element and expects a byte value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeGeneric(VirtualFrame, Node, int, int)} by default and throws an
+         * {@link UnexpectedResultException} if the value is not a byte.
          *
          * @since 19.3
          */
-        short executeShort(VirtualFrame frame) throws UnexpectedResultException;
+        default byte executeByte(VirtualFrame frame, T node, int index, int argument) throws UnexpectedResultException {
+            Object result = executeGeneric(frame, node, index, argument);
+            if (result instanceof Byte) {
+                return (byte) result;
+            }
+            throw new UnexpectedResultException(result);
+        }
 
         /**
-         * Executes the block element and returns an int value if supported. If an int value is not
-         * supported an {@link UnexpectedResultException} is thrown.
+         * Executes the block node element and expects a short value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeGeneric(VirtualFrame, Node, int, int)} by default and throws an
+         * {@link UnexpectedResultException} if the value is not a short.
          *
          * @since 19.3
          */
-        int executeInt(VirtualFrame frame) throws UnexpectedResultException;
+        default short executeShort(VirtualFrame frame, T node, int index, int argument) throws UnexpectedResultException {
+            Object result = executeGeneric(frame, node, index, argument);
+            if (result instanceof Short) {
+                return (short) result;
+            }
+            throw new UnexpectedResultException(result);
+        }
 
         /**
-         * Executes the block element and returns a char value if supported. If a char value is not
-         * supported an {@link UnexpectedResultException} is thrown.
+         * Executes the block node element and expects a char value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeGeneric(VirtualFrame, Node, int, int)} by default and throws an
+         * {@link UnexpectedResultException} if the value is not a char.
          *
          * @since 19.3
          */
-        char executeChar(VirtualFrame frame) throws UnexpectedResultException;
+        default char executeChar(VirtualFrame frame, T node, int index, int argument) throws UnexpectedResultException {
+            Object result = executeGeneric(frame, node, index, argument);
+            if (result instanceof Character) {
+                return (char) result;
+            }
+            throw new UnexpectedResultException(result);
+        }
 
         /**
-         * Executes the block element and returns a long value if supported. If a long value is not
-         * supported an {@link UnexpectedResultException} is thrown.
+         * Executes the block node element and expects an int value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeGeneric(VirtualFrame, Node, int, int)} by default and throws an
+         * {@link UnexpectedResultException} if the value is not an int.
          *
          * @since 19.3
          */
-        long executeLong(VirtualFrame frame) throws UnexpectedResultException;
+        default int executeInt(VirtualFrame frame, T node, int index, int argument) throws UnexpectedResultException {
+            Object result = executeGeneric(frame, node, index, argument);
+            if (result instanceof Integer) {
+                return (int) result;
+            }
+            throw new UnexpectedResultException(result);
+        }
 
         /**
-         * Executes the block element and returns a float value if supported. If a float value is
-         * not supported an {@link UnexpectedResultException} is thrown.
+         * Executes the block node element and expects a long value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeGeneric(VirtualFrame, Node, int, int)} by default and throws an
+         * {@link UnexpectedResultException} if the value is not a long.
          *
          * @since 19.3
          */
-        float executeFloat(VirtualFrame frame) throws UnexpectedResultException;
+        default long executeLong(VirtualFrame frame, T node, int index, int argument) throws UnexpectedResultException {
+            Object result = executeGeneric(frame, node, index, argument);
+            if (result instanceof Long) {
+                return (long) result;
+            }
+            throw new UnexpectedResultException(result);
+        }
 
         /**
-         * Executes the block element and returns a double value if supported. If a double value is
-         * not supported an {@link UnexpectedResultException} is thrown.
+         * Executes the block node element and expects a float value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeGeneric(VirtualFrame, Node, int, int)} by default and throws an
+         * {@link UnexpectedResultException} if the value is not a float.
          *
          * @since 19.3
          */
-        double executeDouble(VirtualFrame frame) throws UnexpectedResultException;
+        default float executeFloat(VirtualFrame frame, T node, int index, int argument) throws UnexpectedResultException {
+            Object result = executeGeneric(frame, node, index, argument);
+            if (result instanceof Float) {
+                return (float) result;
+            }
+            throw new UnexpectedResultException(result);
+        }
 
         /**
-         * Executes the block element and returns a boolean value if supported. If a boolean value
-         * is not supported an {@link UnexpectedResultException} is thrown.
+         * Executes the block node element and expects a double value. This method is used for the
+         * last element of the block, to provide a value to the block execute method. Forwards to
+         * {@link #executeGeneric(VirtualFrame, Node, int, int)} by default and throws an
+         * {@link UnexpectedResultException} if the value is not a double.
          *
          * @since 19.3
          */
-        boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException;
-    }
+        default double executeDouble(VirtualFrame frame, T node, int index, int argument) throws UnexpectedResultException {
+            Object result = executeGeneric(frame, node, index, argument);
+            if (result instanceof Double) {
+                return (double) result;
+            }
+            throw new UnexpectedResultException(result);
+        }
 
-    /**
-     * Represents an exception handler interface that can be used to execute code in the exception
-     * handler for each element intercepting its index.
-     *
-     * @since 19.3
-     */
-    public interface ElementExceptionHandler {
-        /**
-         * Notified on exception for each element. Exceptions are always rethrown unless this method
-         * throws a different exception.
-         *
-         * @param frame the frame passed to the block
-         * @param e the exception that was caught
-         * @param elementIndex the index of the element that was currently executed.
-         * @since 19.3
-         */
-        @SuppressWarnings("unused")
-        void onBlockElementException(VirtualFrame frame, Throwable e, int elementIndex);
     }
 
 }
@@ -571,28 +423,36 @@ public abstract class BlockNode<T extends Node & VoidElement> extends Node {
 class BlockNodeSnippets {
     // BEGIN: com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode
     // language base node
-    abstract class LanguageNode extends Node implements BlockNode.GenericElement {
+    abstract class LanguageNode extends Node {
 
-        @Override
         public abstract Object execute(VirtualFrame frame);
 
     }
 
-    final class LanguageBlockNode extends LanguageNode {
+    final class LanguageBlockNode extends LanguageNode
+                    implements NodeExecutor<LanguageNode> {
 
         @Child private BlockNode<LanguageNode> block;
 
         LanguageBlockNode(LanguageNode[] elements) {
-            this.block = BlockNode.create(elements);
+            this.block = BlockNode.create(elements, this);
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame, LanguageNode node,
+                        int index, int arg) {
+            node.execute(frame);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame, LanguageNode node,
+                        int index, int arg) {
+            return node.execute(frame);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return block.execute(frame, 0, null);
-        }
-
-        public void executeVoid(VirtualFrame frame) {
-            block.executeVoid(frame, 0, null);
+            return block.executeGeneric(frame, 0);
         }
     }
     // END: com.oracle.truffle.api.nodes.BlockNodeSnippets.LanguageBlockNode
@@ -600,22 +460,28 @@ class BlockNodeSnippets {
     // BEGIN: com.oracle.truffle.api.nodes.BlockNodeSnippets.ResumableBlockNode
     final class YieldException extends ControlFlowException {
 
+        final Object result;
+
+        YieldException(Object result) {
+            this.result = result;
+        }
+
     }
 
     final class ResumableBlockNode extends LanguageNode
-                    implements ElementExceptionHandler {
+                    implements NodeExecutor<LanguageNode> {
 
         @CompilationFinal private FrameSlot indexSlot;
         @Child private BlockNode<LanguageNode> block;
 
         ResumableBlockNode(LanguageNode[] elements) {
-            this.block = BlockNode.create(elements);
+            this.block = BlockNode.create(elements, this);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             frame.setInt(getIndexSlot(), 0);
-            return block.execute(frame, 0, null);
+            return block.executeGeneric(frame, 0);
         }
 
         // Called if the resumable block needs to be
@@ -630,15 +496,29 @@ class BlockNodeSnippets {
                 // the block must be called using execute
                 throw new AssertionError();
             }
-            block.execute(frame, startIndex, this);
+            block.executeGeneric(frame, startIndex);
         }
 
         @Override
-        public void onBlockElementException(VirtualFrame frame,
-                        Throwable e, int elementIndex) {
-            if (e instanceof YieldException) {
-                // store index to be able to resume later
-                frame.setInt(getIndexSlot(), elementIndex);
+        public void executeVoid(VirtualFrame frame, LanguageNode node,
+                        int elementIndex, int startIndex) {
+            executeGeneric(frame, node, elementIndex, startIndex);
+        }
+
+        @Override
+        public Object executeGeneric(VirtualFrame frame, LanguageNode node,
+                        int elementIndex, int startIndex) {
+            if (elementIndex >= startIndex) {
+                try {
+                    return node.execute(frame);
+                } catch (YieldException e) {
+                    // store index to be able to resume later
+                    frame.setInt(getIndexSlot(), elementIndex);
+                    return e.result;
+                }
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("Invalid start index");
             }
         }
 

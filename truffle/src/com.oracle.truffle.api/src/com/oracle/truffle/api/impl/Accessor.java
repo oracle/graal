@@ -86,7 +86,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.BlockNode.VoidElement;
+import com.oracle.truffle.api.nodes.BlockNode.NodeExecutor;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -125,8 +125,8 @@ public abstract class Accessor {
         return SUPPORT.createUncachedIndirectCall();
     }
 
-    protected <T extends Node & VoidElement> BlockNode<T> createBlockNode(T[] elements) {
-        return SUPPORT.createBlockNode(elements);
+    protected <T extends Node> BlockNode<T> createBlockNode(T[] elements, NodeExecutor<T> executor) {
+        return SUPPORT.createBlockNode(elements, executor);
     }
 
     public abstract static class NodeSupport {

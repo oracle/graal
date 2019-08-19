@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,8 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
+import com.oracle.truffle.api.nodes.BlockNode.NodeExecutor;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -54,19 +56,24 @@ import com.oracle.truffle.sl.nodes.SLStatementNode;
  * A statement node that just executes a list of other statements.
  */
 @NodeInfo(shortName = "block", description = "The node implementing a source code block")
-public final class SLBlockNode extends SLStatementNode {
+public final class SLBlockNode extends SLStatementNode implements BlockNode.NodeExecutor<SLStatementNode> {
 
     /**
      * The block of child nodes. Using the block node allows Truffle to split the block into
-     * multiple groups for compilation if the method is too big.
-     *
-     * Normally the annotation {@link com.oracle.truffle.api.nodes.Node.Children Children} would be
-     * used to use an array of nodes that informs Truffle that the field contains multiple children.
+     * multiple groups for compilation if the method is too big. This is an optional API.
+     * Alternatively, you may just use your own block node, with a
+     * {@link com.oracle.truffle.api.nodes.Node.Children @Children} field. However, this prevents
+     * Truffle from compiling big methods, so these methods might fail to compile with a compilation
+     * bailout.
      */
     @Child private BlockNode<SLStatementNode> block;
 
     public SLBlockNode(SLStatementNode[] bodyNodes) {
-        this.block = bodyNodes.length > 0 ? BlockNode.create(bodyNodes) : null;
+        /*
+         * Truffle block nodes cannot be empty, that is why we just set the entire block to null if
+         * there are no elements. This is good practice as it safes memory.
+         */
+        this.block = bodyNodes.length > 0 ? BlockNode.create(bodyNodes, this) : null;
     }
 
     /**
@@ -77,7 +84,7 @@ public final class SLBlockNode extends SLStatementNode {
     @Override
     public void executeVoid(VirtualFrame frame) {
         if (this.block != null) {
-            this.block.executeVoid(frame);
+            this.block.executeVoid(frame, BlockNode.NO_ARGUMENT);
         }
     }
 
@@ -87,4 +94,18 @@ public final class SLBlockNode extends SLStatementNode {
         }
         return Collections.unmodifiableList(Arrays.asList(block.getElements()));
     }
+
+    /**
+     * Truffle nodes don't have a fixed execute signature. The {@link NodeExecutor} interface tells
+     * the framework how block element nodes should be executed. The executor allows to add a custom
+     * exception handler for each element, e.g. to handle a specific {@link ControlFlowException} or
+     * to pass a customizable argument, that allows implement startsWith semantics if needed. For SL
+     * we don't need to pass any argument as we just have plain block nodes, therefore we pass
+     * {@link BlockNode#NO_ARGUMENT}. In our case the executor does not need to remember any state
+     * so we reuse a singleton instance.
+     */
+    public void executeVoid(VirtualFrame frame, SLStatementNode node, int index, int argument) {
+        node.executeVoid(frame);
+    }
+
 }
