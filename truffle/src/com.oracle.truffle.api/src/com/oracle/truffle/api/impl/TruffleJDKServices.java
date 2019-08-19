@@ -38,14 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.impl;
 
 import java.util.List;
 
+import com.oracle.truffle.api.TruffleRuntimeAccess;
+
 /**
  * JDK version independent interface to JDK services used by Truffle.
- *
- * @since 19.3
  */
 public final class TruffleJDKServices {
 
@@ -83,7 +83,7 @@ public final class TruffleJDKServices {
     /**
      * Gets the ordered list of loaders for {@link TruffleRuntimeAccess} providers.
      */
-    static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
+    public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
         throw shouldNotReachHere();
     }
 }

@@ -38,12 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.impl;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
+
+import com.oracle.truffle.api.TruffleRuntimeAccess;
 
 /**
  * JDK 11+ implementation of {@code TruffleJDKServices}.
@@ -79,7 +81,7 @@ public class TruffleJDKServices {
         }
     }
 
-    static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
+    public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
         return Collections.singletonList(ServiceLoader.load(TruffleRuntimeAccess.class));
     }
 }

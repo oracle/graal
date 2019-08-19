@@ -38,13 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.impl;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.ServiceLoader;
+
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleRuntimeAccess;
 
 /**
  * JDK 8 implementation of {@code TruffleJDKServices}.
@@ -64,7 +67,7 @@ public class TruffleJDKServices {
     /**
      * Gets the ordered list of loaders for {@link TruffleRuntimeAccess} providers.
      */
-    static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
+    public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
         Iterable<TruffleRuntimeAccess> jvmciProviders = getJVMCIProviders();
         if (Boolean.getBoolean("truffle.TrustAllTruffleRuntimeProviders")) {
             ServiceLoader<TruffleRuntimeAccess> standardProviders = ServiceLoader.load(TruffleRuntimeAccess.class);

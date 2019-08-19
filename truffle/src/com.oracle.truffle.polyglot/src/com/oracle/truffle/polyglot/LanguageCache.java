@@ -64,10 +64,10 @@ import java.util.TreeSet;
 import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
-import com.oracle.truffle.api.TruffleJDKServices;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.TruffleOptions;
 
 /**

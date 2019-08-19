@@ -57,8 +57,8 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.api.TruffleJDKServices;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
