@@ -485,14 +485,13 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # Ensure makegraaljdk works
     with Task('MakeGraalJDK', tasks, tags=GraalTags.test) as t:
-        if t and isJDK8:
+        if t:
+            ws = mx.ensure_dir_exists('MakeGraalJDK-ws')
+            graaljdk = join(ws, 'graaljdk-' + str(jdk.javaCompliance))
             try:
-                makegraaljdk_cli(['-a', 'graaljdk.tar', '-b', 'graaljdk'])
+                makegraaljdk_cli(['-a', join(ws, 'graaljdk-' + str(jdk.javaCompliance) + '.tar'), '-b', graaljdk])
             finally:
-                if exists('graaljdk'):
-                    shutil.rmtree('graaljdk')
-                if exists('graaljdk.tar'):
-                    os.unlink('graaljdk.tar')
+                shutil.rmtree(ws)
 
     # Run ctw against rt.jar on hosted
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw) as t:
