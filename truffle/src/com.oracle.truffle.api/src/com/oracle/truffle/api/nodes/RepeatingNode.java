@@ -58,14 +58,24 @@ public interface RepeatingNode extends NodeInterface {
     /**
      * A value indicating that the loop should be repeated.
      */
-    Object CONTINUE_LOOP_STATUS = new Object();
+    Object CONTINUE_LOOP_STATUS = new Object() {
+        @Override
+        public String toString() {
+            return "CONTINUE_LOOP_STATUS";
+        }
+    };
 
     /**
      * A value indicating that the loop should not be repeated.
      * Any other value different than {@code CONTINUE_LOOP_STATUS}
      * can also be used to indicate that the loop should not be repeated.
      */
-    Object BREAK_LOOP_STATUS = new Object();
+    Object BREAK_LOOP_STATUS = new Object() {
+        @Override
+        public String toString() {
+            return "BREAK_LOOP_STATUS";
+        }
+    };
 
     /**
      * Repeatedly invoked by a {@link LoopNode loop node} implementation until the method returns
