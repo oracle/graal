@@ -49,7 +49,7 @@ public class LLVMAMD64RepNode extends LLVMStatementNode {
 
     @Override
     public void execute(VirtualFrame frame) {
-        loop.executeLoop(frame);
+        loop.execute(frame);
     }
 
     private static class LLVMAMD64RepLoopNode extends LLVMNode implements RepeatingNode {
