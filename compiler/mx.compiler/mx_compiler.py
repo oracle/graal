@@ -1121,16 +1121,12 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
             shutil.copytree(src_jdk.home, dst_jdk_dir)
 
         boot_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'boot'))
-        truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
         jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
 
         for src_jar in _graal_config().jvmci_jars:
             _update_file(src_jar, join(jvmci_dir, basename(src_jar)))
         for src_jar in _graal_config().boot_jars:
-            dst_dir = truffle_dir if basename(src_jar) == 'truffle-api.jar' else boot_dir
-            _update_file(src_jar, join(dst_dir, basename(src_jar)))
-        with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
-            fp.write(join('..', 'truffle', 'truffle-api.jar'))
+            _update_file(src_jar, join(boot_dir, basename(src_jar)))
 
     else:
         module_dists = _graal_config().dists
