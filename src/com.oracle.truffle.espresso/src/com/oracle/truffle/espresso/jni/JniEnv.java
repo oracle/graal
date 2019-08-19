@@ -2359,7 +2359,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
         for (StaticObject declMethod : methods.<StaticObject[]> unwrap()) {
             assert InterpreterToVM.instanceOf(declMethod, getMeta().Executable);
-            Method m = (Method) declMethod.getHiddenField(getMeta().HIDDEN_METHOD_KEY);
+            Method m = null;
+            if (method.isConstructor()) {
+                assert InterpreterToVM.instanceOf(declMethod, getMeta().Constructor);
+                m = (Method) declMethod.getHiddenField(getMeta().HIDDEN_CONSTRUCTOR_KEY);
+            } else {
+                assert InterpreterToVM.instanceOf(declMethod, getMeta().Method);
+                m = (Method) declMethod.getHiddenField(getMeta().HIDDEN_METHOD_KEY);
+            }
             if (method == m) {
                 return declMethod;
             }
