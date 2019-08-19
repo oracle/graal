@@ -70,13 +70,13 @@ public interface WasmMemory {
 
     void store_f64(long address, double value);
 
-    void store_i32_8(long address, int value);
+    void store_i32_8(long address, byte value);
 
-    void store_i32_16(long address, int value);
+    void store_i32_16(long address, short value);
 
-    void store_i64_8(long address, long value);
+    void store_i64_8(long address, byte value);
 
-    void store_i64_16(long address, long value);
+    void store_i64_16(long address, short value);
 
-    void store_i64_32(long address, long value);
+    void store_i64_32(long address, int value);
 }
