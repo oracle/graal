@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 19.3.0
+* The default temporary directory can be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getTempDirectory--).
+
 ## Version 19.2.0
 * Added support for date, time, timezone and duration values in polyglot
 	* Added methods to identify polyglot date, time, timezone and duration values in `Value`. See `Value.isDate`, `Value.isTime`, `Value.isTimeZone`, `Value.isDuration`. 

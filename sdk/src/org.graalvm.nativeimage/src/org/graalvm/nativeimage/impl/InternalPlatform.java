@@ -127,6 +127,24 @@ public interface InternalPlatform {
     }
 
     /**
+     * Temporary leaf platform that is used to mark classes or methods that are used for LINUX_JNI
+     * platforms.
+     *
+     * @since 19.1.0
+     */
+    class LINUX_JNI_AArch64 implements LINUX_JNI, LINUX_AND_JNI, Platform.AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.1.0
+         */
+        public LINUX_JNI_AArch64() {
+        }
+
+    }
+
+    /**
      * Temporary leaf platform that is used to mark classes or methods that are used for DARWIN_JNI
      * platforms.
      *

@@ -47,6 +47,7 @@ import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.bytedeco.javacpp.PointerPointer;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -167,7 +168,6 @@ public class LLVMIRBuilder {
         LLVM.LLVMTypeRef wrapperType = prependArguments(calleeType, rawPointerType(), typeOf(callee));
         LLVMValueRef transitionWrapper = addFunction(LLVMUtils.JNI_WRAPPER_PREFIX + intrinsicType(calleeType), wrapperType);
         LLVM.LLVMSetLinkage(transitionWrapper, LLVM.LLVMLinkOnceAnyLinkage);
-        setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "noinline");
 
         LLVM.LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
@@ -184,6 +184,7 @@ public class LLVMIRBuilder {
         }
         LLVMValueRef target = getParam(transitionWrapper, 1);
         LLVMValueRef ret = buildCall(target, args);
+        setCallSiteAttribute(ret, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
 
         if (isVoidType(getReturnType(calleeType))) {
             buildRetVoid();
@@ -1161,14 +1162,15 @@ public class LLVMIRBuilder {
     /* Inline assembly */
 
     public LLVMValueRef buildInlineGetRegister(String registerName) {
-        LLVMValueRef getRegister = buildInlineAsm(functionType(rawPointerType()), LLVMUtils.TargetSpecific.get().getRegisterInlineAsm(registerName), "={" + registerName + "}", false, false);
+        LLVMValueRef getRegister = buildInlineAsm(functionType(rawPointerType()), TargetSpecific.get().getRegisterInlineAsm(registerName),
+                        "={" + TargetSpecific.get().getLLVMRegisterName(registerName) + "}", false, false);
         LLVMValueRef call = buildCall(getRegister);
         setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         return call;
     }
 
     public LLVMValueRef buildInlineJump(LLVMValueRef address) {
-        LLVMValueRef jump = buildInlineAsm(functionType(voidType(), rawPointerType()), LLVMUtils.TargetSpecific.get().getJumpInlineAsm(), "r", true, false);
+        LLVMValueRef jump = buildInlineAsm(functionType(voidType(), rawPointerType()), TargetSpecific.get().getJumpInlineAsm(), "r", true, false);
         LLVMValueRef call = buildCall(jump, address);
         setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         return call;

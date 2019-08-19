@@ -48,11 +48,17 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
@@ -562,6 +568,27 @@ public abstract class DSLExpression {
             if (resolvedMethod.getKind() == ElementKind.CONSTRUCTOR) {
                 return resolvedMethod.getEnclosingElement().asType();
             } else {
+                TypeMirror type = resolvedMethod.getReturnType();
+                TypeMirror receiverType = receiver != null ? receiver.getResolvedType() : null;
+                if (receiverType != null && type.getKind() == TypeKind.TYPEVAR && receiverType.getKind() == TypeKind.DECLARED) {
+                    // try to do some basic type inference
+                    TypeVariable variable = (TypeVariable) type;
+                    TypeElement receiverTypeElement = ElementUtils.fromTypeMirror(receiverType);
+                    Element variableElement = variable.asElement();
+                    int foundIndex = -1;
+                    int index = 0;
+                    for (TypeParameterElement typeParam : receiverTypeElement.getTypeParameters()) {
+                        if (ElementUtils.elementEquals(typeParam, variableElement)) {
+                            foundIndex = index;
+                            break;
+                        }
+                        index++;
+                    }
+                    DeclaredType declaredReceiverType = (DeclaredType) receiverType;
+                    if (foundIndex != -1) {
+                        return declaredReceiverType.getTypeArguments().get(foundIndex);
+                    }
+                }
                 return resolvedMethod.getReturnType();
             }
         }
