@@ -529,7 +529,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
 
         module_path = jmods_dir
         if modules:
-            module_path = os.pathsep.join((m.get_jmod_path() for m in modules)) + os.pathsep + module_path
+            module_path = os.pathsep.join((m.get_jmod_path(respect_stripping=True) for m in modules)) + os.pathsep + module_path
         jlink.append('--module-path=' + module_path)
         jlink.append('--output=' + dst_jdk_dir)
 

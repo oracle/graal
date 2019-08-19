@@ -747,7 +747,7 @@ def _check_using_latest_jars(dists):
     for dist in dists:
         last_updated_jar, java_home, extra_java_homes = _get_last_updated_jar(dist)
         if last_updated_jar:
-            current_jar = dist.classpath_repr()
+            current_jar = dist.original_path()
             if last_updated_jar != current_jar:
                 mx.warn('The most recently updated jar for {} ({}) differs from the jar used to construct the VM class or module path ({}). '.format(dist, last_updated_jar, current_jar) +
                         'This usually means the current values of JAVA_HOME and EXTRA_JAVA_HOMES are '
@@ -813,6 +813,8 @@ class StdoutUnstripping:
         self.out = out
         self.err = err
         self.capture = None
+        if mapFiles is not None:
+            mapFiles = [m for m in mapFiles if exists(m)]
         self.mapFiles = mapFiles
 
     def __enter__(self):
@@ -834,24 +836,17 @@ class StdoutUnstripping:
         if self.mapFiles:
             try:
                 with tempfile.NamedTemporaryFile(mode='w') as inputFile:
-                    with tempfile.NamedTemporaryFile(mode='w') as mapFile:
-                        if len(self.capture.data) != 0:
-                            inputFile.write(self.capture.data)
-                            inputFile.flush()
-                            for e in self.mapFiles:
-                                with open(e, 'r') as m:
-                                    shutil.copyfileobj(m, mapFile)
-                                    mapFile.flush()
-                            retraceOut = mx.OutputCapture()
-                            proguard_cp = mx.classpath(['PROGUARD_RETRACE', 'PROGUARD'])
-                            # A slightly more general pattern for matching stack traces than the default.
-                            # This version does not require the "at " prefix.
-                            regex = r'(?:.*?\s+%c\.%m\s*\(%s(?::%l)?\)\s*(?:~\[.*\])?)|(?:(?:.*?[:"]\s+)?%c(?::.*)?)'
-                            mx.run([jdk.java, '-cp', proguard_cp, 'proguard.retrace.ReTrace', '-regex', regex, mapFile.name, inputFile.name], out=retraceOut)
-                            if self.capture.data != retraceOut.data:
-                                mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
-                                mx.log(retraceOut.data)
-                                mx.log('<<<< END UNSTRIPPED OUTPUT')
+                    data = self.capture.data
+                    if len(data) != 0:
+                        inputFile.write(data)
+                        inputFile.flush()
+                        retraceOut = mx.OutputCapture()
+                        unstrip_args = [m for m in self.mapFiles] + [inputFile.name]
+                        mx.unstrip(unstrip_args, out=retraceOut)
+                        if data != retraceOut.data:
+                            mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
+                            mx.log(retraceOut.data)
+                            mx.log('<<<< END UNSTRIPPED OUTPUT')
             except BaseException as e:
                 mx.log('Error unstripping output from VM execution with stripped jars: ' + str(e))
 
@@ -1052,8 +1047,8 @@ def makegraaljdk_cli(args):
     if args.license:
         shutil.copy(args.license, join(dst_jdk_dir, 'LICENSE'))
     if args.bootstrap:
-        map_files = [j + '.map' for j in _graal_config().jars if exists(j + '.map')]
-        with StdoutUnstripping(args=[], out=None, err=None, mapFiles=map_files) as u:
+        map_file = dst_jdk_dir + '.map'
+        with StdoutUnstripping(args=[], out=None, err=None, mapFiles=[map_file]) as u:
             select_graal = [] if jdk_enables_jvmci_by_default(dst_jdk) else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
             mx.run([dst_jdk.java] + select_graal + ['-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
     if args.archive:
@@ -1189,6 +1184,11 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
             break
     if line is not True:
         mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
+
+    unstrip_map = mx.make_unstrip_map(_graal_config().dists)
+    if unstrip_map:
+        with open(dst_jdk_dir + '.map', 'w') as fp:
+            fp.write(unstrip_map)
 
     return dst_jdk_dir, True
 
