@@ -30,6 +30,7 @@ import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
@@ -37,8 +38,12 @@ final class SVMToHotSpotCalls {
 
     private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";
     private static final String[] METHOD_CREATE = {
-                    "create",
-                    "()Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/Factory;"
+                    "createFactory",
+                    "()Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/SVMHotSpotGraalRuntimeMBean$Factory;"
+    };
+    private static final String[] METHOD_SIGNAL = {
+                    "signal",
+                    "(Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/SVMHotSpotGraalRuntimeMBean$Factory;)V"
     };
     private static final String[] METHOD_GET_JVMCI_CLASS_LOADER = {
                     "getJVMCIClassLoader",
@@ -60,9 +65,19 @@ final class SVMToHotSpotCalls {
         return env.getFunctions().getCallStaticObjectMethodA().call(env, servicesClass, getJVMCIClassLoaderId, nullPointer());
     }
 
-    static JNI.JObject createFactory(JNI.JNIEnv env, JNI.JClass factoryClass) {
-        JNI.JMethodID createId = findMethod(env, factoryClass, METHOD_CREATE);
-        return env.getFunctions().getCallStaticObjectMethodA().call(env, factoryClass, createId, nullPointer());
+    static JNI.JObject createFactory(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass) {
+        JNI.JMethodID createId = findMethod(env, svmToHotSpotEntryPointsClass, METHOD_CREATE);
+        return env.getFunctions().getCallStaticObjectMethodA().call(env, svmToHotSpotEntryPointsClass, createId, nullPointer());
+    }
+
+    static void signal(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass, JNI.JObject factory) {
+        JNI.JMethodID signalId = findMethod(env, svmToHotSpotEntryPointsClass, METHOD_SIGNAL);
+        JNI.JValue params = StackValue.get(1, JNI.JValue.class);
+        params.addressOf(0).setJObject(factory);
+        env.getFunctions().getCallStaticVoidMethodA().call(env, svmToHotSpotEntryPointsClass, signalId, params);
+        if (JNIUtil.ExceptionCheck(env)) {
+            JNIUtil.ExceptionDescribe(env);
+        }
     }
 
     private static JNI.JMethodID findMethod(JNI.JNIEnv env, JNI.JClass clazz, String[] descriptor) {

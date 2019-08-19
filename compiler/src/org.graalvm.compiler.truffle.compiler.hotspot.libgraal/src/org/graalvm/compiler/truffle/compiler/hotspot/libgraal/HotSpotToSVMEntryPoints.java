@@ -136,7 +136,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Entry points in SVM for {@linkplain HotSpotToSVM calls} from HotSpot.
  *
  * To trace Truffle calls between HotSpot and SVM, set the environment variable
- * {@value JNIUtil#JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME} to {@code true}.
+ * {@code JNI_LIBGRAAL_TRACE_LEVEL} to {@code true}.
  */
 final class HotSpotToSVMEntryPoints {
 

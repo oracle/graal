@@ -28,22 +28,17 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-final class HotSpotToSVMCalls {
+final class SVMToHotSpotEntryPoints {
 
-    private HotSpotToSVMCalls() {
+    private SVMToHotSpotEntryPoints() {
     }
 
-    static native long[] pollRegistrations(long isolateThreadId);
+    static SVMHotSpotGraalRuntimeMBean.Factory createFactory() {
+        SVMHotSpotGraalRuntimeMBean.Factory factory = SVMHotSpotGraalRuntimeMBean.startFactory();
+        return factory;
+    }
 
-    static native void finishRegistration(long isolateThreadId, long[] svmRegistrations);
-
-    static native String getRegistrationName(long isolateThreadId, long svmRegistration);
-
-    static native byte[] getMBeanInfo(long isolateThreadId, long svmRegistration);
-
-    static native byte[] getAttributes(long isolateThreadId, long handle, String[] attributes);
-
-    static native byte[] setAttributes(long isolateThreadId, long handle, byte[] rawData);
-
-    static native byte[] invoke(long isolateThreadId, long handle, String actionName, byte[] rawData, String[] signature);
+    static void signal(SVMHotSpotGraalRuntimeMBean.Factory factory) {
+        factory.signal();
+    }
 }

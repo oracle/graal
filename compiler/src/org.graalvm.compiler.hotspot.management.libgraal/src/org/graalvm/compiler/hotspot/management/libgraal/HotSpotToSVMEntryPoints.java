@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal;
 
-import java.nio.ByteBuffer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,21 +40,20 @@ import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
 import org.graalvm.nativeimage.ObjectHandles;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
-public final class HotSpotToSVMEntryPoints {
+final class HotSpotToSVMEntryPoints {
 
     private HotSpotToSVMEntryPoints() {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_pollRegistrations")
-    @SuppressWarnings("try")
-    public static JNI.JLongArray pollRegistrations(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+    @SuppressWarnings({"try", "unused"})
+    static JNI.JLongArray pollRegistrations(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
         HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.PollRegistrations, env);
         try (HotSpotToSVMScope<Id> s = scope) {
             List<HotSpotGraalManagement> registrations = HotSpotGraalManagement.Factory.drain();
@@ -76,8 +74,8 @@ public final class HotSpotToSVMEntryPoints {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_finishRegistration")
-    @SuppressWarnings("try")
-    public static void finishRegistration(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JLongArray svmRegistrations) {
+    @SuppressWarnings({"try", "unused"})
+    static void finishRegistration(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JLongArray svmRegistrations) {
         try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.FinishRegistration, env)) {
             long len = JNIUtil.GetArrayLength(env, svmRegistrations);
             CLongPointer elems = JNIUtil.GetLongArrayElements(env, svmRegistrations, WordFactory.nullPointer());
@@ -94,8 +92,8 @@ public final class HotSpotToSVMEntryPoints {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getRegistrationName")
-    @SuppressWarnings("try")
-    public static JNI.JString getRegistrationName(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
+    @SuppressWarnings({"try", "unused"})
+    static JNI.JString getRegistrationName(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
         HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.GetRegistrationName, env);
         try (HotSpotToSVMScope<Id> s = scope) {
             ObjectHandles globalHandles = ObjectHandles.getGlobal();
@@ -107,8 +105,8 @@ public final class HotSpotToSVMEntryPoints {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getMBeanInfo")
-    @SuppressWarnings("try")
-    public static JNI.JByteArray getMBeanInfo(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
+    @SuppressWarnings({"try", "unused"})
+    static JNI.JByteArray getMBeanInfo(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
         HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.GetMBeanInfo, env);
         try (HotSpotToSVMScope<Id> s = scope) {
             ObjectHandles globalHandles = ObjectHandles.getGlobal();
@@ -148,8 +146,8 @@ public final class HotSpotToSVMEntryPoints {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getAttributes")
-    @SuppressWarnings("try")
-    public static JNI.JByteArray getAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JObjectArray requiredAttributes) {
+    @SuppressWarnings({"try", "unused"})
+    static JNI.JByteArray getAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JObjectArray requiredAttributes) {
         HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.GetAttributes, env);
         try (HotSpotToSVMScope<Id> s = scope) {
             int len = JNIUtil.GetArrayLength(env, requiredAttributes);
@@ -166,8 +164,8 @@ public final class HotSpotToSVMEntryPoints {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_setAttributes")
-    @SuppressWarnings("try")
-    public static JNI.JByteArray setAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JByteArray attributes) {
+    @SuppressWarnings({"try", "unused"})
+    static JNI.JByteArray setAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JByteArray attributes) {
         HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.SetAttributes, env);
         try (HotSpotToSVMScope<Id> s = scope) {
             Map<String, Object> map = rawToMap(env, attributes);
@@ -183,8 +181,8 @@ public final class HotSpotToSVMEntryPoints {
     }
 
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_invoke")
-    @SuppressWarnings("try")
-    public static JNI.JByteArray invoke(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JString hsActionName,
+    @SuppressWarnings({"try", "unused"})
+    static JNI.JByteArray invoke(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JString hsActionName,
                     JNI.JByteArray hsParams, JNI.JObjectArray hsSignature) {
         HotSpotToSVMScope<Id> scope = new HotSpotToSVMScope<>(Id.Invoke, env);
         try (HotSpotToSVMScope<Id> s = scope) {
@@ -246,12 +244,13 @@ public final class HotSpotToSVMEntryPoints {
 }
 
 enum Id {
+    DefineClasses,
     FinishRegistration,
     GetAttributes,
     GetMBeanInfo,
     GetRegistrationName,
-    Initialize,
     Invoke,
+    NewMBean,
     PollRegistrations,
     SetAttributes
 }

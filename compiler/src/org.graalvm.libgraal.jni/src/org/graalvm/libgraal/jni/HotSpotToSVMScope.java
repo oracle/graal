@@ -128,8 +128,8 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends JObject> T getObjectResult() {
-        return (T) objResult;
+    public <R extends JObject> R getObjectResult() {
+        return (R) objResult;
     }
 
     @Override

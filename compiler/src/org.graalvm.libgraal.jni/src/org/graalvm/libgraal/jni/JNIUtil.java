@@ -261,7 +261,7 @@ public final class JNIUtil {
     private static final String JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
 
     /**
-     * Checks if {@link SVMToHotSpotUtil} and {@link HotSpotToSVMEntryPoints} are verbose.
+     * Checks if JNI calls are verbose.
      */
     private static int traceLevel() {
         if (traceLevel == null) {

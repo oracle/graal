@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
@@ -61,8 +60,13 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
     private static final byte[] HS_SVM_CALLS_CLASS = null;
     private static final String HS_PUSHBACK_ITER_CLASS_NAME = null;
     private static final byte[] HS_PUSHBACK_ITER_CLASS = null;
+    private static final String SVM_HS_ENTRYPOINTS_CLASS_NAME = null;
+    private static final byte[] SVM_HS_ENTRYPOINTS_CLASS = null;
 
-    private static final AtomicBoolean needsToDefineHSClasses = new AtomicBoolean();
+    // JNI Globals
+    private static volatile JNI.JObject factoryInstance;
+    private static JNI.JClass svmToHotSpotEntryPoints;
+
     private static long jniEnvOffset;
 
     private HotSpotGraalRuntimeMBean bean;
@@ -74,9 +78,16 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
 
     @Override
     public void initialize(HotSpotGraalRuntime runtime, GraalHotSpotVMConfig config) {
-        if (needsToDefineHSClasses.compareAndSet(false, true)) {
-            jniEnvOffset = config.jniEnvironmentOffset;
-            createHotSpotMXBean(getCurrentJNIEnv());
+        JNI.JObject factory = factoryInstance;
+        if (factory.isNull()) {
+            synchronized (HotSpotGraalManagement.class) {
+                factory = factoryInstance;
+                if (factory.isNull()) {
+                    jniEnvOffset = config.jniEnvironmentOffset;
+                    factory = initializeHotSpotMXBean(getCurrentJNIEnv());
+                    factoryInstance = factory;
+                }
+            }
         }
 
         if (bean == null) {
@@ -87,6 +98,7 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
                 name = runtime.getName().replace(':', '_');
                 bean = new HotSpotGraalRuntimeMBean(new ObjectName("org.graalvm.compiler.hotspot:type=" + name), runtime);
                 Factory.enqueue(this);
+                signal(getCurrentJNIEnv(), svmToHotSpotEntryPoints, factory);
             } catch (MalformedObjectNameException err) {
                 err.printStackTrace(TTY.out);
             }
@@ -115,9 +127,19 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
         return name;
     }
 
-    private static void createHotSpotMXBean(JNI.JNIEnv env) {
-        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.Initialize, env)) {
+    @SuppressWarnings("try")
+    private static JNI.JObject initializeHotSpotMXBean(JNI.JNIEnv env) {
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.DefineClasses, env)) {
             JNI.JObject classLoader = SVMToHotSpotCalls.getJVMCIClassLoader(env);
+
+            if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
+                throw throwDefineClassError(HS_BEAN_CLASS_NAME);
+            }
+
+            if (defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS).isNull()) {
+                throw throwDefineClassError(HS_BEAN_FACTORY_CLASS_NAME);
+            }
+
             if (defineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS_NAME, HS_PUSHBACK_ITER_CLASS).isNull()) {
                 throw throwDefineClassError(HS_PUSHBACK_ITER_CLASS_NAME);
             }
@@ -126,16 +148,16 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
                 throw throwDefineClassError(HS_SVM_CALLS_CLASS_NAME);
             }
 
-            if (defineClassInHotSpot(env, classLoader, HS_BEAN_CLASS_NAME, HS_BEAN_CLASS).isNull()) {
-                throw throwDefineClassError(HS_BEAN_CLASS_NAME);
+            JNI.JClass svmHsEntryPoints = defineClassInHotSpot(env, classLoader, SVM_HS_ENTRYPOINTS_CLASS_NAME, SVM_HS_ENTRYPOINTS_CLASS);
+            if (svmHsEntryPoints.isNull()) {
+                throw throwDefineClassError(SVM_HS_ENTRYPOINTS_CLASS_NAME);
             }
-            JNI.JClass factoryClass = defineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS_NAME, HS_BEAN_FACTORY_CLASS);
-            if (factoryClass.isNull()) {
-                throw throwDefineClassError(HS_BEAN_FACTORY_CLASS_NAME);
+            svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
+            JNI.JObject factory = SVMToHotSpotCalls.createFactory(env, svmHsEntryPoints);
+            if (factory.isNull()) {
+                throw new InternalError("Failed to instantiate MBean factory on HotSpot side.");
             }
-            if (SVMToHotSpotCalls.createFactory(env, factoryClass).isNull()) {
-                throw new InternalError("Failed to initiate Factory.");
-            }
+            return JNIUtil.NewGlobalRef(env, factory, HS_BEAN_FACTORY_CLASS_NAME);
         }
     }
 
@@ -152,6 +174,13 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
                             clazz.length);
         } finally {
             UnmanagedMemory.free(classData);
+        }
+    }
+
+    @SuppressWarnings("try")
+    private static void signal(JNI.JNIEnv env, JNI.JClass svmHsEntryPoints, JNI.JObject factory) {
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.NewMBean, env)) {
+            SVMToHotSpotCalls.signal(env, svmHsEntryPoints, factory);
         }
     }
 
