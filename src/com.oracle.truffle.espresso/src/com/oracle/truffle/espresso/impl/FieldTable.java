@@ -201,9 +201,13 @@ class FieldTable {
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_VMTARGET));
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_VMINDEX));
             return c;
-        } else if (type == Type.Method || type == Type.Constructor) {
+        } else if (type == Type.Method) {
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_METHOD_KEY));
+            return c;
+        } else if (type == Type.Constructor) {
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CONSTRUCTOR_KEY));
             return c;
         } else if (type == Type.Field) {
             tmpTable.add(new Field(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));

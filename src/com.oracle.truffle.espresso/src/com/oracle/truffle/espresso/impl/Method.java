@@ -614,7 +614,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
-            target = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
+            target = (Method) curMethod.getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
             if (target == null) {
                 curMethod = (StaticObject) meta.Constructor_root.get(curMethod);
             }

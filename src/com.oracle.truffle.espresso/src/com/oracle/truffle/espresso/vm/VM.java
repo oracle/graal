@@ -960,7 +960,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject curConstructor = seed;
         Method target = null;
         while (target == null) {
-            target = (Method) curConstructor.getHiddenField(meta.HIDDEN_METHOD_KEY);
+            target = (Method) curConstructor.getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
             if (target == null) {
                 curConstructor = (StaticObject) meta.Constructor_root.get(curConstructor);
             }
@@ -1039,17 +1039,17 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public @Host(byte[].class) StaticObject JVM_GetMethodTypeAnnotations(@Host(java.lang.reflect.Executable.class) StaticObject guestReflectionMethod) {
         // guestReflectionMethod can be either a Method or a Constructor.
-        StaticObject methodRoot = null;
         if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().Method)) {
-            methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
+            StaticObject methodRoot = getGuestReflectiveMethodRoot(guestReflectionMethod);
+            assert methodRoot != null;
+            return (StaticObject) methodRoot.getHiddenField(methodRoot.getKlass().getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         } else if (InterpreterToVM.instanceOf(guestReflectionMethod, getMeta().Constructor)) {
-            methodRoot = getGuestReflectiveConstructorRoot(guestReflectionMethod);
+            StaticObject constructorRoot = getGuestReflectiveConstructorRoot(guestReflectionMethod);
+            assert constructorRoot != null;
+            return (StaticObject) constructorRoot.getHiddenField(constructorRoot.getKlass().getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         } else {
             throw EspressoError.shouldNotReachHere();
         }
-        assert methodRoot != null;
-        return (StaticObject) methodRoot.getHiddenField(methodRoot.getKlass().getMeta().HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
-
     }
 
     @VmImpl
