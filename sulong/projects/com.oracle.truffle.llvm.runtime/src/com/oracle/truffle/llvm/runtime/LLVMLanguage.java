@@ -46,6 +46,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprExecutableNode;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
@@ -56,13 +57,12 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import java.util.Collections;
 import org.graalvm.options.OptionDescriptors;
 
-@TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, version = "6.0.0", internal = false, interactive = true, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
+@TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = true, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE}, //
                 characterMimeTypes = {LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE}, fileTypeDetectors = LLVMFileDetector.class)
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
@@ -143,31 +143,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
         final DebugExprParser d = new DebugExprParser(request, globalScopes);
         try {
-            LLVMExpressionNode root = d.parse();
-            // no error found during parsing
-            return new ExecutableNode(this) {
-                @Child LLVMExpressionNode rootExpr;
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    rootExpr = root;
-                    try {
-                        // try to execute node
-                        Object objectToDisplay = rootExpr.executeGeneric(frame);
-                        if (objectToDisplay instanceof LLVMDebuggerValue) {
-                            return objectToDisplay;
-                        } else {
-                            return String.valueOf(objectToDisplay);
-                        }
-                    } catch (DebugExprException | LLVMParserException e) {
-                        // return message of exception that occurred during AST execution
-                        return e.getMessage();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        throw e;
-                    }
-                }
-            };
+            return new DebugExprExecutableNode(d.parse());
         } catch (DebugExprException | LLVMParserException e) {
             // error found during parsing
             return new ExecutableNode(this) {
@@ -176,9 +152,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     return e.getMessage();
                 }
             };
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw e;
         }
     }
 

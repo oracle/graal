@@ -469,9 +469,11 @@ public final class DebugExprType {
             case SIGNED_CHAR:
                 return Character.toString((char) (Short.parseShort(member.toString())));
             case UNSIGNED_SHORT:
+                return Short.toUnsignedInt(Short.parseShort(member.toString()));
             case SIGNED_SHORT:
                 return Short.parseShort(member.toString());
             case UNSIGNED_INT:
+                return Integer.toUnsignedLong(Integer.parseInt(member.toString()));
             case SIGNED_INT:
                 return Integer.parseInt(member.toString());
             case UNSIGNED_LONG:
