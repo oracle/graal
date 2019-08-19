@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,8 @@
  */
 #include <stdio.h>
 #include <stdint.h>
-#include "syscall.h"
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #define ABORT_STATUS 134
 
@@ -41,13 +42,12 @@ void __sulong_print_stacktrace();
 int __sulong_should_print_stacktrace_on_abort();
 
 void abort() {
-  int64_t result;
   if (__sulong_should_print_stacktrace_on_abort()) {
     fprintf(stderr, "abort()\n\n");
     __sulong_print_stacktrace();
   }
-  __SYSCALL_1(result, SYS_exit_group, ABORT_STATUS);
+  syscall(SYS_exit_group, ABORT_STATUS);
   for (;;) {
-    __SYSCALL_1(result, SYS_exit_group, ABORT_STATUS);
+    syscall(SYS_exit_group, ABORT_STATUS);
   }
 }
