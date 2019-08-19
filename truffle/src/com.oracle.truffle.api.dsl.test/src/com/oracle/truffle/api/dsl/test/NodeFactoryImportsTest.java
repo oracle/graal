@@ -38,55 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.test.builtin;
+package com.oracle.truffle.api.dsl.test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 
-public final class BuiltinTestObject extends BuiltinObject {
+public class NodeFactoryImportsTest {
 
-    private static final BuiltinDescriptor DESCRIPTOR = describe(BuiltinTestObjectFactory.getFactories());
+    @GenerateUncached
+    @GenerateNodeFactory
+    public abstract static class BarNode extends Node {
+        abstract int execute(int x);
 
-    @Override
-    protected BuiltinDescriptor getBuiltinDescriptor() {
-        return DESCRIPTOR;
-    }
-
-    @Builtin
-    abstract static class TestArg0 extends BuiltinNode {
         @Specialization
-        @TruffleBoundary
-        Object doDefault(@SuppressWarnings("unused") BuiltinTestObject receiver) {
-            return "test";
+        int doStuffWithFoo(int x, @Cached FooNode fooNode) {
+            return fooNode.execute(x);
         }
     }
 
-    @Builtin
-    abstract static class TestArg1 extends BuiltinNode {
-        @Specialization
-        @TruffleBoundary
-        Object doDefault(@SuppressWarnings("unused") BuiltinTestObject receiver, String arg0) {
-            return "test" + arg0;
-        }
-    }
+    @GenerateUncached
+    @GenerateNodeFactory
+    public abstract static class FooNode extends Node {
+        abstract int execute(int z);
 
-    @Builtin
-    abstract static class TestArg2 extends BuiltinNode {
         @Specialization
-        @TruffleBoundary
-        Object doDefault(@SuppressWarnings("unused") BuiltinTestObject receiver, Object arg0, String arg1) {
-            return "test" + arg0 + arg1;
-        }
-    }
-
-    @Builtin
-    abstract static class TestLibrary extends BuiltinNode {
-        @Specialization(limit = "3")
-        @TruffleBoundary
-        Object doDefault(@SuppressWarnings("unused") BuiltinTestObject receiver, Object arg0, @CachedLibrary("arg0") InteropLibrary interop) {
-            return "test" + interop.isString(arg0);
+        int doStuff(int z) {
+            return z + 42;
         }
     }
 

@@ -243,6 +243,16 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         return type.asType();
     }
 
+    public static TypeMirror factoryOrNodeType(NodeData node) {
+        TypeElement element = node.getTemplateType();
+        CodeTypeElement type = (CodeTypeElement) buildClassName(element, true, node.isGenerateFactory());
+        if (node.isGenerateFactory()) {
+            return type.getEnclosingElement().asType();
+        } else {
+            return type.asType();
+        }
+    }
+
     private static final String NODE_SUFFIX = "NodeGen";
 
     private static String resolveNodeId(TypeElement node) {
