@@ -510,7 +510,7 @@ suite = {
         "org.graalvm.compiler.debug",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8,13+",
       "workingSets" : "API,Graal",
     },
 
@@ -705,7 +705,7 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "8,13+",
       "workingSets" : "Graal,HotSpot",
     },
 

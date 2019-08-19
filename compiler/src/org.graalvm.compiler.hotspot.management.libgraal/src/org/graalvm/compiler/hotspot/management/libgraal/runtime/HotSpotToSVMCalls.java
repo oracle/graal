@@ -27,6 +27,9 @@ package org.graalvm.compiler.hotspot.management.libgraal.runtime;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+/**
+ * Native methods linked to SVM entry points.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 final class HotSpotToSVMCalls {
 

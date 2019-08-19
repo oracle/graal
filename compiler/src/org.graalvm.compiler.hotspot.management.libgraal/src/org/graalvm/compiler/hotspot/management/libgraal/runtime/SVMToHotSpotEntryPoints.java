@@ -24,21 +24,31 @@
  */
 package org.graalvm.compiler.hotspot.management.libgraal.runtime;
 
+import org.graalvm.compiler.hotspot.management.libgraal.runtime.SVMHotSpotGraalRuntimeMBean.Factory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+/**
+ * Entry points in HotSpot for calls from SVM.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 final class SVMToHotSpotEntryPoints {
 
     private SVMToHotSpotEntryPoints() {
     }
 
-    static SVMHotSpotGraalRuntimeMBean.Factory createFactory() {
-        SVMHotSpotGraalRuntimeMBean.Factory factory = SVMHotSpotGraalRuntimeMBean.startFactory();
+    /**
+     * @see SVMHotSpotGraalRuntimeMBean#startFactory()
+     */
+    static Factory createFactory() {
+        Factory factory = SVMHotSpotGraalRuntimeMBean.startFactory();
         return factory;
     }
 
-    static void signal(SVMHotSpotGraalRuntimeMBean.Factory factory) {
+    /**
+     * @see Factory#signal()
+     */
+    static void signal(Factory factory) {
         factory.signal();
     }
 }

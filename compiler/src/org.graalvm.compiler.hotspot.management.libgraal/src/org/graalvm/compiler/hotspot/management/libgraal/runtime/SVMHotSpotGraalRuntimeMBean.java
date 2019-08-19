@@ -53,12 +53,18 @@ import javax.management.ObjectName;
 import javax.management.ReflectionException;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
+import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+/**
+ * Encapsulates a handle to a {@link HotSpotGraalRuntimeMBean} object in the SVM heap. Implements
+ * the {@link DynamicMBean} by delegating all operations to an object in the SVM heap.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
 
@@ -68,12 +74,25 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         this.handle = handle;
     }
 
+    /**
+     * Obtain the value of a specific attribute of the Dynamic MBean by delegating to
+     * {@link HotSpotGraalRuntimeMBean} instance in the SVM heap.
+     *
+     * @param attribute the name of the attribute to be retrieved
+     */
     @Override
     public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
         AttributeList attributes = getAttributes(new String[]{attribute});
         return ((Attribute) attributes.get(0)).getValue();
     }
 
+    /**
+     * Set the value of a specific attribute of the Dynamic MBean by delegating to
+     * {@link HotSpotGraalRuntimeMBean} instance in the SVM heap.
+     *
+     * @param attribute the identification of the attribute to be set and the value it is to be set
+     *            to
+     */
     @Override
     public void setAttribute(Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
         AttributeList list = new AttributeList();
@@ -81,6 +100,12 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         setAttributes(list);
     }
 
+    /**
+     * Get the values of several attributes of the Dynamic MBean by delegating to
+     * {@link HotSpotGraalRuntimeMBean} instance in the SVM heap.
+     *
+     * @param attributes a list of the attributes to be retrieved
+     */
     @Override
     @SuppressWarnings("try")
     public AttributeList getAttributes(String[] attributes) {
@@ -90,6 +115,13 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         }
     }
 
+    /**
+     * Sets the values of several attributes of the Dynamic MBean by delegating to
+     * {@link HotSpotGraalRuntimeMBean} instance in the SVM heap.
+     *
+     * @param attributes a list of attributes: The identification of the attributes to be set and
+     *            the values they are to be set to.
+     */
     @Override
     @SuppressWarnings("try")
     public AttributeList setAttributes(AttributeList attributes) {
@@ -105,6 +137,11 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         }
     }
 
+    /**
+     * Decodes an {@link AttributeList} encoded to {@code byte} array using {@link OptionsEncoder}.
+     *
+     * @param rawData the encoded attribute list.
+     */
     private static AttributeList rawToAttributeList(byte[] rawData) {
         AttributeList res = new AttributeList();
         Map<String, Object> map = OptionsEncoder.decode(rawData);
@@ -116,6 +153,20 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         return res;
     }
 
+    /**
+     * Invokes an action on the Dynamic MBean by delegating to {@link HotSpotGraalRuntimeMBean}
+     * instance in the SVM heap.
+     *
+     * @param actionName the name of the action to be invoked
+     * @param params an array containing the parameters to be set when the action is invoked
+     * @param signature an array containing the signature of the action. The class objects will be
+     *            loaded through the same class loader as the one used for loading the MBean on
+     *            which the action is invoked
+     *
+     * @return The object returned by the action, which represents the result of invoking the action
+     *         on the MBean specified.
+     *
+     */
     @Override
     @SuppressWarnings("try")
     public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException, ReflectionException {
@@ -134,6 +185,11 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         }
     }
 
+    /**
+     * Provides the attributes and actions of the Dynamic MBean by delegating to
+     * {@link HotSpotGraalRuntimeMBean} instance in the SVM heap.
+     *
+     */
     @Override
     @SuppressWarnings("try")
     public MBeanInfo getMBeanInfo() {
@@ -175,12 +231,25 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         }
     }
 
+    /**
+     * Starts a factory thread registering the {@link SVMHotSpotGraalRuntimeMBean} instances into
+     * {@link MBeanServer}.
+     *
+     * @return the started factory thread instance.
+     */
     static Factory startFactory() {
         Factory factory = new Factory();
         factory.start();
         return factory;
     }
 
+    /**
+     * Parses {@link MBeanAttributeInfo} from iterator of MBean properties.
+     *
+     * @param attrName the current attribute name
+     * @param it the attribute properties {@link Iterator}
+     * @return the parsed {@link MBeanAttributeInfo}
+     */
     private static MBeanAttributeInfo createAttributeInfo(String attrName, PushBackIterator<Map.Entry<String, Object>> it) {
         String attrType = null;
         String attrDescription = null;
@@ -222,6 +291,14 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         return new MBeanAttributeInfo(attrName, attrType, attrDescription, isReadable, isWritable, isIs);
     }
 
+    /**
+     * Parses {@link MBeanOperationInfo} from iterator of MBean properties.
+     *
+     * @param opId unique id of an operation. Each operation has an unique id as operation name is
+     *            not an unique identifier due to overloads.
+     * @param it the attribute properties {@link Iterator}
+     * @return the parsed {@link MBeanOperationInfo}
+     */
     private static MBeanOperationInfo createOperationInfo(int opId, PushBackIterator<Map.Entry<String, Object>> it) {
         String opName = null;
         String opType = null;
@@ -275,6 +352,14 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
                         opType, opImpact);
     }
 
+    /**
+     * Parses {@link MBeanAttributeInfo} from iterator of MBean properties.
+     *
+     * @param owner the operation attribute scope
+     * @param paramName the name of the parameter
+     * @param it the attribute properties {@link Iterator}
+     * @return the parsed {@link MBeanParameterInfo}
+     */
     private static MBeanParameterInfo createParameterInfo(String owner, String paramName, PushBackIterator<Map.Entry<String, Object>> it) {
         String paramType = null;
         String paramDescription = null;
@@ -304,6 +389,9 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         return new MBeanParameterInfo(paramName, paramType, paramDescription);
     }
 
+    /**
+     * An iterator allowing pushing back a single look ahead item.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     private static final class PushBackIterator<T> implements Iterator<T> {
 
@@ -338,6 +426,10 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
         }
     }
 
+    /**
+     * A factory thread creating the {@link SVMHotSpotGraalRuntimeMBean} instances for
+     * {@link HotSpotGraalRuntimeMBean}s in SVM heap and registering them to {@link MBeanServer}.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     static final class Factory extends Thread {
 
@@ -353,6 +445,12 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
             LibGraal.registerNativeMethods(runtime(), HotSpotToSVMCalls.class);
         }
 
+        /**
+         * Main loop waiting for {@link HotSpotGraalRuntimeMBean} creation in SVM heap. When a new
+         * {@link HotSpotGraalRuntimeMBean} is created in the SVM heap this thread creates a new
+         * {@link SVMHotSpotGraalRuntimeMBean} encapsulation the {@link HotSpotGraalRuntimeMBean}
+         * and registers it to {@link MBeanServer}.
+         */
         @Override
         public void run() {
             while (true) {
@@ -379,11 +477,28 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
             }
         }
 
+        /**
+         * Called by {@link HotSpotGraalManagementRegistration} in SVM heap to notify the factory
+         * thread about new {@link HotSpotGraalRuntimeMBean}s.
+         */
         synchronized void signal() {
             dirty = true;
             notify();
         }
 
+        /**
+         * In case of successful {@link MBeanServer} initialization creates
+         * {@link SVMHotSpotGraalRuntimeMBean} for pending {@link HotSpotGraalRuntimeMBean}s and
+         * registers them.
+         *
+         * @return {@code true} if {@link SVMHotSpotGraalRuntimeMBean}s were successfuly registered,
+         *         {@code false} when {@link MBeanServer} is not yet available and {@code poll}
+         *         should be retried.
+         * @throws SecurityException can be thrown by {@link MBeanServer}
+         * @throws UnsatisfiedLinkError can be thrown by {@link MBeanServer}
+         * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
+         * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
+         */
         private boolean poll() {
             assert Thread.holdsLock(this);
             if (platformMBeanServer == null) {
@@ -398,6 +513,16 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
             return false;
         }
 
+        /**
+         * Creates {@link SVMHotSpotGraalRuntimeMBean} for pending {@link HotSpotGraalRuntimeMBean}s
+         * and registers them {@link MBeanServer}.
+         *
+         * @return {@code true}
+         * @throws SecurityException can be thrown by {@link MBeanServer}
+         * @throws UnsatisfiedLinkError can be thrown by {@link MBeanServer}
+         * @throws NoClassDefFoundError can be thrown by {@link MBeanServer}
+         * @throws UnsupportedOperationException can be thrown by {@link MBeanServer}
+         */
         @SuppressWarnings("try")
         private boolean process() {
             try (LibGraalScope scope = new LibGraalScope(HotSpotJVMCIRuntime.runtime())) {

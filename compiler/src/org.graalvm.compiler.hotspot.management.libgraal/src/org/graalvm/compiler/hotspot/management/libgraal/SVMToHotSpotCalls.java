@@ -34,6 +34,9 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
+/**
+ * Calls from SVM to HotSpot.
+ */
 final class SVMToHotSpotCalls {
 
     private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";

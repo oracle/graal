@@ -35,6 +35,7 @@ import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
+import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
@@ -46,11 +47,17 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
+/**
+ * Entry points in SVM for calls from HotSpot.
+ */
 final class HotSpotToSVMEntryPoints {
 
     private HotSpotToSVMEntryPoints() {
     }
 
+    /**
+     * Returns the pending {@link HotSpotGraalRuntimeMBean} registrations.
+     */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_pollRegistrations")
     @SuppressWarnings({"try", "unused"})
     static JNI.JLongArray pollRegistrations(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
@@ -73,6 +80,9 @@ final class HotSpotToSVMEntryPoints {
         return scope.getObjectResult();
     }
 
+    /**
+     * Notifies the {@link HotSpotGraalManagement} about finished registration.
+     */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_finishRegistration")
     @SuppressWarnings({"try", "unused"})
     static void finishRegistration(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JNI.JLongArray svmRegistrations) {
@@ -91,6 +101,9 @@ final class HotSpotToSVMEntryPoints {
         }
     }
 
+    /**
+     * Returns the name to use to register the MBean.
+     */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getRegistrationName")
     @SuppressWarnings({"try", "unused"})
     static JNI.JString getRegistrationName(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
@@ -104,6 +117,9 @@ final class HotSpotToSVMEntryPoints {
         return scope.getObjectResult();
     }
 
+    /**
+     * Returns the {@link MBeanInfo} encoded as a byte array using {@link OptionsEncoder}.
+     */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getMBeanInfo")
     @SuppressWarnings({"try", "unused"})
     static JNI.JByteArray getMBeanInfo(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration) {
@@ -145,6 +161,10 @@ final class HotSpotToSVMEntryPoints {
         return scope.getObjectResult();
     }
 
+    /**
+     * Returns the required {@link HotSpotGraalRuntimeMBean}'s attribute values encoded as a byte
+     * array using {@link OptionsEncoder}.
+     */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_getAttributes")
     @SuppressWarnings({"try", "unused"})
     static JNI.JByteArray getAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JObjectArray requiredAttributes) {
@@ -163,6 +183,9 @@ final class HotSpotToSVMEntryPoints {
         return scope.getObjectResult();
     }
 
+    /**
+     * Sets the given {@link HotSpotGraalRuntimeMBean}'s attribute values.
+     */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_setAttributes")
     @SuppressWarnings({"try", "unused"})
     static JNI.JByteArray setAttributes(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JByteArray attributes) {
@@ -180,6 +203,9 @@ final class HotSpotToSVMEntryPoints {
         return scope.getObjectResult();
     }
 
+    /**
+     * Invokes an action on {@link HotSpotGraalRuntimeMBean}.
+     */
     @CEntryPoint(name = "Java_org_graalvm_compiler_hotspot_management_libgraal_runtime_HotSpotToSVMCalls_invoke")
     @SuppressWarnings({"try", "unused"})
     static JNI.JByteArray invoke(JNI.JNIEnv env, JNI.JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long svmRegistration, JNI.JString hsActionName,
@@ -209,6 +235,9 @@ final class HotSpotToSVMEntryPoints {
         return scope.getObjectResult();
     }
 
+    /**
+     * Converts properties encoded as JNI byte array into {@link Map} using {@link OptionsEncoder}.
+     */
     private static Map<String, Object> rawToMap(JNI.JNIEnv env, JNI.JByteArray raw) {
         int len = JNIUtil.GetArrayLength(env, raw);
         byte[] serialized = new byte[len];
@@ -221,6 +250,9 @@ final class HotSpotToSVMEntryPoints {
         return OptionsEncoder.decode(serialized);
     }
 
+    /**
+     * Encodes a {@link Map} of properties into JNI byte array using {@link OptionsEncoder}.
+     */
     private static JNI.JByteArray mapToRaw(JNI.JNIEnv env, Map<String, Object> map) {
         byte[] serialized = OptionsEncoder.encode(map);
         JNI.JByteArray res = JNIUtil.NewByteArray(env, serialized.length);
@@ -233,6 +265,9 @@ final class HotSpotToSVMEntryPoints {
         return res;
     }
 
+    /**
+     * Encodes an {@link AttributeList} into JNI byte array using {@link OptionsEncoder}.
+     */
     private static JNI.JByteArray attributeListToRaw(JNI.JNIEnv env, AttributeList attributesList) {
         Map<String, Object> values = new LinkedHashMap<>();
         for (Object item : attributesList) {
@@ -243,6 +278,9 @@ final class HotSpotToSVMEntryPoints {
     }
 }
 
+/**
+ * An identifier for a call from HotSpot to SVM.
+ */
 enum Id {
     DefineClasses,
     FinishRegistration,
