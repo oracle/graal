@@ -44,8 +44,8 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     private static final ThreadLocal<HotSpotToSVMScope<?>> topScope = new ThreadLocal<>();
 
     private final JNIEnv env;
-    private final HotSpotToSVMScope<T> parent;
-    private HotSpotToSVMScope<T> leaf;
+    private final HotSpotToSVMScope<?> parent;
+    private HotSpotToSVMScope<?> leaf;
 
     /**
      * List of scope local {@link HSObject}s that created within this scope. These are
@@ -72,9 +72,8 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     /**
      * Gets the inner most {@link HotSpotToSVMScope} value for the current thread.
      */
-    @SuppressWarnings("unchecked")
-    public static <T extends Enum<T>> HotSpotToSVMScope<T> scopeOrNull() {
-        HotSpotToSVMScope<T> scope = (HotSpotToSVMScope<T>) topScope.get();
+    public static HotSpotToSVMScope<?> scopeOrNull() {
+        HotSpotToSVMScope<?> scope = topScope.get();
         if (scope == null) {
             return null;
         }
@@ -84,13 +83,27 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     /**
      * Gets the inner most {@link HotSpotToSVMScope} value for the current thread.
      */
-    @SuppressWarnings("unchecked")
-    public static <T extends Enum<T>> HotSpotToSVMScope<T> scope() {
-        HotSpotToSVMScope<T> scope = (HotSpotToSVMScope<T>) topScope.get();
+    public static HotSpotToSVMScope<?> scope() {
+        HotSpotToSVMScope<?> scope = topScope.get();
         if (scope == null) {
             throw new IllegalStateException("Not in the scope of an SVM call");
         }
         return scope.leaf;
+    }
+
+    /**
+     * Casts this {@link HotSpotToSVMScope} to scope of given scope id type.
+     *
+     * @param scopeIdType the requested scope id type
+     * @throws ClassCastException if this {@link HotSpotToSVMScope}'s id is not an instance of given
+     *             {@code scopeIdType}
+     */
+    @SuppressWarnings("unchecked")
+    public <P extends Enum<P>> HotSpotToSVMScope<P> narrow(Class<P> scopeIdType) {
+        if (id.getClass() != scopeIdType) {
+            throw new ClassCastException("Expected HotSpotToSVMScope type is " + scopeIdType + " but actual type is " + id.getClass());
+        }
+        return (HotSpotToSVMScope<P>) this;
     }
 
     /**
@@ -100,7 +113,7 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
     public HotSpotToSVMScope(Enum<T> id, JNIEnv env) {
         JNIUtil.trace(1, "HS->SVM[enter]: %s", id);
         this.id = id;
-        HotSpotToSVMScope<T> top = (HotSpotToSVMScope<T>) topScope.get();
+        HotSpotToSVMScope<?> top = topScope.get();
         this.env = env;
         if (top == null) {
             // Only push a JNI frame for the top level SVM call.
@@ -142,7 +155,7 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
             topScope.set(null);
             objResult = PopLocalFrame(env, objResult);
         } else {
-            HotSpotToSVMScope<T> top = parent;
+            HotSpotToSVMScope<?> top = parent;
             while (top.parent != null) {
                 top = top.parent;
             }
@@ -153,7 +166,7 @@ public class HotSpotToSVMScope<T extends Enum<T>> implements AutoCloseable {
 
     int depth() {
         int depth = 0;
-        HotSpotToSVMScope<T> ancestor = parent;
+        HotSpotToSVMScope<?> ancestor = parent;
         while (ancestor != null) {
             depth++;
             ancestor = ancestor.parent;

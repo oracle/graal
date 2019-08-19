@@ -137,20 +137,20 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @SVMToHotSpot(CreateInliningPlan)
     @Override
     public TruffleInliningPlan createInliningPlan(CompilableTruffleAST compilable, TruffleCompilationTask task) {
-        HotSpotToSVMScope<HotSpotToSVM.Id> scope = HotSpotToSVMScope.scopeOrNull();
+        HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
         if (scope == null) {
             return null;
         }
         JObject compilableHandle = ((HSCompilableTruffleAST) compilable).getHandle();
         JObject taskHandle = task == null ? WordFactory.nullPointer() : ((HSTruffleCompilationTask) task).getHandle();
         JObject hsInliningPlan = callCreateInliningPlan(scope.getEnv(), getHandle(), compilableHandle, taskHandle);
-        return new HSTruffleInliningPlan(scope, hsInliningPlan);
+        return new HSTruffleInliningPlan(scope.narrow(HotSpotToSVM.Id.class), hsInliningPlan);
     }
 
     @SVMToHotSpot(AsCompilableTruffleAST)
     @Override
     public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
-        HotSpotToSVMScope<HotSpotToSVM.Id> scope = HotSpotToSVMScope.scopeOrNull();
+        HotSpotToSVMScope<?> scope = HotSpotToSVMScope.scopeOrNull();
         if (scope == null) {
             return null;
         }
@@ -159,7 +159,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         if (hsCompilable.isNull()) {
             return null;
         } else {
-            return new HSCompilableTruffleAST(scope, hsCompilable);
+            return new HSCompilableTruffleAST(scope.narrow(HotSpotToSVM.Id.class), hsCompilable);
         }
     }
 
@@ -177,7 +177,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         long optimizedAssumptionHandle = LibGraal.translate(runtime(), optimizedAssumption);
         JNIEnv env = env();
         JObject assumptionConsumer = callRegisterOptimizedAssumptionDependency(env, getHandle(), optimizedAssumptionHandle);
-        return assumptionConsumer.isNull() ? null : new HSConsumer(scope(), assumptionConsumer);
+        return assumptionConsumer.isNull() ? null : new HSConsumer(scope().narrow(HotSpotToSVM.Id.class), assumptionConsumer);
     }
 
     @SVMToHotSpot(GetCallTargetForCallNode)
