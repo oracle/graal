@@ -107,7 +107,16 @@ public abstract class ClassRegistry implements ContextAccess {
             strType = typeOrNull.toString();
         }
 
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
+        ParserKlass parserKlass = null;
+        try {
+            parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
+        } catch (NoClassDefFoundError ncdfe) {
+            throw getMeta().throwExWithMessage(NoClassDefFoundError.class, ncdfe.getMessage());
+        }
+
+        if (StaticObject.notNull(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
+            throw getMeta().throwExWithMessage(SecurityException.class, "Define class in prohibited package name: " + parserKlass.getName());
+        }
 
         Symbol<Type> type = typeOrNull;
         if (type == null) {
