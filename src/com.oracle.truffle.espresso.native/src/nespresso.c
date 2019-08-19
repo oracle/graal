@@ -645,12 +645,17 @@ void DeleteGlobalRef(JNIEnv *env, jobject globalRef) {
 
 jobject NewWeakGlobalRef(JNIEnv *env, jobject obj) {
   TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
+  if (obj == NULL) {
+      return NULL;
+  }
   return (jobject) (*truffle_env)->newWeakObjectRef(truffle_env, (TruffleObject) obj);
 }
 
 void DeleteWeakGlobalRef(JNIEnv *env, jobject globalRef) {
   TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
-  (*truffle_env)->releaseWeakObjectRef(truffle_env, (TruffleObject) globalRef);
+  if (globalRef != NULL) {
+    (*truffle_env)->releaseWeakObjectRef(truffle_env, (TruffleObject) globalRef);
+  }
 }
 
 static void unset_function_error() {
