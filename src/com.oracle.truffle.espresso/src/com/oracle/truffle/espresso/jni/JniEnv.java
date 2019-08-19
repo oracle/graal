@@ -532,7 +532,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
                 field = klass.lookupField(fieldName, fieldType, true);
-                assert field.getType().equals(fieldType);
+                assert field == null || field.getType().equals(fieldType);
             }
         }
         if (field == null || !field.isStatic()) {
@@ -1500,7 +1500,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      * global or local reference. Returns NULL if ref refers to null.
      */
     @JniImpl
-    public static Object NewLocalRef(Object ref) {
+    public static @Host(Object.class) StaticObject NewLocalRef(@Host(Object.class) StaticObject ref) {
         // Local ref is allocated by host JNI on return.
         return ref;
     }
@@ -1712,7 +1712,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
         try {
             InterpreterToVM.monitorExit(object);
         } catch (EspressoException e) {
-            // assert InterpreterToVM.instanceOf(e.getException(), getMeta().Ill
+            assert InterpreterToVM.instanceOf(e.getException(), getMeta().IllegalMonitorStateException);
             getThreadLocalPendingException().set(e.getException());
             return JNI_ERR;
         }
@@ -2137,10 +2137,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public long GetDirectBufferAddress(@Host(java.nio.Buffer.class) StaticObject buf) {
         assert StaticObject.notNull(buf);
-        // HotSpot check.
-        assert InterpreterToVM.instanceOf(buf, getMeta().sun_nio_ch_DirectBuffer);
         // TODO(peterssen): Returns NULL if the memory region is undefined.
-        if (!InterpreterToVM.instanceOf(buf, getMeta().Buffer)) {
+        // HotSpot check.
+        assert StaticObject.notNull(buf);
+        if (!InterpreterToVM.instanceOf(buf, getMeta().sun_nio_ch_DirectBuffer)) {
+            return /* NULL */ 0L;
+        }
+        // Check stated in the spec.
+        if (StaticObject.notNull(buf) && !InterpreterToVM.instanceOf(buf, getMeta().Buffer)) {
             return /* NULL */ 0L;
         }
         return (long) getMeta().Buffer_address.get(buf);
@@ -2162,10 +2166,14 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public long GetDirectBufferCapacity(@Host(java.nio.Buffer.class) StaticObject buf) {
         assert StaticObject.notNull(buf);
-        // HotSpot check.
-        assert InterpreterToVM.instanceOf(buf, getMeta().sun_nio_ch_DirectBuffer);
         // TODO(peterssen): Return -1 if the object is an unaligned view buffer and the processor
         // architecture does not support unaligned access.
+        // HotSpot check.
+        assert StaticObject.notNull(buf);
+        if (!InterpreterToVM.instanceOf(buf, getMeta().sun_nio_ch_DirectBuffer)) {
+            return -1L;
+        }
+        // Check stated in the spec.
         if (!InterpreterToVM.instanceOf(buf, getMeta().Buffer)) {
             return -1L;
         }

@@ -565,7 +565,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
             for (ObjectKlass superI : getSuperInterfaces()) {
                 field = superI.lookupField(fieldName, fieldType, isStatic);
                 if (field != null) {
-                    assert !field.isStatic();
+                    assert field.isStatic();
                     return field;
                 }
             }
