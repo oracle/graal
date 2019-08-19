@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
  *
  * Fields are grouped according to the most recent JBS issue showing why they are versioned.
  *
- * JDK Version: 11+
+ * JDK Version: 14+
  */
 final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
 
@@ -42,13 +42,8 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
         super(store);
     }
 
-    private boolean initInlineNotify() {
-        String syncKnobs = getFlag("SyncKnobs", String.class, "");
-        return syncKnobs == null || !syncKnobs.contains("InlineNotify=0");
-    }
-
-    // JSK-8132287
-    boolean inlineNotify = initInlineNotify();
+    // JDK-8210848
+    boolean inlineNotify = true;
 
     // JDK-8073583
     boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class);
@@ -88,5 +83,5 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
     long codeCacheHighBound = getFieldValue("CodeCache::_high_bound", Long.class, "address");
 
     // JDK-8229258
-    String markWordClassName = "markOopDesc";
+    String markWordClassName = "markWord";
 }
