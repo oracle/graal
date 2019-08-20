@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -49,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMPolyglotWrite {
 
@@ -57,20 +57,22 @@ public final class LLVMPolyglotWrite {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPolyglotPutMember extends LLVMIntrinsic {
 
-        public LLVMPolyglotPutMember(int argCount) {
-            if (argCount != 3) {
+        @Child LLVMDataEscapeNode prepareValueForEscape;
+
+        public LLVMPolyglotPutMember(Type[] argTypes) {
+            if (argTypes.length != 4) { // first argument is the stack pointer
                 throw new LLVMPolyglotException(this, "polyglot_put_member must be called with exactly 3 arguments.");
             }
+            prepareValueForEscape = LLVMDataEscapeNode.create(argTypes[3]);
         }
 
         @Specialization
         protected void doIntrinsic(LLVMManagedPointer target, Object id, Object value,
                         @Cached LLVMAsForeignNode asForeign,
                         @CachedLibrary(limit = "3") InteropLibrary foreignWrite,
-                        @Cached LLVMDataEscapeNode prepareValueForEscape,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @Cached BranchProfile exception) {
-            TruffleObject foreign = asForeign.execute(target);
+            Object foreign = asForeign.execute(target);
             String name = readStr.executeWithTarget(id);
             Object escapedValue = prepareValueForEscape.executeWithTarget(value);
             try {
@@ -100,18 +102,20 @@ public final class LLVMPolyglotWrite {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMPolyglotSetArrayElement extends LLVMIntrinsic {
 
-        public LLVMPolyglotSetArrayElement(int argCount) {
-            if (argCount != 3) {
+        @Child LLVMDataEscapeNode prepareValueForEscape;
+
+        public LLVMPolyglotSetArrayElement(Type[] argTypes) {
+            if (argTypes.length != 4) { // first argument is the stack pointer
                 throw new LLVMPolyglotException(this, "polyglot_set_array_element must be called with exactly 3 arguments.");
             }
+            prepareValueForEscape = LLVMDataEscapeNode.create(argTypes[3]);
         }
 
         @Specialization
         protected Object doIntrinsic(LLVMManagedPointer target, int id, Object value,
                         @Cached LLVMAsForeignNode asForeign,
-                        @CachedLibrary(limit = "3") InteropLibrary foreignWrite,
-                        @Cached LLVMDataEscapeNode prepareValueForEscape) {
-            TruffleObject foreign = asForeign.execute(target);
+                        @CachedLibrary(limit = "3") InteropLibrary foreignWrite) {
+            Object foreign = asForeign.execute(target);
             Object escapedValue = prepareValueForEscape.executeWithTarget(value);
             try {
                 foreignWrite.writeArrayElement(foreign, id, escapedValue);

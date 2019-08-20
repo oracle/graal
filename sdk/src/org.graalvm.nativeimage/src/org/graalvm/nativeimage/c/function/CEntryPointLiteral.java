@@ -80,7 +80,7 @@ import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
  * }
  * </pre>
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class CEntryPointLiteral<T extends CFunctionPointer> {
 
@@ -95,7 +95,7 @@ public final class CEntryPointLiteral<T extends CFunctionPointer> {
     /**
      * Creates a new function pointer to an entry point.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static <T extends CFunctionPointer> CEntryPointLiteral<T> create(Class<?> definingClass, String methodName, Class<?>... parameterTypes) {
@@ -104,8 +104,8 @@ public final class CEntryPointLiteral<T extends CFunctionPointer> {
 
     /**
      * Returns the function pointer to the entry point.
-     * 
-     * @since 1.0
+     *
+     * @since 19.0
      */
     public T getFunctionPointer() {
         throw new IllegalStateException("Cannot invoke method during native image generation");

@@ -31,7 +31,7 @@ import org.graalvm.word.SignedWord;
 /**
  * A pointer to a 16-bit C primitive value.
  *
- * @since 1.0
+ * @since 19.0
  */
 @CPointerTo(nameOfCType = "int16_t")
 public interface CInt16Pointer extends PointerBase {
@@ -39,7 +39,7 @@ public interface CInt16Pointer extends PointerBase {
     /**
      * Reads the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     short read();
 
@@ -47,7 +47,7 @@ public interface CInt16Pointer extends PointerBase {
      * Reads the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     short read(int index);
 
@@ -55,14 +55,14 @@ public interface CInt16Pointer extends PointerBase {
      * Reads the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     short read(SignedWord index);
 
     /**
      * Writes the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(short value);
 
@@ -70,7 +70,7 @@ public interface CInt16Pointer extends PointerBase {
      * Writes the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(int index, short value);
 
@@ -78,7 +78,7 @@ public interface CInt16Pointer extends PointerBase {
      * Writes the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(SignedWord index, short value);
 
@@ -86,7 +86,7 @@ public interface CInt16Pointer extends PointerBase {
      * Computes the address of the array element with the specified index, treating the pointer as
      * an array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     CInt16Pointer addressOf(int index);
 
@@ -94,7 +94,7 @@ public interface CInt16Pointer extends PointerBase {
      * Computes the address of the array element with the specified index, treating the pointer as
      * an array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     CInt16Pointer addressOf(SignedWord index);
 }

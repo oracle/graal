@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.infrastructure;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.HostVM;
 
@@ -64,8 +63,6 @@ public interface Universe {
     JavaConstant lookup(JavaConstant constant);
 
     ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method);
-
-    OptionValues adjustCompilerOptions(OptionValues optionValues, ResolvedJavaMethod method);
 
     ResolvedJavaType objectType();
 }

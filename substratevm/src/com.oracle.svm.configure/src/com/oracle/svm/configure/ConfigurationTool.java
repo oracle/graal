@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -40,10 +41,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.config.ConfigurationDirectories;
 
 public class ConfigurationTool {
 
@@ -64,12 +65,19 @@ public class ConfigurationTool {
             }
             Iterator<String> argsIter = Arrays.asList(args).iterator();
             String first = argsIter.next();
-            if (first.equals("process-trace")) {
-                processTrace(argsIter);
-            } else if (first.equals("help") || first.equals("--help")) {
-                System.out.println(HELP_TEXT);
-            } else {
-                throw new UsageException("Unknown subcommand: " + first);
+            switch (first) {
+                case "generate":
+                    generate(argsIter, false);
+                    break;
+                case "process-trace": // legacy
+                    generate(argsIter, true);
+                    break;
+                case "help":
+                case "--help":
+                    System.out.println(HELP_TEXT);
+                    break;
+                default:
+                    throw new UsageException("Unknown subcommand: " + first);
             }
         } catch (UsageException e) {
             System.err.println(e.getMessage() + System.lineSeparator() +
@@ -81,92 +89,128 @@ public class ConfigurationTool {
         }
     }
 
-    private static String require(String argKey, String value) {
+    private static Path requirePath(String current, String value) {
         if (value == null || value.trim().isEmpty()) {
-            throw new UsageException("Argument must be provided for: " + argKey);
+            throw new UsageException("Argument must be provided for: " + current);
         }
-        return value;
+        return Paths.get(value);
     }
 
-    private static void processTrace(Iterator<String> argsIter) throws IOException {
-        List<Path> traceInputPaths = new ArrayList<>();
-        boolean filter = true;
-        List<Path> reflectOutputPaths = new ArrayList<>();
-        List<Path> jniOutputPaths = new ArrayList<>();
-        List<Path> proxyOutputPaths = new ArrayList<>();
-        List<Path> resourcesOutputPaths = new ArrayList<>();
+    private static URI requirePathUri(String current, String value) {
+        return requirePath(current, value).toUri();
+    }
 
+    @SuppressWarnings("fallthrough")
+    private static void generate(Iterator<String> argsIter, boolean acceptTraceFileArgs) throws IOException {
+        List<URI> traceInputs = new ArrayList<>();
+        boolean filter = true;
+
+        ConfigurationSet inputSet = new ConfigurationSet();
+        ConfigurationSet outputSet = new ConfigurationSet();
         while (argsIter.hasNext()) {
             String[] parts = argsIter.next().split("=", 2);
             String current = parts[0];
             String value = (parts.length > 1) ? parts[1] : null;
+            ConfigurationSet set = outputSet;
             switch (current) {
+                case "--input-dir":
+                    inputSet.addDirectory(requirePath(current, value));
+                    break;
                 case "--output-dir":
-                    Path directory = Paths.get(require(current, value));
+                    Path directory = requirePath(current, value);
                     if (!Files.exists(directory)) {
                         Files.createDirectory(directory);
                     } else if (!Files.isDirectory(directory)) {
                         throw new NoSuchFileException(value);
                     }
-                    reflectOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.REFLECTION_NAME));
-                    jniOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.JNI_NAME));
-                    proxyOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.DYNAMIC_PROXY_NAME));
-                    resourcesOutputPaths.add(directory.resolve(ConfigurationDirectories.FileNames.RESOURCES_NAME));
+                    outputSet.addDirectory(directory);
                     break;
+
+                case "--reflect-input":
+                    set = inputSet; // fall through
                 case "--reflect-output":
-                    reflectOutputPaths.add(Paths.get(require(current, value)));
+                    set.getReflectConfigPaths().add(requirePathUri(current, value));
                     break;
+
+                case "--jni-input":
+                    set = inputSet; // fall through
                 case "--jni-output":
-                    jniOutputPaths.add(Paths.get(require(current, value)));
+                    set.getJniConfigPaths().add(requirePathUri(current, value));
                     break;
+
+                case "--proxy-input":
+                    set = inputSet; // fall through
                 case "--proxy-output":
-                    proxyOutputPaths.add(Paths.get(require(current, value)));
+                    set.getProxyConfigPaths().add(requirePathUri(current, value));
                     break;
+
+                case "--resource-input":
+                    set = inputSet; // fall through
                 case "--resource-output":
-                    resourcesOutputPaths.add(Paths.get(require(current, value)));
+                    set.getResourceConfigPaths().add(requirePathUri(current, value));
+                    break;
+
+                case "--trace-input":
+                    traceInputs.add(requirePathUri(current, value));
                     break;
                 case "--no-filter":
                     filter = false;
                     break;
                 case "--":
-                    argsIter.forEachRemaining(arg -> traceInputPaths.add(Paths.get(arg)));
-                    break;
-                default:
-                    if (current.startsWith("-")) {
+                    if (acceptTraceFileArgs) {
+                        argsIter.forEachRemaining(arg -> traceInputs.add(Paths.get(arg).toUri()));
+                    } else {
                         throw new UsageException("Unknown argument: " + current);
                     }
-                    traceInputPaths.add(Paths.get(current));
+                    break;
+                default:
+                    if (!acceptTraceFileArgs || current.startsWith("-")) {
+                        throw new UsageException("Unknown argument: " + current);
+                    }
+                    traceInputs.add(Paths.get(current).toUri());
                     break;
             }
         }
 
-        TraceProcessor p = new TraceProcessor();
-        p.setFilterEnabled(filter);
-        if (traceInputPaths.isEmpty()) {
-            throw new UsageException("No trace files specified.");
+        TraceProcessor p;
+        try {
+            p = new TraceProcessor(inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+        } catch (IOException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw new RuntimeException(t);
         }
-        for (Path path : traceInputPaths) {
-            try (Reader reader = Files.newBufferedReader(path)) {
+        p.setFilterEnabled(filter);
+        if (traceInputs.isEmpty() && inputSet.isEmpty()) {
+            throw new UsageException("No inputs specified.");
+        }
+        for (URI uri : traceInputs) {
+            try (Reader reader = Files.newBufferedReader(Paths.get(uri))) {
                 p.process(reader);
             }
         }
-        for (Path path : reflectOutputPaths) {
-            try (JsonWriter writer = new JsonWriter(path)) {
+
+        if (outputSet.isEmpty()) {
+            System.err.println("Warning: no outputs specified, validating inputs only.");
+        }
+        for (URI uri : outputSet.getReflectConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 p.getReflectionConfiguration().printJson(writer);
             }
         }
-        for (Path path : jniOutputPaths) {
-            try (JsonWriter writer = new JsonWriter(path)) {
+        for (URI uri : outputSet.getJniConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 p.getJniConfiguration().printJson(writer);
             }
         }
-        for (Path path : proxyOutputPaths) {
-            try (JsonWriter writer = new JsonWriter(path)) {
+        for (URI uri : outputSet.getProxyConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 p.getProxyConfiguration().printJson(writer);
             }
         }
-        for (Path path : resourcesOutputPaths) {
-            try (JsonWriter writer = new JsonWriter(path)) {
+        for (URI uri : outputSet.getResourceConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 p.getResourceConfiguration().printJson(writer);
             }
         }

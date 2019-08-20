@@ -43,14 +43,14 @@ package org.graalvm.nativeimage;
 /**
  * Utility methods that provide access to the current isolate.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class CurrentIsolate {
 
     /**
      * Returns the current isolate.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static Isolate getIsolate() {
         throw new IllegalStateException("Cannot invoke method during native image generation");
@@ -59,7 +59,7 @@ public final class CurrentIsolate {
     /**
      * Returns the current thread in the current isolate.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static IsolateThread getCurrentThread() {
         throw new IllegalStateException("Cannot invoke method during native image generation");

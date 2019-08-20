@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -59,7 +60,7 @@ final class HostClassCache {
     static final PolyglotTargetMapping[] EMPTY_MAPPINGS = new PolyglotTargetMapping[0];
 
     private final APIAccess apiAccess;
-    private final HostAccess hostAccess;
+    final HostAccess hostAccess;
     private final boolean arrayAccess;
     private final boolean listAccess;
     private final Map<Class<?>, Object> targetMappings;
@@ -174,10 +175,17 @@ final class HostClassCache {
         return descs.get(clazz);
     }
 
+    @TruffleBoundary
     boolean allowsAccess(Method m) {
         return apiAccess.allowsAccess(hostAccess, m);
     }
 
+    @TruffleBoundary
+    boolean allowsAccess(Constructor<?> m) {
+        return apiAccess.allowsAccess(hostAccess, m);
+    }
+
+    @TruffleBoundary
     boolean allowsAccess(Field f) {
         return apiAccess.allowsAccess(hostAccess, f);
     }
@@ -188,6 +196,10 @@ final class HostClassCache {
 
     boolean isListAccess() {
         return listAccess;
+    }
+
+    boolean allowsImplementation(Class<?> type) {
+        return apiAccess.allowsImplementation(hostAccess, type);
     }
 
 }

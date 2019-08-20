@@ -32,6 +32,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil.Thunk;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.Safepoint.SafepointException;
@@ -151,6 +152,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInProgress() {
         VMOperation cur = ImageSingletons.lookup(VMOperationControl.class).getInProgress();
         return cur != null && cur.executingVMThread == CurrentIsolate.getCurrentThread();

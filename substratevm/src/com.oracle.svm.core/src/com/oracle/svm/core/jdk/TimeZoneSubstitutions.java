@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.TimeZone;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;

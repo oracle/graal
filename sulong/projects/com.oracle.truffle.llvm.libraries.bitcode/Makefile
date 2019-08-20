@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -30,7 +30,7 @@
 QUIETLY$(MX_VERBOSE) = @
 
 .PHONY: default
-default: bin/libsulong.bc bin/libsulong++.bc bin/libsulong-src.tar.gz
+default: bin/libsulong.bc bin/libsulong++.bc bin/libsulong-src.tar.gz bin/$(LIB_POLYGLOT)
 
 CLANG?=clang
 CLANGXX?=clang++

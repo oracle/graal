@@ -40,10 +40,10 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 @Platforms(Platform.WINDOWS.class)
 public class WindowsUtils {
@@ -55,19 +55,19 @@ public class WindowsUtils {
     }
 
     public static long getHandle(FileDescriptor descriptor) {
-        return KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).handle;
+        return SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle;
     }
 
     public static void setHandle(FileDescriptor descriptor, long handle) {
-        KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).handle = handle;
+        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).handle = handle;
     }
 
     public static int getFD(FileDescriptor descriptor) {
-        return KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd;
+        return SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).fd;
     }
 
     public static void setFD(FileDescriptor descriptor, int fd) {
-        KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
+        SubstrateUtil.cast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
     }
 
     static boolean outOfBounds(int off, int len, byte[] array) {
@@ -156,7 +156,7 @@ public class WindowsUtils {
     public static final int NANOSECS_PER_MILLISEC = 1000000;
 
     /** Retrieve a nanosecond counter for elapsed time measurement. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getNanoCounter() {
         if (performanceFrequency == 0L) {
             CLongPointer count = StackValue.get(CLongPointer.class);

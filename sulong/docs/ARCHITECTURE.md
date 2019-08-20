@@ -8,7 +8,7 @@ Sulong is an LLVM bitcode interpreter that allows you to run C, Fortran,
 and other native languages on the GraalVM.
 Use LLVM frontends to compile languages to LLVM bitcode.
 Sulong execute LLVM bitcode using a Truffle language implementation.
-Sulong uses the Graal compiler to compile frequently executed functions
+Sulong uses the GraalVM compiler to compile frequently executed functions
 to machine code.
 
 ## Technical Constraints

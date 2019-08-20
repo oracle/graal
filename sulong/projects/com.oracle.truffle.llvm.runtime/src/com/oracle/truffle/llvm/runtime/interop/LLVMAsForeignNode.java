@@ -33,8 +33,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -49,9 +47,9 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
         this.allowNonForeign = allowNonForeign;
     }
 
-    public abstract TruffleObject execute(VirtualFrame frame);
+    public abstract Object execute(VirtualFrame frame);
 
-    public abstract TruffleObject execute(LLVMManagedPointer pointer);
+    public abstract Object execute(LLVMManagedPointer pointer);
 
     public static LLVMAsForeignNode create() {
         return LLVMAsForeignNodeGen.create(false, null);
@@ -66,18 +64,18 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
     }
 
     @Specialization(guards = "isForeign(pointer)")
-    TruffleObject doForeign(LLVMManagedPointer pointer) {
-        LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) pointer.getObject();
-        return foreign.getForeign();
-    }
+    Object doForeign(LLVMManagedPointer pointer) {
 
-    @Specialization
-    TruffleObject doBoxed(LLVMBoxedPrimitive boxed) {
-        return boxed;
+        Object foreign = pointer.getObject();
+
+        if (foreign instanceof LLVMTypedForeignObject) {
+            return ((LLVMTypedForeignObject) foreign).getForeign();
+        }
+        return foreign;
     }
 
     @Fallback
-    TruffleObject doOther(@SuppressWarnings("unused") Object pointer) {
+    Object doOther(@SuppressWarnings("unused") Object pointer) {
         if (allowNonForeign) {
             return null;
         } else {
@@ -86,6 +84,6 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
     }
 
     protected static boolean isForeign(LLVMManagedPointer pointer) {
-        return pointer.getOffset() == 0 && pointer.getObject() instanceof LLVMTypedForeignObject;
+        return pointer.getOffset() == 0 && (pointer.getObject() instanceof LLVMTypedForeignObject || LLVMExpressionNode.notLLVM(pointer.getObject()));
     }
 }

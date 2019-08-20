@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -33,7 +33,6 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.thread.VMOperation;
 
 public class MemoryWalkerImpl extends MemoryWalker {
@@ -72,8 +71,7 @@ public class MemoryWalkerImpl extends MemoryWalker {
                 continueVisiting = HeapImpl.getHeapImpl().walkHeap(memoryWalkerVisitor);
             }
             if (continueVisiting) {
-                final ImageCodeInfo imageCodeInfo = ImageSingletons.lookup(ImageCodeInfo.class);
-                continueVisiting = imageCodeInfo.walkImageCode(memoryWalkerVisitor);
+                continueVisiting = CodeInfoTable.getImageCodeCache().walkImageCode(memoryWalkerVisitor);
             }
             if (continueVisiting) {
                 continueVisiting = CodeInfoTable.getRuntimeCodeCache().walkRuntimeMethods(memoryWalkerVisitor);
@@ -89,6 +87,10 @@ public class MemoryWalkerImpl extends MemoryWalker {
 
 @AutomaticFeature
 class MemoryWalkerFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return HeapOptions.UseCardRememberedSetHeap.getValue();
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

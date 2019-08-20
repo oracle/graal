@@ -247,18 +247,18 @@ public abstract class Layout {
     /**
      * Internal package access helper.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("static-method")
     protected abstract static class Access {
-        /** @since 1.0 */
+        /** @since 19.0 */
         protected Access() {
             if (!getClass().getName().startsWith("com.oracle.truffle.object.")) {
                 throw new IllegalAccessError();
             }
         }
 
-        /** @since 1.0 */
+        /** @since 19.0 */
         public final void setShape(DynamicObject object, Shape shape) {
             object.setShape(shape);
         }

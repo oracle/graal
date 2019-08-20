@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -53,15 +52,6 @@ public abstract class LLVMTruffleCannotBeHandle extends LLVMIntrinsic {
     @Specialization
     protected boolean doPointerCase(LLVMNativePointer a) {
         return doLongCase(a.asNative());
-    }
-
-    @Specialization
-    protected boolean doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        if (from.getValue() instanceof Long) {
-            return doLongCase((long) from.getValue());
-        } else {
-            return true;
-        }
     }
 
     @Fallback

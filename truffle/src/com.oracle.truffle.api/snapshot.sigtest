@@ -1,5 +1,5 @@
 #Signature file v4.1
-#Version 
+#Version
 
 CLSS public final com.oracle.truffle.api.ArrayUtils
 meth public !varargs static int indexOf(byte[],int,int,byte[])
@@ -178,11 +178,34 @@ meth public int getStackTraceElementLimit()
 meth public java.lang.Object getExceptionObject()
 
 CLSS public final com.oracle.truffle.api.TruffleFile
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_DIRECTORY
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_OTHER
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_REGULAR_FILE
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Boolean> IS_SYMBOLIC_LINK
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Integer> UNIX_GID
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Integer> UNIX_MODE
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Integer> UNIX_NLINK
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Integer> UNIX_UID
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Long> SIZE
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Long> UNIX_DEV
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Long> UNIX_INODE
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.lang.Long> UNIX_RDEV
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.nio.file.attribute.FileTime> CREATION_TIME
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.nio.file.attribute.FileTime> LAST_ACCESS_TIME
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.nio.file.attribute.FileTime> LAST_MODIFIED_TIME
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.nio.file.attribute.FileTime> UNIX_CTIME
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.nio.file.attribute.GroupPrincipal> UNIX_GROUP
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.nio.file.attribute.UserPrincipal> UNIX_OWNER
+fld public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<java.util.Set<java.nio.file.attribute.PosixFilePermission>> UNIX_PERMISSIONS
 innr public abstract interface static FileTypeDetector
+innr public final static AttributeDescriptor
+innr public final static Attributes
+meth public !varargs <%0 extends java.lang.Object> {%%0} getAttribute(com.oracle.truffle.api.TruffleFile$AttributeDescriptor<{%%0}>,java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs boolean exists(java.nio.file.LinkOption[])
 meth public !varargs boolean isDirectory(java.nio.file.LinkOption[])
 meth public !varargs boolean isRegularFile(java.nio.file.LinkOption[])
 meth public !varargs com.oracle.truffle.api.TruffleFile getCanonicalFile(java.nio.file.LinkOption[]) throws java.io.IOException
+meth public !varargs com.oracle.truffle.api.TruffleFile$Attributes getAttributes(java.util.Collection<? extends com.oracle.truffle.api.TruffleFile$AttributeDescriptor<?>>,java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs java.io.BufferedWriter newBufferedWriter(java.nio.charset.Charset,java.nio.file.OpenOption[]) throws java.io.IOException
 meth public !varargs java.io.BufferedWriter newBufferedWriter(java.nio.file.OpenOption[]) throws java.io.IOException
 meth public !varargs java.io.InputStream newInputStream(java.nio.file.OpenOption[]) throws java.io.IOException
@@ -237,8 +260,20 @@ meth public java.util.Collection<com.oracle.truffle.api.TruffleFile> list() thro
 meth public void createLink(com.oracle.truffle.api.TruffleFile) throws java.io.IOException
 meth public void delete() throws java.io.IOException
 supr java.lang.Object
-hfds BUFFER_SIZE,LEGACY_FILETYPEDETECTORS_DISABLED,MAX_BUFFER_SIZE,fileSystemContext,normalizedPath,path
-hcls AllFiles,ByteChannelDecorator,FileSystemContext,TruffleFileDirectoryStream,Walker
+hfds BUFFER_SIZE,MAX_BUFFER_SIZE,fileSystemContext,normalizedPath,path
+hcls AllFiles,AttributeGroup,ByteChannelDecorator,FileSystemContext,TruffleFileDirectoryStream,Walker
+
+CLSS public final static com.oracle.truffle.api.TruffleFile$AttributeDescriptor<%0 extends java.lang.Object>
+ outer com.oracle.truffle.api.TruffleFile
+meth public java.lang.String toString()
+supr java.lang.Object
+hfds clazz,group,name
+
+CLSS public final static com.oracle.truffle.api.TruffleFile$Attributes
+ outer com.oracle.truffle.api.TruffleFile
+meth public <%0 extends java.lang.Object> {%%0} get(com.oracle.truffle.api.TruffleFile$AttributeDescriptor<{%%0}>)
+supr java.lang.Object
+hfds delegate,queriedAttributes
 
 CLSS public abstract interface static com.oracle.truffle.api.TruffleFile$FileTypeDetector
  outer com.oracle.truffle.api.TruffleFile
@@ -318,6 +353,7 @@ meth public boolean isHostObject(java.lang.Object)
 meth public boolean isHostSymbol(java.lang.Object)
 meth public boolean isMimeTypeSupported(java.lang.String)
 meth public boolean isNativeAccessAllowed()
+meth public boolean isPolyglotAccessAllowed()
 meth public boolean isPreInitialization()
 meth public com.oracle.truffle.api.TruffleContext getContext()
 meth public com.oracle.truffle.api.TruffleContext$Builder newContextBuilder()
@@ -477,8 +513,6 @@ meth public java.lang.String toString()
 meth public java.lang.Throwable fillInStackTrace()
 meth public static com.oracle.truffle.api.TruffleStackTrace fillIn(java.lang.Throwable)
 meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStackTrace(java.lang.Throwable)
-meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStacktrace(java.lang.Throwable)
- anno 0 java.lang.Deprecated()
 supr java.lang.Exception
 hfds EMPTY,frames,lazyFrames,materializedHostException
 hcls LazyStackTrace,TracebackElement
@@ -487,10 +521,6 @@ CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
 meth public com.oracle.truffle.api.RootCallTarget getTarget()
 meth public com.oracle.truffle.api.frame.Frame getFrame()
 meth public com.oracle.truffle.api.nodes.Node getLocation()
-meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStackTrace(java.lang.Throwable)
- anno 0 java.lang.Deprecated()
-meth public static void fillIn(java.lang.Throwable)
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds frame,location,target
 
@@ -614,8 +644,6 @@ intf com.oracle.truffle.api.frame.VirtualFrame
 
 CLSS public abstract interface com.oracle.truffle.api.frame.VirtualFrame
 intf com.oracle.truffle.api.frame.Frame
-
-CLSS abstract interface com.oracle.truffle.api.frame.package-info
 
 CLSS public com.oracle.truffle.api.nodes.ControlFlowException
 cons public init()
@@ -991,7 +1019,7 @@ cons public init()
 cons public init(java.lang.String)
 cons public init(java.lang.String,java.lang.Throwable)
 cons public init(java.lang.Throwable)
-meth public java.lang.Throwable fillInStackTrace()
+meth public final java.lang.Throwable fillInStackTrace()
  anno 0 java.lang.Deprecated()
 supr java.lang.Exception
 hfds serialVersionUID
@@ -1001,10 +1029,6 @@ cons public init(java.lang.Object)
 meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
-
-CLSS abstract interface com.oracle.truffle.api.nodes.package-info
-
-CLSS abstract interface com.oracle.truffle.api.package-info
 
 CLSS public final com.oracle.truffle.api.source.MissingMIMETypeException
  anno 0 java.lang.Deprecated()
@@ -1149,8 +1173,6 @@ meth public final com.oracle.truffle.api.source.Source getSource()
 meth public final java.lang.String toString()
 supr java.lang.Object
 hfds source
-
-CLSS abstract interface com.oracle.truffle.api.source.package-info
 
 CLSS public abstract interface java.io.Closeable
 intf java.lang.AutoCloseable

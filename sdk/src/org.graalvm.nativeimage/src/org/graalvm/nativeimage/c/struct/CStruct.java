@@ -56,7 +56,7 @@ import org.graalvm.word.PointerBase;
  * {@link CFieldAddress}, or {@link CFieldOffset}. All calls of the interface methods are replaced
  * with the appropriate memory or address arithmetic operations. Here is an example to define a
  * complex number structure:
- * 
+ *
  * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.ComplexValue}
  *
  * The annotated interface, or an outer class that contains the interface, must be annotated with
@@ -66,16 +66,16 @@ import org.graalvm.word.PointerBase;
  *
  * To access an array of structs one can define a special {@code addressOf} method:
  * <p>
- * 
+ *
  * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.IntOrDouble}
  *
  * Implementation of such method then allows one to do <em>array arithmetics</em> - e.g. obtain
  * pointer to the first element of the array and then access the others:
  * <p>
- * 
+ *
  * {@codesnippet org.graalvm.nativeimage.StackValueSnippets.acceptIntIntDouble}
  *
- * @since 1.0
+ * @since 19.0
  * @see org.graalvm.nativeimage.StackValue
  * @see org.graalvm.nativeimage.UnmanagedMemory
  */
@@ -87,21 +87,21 @@ public @interface CStruct {
      * Specifies the name of the imported C struct type. If no name is provided, the type name is
      * used as the struct name.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String value() default "";
 
     /**
      * If marked as incomplete, we will not try to determine the size of the struct.
      *
-     * @since 1.0
+     * @since 19.0
      */
     boolean isIncomplete() default false;
 
     /**
      * Add the C "struct" keyword to the name specified in {@link #value()}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     boolean addStructKeyword() default false;
 }

@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.truffle.nfi.posix;
 
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -31,6 +34,7 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.truffle.nfi.TruffleNFIFeature;
 
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NFIContext", onlyWith = TruffleNFIFeature.IsEnabled.class)
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 final class Target_com_oracle_truffle_nfi_impl_NFIContextPosix {
 
     // Checkstyle: stop
@@ -58,5 +62,4 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContextPosix {
     @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_LAZY;
     @Alias @InjectAccessors(RTLDAccessor.class) int RTLD_NOW;
     // Checkstyle: resume
-
 }

@@ -34,14 +34,11 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -58,19 +55,13 @@ public abstract class LLVMToI64Node extends LLVMExpressionNode {
     public abstract Object executeWithTarget(Object o);
 
     @Specialization
-    protected Object doPointer(LLVMPointer from,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return toNative.executeWithTarget(from).asNative();
+    protected long doNative(LLVMNativePointer from) {
+        return from.asNative();
     }
 
     @Specialization
-    protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
-                    @Cached("createForeignToLLVM()") ForeignToLLVM convert) {
-        return (long) convert.executeWithTarget(from.getValue());
-    }
-
-    protected ForeignToLLVM createForeignToLLVM() {
-        return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
+    protected Object doManaged(LLVMManagedPointer from) {
+        return from;
     }
 
     public abstract static class LLVMSignedCastToI64Node extends LLVMToI64Node {

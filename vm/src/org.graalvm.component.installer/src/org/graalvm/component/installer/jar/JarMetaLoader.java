@@ -43,7 +43,6 @@ import org.graalvm.component.installer.Archive;
 import static org.graalvm.component.installer.BundleConstants.META_INF_PATH;
 import static org.graalvm.component.installer.BundleConstants.META_INF_PERMISSIONS_PATH;
 import static org.graalvm.component.installer.BundleConstants.META_INF_SYMLINKS_PATH;
-import static org.graalvm.component.installer.BundleConstants.PATH_LICENSE;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
@@ -54,6 +53,8 @@ import org.graalvm.component.installer.persist.ComponentPackageLoader;
  */
 public class JarMetaLoader extends ComponentPackageLoader {
     private final JarFile jarFile;
+    @SuppressWarnings("unused")
+    // TODO: refactor construction
     private final Feedback fb;
 
     public JarMetaLoader(JarFile jarFile, Feedback feedback) throws IOException {
@@ -113,14 +114,6 @@ public class JarMetaLoader extends ComponentPackageLoader {
             int li = eName.lastIndexOf("/", en.isDirectory() ? eName.length() - 2 : eName.length() - 1);
             if (li > 0) {
                 emptyDirectories.remove(eName.substring(0, li + 1));
-            }
-            if (PATH_LICENSE.equals(eName)) {
-                String lp = fb.l10n("LICENSE_Path_translation",
-                                cinfo.getId(),
-                                cinfo.getVersionString());
-                files.add(lp);
-                super.setLicensePath(lp);
-                continue;
             }
             if (en.isDirectory()) {
                 // directory names always come first

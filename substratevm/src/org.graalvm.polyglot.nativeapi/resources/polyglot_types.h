@@ -29,18 +29,12 @@
 
 typedef enum {
   poly_ok,
-  poly_invalid_arg,
-  poly_object_expected,
   poly_string_expected,
-  poly_name_expected,
-  poly_function_expected,
   poly_number_expected,
   poly_boolean_expected,
   poly_array_expected,
   poly_generic_failure,
   poly_pending_exception,
-  poly_cancelled,
-  poly_status_last
 } poly_status;
 
 typedef struct {
@@ -67,6 +61,8 @@ typedef poly_handle poly_context_builder;
 typedef poly_handle poly_callback_info;
 
 typedef poly_handle poly_language;
+
+typedef poly_handle poly_exception;
 
 typedef graal_create_isolate_params_t poly_isolate_params;
 

@@ -52,6 +52,11 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -63,9 +68,11 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
@@ -79,6 +86,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
 @SuppressWarnings("unused")
@@ -98,6 +106,21 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract ExecutionEvent newExecutionEvent(Object event);
+    }
+
+    public abstract static class IOAccess {
+        protected IOAccess() {
+            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.ProcessHandler.ProcessCommand.IOAccessImpl")) {
+                throw new AssertionError("Only one implementation of IOAccess allowed. " + getClass().getCanonicalName());
+            }
+        }
+
+        public abstract ProcessHandler.ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect);
+
+        public abstract ProcessHandler.Redirect createRedirectToStream(OutputStream stream);
+
+        public abstract OutputStream getOutputStream(ProcessHandler.Redirect redirect);
     }
 
     public abstract static class APIAccess {
@@ -146,6 +169,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean allowsAccess(HostAccess access, AnnotatedElement element);
 
+        public abstract boolean allowsImplementation(HostAccess access, Class<?> type);
+
         public abstract boolean isArrayAccessible(HostAccess access);
 
         public abstract boolean isListAccessible(HostAccess access);
@@ -153,12 +178,20 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object getHostAccessImpl(HostAccess conf);
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
+
+        public abstract UnmodifiableEconomicSet<String> getEvalAccess(PolyglotAccess access, String language);
+
+        public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
+
+        public abstract void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
+
     }
 
     // shared SPI
 
     APIAccess api;
     MonitoringAccess monitoring;
+    IOAccess io;
 
     public final void setMonitoring(MonitoringAccess monitoring) {
         this.monitoring = monitoring;
@@ -169,12 +202,28 @@ public abstract class AbstractPolyglotImpl {
         initialize();
     }
 
+    public final void setIO(IOAccess ioAccess) {
+        Objects.requireNonNull(ioAccess, "IOAccess must be non null.");
+        this.io = ioAccess;
+    }
+
     public APIAccess getAPIAccess() {
         return api;
     }
 
     public MonitoringAccess getMonitoring() {
         return monitoring;
+    }
+
+    public final IOAccess getIO() {
+        if (io == null) {
+            try {
+                Class.forName(ProcessHandler.ProcessCommand.class.getName(), true, getClass().getClassLoader());
+            } catch (ClassNotFoundException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        return io;
     }
 
     protected void initialize() {
@@ -392,7 +441,8 @@ public abstract class AbstractPolyglotImpl {
                         PolyglotAccess polyglotAccess,
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
-                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream);
+                        Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
+                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone);
 
         public abstract String getImplementationName();
 
@@ -644,6 +694,32 @@ public abstract class AbstractPolyglotImpl {
         public abstract <T> T as(Object receiver, TypeLiteral<T> targetType);
 
         public abstract SourceSection getSourceLocation(Object receiver);
+
+        public boolean isDate(Object receiver) {
+            return false;
+        }
+
+        public abstract LocalDate asDate(Object receiver);
+
+        public boolean isTime(Object receiver) {
+            return false;
+        }
+
+        public abstract LocalTime asTime(Object receiver);
+
+        public abstract Instant asInstant(Object receiver);
+
+        public boolean isTimeZone(Object receiver) {
+            return false;
+        }
+
+        public abstract ZoneId asTimeZone(Object receiver);
+
+        public boolean isDuration(Object receiver) {
+            return false;
+        }
+
+        public abstract Duration asDuration(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

@@ -27,24 +27,29 @@ package com.oracle.svm.configure.trace;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.configure.config.JniConfiguration;
-import com.oracle.svm.configure.config.JniMethod;
+import com.oracle.svm.configure.config.ConfigurationMemberKind;
+import com.oracle.svm.configure.config.ConfigurationMethod;
+import com.oracle.svm.configure.config.TypeConfiguration;
 
 import jdk.vm.ci.meta.MetaUtil;
 
 class JniProcessor extends AbstractProcessor {
-    private final JniConfiguration configuration = new JniConfiguration();
+    private final TypeConfiguration configuration;
+    private final TypeConfiguration reflectionConfiguration;
     private final AccessAdvisor advisor;
 
-    JniProcessor(AccessAdvisor advisor) {
+    JniProcessor(AccessAdvisor advisor, TypeConfiguration configuration, TypeConfiguration reflectionConfiguration) {
         this.advisor = advisor;
+        this.configuration = configuration;
+        this.reflectionConfiguration = reflectionConfiguration;
     }
 
-    public JniConfiguration getConfiguration() {
+    public TypeConfiguration getConfiguration() {
         return configuration;
     }
 
     @Override
+    @SuppressWarnings("fallthrough")
     void processEntry(Map<String, ?> entry) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
@@ -59,6 +64,8 @@ class JniProcessor extends AbstractProcessor {
             return;
         }
         String declaringClassOrClazz = (declaringClass != null) ? declaringClass : clazz;
+        ConfigurationMemberKind memberKind = (declaringClass != null) ? ConfigurationMemberKind.DECLARED : ConfigurationMemberKind.PRESENT;
+        TypeConfiguration config = configuration;
         switch (function) {
             case "DefineClass": {
                 String name = singleElement(args);
@@ -74,7 +81,7 @@ class JniProcessor extends AbstractProcessor {
                     name = "L" + name + ";";
                 }
                 name = MetaUtil.internalNameToJava(name, true, false);
-                configuration.getOrCreateType(name);
+                config.getOrCreateType(name);
                 break;
             }
             case "GetStaticMethodID":
@@ -83,7 +90,7 @@ class JniProcessor extends AbstractProcessor {
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
                 if (!advisor.shouldIgnoreJniMethodLookup(() -> clazz, () -> name, () -> signature, () -> callerClass)) {
-                    configuration.getOrCreateType(declaringClassOrClazz).getMethods().add(new JniMethod(name, signature));
+                    config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
                 }
                 break;
             }
@@ -91,9 +98,36 @@ class JniProcessor extends AbstractProcessor {
             case "GetStaticFieldID": {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
-                configuration.getOrCreateType(declaringClassOrClazz).getFields().add(name);
+                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false);
+                break;
+            }
+            case "ThrowNew": {
+                expectSize(args, 1); // exception message, ignore
+                String name = ConfigurationMethod.CONSTRUCTOR_NAME;
+                String signature = "(Ljava/lang/String;)V";
+                if (!advisor.shouldIgnoreJniMethodLookup(() -> clazz, () -> name, () -> signature, () -> callerClass)) {
+                    config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
+                }
+                break;
+            }
+            case "ToReflectedField":
+                config = reflectionConfiguration; // fall through
+            case "FromReflectedField": {
+                expectSize(args, 1);
+                String name = (String) args.get(0);
+                config.getOrCreateType(declaringClassOrClazz).addField(name, memberKind, false);
+                break;
+            }
+            case "ToReflectedMethod":
+                config = reflectionConfiguration; // fall through
+            case "FromReflectedMethod": {
+                expectSize(args, 2);
+                String name = (String) args.get(0);
+                String signature = (String) args.get(1);
+                config.getOrCreateType(declaringClassOrClazz).addMethod(name, signature, memberKind);
                 break;
             }
         }
     }
+
 }

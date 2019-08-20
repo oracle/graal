@@ -58,11 +58,11 @@ final class ASTSuccessor implements JsonConvertible {
     }
 
     public void addInitialTransition(ASTTransition transition) {
-        CharSet matcherBuilder = CharSet.getFull();
+        CharSet charSet = CharSet.getFull();
         if (transition.getTarget() instanceof CharacterClass) {
-            matcherBuilder = ((CharacterClass) transition.getTarget()).getMatcherBuilder();
+            charSet = ((CharacterClass) transition.getTarget()).getCharSet();
         }
-        mergedStates.add(new TransitionBuilder<>(new ASTTransitionSet(transition), matcherBuilder));
+        mergedStates.add(new TransitionBuilder<>(new ASTTransitionSet(transition), charSet));
     }
 
     public void setLookAheads(ArrayList<ASTStep> lookAheads) {

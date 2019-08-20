@@ -29,6 +29,7 @@ import static jdk.vm.ci.common.JVMCIError.unimplemented;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 
@@ -45,7 +46,12 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 public class UniverseMetaAccess implements WrappedMetaAccess {
-
+    private final Function<Class<?>, ResolvedJavaType> computeJavaType = new Function<Class<?>, ResolvedJavaType>() {
+        @Override
+        public ResolvedJavaType apply(Class<?> clazz) {
+            return universe.lookup(wrapped.lookupJavaType(clazz));
+        }
+    };
     private final Universe universe;
     private final MetaAccessProvider wrapped;
 
@@ -75,23 +81,11 @@ public class UniverseMetaAccess implements WrappedMetaAccess {
 
     @Override
     public ResolvedJavaType lookupJavaType(Class<?> clazz) {
-        ResolvedJavaType result = getTypeCacheEntry(clazz);
-        if (result != null) {
-            return result;
-        } else {
-            return lookupJavaType0(clazz);
-        }
+        return typeCache.computeIfAbsent(clazz, computeJavaType);
     }
 
     protected ResolvedJavaType getTypeCacheEntry(Class<?> clazz) {
         return typeCache.get(clazz);
-    }
-
-    private ResolvedJavaType lookupJavaType0(Class<?> clazz) {
-        ResolvedJavaType result = universe.lookup(wrapped.lookupJavaType(clazz));
-        ResolvedJavaType existing = typeCache.put(clazz, result);
-        assert existing == null || existing.equals(result) : result + " already exists.";
-        return result;
     }
 
     @Override

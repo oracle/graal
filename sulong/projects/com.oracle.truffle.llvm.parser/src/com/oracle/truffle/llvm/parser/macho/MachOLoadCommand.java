@@ -99,4 +99,17 @@ public class MachOLoadCommand {
     public int getCmdSize() {
         return cmdSize;
     }
+
+    protected static String getString(MachOReader buffer, int len) {
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < len; i++) {
+            byte b = buffer.getByte();
+            if (b != 0) {
+                sb.append((char) b);
+            }
+        }
+
+        return sb.toString();
+    }
 }

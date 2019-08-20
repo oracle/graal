@@ -162,7 +162,7 @@ final class NativeAPIImpl {
 
     static class AttachCurrentThreadPrologue {
         static void enter(NativeTruffleContext context) {
-            if (CEntryPointActions.enterAttachThread(context.isolate()) != 0) {
+            if (CEntryPointActions.enterAttachThread(context.isolate(), true) != 0) {
                 CEntryPointActions.bailoutInPrologue(WordFactory.nullPointer());
             }
         }

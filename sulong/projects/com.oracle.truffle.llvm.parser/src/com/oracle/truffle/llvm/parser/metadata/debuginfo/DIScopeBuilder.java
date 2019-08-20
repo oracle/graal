@@ -36,6 +36,7 @@ import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
+import com.oracle.truffle.llvm.parser.metadata.MDCommonBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
@@ -135,7 +136,7 @@ final class DIScopeBuilder {
 
         final String relativePath = name.substring(pathStartIndex);
         try {
-            return context.getEnv().getTruffleFile(pathPrefix).resolve(relativePath);
+            return context.getEnv().getInternalTruffleFile(pathPrefix).resolve(relativePath);
         } catch (InvalidPathException ex) {
             throw new LLVMParserException(ex.getMessage());
         }
@@ -157,7 +158,7 @@ final class DIScopeBuilder {
         Env env = context.getEnv();
 
         if (path.isAbsolute()) {
-            return env.getTruffleFile(path.toUri());
+            return env.getInternalTruffleFile(path.toUri());
         }
 
         // relative path: search for source file
@@ -167,11 +168,12 @@ final class DIScopeBuilder {
         for (String sourcePath : sourcePathList) {
             try {
                 Path absPath = Paths.get(sourcePath, name);
-                TruffleFile file = env.getTruffleFile(absPath.toUri());
+                TruffleFile file = env.getInternalTruffleFile(absPath.toUri());
                 if (file.exists()) {
                     return file;
                 }
-            } catch (InvalidPathException ex) {
+            } catch (InvalidPathException | SecurityException ex) {
+                // can not or not allowed to access source file
                 // ignore, try next entry in search path
             }
         }
@@ -181,17 +183,18 @@ final class DIScopeBuilder {
         if (directory != null) {
             try {
                 Path absPath = Paths.get(directory, name);
-                TruffleFile file = env.getTruffleFile(absPath.toUri());
+                TruffleFile file = env.getInternalTruffleFile(absPath.toUri());
                 if (file.exists()) {
                     return file;
                 }
-            } catch (InvalidPathException ex) {
+            } catch (InvalidPathException | SecurityException ex) {
+                // can not or not allowed to access source file
                 // ignore, return relative path
             }
         }
 
         // fallback to relative path
-        return env.getTruffleFile(name);
+        return env.getInternalTruffleFile(name);
     }
 
     private TruffleFile getSourceFile(MDFile file) {
@@ -444,6 +447,15 @@ final class DIScopeBuilder {
         }
 
         @Override
+        public void visit(MDCommonBlock md) {
+            parent = buildLocation(md.getScope());
+            kind = LLVMSourceLocation.Kind.COMMON_BLOCK;
+            name = MDNameExtractor.getName(md.getName());
+            file = fileExtractor.extractFile(md);
+            line = md.getLine();
+        }
+
+        @Override
         public void visit(MDBasicType md) {
             kind = LLVMSourceLocation.Kind.TYPE;
             file = fileExtractor.extractFile(md);
@@ -534,8 +546,8 @@ final class DIScopeBuilder {
             SourceBuilder builder = Source.newBuilder("llvm", sourceFile).mimeType(mimeType);
             try {
                 source = builder.build();
-            } catch (IOException ex) {
-                // can't load the source file: fall back to CONTENT_NONE
+            } catch (IOException | SecurityException ex) {
+                // can't or not allowed to load the source file: fall back to CONTENT_NONE
                 source = builder.content(Source.CONTENT_NONE).build();
             }
         } else {
@@ -642,6 +654,12 @@ final class DIScopeBuilder {
             if (typeNode != null) {
                 typeNode.accept(this);
             }
+        }
+
+        @Override
+        public void visit(MDCommonBlock md) {
+            MDBaseNode fileRef = md.getFile() != MDVoidNode.INSTANCE ? md.getFile() : md.getScope();
+            fileRef.accept(this);
         }
     }
 }

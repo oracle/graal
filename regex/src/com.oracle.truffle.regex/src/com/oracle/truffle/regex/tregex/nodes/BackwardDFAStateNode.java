@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 
 public class BackwardDFAStateNode extends DFAStateNode {
@@ -49,31 +48,15 @@ public class BackwardDFAStateNode extends DFAStateNode {
     }
 
     @Override
-    protected int prevIndex(VirtualFrame frame, TRegexDFAExecutorNode executor) {
-        return executor.getIndex(frame) + 1;
+    int prevIndex(TRegexDFAExecutorLocals locals) {
+        return locals.getIndex() + 1;
     }
 
     @Override
-    protected int atEnd1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
-        super.atEnd1(frame, executor);
-        return switchToPrefixState(executor, frame);
-    }
-
-    @Override
-    protected int atEnd2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
-        super.atEnd2(frame, executor);
-        return switchToPrefixState(executor, frame);
-    }
-
-    @Override
-    protected int atEnd3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
-        super.atEnd3(frame, executor, preLoopIndex);
-        return switchToPrefixState(executor, frame);
-    }
-
-    private int switchToPrefixState(TRegexDFAExecutorNode executor, VirtualFrame frame) {
-        if (executor.getIndex(frame) == executor.getFromIndex(frame) - 1 && executor.getFromIndex(frame) - 1 > executor.getMaxIndex(frame) && hasBackwardPrefixState()) {
-            executor.setCurMaxIndex(frame, executor.getMaxIndex(frame));
+    int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        super.atEnd(locals, executor);
+        if (hasBackwardPrefixState() && locals.getIndex() == locals.getFromIndex() - 1 && locals.getFromIndex() - 1 > locals.getMaxIndex()) {
+            locals.setCurMaxIndex(locals.getMaxIndex());
             return getBackwardPrefixStateIndex();
         }
         return FS_RESULT_NO_SUCCESSOR;

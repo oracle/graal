@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,31 +32,18 @@ package com.oracle.truffle.llvm.parser.model.symbols.globals;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public final class GlobalAlias extends GlobalValueSymbol {
 
-    private static final int ALIGN = 0;
-
     private GlobalAlias(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
-        super(type, ALIGN, linkage, visibility, symbolTable, value);
+        super(type, linkage, visibility, symbolTable, value);
     }
 
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
-    }
-
-    @Override
-    public void accept(ModelVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public int getAlign() {
-        return getValue() instanceof GlobalValueSymbol ? ((GlobalValueSymbol) getValue()).getAlign() : ALIGN;
     }
 
     public static GlobalAlias create(PointerType type, long linkage, long visibility, SymbolTable symbolTable, int value) {

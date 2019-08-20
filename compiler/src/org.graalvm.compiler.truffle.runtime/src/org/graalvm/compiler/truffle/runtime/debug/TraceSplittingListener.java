@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -83,14 +80,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
         if (sourceSection.getSource().getPath() == null) {
             b.append(sourceSection.getSource().getName());
         } else {
-            Path pathAbsolute = Paths.get(sourceSection.getSource().getPath());
-            Path pathBase = new File("").getAbsoluteFile().toPath();
-            try {
-                Path pathRelative = pathBase.relativize(pathAbsolute);
-                b.append(pathRelative.toFile());
-            } catch (IllegalArgumentException e) {
-                b.append(sourceSection.getSource().getName());
-            }
+            b.append(sourceSection.getSource().getPath());
         }
 
         b.append("~").append(formatIndices(sourceSection, true));

@@ -52,6 +52,6 @@
  *
  * @see org.graalvm.polyglot.management.ExecutionListener Execution listeners allow to instrument
  *      the execution of guest languages.
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.polyglot.management;

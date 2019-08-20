@@ -25,8 +25,6 @@
 package org.graalvm.component.installer.model;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,15 +32,6 @@ import java.util.Set;
  * Serialization of {@link ComponentRegistry}.
  */
 public interface ComponentStorage {
-
-    /**
-     * Deletes component's files.
-     * 
-     * @param id component ID
-     * @throws IOException on load error
-     */
-    void deleteComponent(String id) throws IOException;
-
     /**
      * Loads list of components.
      * 
@@ -64,35 +53,10 @@ public interface ComponentStorage {
      * Deserializes Component's metadata.
      * 
      * @param id component ID
-     * @return ComponentInfo instance
+     * @return matching ComponentInfo instances
      * @throws IOException on I/O errors
      */
-    ComponentInfo loadComponentMetadata(String id) throws IOException;
+    Set<ComponentInfo> loadComponentMetadata(String id) throws IOException;
 
     Map<String, String> loadGraalVersionInfo();
-
-    Map<String, Collection<String>> readReplacedFiles() throws IOException;
-
-    void saveComponent(ComponentInfo info) throws IOException;
-
-    void updateReplacedFiles(Map<String, Collection<String>> replacedFiles) throws IOException;
-
-    /**
-     * Checks that the license was already accepted.
-     * 
-     * @param info component for which the license should be checked
-     * @param licenseID the ID to check
-     * @return time when the license was accepted
-     */
-    Date licenseAccepted(ComponentInfo info, String licenseID);
-
-    /**
-     * Records that the license has been accepted. If id is {@code} null, then all license records
-     * are erased.
-     * 
-     * @param info the component for which the license is accepted
-     * @param licenseID the ID to accept or {@code null}
-     * @param licenseText text of the license, will be recoded.
-     */
-    void recordLicenseAccepted(ComponentInfo info, String licenseID, String licenseText) throws IOException;
 }

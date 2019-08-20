@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,11 +33,11 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
@@ -57,11 +57,12 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance {
     final WordTypes wordTypes;
 
-    public SharedGraphBuilderPhase(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
+    public SharedGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
                     WordTypes wordTypes) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
         this.wordTypes = wordTypes;
@@ -70,11 +71,18 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
         private final boolean explicitExceptionEdges;
+        private final boolean allowIncompleteClassPath;
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
+            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, NativeImageOptions.AllowIncompleteClasspath.getValue());
+        }
+
+        protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean allowIncompleteClasspath) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
             this.explicitExceptionEdges = explicitExceptionEdges;
+            this.allowIncompleteClassPath = allowIncompleteClasspath;
         }
 
         @Override
@@ -85,8 +93,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             throw super.throwParserError(e);
         }
 
-        protected WordTypes getWordTypes() {
+        private WordTypes getWordTypes() {
             return ((SharedGraphBuilderPhase) getGraphBuilderInstance()).wordTypes;
+        }
+
+        private boolean checkWordTypes() {
+            return getWordTypes() != null;
         }
 
         @Override
@@ -103,6 +115,21 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 } else {
                     throw e;
                 }
+            }
+        }
+
+        @Override
+        protected JavaType maybeEagerlyResolve(JavaType type, ResolvedJavaType accessingClass) {
+            try {
+                return super.maybeEagerlyResolve(type, accessingClass);
+            } catch (NoClassDefFoundError e) {
+                /*
+                 * Type resolution fails if the type is missing. Just erase the type by returning
+                 * the Object type. This is the same handling as in WrappedConstantPool, which is
+                 * not triggering when parsing is done with the HotSpot universe instead of the
+                 * AnalysisUniverse.
+                 */
+                return getMetaAccess().lookupJavaType(Object.class);
             }
         }
 
@@ -161,7 +188,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
              * If --allow-incomplete-classpath is set defer the error reporting to runtime,
              * otherwise report the error during image building.
              */
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+            if (allowIncompleteClassPath) {
                 ExceptionSynthesizer.throwNoClassDefFoundError(this, type.toJavaName());
             } else {
                 reportUnresolvedElement("type", type.toJavaName());
@@ -178,7 +205,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * If --allow-incomplete-classpath is set defer the error reporting to runtime,
                  * otherwise report the error during image building.
                  */
-                if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                if (allowIncompleteClassPath) {
                     ExceptionSynthesizer.throwNoSuchFieldError(this, field.format("%H.%n"));
                 } else {
                     reportUnresolvedElement("field", field.format("%H.%n"));
@@ -196,7 +223,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * If --allow-incomplete-classpath is set defer the error reporting to runtime,
                  * otherwise report the error during image building.
                  */
-                if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                if (allowIncompleteClassPath) {
                     ExceptionSynthesizer.throwNoSuchMethodError(this, javaMethod.format("%H.%n(%P)"));
                 } else {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
@@ -224,9 +251,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected void genIf(ValueNode x, Condition cond, ValueNode y) {
-            if ((x.getStackKind() == JavaKind.Object && y.getStackKind() == getWordTypes().getWordKind()) ||
-                            (x.getStackKind() == getWordTypes().getWordKind() && y.getStackKind() == JavaKind.Object)) {
-                throw UserError.abort("Should not compare Word to Object in condition at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+            if (checkWordTypes()) {
+                if ((x.getStackKind() == JavaKind.Object && y.getStackKind() == getWordTypes().getWordKind()) ||
+                                (x.getStackKind() == getWordTypes().getWordKind() && y.getStackKind() == JavaKind.Object)) {
+                    throw UserError.abort("Should not compare Word to Object in condition at " + method.format("%H.%n(%p)") + " in " + method.asStackTraceElement(bci()));
+                }
             }
 
             super.genIf(x, cond, y);
@@ -268,7 +297,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         private void checkWordType(ValueNode value, JavaType expectedType, String reason) {
-            if (expectedType.getJavaKind() == JavaKind.Object) {
+            if (expectedType.getJavaKind() == JavaKind.Object && checkWordTypes()) {
                 boolean isWordTypeExpected = getWordTypes().isWord(expectedType);
                 boolean isWordValue = value.getStackKind() == getWordTypes().getWordKind();
 
@@ -296,18 +325,17 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected IntrinsicGuard guardIntrinsic(ValueNode[] args, ResolvedJavaMethod targetMethod, InvocationPluginReceiver pluginReceiver) {
-            /* Currently not supported on Substrate VM, because we do not support LoadMethodNode. */
-            return null;
-        }
-
-        @Override
         public void notifyReplacedCall(ResolvedJavaMethod targetMethod, ConstantNode node) {
             JavaConstant constant = node.asJavaConstant();
             if (getMetaAccess() instanceof AnalysisMetaAccess && constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
                 SubstrateObjectConstant sValue = (SubstrateObjectConstant) node.asJavaConstant();
                 sValue.setRoot(targetMethod);
             }
+        }
+
+        @Override
+        public boolean isPluginEnabled(GraphBuilderPlugin plugin) {
+            return true;
         }
     }
 }

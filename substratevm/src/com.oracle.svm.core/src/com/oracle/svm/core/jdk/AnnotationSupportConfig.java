@@ -26,6 +26,6 @@ package com.oracle.svm.core.jdk;
 
 public class AnnotationSupportConfig {
     public static void initialize() {
-        // hook for JDK9+ initialization
+        // hook for JDK11+ initialization
     }
 }

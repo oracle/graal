@@ -32,11 +32,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-@RunWith(value = Parameterized.class)
+@RunWith(Parameterized.class)
 public class StringIndexOfCharTest extends GraalCompilerTest {
-    @Parameterized.Parameter(value = 0) public String sourceString;
-    @Parameterized.Parameter(value = 1) public int constantChar;
-    @Parameterized.Parameter(value = 2) public int fromIndex;
 
     @Parameterized.Parameters(name = "{0},{1},{2}")
     public static Collection<Object[]> data() {
@@ -66,6 +63,16 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
         }
 
         return tests;
+    }
+
+    private final String sourceString;
+    private final int constantChar;
+    private final int fromIndex;
+
+    public StringIndexOfCharTest(String sourceString, int constantChar, int fromIndex) {
+        this.sourceString = sourceString;
+        this.constantChar = constantChar;
+        this.fromIndex = fromIndex;
     }
 
     public int testStringIndexOf(String a, int b) {

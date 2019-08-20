@@ -102,7 +102,7 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * @see Cached @Cached for more information on using this annotation.
  * @see CachedContext @CachedContext to access the language instance.
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})

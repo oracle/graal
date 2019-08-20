@@ -26,7 +26,7 @@ package com.oracle.svm.reflect.target;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 
 class ReflectionHelper {
@@ -38,8 +38,17 @@ class ReflectionHelper {
         return holder;
     }
 
+    static Target_java_lang_reflect_Method getHolder(Target_java_lang_reflect_Method method) {
+        Target_java_lang_reflect_Method holder = getRoot(method);
+        if (holder == null) {
+            holder = method;
+        }
+
+        return holder;
+    }
+
     static Target_java_lang_reflect_Constructor getHolder(Target_java_lang_reflect_Constructor constructor) {
-        Target_java_lang_reflect_Constructor holder = asConstructor(getRoot(asExecutable(constructor)));
+        Target_java_lang_reflect_Constructor holder = getRoot(constructor);
         if (holder == null) {
             holder = constructor;
         }
@@ -63,19 +72,27 @@ class ReflectionHelper {
         return object;
     }
 
-    private static Target_java_lang_reflect_Constructor asConstructor(Target_java_lang_reflect_Executable executable) {
-        return KnownIntrinsics.unsafeCast(executable, Target_java_lang_reflect_Constructor.class);
-    }
-
-    private static Target_java_lang_reflect_Executable asExecutable(Object executable) {
-        return KnownIntrinsics.unsafeCast(executable, Target_java_lang_reflect_Executable.class);
-    }
-
     private static Target_java_lang_reflect_Executable getRoot(Target_java_lang_reflect_Executable executable) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return executable.getRoot();
         } else {
-            return asExecutable(KnownIntrinsics.unsafeCast(executable, Target_java_lang_reflect_AccessibleObject.class).getRoot());
+            return SubstrateUtil.cast(SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Executable.class);
+        }
+    }
+
+    private static Target_java_lang_reflect_Method getRoot(Target_java_lang_reflect_Method method) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class).getRoot(), Target_java_lang_reflect_Method.class);
+        } else {
+            return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Method.class);
+        }
+    }
+
+    private static Target_java_lang_reflect_Constructor getRoot(Target_java_lang_reflect_Constructor constructor) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class).getRoot(), Target_java_lang_reflect_Constructor.class);
+        } else {
+            return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Constructor.class);
         }
     }
 }

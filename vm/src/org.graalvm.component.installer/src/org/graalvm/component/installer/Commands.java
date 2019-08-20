@@ -94,8 +94,8 @@ public interface Commands {
     /**
      * Verifies JAR integrity.
      */
-    String OPTION_VERIFY_JARS = "s";
-    String LONG_OPTION_VERIFY_JARS = "verify-jars";
+    String OPTION_NO_VERIFY_JARS = "s";
+    String LONG_OPTION_NO_VERIFY_JARS = "no-verify-jars";
 
     /**
      * Do not use tabular list.
@@ -174,4 +174,19 @@ public interface Commands {
      */
     String OPTION_NON_INTERACTIVE = "N";
     String LONG_OPTION_NON_INTERACTIVE = "non-interactive";
+
+    /**
+     * Operate on all components, irrespective of version.
+     */
+    String OPTION_ALL = "a";
+    String LONG_OPTION_ALL = "all-versions";
+
+    /**
+     * Ignores missing components on upgrade.
+     */
+    String OPTION_IGNORE_MISSING_COMPONENTS = "x"; // NOI18N
+    String LONG_OPTION_IGNORE_MISSING_COMPONENTS = "ignore-missing"; // NOI18N
+
+    String OPTION_VERSION = "V";
+    String LONG_OPTION_VERSION = "use-version";
 }

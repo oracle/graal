@@ -67,7 +67,14 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
     /**
      * The max delay to connect to the final destination or open a proxy connection. In seconds.
      */
-    private static final int DEFAULT_CONNECT_DELAY = Integer.getInteger("org.graalvm.component.installer.connectDelaySec", 5);
+    private static final int DEFAULT_CONNECT_DELAY = Integer.getInteger("org.graalvm.component.installer.connectDelaySec", 10);
+
+    /**
+     * Delay in the case proxies are not used. Heuristics is not used at all, so the connection time
+     * may be longer. In seconds.
+     */
+    private static final int DEFAULT_DIRECT_CONNECT_DELAY = Integer.getInteger("org.graalvm.component.installer.directConnectDelaySec", 20);
+
     private static final String PROXY_SCHEME_PREFIX = "http://"; // NOI18N
 
     private final Feedback feedback;
@@ -100,9 +107,42 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
      */
     private int connectDelay = DEFAULT_CONNECT_DELAY;
 
+    private int directConnectDelay = DEFAULT_DIRECT_CONNECT_DELAY;
+
     public ProxyConnectionFactory(Feedback feedback, URL urlBase) {
         this.feedback = feedback.withBundle(ProxyConnectionFactory.class);
         this.urlBase = urlBase;
+    }
+
+    /**
+     * Customizes connection timeouts. Base delay must be at least 0 (infinite wait). If the direct
+     * delay is negative, it is scaled from base delay using the same factor as the default timeouts
+     * 
+     * @param delay base delay, 0 for infinite wait. Must not be negative
+     * @param directDelay single connection delay, negative to derive from the base delay
+     */
+    public void setConnectDelay(int delay, int directDelay) {
+        if (delay < 0) {
+            throw new IllegalArgumentException();
+        }
+        this.connectDelay = delay;
+        if (directDelay >= 0) {
+            this.directConnectDelay = directDelay;
+        } else {
+            // scale the base delay by the default connection factor
+            float factor = Math.min(1, ((float) DEFAULT_DIRECT_CONNECT_DELAY / DEFAULT_CONNECT_DELAY));
+            this.directConnectDelay = Math.round(delay * factor);
+        }
+    }
+
+    /**
+     * Scales the default timeouts by some factor.
+     * 
+     * @param factor factor to scale the default timeouts.
+     */
+    public void setConnectDelayFactor(float factor) {
+        this.connectDelay = Math.round(DEFAULT_CONNECT_DELAY * factor);
+        this.directConnectDelay = Math.round(DEFAULT_DIRECT_CONNECT_DELAY * factor);
     }
 
     public ProxyConnectionFactory setProxy(boolean secure, String proxyURI) {
@@ -288,7 +328,9 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
                             }
                             // swallow, we want to report just proxy failed.
                         }
-                        throw new IOException(feedback.l10n("EXC_ProxyFailed", rcode));
+                        if (!isDirect()) {
+                            throw new IOException(feedback.l10n("EXC_ProxyFailed", rcode));
+                        }
                     }
                 }
                 won = ctx.setOutcome(this, test);
@@ -317,11 +359,16 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
             httpsProxy = envHttpsProxy;
             winner = winningConnector;
         }
+
+        boolean haveProxy = false;
+
         // reuse the same detected direct / proxy for matching URLs.
         if (winner != null && winner.accepts(url)) {
             winner.bind(ctx);
             // submit the winner so we can also recover from long connect delays
             connectors.submit(winner);
+            // note: the winner will benefit from larger timeout as it is just one
+            // connection
         } else {
             if (httpProxy != null) {
                 connectors.submit(new Connector(httpProxy).bind(ctx));
@@ -333,13 +380,21 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
             connectors.submit(new Connector(null).bind(ctx));
         }
 
+        int shouldDelay = haveProxy ? connectDelay : directConnectDelay;
+
         URLConnection res = null;
 
         try {
-            if (!connected.await(connectDelay, TimeUnit.SECONDS)) {
-                throw ctx.getConnectException();
+            if (shouldDelay > 0) {
+                if (!connected.await(shouldDelay, TimeUnit.SECONDS)) {
+                    throw ctx.getConnectException();
+                } else {
+                    // may also throw exception
+                    res = ctx.getConnection();
+                }
             } else {
-                // may also throw exception
+                // wait indefinitely ... until network times out.
+                connected.await();
                 res = ctx.getConnection();
             }
         } catch (InterruptedException ex) {

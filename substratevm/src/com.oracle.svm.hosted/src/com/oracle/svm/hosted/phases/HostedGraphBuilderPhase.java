@@ -67,7 +67,7 @@ public class HostedGraphBuilderPhase extends SubstrateGraphBuilderPhase {
 
     public HostedGraphBuilderPhase(Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext,
                     WordTypes wordTypes) {
-        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes, null);
+        super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
     }
 
     @Override

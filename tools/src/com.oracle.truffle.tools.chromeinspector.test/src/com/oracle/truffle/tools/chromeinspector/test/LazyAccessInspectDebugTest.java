@@ -56,7 +56,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyInteropObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
-import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
 
 /**
@@ -85,7 +84,7 @@ public class LazyAccessInspectDebugTest {
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
         ProxyLanguage.setDelegate(new ReadWithSideEffectsLanguage(readLazyFlag));
         Source source = Source.newBuilder(ProxyLanguage.ID, "1", "ReadWithSideEffects.test").build();
-        String sourceURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String sourceURI = InspectorTester.getStringURI(source.getURI());
         String hash = new Script(0, null, DebuggerTester.getSourceImpl(source)).getHash();
         tester.eval(source);
         long id = tester.getContextId();

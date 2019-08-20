@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.Threading.RecurringCallbackAccess;
@@ -216,7 +216,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("unchecked")
         private static <T extends Throwable> void throwUnchecked(Throwable exception) throws T {
             throw (T) exception; // T is inferred as RuntimeException, but doesn't have to be
@@ -260,7 +260,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.")
+    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
     boolean needsCallbackOnSafepointCheckSlowpath() {
         return activeTimer.get() != null;
     }
@@ -284,7 +284,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.")
+    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
     static boolean isRecurringCallbackPaused() {
         return currentPauseDepth.get() != 0;
     }

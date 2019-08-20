@@ -60,7 +60,7 @@ public final class FloatingWordCastNode extends FloatingNode implements LIRLower
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (usages().count() == 0) {
+        if (hasNoUsages()) {
             /* If the cast is unused, it can be eliminated. */
             return input;
         }

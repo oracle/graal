@@ -618,13 +618,13 @@ public final class DebuggerTester implements AutoCloseable {
                                 }).build());
 
                 expectSuspended((SuspendedEvent event) -> {
-                    Assert.assertEquals("Expected " + bp[0] + " => " + bp[1] + ", resolved at " + resolvedIndexPtr[0],
+                    Assert.assertEquals("B" + bpId + ": Expected " + bp[0] + " => " + bp[1] + ", resolved at " + resolvedIndexPtr[0],
                                     bp[1], event.getSourceSection().getCharIndex() + 1);
                     Assert.assertSame(breakpoint, event.getBreakpoints().iterator().next());
                     event.prepareContinue();
                 });
                 expectDone();
-                Assert.assertEquals("Expected resolved " + bp[0] + " => " + bp[1],
+                Assert.assertEquals("B" + bpId + ": Expected resolved " + bp[0] + " => " + bp[1],
                                 bp[1], resolvedIndexPtr[0]);
             }
         }

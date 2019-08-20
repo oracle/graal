@@ -50,7 +50,7 @@ import java.lang.annotation.Target;
  * method must be within a class annotated with {@link CEnum}. The method must be declared
  * non-static, native, and must not have any parameters. The method can have any name.
  *
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

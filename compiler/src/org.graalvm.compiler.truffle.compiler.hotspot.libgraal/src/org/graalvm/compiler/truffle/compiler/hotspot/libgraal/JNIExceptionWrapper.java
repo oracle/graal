@@ -30,6 +30,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementFileName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementLineNumber;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetStackTraceElementMethodName;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetThrowableMessage;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.UpdateStackTrace;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callCreateException;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTrace;
@@ -37,6 +38,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptio
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTraceElementFileName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTraceElementLineNumber;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetStackTraceElementMethodName;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callGetThrowableMessage;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIExceptionWrapperGen.callUpdateStackTrace;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.SVMToHotSpotUtil.isHotSpotCall;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.ExceptionCheck;
@@ -73,6 +75,7 @@ final class JNIExceptionWrapper extends RuntimeException {
     private final boolean throwableRequiresStackTraceUpdate;
 
     private JNIExceptionWrapper(JNIEnv env, JThrowable throwableHandle) {
+        super(getMessage(env, throwableHandle));
         this.throwableHandle = throwableHandle;
         this.throwableRequiresStackTraceUpdate = createMergedStackTrace(env);
     }
@@ -278,11 +281,17 @@ final class JNIExceptionWrapper extends RuntimeException {
         return callUpdateStackTrace(env, throwableHandle, stackTraceHandle);
     }
 
+    @SVMToHotSpot(GetThrowableMessage)
+    private static String getMessage(JNIEnv env, JThrowable throwableHandle) {
+        JString message = callGetThrowableMessage(env, throwableHandle);
+        return createString(env, message);
+    }
+
     /**
      * Gets the index of the first frame denoting the caller of
      * {@link #wrapAndThrowPendingJNIException(JNIEnv)} in {@code stackTrace}.
      *
-     * @returns {@code stackTrace.length} if no caller found
+     * @returns {@code 0} if no caller found
      */
     private static int getIndexOfPropagateJNIExceptionFrame(StackTraceElement[] stackTrace) {
         for (int i = 0; i < stackTrace.length; i++) {
@@ -291,6 +300,6 @@ final class JNIExceptionWrapper extends RuntimeException {
                 return i + 1;
             }
         }
-        return stackTrace.length;
+        return 0;
     }
 }

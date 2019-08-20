@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,11 +38,11 @@ public interface GetStackSpaceFactory {
     LLVMExpressionNode createGetStackSpace(LLVMContext context, Type type);
 
     static GetStackSpaceFactory createAllocaFactory() {
-        return (context, type) -> context.getNodeFactory().createAlloca(type);
+        return (context, type) -> context.getLanguage().getNodeFactory().createAlloca(type);
     }
 
     static GetStackSpaceFactory createGetUniqueStackSpaceFactory(UniquesRegion uniquesRegion) {
-        return (context, type) -> context.getNodeFactory().createGetUniqueStackSpace(type, uniquesRegion);
+        return (context, type) -> context.getLanguage().getNodeFactory().createGetUniqueStackSpace(type, uniquesRegion);
     }
 
 }

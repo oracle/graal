@@ -47,7 +47,7 @@ import org.graalvm.word.PointerBase;
  * A {@code void*} pointer to an opaque C value of an unknown type, without any methods to read or
  * write.
  *
- * @since 1.0
+ * @since 19.0
  */
 @CPointerTo(nameOfCType = "void")
 public interface VoidPointer extends PointerBase {

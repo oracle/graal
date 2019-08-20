@@ -36,16 +36,21 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
+import com.oracle.svm.hosted.code.CEntryPointData;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
@@ -65,6 +70,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
+import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.image.AbstractBootImage;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap;
@@ -78,6 +84,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+@SuppressWarnings("deprecation")
 public class FeatureImpl {
 
     public abstract static class FeatureAccessImpl implements Feature.FeatureAccess {
@@ -102,11 +109,11 @@ public class FeatureImpl {
         }
 
         public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass) {
-            return imageClassLoader.findSubclasses(baseClass);
+            return imageClassLoader.findSubclasses(baseClass, false);
         }
 
         public List<Class<?>> findAnnotatedClasses(Class<? extends Annotation> annotationClass) {
-            return imageClassLoader.findAnnotatedClasses(annotationClass);
+            return imageClassLoader.findAnnotatedClasses(annotationClass, false);
         }
 
         public List<Method> findAnnotatedMethods(Class<? extends Annotation> annotationClass) {
@@ -134,14 +141,25 @@ public class FeatureImpl {
 
     public static class AfterRegistrationAccessImpl extends FeatureAccessImpl implements Feature.AfterRegistrationAccess {
         private final MetaAccessProvider metaAccess;
+        private Pair<Method, CEntryPointData> mainEntryPoint;
 
-        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
+        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, Pair<Method, CEntryPointData> mainEntryPoint,
+                        DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.metaAccess = metaAccess;
+            this.mainEntryPoint = mainEntryPoint;
         }
 
         public MetaAccessProvider getMetaAccess() {
             return metaAccess;
+        }
+
+        public void setMainEntryPoint(Pair<Method, CEntryPointData> mainEntryPoint) {
+            this.mainEntryPoint = mainEntryPoint;
+        }
+
+        public Pair<Method, CEntryPointData> getMainEntryPoint() {
+            return mainEntryPoint;
         }
     }
 
@@ -164,6 +182,50 @@ public class FeatureImpl {
 
         public AnalysisMetaAccess getMetaAccess() {
             return bb.getMetaAccess();
+        }
+
+        public boolean isReachable(Class<?> clazz) {
+            return isReachable(getMetaAccess().lookupJavaType(clazz));
+        }
+
+        public boolean isReachable(AnalysisType type) {
+            return type.isInTypeCheck() || type.isInstantiated();
+        }
+
+        public boolean isReachable(Field field) {
+            return isReachable(getMetaAccess().lookupJavaField(field));
+        }
+
+        public boolean isReachable(AnalysisField field) {
+            return field.isAccessed();
+        }
+
+        public boolean isReachable(Executable method) {
+            return isReachable(getMetaAccess().lookupJavaMethod(method));
+        }
+
+        public boolean isReachable(AnalysisMethod method) {
+            return method.isImplementationInvoked();
+        }
+
+        public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
+            return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).stream()
+                            .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
+            Set<AnalysisType> result = getUniverse().getSubtypes(baseType);
+            result.removeIf(t -> !isReachable(t));
+            return result;
+        }
+
+        public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
+            return reachableMethodOverrides(getMetaAccess().lookupJavaMethod(baseMethod)).stream()
+                            .map(AnalysisMethod::getJavaMethod).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
+            return getUniverse().getMethodImplementations(getBigBang(), baseMethod);
         }
     }
 
@@ -197,7 +259,7 @@ public class FeatureImpl {
          * {@link DuringAnalysisAccess#requireAnalysisIteration()} to trigger a new iteration of the
          * analysis.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public void registerClassReachabilityListener(BiConsumer<DuringAnalysisAccess, Class<?>> listener) {
             getHostVM().registerClassReachabilityListener(listener);
@@ -319,6 +381,21 @@ public class FeatureImpl {
 
         public void registerHierarchyForReflectiveInstantiation(Class<?> c) {
             findSubclasses(c).stream().filter(clazz -> !Modifier.isAbstract(clazz.getModifiers())).forEach(clazz -> RuntimeReflection.registerForReflectiveInstantiation(clazz));
+        }
+
+        @Override
+        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
+            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, elements);
+        }
+
+        @Override
+        public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
+            ReachabilityHandlerFeature.singleton().registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
+        }
+
+        @Override
+        public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
+            ReachabilityHandlerFeature.singleton().registerSubtypeReachabilityHandler(this, callback, baseClass);
         }
     }
 

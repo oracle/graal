@@ -52,15 +52,7 @@ public class PolyglotNativeAPITypes {
     public enum PolyglotStatus {
         poly_ok,
 
-        poly_invalid_arg,
-
-        poly_object_expected,
-
         poly_string_expected,
-
-        poly_name_expected,
-
-        poly_function_expected,
 
         poly_number_expected,
 
@@ -70,11 +62,7 @@ public class PolyglotNativeAPITypes {
 
         poly_generic_failure,
 
-        poly_pending_exception,
-
-        poly_cancelled,
-
-        poly_status_last;
+        poly_pending_exception;
 
         @CEnumValue
         public native int getCValue();
@@ -122,6 +110,18 @@ public class PolyglotNativeAPITypes {
     @CPointerTo(nameOfCType = "poly_handle")
     @CTypedef(name = "poly_handle")
     public interface PolyglotHandle extends PointerBase, ObjectHandle {
+
+    }
+
+    @CPointerTo(nameOfCType = "poly_exception")
+    @CTypedef(name = "poly_exception")
+    public interface PolyglotExceptionHandle extends PointerBase, PolyglotHandle {
+    }
+
+    @CPointerTo(nameOfCType = "poly_exception")
+    public interface PolyglotExceptionHandlePointer extends PointerBase, PolyglotHandle {
+
+        void write(ObjectHandle value);
 
     }
 

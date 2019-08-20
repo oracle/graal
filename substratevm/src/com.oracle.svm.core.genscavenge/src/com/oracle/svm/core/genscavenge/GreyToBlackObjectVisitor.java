@@ -64,13 +64,10 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
         return new GreyToBlackObjectVisitor(objRefVisitor);
     }
 
-    /** After a visit ends. */
-    @Override
-    public boolean epilogue() {
+    public void reset() {
         if (diagnosticReporter != null) {
             diagnosticReporter.reset();
         }
-        return true;
     }
 
     /** Visit the interior Pointers of an Object. */

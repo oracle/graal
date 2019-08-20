@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.test;
 
+import static com.oracle.truffle.sl.test.SLJavaInteropTest.toUnixString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -101,12 +102,12 @@ public class SLSharedCodeSeparatedEnvTest {
         // @formatter:on
 
         e1.eval("sl", sayHello);
-        assertEquals("Ahoj1\n", os1.toString("UTF-8"));
-        assertEquals("", os2.toString("UTF-8"));
+        assertEquals("Ahoj1\n", toUnixString(os1));
+        assertEquals("", toUnixString(os2));
 
         e2.eval("sl", sayHello);
-        assertEquals("Ahoj1\n", os1.toString("UTF-8"));
-        assertEquals("Ahoj2\n", os2.toString("UTF-8"));
+        assertEquals("Ahoj1\n", toUnixString(os1));
+        assertEquals("Ahoj2\n", toUnixString(os2));
     }
 
     @Test
@@ -121,12 +122,12 @@ public class SLSharedCodeSeparatedEnvTest {
         // @formatter:on
 
         e1.eval("sl", sayHello);
-        assertEquals("Ahoj1\n", os1.toString("UTF-8"));
-        assertEquals("", os2.toString("UTF-8"));
+        assertEquals("Ahoj1\n", toUnixString(os1));
+        assertEquals("", toUnixString(os2));
 
         e2.eval("sl", sayHello);
-        assertEquals("Ahoj1\n", os1.toString("UTF-8"));
-        assertEquals("Ahoj2\n", os2.toString("UTF-8"));
+        assertEquals("Ahoj1\n", toUnixString(os1));
+        assertEquals("Ahoj2\n", toUnixString(os2));
 
         engine.close();
 
@@ -135,11 +136,11 @@ public class SLSharedCodeSeparatedEnvTest {
                                         "Ahoj1\n" +
                                         "Ahoj2\n" +
                                         "endOfOutputCapture\n",
-                        outConsumer.toString("UTF-8"));
+                        toUnixString(outConsumer));
 
         assertEquals("Output of instrument goes not to os runtime if specified otherwise",
                         "initializingOutputCapture\n" + "endOfOutputCapture\n",
-                        osRuntime.toString("UTF-8"));
+                        toUnixString(osRuntime));
     }
 
     @TruffleInstrument.Registration(id = "captureOutput", services = ByteArrayOutputStream.class)

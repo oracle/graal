@@ -101,7 +101,7 @@ public abstract class Message {
     @Deprecated public static final Message REMOVE = Remove.INSTANCE;
 
     /**
-     * @since 1.0
+     * @since 19.0
      * @deprecated use {@link InteropLibrary#execute(Object, Object...)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
@@ -133,7 +133,7 @@ public abstract class Message {
     @Deprecated public static final Message IS_INSTANTIABLE = IsInstantiable.INSTANCE;
 
     /**
-     * @since 1.0
+     * @since 19.0
      * @deprecated use {@link InteropLibrary#invokeMember(Object, String, Object...)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */
@@ -151,7 +151,7 @@ public abstract class Message {
 
     /**
      *
-     * @since 1.0
+     * @since 19.0
      * @deprecated use {@link InteropLibrary#instantiate(Object, Object...)} instead. See
      *             {@link InteropLibrary} for an overview of the new interop messages.
      */

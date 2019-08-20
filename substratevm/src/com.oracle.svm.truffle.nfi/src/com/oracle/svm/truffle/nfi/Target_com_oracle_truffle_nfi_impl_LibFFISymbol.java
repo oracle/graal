@@ -32,5 +32,5 @@ import com.oracle.truffle.nfi.impl.NFILanguageImpl;
 final class Target_com_oracle_truffle_nfi_impl_LibFFISymbol {
 
     @Alias
-    static native Target_com_oracle_truffle_nfi_impl_LibFFISymbol create(NFILanguageImpl language, Target_com_oracle_truffle_nfi_impl_LibFFILibrary library, long address);
+    static native Target_com_oracle_truffle_nfi_impl_LibFFISymbol create(NFILanguageImpl language, Target_com_oracle_truffle_nfi_impl_LibFFILibrary library, String name, long address);
 }

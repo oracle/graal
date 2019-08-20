@@ -114,7 +114,7 @@ public final class KeyInfo {
      * instance in JavaScript a property {@link Message#READ} may have side-effects if the property
      * has a getter function.
      *
-     * @since 1.0
+     * @since 19.0
      * @deprecated see {@link InteropLibrary#hasMemberReadSideEffects(Object, String) instead.
      */
     @Deprecated public static final int READ_SIDE_EFFECTS = 1 << 7;
@@ -125,7 +125,7 @@ public final class KeyInfo {
      * observable by the guest language program. For instance in JavaScript a property
      * {@link Message#WRITE} may have side-effects if the property has a setter function.
      *
-     * @since 1.0
+     * @since 19.0
      * @deprecated see {@link InteropLibrary#hasMemberWriteSideEffects(Object, String) instead.
      */
     @Deprecated public static final int WRITE_SIDE_EFFECTS = 1 << 8;
@@ -176,7 +176,7 @@ public final class KeyInfo {
     /**
      * Test if {@link Message#READ} may have side-effects.
      *
-     * @since 1.0
+     * @since 19.0
      * @deprecated use {@link InteropLibrary#hasMemberReadSideEffects(Object, String)} instead.
      */
     @Deprecated
@@ -187,7 +187,7 @@ public final class KeyInfo {
     /**
      * Test if {@link Message#WRITE} may have side-effects.
      *
-     * @since 1.0
+     * @since 19.0
      * @deprecated use {@link InteropLibrary#hasMemberWriteSideEffects(Object, String)} instead.
      */
     @Deprecated

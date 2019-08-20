@@ -8,7 +8,7 @@ The GraalVM SDK is a collection of APIs for the components of GraalVM.
 
 ## Getting Started
 
-1. Download GraalVM from [Oracle Technology Network](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/).
+1. Download GraalVM from [Oracle Technology Network](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 2. Use any of the Java executables in `./bin` or import GraalVM as JDK in your favorite IDE.
 3. Use GraalVM SDK, the jar is put on the class path for you automatically.
 

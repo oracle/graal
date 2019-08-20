@@ -25,8 +25,6 @@
 
 package com.oracle.svm.core.log;
 
-import java.io.FileDescriptor;
-
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -393,11 +391,6 @@ public class RealLog extends Log {
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
         ImageSingletons.lookup(LogHandler.class).log(bytes, length);
         return this;
-    }
-
-    /* Allow subclasses to customize the file descriptor that we write to. */
-    protected FileDescriptor getOutputFile() {
-        return FileDescriptor.err;
     }
 
     private void rawString(String value) {

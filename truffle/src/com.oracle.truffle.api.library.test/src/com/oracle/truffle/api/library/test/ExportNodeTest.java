@@ -50,13 +50,13 @@ import org.junit.Test;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.ExportMethodTest.ExportsTestLibrary4;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings({"unused", "hiding"})
@@ -343,6 +343,52 @@ public class ExportNodeTest extends AbstractLibraryTest {
             static String m(MultiExportMethod5 receiver, String arg, @Exclusive @Cached("arg") String cachedArg,
                             @Exclusive @Cached("receiver") MultiExportMethod5 cachedReceiver) {
                 return cachedArg;
+            }
+        }
+
+    }
+
+    @Test
+    public void testExportFallback() {
+        ExportFallback fallback = new ExportFallback();
+        MultiNodeExportLibrary cachedLib = createCached(MultiNodeExportLibrary.class, fallback);
+        assertEquals("s0", cachedLib.m0(fallback, ExportFallback.TEST_ARG));
+        assertEquals("f0", cachedLib.m0(fallback, ExportFallback.TEST_ARG + "_"));
+        assertEquals("s0", cachedLib.m1(fallback, ExportFallback.TEST_ARG));
+        assertEquals("f0", cachedLib.m1(fallback, ExportFallback.TEST_ARG + "_"));
+    }
+
+    // use inline cache to export multiple nodes. state should be cached.
+    @ExportLibrary(MultiNodeExportLibrary.class)
+    @SuppressWarnings("static-method")
+    static class ExportFallback {
+
+        static final String TEST_ARG = "testArg";
+
+        @ExportMessage
+        static class M0 {
+            @Specialization(guards = "TEST_ARG.equals(arg)")
+            static String s0(ExportFallback receiver, String arg) {
+                return "s0";
+            }
+
+            @Fallback
+            static String f0(ExportFallback receiver, String arg) {
+                return "f0";
+            }
+        }
+
+        @ExportMessage
+        static class M1 {
+
+            @Specialization(guards = "TEST_ARG.equals(arg)")
+            static String s0(ExportFallback receiver, String arg) {
+                return "s0";
+            }
+
+            @Fallback
+            static String f0(ExportFallback receiver, String arg) {
+                return "f0";
             }
         }
 

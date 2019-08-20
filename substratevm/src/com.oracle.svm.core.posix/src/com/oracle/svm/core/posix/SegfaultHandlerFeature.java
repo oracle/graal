@@ -25,7 +25,7 @@
 package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;

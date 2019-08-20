@@ -64,6 +64,7 @@ public final class MachODylibCommand extends MachOLoadCommand {
         int pos = buffer.getPosition();
 
         int cmd = buffer.getInt();
+        assert cmd == MachOLoadCommand.LC_LOAD_DYLIB;
         int cmdSize = buffer.getInt();
         int offset = buffer.getInt();
         int timestamp = buffer.getInt();
@@ -75,18 +76,5 @@ public final class MachODylibCommand extends MachOLoadCommand {
         buffer.setPosition(pos + cmdSize);
 
         return new MachODylibCommand(cmd, cmdSize, name, timestamp, currentVersion, compatibilityVersion);
-    }
-
-    private static String getString(MachOReader buffer, int len) {
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < len; i++) {
-            byte b = buffer.getByte();
-            if (b != 0) {
-                sb.append((char) b);
-            }
-        }
-
-        return sb.toString();
     }
 }

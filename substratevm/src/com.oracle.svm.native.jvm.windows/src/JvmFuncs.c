@@ -34,8 +34,8 @@
 
 #define BitsPerByte 8
 
-typedef long jlong;
-typedef int jint;
+typedef __int64 jlong;
+typedef long jint;
 
 static int _processor_count = 0;
 static jlong _performance_frequency = 0L;
@@ -152,7 +152,7 @@ JNIEXPORT jlong JVM_NanoTime(void *env, void * ignored) {
 }
 
 JNIEXPORT jlong Java_java_lang_System_currentTimeMillis(void *env, void * ignored) {
-    return (Java_java_lang_System_nanoTime(env, ignored) / NANOSECS_PER_MILLISEC);
+    return getCurrentTimeMillis();
 }
 
 JNIEXPORT jlong JVM_CurrentTimeMillis(void *env, void * ignored) {

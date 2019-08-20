@@ -101,7 +101,7 @@ public class SlowPathException extends Exception {
     @Deprecated
     @SuppressWarnings("sync-override")
     @Override
-    public Throwable fillInStackTrace() {
+    public final Throwable fillInStackTrace() {
         return this;
     }
 }

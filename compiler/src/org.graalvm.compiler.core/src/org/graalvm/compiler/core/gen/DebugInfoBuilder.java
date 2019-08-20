@@ -43,7 +43,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
@@ -317,7 +319,8 @@ public class DebugInfoBuilder {
                     assert obj.entryCount() == 0 || state instanceof VirtualObjectState;
                     VirtualObject vobject = virtualObjects.get(obj);
                     if (vobject == null) {
-                        vobject = VirtualObject.get(obj.type(), virtualObjects.size());
+                        boolean isAutoBox = obj instanceof VirtualBoxingNode;
+                        vobject = GraalServices.createVirtualObject(obj.type(), virtualObjects.size(), isAutoBox);
                         virtualObjects.put(obj, vobject);
                         pendingVirtualObjects.add(obj);
                     }

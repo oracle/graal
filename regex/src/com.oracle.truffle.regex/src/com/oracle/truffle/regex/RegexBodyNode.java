@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,7 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     public SourceSection getSourceSection() {
         if (sourceSection == null) {
             String patternSrc = "/" + source.getPattern() + "/" + source.getFlags();
-            Source src = Source.newBuilder(RegexLanguage.ID, patternSrc, source.getPattern()).mimeType("application/js-regex").build();
+            Source src = Source.newBuilder(RegexLanguage.ID, patternSrc, source.getPattern()).internal(true).mimeType("application/js-regex").build();
             sourceSection = src.createSection(0, patternSrc.length());
         }
         return sourceSection;

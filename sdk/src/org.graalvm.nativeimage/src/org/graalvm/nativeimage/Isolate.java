@@ -47,7 +47,7 @@ import org.graalvm.word.PointerBase;
  * Pointer to the runtime data structure for an isolate. The size and actual layout of the data
  * structure is unspecified, client code must not make any assumptions about it.
  *
- * @since 1.0
+ * @since 19.0
  */
 @CStruct(value = "graal_isolate_t", isIncomplete = true)
 public interface Isolate extends PointerBase {

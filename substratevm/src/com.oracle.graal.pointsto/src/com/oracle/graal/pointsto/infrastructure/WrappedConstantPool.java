@@ -33,6 +33,8 @@ import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -70,9 +72,8 @@ public class WrappedConstantPool implements ConstantPool {
     static {
         try {
             Class<?> hsConstantPool = Class.forName("jdk.vm.ci.hotspot.HotSpotConstantPool");
-            hsLoadReferencedType = hsConstantPool.getDeclaredMethod("loadReferencedType", int.class, int.class, boolean.class);
-            hsLoadReferencedType.setAccessible(true);
-        } catch (ReflectiveOperationException ex) {
+            hsLoadReferencedType = ReflectionUtil.lookupMethod(hsConstantPool, "loadReferencedType", int.class, int.class, boolean.class);
+        } catch (ClassNotFoundException | ReflectionUtilError ex) {
             throw GraalError.shouldNotReachHere("JVMCI 0.47 or later, or JDK 11 is required for Substrate VM: could not find method HotSpotConstantPool.loadReferencedType");
         }
     }

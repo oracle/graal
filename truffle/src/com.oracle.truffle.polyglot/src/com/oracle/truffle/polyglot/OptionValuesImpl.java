@@ -46,6 +46,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -68,6 +69,7 @@ final class OptionValuesImpl implements OptionValues {
     private final Map<OptionKey<?>, Object> values;
 
     OptionValuesImpl(PolyglotEngineImpl engine, OptionDescriptors descriptors) {
+        Objects.requireNonNull(descriptors);
         this.engine = engine;
         this.descriptors = descriptors;
         this.values = new HashMap<>();
@@ -76,7 +78,7 @@ final class OptionValuesImpl implements OptionValues {
     @Override
     public int hashCode() {
         int result = 31 + descriptors.hashCode();
-        result = 31 * result + engine.hashCode();
+        result = 31 * result + Objects.hashCode(engine);
         result = 31 * result + values.hashCode();
         return result;
     }
@@ -136,7 +138,23 @@ final class OptionValuesImpl implements OptionValues {
 
     public void put(String key, String value, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = findDescriptor(key, allowExperimentalOptions);
-        values.put(descriptor.getKey(), descriptor.getKey().getType().convert(value));
+        OptionKey<?> optionKey = descriptor.getKey();
+        Object previousValue;
+        if (values.containsKey(optionKey)) {
+            previousValue = values.get(optionKey);
+        } else {
+            previousValue = optionKey.getDefaultValue();
+        }
+        String name = descriptor.getName();
+        String suffix = null;
+        if (descriptor.isOptionMap()) {
+            suffix = key.substring(name.length());
+            assert suffix.isEmpty() || suffix.startsWith(".");
+            if (suffix.startsWith(".")) {
+                suffix = suffix.substring(1);
+            }
+        }
+        values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {
@@ -145,7 +163,18 @@ final class OptionValuesImpl implements OptionValues {
         this.descriptors = copy.descriptors;
     }
 
+    private <T> boolean contains(OptionKey<T> optionKey) {
+        for (OptionDescriptor descriptor : descriptors) {
+            if (descriptor.getKey() == optionKey) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public boolean hasBeenSet(OptionKey<?> optionKey) {
+        assert contains(optionKey);
         return values.containsKey(optionKey);
     }
 
@@ -160,6 +189,7 @@ final class OptionValuesImpl implements OptionValues {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(OptionKey<T> optionKey) {
+        assert contains(optionKey);
         Object value = values.get(optionKey);
         if (value == null) {
             return optionKey.getDefaultValue();
@@ -167,8 +197,10 @@ final class OptionValuesImpl implements OptionValues {
         return (T) value;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public <T> void set(OptionKey<T> optionKey, T value) {
+        assert contains(optionKey);
         optionKey.getType().validate(value);
         values.put(optionKey, value);
     }

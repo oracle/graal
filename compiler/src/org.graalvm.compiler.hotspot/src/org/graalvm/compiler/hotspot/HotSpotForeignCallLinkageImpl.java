@@ -25,7 +25,7 @@
 package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_REGISTERS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -179,13 +179,13 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
     }
 
     @Override
-    public boolean isReexecutableOnlyAfterException() {
-        return reexecutability == Reexecutability.REEXECUTABLE_ONLY_AFTER_EXCEPTION;
+    public boolean isGuaranteedSafepoint() {
+        return transition == Transition.SAFEPOINT;
     }
 
     @Override
-    public boolean isGuaranteedSafepoint() {
-        return transition == Transition.SAFEPOINT;
+    public RegisterEffect getEffect() {
+        return effect;
     }
 
     @Override
@@ -273,7 +273,7 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
 
     @Override
     public boolean destroysRegisters() {
-        return effect == DESTROYS_REGISTERS;
+        return effect == DESTROYS_ALL_CALLER_SAVE_REGISTERS;
     }
 
     @Override

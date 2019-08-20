@@ -250,18 +250,18 @@ final class PolyglotLogHandler extends Handler {
         }
 
         private static Object safeValue(final Object param, final PolyglotContextImpl context) {
-            if (param == null || PolyglotImpl.EngineImpl.isPrimitive(param)) {
+            if (param == null || EngineAccessor.EngineImpl.isPrimitive(param)) {
                 return param;
             }
             if (context != null && param instanceof TruffleObject) {
-                final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(context, null, param);
+                final PolyglotLanguage resolvedLanguage = EngineAccessor.EngineImpl.findObjectLanguage(context, null, param);
                 final PolyglotLanguageContext displayLanguageContext;
                 if (resolvedLanguage != null) {
                     displayLanguageContext = context.contexts[resolvedLanguage.index];
                 } else {
                     displayLanguageContext = context.getHostContext();
                 }
-                return VMAccessor.LANGUAGE.toStringIfVisible(displayLanguageContext.env, param, false);
+                return EngineAccessor.LANGUAGE.toStringIfVisible(displayLanguageContext.env, param, false);
             }
             return param.toString();
         }

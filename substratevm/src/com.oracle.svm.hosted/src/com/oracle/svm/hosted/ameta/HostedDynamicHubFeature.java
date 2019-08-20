@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;

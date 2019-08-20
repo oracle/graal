@@ -31,21 +31,25 @@ import mx_subst
 import mx_unittest
 
 import functools
+import tempfile
 from mx_gate import Task
 
-from os import environ
-from os.path import join, exists, dirname
+from os import environ, listdir
+from os.path import join, exists, dirname, isdir, isfile, getsize
 from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
 
 _suite = mx.suite('vm')
-
+env_tests = []
 
 class VmGateTasks:
     compiler = 'compiler'
     substratevm = 'substratevm'
     sulong = 'sulong'
-    graal_js = 'graal-js'
+    graal_js_all = 'graal-js'
+    graal_js_smoke = 'graal-js-smoke'
+    graal_js_tests = 'graal-js-tests'
+    graal_js_tests_compiled = 'graal-js-tests-compiled'
     graal_nodejs = 'graal-nodejs'
     truffleruby = 'truffleruby'
     ruby = 'ruby'
@@ -55,40 +59,24 @@ class VmGateTasks:
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
+    svm_truffle_tck_js = 'svm-truffle-tck-js'
 
 
 def gate_body(args, tasks):
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.compiler]) as t:
-        if t and mx_vm.has_component('Graal compiler'):
-            # 1. a full open-source build should be built with an open-source JDK but we allow Oracle JDK in non-strict mode as it is common on developer machines
-            # 2. the build must be a GraalVM
-            # 3. the build must be JVMCI-enabled since the 'Graal compiler' component is registered
-            version_regex = mx_vm.openjdk_version_regex if args.strict_mode else mx_vm.anyjdk_version_regex
-            mx_vm.check_versions(mx_vm.graalvm_output(), version_regex, graalvm_version_regex=mx_vm.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
+        if t and mx_vm.has_component('GraalVM compiler'):
+            # 1. the build must be a GraalVM
+            # 2. the build must be JVMCI-enabled since the 'GraalVM compiler' component is registered
+            mx_vm.check_versions(mx_vm.graalvm_output(), graalvm_version_regex=mx_vm.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
 
-    with Task('Vm: Sulong tests', tasks, tags=[VmGateTasks.sulong]) as t:
-        if t and mx_vm.has_component('Sulong', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js]) as t:
-        if t and mx_vm.has_component('Graal.js', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: Graal.nodejs tests', tasks, tags=[VmGateTasks.graal_nodejs]) as t:
-        if t and mx_vm.has_component('Graal.nodejs', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: TruffleRuby tests', tasks, tags=[VmGateTasks.truffleruby]) as t:
-        if t and mx_vm.has_component('TruffleRuby', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: FastR tests', tasks, tags=[VmGateTasks.fastr]) as t:
-        if t and mx_vm.has_component('FastR', fatalIfMissing=True):
-            pass
-
-    with Task('Vm: Graal.Python tests', tasks, tags=[VmGateTasks.graalpython]) as t:
-        if t and mx_vm.has_component('Graal.Python', fatalIfMissing=True):
-            pass
+    with Task('Vm: GraalVM dist names', tasks, tags=[VmGateTasks.integration]) as t:
+        if t:
+            for suite, env_file_name, graalvm_dist_name in env_tests:
+                out = mx.LinesOutputCapture()
+                mx.run_mx(['--no-warning', '--env', env_file_name, 'graalvm-dist-name'], suite, out=out, err=out, env={})
+                mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(env_file_name, suite.name, graalvm_dist_name))
+                if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
+                    mx.abort("Unexpected GraalVM dist name for env file '{}' in suite '{}'.\nExpected: '{}', actual: '{}'.\nDid you forget to update the registration of the GraalVM config?".format(env_file_name, suite.name, graalvm_dist_name, '\n'.join(out.lines)))
 
     if mx_vm.has_component('LibGraal'):
         libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
@@ -119,7 +107,13 @@ def gate_body(args, tasks):
                 if t:
                     def _unittest_config_participant(config):
                         vmArgs, mainClass, mainClassArgs = config
-                        newVmArgs = [arg for arg in vmArgs if arg != "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime"]
+                        def is_truffle_fallback(arg):
+                            fallback_args = [
+                                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
+                                "-Dgraalvm.ForcePolyglotInvalid=true"
+                            ]
+                            return arg in fallback_args
+                        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
                         return (newVmArgs, mainClass, mainClassArgs)
                     mx_unittest.add_config_participant(_unittest_config_participant)
                     excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
@@ -138,6 +132,7 @@ def gate_body(args, tasks):
     gate_sulong(tasks)
     gate_ruby(tasks)
     gate_python(tasks)
+    gate_svm_truffle_tck_js(tasks)
 
 def graalvm_svm():
     """
@@ -157,7 +152,8 @@ def gate_substratevm(tasks):
     with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
         if t:
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
-            truffle_no_compilation = ['--tool:truffle', '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
+            truffle_no_compilation = ['--initialize-at-build-time', '--macro:truffle',
+                                      '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
             truffle_dir = mx.suite('truffle').dir
             args = ['--build-args'] + truffle_no_compilation + [
                 '-H:Features=com.oracle.truffle.api.test.polyglot.RegisterTestClassesForReflectionFeature',
@@ -182,11 +178,11 @@ def gate_sulong(tasks):
             sulong = mx.suite('sulong')
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
-                # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_LIBS
+                # TODO Use mx_vm.get_final_graalvm_distribution().find_single_source_location to rewire SULONG_HOME
                 sulong_libs = join(mx_vm.graalvm_output(), 'jre', 'languages', 'llvm')
                 def distribution_paths(dname):
                     path_substitutions = {
-                        'SULONG_LIBS': sulong_libs
+                        'SULONG_HOME': sulong_libs
                     }
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)
@@ -205,3 +201,48 @@ def gate_python(tasks):
             python_svm_image_path = join(mx_vm.graalvm_output(), 'bin', 'graalpython')
             python_suite = mx.suite("graalpython")
             python_suite.extensions.run_python_unittests(python_svm_image_path)
+
+def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
+    cp = None
+    for dist in svm_suite.dists:
+        if 'SVM_TRUFFLE_TCK' == dist.name:
+            cp = dist.classpath_repr()
+            break
+    if not cp:
+        mx.abort("Cannot resolve: SVM_TRUFFLE_TCK distribution.")
+    excludes = []
+    excludes_dir = join(language_suite.mxDir, 'truffle.tck.permissions')
+    if isdir(excludes_dir):
+        for excludes_file in listdir(excludes_dir):
+            excludes.append(join(excludes_dir, excludes_file))
+    with tempfile.NamedTemporaryFile() as report_file:
+        options = [
+            '--language:{}'.format(language_id),
+            '-H:ClassInitialization=:build_time',
+            '-H:+EnforceMaxRuntimeCompileMethods',
+            '-cp',
+            cp,
+            '--no-server',
+            '-H:-FoldSecurityManagerGetter',
+            '-H:TruffleTCKPermissionsReportFile={}'.format(report_file.name),
+            'com.oracle.svm.truffle.tck.MockMain'
+        ]
+        if excludes:
+            options.append('-H:TruffleTCKPermissionsExcludeFiles={}'.format(','.join(excludes)))
+        native_image(options)
+        if isfile(report_file.name) and getsize(report_file.name) > 0:
+            message = "Failed: Language {} performs following privileged calls:\n\n".format(language_id)
+            with open(report_file.name, "r") as f:
+                for line in f.readlines():
+                    message = message + line
+            mx.abort(message)
+
+def gate_svm_truffle_tck_js(tasks):
+    with Task('JavaScript SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_truffle_tck_js]) as t:
+        if t:
+            js_suite = mx.suite('graal-js')
+            if not js_suite:
+                mx.abort("Cannot resolve graal-js suite.")
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -110,6 +110,6 @@ public final class BitStream {
     }
 
     public long size() {
-        return bitstream.length() * Byte.SIZE;
+        return bitstream.length() * (long) Byte.SIZE;
     }
 }

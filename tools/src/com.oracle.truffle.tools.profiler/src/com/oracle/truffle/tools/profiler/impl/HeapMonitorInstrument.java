@@ -37,7 +37,7 @@ import com.oracle.truffle.tools.profiler.HeapMonitor;
 /**
  * The {@link TruffleInstrument} for the heap allocation monitor.
  *
- * @since 1.0
+ * @since 19.0
  */
 @TruffleInstrument.Registration(id = HeapMonitorInstrument.ID, name = "Heap Allocation Monitor", version = HeapMonitorInstrument.VERSION, services = {HeapMonitor.class})
 public class HeapMonitorInstrument extends TruffleInstrument {
@@ -45,7 +45,7 @@ public class HeapMonitorInstrument extends TruffleInstrument {
     /**
      * Default constructor.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public HeapMonitorInstrument() {
     }
@@ -53,7 +53,7 @@ public class HeapMonitorInstrument extends TruffleInstrument {
     /**
      * A string used to identify the heap allocation monitor.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final String ID = "heapmonitor";
     static final String VERSION = "0.1.0";
@@ -64,7 +64,7 @@ public class HeapMonitorInstrument extends TruffleInstrument {
      * Sets the factory which instantiates the {@link HeapMonitor}.
      *
      * @param factory the factory which instantiates the {@link HeapMonitor}.
-     * @since 1.0
+     * @since 19.0
      */
     public static void setFactory(ProfilerToolFactory<HeapMonitor> factory) {
         if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
@@ -87,7 +87,7 @@ public class HeapMonitorInstrument extends TruffleInstrument {
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
      * {@link HeapMonitor}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static HeapMonitor getMonitor(Engine engine) {
         Instrument instrument = engine.getInstruments().get(ID);
@@ -101,7 +101,7 @@ public class HeapMonitorInstrument extends TruffleInstrument {
      * Called to create the Instrument.
      *
      * @param env environment information for the instrument
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     protected void onCreate(TruffleInstrument.Env env) {
@@ -114,7 +114,7 @@ public class HeapMonitorInstrument extends TruffleInstrument {
 
     /**
      * @return A list of the options provided by the {@link HeapMonitor}.
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -125,7 +125,7 @@ public class HeapMonitorInstrument extends TruffleInstrument {
      * Called when the Instrument is to be disposed.
      *
      * @param env environment information for the instrument
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     protected void onDispose(TruffleInstrument.Env env) {

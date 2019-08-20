@@ -1,0 +1,13 @@
+org.graalvm.linux_amd64/1.0.0.0: GraalVM 1.0
+Component.linux_amd64/1.0.0.0/ruby: graalvm-ruby.zip
+Component.linux_amd64/1.0.0.0/ruby-Bundle-Name: TruffleRuby
+Component.linux_amd64/1.0.0.0/ruby-Bundle-Symbolic-Name: ruby
+Component.linux_amd64/1.0.0.0/ruby-Bundle-Version: 1.0.0.0
+Component.linux_amd64/1.0.0.0/ruby-Bundle-RequireCapability: org.graalvm; \
+    filter:="(&(graalvm_version=1.0.0.0)(os_name=linux)(os_arch=amd64))"
+Component.linux_amd64/1.0.0.0/r: ../1.0.0.0/graalvm-fastr.zip
+Component.linux_amd64/1.0.0.0/r-Bundle-Name: FastR
+Component.linux_amd64/1.0.0.0/r-Bundle-Symbolic-Name: R
+Component.linux_amd64/1.0.0.0/r-Bundle-Version: 1.0.0.0
+Component.linux_amd64/1.0.0.0/r-Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=0.33-dev)(os_name=linux)(os_arch=amd64))"
+

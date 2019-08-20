@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -55,7 +56,7 @@ public class MethodSafepointInsertionPhase extends Phase {
              */
             return;
         }
-        if (graph.method().getAnnotation(CFunction.class) != null) {
+        if (graph.method().getAnnotation(CFunction.class) != null || graph.method().getAnnotation(InvokeCFunctionPointer.class) != null) {
             /*
              * If a method transfers from Java to C, then the return transition (if any) contains
              * the safepoint test and one is not needed at the return of the transferring method.

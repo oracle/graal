@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.DynamicHub;

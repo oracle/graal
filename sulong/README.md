@@ -49,7 +49,7 @@ GraalVM native image.
 - `--vm.<option>` passes VM options to GraalVM.
 List available JVM options with `--help:vm`.
 
-- `--vm.Dgraal.<property>=<value>` passes settings to the Graal compiler.
+- `--vm.Dgraal.<property>=<value>` passes settings to the GraalVM compiler.
 For example, `--vm.Dgraal.DumpOnError=true` sends the compiler intermediate
 representation (IR) to dump handlers if errors occur.
 
@@ -103,21 +103,41 @@ Build Dependencies
 
 Sulong is mostly implemented in Java. However, parts of Sulong are
 implemented in C/C++ and will be compiled to a shared library or a bitcode
-file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
-tool) in one of the supported versions (v3.8 - v7.0) installed. For best
-experience we suggest to install either LLVM 4 or LLVM 6.
+file. To do so, we use `clang` and other LLVM tools bundled with the
+[Toolchain](docs/TOOLCHAIN.md).
+In addition, system tools such as a linker or `make` as well as system
+headers are needed.
 
-On a Linux-based operating system you can usually use its included package
-manager to install a supported version. Note, however, that the LLVM that
-is shipped with MacOS does not contain the `opt` tool, which a Sulong
-build needs. On MacOS, we recommend installing LLVM via `homebrew` and
-appending the bin path to the `PATH`.
+#### Linux
 
-To install Clang and LLVM 4 on MacOS using `homebrew` you can use the
-following command:
+On a Linux-based operating system you can usually use the package
+manager to install these requirements. For example, on Debian based system,
+installing the `build-essential` meta package should be sufficient.
 
-    brew install llvm@4
-    export PATH="/usr/local/opt/llvm@4/bin:$PATH"
+#### MacOS
+
+On MacOS those dependencies are provided by Xcode.
+On recent MacOS versions, you may run into a build error like this:
+
+```
+Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make... [rebuild needed by GNU Make]
+../graal/sulong/projects/com.oracle.truffle.llvm.libraries.bitcode/src/abort.c:30:10: fatal error: 'stdio.h' file not found
+#include <stdio.h>
+         ^~~~~~~~~
+1 error generated.
+make: *** [bin/abort.noopt.bc] Error 1
+
+Building com.oracle.truffle.llvm.libraries.bitcode with GNU Make failed
+1 build tasks failed
+```
+
+This is due to the non-standard location of the SDK headers in newer Xcode
+versions. In this case, please set the `SDKROOT` environment variable to the
+correct location:
+
+```bash
+SDKROOT=`xcrun --show-sdk-path`
+```
 
 Runtime Dependencies
 --------------------
@@ -147,14 +167,14 @@ Next, use git to clone the Sulong project and its dependencies:
     git clone https://github.com/oracle/graal
 
 Next, you need to download a recent
-[labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+[JVMCI-enabled JDK 8](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
 Extract it inside the `sulong-dev` directory:
 
-    tar -zxf labsjdk-8u172-jvmci-0.54-linux-amd64.tar.gz
+    tar -zxf oraclejdk-8u212-jvmci-20-b01-linux-amd64.tar.gz
 
-Set `JAVA_HOME` to point to the extracted labsjdk from above:
+Set `JAVA_HOME` to point to the extracted JDK from above:
 
-    echo JAVA_HOME=`pwd`/labsjdk1.8.0_172-jvmci-0.54 > graal/sulong/mx.sulong/env
+    echo JAVA_HOME=`pwd`/oraclejdk1.8.0_212-jvmci-20-b01 > graal/sulong/mx.sulong/env
 
 Sulong partially consists of C/C++ code that is compiled using `make`. To speed
 up the build process you can edit the `MAKEFLAGS` environment variable:
@@ -186,7 +206,7 @@ multiple arguments separated by `:`.
 
     mx lli -Dpolyglot.llvm.libraryPath=lib -Dpolyglot.llvm.libraries=liba.so test.bc
 
-#### Running with the Graal compiler
+#### Running with the GraalVM compiler
 
 In contrast to GraalVM, `mx lli` will by default  *not* optimize your program.
 If you are interested in high performance, you might want to import the Graal

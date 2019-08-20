@@ -47,7 +47,7 @@ import org.graalvm.word.SignedWord;
 /**
  * A pointer to a 16-bit C primitive value.
  *
- * @since 1.0
+ * @since 19.0
  */
 @CPointerTo(nameOfCType = "short")
 public interface CShortPointer extends PointerBase {
@@ -55,7 +55,7 @@ public interface CShortPointer extends PointerBase {
     /**
      * Reads the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     short read();
 
@@ -63,7 +63,7 @@ public interface CShortPointer extends PointerBase {
      * Reads the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     short read(int index);
 
@@ -71,14 +71,14 @@ public interface CShortPointer extends PointerBase {
      * Reads the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     short read(SignedWord index);
 
     /**
      * Writes the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(short value);
 
@@ -86,7 +86,7 @@ public interface CShortPointer extends PointerBase {
      * Writes the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(int index, short value);
 
@@ -94,7 +94,7 @@ public interface CShortPointer extends PointerBase {
      * Writes the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(SignedWord index, short value);
 
@@ -102,7 +102,7 @@ public interface CShortPointer extends PointerBase {
      * Computes the address of the array element with the specified index, treating the pointer as
      * an array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     CShortPointer addressOf(int index);
 
@@ -110,7 +110,7 @@ public interface CShortPointer extends PointerBase {
      * Computes the address of the array element with the specified index, treating the pointer as
      * an array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     CShortPointer addressOf(SignedWord index);
 }

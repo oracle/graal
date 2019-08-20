@@ -31,8 +31,11 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate;
 
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -82,42 +85,51 @@ public abstract class AggregateConstant extends AbstractConstant {
         return sb.toString();
     }
 
-    public static AggregateConstant fromData(Type type, long[] data) {
+    public static AggregateConstant createFromData(Type type, RecordBuffer buffer) {
         final AggregateConstant aggregateConstant;
         final Type elementType;
         if (type instanceof ArrayType) {
             final ArrayType arrayType = (ArrayType) type;
             elementType = arrayType.getElementType();
-            aggregateConstant = new ArrayConstant(arrayType, data.length);
+            aggregateConstant = new ArrayConstant(arrayType, buffer.size());
         } else if (type instanceof VectorType) {
             final VectorType vectorType = (VectorType) type;
             elementType = vectorType.getElementType();
-            aggregateConstant = new VectorConstant((VectorType) type, data.length);
+            aggregateConstant = new VectorConstant((VectorType) type, buffer.size());
         } else {
             throw new LLVMParserException("Cannot create constant from data: " + type);
         }
 
-        for (int i = 0; i < data.length; i++) {
-            aggregateConstant.elements[i] = Constant.createFromData(elementType, data[i]);
+        if (Type.isIntegerType(elementType)) {
+            for (int i = 0; i < aggregateConstant.elements.length; i++) {
+                aggregateConstant.elements[i] = IntegerConstant.createFromData(elementType, buffer);
+            }
+        } else if (Type.isFloatingpointType(elementType)) {
+            for (int i = 0; i < aggregateConstant.elements.length; i++) {
+                aggregateConstant.elements[i] = FloatingPointConstant.create(elementType, buffer);
+            }
+        } else {
+            throw new LLVMParserException("No datum constant implementation for " + type);
         }
 
         return aggregateConstant;
     }
 
-    public static AggregateConstant fromSymbols(SymbolTable symbols, Type type, int[] valueIndices) {
+    public static AggregateConstant createFromValues(SymbolTable symbols, Type type, RecordBuffer buffer) {
         final AggregateConstant aggregateConstant;
+        int length = buffer.remaining();
         if (type instanceof ArrayType) {
-            aggregateConstant = new ArrayConstant((ArrayType) type, valueIndices.length);
+            aggregateConstant = new ArrayConstant((ArrayType) type, length);
         } else if (type instanceof StructureType) {
-            aggregateConstant = new StructureConstant((StructureType) type, valueIndices.length);
+            aggregateConstant = new StructureConstant((StructureType) type, length);
         } else if (type instanceof VectorType) {
-            aggregateConstant = new VectorConstant((VectorType) type, valueIndices.length);
+            aggregateConstant = new VectorConstant((VectorType) type, length);
         } else {
             throw new LLVMParserException("Cannot create constant for type: " + type);
         }
 
-        for (int elementIndex = 0; elementIndex < valueIndices.length; elementIndex++) {
-            aggregateConstant.elements[elementIndex] = symbols.getForwardReferenced(valueIndices[elementIndex], aggregateConstant);
+        for (int elementIndex = 0; elementIndex < length; elementIndex++) {
+            aggregateConstant.elements[elementIndex] = symbols.getForwardReferenced(buffer.readInt(), aggregateConstant);
         }
 
         return aggregateConstant;

@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -37,13 +36,13 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -66,7 +65,7 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @CachedLibrary(limit = "3") InteropLibrary foreignRead,
                         @Cached BranchProfile exception) {
-            TruffleObject foreign = asForeign.execute(value);
+            Object foreign = asForeign.execute(value);
             String name = readStr.executeWithTarget(id);
             try {
                 Object rawValue = foreignRead.readMember(foreign, name);
@@ -102,7 +101,7 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
                         @Cached LLVMAsForeignNode asForeign,
                         @CachedLibrary(limit = "3") InteropLibrary foreignRead,
                         @Cached BranchProfile exception) {
-            TruffleObject foreign = asForeign.execute(value);
+            Object foreign = asForeign.execute(value);
             try {
                 Object rawValue = foreignRead.readArrayElement(foreign, id);
                 return toLLVM.executeWithTarget(rawValue);

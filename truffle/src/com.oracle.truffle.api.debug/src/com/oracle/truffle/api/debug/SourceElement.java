@@ -74,7 +74,7 @@ public enum SourceElement {
      * Denotes program locations that represent a function of a guest language. The appropriate
      * nodes are tagged with {@link RootTag}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     ROOT(RootTag.class);
 

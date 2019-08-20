@@ -33,40 +33,29 @@ import jdk.vm.ci.services.Services;
 public class LibGraal {
 
     public static boolean isAvailable() {
-        return isCurrentRuntime() || libgraalIsolate != 0L;
+        return inLibGraal() || isolate != 0L;
     }
 
-    public static boolean isCurrentRuntime() {
+    public static boolean inLibGraal() {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
-    public static long getIsolate() {
-        if (isCurrentRuntime() || !isAvailable()) {
-            throw new IllegalStateException();
-        }
-        return libgraalIsolate;
-    }
-
-    public static long getIsolateThread() {
-        if (isCurrentRuntime()) {
-            throw new IllegalStateException();
-        }
-        return CURRENT_ISOLATE_THREAD.get();
-    }
-
-    public static long[] registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
+    public static void registerNativeMethods(HotSpotJVMCIRuntime runtime, Class<?> clazz) {
         if (clazz.isPrimitive()) {
             throw new IllegalArgumentException();
         }
-        if (isCurrentRuntime() || !isAvailable()) {
+        if (inLibGraal() || !isAvailable()) {
             throw new IllegalStateException();
         }
-        return runtime.registerNativeMethods(clazz);
+        runtime.registerNativeMethods(clazz);
     }
 
     public static long translate(HotSpotJVMCIRuntime runtime, Object obj) {
         if (!isAvailable()) {
             throw new IllegalStateException();
+        }
+        if (!inLibGraal() && LibGraalScope.currentScope.get() == null) {
+            throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
         }
         return runtime.translate(obj);
     }
@@ -75,38 +64,35 @@ public class LibGraal {
         if (!isAvailable()) {
             throw new IllegalStateException();
         }
+        if (!inLibGraal() && LibGraalScope.currentScope.get() == null) {
+            throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
+        }
         return runtime.unhand(type, handle);
     }
-
-    private static final ThreadLocal<Long> CURRENT_ISOLATE_THREAD = new ThreadLocal<Long>() {
-        @Override
-        protected Long initialValue() {
-            return attachThread(libgraalIsolate);
-        }
-    };
-
-    private static final long libgraalIsolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
 
     private static long initializeLibgraal() {
         try {
             HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
             long[] nativeInterface = runtime.registerNativeMethods(LibGraal.class);
             return nativeInterface[1];
-        } catch (UnsatisfiedLinkError e) {
-            // Remove once Graal depends on a jvmci release including GR-14941
-            // since we can then rely solely on UnsupportedOperationException
-            // to indicate whether libgraal is available. All other exceptions
-            // raised here should then cause fail-fast behavior.
-            return 0L;
         } catch (UnsupportedOperationException e) {
             return 0L;
         }
     }
 
-    /**
-     * Attaches the current thread to a thread in {@code isolate}.
-     *
-     * @param isolate
-     */
-    private static native long attachThread(long isolate);
+    static final long isolate = Services.IS_BUILDING_NATIVE_IMAGE ? 0L : initializeLibgraal();
+
+    static boolean isCurrentThreadAttached(HotSpotJVMCIRuntime runtime) {
+        return runtime.isCurrentThreadAttached();
+    }
+
+    static boolean attachCurrentThread(HotSpotJVMCIRuntime runtime) {
+        return runtime.attachCurrentThread(false);
+    }
+
+    static void detachCurrentThread(HotSpotJVMCIRuntime runtime) {
+        runtime.detachCurrentThread();
+    }
+
+    static native long getCurrentIsolateThread(long iso);
 }

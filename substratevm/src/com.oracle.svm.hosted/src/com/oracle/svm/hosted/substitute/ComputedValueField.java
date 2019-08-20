@@ -47,9 +47,12 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaConstant;
@@ -231,11 +234,9 @@ public class ComputedValueField implements ReadableJavaField, ComputedValue {
 
             case NewInstance:
                 try {
-                    Constructor<?> constructor = targetClass.getDeclaredConstructor();
-                    constructor.setAccessible(true);
-                    result = originalSnippetReflection.forObject(constructor.newInstance());
-                } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException ex) {
-                    throw shouldNotReachHere("Error performing field recomputation for alias " + annotated.format("%H.%n"), ex);
+                    result = originalSnippetReflection.forObject(ReflectionUtil.newInstance(targetClass));
+                } catch (ReflectionUtilError ex) {
+                    throw VMError.shouldNotReachHere("Error performing field recomputation for alias " + annotated.format("%H.%n"), ex.getCause());
                 }
                 break;
             case AtomicFieldUpdaterOffset:

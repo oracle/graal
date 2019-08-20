@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.SubstrateUtil;
 
 public final class JDKUtils {
 
@@ -34,10 +34,10 @@ public final class JDKUtils {
      * {@link Throwable#getMessage} and is therefore guaranteed to be allocation free.
      */
     public static String getRawMessage(Throwable ex) {
-        return KnownIntrinsics.unsafeCast(ex, Target_java_lang_Throwable.class).detailMessage;
+        return SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).detailMessage;
     }
 
     public static StackTraceElement[] getRawStackTrace(Throwable ex) {
-        return KnownIntrinsics.unsafeCast(ex, Target_java_lang_Throwable.class).stackTrace;
+        return SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).stackTrace;
     }
 }

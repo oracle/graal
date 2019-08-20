@@ -45,6 +45,7 @@ import org.graalvm.compiler.core.LIRGenerationPhase;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
@@ -377,7 +378,8 @@ public abstract class GraalCompilerState {
 
         LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, getGraphOptions(), getGraphDebug());
         LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
-        lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerConfig, request.graph, stub);
+        RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null);
+        lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph, stub);
         lirGenTool = lirBackend.newLIRGenerator(lirGenRes);
         nodeLirGen = lirBackend.newNodeLIRBuilder(request.graph, lirGenTool);
     }
@@ -441,7 +443,7 @@ public abstract class GraalCompilerState {
     }
 
     protected AllocationContext createAllocationContext() {
-        return new AllocationContext(lirGenTool.getSpillMoveFactory(), request.backend.newRegisterAllocationConfig(registerConfig, null));
+        return new AllocationContext(lirGenTool.getSpillMoveFactory(), lirGenRes.getRegisterAllocationConfig());
     }
 
     /**

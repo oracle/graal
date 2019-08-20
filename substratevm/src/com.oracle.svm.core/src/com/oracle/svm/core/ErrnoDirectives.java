@@ -33,19 +33,20 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public class ErrnoDirectives implements CContext.Directives {
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(Platform.LINUX_AND_JNI.class) || Platform.includedIn(Platform.DARWIN_AND_JNI.class) ||
+        return Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class) || Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class) ||
                         Platform.includedIn(Platform.WINDOWS.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
         List<String> result = new ArrayList<>();
-        if (Platform.includedIn(Platform.LINUX_AND_JNI.class) || Platform.includedIn(Platform.DARWIN_AND_JNI.class)) {
+        if (Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class) || Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
             result.add("<sys/errno.h>");
         } else if (Platform.includedIn(Platform.WINDOWS.class)) {
             result.add("<errno.h>");

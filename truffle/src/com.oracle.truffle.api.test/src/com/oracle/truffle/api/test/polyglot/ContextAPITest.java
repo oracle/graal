@@ -48,6 +48,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -83,9 +84,14 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
+import java.util.HashSet;
+import java.util.Set;
 import org.graalvm.polyglot.PolyglotAccess;
 
 public class ContextAPITest {
@@ -224,6 +230,13 @@ public class ContextAPITest {
     }
 
     @Test
+    public void testImageBuildTimeOptionAtRuntime() {
+        ValueAssert.assertFails(() -> Context.newBuilder().option("image-build-time.DisablePrivileges", "createProcess").build(), IllegalArgumentException.class, e -> {
+            assertEquals("Image build-time option 'image-build-time.DisablePrivileges' cannot be set at runtime", e.getMessage());
+        });
+    }
+
+    @Test
     public void testInstrumentOptionAsContext() {
         // Instrument options are refused by context builders with an existing engine:
         Context.Builder contextBuilder = Context.newBuilder();
@@ -314,9 +327,20 @@ public class ContextAPITest {
     }
 
     @Test
-    public void testMultithreadeddEnterLeave() throws InterruptedException, ExecutionException {
+    public void testMultithreadedEnterLeave() throws InterruptedException, ExecutionException {
         Context context = Context.create();
-        ExecutorService service = Executors.newFixedThreadPool(20);
+        Set<Reference<Thread>> threads = new HashSet<>();
+        int[] counter = {1};
+        ExecutorService service = Executors.newFixedThreadPool(20, (run) -> {
+            class CollectibleThread extends Thread {
+                CollectibleThread(Runnable target) {
+                    super(target, "pool-" + counter[0]++);
+                }
+            }
+            Thread t = new CollectibleThread(run);
+            threads.add(new WeakReference<>(t));
+            return t;
+        });
 
         List<Future<?>> futures = new ArrayList<>();
 
@@ -330,7 +354,12 @@ public class ContextAPITest {
 
         service.shutdown();
         service.awaitTermination(1000, TimeUnit.MILLISECONDS);
-
+        Reference<ExecutorService> ref = new WeakReference<>(service);
+        service = null;
+        GCUtils.assertGc("Nobody holds on the executor anymore", ref);
+        for (Reference<Thread> t : threads) {
+            GCUtils.assertGc("Nobody holds on the thread anymore", t);
+        }
         context.close();
     }
 
@@ -684,4 +713,26 @@ public class ContextAPITest {
             context.leave();
         }
     }
+
+    @Test
+    public void testTimeZone() {
+        ZoneId zone = ZoneId.of("UTC+1");
+        Context context = Context.newBuilder().timeZone(zone).build();
+        context.initialize(ProxyLanguage.ID);
+        context.enter();
+        assertEquals(zone, ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        context.leave();
+        context.close();
+    }
+
+    @Test
+    public void testDefaultTimeZone() {
+        Context context = Context.create();
+        context.initialize(ProxyLanguage.ID);
+        context.enter();
+        assertEquals(ZoneId.systemDefault(), ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
+        context.leave();
+        context.close();
+    }
+
 }

@@ -30,9 +30,6 @@ import java.nio.channels.ByteChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
@@ -45,15 +42,17 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.graalvm.component.installer.Archive;
-import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.FileOperations;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.Verifier;
 
 /**
- * The working internals of the 'install' command.
+ * The working internals of the 'add' command.
  */
 public class Installer extends AbstractInstaller {
     private static final Logger LOG = Logger.getLogger(Installer.class.getName());
@@ -75,8 +74,8 @@ public class Installer extends AbstractInstaller {
      */
     private final Set<Path> visitedPaths = new HashSet<>();
 
-    public Installer(Feedback feedback, ComponentInfo componentInfo, ComponentRegistry registry, Archive a) {
-        super(feedback, componentInfo, registry, a);
+    public Installer(Feedback feedback, FileOperations fileOps, ComponentInfo componentInfo, ComponentRegistry registry, ComponentCollection collection, Archive a) {
+        super(feedback, fileOps, componentInfo, registry, collection, a);
     }
 
     @Override
@@ -89,7 +88,7 @@ public class Installer extends AbstractInstaller {
             try {
                 LOG.log(Level.FINE, "Deleting: {0}", p);
                 feedback.verboseOutput("INSTALL_CleanupFile", p);
-                Files.deleteIfExists(p);
+                fileOps.deleteFile(p);
             } catch (IOException ex) {
                 feedback.error("INSTALL_CannotCleanupFile", ex, p, ex.getLocalizedMessage());
             }
@@ -100,7 +99,7 @@ public class Installer extends AbstractInstaller {
             try {
                 LOG.log(Level.FINE, "Deleting directory: {0}", p);
                 feedback.verboseOutput("INSTALL_CleanupDirectory", p);
-                Files.deleteIfExists(p);
+                fileOps.deleteFile(p);
             } catch (IOException ex) {
                 feedback.error("INSTALL_CannotCleanupFile", ex, p, ex.getLocalizedMessage());
             }
@@ -117,15 +116,8 @@ public class Installer extends AbstractInstaller {
 
     Path translateTargetPath(Path base, String n) {
         Path rel;
-        if (BundleConstants.PATH_LICENSE.equals(n)) {
-            rel = getLicenseRelativePath();
-            if (rel == null) {
-                rel = Paths.get(n);
-            }
-        } else {
-            // assert relative path
-            rel = SystemUtils.fromCommonRelative(base, n);
-        }
+        // assert relative path
+        rel = SystemUtils.fromCommonRelative(base, n);
         Path p = getInstallPath().resolve(rel).normalize();
         // confine into graalvm subdir
         if (!p.startsWith(getInstallPath())) {
@@ -144,10 +136,12 @@ public class Installer extends AbstractInstaller {
      */
     @Override
     public boolean validateAll() throws IOException {
-        validateRequirements();
+        Verifier veri = validateRequirements();
         ComponentInfo existing = registry.findComponent(componentInfo.getId());
         if (existing != null) {
-            return false;
+            if (!veri.shouldInstall(componentInfo)) {
+                return false;
+            }
         }
         validateFiles();
         validateSymlinks();
@@ -172,7 +166,7 @@ public class Installer extends AbstractInstaller {
     public void validateSymlinks() throws IOException {
         Map<String, String> processSymlinks = getSymlinks();
         for (String sl : processSymlinks.keySet()) {
-            Path target = translateTargetPath(sl);
+            Path target = fileOps.materialize(translateTargetPath(sl), true);
             if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
                 checkLinkReplacement(target,
                                 translateTargetPath(target, processSymlinks.get(sl)));
@@ -183,7 +177,7 @@ public class Installer extends AbstractInstaller {
     boolean validateOneEntry(Path target, Archive.FileEntry entry) throws IOException {
         if (entry.isDirectory()) {
             // assert relative path
-            Path dirPath = getInstallPath().resolve(SystemUtils.fromCommonRelative(entry.getName()));
+            Path dirPath = fileOps.materialize(SystemUtils.resolveRelative(getInstallPath(), entry.getName()), false);
             // confine into graalvm subdir
             if (Files.exists(dirPath)) {
                 if (!Files.isDirectory(dirPath)) {
@@ -193,9 +187,10 @@ public class Installer extends AbstractInstaller {
             }
             return true;
         }
-        boolean existingFile = Files.exists(target, LinkOption.NOFOLLOW_LINKS);
+        Path mt = fileOps.materialize(target, false);
+        boolean existingFile = mt != null && Files.exists(mt, LinkOption.NOFOLLOW_LINKS);
         if (existingFile) {
-            return checkFileReplacement(target, entry);
+            return checkFileReplacement(mt, entry);
         }
         return false;
     }
@@ -212,6 +207,7 @@ public class Installer extends AbstractInstaller {
         }
         // unpack files
         unpackFiles();
+        archive.completeMetadata(componentInfo);
         processPermissions();
         createSymlinks();
 
@@ -233,7 +229,17 @@ public class Installer extends AbstractInstaller {
     }
 
     void unpackFiles() throws IOException {
+        final String storagePrefix = CommonConstants.PATH_COMPONENT_STORAGE + "/"; // NOI18N
         for (Archive.FileEntry entry : archive) {
+            String path = entry.getName();
+            if (path.startsWith(storagePrefix) && path.length() > storagePrefix.length()) {
+                // disallow to unpack files in the component database (but permit subdirs). Some
+                // tools may write there, but
+                // GU will manage the storage itself.
+                if (path.indexOf('/', storagePrefix.length()) == -1) {
+                    continue;
+                }
+            }
             installOneEntry(entry);
         }
     }
@@ -253,7 +259,7 @@ public class Installer extends AbstractInstaller {
         for (Path n : relative) {
             count++;
             relativeSubpath = relative.subpath(0, count);
-            Path dir = parent.resolve(n);
+            Path dir = fileOps.materialize(parent.resolve(n), true);
             String pathString = relativeSubpath.toString() + "/"; // NOI18N
 
             // Need to track either directories, which do not exist (and will be created)
@@ -295,7 +301,9 @@ public class Installer extends AbstractInstaller {
     Path installOneFile(Path target, Archive.FileEntry entry) throws IOException {
         // copy contents of the file
         try (InputStream jarStream = archive.getInputStream(entry)) {
-            boolean existingFile = Files.exists(target, LinkOption.NOFOLLOW_LINKS);
+            Path mt = fileOps.materialize(target, false);
+            Path mt2 = fileOps.materialize(target, true);
+            boolean existingFile = mt != null && Files.exists(mt, LinkOption.NOFOLLOW_LINKS);
             String eName = entry.getName();
             if (existingFile) {
                 /*
@@ -305,13 +313,13 @@ public class Installer extends AbstractInstaller {
                  */
                 feedback.verboseOutput("INSTALL_ReplacingFile", eName);
             } else {
-                filesToDelete.add(target);
+                filesToDelete.add(mt2);
                 feedback.verboseOutput("INSTALL_InstallingFile", eName);
             }
             ensurePathExists(target.getParent());
             addTrackedPath(getInstallPath().relativize(target).toString());
             if (!isDryRun()) {
-                Files.copy(jarStream, target, StandardCopyOption.REPLACE_EXISTING);
+                fileOps.installFile(target, jarStream);
             }
         }
         return target;
@@ -324,19 +332,16 @@ public class Installer extends AbstractInstaller {
         Collections.sort(paths);
         for (String s : paths) {
             // assert relative path
-            Path p = getInstallPath().resolve(SystemUtils.fromCommonRelative(s));
-            if (Files.exists(p)) {
-                String permissionString = setPermissions.get(s);
-                Set<PosixFilePermission> perms;
-
-                if (permissionString != null && !"".equals(permissionString)) {
-                    perms = PosixFilePermissions.fromString(permissionString);
-                } else {
-                    perms = DEFAULT_CHANGE_PERMISSION;
-                }
-                if (Files.getFileAttributeView(p, PosixFileAttributeView.class) != null) {
-                    Files.setPosixFilePermissions(p, perms);
-                }
+            Path target = getInstallPath().resolve(SystemUtils.fromCommonRelative(s));
+            String permissionString = setPermissions.get(s);
+            Set<PosixFilePermission> perms;
+            if (permissionString != null && !"".equals(permissionString)) {
+                perms = PosixFilePermissions.fromString(permissionString);
+            } else {
+                perms = DEFAULT_CHANGE_PERMISSION;
+            }
+            if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
+                fileOps.setPermissions(target, perms);
             }
         }
     }

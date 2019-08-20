@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -102,12 +102,6 @@ public final class VectorType extends AggregateType {
     @Override
     public int getSize(DataLayout targetDataLayout) {
         return getElementType().getSize(targetDataLayout) * length;
-    }
-
-    @Override
-    public Type shallowCopy() {
-        final VectorType copy = new VectorType(getElementType(), length);
-        return copy;
     }
 
     @Override

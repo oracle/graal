@@ -62,6 +62,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.Get
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.ReleaseLongArrayElements;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.getInternalName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.env;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.scope;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -172,7 +173,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         long optimizedAssumptionHandle = LibGraal.translate(runtime(), optimizedAssumption);
         JNIEnv env = env();
         JObject assumptionConsumer = callRegisterOptimizedAssumptionDependency(env, getHandle(), optimizedAssumptionHandle);
-        return assumptionConsumer.isNull() ? null : new HSConsumer(env, assumptionConsumer);
+        return assumptionConsumer.isNull() ? null : new HSConsumer(scope(), assumptionConsumer);
     }
 
     @SVMToHotSpot(GetCallTargetForCallNode)
@@ -354,8 +355,8 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     private static class HSConsumer extends HSObject implements Consumer<OptimizedAssumptionDependency> {
 
-        HSConsumer(JNIEnv env, JObject handle) {
-            super(env, handle);
+        HSConsumer(HotSpotToSVMScope scope, JObject handle) {
+            super(scope, handle);
         }
 
         @SVMToHotSpot(ConsumeOptimizedAssumptionDependency)

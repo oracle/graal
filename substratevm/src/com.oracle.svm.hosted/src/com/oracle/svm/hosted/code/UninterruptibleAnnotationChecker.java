@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -236,7 +237,9 @@ public final class UninterruptibleAnnotationChecker {
 
     private static boolean isNoTransitionCFunction(HostedMethod method) {
         final CFunction cfunctionAnnotation = method.getAnnotation(CFunction.class);
-        return ((cfunctionAnnotation != null) && (cfunctionAnnotation.transition() == Transition.NO_TRANSITION));
+        final InvokeCFunctionPointer invokeCFunctionPointerAnnotation = method.getAnnotation(InvokeCFunctionPointer.class);
+        return (cfunctionAnnotation != null && cfunctionAnnotation.transition() == Transition.NO_TRANSITION) ||
+                        (invokeCFunctionPointerAnnotation != null && invokeCFunctionPointerAnnotation.transition() == Transition.NO_TRANSITION);
     }
 
     private static void printDotGraphEdge(HostedMethod caller, HostedMethod callee) {

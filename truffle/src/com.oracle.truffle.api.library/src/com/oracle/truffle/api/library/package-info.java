@@ -75,6 +75,6 @@
  * @see com.oracle.truffle.api.library.ExportLibrary To export libraries
  * @see com.oracle.truffle.api.library.CachedLibrary To dispatch libraries from nodes
  * @see com.oracle.truffle.api.library.LibraryFactory To manually dispatch messages
- * @since 1.0
+ * @since 19.0
  */
 package com.oracle.truffle.api.library;

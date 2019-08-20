@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -44,7 +44,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 class CTypeConversionSupportImpl implements CTypeConversionSupport {
 
@@ -147,7 +146,7 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
 
     @Override
     public ByteBuffer asByteBuffer(PointerBase address, int size) {
-        ByteBuffer byteBuffer = KnownIntrinsics.unsafeCast(new Target_java_nio_DirectByteBuffer(address.rawValue(), size), ByteBuffer.class);
+        ByteBuffer byteBuffer = SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(address.rawValue(), size), ByteBuffer.class);
         return byteBuffer.order(ConfigurationValues.getTarget().arch.getByteOrder());
     }
 }

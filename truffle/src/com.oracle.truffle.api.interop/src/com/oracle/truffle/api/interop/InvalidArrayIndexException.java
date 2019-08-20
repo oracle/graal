@@ -49,7 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  *
  * @see #getInvalidIndex()
  * @see InteropLibrary
- * @since 1.0
+ * @since 19.0
  */
 public final class InvalidArrayIndexException extends InteropException {
 
@@ -64,7 +64,7 @@ public final class InvalidArrayIndexException extends InteropException {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String getMessage() {
@@ -74,7 +74,7 @@ public final class InvalidArrayIndexException extends InteropException {
     /**
      * Returns the invalid index that was used.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public long getInvalidIndex() {
         return invalidIndex;
@@ -84,7 +84,7 @@ public final class InvalidArrayIndexException extends InteropException {
      * Creates an {@link InvalidArrayIndexException} to indicate that an array index is invalid.
      *
      * @param invalidIndex the index that could not be accessed
-     * @since 1.0
+     * @since 19.0
      */
     public static InvalidArrayIndexException create(long invalidIndex) {
         CompilerDirectives.transferToInterpreter();

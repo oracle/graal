@@ -47,6 +47,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -58,10 +59,16 @@ abstract class HostFieldDesc {
 
     private final Class<?> type;
     private final Type genericType;
+    private final boolean isFinal;
 
-    private HostFieldDesc(Class<?> type, Type genericType) {
+    private HostFieldDesc(Class<?> type, Type genericType, boolean isFinal) {
         this.type = type;
         this.genericType = genericType;
+        this.isFinal = isFinal;
+    }
+
+    public final boolean isFinal() {
+        return isFinal;
     }
 
     public final Class<?> getType() {
@@ -93,7 +100,7 @@ abstract class HostFieldDesc {
         private final Field field;
 
         ReflectImpl(Field field) {
-            super(field.getType(), field.getGenericType());
+            super(field.getType(), field.getGenericType(), Modifier.isFinal(field.getModifiers()));
             this.field = field;
         }
 
@@ -145,7 +152,7 @@ abstract class HostFieldDesc {
         @CompilationFinal private MethodHandle setHandle;
 
         MHImpl(Field field) {
-            super(field.getType(), field.getGenericType());
+            super(field.getType(), field.getGenericType(), Modifier.isFinal(field.getModifiers()));
             this.field = field;
         }
 
@@ -188,30 +195,28 @@ abstract class HostFieldDesc {
         }
 
         private MethodHandle makeGetMethodHandle() {
+            CompilerAsserts.neverPartOfCompilation();
             try {
+                MethodHandle getter = MethodHandles.publicLookup().unreflectGetter(field);
                 if (Modifier.isStatic(field.getModifiers())) {
-                    MethodHandle getter = MethodHandles.publicLookup().findStaticGetter(field.getDeclaringClass(), field.getName(), field.getType());
                     return MethodHandles.dropArguments(getter.asType(MethodType.methodType(Object.class)), 0, Object.class);
                 } else {
-                    MethodHandle getter = MethodHandles.publicLookup().findGetter(field.getDeclaringClass(), field.getName(), field.getType());
                     return getter.asType(MethodType.methodType(Object.class, Object.class));
                 }
-            } catch (NoSuchFieldException | IllegalAccessException e) {
+            } catch (IllegalAccessException e) {
                 throw new IllegalStateException(e);
             }
         }
 
         private MethodHandle makeSetMethodHandle() throws UnknownIdentifierException {
+            CompilerAsserts.neverPartOfCompilation();
             try {
+                MethodHandle setter = MethodHandles.publicLookup().unreflectSetter(field);
                 if (Modifier.isStatic(field.getModifiers())) {
-                    MethodHandle setter = MethodHandles.publicLookup().findStaticSetter(field.getDeclaringClass(), field.getName(), field.getType());
                     return MethodHandles.dropArguments(setter.asType(MethodType.methodType(void.class, Object.class)), 0, Object.class);
                 } else {
-                    MethodHandle setter = MethodHandles.publicLookup().findSetter(field.getDeclaringClass(), field.getName(), field.getType());
                     return setter.asType(MethodType.methodType(void.class, Object.class, Object.class));
                 }
-            } catch (NoSuchFieldException e) {
-                throw UnknownIdentifierException.create(field.getName());
             } catch (IllegalAccessException e) {
                 if (Modifier.isFinal(field.getModifiers())) {
                     throw UnknownIdentifierException.create(field.getName());

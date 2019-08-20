@@ -28,11 +28,14 @@ import static org.bytedeco.javacpp.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.bytedeco.javacpp.LLVM;
+import org.bytedeco.javacpp.Pointer;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
-import org.bytedeco.javacpp.Pointer;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -40,6 +43,7 @@ import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.PlatformKind;
@@ -53,12 +57,77 @@ public class LLVMUtils {
     static final int UNTRACKED_POINTER_ADDRESS_SPACE = 0;
     static final int TRACKED_POINTER_ADDRESS_SPACE = 1;
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
+    public static final String ALWAYS_INLINE = "alwaysinline";
+    public static final String GC_REGISTER_FUNCTION_NAME = "__llvm_gc_register";
+    public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
+    public static final String JNI_WRAPPER_PREFIX = "__llvm_jni_wrapper_";
 
     public static final class DebugLevel {
         public static final int NONE = 0;
         public static final int FUNCTION = 1;
         public static final int BLOCK = 2;
         public static final int NODE = 3;
+    }
+
+    /**
+     * LLVM target-specific inline assembly snippets and information.
+     */
+    public interface TargetSpecific {
+        static TargetSpecific get() {
+            return ImageSingletons.lookup(TargetSpecific.class);
+        }
+
+        /**
+         * Snippet that gets the value of an arbitrary register.
+         */
+        String getRegisterInlineAsm(String register);
+
+        /**
+         * Snippet that jumps to a runtime-computed address.
+         */
+        String getJumpInlineAsm();
+
+        /**
+         * Name of the architecture to be passed to the LLVM compiler.
+         */
+        String getLLVMArchName();
+
+        /**
+         * Number of bytes separating two adjacent call frames. A call frame starts at the stack
+         * pointer and its size is as given by the LLVM stack map.
+         */
+        int getCallFrameSeparation();
+
+        /**
+         * Offset of the frame pointer relative to the first address outside the current call frame.
+         * This offset should be negative.
+         */
+        int getFramePointerOffset();
+
+        /**
+         * Register number of the stack pointer used by the LLVM stack maps.
+         */
+        int getStackPointerDwarfRegNum();
+
+        /**
+         * Register number of the frame pointer used by the LLVM stack maps.
+         */
+        int getFramePointerDwarfRegNum();
+
+        /**
+         * Additional target-specific options to be passed to the LLVM compiler.
+         */
+        default List<String> getLLCAdditionalOptions() {
+            return Collections.emptyList();
+        }
+
+        /**
+         * Transformation to be applied to the name of a register given by Graal to obtain the
+         * corresponding name in assembly.
+         */
+        default String getLLVMRegisterName(String register) {
+            return register;
+        }
     }
 
     static int getLLVMIntCond(Condition cond) {

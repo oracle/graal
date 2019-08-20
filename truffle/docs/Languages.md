@@ -11,7 +11,7 @@ This page is intended to keep track of the growing number of Truffle language im
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
 
-\* Shipped as part of [GraalVM](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html).
+\* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 
 ## Experiments
 

@@ -175,13 +175,13 @@ public class StepTest extends AbstractDebugTest {
             session.suspendNextExecution();
 
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 4, true, "STATEMENT").prepareStepInto(1);
+                checkState(event, 4, true, "STATEMENT", "loopIndex0", String.valueOf(0), "loopResult0", "Null").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 4, true, "STATEMENT").prepareStepInto(1);
+                checkState(event, 4, true, "STATEMENT", "loopIndex0", String.valueOf(1), "loopResult0", "Null").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 4, true, "STATEMENT").prepareStepInto(1);
+                checkState(event, 4, true, "STATEMENT", "loopIndex0", String.valueOf(2), "loopResult0", "Null").prepareStepInto(1);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 6, false, "CALL(foo)").prepareContinue();
@@ -206,7 +206,7 @@ public class StepTest extends AbstractDebugTest {
             session.suspendNextExecution();
 
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 4, true, "STATEMENT").prepareStepOut(1);
+                checkState(event, 4, true, "STATEMENT", "loopIndex0", String.valueOf(0), "loopResult0", "Null").prepareStepOut(1);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 6, false, "CALL(foo)").prepareContinue();
@@ -371,16 +371,16 @@ public class StepTest extends AbstractDebugTest {
                 checkState(event, 2, true, "STATEMENT").prepareStepOut(1).prepareStepInto(2).prepareStepOver(3);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 8, true, "STATEMENT").prepareStepOut(2).prepareStepInto(3);
+                checkState(event, 8, true, "STATEMENT", "loopIndex0", String.valueOf(3), "loopResult0", "Null").prepareStepOut(2).prepareStepInto(3);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 2, true, "STATEMENT").prepareStepOver(1).prepareStepInto(2);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 7, true, "STATEMENT").prepareStepOver(3);
+                checkState(event, 7, true, "STATEMENT", "loopIndex0", String.valueOf(0), "loopResult0", "Null").prepareStepOver(3);
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 8, true, "STATEMENT").prepareStepOut(2).prepareStepOver(1);
+                checkState(event, 8, true, "STATEMENT", "loopIndex0", String.valueOf(3), "loopResult0", "Null").prepareStepOut(2).prepareStepOver(1);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 12, true, "STATEMENT").prepareStepOver(1).prepareContinue();
@@ -447,7 +447,7 @@ public class StepTest extends AbstractDebugTest {
                 }
             });
             expectSuspended((SuspendedEvent event) -> {
-                checkState(event, 5, true, "STATEMENT").prepareKill();
+                checkState(event, 5, true, "STATEMENT", "loopIndex0", String.valueOf(3), "loopResult0", "Null").prepareKill();
                 try {
                     event.prepareStepInto(1);
                     Assert.fail("IllegalStateException should have been thrown.");

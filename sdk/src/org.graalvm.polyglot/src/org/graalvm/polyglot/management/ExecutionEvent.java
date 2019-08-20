@@ -53,7 +53,7 @@ import static org.graalvm.polyglot.management.ExecutionListener.IMPL;
  * until the context was closed.
  *
  * @see ExecutionListener For further details.
- * @since 1.0
+ * @since 19.0
  */
 public final class ExecutionEvent {
 
@@ -67,7 +67,7 @@ public final class ExecutionEvent {
      * Returns the source location of the event that was triggered or <code>null</code> if no
      * location source location is available.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public SourceSection getLocation() {
         return IMPL.getLocation(impl);
@@ -78,7 +78,7 @@ public final class ExecutionEvent {
      * available for events caused by expressions and statements. In this case the name of the
      * containing root will be returned.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getRootName() {
         return IMPL.getRootName(impl);
@@ -94,7 +94,7 @@ public final class ExecutionEvent {
      * unmodifiable. The returned input values may escape the event consumer and remain valid until
      * the context is closed.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public List<Value> getInputValues() {
         return IMPL.getInputValues(impl);
@@ -108,7 +108,7 @@ public final class ExecutionEvent {
      * events. The returned value is allowed to escape the event consumer and remain valid until the
      * context is closed.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public Value getReturnValue() {
         return IMPL.getReturnValue(impl);
@@ -122,7 +122,7 @@ public final class ExecutionEvent {
      * events if an exception was thrown when the location was executed. The returned value is
      * allowed to escape the event consumer and remains valid until the context is closed.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public PolyglotException getException() {
         return IMPL.getException(impl);
@@ -133,7 +133,7 @@ public final class ExecutionEvent {
      * <code>false</code>. The collection of expression events may be enabled by calling
      * {@link ExecutionListener.Builder#expressions(boolean)}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isExpression() {
         return IMPL.isExpression(impl);
@@ -144,7 +144,7 @@ public final class ExecutionEvent {
      * <code>false</code>. The collection of statement events may be enabled by calling
      * {@link ExecutionListener.Builder#statements(boolean)}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isStatement() {
         return IMPL.isStatement(impl);
@@ -155,7 +155,7 @@ public final class ExecutionEvent {
      * closure, else <code>false</code>. The collection of root events may be enabled by calling
      * {@link ExecutionListener.Builder#roots(boolean)}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isRoot() {
         return IMPL.isRoot(impl);
@@ -164,7 +164,7 @@ public final class ExecutionEvent {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {

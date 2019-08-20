@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
+
 public final class MDLocation implements MDBaseNode {
 
     private final long line;
@@ -42,6 +44,13 @@ public final class MDLocation implements MDBaseNode {
         this.column = column;
         this.inlinedAt = MDVoidNode.INSTANCE;
         this.scope = MDVoidNode.INSTANCE;
+    }
+
+    public MDLocation(long line, long column, MDBaseNode inlinedAt, MDBaseNode scope) {
+        this.line = line;
+        this.column = column;
+        this.inlinedAt = inlinedAt;
+        this.scope = scope;
     }
 
     public long getLine() {
@@ -75,35 +84,36 @@ public final class MDLocation implements MDBaseNode {
         visitor.visit(this);
     }
 
-    private static final int MDNODE_LINE = 1;
-    private static final int MDNODE_COLUMN = 2;
-    private static final int MDNODE_SCOPE = 3;
-    private static final int MDNODE_INLINEDAT = 4;
+    // private static final int MDNODE_LINE = 1;
+    // private static final int MDNODE_COLUMN = 2;
+    // private static final int MDNODE_SCOPE = 3;
+    // private static final int MDNODE_INLINEDAT = 4;
 
-    public static MDLocation create38(long[] args, MetadataValueList md) {
+    public static MDLocation create38(RecordBuffer buffer, MetadataValueList md) {
         // [distinct, line, col, scope, inlined-at?]
-        final long line = args[MDNODE_LINE];
-        final long column = args[MDNODE_COLUMN];
+        buffer.skip();
+        final long line = buffer.read();
+        final long column = buffer.read();
 
         final MDLocation location = new MDLocation(line, column);
-        location.scope = md.getNonNullable(args[MDNODE_SCOPE], location);
-        location.inlinedAt = md.getNullable(args[MDNODE_INLINEDAT], location);
+        location.scope = md.getNonNullable(buffer.read(), location);
+        location.inlinedAt = md.getNullable(buffer.read(), location);
 
         return location;
     }
 
-    private static final int ARG_LINE = 0;
-    private static final int ARG_COL = 1;
-    private static final int ARG_SCOPE = 2;
-    private static final int ARG_INLINEDAT = 3;
+    // private static final int ARG_LINE = 0;
+    // private static final int ARG_COL = 1;
+    // private static final int ARG_SCOPE = 2;
+    // private static final int ARG_INLINEDAT = 3;
 
-    public static MDLocation createFromFunctionArgs(long[] args, MetadataValueList md) {
-        final long line = args[ARG_LINE];
-        final long col = args[ARG_COL];
+    public static MDLocation createFromFunctionArgs(RecordBuffer buffer, MetadataValueList md) {
+        final long line = buffer.read();
+        final long col = buffer.read();
 
         final MDLocation location = new MDLocation(line, col);
-        location.scope = md.getNullable(args[ARG_SCOPE], location);
-        location.inlinedAt = md.getNullable(args[ARG_INLINEDAT], location);
+        location.scope = md.getNullable(buffer.read(), location);
+        location.inlinedAt = md.getNullable(buffer.read(), location);
 
         return location;
     }

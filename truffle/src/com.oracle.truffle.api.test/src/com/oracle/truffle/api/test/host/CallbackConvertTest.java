@@ -43,8 +43,7 @@ package com.oracle.truffle.api.test.host;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -57,10 +56,12 @@ public final class CallbackConvertTest extends AbstractPolyglotTest {
         this.ch = v;
     }
 
+    @Implementable
     public interface CallWithInt {
         void callback(int v);
     }
 
+    @Implementable
     public interface CallWithChar {
         void callback(char v);
     }
@@ -80,7 +81,7 @@ public final class CallbackConvertTest extends AbstractPolyglotTest {
 
     @Test
     public void callWithIntTest() {
-        setupWithCharConversion();
+        setupEnv();
 
         TruffleObject truffle = asTruffleObject(this);
         CallWithInt callback = asJavaObject(CallWithInt.class, truffle);
@@ -117,18 +118,12 @@ public final class CallbackConvertTest extends AbstractPolyglotTest {
 
     @Test
     public void callWithPositiveNumberTest() {
-        setupWithCharConversion();
+        setupEnv();
 
         TruffleObject truffle = asTruffleObject(this);
         CallWithInt callback = asJavaObject(CallWithInt.class, truffle);
         callback.callback(65504);
         assertEquals(65504, ch);
-    }
-
-    private void setupWithCharConversion() {
-        HostAccess.Builder builder = HostAccess.newBuilder();
-        builder.allowPublicAccess(true);
-        setupEnv(Context.newBuilder().allowHostAccess(builder.build()).build());
     }
 
 }

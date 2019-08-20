@@ -265,8 +265,9 @@ public final class CompilerDirectives {
     public @interface TruffleBoundary {
 
         /**
-         * Determines whether execution should be transferred to the interpreter in the case that an
-         * exception is thrown across this boundary.
+         * Determines whether execution should be transferred to the interpreter if an exception is
+         * thrown across this boundary, in which case the caller's compiled code is invalidated and
+         * will not transfer to the interpreter on exceptions for this method again.
          *
          * @since 0.28
          */

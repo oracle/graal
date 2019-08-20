@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 
@@ -41,7 +41,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
  */
 @CContext(PosixDirectives.class)
 @CLibrary("-framework CoreFoundation")
-@Platforms(Platform.DARWIN_AND_JNI.class)
+@Platforms(InternalPlatform.DARWIN_AND_JNI.class)
 public class CoreFoundation {
 
     public interface CFStringRef extends PointerBase {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,8 +44,6 @@ public final class FunctionParameter implements ValueSymbol {
 
     private final AttributesGroup parameterAttribute;
 
-    private boolean isSourceVariable = false;
-
     FunctionParameter(Type type, AttributesGroup parameterAttribute) {
         this.type = type;
         this.parameterAttribute = parameterAttribute;
@@ -58,7 +56,7 @@ public final class FunctionParameter implements ValueSymbol {
 
     @Override
     public void setName(String name) {
-        this.name = LLVMIdentifier.toLocalIdentifier(name);
+        this.name = name;
     }
 
     @Override
@@ -68,14 +66,6 @@ public final class FunctionParameter implements ValueSymbol {
 
     public AttributesGroup getParameterAttribute() {
         return parameterAttribute;
-    }
-
-    public boolean isSourceVariable() {
-        return isSourceVariable;
-    }
-
-    public void setSourceVariable(boolean isSourceVariable) {
-        this.isSourceVariable = isSourceVariable;
     }
 
     @Override

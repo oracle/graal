@@ -210,7 +210,7 @@ public class DebugValueTest extends AbstractDebugTest {
 
         @ExportMessage
         boolean isMemberInsertable(String member) {
-            return true;
+            return false;
         }
 
         @ExportMessage

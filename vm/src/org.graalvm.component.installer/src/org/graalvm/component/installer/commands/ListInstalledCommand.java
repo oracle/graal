@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.MetadataException;
+import org.graalvm.component.installer.Version;
+import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  * Command to lists installed components.
@@ -53,6 +55,9 @@ public class ListInstalledCommand extends QueryCommandBase {
     @Override
     public Map<String, String> supportedOptions() {
         Map<String, String> m = new HashMap<>(super.supportedOptions());
+        m.put(Commands.OPTION_CATALOG, "");
+        m.put(Commands.LONG_OPTION_CATALOG, Commands.OPTION_CATALOG);
+
         m.put(Commands.OPTION_URLS, "X"); // mask out
         m.put(Commands.OPTION_FILES, "X"); // mask out
         return m;
@@ -64,7 +69,7 @@ public class ListInstalledCommand extends QueryCommandBase {
             if (sb.length() > 0) {
                 sb.append("|");
             }
-            sb.append(Pattern.quote(s));
+            sb.append(Pattern.quote(s)).append("$");
         }
         if (sb.length() == 0) {
             sb.append(".*");
@@ -73,7 +78,7 @@ public class ListInstalledCommand extends QueryCommandBase {
     }
 
     List<String> findComponentIds() {
-        Collection<String> comps = registry.getComponentIDs();
+        Collection<String> comps = catalog.getComponentIDs();
         List<String> ids = new ArrayList<>(comps.size());
         for (String s : comps) {
             if (filterPattern.matcher(s).find()) {
@@ -82,6 +87,10 @@ public class ListInstalledCommand extends QueryCommandBase {
         }
         Collections.sort(ids);
         return ids;
+    }
+
+    protected String acceptExpression(String expr) {
+        return expr;
     }
 
     @Override
@@ -93,12 +102,29 @@ public class ListInstalledCommand extends QueryCommandBase {
         init(input, feedback);
         expressions = new ArrayList<>();
         while (input.hasParameter()) {
-            expressions.add(input.nextParameter());
+            String s = input.nextParameter();
+            if (s == null || s.isEmpty()) {
+                continue;
+            }
+            String accepted = acceptExpression(s);
+            if (accepted != null) {
+                expressions.add(accepted);
+            }
         }
         if (process()) {
             printComponents();
         }
         return 0;
+    }
+
+    protected Version.Match getVersionFilter() {
+        return input.getLocalRegistry().getGraalVersion().match(Version.Match.Type.INSTALLABLE);
+    }
+
+    protected List<ComponentInfo> filterDisplayedVersions(@SuppressWarnings("unused") String id, Collection<ComponentInfo> infos) {
+        List<ComponentInfo> ordered = new ArrayList<>(infos);
+        Collections.sort(ordered, ComponentInfo.versionComparator());
+        return ordered;
     }
 
     boolean process() {
@@ -109,12 +135,22 @@ public class ListInstalledCommand extends QueryCommandBase {
             feedback.message("LIST_NoComponentsFound");
             return false;
         }
+        Version.Match versionFilter = getVersionFilter();
         for (String id : ids) {
             try {
-                addComponent(null, registry.loadSingleComponent(id, listFiles));
+                Collection<ComponentInfo> infos = catalog.loadComponents(id, versionFilter, listFiles);
+                if (infos != null) {
+                    for (ComponentInfo ci : filterDisplayedVersions(id, infos)) {
+                        addComponent(null, ci);
+                    }
+                }
             } catch (MetadataException ex) {
                 exceptions.add(ex);
             }
+        }
+        if (components.isEmpty()) {
+            feedback.message("LIST_NoComponentsFound");
+            return false;
         }
         if (!exceptions.isEmpty()) {
             feedback.error("LIST_ErrorInComponentMetadata", null);

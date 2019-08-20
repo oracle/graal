@@ -39,7 +39,7 @@ public interface StateSetBackingSet extends Iterable<Integer> {
     /**
      * Initialize the backing set. This method must be called before calling any other method of the
      * set. After this method is called, {@link #isActive()} will return {@code true}.
-     * 
+     *
      * @param stateIndexSize the maximum {@code short} value to be expected.
      */
     void create(int stateIndexSize);
@@ -64,7 +64,7 @@ public interface StateSetBackingSet extends Iterable<Integer> {
      * {@link #addBatchFinish()} is called. The purpose of this is to allow more efficient add
      * operations that temporarily break the set's consistency. While this mode is active, other
      * methods are not guaranteed to work correctly!
-     * 
+     *
      * @param id the id to add to the set.
      */
     void addBatch(short id);
@@ -78,7 +78,7 @@ public interface StateSetBackingSet extends Iterable<Integer> {
     /**
      * Efficient version of {@code remove(oldId); add(newId)}. This method assumes that the set
      * contains {@code oldId} and the set does not contain {@code newId}!
-     * 
+     *
      * @param oldId id to remove. Assumed to be contained in the set.
      * @param newId id to add. Assumed to be absent in the set.
      */
@@ -96,11 +96,19 @@ public interface StateSetBackingSet extends Iterable<Integer> {
 
     /**
      * Check whether this set is disjoint to another {@link StateSetBackingSet}.
-     * 
+     *
      * @param other the other backing set.
      * @return {@code true} if this set is disjoint to the other set.
      */
     boolean isDisjoint(StateSetBackingSet other);
+
+    /**
+     * Check whether this set is contains all entries of another {@link StateSetBackingSet}.
+     *
+     * @param other the other backing set.
+     * @return {@code true} if this set contains the other set.
+     */
+    boolean contains(StateSetBackingSet other);
 
     @Override
     PrimitiveIterator.OfInt iterator();

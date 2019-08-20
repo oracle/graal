@@ -1,0 +1,7 @@
+Bundle-Name: Graal.Python
+Bundle-Symbolic-Name: org.graalvm.python
+Bundle-Version: 1.0.0.0
+Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=1.0.0.0
+ )(os_name=linux)(os_arch=amd64))"
+x-GraalVM-Polyglot-Part: True
+x-GraalVM-Working-Directories: jre/languages/python

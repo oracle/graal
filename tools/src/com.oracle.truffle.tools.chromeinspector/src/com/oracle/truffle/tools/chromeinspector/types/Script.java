@@ -58,7 +58,7 @@ public final class Script {
         } else {
             return MessageFormat.format("Can not load source from {0}\n" +
                             "Please use the --inspect.SourcePath option to point to the source locations.\n" +
-                            "Example: --inspect.SourcePath=/home/joe/project/src\n", source.getURI().toString());
+                            "Example: --inspect.SourcePath=/home/joe/project/src\n", url);
         }
     }
 

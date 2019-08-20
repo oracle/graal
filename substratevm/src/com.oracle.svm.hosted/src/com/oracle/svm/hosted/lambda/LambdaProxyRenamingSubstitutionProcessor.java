@@ -81,8 +81,10 @@ public class LambdaProxyRenamingSubstitutionProcessor extends SubstitutionProces
     }
 
     static boolean isLambdaType(ResolvedJavaType type) {
+        String typeName = type.getName();
         return type.isFinalFlagSet() &&
-                        type.getName().contains("/") && /* isVMAnonymousClass */
+                        typeName.contains("/") && /* isVMAnonymousClass */
+                        typeName.contains("$$Lambda$") && /* shortcut to avoid regex */
                         lambdaMatcher(type.getName()).find();
     }
 

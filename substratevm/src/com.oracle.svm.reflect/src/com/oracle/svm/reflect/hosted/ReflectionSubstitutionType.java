@@ -65,7 +65,7 @@ import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.jdk.IgnoreForGetCallerClass;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionField;
@@ -746,18 +746,18 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
     @Override
     public Annotation[] getAnnotations() {
-        return IgnoreForGetCallerClass.Holder.ARRAY;
+        return InternalVMMethod.Holder.ARRAY;
     }
 
     @Override
     public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return annotationClass == IgnoreForGetCallerClass.class;
+        return annotationClass == InternalVMMethod.class;
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass == IgnoreForGetCallerClass.class) {
-            return annotationClass.cast(IgnoreForGetCallerClass.Holder.INSTANCE);
+        if (annotationClass == InternalVMMethod.class) {
+            return annotationClass.cast(InternalVMMethod.Holder.INSTANCE);
         }
         return null;
     }

@@ -34,7 +34,6 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -53,7 +52,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -64,12 +62,13 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -107,6 +106,9 @@ public class SubstrateUtil {
             case "x86_64":
                 arch = "amd64";
                 break;
+            case "arm64":
+                arch = "aarch64";
+                break;
             case "sparcv9":
                 arch = "sparc";
                 break;
@@ -140,9 +142,9 @@ public class SubstrateUtil {
         FileDescriptor fd;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static FileDescriptor getFileDescriptor(FileOutputStream out) {
-        return KnownIntrinsics.unsafeCast(out, Target_java_io_FileOutputStream.class).fd;
+        return SubstrateUtil.cast(out, Target_java_io_FileOutputStream.class).fd;
     }
 
     /**
@@ -162,11 +164,10 @@ public class SubstrateUtil {
         return args;
     }
 
-    // TODO: Should this call the libc strlen function?
     /**
      * Returns the length of a C {@code char*} string.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
         UnsignedWord n = WordFactory.zero();
         while (((Pointer) str).readByte(n) != 0) {
@@ -175,10 +176,37 @@ public class SubstrateUtil {
         return n;
     }
 
-    /** @deprecated replaced by {@link CTypeConversion#asByteBuffer(PointerBase, int)} */
-    @Deprecated
-    public static ByteBuffer wrapAsByteBuffer(PointerBase pointer, int size) {
-        return CTypeConversion.asByteBuffer(pointer, size);
+    /**
+     * Returns a pointer to the matched character or NULL if the character is not found.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CCharPointer strchr(CCharPointer str, int c) {
+        int index = 0;
+        while (true) {
+            byte b = str.read(index);
+            if (b == c) {
+                return str.addressOf(index);
+            }
+            if (b == 0) {
+                return WordFactory.zero();
+            }
+            index += 1;
+        }
+    }
+
+    /**
+     * The same as {@link Class#cast}. This method is available for use in places where either the
+     * Java compiler or static analysis tools would complain about a cast because the cast appears
+     * to violate the Java type system rules.
+     *
+     * The most prominent example are casts between a {@link TargetClass} and the original class,
+     * i.e., two classes that appear to be unrelated from the Java type system point of view, but
+     * are actually the same class.
+     */
+    @SuppressWarnings({"unused", "unchecked"})
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T> T cast(Object obj, Class<T> toType) {
+        return (T) obj;
     }
 
     /**
@@ -187,6 +215,7 @@ public class SubstrateUtil {
      * @return true if assertions are enabled.
      */
     @SuppressWarnings("all")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean assertionsEnabled() {
         boolean assertionsEnabled = false;
         assert assertionsEnabled = true;
@@ -196,9 +225,7 @@ public class SubstrateUtil {
     @NodeIntrinsic(BreakpointNode.class)
     public static native void breakpoint(Object arg0);
 
-    /**
-     * Fast power of 2 test.
-     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isPowerOf2(long value) {
         return (value & (value - 1)) == 0;
     }
@@ -352,17 +379,15 @@ public class SubstrateUtil {
         log.string("TopFrame info:").newline();
         log.indent(true);
         if (sp.isNonNull() && ip.isNonNull()) {
-            long totalFrameSize;
+            long totalFrameSize = getTotalFrameSize(sp, ip);
             DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
             if (deoptFrame != null) {
                 log.string("RSP ").zhex(sp.rawValue()).string(" frame was deoptimized:").newline();
                 log.string("SourcePC ").zhex(deoptFrame.getSourcePC().rawValue()).newline();
-                totalFrameSize = deoptFrame.getSourceTotalFrameSize();
-            } else {
-                log.string("Lookup TotalFrameSize in CodeInfoTable:").newline();
-                totalFrameSize = CodeInfoTable.lookupTotalFrameSize(ip);
+                log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
+            } else if (totalFrameSize != -1) {
+                log.string("TotalFrameSize in CodeInfoTable ").signed(totalFrameSize).newline();
             }
-            log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
 
             if (totalFrameSize == -1) {
                 log.string("Does not look like a Java Frame. Use JavaFrameAnchors to find LastJavaSP:").newline();
@@ -383,13 +408,36 @@ public class SubstrateUtil {
         log.indent(false);
     }
 
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+    private static long getTotalFrameSize(Pointer sp, CodePointer ip) {
+        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
+        if (deoptFrame != null) {
+            return deoptFrame.getSourceTotalFrameSize();
+        }
+        CodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (codeInfo.isNonNull()) {
+            Object tether = CodeInfoAccess.acquireTether(codeInfo);
+            try {
+                return getTotalFrameSize0(ip, codeInfo);
+            } finally {
+                CodeInfoAccess.releaseTether(codeInfo, tether);
+            }
+        }
+        return -1;
+    }
+
+    @Uninterruptible(reason = "Wrap the now safe call to interruptibly look up the frame size.", calleeMustBe = false)
+    private static long getTotalFrameSize0(CodePointer ip, CodeInfo codeInfo) {
+        return CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
+    }
+
     @NeverInline("catch implicit exceptions")
     private static void dumpVMThreads(Log log) {
         log.string("VMThreads info:").newline();
         log.indent(true);
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
             log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
-                            .spaces(2).object(JavaThreads.singleton().fromVMThread(vmThread)).newline();
+                            .spaces(2).object(JavaThreads.fromVMThread(vmThread)).newline();
         }
         log.indent(false);
     }
@@ -473,7 +521,7 @@ public class SubstrateUtil {
     private static void dumpStacktraceStage0(Log log, Pointer sp, CodePointer ip) {
         log.string("Stacktrace Stage0:").newline();
         log.indent(true);
-        JavaStackWalker.walkCurrentThread(sp, ip, Stage0Visitor);
+        JavaStackWalker.walkCurrentThreadWithForcedIP(sp, ip, Stage0Visitor);
         log.indent(false);
     }
 
@@ -481,7 +529,7 @@ public class SubstrateUtil {
     private static void dumpStacktraceStage1(Log log, Pointer sp, CodePointer ip) {
         log.string("Stacktrace Stage1:").newline();
         log.indent(true);
-        JavaStackWalker.walkCurrentThread(sp, ip, Stage1Visitor);
+        JavaStackWalker.walkCurrentThreadWithForcedIP(sp, ip, Stage1Visitor);
         log.indent(false);
     }
 

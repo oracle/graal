@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,6 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.ForeignAttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -195,19 +194,19 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
     public abstract static class ForeignAttachInteropTypeNode extends LLVMNode {
 
-        public abstract TruffleObject execute(TruffleObject object, LLVMInteropType.Structured type);
+        public abstract Object execute(Object object, LLVMInteropType.Structured type);
 
         public static ForeignAttachInteropTypeNode create() {
             return ForeignAttachInteropTypeNodeGen.create();
         }
 
         @Specialization(guards = "object.getType() == null")
-        protected TruffleObject doForeign(LLVMTypedForeignObject object, LLVMInteropType.Structured type) {
+        protected Object doForeign(LLVMTypedForeignObject object, LLVMInteropType.Structured type) {
             return LLVMTypedForeignObject.create(object.getForeign(), type);
         }
 
         @Fallback
-        protected TruffleObject doOther(TruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        protected Object doOther(Object object, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return object;
         }
     }

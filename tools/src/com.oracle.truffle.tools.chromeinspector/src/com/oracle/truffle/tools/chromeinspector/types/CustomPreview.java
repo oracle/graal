@@ -156,7 +156,8 @@ public final class CustomPreview {
         if (value.isArray()) {
             JSONArray json = new JSONArray();
             List<DebugValue> array = value.getArray();
-            if (array.size() == 2 && "object".equals(array.get(0).asString()) && array.get(1).getProperty("config") != null) {
+            if (array.size() == 2 && array.get(0).isReadable() && array.get(1).isReadable() &&
+                            "object".equals(array.get(0).asString()) && array.get(1).getProperty("config") != null) {
                 // Child object:
                 json.put(value2JSON(array.get(0), context));
                 DebugValue child = array.get(1);
@@ -171,7 +172,11 @@ public final class CustomPreview {
                 json.put(childJSON);
             } else {
                 for (DebugValue element : array) {
-                    json.put(value2JSON(element, context));
+                    if (element.isReadable()) {
+                        json.put(value2JSON(element, context));
+                    } else {
+                        json.put(InspectorExecutionContext.VALUE_NOT_READABLE);
+                    }
                 }
             }
             return json;
@@ -181,7 +186,7 @@ public final class CustomPreview {
                 JSONObject json = new JSONObject();
                 for (DebugValue property : properties) {
                     try {
-                        if (!property.canExecute() && !property.isInternal()) {
+                        if (property.isReadable() && !property.canExecute() && !property.isInternal()) {
                             Object rawValue = getPrimitiveValue(property);
                             // Do not allow inner objects
                             if (rawValue != null) {

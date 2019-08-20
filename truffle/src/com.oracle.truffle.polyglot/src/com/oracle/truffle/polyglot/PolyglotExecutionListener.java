@@ -85,7 +85,7 @@ final class PolyglotExecutionListener extends AbstractExecutionListenerImpl {
                     boolean roots,
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
         PolyglotEngineImpl engine = (PolyglotEngineImpl) engineImpl.getAPIAccess().getImpl(engineAPI);
-        Instrumenter instrumenter = (Instrumenter) VMAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
+        Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
 
         List<Class<? extends Tag>> tags = new ArrayList<>();
         if (expressions) {

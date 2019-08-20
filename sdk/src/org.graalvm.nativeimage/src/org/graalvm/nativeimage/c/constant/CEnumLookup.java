@@ -55,7 +55,7 @@ import java.lang.annotation.Target;
  * Java value must be selected manually using the attribute {@link CEnumConstant#includeInLookup()}.
  * All but one Java values must have this attribute set to {@code false}.
  *
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

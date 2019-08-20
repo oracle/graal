@@ -35,6 +35,7 @@ import java.util.jar.JarFile;
 import java.util.zip.CRC32;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.CommandInput;
+import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  *
@@ -65,7 +66,6 @@ public class JarArchive implements Archive {
 
     @Override
     public void close() throws IOException {
-        jarFile.close();
     }
 
     @Override
@@ -83,6 +83,11 @@ public class JarArchive implements Archive {
             bb.clear();
         }
         return crc.getValue() == ((JarEntryImpl) entry).e.getCrc();
+    }
+
+    @Override
+    public void completeMetadata(ComponentInfo info) throws IOException {
+        // no op
     }
 
     /**

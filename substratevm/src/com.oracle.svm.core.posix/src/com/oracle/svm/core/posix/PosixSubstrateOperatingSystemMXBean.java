@@ -30,13 +30,13 @@ import com.oracle.svm.core.posix.headers.Times;
 import com.oracle.svm.core.posix.headers.Unistd;
 import java.lang.management.OperatingSystemMXBean;
 import java.util.concurrent.TimeUnit;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
-@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean {
 
     /**
@@ -62,7 +62,7 @@ class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean
 
 }
 
-@Platforms({Platform.LINUX_AND_JNI.class, Platform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 @AutomaticFeature
 class PosixSubstrateOperatingSystemMXBeanFeature implements Feature {
     @Override

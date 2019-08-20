@@ -68,14 +68,17 @@ public final class SulongEngineOption {
     @Option(name = "llvm.enableExternalNativeAccess", category = OptionCategory.USER, help = "Enable Sulongs native interface.") //
     public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
 
-    @Option(name = "llvm.debugSysCalls", category = OptionCategory.USER, help = "Turns syscall debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    @Option(name = "llvm.debugSysCalls", category = OptionCategory.INTERNAL, help = "Turns syscall debugging on/off. Can be \'stdout\' or \'stderr\'.") //
     public static final OptionKey<String> DEBUG_SYSCALLS = new OptionKey<>(String.valueOf(false));
 
-    @Option(name = "llvm.printNativeCallStats", category = OptionCategory.USER, help = "Outputs stats about native call site frequencies. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    @Option(name = "llvm.printNativeCallStats", category = OptionCategory.INTERNAL, help = "Outputs stats about native call site frequencies. Can be \'stdout\' or \'stderr\'.") //
     public static final OptionKey<String> NATIVE_CALL_STATS = new OptionKey<>(String.valueOf(false));
 
-    @Option(name = "llvm.printLifetimeAnalysisStats", category = OptionCategory.USER, help = "Prints the results of the lifetime analysis. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    @Option(name = "llvm.printLifetimeAnalysisStats", category = OptionCategory.INTERNAL, help = "Prints the results of the lifetime analysis. Can be \'stdout\' or \'stderr\'.") //
     public static final OptionKey<String> PRINT_LIFE_TIME_ANALYSIS_STATS = new OptionKey<>(String.valueOf(false));
+
+    @Option(name = "llvm.debugLoader", category = OptionCategory.EXPERT, help = "Turns dynamic loader debugging on/off. Can be \'stdout\' or \'stderr\'.") //
+    public static final OptionKey<String> LD_DEBUG = new OptionKey<>(String.valueOf(false));
 
     @Option(name = "llvm.parseOnly", category = OptionCategory.EXPERT, help = "Only parses a bc file; execution is not possible.") //
     public static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
@@ -83,7 +86,8 @@ public final class SulongEngineOption {
     @Option(name = "llvm.enableLVI", category = OptionCategory.EXPERT, help = "Enable source-level inspection of local variables.") //
     public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
 
-    @Option(name = "llvm.lazyParsing", category = OptionCategory.EXPERT, help = "Enable lazy parsing of LLVM bitcode files.") //
+    public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
+    @Option(name = LAZY_PARSING_NAME, category = OptionCategory.EXPERT, help = "Enable lazy parsing of LLVM bitcode files.") //
     public static final OptionKey<Boolean> LAZY_PARSING = new OptionKey<>(true);
 
     @Option(name = "llvm.llDebug", category = OptionCategory.EXPERT, help = "Enable IR-level debugging of LLVM bitcode files.") //
@@ -100,7 +104,7 @@ public final class SulongEngineOption {
 
     public static final String LIBRARIES_NAME = "llvm.libraries";
     @Option(name = LIBRARIES_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
-            help = "List of libraries (precompiled libraires *.dylib/*.so as well as bitcode libraries *.bc). " + //
+            help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " + //
                    "Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
     // @formatter:on

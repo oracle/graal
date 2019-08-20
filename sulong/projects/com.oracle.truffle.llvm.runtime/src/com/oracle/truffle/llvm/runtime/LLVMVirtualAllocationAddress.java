@@ -32,10 +32,14 @@ package com.oracle.truffle.llvm.runtime;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
 @ValueType
+@ExportLibrary(InteropLibrary.class)
 public final class LLVMVirtualAllocationAddress implements LLVMInternalTruffleObject {
 
     private final int[] object;
@@ -60,6 +64,7 @@ public final class LLVMVirtualAllocationAddress implements LLVMInternalTruffleOb
         return object;
     }
 
+    @ExportMessage
     public boolean isNull() {
         return object == null;
     }

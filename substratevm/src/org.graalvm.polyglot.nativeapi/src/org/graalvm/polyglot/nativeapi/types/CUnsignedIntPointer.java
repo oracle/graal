@@ -30,7 +30,7 @@ import org.graalvm.word.PointerBase;
 /**
  * A pointer to a {@code uint32_t} value from `stdint.h` in C.
  *
- * @since 1.0
+ * @since 19.0
  */
 @CPointerTo(nameOfCType = "uint32_t")
 public interface CUnsignedIntPointer extends PointerBase {
@@ -38,14 +38,14 @@ public interface CUnsignedIntPointer extends PointerBase {
     /**
      * Reads the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     int read();
 
     /**
      * Writes the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(int value);
 

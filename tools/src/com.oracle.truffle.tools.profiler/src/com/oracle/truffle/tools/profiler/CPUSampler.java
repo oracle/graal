@@ -264,7 +264,7 @@ public final class CPUSampler implements Closeable {
     /**
      * Finds {@link CPUSampler} associated with given engine.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static CPUSampler find(Engine engine) {
         return CPUSamplerInstrument.getSampler(engine);
@@ -458,7 +458,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * @return The roots of the trees representing the profile of the execution per thread.
-     * @since 1.0
+     * @since 19.0
      */
     public synchronized Map<Thread, Collection<ProfilerNode<Payload>>> getThreadToNodesMap() {
         Map<Thread, Collection<ProfilerNode<Payload>>> returnValue = new HashMap<>();
@@ -538,7 +538,7 @@ public final class CPUSampler implements Closeable {
      * the stack. The sampling is initialized if this method is invoked for the first time or
      * reinitialized if the configuration changes.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public Map<Thread, List<StackTraceEntry>> takeSample() {
         ShadowStack localShadowStack = shadowStack;

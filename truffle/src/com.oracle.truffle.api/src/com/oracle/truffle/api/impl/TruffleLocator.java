@@ -87,27 +87,6 @@ public abstract class TruffleLocator {
         return found;
     }
 
-    /**
-     * Utility method to load a class from one of the located classloaders. Please note that this
-     * method is used in tests using reflection. Do not remove.
-     *
-     * @param name class to search for
-     * @return the class or <code>null</code> if none of the loaders knows the class
-     */
-    static Class<?> loadClass(String name) {
-        for (ClassLoader loader : loaders()) {
-            if (loader == null) {
-                continue;
-            }
-            try {
-                return loader.loadClass(name);
-            } catch (ClassNotFoundException ex) {
-                continue;
-            }
-        }
-        return null;
-    }
-
     static void initializeNativeImageTruffleLocator() {
         assert TruffleOptions.AOT : "Only supported in AOT mode.";
         if (nativeImageLocator != null) {

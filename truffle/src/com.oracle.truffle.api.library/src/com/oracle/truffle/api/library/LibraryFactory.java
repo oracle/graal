@@ -93,7 +93,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
  * @see LibraryExport
  * @see CachedLibrary
  * @see Message
- * @since 1.0
+ * @since 19.0
  */
 public abstract class LibraryFactory<T extends Library> {
 
@@ -140,7 +140,7 @@ public abstract class LibraryFactory<T extends Library> {
     /**
      * Constructor for generated subclasses. Do not sub-class {@link LibraryFactory} manually.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unchecked")
     protected LibraryFactory(Class<T> libraryClass, List<Message> messages) {
@@ -180,7 +180,7 @@ public abstract class LibraryFactory<T extends Library> {
      *
      * @see NodeUtil#getCurrentEncapsulatingNode()
      * @see CachedLibrary
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public final T createDispatched(int limit) {
@@ -198,7 +198,7 @@ public abstract class LibraryFactory<T extends Library> {
      * manually.
      *
      * @see CachedLibrary
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public final T create(Object receiver) {
@@ -225,7 +225,7 @@ public abstract class LibraryFactory<T extends Library> {
      * Returns an uncached automatically dispatched version of the library. This is version of a
      * library is used for slow-path calls.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final T getUncached() {
         return uncachedDispatch;
@@ -236,7 +236,7 @@ public abstract class LibraryFactory<T extends Library> {
      * be <code>null</code>.
      *
      * @see CachedLibrary
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public final T getUncached(Object receiver) {
@@ -316,7 +316,7 @@ public abstract class LibraryFactory<T extends Library> {
      * Creates a cached automatically dispatched version of this library. An implementation for this
      * method is generated, do not implement or call manually.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected abstract T createDispatchImpl(int limit);
 
@@ -324,7 +324,7 @@ public abstract class LibraryFactory<T extends Library> {
      * Creates a uncached automatically dispatched version of this library. An implementation for
      * this method is generated, do not implement or call manually.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected abstract T createUncachedDispatch();
 
@@ -333,7 +333,7 @@ public abstract class LibraryFactory<T extends Library> {
      * reflective implementations of messages. An implementation for this method is generated, do
      * not implement manually.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected abstract T createProxy(ReflectionLibrary lib);
 
@@ -341,7 +341,7 @@ public abstract class LibraryFactory<T extends Library> {
      * Creates an assertion version of this library. An implementation for this method is generated,
      * do not implement manually.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected T createAssertions(T delegate) {
         return delegate;
@@ -351,7 +351,7 @@ public abstract class LibraryFactory<T extends Library> {
      * Returns default exported used for a given receiver. An implementation for this method is
      * generated, do not implement manually.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected abstract Class<?> getDefaultClass(Object receiver);
 
@@ -359,7 +359,7 @@ public abstract class LibraryFactory<T extends Library> {
      * Performs a generic dispatch for this library. An implementation for this method is generated,
      * do not implement manually.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected abstract Object genericDispatch(Library library, Object receiver, Message message, Object[] arguments, int parameterOffset) throws Exception;
 
@@ -403,7 +403,7 @@ public abstract class LibraryFactory<T extends Library> {
      * library then a {@link IllegalArgumentException} is thrown.
      *
      * @see Library
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static <T extends Library> LibraryFactory<T> resolve(Class<T> library) {
@@ -469,7 +469,7 @@ public abstract class LibraryFactory<T extends Library> {
     }
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     protected static <T extends Library> void register(Class<T> libraryClass, LibraryFactory<T> library) {
         LibraryFactory<?> lib = LIBRARIES.putIfAbsent(libraryClass, library);
@@ -481,7 +481,7 @@ public abstract class LibraryFactory<T extends Library> {
     /***
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {

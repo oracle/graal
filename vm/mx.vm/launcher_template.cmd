@@ -41,4 +41,4 @@ if not "%relcp_next%"=="%relcp%" set relcp=%relcp_next% & goto :nextcp
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-%location%<jre_bin>\java -Dorg.graalvm.launcher.shell=true -cp %realcp% <main_class> %*
+"%location%<jre_bin>\java" -Dorg.graalvm.launcher.shell=true -cp "%realcp%" <main_class> %*

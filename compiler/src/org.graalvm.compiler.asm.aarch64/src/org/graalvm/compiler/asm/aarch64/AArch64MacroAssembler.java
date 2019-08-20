@@ -339,10 +339,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * Generates a 64-bit immediate move code sequence.
      *
      * @param dst general purpose register. May not be null, stackpointer or zero-register.
-     * @param imm
+     * @param imm the value to move into the register
+     * @param annotateImm Flag denoting if annotation should be added.
      */
-    private void mov64(Register dst, long imm) {
+    private void mov64(Register dst, long imm, boolean annotateImm) {
         // We have to move all non zero parts of the immediate in 16-bit chunks
+        int numMovs = 0;
+        int pos = position();
         boolean firstMove = true;
         for (int offset = 0; offset < 64; offset += 16) {
             int chunk = (int) (imm >> offset) & NumUtil.getNbitNumberInt(16);
@@ -355,8 +358,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             } else {
                 movk(64, dst, chunk, offset);
             }
+            ++numMovs;
         }
         assert !firstMove;
+        if (annotateImm) {
+            annotateImmediateMovSequence(pos, numMovs);
+        }
     }
 
     /**
@@ -378,7 +385,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void mov(Register dst, long imm, boolean annotateImm) {
         assert dst.getRegisterCategory().equals(CPU);
-        int pos = position();
         if (imm == 0L) {
             movx(dst, zr);
         } else if (LogicalImmediateTable.isRepresentable(true, imm) != LogicalImmediateTable.Representable.NO) {
@@ -391,10 +397,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             mov(dst, (int) imm);
             sxt(64, 32, dst, dst);
         } else {
-            mov64(dst, imm);
-            if (annotateImm) {
-                annotatePatchingImmediateNativeAddress(pos, 64, 4);
-            }
+            mov64(dst, imm, annotateImm);
         }
     }
 
@@ -448,7 +451,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             }
         }
         if (annotateImm) {
-            annotatePatchingImmediateNativeAddress(pos, 48, 3);
+            annotateImmediateMovSequence(pos, 3);
         }
         assert !firstMove;
     }
@@ -1437,7 +1440,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.adr(dst, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             // Encode condition flag so that we know how to patch the instruction later
             emitInt(PatchLabelKind.ADR.encoding | dst.encoding << PatchLabelKind.INFORMATION_OFFSET);
         }
@@ -1456,7 +1459,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.cbnz(size, cmp, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 1);
             int sizeEncoding = (size == 64 ? 1 : 0) << PatchLabelKind.INFORMATION_OFFSET;
             // Encode condition flag so that we know how to patch the instruction later
@@ -1477,7 +1480,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.cbz(size, cmp, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 1);
             int sizeEncoding = (size == 64 ? 1 : 0) << PatchLabelKind.INFORMATION_OFFSET;
             // Encode condition flag so that we know how to patch the instruction later
@@ -1498,7 +1501,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.tbnz(cmp, uimm6, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             int indexEncoding = uimm6 << PatchLabelKind.INFORMATION_OFFSET;
             int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 6);
             emitInt(PatchLabelKind.BRANCH_BIT_NONZERO.encoding | indexEncoding | regEncoding);
@@ -1518,7 +1521,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.tbz(cmp, uimm6, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             int indexEncoding = uimm6 << PatchLabelKind.INFORMATION_OFFSET;
             int regEncoding = cmp.encoding << (PatchLabelKind.INFORMATION_OFFSET + 6);
             emitInt(PatchLabelKind.BRANCH_BIT_ZERO.encoding | indexEncoding | regEncoding);
@@ -1537,7 +1540,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.b(condition, offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             // Encode condition flag so that we know how to patch the instruction later
             emitInt(PatchLabelKind.BRANCH_CONDITIONALLY.encoding | condition.encoding << PatchLabelKind.INFORMATION_OFFSET);
         }
@@ -1565,7 +1568,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int offset = label.position() - position();
             super.b(offset);
         } else {
-            label.addPatchAt(position());
+            label.addPatchAt(position(), this);
             emitInt(PatchLabelKind.BRANCH_UNCONDITIONALLY.encoding);
         }
     }
@@ -1703,6 +1706,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 Register reg = AArch64.cpuRegisters.get(regEncoding);
                 // 1 => 64; 0 => 32
                 int size = sizeEncoding * 32 + 32;
+                if (!NumUtil.isSignedNbit(21, branchOffset)) {
+                    throw new BranchTargetOutOfBoundsException(true, "Branch target %d out of bounds", branchOffset);
+                }
                 switch (type) {
                     case BRANCH_NONZERO:
                         super.cbnz(size, reg, branchOffset, branch);
@@ -1805,24 +1811,24 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Emits elf patchable adrp add sequence.
+     * Emits elf patchable adrp ldr sequence.
      */
-    public void adrAddRel(int srcSize, Register result, AArch64Address a) {
+    public void adrpLdr(int srcSize, Register result, AArch64Address a) {
         if (codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new ADRADDPRELMacroInstruction(position()));
+            codePatchingAnnotationConsumer.accept(new AdrpLdrMacroInstruction(position()));
         }
         super.adrp(a.getBase());
         this.ldr(srcSize, result, a);
     }
 
-    public static class ADRADDPRELMacroInstruction extends CodeAnnotation implements MacroInstruction {
-        public ADRADDPRELMacroInstruction(int position) {
+    public static class AdrpLdrMacroInstruction extends CodeAnnotation implements MacroInstruction {
+        public AdrpLdrMacroInstruction(int position) {
             super(position);
         }
 
         @Override
         public String toString() {
-            return "ADR_PREL_PG";
+            return "ADRP_LDR";
         }
 
         @Override

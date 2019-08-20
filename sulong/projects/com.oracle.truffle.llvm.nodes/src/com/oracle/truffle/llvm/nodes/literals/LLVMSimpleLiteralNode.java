@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ public class LLVMSimpleLiteralNode {
 
         @Override
         public LLVMIVarBit executeLLVMIVarBit(VirtualFrame frame) {
-            return literal;
+            return literal.copy();
         }
 
         @Override

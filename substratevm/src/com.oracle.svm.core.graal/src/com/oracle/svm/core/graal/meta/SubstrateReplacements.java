@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
+import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,6 +45,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -54,6 +56,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
@@ -65,9 +68,9 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -193,6 +196,9 @@ public class SubstrateReplacements extends ReplacementsImpl {
             StructuredGraph result = new StructuredGraph.Builder(options, debug).method(method).trackNodeSourcePosition(trackNodeSourcePosition).setIsSubstitution(true).build();
             PEGraphDecoder graphDecoder = new PEGraphDecoder(ConfigurationValues.getTarget().arch, result, providers, null, snippetInvocationPlugins, new InlineInvokePlugin[0], parameterPlugin, null,
                             null, null) {
+
+                private IntrinsicContext intrinsic = new IntrinsicContext(method, null, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING, false);
+
                 @Override
                 protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod lookupMethod, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider,
                                 boolean isSubstitution, boolean track) {
@@ -202,6 +208,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
                     } else {
                         throw VMError.shouldNotReachHere(method.format("%H.%n(%p)"));
                     }
+                }
+
+                @Override
+                public IntrinsicContext getIntrinsic() {
+                    return intrinsic;
                 }
             };
 
@@ -223,7 +234,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
         assert builder.graphs.get(method) == null : "snippet registered twice: " + method.getName();
 
         try (DebugContext debug = openDebugContext("Snippet_", method, options)) {
-            StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, null, null, trackNodeSourcePosition, null);
+            Object[] args = prepareConstantArguments(receiver);
+            StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, args, null, trackNodeSourcePosition, null);
 
             // Check if all methods which should be inlined are really inlined.
             for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
@@ -308,7 +320,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug) {
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, Cancellable cancellable) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return null;
     }
@@ -317,5 +329,12 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Override
     protected final GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
         return builder.graphMakerFactory.create(this, substitute, substitutedMethod);
+    }
+
+    private static Object[] prepareConstantArguments(Object receiver) {
+        if (receiver != null) {
+            return new Object[]{receiver};
+        }
+        return null;
     }
 }

@@ -92,7 +92,7 @@ public class ObjectType {
      * Returns the exports class that this object type is dispatched to using
      * {@link DynamicDispatchLibrary dynamic dispatch}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public Class<?> dispatch() {
         return null;

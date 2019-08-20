@@ -35,8 +35,6 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import org.graalvm.polyglot.Source;
 
-import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
-
 public class SLInspectProfileTest {
 
     // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
@@ -109,7 +107,7 @@ public class SLInspectProfileTest {
     public void testCodeCoverage() throws Exception {
         tester = InspectorTester.start(false);
         Source source = Source.newBuilder("sl", CODE2, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Profiler.enable\"}");
@@ -140,7 +138,7 @@ public class SLInspectProfileTest {
     public void testDetailedCodeCoverage() throws Exception {
         tester = InspectorTester.start(false);
         Source source = Source.newBuilder("sl", CODE2, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Profiler.enable\"}");
@@ -171,7 +169,7 @@ public class SLInspectProfileTest {
     public void testTypeProfile() throws Exception {
         tester = InspectorTester.start(false);
         Source source = Source.newBuilder("sl", CODE2, "SLTest.sl").build();
-        String slTestURI = ScriptsHandler.getNiceStringFromURI(source.getURI());
+        String slTestURI = InspectorTester.getStringURI(source.getURI());
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Profiler.enable\"}");

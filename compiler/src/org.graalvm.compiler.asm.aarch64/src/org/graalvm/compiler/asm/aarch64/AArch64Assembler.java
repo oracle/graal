@@ -54,6 +54,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CNT;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CSEL;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CSINC;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.CSNEG;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.DC;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.DMB;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.EON;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.EOR;
@@ -673,6 +674,7 @@ public abstract class AArch64Assembler extends Assembler {
 
         MRS(0xD5300000),
         MSR(0xD5100000),
+        DC(0xD5087000),
 
         BLR_NATIVE(0xc0000000),
 
@@ -705,6 +707,24 @@ public abstract class AArch64Assembler extends Assembler {
         private final int op0;
         private final int op1;
         private final int crn;
+        private final int crm;
+        private final int op2;
+    }
+
+    public enum DataCacheOperationType {
+        ZVA(0b011, 0b0100, 0b001);
+
+        DataCacheOperationType(int op1, int crm, int op2) {
+            this.op1 = op1;
+            this.crm = crm;
+            this.op2 = op2;
+        }
+
+        public int encoding() {
+            return op1 << 16 | crm << 8 | op2 << 5;
+        }
+
+        private final int op1;
         private final int crm;
         private final int op2;
     }
@@ -1015,7 +1035,7 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     private static int getConditionalBranchImm(int imm21) {
-        assert NumUtil.isSignedNbit(21, imm21) && (imm21 & 0x3) == 0 : "Immediate has to be 21bit signed number and word aligned";
+        assert NumUtil.isSignedNbit(21, imm21) && (imm21 & 0x3) == 0 : String.format("Immediate has to be 21bit signed number and word aligned got value 0x%x", imm21);
         int imm = (imm21 & NumUtil.getNbitNumberInt(21)) >> 2;
         return imm << ConditionalBranchImmOffset;
     }
@@ -1231,7 +1251,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param address all addressing modes allowed. May not be null.
      */
     public void str(int destSize, Register rt, AArch64Address address) {
-        assert rt.getRegisterCategory().equals(CPU);
+        assert rt.getRegisterCategory().equals(CPU) : rt;
         assert destSize == 8 || destSize == 16 || destSize == 32 || destSize == 64;
         int transferSize = NumUtil.log2Ceil(destSize / 8);
         loadStoreInstruction(STR, rt, address, General64, transferSize);
@@ -2961,19 +2981,23 @@ public abstract class AArch64Assembler extends Assembler {
         emitInt(MRS.encoding | systemRegister.encoding() | rt(src));
     }
 
+    public void dc(DataCacheOperationType type, Register src) {
+        emitInt(DC.encoding | type.encoding() | rt(src));
+    }
+
     public void annotatePatchingImmediate(int pos, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {
         if (codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(pos, instruction, operandSizeBits, offsetBits, shift));
+            codePatchingAnnotationConsumer.accept(new SingleInstructionAnnotation(pos, instruction, operandSizeBits, offsetBits, shift));
         }
     }
 
-    void annotatePatchingImmediateNativeAddress(int pos, int operandSizeBits, int numInstrs) {
+    void annotateImmediateMovSequence(int pos, int numInstrs) {
         if (codePatchingAnnotationConsumer != null) {
-            codePatchingAnnotationConsumer.accept(new MovSequenceAnnotation(pos, operandSizeBits, numInstrs));
+            codePatchingAnnotationConsumer.accept(new MovSequenceAnnotation(pos, numInstrs));
         }
     }
 
-    public static class OperandDataAnnotation extends CodeAnnotation {
+    public static class SingleInstructionAnnotation extends CodeAnnotation {
 
         /**
          * The size of the operand, in bytes.
@@ -2983,7 +3007,7 @@ public abstract class AArch64Assembler extends Assembler {
         public final Instruction instruction;
         public final int shift;
 
-        OperandDataAnnotation(int instructionPosition, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {
+        SingleInstructionAnnotation(int instructionPosition, Instruction instruction, int operandSizeBits, int offsetBits, int shift) {
             super(instructionPosition);
             this.operandSizeBits = operandSizeBits;
             this.offsetBits = offsetBits;
@@ -2997,12 +3021,10 @@ public abstract class AArch64Assembler extends Assembler {
         /**
          * The size of the operand, in bytes.
          */
-        public final int operandSizeBits;
         public final int numInstrs;
 
-        MovSequenceAnnotation(int instructionPosition, int operandSizeBits, int numInstrs) {
+        MovSequenceAnnotation(int instructionPosition, int numInstrs) {
             super(instructionPosition);
-            this.operandSizeBits = operandSizeBits;
             this.numInstrs = numInstrs;
         }
     }

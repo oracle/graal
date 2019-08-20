@@ -194,7 +194,13 @@ public interface TruffleCompilerRuntime {
          * Denotes a call site must not be inlined and the execution should be transferred to
          * interpreter in case of an exception.
          */
-        DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION(false);
+        DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION(false),
+
+        /**
+         * Denotes a call site must not be inlined and the execution should be speculatively
+         * transferred to interpreter in case of an exception, unless the speculation has failed.
+         */
+        DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION(false);
 
         private final boolean allowsInlining;
 

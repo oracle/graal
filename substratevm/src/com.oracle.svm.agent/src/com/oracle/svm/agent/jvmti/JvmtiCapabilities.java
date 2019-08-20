@@ -37,4 +37,10 @@ public interface JvmtiCapabilities extends PointerBase {
 
     @CBitfield("can_access_local_variables")
     void setCanAccessLocalVariables(int value);
+
+    @CBitfield("can_force_early_return")
+    void setCanForceEarlyReturn(int value);
+
+    @CBitfield("can_generate_native_method_bind_events")
+    void setCanGenerateNativeMethodBindEvents(int value);
 }

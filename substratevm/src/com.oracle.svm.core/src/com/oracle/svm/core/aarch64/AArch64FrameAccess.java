@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.aarch64;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -34,6 +35,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 @AutomaticFeature
 @Platforms(Platform.AArch64.class)
@@ -46,19 +48,21 @@ class AMD64FrameAccessFeature implements Feature {
 
 public class AArch64FrameAccess extends FrameAccess {
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer readReturnAddress(Pointer sourceSp) {
-        /* Read the return address, which is stored one word below the stack pointer. */
-        return (CodePointer) sourceSp.readWord(-returnAddressSize() - wordSize());
+        /* Read the return address, which is stored immediately below the stack pointer. */
+        return (CodePointer) sourceSp.readWord(-returnAddressSize());
     }
 
     @Override
     public void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress) {
-        sourceSp.writeWord(-returnAddressSize() - wordSize(), newReturnAddress);
+        sourceSp.writeWord(-returnAddressSize(), newReturnAddress);
     }
 
+    @Fold
     @Override
     public int savedBasePointerSize() {
-        if (SubstrateOptions.UseStackBasePointer.getValue()) {
+        if (SubstrateOptions.PreserveFramePointer.getValue()) {
             return wordSize();
         } else {
             return 0;

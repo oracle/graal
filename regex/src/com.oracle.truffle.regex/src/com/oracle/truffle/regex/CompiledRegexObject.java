@@ -32,7 +32,7 @@ public class CompiledRegexObject {
     private final CallTarget callTarget;
 
     public CompiledRegexObject(RegexLanguage language, RegexExecRootNode compiledRegex) {
-        callTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, compiledRegex.getFrameDescriptor(), compiledRegex));
+        callTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, compiledRegex));
     }
 
     public CallTarget getCallTarget() {

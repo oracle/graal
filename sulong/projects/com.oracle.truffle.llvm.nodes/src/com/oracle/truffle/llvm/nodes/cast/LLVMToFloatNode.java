@@ -36,12 +36,12 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToFloatNodeGen.LLVMBitcastToFloatN
 import com.oracle.truffle.llvm.nodes.cast.LLVMToFloatNodeGen.LLVMSignedCastToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToFloatNodeGen.LLVMUnsignedCastToFloatNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMBitcastToI64Node;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -58,6 +58,14 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         throw new IllegalStateException("abstract node LLVMToFloatNode used");
     }
 
+    @Specialization(guards = {"isForeign(from)"})
+    protected float doManagedPointer(LLVMManagedPointer from,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM,
+                    @Cached("createRecursive()") LLVMToFloatNode recursive) {
+        long ptr = (long) toLLVM.executeWithTarget(from.getObject());
+        return recursive.executeWith(ptr);
+    }
+
     @Specialization
     protected float doPointer(LLVMPointer from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
@@ -66,14 +74,12 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
         return recursive.executeWith(ptr);
     }
 
-    @Specialization
-    protected float doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
-                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM) {
-        return (float) toLLVM.executeWithTarget(from.getValue());
-    }
-
     protected ForeignToLLVM createForeignToLLVM() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT);
+    }
+
+    protected boolean isForeign(LLVMManagedPointer pointer) {
+        return pointer.getOffset() == 0 && notLLVM(pointer.getObject());
     }
 
     public abstract static class LLVMSignedCastToFloatNode extends LLVMToFloatNode {

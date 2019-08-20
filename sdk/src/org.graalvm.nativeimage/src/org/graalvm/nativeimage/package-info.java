@@ -48,6 +48,6 @@
  * ahead-of-time compilation of Java code to standalone executables. It also provides interfaces and
  * support classes that only work in the context of a native image.
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.nativeimage;

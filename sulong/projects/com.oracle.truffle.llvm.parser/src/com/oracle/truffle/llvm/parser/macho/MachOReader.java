@@ -29,16 +29,16 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
+import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
-import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class MachOReader extends ObjectFileReader {
 
-    private static final long MH_CIGAM = LLVMScanner.Magic.MH_CIGAM.magic;
-    private static final long MH_MAGIC_64 = LLVMScanner.Magic.MH_MAGIC_64.magic;
-    private static final long MH_CIGAM_64 = LLVMScanner.Magic.MH_CIGAM_64.magic;
+    private static final long MH_CIGAM = BinaryParser.Magic.MH_CIGAM.magic;
+    private static final long MH_MAGIC_64 = BinaryParser.Magic.MH_MAGIC_64.magic;
+    private static final long MH_CIGAM_64 = BinaryParser.Magic.MH_CIGAM_64.magic;
 
     private final boolean is64Bit;
 

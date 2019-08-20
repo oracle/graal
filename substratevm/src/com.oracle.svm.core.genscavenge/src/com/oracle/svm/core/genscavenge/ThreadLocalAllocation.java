@@ -104,9 +104,6 @@ public final class ThreadLocalAllocation {
     /** TLAB for regular allocations. */
     public static final FastThreadLocalBytes<Descriptor> regularTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getRegularTLABSize);
 
-    /** TLAB for pinned allocations. */
-    public static final FastThreadLocalBytes<Descriptor> pinnedTLAB = FastThreadLocalFactory.createBytes(ThreadLocalAllocation::getPinnedTLABSize);
-
     /** A thread-local free list of aligned chunks. */
     private static final FastThreadLocalWord<AlignedHeader> freeList = FastThreadLocalFactory.createWord();
 
@@ -123,11 +120,6 @@ public final class ThreadLocalAllocation {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static int getRegularTLABSize() {
-        return SizeOf.get(Descriptor.class);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static int getPinnedTLABSize() {
         return SizeOf.get(Descriptor.class);
     }
 
@@ -341,7 +333,6 @@ public final class ThreadLocalAllocation {
         for (AlignedHeader alignedChunk = popFromThreadLocalFreeList(); alignedChunk.isNonNull(); alignedChunk = popFromThreadLocalFreeList()) {
             HeapChunkProvider.get().consumeAlignedChunk(alignedChunk);
         }
-        retireToSpace(pinnedTLAB.getAddress(vmThread), HeapImpl.getHeapImpl().getOldGeneration().getPinnedFromSpace());
     }
 
     /** Return all allocated virtual memory chunks to HeapChunkProvider. */
@@ -355,7 +346,6 @@ public final class ThreadLocalAllocation {
             thread = WordFactory.nullPointer();
         }
         freeHeapChunks(regularTLAB.getAddress(thread));
-        freeHeapChunks(pinnedTLAB.getAddress(thread));
         HeapChunkProvider.freeAlignedChunkList(freeList.get());
     }
 
@@ -367,12 +357,10 @@ public final class ThreadLocalAllocation {
 
     public static void suspendThreadLocalAllocation() {
         retireAllocationChunk(regularTLAB.getAddress());
-        retireAllocationChunk(pinnedTLAB.getAddress());
     }
 
     public static void resumeThreadLocalAllocation() {
         resumeAllocationChunk(regularTLAB.getAddress());
-        resumeAllocationChunk(pinnedTLAB.getAddress());
     }
 
     /** Walk objects in this thread's TLABs. */

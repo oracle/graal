@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.210.2",
+  "mxversion" : "5.223.0",
   "name" : "sdk",
-  "version" : "1.0.0-rc16",
+  "version" : "19.3.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -60,12 +60,12 @@ suite = {
   "repositories" : {
     "lafo-snapshots" : {
       "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "NCSA"]
     },
     "lafo" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"]
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
@@ -137,10 +137,22 @@ suite = {
       ],
       "exports" : [
         "<package-info>",  # exports all packages containing package-info.java
+        "org.graalvm.nativeimage.impl.clinit",  # class initialization instrumentation
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
+    },
+    "org.graalvm.nativeimage.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.nativeimage"
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "SDK",
+      "checkstyle" : "org.graalvm.word",
     },
     "org.graalvm.launcher" : {
       "subDir" : "src",
@@ -204,8 +216,13 @@ suite = {
     "UPL" : {
       "name" : "Universal Permissive License, Version 1.0",
       "url" : "http://opensource.org/licenses/UPL",
-    }
+    },
+    "NCSA" : {
+      "name" : "University of Illinois/NCSA Open Source License",
+      "url" : "https://releases.llvm.org/8.0.0/LICENSE.TXT"
+    },
   },
+
   # ------------- Distributions -------------
   "distributions" : {
     "GRAAL_SDK" : {
@@ -224,6 +241,7 @@ suite = {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.collections.test",
+        "org.graalvm.nativeimage.test",
         "org.graalvm.launcher.test",
       ],
       "distDependencies" : [

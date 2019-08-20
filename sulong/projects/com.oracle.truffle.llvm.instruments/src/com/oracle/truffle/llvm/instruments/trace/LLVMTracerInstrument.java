@@ -41,6 +41,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import java.util.Locale;
 
 public final class LLVMTracerInstrument {
 
@@ -77,7 +78,7 @@ public final class LLVMTracerInstrument {
         final String target = targetOptionString;
         assert target != null : "Invalid modification of tracing target!";
 
-        switch (target.toLowerCase()) {
+        switch (target.toLowerCase(Locale.ROOT)) {
             case "true":
             case "out":
             case "stdout":
@@ -99,7 +100,7 @@ public final class LLVMTracerInstrument {
         }
 
         final OutputStream targetStream;
-        switch (target.toLowerCase()) {
+        switch (target.toLowerCase(Locale.ROOT)) {
             case "true":
             case "out":
             case "stdout":
@@ -115,7 +116,7 @@ public final class LLVMTracerInstrument {
                 if (target.startsWith(FILE_TARGET_PREFIX)) {
                     final String fileName = target.substring(FILE_TARGET_PREFIX.length());
                     try {
-                        final TruffleFile file = env.getTruffleFile(fileName);
+                        final TruffleFile file = env.getPublicTruffleFile(fileName);
                         targetStream = new BufferedOutputStream(file.newOutputStream(StandardOpenOption.CREATE, StandardOpenOption.APPEND));
                     } catch (IOException e) {
                         throw new IllegalArgumentException("Invalid file: " + fileName, e);

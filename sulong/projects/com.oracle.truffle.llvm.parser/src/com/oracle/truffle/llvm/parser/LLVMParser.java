@@ -151,12 +151,11 @@ public final class LLVMParser {
     private void defineFunction(FunctionSymbol functionSymbol, ModelModule model, List<String> importedSymbols) {
         assert !functionSymbol.isExternal();
         // handle the file scope
-        LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(functionSymbol.getName(), functionSymbol.getType());
         FunctionDefinition functionDefinition = (FunctionDefinition) functionSymbol;
         LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(runtime, functionDefinition, source, model.getFunctionParser(functionDefinition),
                         model.getFunctionProcessor());
         Function function = new LazyLLVMIRFunction(lazyConverter);
-        descriptor.define(library, function);
+        LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(functionSymbol.getName(), functionSymbol.getType(), function, library);
         runtime.getFileScope().register(descriptor);
 
         // handle the global scope
@@ -233,13 +232,13 @@ public final class LLVMParser {
 
             model.getSourceGlobals().forEach((symbol, irValue) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(irValue);
-                final LLVMDebugObjectBuilder value = context.getNodeFactory().createDebugStaticValue(node, irValue instanceof GlobalVariable);
+                final LLVMDebugObjectBuilder value = context.getLanguage().getNodeFactory().createDebugStaticValue(node, irValue instanceof GlobalVariable);
                 sourceContext.registerStatic(symbol, value);
             });
 
             model.getSourceStaticMembers().forEach(((type, symbol) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(symbol);
-                final LLVMDebugObjectBuilder value = context.getNodeFactory().createDebugStaticValue(node, symbol instanceof GlobalVariable);
+                final LLVMDebugObjectBuilder value = context.getLanguage().getNodeFactory().createDebugStaticValue(node, symbol instanceof GlobalVariable);
                 type.setValue(value);
             }));
         }

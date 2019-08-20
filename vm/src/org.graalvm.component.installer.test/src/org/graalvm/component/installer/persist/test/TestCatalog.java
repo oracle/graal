@@ -22,24 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package org.graalvm.component.installer.persist.test;
 
+import org.graalvm.component.installer.CommandInput;
+import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.ce.WebCatalog;
 
 /**
  * Stub that accepts also "test:" URL scheme.
- * 
+ *
  * @author sdedic
  */
-public class TestCatalog extends WebCatalog {
+public class TestCatalog implements SoftwareChannel.Factory {
 
     @Override
-    protected boolean acceptURLScheme(String scheme) {
-        if ("test".equals(scheme)) {
-            return true;
-        }
-        return super.acceptURLScheme(scheme);
+    public void init(CommandInput input, Feedback output) {
     }
 
+    @Override
+    public SoftwareChannel createChannel(SoftwareChannelSource spec, CommandInput input, Feedback fb) {
+        if (spec.getLocationURL().startsWith("test://")) {
+            WebCatalog c = new WebCatalog(spec.getLocationURL(), spec);
+            c.init(input, fb);
+            return c;
+        }
+
+        return null;
+    }
 }

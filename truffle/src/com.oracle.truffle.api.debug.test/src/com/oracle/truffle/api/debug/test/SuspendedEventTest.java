@@ -58,6 +58,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import org.graalvm.polyglot.Source;
 
@@ -195,6 +196,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
                         "internal test code").internal(true).build();
 
         try (DebuggerSession session = startSession()) {
+            session.setSteppingFilter(SuspensionFilter.newBuilder().includeInternal(true).build());
             session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).build());
             startEval(source);
 

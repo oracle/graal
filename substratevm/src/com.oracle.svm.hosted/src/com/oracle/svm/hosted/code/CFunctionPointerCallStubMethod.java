@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
@@ -37,7 +36,6 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -95,6 +93,15 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
         return (super.getModifiers() & ~(Modifier.ABSTRACT | Modifier.INTERFACE)) | Modifier.STATIC;
     }
 
+    /**
+     * Overriding this method is necessary in addition to adding the {@link Modifier#STATIC}
+     * modifier.
+     */
+    @Override
+    public boolean canBeStaticallyBound() {
+        return true;
+    }
+
     @Override
     protected String getCorrespondingAnnotationName() {
         return InvokeCFunctionPointer.class.getSimpleName();
@@ -136,59 +143,4 @@ public final class CFunctionPointerCallStubMethod extends CCallStubMethod {
         JavaType[] paramTypesNoReceiver = Arrays.copyOfRange(paramTypes, 1, paramTypes.length);
         return super.adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, returnType, paramTypesNoReceiver, arguments);
     }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return updateAnnotations(super.getAnnotations());
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return updateAnnotations(super.getDeclaredAnnotations());
-    }
-
-    private Annotation[] updateAnnotations(Annotation[] annotations) {
-        Annotation[] array = annotations;
-        if (!needsTransition) {
-            array = Arrays.copyOf(array, array.length + 1);
-            array[array.length - 1] = UNINTERRUPTIBLE;
-        }
-        return array;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (!needsTransition && annotationClass.equals(UNINTERRUPTIBLE.annotationType())) {
-            return (T) UNINTERRUPTIBLE;
-        }
-        return super.getAnnotation(annotationClass);
-    }
-
-    private static final Uninterruptible UNINTERRUPTIBLE = new Uninterruptible() {
-        @Override
-        public Class<? extends Annotation> annotationType() {
-            return Uninterruptible.class;
-        }
-
-        @Override
-        public String reason() {
-            return "@" + InvokeCFunctionPointer.class.getSimpleName() + " method is marked " + CFunction.Transition.NO_TRANSITION;
-        }
-
-        @Override
-        public boolean callerMustBe() {
-            return false;
-        }
-
-        @Override
-        public boolean calleeMustBe() {
-            return true;
-        }
-
-        @Override
-        public boolean mayBeInlined() {
-            return false;
-        }
-    };
 }

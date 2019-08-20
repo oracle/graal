@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.model.attributes;
 
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 
 public final class AttributesGroup {
@@ -38,7 +38,7 @@ public final class AttributesGroup {
     private final long groupId;
     private final long paramIdx;
 
-    private final List<Attribute> attributes = new LinkedList<>();
+    private final ArrayList<Attribute> attributes = new ArrayList<>();
 
     public static final long RETURN_VALUE_IDX = 0;
     public static final long FUNCTION_ATTRIBUTE_IDX = 0xFFFFFFFFL;

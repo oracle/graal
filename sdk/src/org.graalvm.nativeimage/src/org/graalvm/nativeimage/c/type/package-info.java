@@ -47,6 +47,6 @@
  * This package provides parts of the Java / C interface that are related to standard C pointer
  * types, as well as utility functions to convert between Java types and C types.
  *
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.nativeimage.c.type;

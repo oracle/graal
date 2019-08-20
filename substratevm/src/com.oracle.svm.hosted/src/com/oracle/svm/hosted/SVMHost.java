@@ -40,7 +40,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.nativeimage.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.api.HostVM;
@@ -121,9 +121,20 @@ public final class SVMHost implements HostVM {
             return;
         }
 
-        EnumSet<AnalysisType.UsageKind> forbiddenType = forbiddenTypes.get(type.getWrapped().toJavaName());
-        if (forbiddenType != null && forbiddenType.contains(kind)) {
-            throw new UnsupportedFeatureException("Forbidden type " + type.getWrapped().toJavaName() + " UsageKind: " + kind);
+        /*
+         * We check the class hierarchy, because putting a restriction on a superclass should cover
+         * all subclasses too.
+         *
+         * We do not check the interface hierarchy for now, although it would be possible. But it
+         * seems less likely that someone registers an interface as forbidden.
+         */
+        for (AnalysisType cur = type; cur != null; cur = cur.getSuperclass()) {
+            EnumSet<AnalysisType.UsageKind> forbiddenType = forbiddenTypes.get(cur.getWrapped().toJavaName());
+            if (forbiddenType != null && forbiddenType.contains(kind)) {
+                throw new UnsupportedFeatureException("Forbidden type " + cur.getWrapped().toJavaName() +
+                                (cur.equals(type) ? "" : " (superclass of " + type.getWrapped().toJavaName() + ")") +
+                                " UsageKind: " + kind);
+            }
         }
     }
 
@@ -149,7 +160,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public String getImageName() {
-        return NativeImageOptions.Name.getValue(options);
+        return SubstrateOptions.Name.getValue(options);
     }
 
     @Override
@@ -171,7 +182,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public Object getConfiguration() {
-        return ImageSingletonsSupportImpl.HostedManagement.get();
+        return ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
     }
 
     @Override
@@ -191,7 +202,7 @@ public final class SVMHost implements HostVM {
     @Override
     public boolean isInitialized(AnalysisType type) {
         boolean shouldInitializeAtRuntime = classInitializationSupport.shouldInitializeAtRuntime(type);
-        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized";
+        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
 
         return !shouldInitializeAtRuntime;
     }
@@ -215,7 +226,7 @@ public final class SVMHost implements HostVM {
         } else if (type instanceof HostedType) {
             aType = ((HostedType) type).getWrapped();
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHere("Found unsupported type: " + type);
         }
         return typeToHub.get(aType);
     }

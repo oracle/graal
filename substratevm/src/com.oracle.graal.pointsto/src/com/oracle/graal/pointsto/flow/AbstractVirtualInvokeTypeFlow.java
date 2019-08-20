@@ -24,33 +24,36 @@
  */
 package com.oracle.graal.pointsto.flow;
 
+import static com.oracle.graal.pointsto.util.ConcurrentLightHashSet.addElement;
+import static com.oracle.graal.pointsto.util.ConcurrentLightHashSet.getElements;
+
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 
 public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
+    private static final AtomicReferenceFieldUpdater<AbstractVirtualInvokeTypeFlow, Object> CALLEES_UPDATER = AtomicReferenceFieldUpdater.newUpdater(AbstractVirtualInvokeTypeFlow.class, Object.class,
+                    "callees");
 
-    protected final ConcurrentLightHashSet<AnalysisMethod> callees;
+    @SuppressWarnings("unused") private volatile Object callees;
 
     protected AbstractVirtualInvokeTypeFlow(Invoke invoke, MethodCallTargetNode target,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         super(invoke, target, actualParameters, actualReturn, location);
         assert target.invokeKind() == InvokeKind.Virtual || target.invokeKind() == InvokeKind.Interface;
-
-        callees = new ConcurrentLightHashSet<>();
     }
 
     protected AbstractVirtualInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, AbstractVirtualInvokeTypeFlow original) {
         super(bb, methodFlows, original);
-        callees = new ConcurrentLightHashSet<>();
     }
 
     @Override
@@ -67,7 +70,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     public abstract void onObservedUpdate(BigBang bb);
 
     protected boolean addCallee(AnalysisMethod callee) {
-        boolean add = callees.addElement(callee);
+        boolean add = addElement(this, CALLEES_UPDATER, callee);
         if (this.isClone()) {
             // if this is a clone, register the callee with the original invoke
             ((AbstractVirtualInvokeTypeFlow) originalInvoke).addCallee(callee);
@@ -77,7 +80,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
 
     @Override
     public final Collection<AnalysisMethod> getCallees() {
-        return callees.getElements();
+        return getElements(this, CALLEES_UPDATER);
     }
 
     @Override

@@ -127,7 +127,7 @@ public class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             trace.string("  objectHeader: ").string(ohi.toStringFromObject(obj)).newline();
         }
         // Promote the Object if necessary, making it at least grey, and ...
-        final Object copy = HeapImpl.getHeapImpl().promoteObject(obj, objRef, innerOffset, compressed);
+        final Object copy = HeapImpl.getHeapImpl().promoteObject(obj);
         trace.string("  copy: ").object(copy);
         if (trace.isEnabled()) {
             trace.string("  objectHeader: ").string(ohi.toStringFromObject(copy));

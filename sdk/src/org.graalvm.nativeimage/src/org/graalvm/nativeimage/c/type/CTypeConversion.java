@@ -54,7 +54,7 @@ import org.graalvm.word.WordFactory;
 /**
  * Utility methods to convert between Java types and C types.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class CTypeConversion {
 
@@ -65,20 +65,20 @@ public final class CTypeConversion {
      * An auto-closable that holds a Java {@link CharSequence} as a null-terminated C char[] array.
      * The C pointer is only valid as long as the auto-closeable has not been closed.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public interface CCharPointerHolder extends AutoCloseable {
         /**
          * Returns the C pointer to the null-terminated C char[] array.
          *
-         * @since 1.0
+         * @since 19.0
          */
         CCharPointer get();
 
         /**
          * Discards the C pointer.
          *
-         * @since 1.0
+         * @since 19.0
          */
         @Override
         void close();
@@ -88,7 +88,7 @@ public final class CTypeConversion {
      * Provides access to a C pointer for the provided Java String, encoded with the default
      * charset.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static CCharPointerHolder toCString(CharSequence javaString) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).toCString(javaString);
@@ -106,7 +106,7 @@ public final class CTypeConversion {
      * @param bufferSize size of the buffer
      * @return number of bytes copied to the buffer
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static UnsignedWord toCString(CharSequence javaString, CCharPointer buffer, UnsignedWord bufferSize) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).toCString(javaString, buffer, bufferSize);
@@ -124,7 +124,7 @@ public final class CTypeConversion {
      * @param bufferSize size of the buffer
      * @return number of bytes copied to the buffer
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static UnsignedWord toCString(CharSequence javaString, Charset charset, CCharPointer buffer, UnsignedWord bufferSize) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).toCString(javaString, charset, buffer, bufferSize);
@@ -136,7 +136,7 @@ public final class CTypeConversion {
      * @param cString the pointer to a 0 terminated C string
      * @return a Java string
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static String toJavaString(CCharPointer cString) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).toJavaString(cString);
@@ -149,7 +149,7 @@ public final class CTypeConversion {
      * @param cString the pointer to a 0 terminated C string
      * @return a Java string
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static String toJavaString(CCharPointer cString, UnsignedWord length) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).toJavaString(cString, length);
@@ -161,7 +161,7 @@ public final class CTypeConversion {
      * @param cString the pointer to a 0 terminated C string
      * @return a Java string
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).toJavaString(cString, length, charset);
@@ -173,7 +173,7 @@ public final class CTypeConversion {
      * @param value the Java boolean value
      * @return the C boolean value
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static byte toCBoolean(boolean value) {
         return (byte) (value ? 1 : 0);
@@ -182,7 +182,7 @@ public final class CTypeConversion {
     /**
      * Converts a C int containing boolean values into a Java boolean.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static boolean toBoolean(int value) {
         return value != 0;
@@ -191,7 +191,7 @@ public final class CTypeConversion {
     /**
      * Converts a C pointer into a Java boolean.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static boolean toBoolean(PointerBase pointer) {
         return pointer.isNonNull();
@@ -202,7 +202,7 @@ public final class CTypeConversion {
      * null-terminated C char[]s. The C pointers are only valid as long as the auto-closeable has
      * not been closed.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final class CCharPointerPointerHolder implements AutoCloseable {
 
@@ -230,7 +230,7 @@ public final class CTypeConversion {
         /**
          * Returns the C pointer to pointers of null-terminated C char[] arrays.
          *
-         * @since 1.0
+         * @since 19.0
          */
         public CCharPointerPointer get() {
             return pinnedCCPArray.addressOfArrayElement(0);
@@ -239,7 +239,7 @@ public final class CTypeConversion {
         /**
          * Discards the C pointers.
          *
-         * @since 1.0
+         * @since 19.0
          */
         @Override
         public void close() {
@@ -256,7 +256,7 @@ public final class CTypeConversion {
      * Provides access to C pointers for the provided Java Strings, encoded with the default
      * charset.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static CCharPointerPointerHolder toCStrings(CharSequence[] javaStrings) {
         return new CCharPointerPointerHolder(javaStrings);
@@ -270,7 +270,7 @@ public final class CTypeConversion {
      * ensuring that the memory can be safely accessed while the ByteBuffer is used, and for freeing
      * the memory afterwards.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static ByteBuffer asByteBuffer(PointerBase address, int size) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).asByteBuffer(address, size);

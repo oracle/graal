@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
 
+    public abstract boolean executeCompare(Object val1, Object val2);
+
     public abstract static class LLVMEqNode extends LLVMCompareNode {
         @Specialization
         protected boolean eq(boolean val1, boolean val2) {
@@ -67,7 +69,7 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
 
         @Specialization
         protected boolean eq(LLVMIVarBit val1, LLVMIVarBit val2) {
-            return val1.compare(val2) == 0;
+            return val1.isEqual(val2);
         }
     }
 
@@ -99,7 +101,7 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
 
         @Specialization
         protected boolean nq(LLVMIVarBit val1, LLVMIVarBit val2) {
-            return val1.compare(val2) != 0;
+            return !val1.isEqual(val2);
         }
     }
 

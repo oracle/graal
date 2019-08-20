@@ -51,7 +51,7 @@ import org.graalvm.polyglot.Value;
  * index zero.
  *
  * @see Proxy
- * @since 1.0
+ * @since 19.0
  */
 public interface ProxyArray extends Proxy {
 
@@ -60,7 +60,7 @@ public interface ProxyArray extends Proxy {
      *
      * @throws ArrayIndexOutOfBoundsException if the index is out of bounds
      * @throws UnsupportedOperationException if the operation is not supported
-     * @since 1.0
+     * @since 19.0
      */
     Object get(long index);
 
@@ -69,7 +69,7 @@ public interface ProxyArray extends Proxy {
      *
      * @throws ArrayIndexOutOfBoundsException if the index is out of bounds
      * @throws UnsupportedOperationException if the operation is not supported
-     * @since 1.0
+     * @since 19.0
      */
     void set(long index, Value value);
 
@@ -80,7 +80,7 @@ public interface ProxyArray extends Proxy {
      *         didn't exist.
      * @throws ArrayIndexOutOfBoundsException if the index is out of bounds
      * @throws UnsupportedOperationException if the operation is not supported
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unused")
     default boolean remove(long index) {
@@ -92,7 +92,7 @@ public interface ProxyArray extends Proxy {
      * language to get and set values using arbitrary indices. The array size is typically used by
      * Graal languages to traverse the array.
      *
-     * @since 1.0
+     * @since 19.0
      */
     long getSize();
 
@@ -100,7 +100,7 @@ public interface ProxyArray extends Proxy {
      * Creates a proxy array backed by a Java array. If the set values of the array are host values
      * then the they will be {@link Value#asHostObject() unboxed}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static ProxyArray fromArray(Object... values) {
         return new ProxyArray() {
@@ -130,7 +130,7 @@ public interface ProxyArray extends Proxy {
      * Creates a proxy array backed by a Java List. If the set values of the list are host values
      * then the they will be {@link Value#asHostObject() unboxed}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static ProxyArray fromList(List<Object> values) {
         return new ProxyArray() {

@@ -31,10 +31,8 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
@@ -55,7 +53,7 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     @Specialization
     protected LLVMDebugValue fromPointer(LLVMPointer pointer) {
         if (LLVMManagedPointer.isInstance(pointer)) {
-            final TruffleObject target = LLVMManagedPointer.cast(pointer).getObject();
+            final Object target = LLVMManagedPointer.cast(pointer).getObject();
             if (target instanceof LLVMGlobalContainer) {
                 return fromGlobalContainer((LLVMGlobalContainer) target);
             }
@@ -75,19 +73,8 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
         final Object currentValue = globalContainer.get();
         if (LLVMPointer.isInstance(currentValue)) {
             return new LLDBMemoryValue(LLVMPointer.cast(currentValue));
-        } else if (currentValue instanceof TruffleObject) {
-            return new LLDBMemoryValue(LLVMManagedPointer.create((TruffleObject) currentValue));
         } else {
-            return new LLDBBoxedPrimitive(new LLVMBoxedPrimitive(currentValue));
-        }
-    }
-
-    @Specialization
-    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive) {
-        if (boxedPrimitive.getValue() instanceof Long) {
-            return fromPointer(LLVMNativePointer.create((long) boxedPrimitive.getValue()));
-        } else {
-            return fromGenericObject(boxedPrimitive);
+            return new LLDBMemoryValue(LLVMManagedPointer.create(currentValue));
         }
     }
 

@@ -159,6 +159,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return oh;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isProducedHeapChunkZapped(UnsignedWord header) {
         if (getReferenceSize() == Integer.BYTES) {
             return header.equal(HeapPolicy.getProducedHeapChunkZapInt());
@@ -167,6 +168,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isConsumedHeapChunkZapped(UnsignedWord header) {
         if (getReferenceSize() == Integer.BYTES) {
             return header.equal(HeapPolicy.getConsumedHeapChunkZapInt());
@@ -229,6 +231,12 @@ public class ObjectHeaderImpl extends ObjectHeader {
             result = result.or(MASK_UNALIGNED);
         }
         return result;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public WordBase formatHubRaw(DynamicHub hub) {
+        return formatHub(hub, false, false);
     }
 
     /*
@@ -346,11 +354,13 @@ public class ObjectHeaderImpl extends ObjectHeader {
      * These are used during collections.
      */
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected boolean isNonHeapAllocatedHeaderBits(UnsignedWord headerBits) {
         return (headerBits.equal(BOOT_IMAGE));
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isNonHeapAllocatedHeader(UnsignedWord header) {
         final UnsignedWord headerBits = ObjectHeaderImpl.getHeaderBitsFromHeader(header);
         return isNonHeapAllocatedHeaderBits(headerBits);
@@ -523,6 +533,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     /**
      * This method returns the header bits from a header that has already been read from an object.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static UnsignedWord getHeaderBitsFromHeader(UnsignedWord header) {
         assert !isProducedHeapChunkZapped(header) : "Produced chunk zap value";
         assert !isConsumedHeapChunkZapped(header) : "Consumed chunk zap value";

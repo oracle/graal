@@ -47,7 +47,7 @@ public interface ImageBuildTask {
      * @return exit status of compilation
      * @see NativeImageBuildServer
      */
-    int build(String[] args, String[] classpath, ClassLoader compilationClassLoader);
+    int build(String[] args, String[] classpath, NativeImageClassLoader compilationClassLoader);
 
     /**
      * Requests interruption of the image build.

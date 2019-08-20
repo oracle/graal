@@ -89,7 +89,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private Set<String> allowedCheckedExceptions;
     private Map<CacheExpression, String> sharedCaches = Collections.emptyMap();
 
-    public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory) {
+    public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory, boolean generateUncached) {
         super(context, type, null);
         this.nodeId = ElementUtils.getSimpleName(type);
         this.typeSystem = typeSystem;
@@ -99,6 +99,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE, null), -1, -1);
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
+        this.generateUncached = generateUncached;
     }
 
     public Map<CacheExpression, String> getSharedCaches() {
@@ -110,7 +111,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public NodeData(ProcessorContext context, TypeElement type) {
-        this(context, type, null, false);
+        this(context, type, null, false, false);
     }
 
     public void setNodeBound(boolean isNodeBound) {

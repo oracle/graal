@@ -161,6 +161,14 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         return biasedExponent - EXPONENT_BIAS;
     }
 
+    public static LLVM80BitFloat createPositiveZero() {
+        if (CompilerDirectives.inCompiledCode()) {
+            return new LLVM80BitFloat(false, 0, 0);
+        } else {
+            return POSITIVE_ZERO;
+        }
+    }
+
     private static long bit(int i) {
         return 1 << i;
     }
@@ -171,7 +179,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
     public static LLVM80BitFloat fromLong(long val) {
         if (val == 0) {
-            return new LLVM80BitFloat(POSITIVE_ZERO);
+            return createPositiveZero();
         }
         boolean sign = val < 0;
         return fromLong(Math.abs(val), sign);
@@ -650,8 +658,8 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
         protected TruffleObject createFunction() {
             LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-            NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-            return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction(context, "@__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
+            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+            return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction(context, "__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
         }
 
         public abstract LLVM80BitFloat execute(LLVM80BitFloat x, LLVM80BitFloat y);
@@ -714,7 +722,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         }
     }
 
-    static class LLVM80BitFloatOpNode extends LLVMArithmeticOpNode {
+    private static class LLVM80BitFloatOpNode extends LLVMArithmeticOpNode {
         @Child private LLVM80BitFloatNativeCallNode node;
 
         LLVM80BitFloatOpNode(String op) {

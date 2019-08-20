@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,9 @@
  */
 package org.graalvm.compiler.core.aarch64.test;
 
-import static org.junit.Assume.assumeTrue;
-
-import java.util.function.Predicate;
-
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIR;
@@ -48,9 +47,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.Value;
+import java.util.function.Predicate;
+
+import static org.junit.Assume.assumeTrue;
 
 public class AArch64TestBitAndBranchTest extends LIRTest {
     private static final Predicate<LIRInstruction> checkForBitTestAndBranchOp = op -> (op instanceof AArch64ControlFlow.BitTestAndBranchOp);
@@ -122,6 +121,73 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
         checkLIR("testBitTestAndBranchFourSnippet", checkForBitTestAndBranchOp, 1);
     }
 
+    private static final float trueTarget = Float.MAX_VALUE;
+    private static final float falseTarget = Float.MIN_VALUE;
+
+    public static float testLessThanZeroSnippet(long a, long b) {
+        if (b + a - b < 0) {
+            return trueTarget - a;
+        } else {
+            return falseTarget + a;
+        }
+    }
+
+    @Test
+    public void testLessThanZero() {
+        test("testLessThanZeroSnippet", 1L, 777L);
+        test("testLessThanZeroSnippet", 0L, 777L);
+        test("testLessThanZeroSnippet", -1L, 777L);
+        checkLIR("testLessThanZeroSnippet", checkForBitTestAndBranchOp, 1);
+    }
+
+    public static float testLessThanEqualZeroSnippet(long a) {
+        if (a <= 0) {
+            return trueTarget - a;
+        } else {
+            return falseTarget + a;
+        }
+    }
+
+    @Test
+    public void testLessThanEqualZero() {
+        test("testLessThanEqualZeroSnippet", 1L);
+        test("testLessThanEqualZeroSnippet", 0L);
+        test("testLessThanEqualZeroSnippet", -1L);
+        checkLIR("testLessThanEqualZeroSnippet", checkForBitTestAndBranchOp, 0);
+    }
+
+    public static float testGreaterThanZeroSnippet(int a) {
+        if (a > 0) {
+            return trueTarget - a;
+        } else {
+            return falseTarget + a;
+        }
+    }
+
+    @Test
+    public void testGreaterThanZero() {
+        test("testGreaterThanZeroSnippet", 1);
+        test("testGreaterThanZeroSnippet", 0);
+        test("testGreaterThanZeroSnippet", -1);
+        checkLIR("testGreaterThanZeroSnippet", checkForBitTestAndBranchOp, 0);
+    }
+
+    public static float testGreaterThanEqualZeroSnippet(int a) {
+        if (a >= 0) {
+            return trueTarget - a;
+        } else {
+            return falseTarget + a;
+        }
+    }
+
+    @Test
+    public void testGreaterThanEqualZero() {
+        test("testGreaterThanEqualZeroSnippet", 1);
+        test("testGreaterThanEqualZeroSnippet", 0);
+        test("testGreaterThanEqualZeroSnippet", -1);
+        checkLIR("testGreaterThanEqualZeroSnippet", checkForBitTestAndBranchOp, 1);
+    }
+
     private static class LargeOpSpec extends LIRTestSpecification {
         private final int n;
         private final int nopCount;
@@ -172,7 +238,9 @@ public class AArch64TestBitAndBranchTest extends LIRTest {
 
     public class CheckPhase extends LIRPhase<PreAllocationOptimizationContext> {
         @Override
-        protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PreAllocationOptimizationContext context) {
+        protected void run(
+                        TargetDescription target, LIRGenerationResult lirGenRes,
+                        PreAllocationOptimizationContext context) {
             lir = lirGenRes.getLIR();
         }
     }

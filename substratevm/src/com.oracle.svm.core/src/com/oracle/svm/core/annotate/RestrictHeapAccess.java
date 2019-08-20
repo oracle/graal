@@ -56,4 +56,6 @@ public @interface RestrictHeapAccess {
     boolean overridesCallers() default false;
 
     String reason();
+
+    boolean mayBeInlined() default false;
 }

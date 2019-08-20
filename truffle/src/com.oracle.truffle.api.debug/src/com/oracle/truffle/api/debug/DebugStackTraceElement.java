@@ -62,7 +62,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@link DebugStackFrame}, that is associated with a {@link SuspendedEvent}.
  *
  * @see DebugException#getDebugStackTrace()
- * @since 1.0
+ * @since 19.0
  */
 public final class DebugStackTraceElement {
 
@@ -81,7 +81,7 @@ public final class DebugStackTraceElement {
      * The decision to mark a method as <em>internal</em> is language-specific, reflects judgments
      * about tool usability, and is subject to change.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isInternal() {
         RootNode root = findCurrentRoot();
@@ -95,7 +95,7 @@ public final class DebugStackTraceElement {
      * A description of the trace element. If the language does not provide such a description then
      * <code>null</code> is returned.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getName() {
         RootNode root = findCurrentRoot();
@@ -129,7 +129,7 @@ public final class DebugStackTraceElement {
      * Returns the source section location of this trace element. The source section is
      * <code>null</code> if the source location is not available.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public SourceSection getSourceSection() {
         Node node = traceElement.getLocation();
@@ -145,7 +145,7 @@ public final class DebugStackTraceElement {
      *
      * @return the scope, or <code>null</code> when no language is associated with this frame
      *         location, or when no local scope exists.
-     * @since 1.0
+     * @since 19.0
      */
     public DebugScope getScope() {
         Node node = traceElement.getLocation();

@@ -200,7 +200,7 @@ public final class DebugScope {
      *
      * @return value that represents the receiver, or <code>null</code> when there is no receiver
      *         object
-     * @since 1.0
+     * @since 19.0
      */
     public DebugValue getReceiver() {
         verifyValidState();

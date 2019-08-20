@@ -96,7 +96,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
         if (res.isNull()) {
             return null;
         }
-        return new HSTruffleSourceLanguagePosition(env, res);
+        return new HSTruffleSourceLanguagePosition(scope, res);
     }
 
     /**
@@ -141,50 +141,47 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
      */
     private static final class HSTruffleSourceLanguagePosition extends HSObject implements TruffleSourceLanguagePosition {
 
-        private final JNIEnv env;
-
-        HSTruffleSourceLanguagePosition(JNIEnv env, JObject handle) {
-            super(env, handle);
-            this.env = env;
+        HSTruffleSourceLanguagePosition(HotSpotToSVMScope scope, JObject handle) {
+            super(scope, handle);
         }
 
         @SVMToHotSpot(GetOffsetStart)
         @Override
         public int getOffsetStart() {
-            return callGetOffsetStart(env, getHandle());
+            return callGetOffsetStart(HotSpotToSVMScope.env(), getHandle());
         }
 
         @SVMToHotSpot(GetOffsetEnd)
         @Override
         public int getOffsetEnd() {
-            return callGetOffsetEnd(env, getHandle());
+            return callGetOffsetEnd(HotSpotToSVMScope.env(), getHandle());
         }
 
         @SVMToHotSpot(GetLineNumber)
         @Override
         public int getLineNumber() {
-            return callGetLineNumber(env, getHandle());
+            return callGetLineNumber(HotSpotToSVMScope.env(), getHandle());
         }
 
         @SVMToHotSpot(GetLanguage)
         @Override
         public String getLanguage() {
-            JString res = callGetLanguage(env, getHandle());
-            return createString(env, res);
+            JString res = callGetLanguage(HotSpotToSVMScope.env(), getHandle());
+            return createString(HotSpotToSVMScope.env(), res);
         }
 
         @SVMToHotSpot(GetDescription)
         @Override
         public String getDescription() {
-            JString res = callGetDescription(env, getHandle());
-            return createString(env, res);
+            JString res = callGetDescription(HotSpotToSVMScope.env(), getHandle());
+            return createString(HotSpotToSVMScope.env(), res);
         }
 
         @SVMToHotSpot(GetURI)
         @Override
         public URI getURI() {
-            JString res = callGetURI(env, getHandle());
-            String stringifiedURI = createString(env, res);
+            JString res = callGetURI(HotSpotToSVMScope.env(), getHandle());
+            String stringifiedURI = createString(HotSpotToSVMScope.env(), res);
             return stringifiedURI == null ? null : URI.create(stringifiedURI);
         }
     }

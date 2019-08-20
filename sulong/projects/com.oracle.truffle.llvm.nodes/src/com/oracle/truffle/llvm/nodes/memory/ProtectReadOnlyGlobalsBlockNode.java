@@ -45,8 +45,8 @@ public final class ProtectReadOnlyGlobalsBlockNode extends LLVMNode implements L
     private final TruffleObject protectReadonlyGlobalsBlock;
 
     public ProtectReadOnlyGlobalsBlockNode(LLVMContext context) {
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "@__sulong_protect_readonly_globals_block", "(POINTER):VOID");
+        NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+        this.protectReadonlyGlobalsBlock = nfiContextExtension.getNativeFunction(context, "__sulong_protect_readonly_globals_block", "(POINTER):VOID");
         this.interop = InteropLibrary.getFactory().create(protectReadonlyGlobalsBlock);
     }
 

@@ -44,6 +44,7 @@ import java.util.Enumeration;
 import java.util.ResourceBundle;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import org.junit.After;
 
 import org.junit.AfterClass;
 import org.junit.ClassRule;
@@ -73,6 +74,9 @@ public class TestBase implements Feedback {
     @ClassRule public static TemporaryFolder expandedFolder = new ClassTempFolder();
     @Rule public TemporaryFolder testFolder = new TemporaryFolder();
     @Rule public TestName testName = new TestName();
+
+    public TestBase() {
+    }
 
     static class ClassTempFolder extends TemporaryFolder {
         ThreadLocal<File> root = new ThreadLocal<>();
@@ -305,7 +309,11 @@ public class TestBase implements Feedback {
                 return s;
             }
         }
-        return key;
+        if (key.endsWith("@") && bundle != null) {
+            return MessageFormat.format(bundle.getString(key), params);
+        } else {
+            return key;
+        }
     }
 
     public String reallyl10n(ResourceBundle bundle, String key, Object... params) {
@@ -639,5 +647,14 @@ public class TestBase implements Feedback {
     @Override
     public Path getLocalCache(URL location) {
         return null;
+    }
+
+    @After
+    public void disableLicenseAfterTest() {
+        SystemUtils.licenseTracking = false;
+    }
+
+    public static void enableLicensesForTesting() {
+        SystemUtils.licenseTracking = true;
     }
 }

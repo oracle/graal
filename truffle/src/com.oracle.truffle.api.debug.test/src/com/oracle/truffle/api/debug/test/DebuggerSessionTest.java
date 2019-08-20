@@ -562,7 +562,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
         String sourceContent = "\n  relative source\nVarA";
         Source source = Source.newBuilder(ProxyLanguage.ID, sourceContent, "file").cached(false).build();
         String relativePath = "relative/test.file";
-        Path testSourcePath = Files.createTempDirectory("testPath");
+        Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
         Files.createDirectory(testSourcePath.resolve("relative"));
         Path filePath = testSourcePath.resolve(relativePath);
         Files.write(filePath, sourceContent.getBytes());
@@ -614,7 +614,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
         String sourceContent = "\n  relative source\nVarA";
         Source source = Source.newBuilder(ProxyLanguage.ID, sourceContent, "file").cached(false).build();
         String relativePath = "relative/test.file";
-        File zip = File.createTempFile("TestZip", ".zip");
+        File zip = File.createTempFile("TestZip", ".zip").getCanonicalFile();
         zip.deleteOnExit();
         try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zip))) {
             ZipEntry e = new ZipEntry("src/" + relativePath);
@@ -625,7 +625,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
         }
         URI sourcePathURI;
         URI resolvedURI;
-        try (FileSystem fs = FileSystems.newFileSystem(zip.toPath(), null)) {
+        try (FileSystem fs = FileSystems.newFileSystem(zip.toPath(), (ClassLoader) null)) {
             Path spInZip = fs.getPath("src");
             sourcePathURI = spInZip.toUri();
             resolvedURI = fs.getPath("src", relativePath).toUri();
@@ -685,7 +685,7 @@ public class DebuggerSessionTest extends AbstractDebugTest {
     public void testDebuggedSourcesCanBeReleasedRelative() throws IOException {
         String sourceContent = "\n  relative source\nVarA";
         String relativePath = "relative/test.file";
-        Path testSourcePath = Files.createTempDirectory("testPath");
+        Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
         Files.createDirectory(testSourcePath.resolve("relative"));
         Path filePath = testSourcePath.resolve(relativePath);
         Files.write(filePath, sourceContent.getBytes());

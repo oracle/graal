@@ -141,10 +141,10 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
     }
 
     @Override
-    public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisField field, boolean isStore) {
+    public FieldTypeFlow getInstanceFieldFlow(BigBang bb, AnalysisMethod context, AnalysisField field, boolean isStore) {
         assert !Modifier.isStatic(field.getModifiers()) && PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions());
 
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, null, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
 
         if (merged) {
             /*

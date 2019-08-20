@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,12 +55,6 @@ public final class MDValue implements MDBaseNode {
     @Override
     public String toString() {
         return String.format("Value (%s)", value);
-    }
-
-    private static final int VALUE_ARGINDEX_VALUE = 1;
-
-    public static MDBaseNode create(long[] args, IRScope scope) {
-        return create(args[VALUE_ARGINDEX_VALUE], scope);
     }
 
     public static MDBaseNode create(long arg, IRScope scope) {

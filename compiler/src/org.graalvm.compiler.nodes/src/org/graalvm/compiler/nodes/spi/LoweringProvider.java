@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,8 +50,11 @@ public interface LoweringProvider {
     /**
      * Indicates the smallest width for comparing an integer value on the target platform.
      */
-    default Integer smallestCompareWidth() {
-        // most platforms only support 32 and 64 bit compares
-        return 32;
-    }
+    Integer smallestCompareWidth();
+
+    /**
+     * Returns the granularity in terms of bytes that this target platform's bulk zeroing supports.
+     * Returns 0 to indicate that this target platform does not support bulk zeroing instruction.
+     */
+    int bulkZeroingStride();
 }

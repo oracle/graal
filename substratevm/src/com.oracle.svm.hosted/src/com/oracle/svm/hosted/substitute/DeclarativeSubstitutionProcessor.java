@@ -65,6 +65,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
@@ -83,8 +84,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProcessor {
 
     public static class Options {
-        @Option(help = "Comma-separated list of file names with declarative substitutions", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> SubstitutionFiles = new HostedOptionKey<>(null);
 
         @Option(help = "Comma-separated list of resource file names with declarative substitutions", type = OptionType.User)//
         public static final HostedOptionKey<String[]> SubstitutionResources = new HostedOptionKey<>(null);
@@ -101,7 +100,7 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
         methodDescriptors = new HashMap<>();
         fieldDescriptors = new HashMap<>();
 
-        for (String substitutionFileName : OptionUtils.flatten(",", Options.SubstitutionFiles.getValue())) {
+        for (String substitutionFileName : OptionUtils.flatten(",", ConfigurationFiles.Options.SubstitutionFiles.getValue())) {
             try {
                 loadFile(new FileReader(substitutionFileName));
             } catch (FileNotFoundException ex) {
@@ -124,7 +123,7 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
     }
 
     private void loadFile(Reader reader) throws IOException {
-        Set<Class<?>> annotatedClasses = new HashSet<>(imageClassLoader.findAnnotatedClasses(TargetClass.class));
+        Set<Class<?>> annotatedClasses = new HashSet<>(imageClassLoader.findAnnotatedClasses(TargetClass.class, false));
 
         JSONParser parser = new JSONParser(reader);
         @SuppressWarnings("unchecked")

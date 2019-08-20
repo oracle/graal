@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nfi;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -73,7 +72,7 @@ final class SulongNFIFunction implements TruffleObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    boolean isBindable(@SuppressWarnings("unused") @Cached("0") int zero /* work around GR-14767 */) {
+    boolean isBindable() {
         return true;
     }
 

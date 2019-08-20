@@ -25,11 +25,11 @@
 #
 # ----------------------------------------------------------------------------------------------------
 suite = {
-  "mxversion" : "5.210.2",
+  "mxversion" : "5.223.0",
 
   "name" : "regex",
 
-  "version" : "1.0.0-rc16",
+  "version" : "19.3.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -85,6 +85,7 @@ suite = {
         "com.oracle.truffle.regex",
         "mx:JUNIT",
       ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.regex",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Regex",
@@ -107,6 +108,7 @@ suite = {
     },
 
     "TREGEX_UNIT_TESTS" : {
+      "subDir": "src",
       "dependencies" : [
         "com.oracle.truffle.regex.test",
       ],

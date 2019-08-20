@@ -43,11 +43,11 @@ package com.oracle.truffle.api;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Iterator;
+import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import java.util.Iterator;
-import java.util.ServiceConfigurationError;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.
@@ -155,7 +155,7 @@ public final class Truffle {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
                 String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
-                if (runtimeClassName != null) {
+                if (runtimeClassName != null && runtimeClassName.length() > 0) {
                     try {
                         ClassLoader cl = Thread.currentThread().getContextClassLoader();
                         Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);

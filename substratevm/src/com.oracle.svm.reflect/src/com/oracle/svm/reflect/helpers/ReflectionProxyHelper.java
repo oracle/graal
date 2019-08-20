@@ -32,18 +32,10 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 public class ReflectionProxyHelper {
-    private static final Field hField;
-
-    static {
-        try {
-            hField = Proxy.class.getDeclaredField("h");
-            hField.setAccessible(true);
-        } catch (NoSuchFieldException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
+    private static final Field hField = ReflectionUtil.lookupField(Proxy.class, "h");
 
     private static Object toStringInvocationHandler(Object proxy, Method method, @SuppressWarnings("unused") Object[] args) {
         if (method.getName().equals("toString")) {

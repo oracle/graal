@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.integer;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class IntegerConstant extends AbstractConstant {
@@ -64,10 +65,10 @@ public final class IntegerConstant extends AbstractConstant {
         return String.valueOf(value);
     }
 
-    public static IntegerConstant fromDatum(Type type, long datum) {
+    public static IntegerConstant createFromData(Type type, RecordBuffer buffer) {
         // Sign extend for everything except i1 (boolean)
         final int bits = type.getBitSize();
-        long d = datum;
+        long d = buffer.read();
         if (bits > 1 && bits < Long.SIZE) {
             d = extendSign(bits, d);
         }

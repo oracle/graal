@@ -76,7 +76,7 @@ import org.graalvm.word.WordFactory;
  * method with a {@link CEnumLookup} annotation. For enum return types, the enum class must have a
  * method that is annotated with {@link CEnumValue}.
  *
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
@@ -85,14 +85,14 @@ public @interface CEntryPoint {
     /**
      * The symbol name to use for this entry point.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String name() default "";
 
     /**
      * Method documentation to be included in the header file, as an array of lines.
      *
-     * @since 1.0
+     * @since 19.0
      */
     String[] documentation() default "";
 
@@ -108,7 +108,7 @@ public @interface CEntryPoint {
      * and the exception is passed as the argument. The return value of the exception handler method
      * is then the return value of the entry point, i.e., passed back to the C code.
      *
-     * @since 1.0
+     * @since 19.0
      */
     Class<?> exceptionHandler() default FatalExceptionHandler.class;
 
@@ -116,7 +116,7 @@ public @interface CEntryPoint {
      * Special placeholder value for {@link #exceptionHandler()} to print the caught exception and
      * treat it as a {@link LogHandler#fatalError() fatal error}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     final class FatalExceptionHandler {
         private FatalExceptionHandler() {
@@ -131,20 +131,20 @@ public @interface CEntryPoint {
      * descriptions of the built-ins, and to the {@linkplain Builtin individual built-ins} for their
      * requirements to the annotated method's signature.
      *
-     * @since 1.0
+     * @since 19.0
      */
     Builtin builtin() default Builtin.NO_BUILTIN;
 
     /**
      * The built-in methods which can be {@linkplain #builtin() aliased}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     enum Builtin {
         /**
          * The annotated method is not an alias for a built-in method.
          *
-         * @since 1.0
+         * @since 19.0
          */
         NO_BUILTIN,
 
@@ -153,7 +153,7 @@ public @interface CEntryPoint {
          * arguments, and must have a return type of {@link IsolateThread}. In case of an error,
          * {@link WordFactory#nullPointer() NULL} is returned.
          *
-         * @since 1.0
+         * @since 19.0
          */
         CREATE_ISOLATE,
 
@@ -163,7 +163,7 @@ public @interface CEntryPoint {
          * {@link IsolateThread}. In case of an error, {@link WordFactory#nullPointer() NULL} is
          * returned.
          *
-         * @since 1.0
+         * @since 19.0
          */
         ATTACH_THREAD,
 
@@ -173,7 +173,7 @@ public @interface CEntryPoint {
          * isolate in question, and a return type of {@link IsolateThread}. In case of an error,
          * {@link WordFactory#nullPointer() NULL} is returned.
          *
-         * @since 1.0
+         * @since 19.0
          */
         GET_CURRENT_THREAD,
 
@@ -182,7 +182,7 @@ public @interface CEntryPoint {
          * requires a parameter of type {@link IsolateThread}, and a return type of {@link Isolate}.
          * In case of an error, {@link WordFactory#nullPointer() NULL} is returned.
          *
-         * @since 1.0
+         * @since 19.0
          */
         GET_ISOLATE,
 
@@ -192,7 +192,7 @@ public @interface CEntryPoint {
          * {@code int} or {@code void}. With an {@code int} return type, zero is returned when
          * successful, or non-zero in case of an error.
          *
-         * @since 1.0
+         * @since 19.0
          */
         DETACH_THREAD,
 
@@ -202,7 +202,7 @@ public @interface CEntryPoint {
          * {@code int} return type, zero is returned when successful, or non-zero in case of an
          * error.
          *
-         * @since 1.0
+         * @since 19.0
          */
         TEAR_DOWN_ISOLATE,
     }
@@ -211,7 +211,7 @@ public @interface CEntryPoint {
      * Designates an {@link IsolateThread} parameter to use as the execution context. At most one
      * parameter can be annotated with this annotation or {@link IsolateContext}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)
@@ -222,7 +222,7 @@ public @interface CEntryPoint {
      * Designates an {@link Isolate} parameter to use as the execution context. At most one
      * parameter can be annotated with this annotation or {@link IsolateThreadContext}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.PARAMETER)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,11 +48,6 @@ public final class MetaType extends Type {
     private MetaType(String name) {
         this.name = name;
         this.identity = new Object();
-    }
-
-    @Override
-    public Type shallowCopy() {
-        return this;
     }
 
     @Override

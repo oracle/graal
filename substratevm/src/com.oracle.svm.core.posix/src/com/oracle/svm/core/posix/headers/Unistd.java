@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -659,7 +660,7 @@ public class Unistd {
     public static native int _SC_NPROCESSORS_ONLN();
 
     @CConstant
-    @Platforms(Platform.LINUX_AND_JNI.class)
+    @Platforms(InternalPlatform.LINUX_AND_JNI.class)
     public static native int _SC_PHYS_PAGES();
 
     @CConstant
@@ -1343,7 +1344,7 @@ public class Unistd {
     // public static native int _CS_V7_ENV();
 
     @CConstant
-    @Platforms(Platform.DARWIN_AND_JNI.class)
+    @Platforms(InternalPlatform.DARWIN_AND_JNI.class)
     public static native int _CS_DARWIN_USER_TEMP_DIR();
 
     /** Get file-specific configuration information about PATH. */

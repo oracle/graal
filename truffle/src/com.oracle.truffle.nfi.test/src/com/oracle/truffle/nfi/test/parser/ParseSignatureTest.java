@@ -67,8 +67,8 @@ public class ParseSignatureTest {
 
     @BeforeClass
     public static void loadTestSymbol() throws InteropException {
-        Source source = Source.newBuilder("nfi", "with test default", "ParseSignatureTest").build();
-        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        Source source = Source.newBuilder("nfi", "with test default", "ParseSignatureTest").internal(true).build();
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         Object library = target.call();
         testSymbol = INTEROP.readMember(library, "testSymbol");
     }

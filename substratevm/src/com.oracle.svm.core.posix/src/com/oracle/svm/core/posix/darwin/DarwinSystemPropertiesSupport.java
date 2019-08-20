@@ -26,13 +26,13 @@ package com.oracle.svm.core.posix.darwin;
 
 import static com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFRetain;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -44,7 +44,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation.CFStringRef;
 
-@Platforms({Platform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.DARWIN_AND_JNI.class})
 public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
@@ -99,7 +99,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
     }
 }
 
-@Platforms({Platform.DARWIN_AND_JNI.class})
+@Platforms({InternalPlatform.DARWIN_AND_JNI.class})
 @AutomaticFeature
 class DarwinSystemPropertiesFeature implements Feature {
     @Override

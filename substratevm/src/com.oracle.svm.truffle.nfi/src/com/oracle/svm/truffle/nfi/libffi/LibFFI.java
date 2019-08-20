@@ -27,8 +27,8 @@ package com.oracle.svm.truffle.nfi.libffi;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
@@ -40,7 +40,7 @@ import org.graalvm.word.WordBase;
 //Checkstyle: stop
 
 @CContext(LibFFIHeaderDirectives.class)
-@CLibrary("ffi")
+@CLibrary(value = "ffi", requireStatic = true)
 public class LibFFI {
 
     @CPointerTo(ffi_type.class)

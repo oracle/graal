@@ -1,4 +1,4 @@
-This page describes various presentations and publications related to Graal and Truffle that were published by Oracle Labs and its academic collaborators.
+This page describes various presentations and publications related to the GraalVM compiler and Truffle that were published by Oracle Labs and its academic collaborators.
 
 ## Truffle Tutorial
 
@@ -16,21 +16,21 @@ PLDI 2016, June 13, 2016, Santa Barbara, CA
 [Video recording](https://youtu.be/FJY96_6Y3a4)  
 [Slides](https://lafo.ssw.uni-linz.ac.at/pub/papers/2016_PLDI_Truffle.pdf)
 
-## Graal Tutorial
+## GraalVM Compiler Tutorial
 
-This tutorial presents Graal, a high-performance dynamic compiler written in Java. Because it is highly configurable and extensible, it delivers excellent peak performance for a diverse set of managed languages including Java (beating the Java HotSpot server compiler), JavaScript (beating the V8 Crankshaft compiler), Ruby, and R. This lifts compiler research using Graal to a new level: researchers can evaluate new compiler optimizations immediately on many languages. If you are a language implementer who is curious how modern VMs like the Java HotSpot VM or the V8 JavaScript VM optimize your code, you will get all your questions answered too.
+This tutorial presents the GraalVM compiler, a high-performance dynamic compiler written in Java. Because it is highly configurable and extensible, it delivers excellent peak performance for a diverse set of managed languages including Java (beating the Java HotSpot server compiler), JavaScript (beating the V8 Crankshaft compiler), Ruby, and R. This lifts compiler research to a new level: researchers can evaluate new compiler optimizations immediately on many languages. If you are a language implementer who is curious how modern VMs like the Java HotSpot VM or the V8 JavaScript VM optimize your code, you will get all your questions answered too.
 
 In detail, the tutorial covers the following topics:
 
-* Key distinguishing features of Graal,
-* Introduction to the Graal IR: basic properties, instructions, and optimization phases
+* Key distinguishing features of the GraalVM compiler,
+* Introduction to the compiler IR: basic properties, instructions, and optimization phases
 * Speculative optimizations: first-class support for optimistic optimizations and deoptimization
-* Graal API: separation of the compiler from the VM
+* JVMCI API: separation of the compiler from the VM
 * Snippets: expressing high-level semantics in low-level Java code
-* Compiler intrinsics: use all your hardware instructions with Graal
-* Using Graal for static analysis
-* Custom compilations with Graal: integration of the compiler with an application or library
-* Graal as a compiler for dynamic programming languages
+* Compiler intrinsics: use all your hardware instructions
+* Using the compiler for static analysis
+* Custom compilations: integration of the compiler with an application or library
+* GraalVM compiler as a compiler for dynamic programming languages
 
 PLDI 2017, June 18-23, Barcelona, Spain  
 [Video recording](https://www.youtube.com/watch?v=5_Y3kc--eTI)   
@@ -88,16 +88,16 @@ In _Proceedings of the Conference on Programming Language Design and Implementat
 [Video recording](https://www.youtube.com/watch?v=8eff207KPkA&list=PLMTm6Ln7vQZZv6sQ0I4R7iaIjvSVhHXod&index=42)  
 [DOI: 10.1145/3062341.3062381](https://doi.org/10.1145/3062341.3062381)
 
-- Juan Fumero, Michel Steuwer, Lukas Stadler, Christophe Dubach 
-[**Just-In-Time GPU Compilation for Interpreted Languages with Partial Evaluation**](https://dl.acm.org/citation.cfm?id=3050761) 
-In _Proceedings of the 13th ACM International Conference on Virtual Execution Environments (VEE'17)_ 
+- Juan Fumero, Michel Steuwer, Lukas Stadler, Christophe Dubach
+[**Just-In-Time GPU Compilation for Interpreted Languages with Partial Evaluation**](https://dl.acm.org/citation.cfm?id=3050761)
+In _Proceedings of the 13th ACM International Conference on Virtual Execution Environments (VEE'17)_
 [DOI: 10.1145/3050748.3050761](http://dx.doi.org/10.1145/3050748.3050761)
 
 - Michael Van De Vanter  
 [**Building Flexible, Low-Overhead Tooling Support into a High-Performance Polyglot VM (Extended Abstract)**](http://vandevanter.net/mlvdv/publications/mlvdv-morevms-2017.pdf)  
 _MoreVMs Workshop on Modern Language Runtimes, Ecosystems, and VMs_.
 
-- Juan Fumero, Michel Steuwer, Lukas Stadler, Christophe Dubach. 
+- Juan Fumero, Michel Steuwer, Lukas Stadler, Christophe Dubach.
 [**OpenCL JIT Compilation for Dynamic Programming Languages**](https://github.com/jjfumero/jjfumero.github.io/blob/master/files/morevms17-final13.pdf)
 _MoreVMs Workshop on Modern Language Runtimes, Ecosystems, and VMs (MoreVMs'17)_
 [Video recording](https://www.youtube.com/watch?v=6il8LnNegwg)
@@ -190,16 +190,16 @@ Master's thesis, Johannes Kepler University Linz, November 2013.
 In _Proceedings of the Dynamic Languages Symposium (DLS)_.  
 Describes the design of self-optimizing and self-specializing interpreter, and the application to JavaScript.
 
-## Graal Papers
+## GraalVM Compiler Papers
 
 
 ### 2018
 
-- James Clarkson, Juan Fumero, Michalis Papadimitriou, Foivos S. Zakkak, Maria Xekalaki, Christos Kotselidis, Mikel Luján 
+- James Clarkson, Juan Fumero, Michalis Papadimitriou, Foivos S. Zakkak, Maria Xekalaki, Christos Kotselidis, Mikel Luján
 [**Exploiting High-Performance Heterogeneous Hardware for Java Programs using Graal**](https://dl.acm.org/citation.cfm?id=3237016)
 In _Proceedings of the 15th International Conference on Managed Languages & Runtimes (ManLang'18)_
 
-- Juan Fumero, Christos Kotselidis. 
+- Juan Fumero, Christos Kotselidis.
 [**Using Compiler Snippets to Exploit Parallelism on Heterogeneous Hardware: A Java Reduction Case Study**](https://dl.acm.org/citation.cfm?id=3281292)
 In _Proceedings of the 10th ACM SIGPLAN International Workshop on Virtual Machines and Intermediate Languages (VMIL'18)_
 
@@ -296,7 +296,7 @@ In Proceedings of the 10th Workshop on Implementation, Compilation, Optimization
 [**Techniques and applications for guest-language safepoints**](http://dx.doi.org/10.1145/2843915.2843921)  
 In Proceedings of the 10th Workshop on Implementation, Compilation, Optimization of Object-Oriented Languages, Programs and Systems (ICOOOLPS '15)
 
-- Juan Fumero, Toomas Remmelg, Michel Steuwer and Christophe Dubach. 
+- Juan Fumero, Toomas Remmelg, Michel Steuwer and Christophe Dubach.
 [**Runtime Code Generation and Data Management for Heterogeneous Computing in Java**](https://dl.acm.org/citation.cfm?id=2807428)
 In _Proceedings of the Principles and Practices of Programming on The Java Platform (PPPJ '15)_
 
@@ -323,7 +323,7 @@ In Proceedings of the 9th International Workshop on Implementation, Compilation,
 In Proceedings of the 2014 International Conference on Generative Programming: Concepts and Experiences (GPCE 2014)
 
 - Gilles Duboscq, Thomas Würthinger, Hanspeter Mössenböck  
-[**Speculation without regret: reducing deoptimization meta-data in the Graal compiler**](http://dx.doi.org/10.1145/2647508.2647521)  
+[**Speculation without regret: reducing deoptimization meta-data in the GraalVM compiler**](http://dx.doi.org/10.1145/2647508.2647521)  
 In Proceedings of the 2014 International Conference on Principles and Practices of Programming on the Java platform: Virtual machines, Languages, and Tools (PPPJ '14)
 
 - Thomas Würthinger  
@@ -350,7 +350,7 @@ In Proceedings of the 2014 International Conference on Principles and Practices 
 [**Comparing points-to static analysis with runtime recorded profiling data**](http://dx.doi.org/10.1145/2647508.2647524)  
 In Proceedings of the 2014 International Conference on Principles and Practices of Programming on the Java platform: Virtual machines, Languages, and Tools (PPPJ '14)
 
--  Juan Jose Fumero, Michel Steuwer and Christophe Dubach. 
+-  Juan Jose Fumero, Michel Steuwer and Christophe Dubach.
 [**A Composable Array Function Interface for Heterogeneous Computing in Java**](https://dl.acm.org/citation.cfm?id=2627381)
 In _Proceedings of ACM SIGPLAN International Workshop on Libraries, Languages, and Compilers for Array Programming (ARRAY'14)_
 

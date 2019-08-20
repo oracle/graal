@@ -33,15 +33,17 @@ import java.util.Arrays;
 
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
-final class RecordBuffer {
+public final class RecordBuffer {
 
-    private static final int INITIAL_BUFFER_SIZE = 256;
+    private static final int INITIAL_BUFFER_SIZE = 8;
 
     private long[] opBuffer = new long[INITIAL_BUFFER_SIZE];
 
     private int size = 0;
+    private int index = 1;
 
     void addOpNoCheck(long op) {
+        assert size < opBuffer.length;
         opBuffer[size++] = op;
     }
 
@@ -52,15 +54,12 @@ final class RecordBuffer {
 
     void ensureFits(long numOfAdditionalOps) {
         if (size >= opBuffer.length - numOfAdditionalOps) {
-            opBuffer = Arrays.copyOf(opBuffer, opBuffer.length + ((int) numOfAdditionalOps * 2));
+            int newLength = opBuffer.length;
+            while (size >= newLength - numOfAdditionalOps) {
+                newLength *= 2;
+            }
+            opBuffer = Arrays.copyOf(opBuffer, newLength);
         }
-    }
-
-    long getId() {
-        if (size <= 0) {
-            throw new LLVMParserException("Record Id not set!");
-        }
-        return opBuffer[0];
     }
 
     long[] getOps() {
@@ -69,5 +68,102 @@ final class RecordBuffer {
 
     void invalidate() {
         size = 0;
+        index = 1;
+    }
+
+    public long getAt(int pos) {
+        return opBuffer[pos + 1];
+    }
+
+    public int getId() {
+        if (size <= 0) {
+            throw new LLVMParserException("Record Id not set!");
+        }
+        long id = opBuffer[0];
+        if (id != (int) id) {
+            throw new LLVMParserException("invalid record id " + id);
+        }
+        return (int) id;
+    }
+
+    /**
+     * Returns the size (not including the record id).
+     */
+    public int size() {
+        return size - 1;
+    }
+
+    public long read() {
+        assert index < size;
+        return opBuffer[index++];
+    }
+
+    public void skip() {
+        index++;
+    }
+
+    public int readInt() {
+        return (int) read();
+    }
+
+    public boolean readBoolean() {
+        return read() != 0;
+    }
+
+    public int remaining() {
+        return size - index;
+    }
+
+    public void checkEnd(String message) {
+        if (remaining() > 0) {
+            throw new LLVMParserException(message);
+        }
+    }
+
+    public static String describe(long id, long[] args) {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("<id=").append(id).append(" - ");
+        for (int i = 0; i < args.length; i++) {
+            builder.append("op").append(i).append('=').append(args[i]);
+            if (i != args.length - 1) {
+                builder.append(", ");
+            }
+        }
+        builder.append('>');
+        return builder.toString();
+    }
+
+    public long readSignedValue() {
+        long v = read();
+        if ((v & 1L) == 1L) {
+            v = v >>> 1;
+            return v == 0 ? Long.MIN_VALUE : -v;
+        } else {
+            return v >>> 1;
+        }
+    }
+
+    public String readString() {
+        int length = remaining();
+        StringBuilder string = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            string.append((char) opBuffer[index + i]);
+        }
+        index += length;
+        return string.toString();
+    }
+
+    public String readUnicodeString() {
+        // We use a byte array, so "new String(...)" is able to handle Unicode Characters correctly
+        final byte[] bytes = new byte[remaining()];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = (byte) (opBuffer[index + i] & 0xFF);
+        }
+        index += bytes.length;
+        return new String(bytes);
+    }
+
+    public long[] dumpArray() {
+        return getOps();
     }
 }

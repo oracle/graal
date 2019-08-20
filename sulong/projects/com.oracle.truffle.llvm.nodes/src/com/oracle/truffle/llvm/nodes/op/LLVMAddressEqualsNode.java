@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,14 +47,14 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
-    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3", rewriteOn = UnsupportedMessageException.class)
+    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "8", rewriteOn = UnsupportedMessageException.class)
     protected boolean doPointerPointer(Object a, Object b,
                     @CachedLibrary("a") LLVMNativeLibrary libA,
                     @CachedLibrary("b") LLVMNativeLibrary libB) throws UnsupportedMessageException {
         return libA.asPointer(a) == libB.asPointer(b);
     }
 
-    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "3")
+    @Specialization(guards = {"libA.isPointer(a)", "libB.isPointer(b)"}, limit = "8")
     protected boolean doPointerPointerException(Object a, Object b,
                     @CachedLibrary("a") LLVMNativeLibrary libA,
                     @CachedLibrary("b") LLVMNativeLibrary libB,
@@ -68,7 +68,7 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
         }
     }
 
-    @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)", limit = "3")
+    @Specialization(guards = "!libA.isPointer(a) || !libB.isPointer(b)", limit = "8")
     protected boolean doOther(Object a, Object b,
                     @SuppressWarnings("unused") @CachedLibrary("a") LLVMNativeLibrary libA,
                     @SuppressWarnings("unused") @CachedLibrary("b") LLVMNativeLibrary libB,

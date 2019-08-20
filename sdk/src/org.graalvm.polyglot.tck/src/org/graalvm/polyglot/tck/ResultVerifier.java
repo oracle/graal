@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -168,9 +168,20 @@ public interface ResultVerifier extends Consumer<ResultVerifier.SnippetRun> {
      * result type is in bounds specified by the {@link Snippet}.
      *
      * @return the default {@link ResultVerifier}
-     * @since 1.0
+     * @since 19.0
      */
     static ResultVerifier getDefaultResultVerifier() {
         return DefaultResultVerifier.INSTANCE;
+    }
+
+    /**
+     * Creates a default {@link ResultVerifier} for the {@code IdentityFunctionTest}. The returned
+     * {@link ResultVerifier} tests that the identity function does not change the parameter type.
+     *
+     * @return the default {@link ResultVerifier} for {@code IdentityFunctionTest}.
+     * @since 19.1.0
+     */
+    static ResultVerifier getIdentityFunctionDefaultResultVerifier() {
+        return IdentityFunctionResultVerifier.INSTANCE;
     }
 }

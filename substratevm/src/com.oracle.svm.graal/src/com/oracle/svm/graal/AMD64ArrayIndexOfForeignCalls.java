@@ -34,7 +34,6 @@ import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOf;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfNode;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -46,8 +45,6 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-
-import jdk.vm.ci.meta.JavaKind;
 
 @AutomaticFeature
 @Platforms(AMD64.class)
@@ -77,6 +74,7 @@ class AMD64ArrayIndexOfForeignCalls {
     private static final ForeignCallDescriptor[] ORIGINAL_FOREIGN_CALLS = {
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_1_BYTE,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_2_BYTES,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_3_BYTES,
@@ -85,6 +83,10 @@ class AMD64ArrayIndexOfForeignCalls {
                     AMD64ArrayIndexOf.STUB_INDEX_OF_2_CHARS,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_3_CHARS,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_4_CHARS,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_2_CHARS_COMPACT,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_3_CHARS_COMPACT,
+                    AMD64ArrayIndexOf.STUB_INDEX_OF_4_CHARS_COMPACT,
     };
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ORIGINAL_FOREIGN_CALLS)
@@ -92,52 +94,77 @@ class AMD64ArrayIndexOfForeignCalls {
                     .toArray(SubstrateForeignCallDescriptor[]::new);
 
     @SubstrateForeignCallTarget
-    private static int indexOfTwoConsecutiveBytes(Pointer arrayPointer, int arrayLength, int searchValue) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, true, arrayPointer, arrayLength, searchValue);
+    private static int indexOfTwoConsecutiveBytes(byte[] array, int arrayLength, int fromIndex, int searchValue) {
+        return AMD64ArrayIndexOfNode.indexOf2ConsecutiveBytes(array, arrayLength, fromIndex, searchValue);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOfTwoConsecutiveChars(Pointer arrayPointer, int arrayLength, int searchValue) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, true, arrayPointer, arrayLength, searchValue);
+    private static int indexOfTwoConsecutiveChars(char[] array, int arrayLength, int fromIndex, int searchValue) {
+        return AMD64ArrayIndexOfNode.indexOf2ConsecutiveChars(array, arrayLength, fromIndex, searchValue);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOf1Byte(Pointer arrayPointer, int arrayLength, byte b) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, b);
+    private static int indexOfTwoConsecutiveCharsCompact(byte[] array, int arrayLength, int fromIndex, int searchValue) {
+        return AMD64ArrayIndexOfNode.indexOf2ConsecutiveChars(array, arrayLength, fromIndex, searchValue);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOf2Bytes(Pointer arrayPointer, int arrayLength, byte b1, byte b2) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, b1, b2);
+    private static int indexOf1Byte(byte[] array, int arrayLength, int fromIndex, byte b) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, b);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOf3Bytes(Pointer arrayPointer, int arrayLength, byte b1, byte b2, byte b3) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, b1, b2, b3);
+    private static int indexOf2Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, b1, b2);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOf4Bytes(Pointer arrayPointer, int arrayLength, byte b1, byte b2, byte b3, byte b4) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, arrayPointer, arrayLength, b1, b2, b3, b4);
+    private static int indexOf3Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2, byte b3) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, b1, b2, b3);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOf1Char(Pointer arrayPointer, int arrayLength, char c) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, arrayPointer, arrayLength, c);
+    private static int indexOf4Bytes(byte[] array, int arrayLength, int fromIndex, byte b1, byte b2, byte b3, byte b4) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, b1, b2, b3, b4);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOf2Chars(Pointer arrayPointer, int arrayLength, char c1, char c2) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, arrayPointer, arrayLength, c1, c2);
+    private static int indexOf1Char(char[] array, int arrayLength, int fromIndex, char c) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOf3Chars(Pointer arrayPointer, int arrayLength, char c1, char c2, char c3) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, arrayPointer, arrayLength, c1, c2, c3);
+    private static int indexOf2Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2);
     }
 
     @SubstrateForeignCallTarget
-    private static int indexOf4Chars(Pointer arrayPointer, int arrayLength, char c1, char c2, char c3, char c4) {
-        return AMD64ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Char, arrayPointer, arrayLength, c1, c2, c3, c4);
+    private static int indexOf3Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2, char c3) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2, c3);
+    }
+
+    @SubstrateForeignCallTarget
+    private static int indexOf4Chars(char[] array, int arrayLength, int fromIndex, char c1, char c2, char c3, char c4) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2, c3, c4);
+    }
+
+    @SubstrateForeignCallTarget
+    private static int indexOf1CharCompact(byte[] array, int arrayLength, int fromIndex, char c) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c);
+    }
+
+    @SubstrateForeignCallTarget
+    private static int indexOf2CharsCompact(byte[] array, int arrayLength, int fromIndex, char c1, char c2) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2);
+    }
+
+    @SubstrateForeignCallTarget
+    private static int indexOf3CharsCompact(byte[] array, int arrayLength, int fromIndex, char c1, char c2, char c3) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2, c3);
+    }
+
+    @SubstrateForeignCallTarget
+    private static int indexOf4CharsCompact(byte[] array, int arrayLength, int fromIndex, char c1, char c2, char c3, char c4) {
+        return AMD64ArrayIndexOfNode.indexOf(array, arrayLength, fromIndex, c1, c2, c3, c4);
     }
 }

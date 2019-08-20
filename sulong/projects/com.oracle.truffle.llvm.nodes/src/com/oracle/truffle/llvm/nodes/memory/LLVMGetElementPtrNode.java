@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.memory;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -68,7 +68,26 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         return incrementNode.executeWithTarget(addr, incr);
     }
 
+    protected static boolean isNegated(Object obj, Object negatedObj) {
+        if (negatedObj instanceof LLVMNegatedForeignObject) {
+            return ((LLVMNegatedForeignObject) negatedObj).getForeign() == obj;
+        } else {
+            return false;
+        }
+    }
+
+    @Specialization(guards = "isNegated(addr.getObject(), val.getObject())")
+    protected LLVMPointer pointerDiff(LLVMManagedPointer addr, LLVMManagedPointer val) {
+        return LLVMNativePointer.create(addr.getOffset() + val.getOffset());
+    }
+
+    @Specialization(guards = "isNegated(val.getObject(), addr.getObject())")
+    protected LLVMPointer pointerDiffRev(LLVMManagedPointer addr, LLVMManagedPointer val) {
+        return LLVMNativePointer.create(val.getOffset() + addr.getOffset());
+    }
+
     public abstract static class LLVMIncrementPointerNode extends LLVMNode {
+
         public abstract Object executeWithTarget(Object addr, int val);
 
         public abstract Object executeWithTarget(Object addr, long val);
@@ -81,6 +100,11 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected LLVMPointer doPointer(LLVMPointer addr, long incr) {
+            return addr.increment(incr);
+        }
+
+        @Specialization
         protected LLVMVirtualAllocationAddress doTruffleObject(LLVMVirtualAllocationAddress addr, int incr) {
             return addr.increment(incr);
         }
@@ -88,35 +112,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         @Specialization
         protected LLVMVirtualAllocationAddress doTruffleObject(LLVMVirtualAllocationAddress addr, long incr) {
             return addr.increment(incr);
-        }
-
-        @Specialization
-        protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, int incr) {
-            if (addr.getValue() instanceof Long) {
-                return LLVMNativePointer.create((long) addr.getValue() + incr);
-            } else if (addr.getValue() instanceof Integer) {
-                return LLVMNativePointer.create((int) addr.getValue() + incr);
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
-            }
-        }
-
-        @Specialization
-        protected LLVMPointer doPointer(LLVMPointer addr, long incr) {
-            return addr.increment(incr);
-        }
-
-        @Specialization
-        protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, long incr) {
-            if (addr.getValue() instanceof Long) {
-                return LLVMNativePointer.create((long) addr.getValue() + incr);
-            } else if (addr.getValue() instanceof Integer) {
-                return LLVMNativePointer.create((int) addr.getValue() + incr);
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
-            }
         }
     }
 }

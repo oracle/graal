@@ -30,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.debug.GraalError;
+
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
@@ -52,6 +54,11 @@ public abstract class Assembler {
 
     public final TargetDescription target;
     private List<LabelHint> jumpDisplacementHints;
+
+    /**
+     * Labels with instructions to be patched when it is {@linkplain Label#bind bound}.
+     */
+    Label labelsWithPatches;
 
     /**
      * Backing code buffer.
@@ -151,13 +158,26 @@ public abstract class Assembler {
      * @return the data in this buffer or a trimmed copy if {@code trimmedCopy} is {@code true}
      */
     public byte[] close(boolean trimmedCopy) {
+        checkAndClearLabelsWithPatches();
         return codeBuffer.close(trimmedCopy);
+    }
+
+    private void checkAndClearLabelsWithPatches() throws InternalError {
+        Label label = labelsWithPatches;
+        while (label != null) {
+            if (label.patchPositions != null) {
+                throw new GraalError("Label used by instructions at following offsets has not been bound: %s", label.patchPositions);
+            }
+            Label next = label.nextWithPatches;
+            label.nextWithPatches = null;
+            label = next;
+        }
+        labelsWithPatches = null;
     }
 
     public void bind(Label l) {
         assert !l.isBound() : "can bind label only once";
-        l.bind(position());
-        l.patchInstructions(this);
+        l.bind(position(), this);
     }
 
     public abstract void align(int modulus);

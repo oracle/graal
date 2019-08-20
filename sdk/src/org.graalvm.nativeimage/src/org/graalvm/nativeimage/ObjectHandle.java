@@ -43,10 +43,10 @@ package org.graalvm.nativeimage;
 import org.graalvm.word.ComparableWord;
 
 /**
- * The opaque representation of a handle to a Java object given out to C code. Clients must not
- * interpret or dereference the value.
+ * The opaque representation of a handle to a Java object given out to unmanaged code. Clients must
+ * not interpret or dereference the value.
  *
- * @since 1.0
+ * @since 19.0
  */
 public interface ObjectHandle extends ComparableWord {
 }

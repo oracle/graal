@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen.ManagedToComparableValueNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -114,12 +113,6 @@ public abstract class ToComparableValue extends LLVMNode {
                 result += address.getOffset();
             }
             return result;
-        }
-
-        @Specialization
-        protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive address,
-                        @Cached("createForeignToI64()") ForeignToLLVM toLLVM) {
-            return (long) toLLVM.executeWithTarget(address.getValue());
         }
 
         public static ManagedToComparableValue createIgnoreOffset() {

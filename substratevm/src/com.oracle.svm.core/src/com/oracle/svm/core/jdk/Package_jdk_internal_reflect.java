@@ -36,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 public class Package_jdk_internal_reflect implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.Java8OrEarlier) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.reflect." + annotation.className();
         } else {
             return "jdk.internal.reflect." + annotation.className();

@@ -27,7 +27,7 @@ package com.oracle.svm.truffle.nfi;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import java.util.IdentityHashMap;
 import java.util.function.Function;
-import org.graalvm.nativeimage.Feature.DuringSetupAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 
 /**
  * Fields that contain native pointers can not be part of the image heap, because the native

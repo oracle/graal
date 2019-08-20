@@ -33,7 +33,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import junit.runner.Version;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.Feature.FeatureAccess;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

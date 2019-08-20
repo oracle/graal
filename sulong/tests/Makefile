@@ -35,7 +35,14 @@ else
 REF_TARGETS:=
 endif
 
+ifeq ($(BUILD_SO),1)
+# SO_EXT is set by SulongTestSuite
+BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var)$(SO_EXT)))
+CFLAGS+= -fPIC
+CXXFLAGS+= -fPIC
+else
 BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var).bc))
+endif
 
 CLANG?=clang
 CLANGXX?=clang++
@@ -106,3 +113,31 @@ $(eval $(call OPT_RULES,O3,-O3))
 
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
+
+ifeq ($(OS), darwin)
+# NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
+#   However, it does include the bundle if linked with -flto, although the warning still says otherwise.
+%$(SO_EXT): %.bc
+	$(QUIETLY) $(CLANG) -flto -Wl,-bitcode_bundle -dynamiclib -Wno-everything $(LDFLAGS) -g -o $@ $<
+else
+
+# Rules for shared objects
+# NOTE: this relies on the fact that there is only a single source file:
+#   We produce an object file with embedded bitcode section.
+#   The linker will just copy this section into the final shared object.
+#   Since there is only one bitcode file there is no need for llvm-link.
+# NOTE2: -fembed-bitcode will not work with clang before version 4
+ifndef NO_FEMBED_BITCODE
+%_BC_EMBED_PIC.o: %.bc
+	$(QUIETLY) $(CLANG) -c -fembed-bitcode -O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS} -Wno-everything -fPIC $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
+else
+%_BC_NO_EMBED_PIC.o: %.bc
+	$(QUIETLY) $(CLANG) -c -O0 -Wno-everything -fPIC $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
+
+%_BC_EMBED_PIC.o: %_BC_NO_EMBED_PIC.o %.bc
+	$(QUIETLY) objcopy --add-section .llvmbc=$(word 2, $^) --set-section-flags .llvmbc=alloc,contents,load,readonly $< $@
+endif
+
+%$(SO_EXT): %_BC_EMBED_PIC.o
+	$(QUIETLY) $(CLANG) -shared -Wno-everything $(LDFLAGS) -g -o $@ $<
+endif

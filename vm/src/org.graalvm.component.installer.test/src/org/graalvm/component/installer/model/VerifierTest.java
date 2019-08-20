@@ -63,8 +63,8 @@ public class VerifierTest extends TestBase {
         }
         mockStorage.graalInfo.put(CAP_OS_NAME, "LiNuX");
 
-        Verifier vfy = new Verifier(this, registry, rubyInfo);
-        vfy.validateRequirements();
+        Verifier vfy = new Verifier(this, registry, registry);
+        vfy.validateRequirements(rubyInfo);
     }
 
     @Test
@@ -78,9 +78,9 @@ public class VerifierTest extends TestBase {
         }
         mockStorage.graalInfo.put(CAP_OS_NAME, "LiNuy");
 
-        Verifier vfy = new Verifier(this, registry, rubyInfo);
+        Verifier vfy = new Verifier(this, registry, registry);
         exception.expect(DependencyException.Mismatch.class);
         exception.expectMessage("VERIFY_Dependency_Failed");
-        vfy.validateRequirements();
+        vfy.validateRequirements(rubyInfo);
     }
 }

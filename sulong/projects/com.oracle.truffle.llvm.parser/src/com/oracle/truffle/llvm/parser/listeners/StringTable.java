@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.listeners;
 
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,11 +47,11 @@ final class StringTable implements ParserListener {
     }
 
     @Override
-    public void record(long id, long[] args) {
-        final byte[] bytes = new byte[args.length * Long.BYTES];
+    public void record(RecordBuffer buffer) {
+        byte[] bytes = new byte[buffer.size() * Long.BYTES];
         int curByte = 0;
-        for (long arg : args) {
-            long l = arg;
+        while (buffer.remaining() > 0) {
+            long l = buffer.read();
             for (int j = 0; j < Long.BYTES; j++) {
                 bytes[curByte++] = (byte) (l & BYTE_MASK);
                 l >>>= Byte.SIZE;

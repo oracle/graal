@@ -137,6 +137,28 @@ enum X86_64Reloc {
     }
 }
 
+enum ARM64Reloc {
+    /*
+     * These are defined as an enum in /usr/include/mach-o/arm64/reloc.h, which we reproduce. Of
+     * course, take care to preserve the order!
+     */
+    UNSIGNED,
+    SUBTRACTOR,
+    BRANCH26,
+    PAGE21,
+    PAGEOFF12,
+    GOT_LOAD_PAGE21,
+    GOT_LOAD_PAGEOFF12,
+    POINTER_TO_GOT,
+    TLVP_LOAD_PAGE21,
+    TLVP_LOAD_PAGEOFF12,
+    ADDEND;
+
+    public int getValue() {
+        return ordinal();
+    }
+}
+
 final class RelocationInfo implements RelocationRecord, RelocationMethod {
 
     private final MachORelocationElement containingElement;
@@ -198,15 +220,8 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
             symbolNum = relocatedSection.getOwner().getSymbolTable().indexOf(sym);
         } else {
             // we're local, so use the section
-            // symbolNum = relocatedSection.getOwner().getSymbolTable(isDynamic()).indexOf(sym);
             symbolNum = relocatedSection.getOwner().getSections().indexOf(sym.getDefinedSection());
-            /*
-             * HACK: in the case of relocating against a local symbol, we can only reference its
-             * section, so we insist that its offset from the section base is zero. We should catch
-             * this earlier, when the relocation is created. (You're supposed to use the addend to
-             * encode the offset in this case, apparently.)
-             */
-            assert sym.getDefinedOffset() == 0;
+            assert sym.getDefinedOffset() == 0 : "Relocation for non-external symbol with section base offset != 0 not supported";
         }
         if (log2length < 0 || log2length >= 4) {
             throw new IllegalArgumentException("length must be in {1,2,4,8} bytes, so log2length must be in [0,3]");
@@ -285,6 +300,14 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
                         return X86_64Reloc.SIGNED.getValue();
                     case PROGRAM_BASE:
                         throw new IllegalArgumentException("Mach-O does not support PROGRAM_BASE relocations");
+                    default:
+                    case UNKNOWN:
+                        throw new IllegalArgumentException("unknown relocation kind: " + kind);
+                }
+            case ARM64:
+                switch (kind) {
+                    case DIRECT:
+                        return ARM64Reloc.UNSIGNED.getValue();
                     default:
                     case UNKNOWN:
                         throw new IllegalArgumentException("unknown relocation kind: " + kind);

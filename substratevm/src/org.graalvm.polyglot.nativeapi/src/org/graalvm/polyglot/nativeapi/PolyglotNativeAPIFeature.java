@@ -35,11 +35,12 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.NativeImageOptions;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public class PolyglotNativeAPIFeature implements Feature {
 
@@ -63,7 +64,7 @@ public class PolyglotNativeAPIFeature implements Feature {
                 throw new RuntimeException(e);
             }
         });
-        if (Platform.includedIn(Platform.DARWIN_AND_JNI.class)) {
+        if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
             // on Darwin, change the `id` install name
             String id = System.getProperty("org.graalvm.polyglot.install_name_id");
             if (id == null) {

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
@@ -42,8 +43,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.classinitialization.ConservativeClassInitialization;
-import com.oracle.svm.hosted.classinitialization.EagerClassInitialization;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -66,12 +65,10 @@ public class HostedConfiguration {
 
     static void setDefaultIfEmpty(FeatureImpl.AfterRegistrationAccessImpl access) {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
-            ClassInitializationSupport classInitializationSupport = NativeImageOptions.EagerlyInitializeClasses.getValue()
-                            ? new EagerClassInitialization(access.getMetaAccess())
-                            : new ConservativeClassInitialization(access.getMetaAccess());
+            ClassInitializationSupport classInitializationSupport = new ConfigurableClassInitialization(access.getMetaAccess(), access.getImageClassLoader());
             ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
             ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration(classInitializationSupport));
-            ClassInitializationFeature.processClassInitializationOptions(access, classInitializationSupport);
+            ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);

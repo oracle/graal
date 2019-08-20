@@ -49,7 +49,7 @@ import org.graalvm.word.PointerBase;
 /**
  * Contains static methods for memory allocation in the stack frame.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class StackValue {
 
@@ -70,7 +70,7 @@ public final class StackValue {
      * @param structType the requested structure class - must be a compile time constant
      * @return pointer to on-stack allocated location for the requested structure
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static <T extends PointerBase> T get(Class<T> structType) {
         throw new IllegalStateException("Cannot invoke method during native image generation");
@@ -92,7 +92,7 @@ public final class StackValue {
      * @param structType the requested structure class - must be a compile time constant
      * @return pointer to on-stack allocated location for the requested structure
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static <T extends PointerBase> T get(int numberOfElements, Class<T> structType) {
         throw new IllegalStateException("Cannot invoke method during native image generation");
@@ -107,7 +107,7 @@ public final class StackValue {
      * frame when the method starts execution. The memory is not initialized. Two distinct calls of
      * this method return different pointers.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unused")
     public static <T extends PointerBase> T get(int size) {
@@ -117,7 +117,7 @@ public final class StackValue {
     /**
      * Utility method that performs size arithmetic, otherwise equivalent to {@link #get(int)}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unused")
     public static <T extends PointerBase> T get(int numberOfElements, int elementSize) {

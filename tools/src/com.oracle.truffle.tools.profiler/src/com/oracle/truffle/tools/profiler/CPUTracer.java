@@ -89,7 +89,7 @@ public final class CPUTracer implements Closeable {
      *
      * @param engine the engine to find debugger for
      * @return an instance of associated {@link CPUTracer}
-     * @since 1.0
+     * @since 19.0
      */
     public static CPUTracer find(Engine engine) {
         return CPUTracerInstrument.getTracer(engine);

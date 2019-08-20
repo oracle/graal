@@ -84,6 +84,7 @@ public class RegexEngine extends AbstractConstantKeysObject {
             RegexFlags flags = RegexFlags.parseFlags(regexSource.getFlags());
             RegexParser regexParser = new RegexParser(regexSource, options);
             regexParser.validate();
+            options.getFeatureSet().checkSupport(regexSource, regexParser.getFeatures());
             regexObject = new RegexObject(compiler, regexSource, flags, regexParser.getNumberOfCaptureGroups(), regexParser.getNamedCaptureGroups());
         }
         if (options.isRegressionTestMode()) {

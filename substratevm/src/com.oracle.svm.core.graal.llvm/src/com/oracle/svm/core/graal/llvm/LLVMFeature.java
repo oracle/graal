@@ -31,39 +31,77 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
+import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
+import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.hosted.meta.HostedMethod;
 
 @AutomaticFeature
 @CLibrary("m")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-public class LLVMFeature implements Feature, GraalFeature, Snippets {
+@Platforms({Platform.LINUX.class, InternalPlatform.LINUX_AND_JNI.class, Platform.DARWIN.class, InternalPlatform.DARWIN_AND_JNI.class})
+public class LLVMFeature implements Feature, GraalFeature {
+
+    private static HostedMethod personalityStub;
+
+    public static final int SPECIAL_REGISTER_COUNT;
+    public static final int THREAD_POINTER_INDEX;
+    public static final int HEAP_BASE_INDEX;
+
+    static {
+        int firstArgumentOffset = 0;
+        THREAD_POINTER_INDEX = (SubstrateOptions.MultiThreaded.getValue()) ? firstArgumentOffset++ : -1;
+        HEAP_BASE_INDEX = (SubstrateOptions.SpawnIsolates.getValue()) ? firstArgumentOffset++ : -1;
+        SPECIAL_REGISTER_COUNT = firstArgumentOffset;
+    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return CompilerBackend.getValue().equals("llvm");
+    }
+
+    public static HostedMethod getPersonalityStub() {
+        return personalityStub;
     }
 
     @Override
@@ -76,27 +114,59 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
                 return new SubstrateLLVMBackend(newProviders);
             }
         });
+
+        ImageSingletons.add(SubstrateLoweringProviderFactory.class, SubstrateLLVMLoweringProvider::new);
+
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
-            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap) {
-                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap);
+            public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform) {
+                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap, platform);
             }
         });
-        ImageSingletons.add(SnippetRuntime.ExceptionStackFrameVisitor.class, new SnippetRuntime.ExceptionStackFrameVisitor() {
+
+        ImageSingletons.add(SnippetRuntime.ExceptionUnwind.class, new SnippetRuntime.ExceptionUnwind() {
             @Override
-            public CodePointer getExceptionHandlerPointer(CodePointer ip, Pointer sp, long handlerOffset) {
-                /*
-                 * LLVM uses a setjmp/longjmp mechanism for exception handling, with the unwind
-                 * information held in a buffer on the stack of the caller. As such, the value
-                 * returned by lookupExceptionOffset is not the offset of the exception handling
-                 * code relative to the call IP, but the offset of the setjmp buffer relative to the
-                 * caller's stack pointer. Furthermore, this offset is stored as itself + 1, because
-                 * it is legal (and frequent) to have an offset of 0 for the buffer, which would be
-                 * considered as the absence of the exception handler.
-                 */
-                return (CodePointer) sp.add(WordFactory.unsigned(handlerOffset - 1));
+            public void unwindException(Pointer callerSP) {
+                LLVMPersonalityFunction.raiseException();
             }
         });
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        FeatureImpl.BeforeCompilationAccessImpl accessImpl = (FeatureImpl.BeforeCompilationAccessImpl) access;
+        personalityStub = accessImpl.getUniverse().lookup(LLVMPersonalityFunction.getPersonalityStub());
+    }
+
+    @Override
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        lowerings.put(LoadExceptionObjectNode.class, new LLVMLoadExceptionObjectLowering());
+    }
+
+    private static class LLVMLoadExceptionObjectLowering implements NodeLoweringProvider<LoadExceptionObjectNode> {
+
+        @Override
+        public void lower(LoadExceptionObjectNode node, LoweringTool tool) {
+            FrameState exceptionState = node.stateAfter();
+            assert exceptionState != null;
+
+            StructuredGraph graph = node.graph();
+            FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
+            graph.replaceFixedWithFixed(node, readRegNode);
+
+            /*
+             * When libunwind has found an exception handler, it jumps directly to it from native
+             * code. We therefore need the CFunctionEpilogueNode to restore the Java state before we
+             * handle the exception.
+             */
+            CFunctionEpilogueNode cFunctionEpilogueNode = new CFunctionEpilogueNode();
+            graph.add(cFunctionEpilogueNode);
+            graph.addAfterFixed(readRegNode, cFunctionEpilogueNode);
+            cFunctionEpilogueNode.lower(tool);
+
+            graph.addAfterFixed(readRegNode, graph.add(new ExceptionStateNode(exceptionState)));
+        }
     }
 
     private static void checkLLVMVersion() {
@@ -126,5 +196,140 @@ public class LLVMFeature implements Feature, GraalFeature, Snippets {
         if (!supportedVersions.contains(output)) {
             throw UserError.abort("Unsupported LLVM version: " + output + ". Supported versions are: [" + String.join(", ", supportedVersions) + "]");
         }
+    }
+}
+
+@AutomaticFeature
+@Platforms(Platform.AMD64.class)
+class LLVMAMD64TargetSpecificFeature implements Feature {
+    private static final int AMD64_RSP_IDX = 7;
+    private static final int AMD64_RBP_IDX = 6;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return CompilerBackend.getValue().equals("llvm");
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(TargetSpecific.class, new TargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "movq %" + register + ", $0";
+            }
+
+            @Override
+            public String getJumpInlineAsm() {
+                return "jmpq *$0";
+            }
+
+            @Override
+            public String getLLVMArchName() {
+                return "x86-64";
+            }
+
+            /*
+             * The return address is pushed to the stack just before each call, but is not part of
+             * the stack frame of the callee. It is therefore not accounted for in either call
+             * frame.
+             */
+            @Override
+            public int getCallFrameSeparation() {
+                return FrameAccess.returnAddressSize();
+            }
+
+            /*
+             * The frame pointer is stored as the first element on the stack, just below the return
+             * address.
+             */
+            @Override
+            public int getFramePointerOffset() {
+                return -FrameAccess.wordSize();
+            }
+
+            @Override
+            public int getStackPointerDwarfRegNum() {
+                return AMD64_RSP_IDX;
+            }
+
+            @Override
+            public int getFramePointerDwarfRegNum() {
+                return AMD64_RBP_IDX;
+            }
+
+            @Override
+            public List<String> getLLCAdditionalOptions() {
+                return Collections.singletonList("-no-x86-call-frame-opt");
+            }
+        });
+    }
+}
+
+@AutomaticFeature
+@Platforms(Platform.AArch64.class)
+class LLVMAArch64TargetSpecificFeature implements Feature {
+    private static final int AARCH64_FP_IDX = 29;
+    private static final int AARCH64_SP_IDX = 31;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return CompilerBackend.getValue().equals("llvm");
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(TargetSpecific.class, new TargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "MOV $0, " + getLLVMRegisterName(register);
+            }
+
+            @Override
+            public String getJumpInlineAsm() {
+                return "BR $0";
+            }
+
+            @Override
+            public String getLLVMArchName() {
+                return "aarch64";
+            }
+
+            /*
+             * The return address is not saved on the stack on ARM, so the stack frames have no
+             * space inbetween them.
+             */
+            @Override
+            public int getCallFrameSeparation() {
+                return 0;
+            }
+
+            /*
+             * The frame pointer is stored below the saved value for the link register.
+             */
+            @Override
+            public int getFramePointerOffset() {
+                return -2 * FrameAccess.wordSize();
+            }
+
+            @Override
+            public int getStackPointerDwarfRegNum() {
+                return AARCH64_SP_IDX;
+            }
+
+            @Override
+            public int getFramePointerDwarfRegNum() {
+                return AARCH64_FP_IDX;
+            }
+
+            @Override
+            public List<String> getLLCAdditionalOptions() {
+                return Collections.singletonList("--frame-pointer=all");
+            }
+
+            @Override
+            public String getLLVMRegisterName(String register) {
+                return register.replace("r", "x");
+            }
+        });
     }
 }

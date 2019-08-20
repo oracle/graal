@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,14 +30,13 @@
 package com.oracle.truffle.llvm.parser;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.function.Consumer;
 
-public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.ValueVisitor<V>> {
+public abstract class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.ValueVisitor<V>> {
 
     public static void dropLocalScope(int localScopeStart, List<?> valueList) {
         if (localScopeStart >= 0 && valueList.size() - localScopeStart > 0) {
@@ -70,75 +69,38 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
 
     }
 
-    private static final int NO_UNRESOLVED_VALUES = -1;
     private static final int GLOBAL_SCOPE_START = -1;
 
     // forward references are generally rare except for metadata in some older ir versions, we try
     // to optimize handling them by always remembering which forward reference will be resolved next
     private final PlaceholderFactory<V, C> placeholderFactory;
     private final HashMap<Integer, ForwardReference> forwardReferences;
-    private final LinkedList<Integer> unresolvedIndices;
-    private int nextUnresolved;
+    private final BitSet unresolvedIndices;
 
     private int scopeStart;
 
     private final ArrayList<V> valueList;
 
-    public ValueList(PlaceholderFactory<V, C> placeholderFactory) {
+    protected ValueList(PlaceholderFactory<V, C> placeholderFactory) {
         this.placeholderFactory = placeholderFactory;
         this.valueList = new ArrayList<>();
         this.forwardReferences = new HashMap<>();
-        this.nextUnresolved = NO_UNRESOLVED_VALUES;
-        this.unresolvedIndices = new LinkedList<>();
+        this.unresolvedIndices = new BitSet();
         this.scopeStart = GLOBAL_SCOPE_START;
     }
 
     private void resolveForwardReference(int valueIndex, V newValue) {
-        final ForwardReference fwdRef = forwardReferences.remove(valueIndex);
-        fwdRef.resolve(newValue);
-
-        unresolvedIndices.removeLast();
-        if (unresolvedIndices.isEmpty()) {
-            nextUnresolved = NO_UNRESOLVED_VALUES;
-        } else {
-            nextUnresolved = unresolvedIndices.getLast();
-        }
+        forwardReferences.remove(valueIndex).resolve(newValue);
     }
 
     private ForwardReference getReference(int valueIndex) {
-        if (forwardReferences.containsKey(valueIndex)) {
-            return forwardReferences.get(valueIndex);
-
-        } else {
-            final ForwardReference fwdRef = new ForwardReference(placeholderFactory.newValue());
-            forwardReferences.put(valueIndex, fwdRef);
-            addUnresolvedIndex(valueIndex);
+        ValueList<V, C>.ForwardReference fwdRef = forwardReferences.get(valueIndex);
+        if (fwdRef != null) {
             return fwdRef;
         }
-    }
-
-    private void addUnresolvedIndex(int valueIndex) {
-        // LLVM uses a depth-first approach to emit symbols. This list is sorted in
-        // descending order, so we should always be inserting newly discovered forward
-        // references in the beginning, but special cases may occur.
-        if (unresolvedIndices.isEmpty() || valueIndex < nextUnresolved) {
-            nextUnresolved = valueIndex;
-            unresolvedIndices.addLast(valueIndex);
-
-        } else if (valueIndex > unresolvedIndices.getFirst()) {
-            unresolvedIndices.addFirst(valueIndex);
-
-        } else {
-            final ListIterator<Integer> it = unresolvedIndices.listIterator();
-            while (it.hasNext()) {
-                int next = it.next();
-                if (valueIndex > next) {
-                    it.previous();
-                    it.add(valueIndex);
-                    break;
-                }
-            }
-        }
+        forwardReferences.put(valueIndex, fwdRef = new ForwardReference(placeholderFactory.newValue()));
+        unresolvedIndices.set(valueIndex);
+        return fwdRef;
     }
 
     public void add(V newValue) {
@@ -146,7 +108,8 @@ public class ValueList<V extends ValueList.Value<V, C>, C extends ValueList.Valu
 
         valueList.add(newValue);
 
-        if (nextUnresolved == valueIndex) {
+        if (unresolvedIndices.get(valueIndex)) {
+            unresolvedIndices.set(valueIndex, false);
             resolveForwardReference(valueIndex, newValue);
         }
     }

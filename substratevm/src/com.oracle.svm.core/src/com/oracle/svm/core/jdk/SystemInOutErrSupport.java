@@ -33,7 +33,7 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.Objects;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;

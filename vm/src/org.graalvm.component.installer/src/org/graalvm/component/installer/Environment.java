@@ -55,15 +55,16 @@ public final class Environment implements Feedback, CommandInput {
     private InputStream in = System.in;
     private PrintStream err = System.err;
     private PrintStream out = System.out;
-    private Supplier<ComponentRegistry> registrySupplier;
+    private Supplier<ComponentCollection> registrySupplier;
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
-    private Iterable<ComponentParam> fileIterable;
+    private ComponentIterable fileIterable;
     private Map<URL, Path> fileMap = new HashMap<>();
     private boolean allOutputToErr;
     private boolean autoYesEnabled;
     private boolean nonInteractive;
     private Path graalHome;
+    private FileOperations fileOperations;
 
     Environment(String commandName, List<String> parameters, Map<String, String> options) {
         this(commandName, (String) null, parameters, options);
@@ -135,12 +136,12 @@ public final class Environment implements Feedback, CommandInput {
         }
     }
 
-    public void setFileIterable(Iterable<ComponentParam> fileIterable) {
+    public void setFileIterable(ComponentIterable fileIterable) {
         this.fileIterable = fileIterable;
     }
 
     @Override
-    public ComponentRegistry getRegistry() {
+    public ComponentCollection getRegistry() {
         return registrySupplier.get();
     }
 
@@ -156,12 +157,12 @@ public final class Environment implements Feedback, CommandInput {
         }
     }
 
-    public void setComponentRegistry(Supplier<ComponentRegistry> registrySupplier) {
+    public void setComponentRegistry(Supplier<ComponentCollection> registrySupplier) {
         this.registrySupplier = registrySupplier;
     }
 
     public void setGraalHome(Path f) {
-        this.graalHome = f;
+        this.graalHome = f.normalize();
 
     }
 
@@ -352,7 +353,6 @@ public final class Environment implements Feedback, CommandInput {
             public Path getLocalCache(URL location) {
                 return Environment.this.getLocalCache(location);
             }
-
         };
     }
 
@@ -409,6 +409,11 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     @Override
+    public String peekParameter() {
+        return parameters.peek();
+    }
+
+    @Override
     public String requiredParameter() {
         if (parameters.isEmpty()) {
             throw new FailedOperationException(
@@ -423,7 +428,7 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     @Override
-    public Iterable<ComponentParam> existingFiles() {
+    public ComponentIterable existingFiles() {
         return fileIterable;
     }
 
@@ -494,4 +499,21 @@ public final class Environment implements Feedback, CommandInput {
         return fileMap.get(location);
     }
 
+    @Override
+    public FileOperations getFileOperations() {
+        return fileOperations;
+    }
+
+    public void setFileOperations(FileOperations fileOperations) {
+        this.fileOperations = fileOperations;
+    }
+
+    public void close() {
+        if (out != null) {
+            out.flush();
+        }
+        if (err != null) {
+            err.flush();
+        }
+    }
 }

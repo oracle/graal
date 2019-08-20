@@ -102,7 +102,7 @@ public enum NodeCost {
      * Finds the node cost for an associated node count. Returns {@link NodeCost#UNINITIALIZED} for
      * 0, {@link NodeCost#MONOMORPHIC} for 1 and {@link NodeCost#POLYMORPHIC} for any other value.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static NodeCost fromCount(int nodeCount) {
         switch (nodeCount) {

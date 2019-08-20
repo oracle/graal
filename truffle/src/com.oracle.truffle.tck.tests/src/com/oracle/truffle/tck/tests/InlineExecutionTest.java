@@ -49,12 +49,10 @@ import java.util.Objects;
 
 import org.junit.AfterClass;
 import org.junit.Assume;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.InlineSnippet;
@@ -81,14 +79,6 @@ public class InlineExecutionTest {
     public static void afterClass() throws IOException {
         context.close();
         context = null;
-    }
-
-    @Before
-    public void setUp() {
-        // JUnit mixes test executions from different classes. There are still tests using the
-        // deprecated PolyglotEngine. For tests executed by Parametrized runner
-        // creating Context as a test parameter we need to ensure that correct SPI is used.
-        Engine.create().close();
     }
 
     public InlineExecutionTest(final InlineTestRun testRun) {

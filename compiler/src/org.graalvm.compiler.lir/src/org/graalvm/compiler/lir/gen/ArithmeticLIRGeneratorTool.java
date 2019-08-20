@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -101,6 +101,11 @@ public interface ArithmeticLIRGeneratorTool {
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
+
+    @SuppressWarnings("unused")
+    default Value emitFusedMultiplyAdd(Value a, Value b, Value c) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
 
     @SuppressWarnings("unused")
     default Value emitMathLog(Value input, boolean base10) {

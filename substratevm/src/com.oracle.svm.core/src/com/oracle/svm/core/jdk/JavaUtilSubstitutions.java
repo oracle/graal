@@ -93,7 +93,6 @@ final class Target_java_util_IdentityHashMap {
     Set<?> entrySet;
 }
 
-/* TODO: Why is sun.misc.SoftCache used with JDK-8, but sun.awt.SoftCache is not used with JDK-9? */
 @TargetClass(className = "sun.misc.SoftCache", onlyWith = JDK8OrEarlier.class)
 final class Target_sun_misc_SoftCache {
 
@@ -207,9 +206,9 @@ final class Target_java_util_concurrent_ConcurrentSkipListMap {
     ConcurrentNavigableMap<?, ?> descendingMapJDK8OrEarlier;
 
     @Alias //
-    @TargetElement(name = "descendingMap", onlyWith = JDK9OrLater.class) //
+    @TargetElement(name = "descendingMap", onlyWith = JDK11OrLater.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Target_java_util_concurrent_ConcurrentSkipListMap_SubMap descendingMapJDK9OrLater;
+    Target_java_util_concurrent_ConcurrentSkipListMap_SubMap descendingMapJDK11OrLater;
 }
 
 @TargetClass(value = java.util.concurrent.ConcurrentSkipListMap.class, innerClass = "KeySet")
@@ -220,7 +219,7 @@ final class Target_java_util_concurrent_ConcurrentSkipListMap_KeySet {
 final class Target_java_util_concurrent_ConcurrentSkipListMap_EntrySet {
 }
 
-@TargetClass(value = java.util.concurrent.ConcurrentSkipListMap.class, innerClass = "SubMap", onlyWith = JDK9OrLater.class)
+@TargetClass(value = java.util.concurrent.ConcurrentSkipListMap.class, innerClass = "SubMap", onlyWith = JDK11OrLater.class)
 final class Target_java_util_concurrent_ConcurrentSkipListMap_SubMap {
 }
 

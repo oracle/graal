@@ -109,7 +109,7 @@ public final class LanguageInfo {
      * will be interpreted as {@link Source#hasCharacters() character based} sources. This set is
      * equivalent to the set provided by {@link Registration#defaultMimeType()}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getDefaultMimeType() {
         return defaultMimeType;
@@ -141,7 +141,7 @@ public final class LanguageInfo {
     /**
      * @return {@code true} if the language is {@link Registration#interactive() interactive},
      *         {@code false} otherwise
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isInteractive() {
         return interactive;

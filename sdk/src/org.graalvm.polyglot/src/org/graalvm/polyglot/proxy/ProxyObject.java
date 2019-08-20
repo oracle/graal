@@ -50,7 +50,7 @@ import org.graalvm.polyglot.Value;
  * Interface to be implemented to mimic guest language objects that contain members.
  *
  * @see Proxy
- * @since 1.0
+ * @since 19.0
  */
 public interface ProxyObject extends Proxy {
 
@@ -58,7 +58,7 @@ public interface ProxyObject extends Proxy {
      * Returns the value of the member.
      *
      * @throws UnsupportedOperationException if the operation is unsupported
-     * @since 1.0
+     * @since 19.0
      */
     Object getMember(String key);
 
@@ -80,7 +80,7 @@ public interface ProxyObject extends Proxy {
      *
      * @see #hasMember(String)
      * @see Context#asValue(Object)
-     * @since 1.0
+     * @since 19.0
      */
     Object getMemberKeys();
 
@@ -91,7 +91,7 @@ public interface ProxyObject extends Proxy {
      * members to list member keys.
      *
      * @see #getMemberKeys()
-     * @since 1.0
+     * @since 19.0
      */
     boolean hasMember(String key);
 
@@ -101,7 +101,7 @@ public interface ProxyObject extends Proxy {
      * an {@link UnsupportedOperationException} is thrown.
      *
      * @throws UnsupportedOperationException if the operation is unsupported
-     * @since 1.0
+     * @since 19.0
      */
     void putMember(String key, Value value);
 
@@ -112,7 +112,7 @@ public interface ProxyObject extends Proxy {
      * @return <code>true</code> when the member was removed, <code>false</code> when the member
      *         didn't exist.
      * @throws UnsupportedOperationException if the operation is unsupported
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("unused")
     default boolean removeMember(String key) {
@@ -123,7 +123,7 @@ public interface ProxyObject extends Proxy {
      * Creates a proxy backed by a {@link Map}. If the set values of the map are host values then
      * the they will be {@link Value#asHostObject() unboxed}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static ProxyObject fromMap(Map<String, Object> values) {
         return new ProxyObject() {

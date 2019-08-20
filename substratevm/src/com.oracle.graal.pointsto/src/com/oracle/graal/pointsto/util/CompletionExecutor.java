@@ -259,7 +259,7 @@ public final class CompletionExecutor {
 
     public void shutdown() {
         assert isSequential() || !executorService.hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
-        assert completedOperations.sum() == postedOperations.sum() : "Posted operations must match completed operations";
+        assert completedOperations.sum() == postedOperations.sum() : "Posted operations (" + postedOperations.sum() + ") must match completed (" + completedOperations.sum() + ") operations";
         setState(State.UNUSED);
     }
 

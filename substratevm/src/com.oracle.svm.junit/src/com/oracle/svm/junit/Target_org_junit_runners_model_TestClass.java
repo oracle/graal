@@ -29,7 +29,7 @@ package com.oracle.svm.junit;
 import java.lang.reflect.Constructor;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.junit.runners.model.TestClass;
 
 import com.oracle.svm.core.annotate.Inject;

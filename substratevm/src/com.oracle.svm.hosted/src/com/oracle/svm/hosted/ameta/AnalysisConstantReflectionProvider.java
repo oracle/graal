@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ReadableJavaField;
@@ -102,11 +103,25 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     public JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
         JavaConstant result = value;
         if (result != null) {
+            result = filterInjectedAccessor(field, result);
             result = replaceObject(result);
             result = interceptAssertionStatus(field, result);
             result = interceptWordType(field, result);
         }
         return result;
+    }
+
+    private static JavaConstant filterInjectedAccessor(AnalysisField field, JavaConstant value) {
+        if (field.getAnnotation(InjectAccessors.class) != null) {
+            /*
+             * Fields whose accesses are intercepted by injected accessors are not actually present
+             * in the image. Ideally they should never be read, but there are corner cases where
+             * this happens. We intercept the value and return 0 / null.
+             */
+            assert !field.isAccessed();
+            return JavaConstant.defaultForKind(value.getJavaKind());
+        }
+        return value;
     }
 
     /**

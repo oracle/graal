@@ -35,7 +35,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.ReadableJavaField;
@@ -127,7 +127,9 @@ class VMThreadLocalCollector implements Function<Object, Object> {
 
             assert info.sizeInBytes == -1;
             if (info.sizeSupplier != null) {
-                info.sizeInBytes = NumUtil.roundUp(info.sizeSupplier.getAsInt(), 8);
+                int unalignedSize = info.sizeSupplier.getAsInt();
+                assert unalignedSize > 0;
+                info.sizeInBytes = NumUtil.roundUp(unalignedSize, 8);
             } else {
                 info.sizeInBytes = ConfigurationValues.getObjectLayout().sizeInBytes(info.storageKind);
             }

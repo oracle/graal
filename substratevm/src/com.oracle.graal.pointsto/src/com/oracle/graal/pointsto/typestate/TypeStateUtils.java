@@ -26,8 +26,6 @@ package com.oracle.graal.pointsto.typestate;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -36,6 +34,7 @@ import java.util.List;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.common.JVMCIError;
 
@@ -46,14 +45,9 @@ public class TypeStateUtils {
     private static final MethodHandle trimToSizeAccess;
     static {
         try {
-            Field bitSetArrayField = BitSet.class.getDeclaredField("words");
-            bitSetArrayField.setAccessible(true);
-            bitSetArrayAccess = MethodHandles.lookup().unreflectGetter(bitSetArrayField);
-
-            Method trimToSizeMethod = BitSet.class.getDeclaredMethod("trimToSize");
-            trimToSizeMethod.setAccessible(true);
-            trimToSizeAccess = MethodHandles.lookup().unreflect(trimToSizeMethod);
-        } catch (Throwable t) {
+            bitSetArrayAccess = MethodHandles.lookup().unreflectGetter(ReflectionUtil.lookupField(BitSet.class, "words"));
+            trimToSizeAccess = MethodHandles.lookup().unreflect(ReflectionUtil.lookupMethod(BitSet.class, "trimToSize"));
+        } catch (IllegalAccessException t) {
             throw JVMCIError.shouldNotReachHere(t);
         }
     }

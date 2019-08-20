@@ -43,36 +43,28 @@ package org.graalvm.options;
 /**
  * Categorizes options according to user relevance.
  *
- * @since 1.0
+ * @since 19.0
  */
 public enum OptionCategory {
 
     /**
      * An option common for users to apply.
      *
-     * @since 1.0
+     * @since 19.0
      */
     USER,
 
     /**
      * An option only relevant in corner cases and for fine-tuning.
      *
-     * @since 1.0
+     * @since 19.0
      */
     EXPERT,
 
     /**
-     * An option only relevant when debugging language or instrument implementations.
-     *
-     * @deprecated Use {@link OptionCategory#INTERNAL} instead.
-     * @since 1.0
-     */
-    @Deprecated DEBUG,
-
-    /**
      * An option only relevant when debugging a language implementation or an instrument.
      *
-     * @since 1.0
+     * @since 19.0
      */
     INTERNAL
 

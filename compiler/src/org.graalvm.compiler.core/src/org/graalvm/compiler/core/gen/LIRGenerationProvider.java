@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.gen;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -35,7 +36,6 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -44,7 +44,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public interface LIRGenerationProvider {
     LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes);
 
-    LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterConfig registerConfig, StructuredGraph graph,
+    LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId,
+                    LIR lir,
+                    RegisterAllocationConfig registerAllocationConfig,
+                    StructuredGraph graph,
                     Object stub);
 
     NodeLIRBuilderTool newNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool lirGen);
@@ -52,7 +55,9 @@ public interface LIRGenerationProvider {
     /**
      * Creates the object used to fill in the details of a given compilation result.
      */
-    CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult,
+    CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult,
+                    FrameMap frameMap,
+                    CompilationResult compilationResult,
                     CompilationResultBuilderFactory factory);
 
     /**

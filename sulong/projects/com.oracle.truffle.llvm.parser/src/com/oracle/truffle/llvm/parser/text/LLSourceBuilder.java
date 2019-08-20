@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,8 +58,9 @@ public final class LLSourceBuilder {
         if (cached == null) {
             final String pathMappings = runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LL_DEBUG_SOURCES);
             cached = LLScanner.findAndScanLLFile(bcPath, pathMappings, runtime.getContext());
+            assert cached != null;
         }
-        if (cached != null) {
+        if (cached != LLScanner.NOT_FOUND) {
             LLInstructionMapper.setSourceLocations(cached, function, runtime);
         }
     }

@@ -1606,6 +1606,16 @@ public class ElementUtils {
 
     public static boolean isVisible(Element accessingElement, Element accessedElement) {
         Modifier visibility = ElementUtils.getVisibility(accessedElement.getModifiers());
+        if (accessedElement.getKind() == ElementKind.PARAMETER) {
+            Element methodElement = accessedElement.getEnclosingElement();
+            if (methodElement == null) {
+                // parameter with disconnected method. need to assume visible.
+                return true;
+            }
+            // if parameter is referenced, make sure method is visible
+            return isVisible(accessingElement, methodElement);
+        }
+
         if (visibility == Modifier.PUBLIC) {
             return true;
         } else if (visibility == Modifier.PRIVATE) {

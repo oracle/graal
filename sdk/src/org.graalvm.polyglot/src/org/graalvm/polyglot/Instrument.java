@@ -52,7 +52,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
  * thread.
  *
  * @see Engine#getInstruments()
- * @since 1.0
+ * @since 19.0
  */
 public final class Instrument {
 
@@ -66,7 +66,7 @@ public final class Instrument {
      * Gets the ID clients can use to acquire this instrument.
      *
      * @return the unique ID for this instrument.
-     * @since 1.0
+     * @since 19.0
      */
     public String getId() {
         return impl.getId();
@@ -76,7 +76,7 @@ public final class Instrument {
      * Gets a human-readable name for this instrument.
      *
      * @return the user-friendly name for this instrument.
-     * @since 1.0
+     * @since 19.0
      */
     public String getName() {
         return impl.getName();
@@ -86,7 +86,7 @@ public final class Instrument {
      * Gets the options available for this instrument.
      *
      * @return the options as {@link OptionDescriptors}.
-     * @since 1.0
+     * @since 19.0
      */
     public OptionDescriptors getOptions() {
         return impl.getOptions();
@@ -96,7 +96,7 @@ public final class Instrument {
      * Gets the version of this instrument.
      *
      * @return the version of this instrument.
-     * @since 1.0
+     * @since 19.0
      */
     public String getVersion() {
         return impl.getVersion();
@@ -110,7 +110,7 @@ public final class Instrument {
      * @param <T> the type of the internal service.
      * @param type class of the service that is being requested.
      * @return instance of requested type, <code>null</code> if no such service is available.
-     * @since 1.0
+     * @since 19.0
      */
     public <T> T lookup(Class<T> type) {
         return impl.lookup(type);

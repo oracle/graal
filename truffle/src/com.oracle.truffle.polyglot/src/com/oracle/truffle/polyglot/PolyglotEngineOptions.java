@@ -42,18 +42,16 @@ package com.oracle.truffle.polyglot;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
 
-@Option.Group(PolyglotImpl.OPTION_GROUP_ENGINE)
+@Option.Group(PolyglotEngineImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {
-    static final String OPTION_GROUP_LOG = "log";
     static final String PREINITIALIZE_CONTEXT_NAME = "PreinitializeContexts";
     private static final String INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME = "InstrumentExceptionsAreThrown";
 
-    @Option(name = PREINITIALIZE_CONTEXT_NAME, category = OptionCategory.EXPERT, help = "Preinitialize language contexts for given languages.")//
-    static final OptionKey<String> PreinitializeContexts = new OptionKey<>(null, OptionType.defaultType(String.class));
+    @Option(name = PREINITIALIZE_CONTEXT_NAME, category = OptionCategory.EXPERT, deprecated = true, help = "Preinitialize language contexts for given languages.")//
+    static final OptionKey<String> PreinitializeContexts = new OptionKey<>("");
 
     /**
      * When the option is set the exceptions thrown by instruments are propagated rather than logged

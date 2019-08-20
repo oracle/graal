@@ -45,6 +45,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.MessageEndpoint;
 
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.domains.DebuggerDomain;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
@@ -74,6 +75,19 @@ public final class InspectorTester {
         exec.start();
         exec.initialized.acquire();
         return new InspectorTester(exec);
+    }
+
+    static String getStringURI(URI uri) {
+        if ("truffle".equals(uri.getScheme())) {
+            String ssp = uri.getSchemeSpecificPart();
+            return ssp.substring(ssp.indexOf('/') + 1);
+        } else {
+            return uri.toString();
+        }
+    }
+
+    public DebuggerDomain getDebugger() {
+        return exec.inspect.getDebugger();
     }
 
     public void setErr(OutputStream err) {

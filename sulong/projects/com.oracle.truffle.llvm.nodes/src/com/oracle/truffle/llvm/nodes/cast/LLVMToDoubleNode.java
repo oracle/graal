@@ -36,12 +36,12 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeGen.LLVMBitcastToDoubl
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeGen.LLVMSignedCastToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToDoubleNodeGen.LLVMUnsignedCastToDoubleNodeGen;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMBitcastToI64Node;
-import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -60,6 +60,14 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         throw new IllegalStateException("abstract node LLVMToDoubleNode used");
     }
 
+    @Specialization(guards = {"isForeign(from)"})
+    protected double doManagedPointer(LLVMManagedPointer from,
+                    @Cached("createForeignToLLVM()") ForeignToLLVM toLLVM,
+                    @Cached("createRecursive()") LLVMToDoubleNode recursive) {
+        long ptr = (long) toLLVM.executeWithTarget(from.getObject());
+        return recursive.executeWith(ptr);
+    }
+
     @Specialization
     protected double doPointer(LLVMPointer from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
@@ -68,14 +76,12 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         return recursive.executeWith(ptr);
     }
 
-    @Specialization
-    protected double doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
-                    @Cached("createForeignToLLVM()") ForeignToLLVM toDouble) {
-        return (double) toDouble.executeWithTarget(from.getValue());
-    }
-
     protected ForeignToLLVM createForeignToLLVM() {
         return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE);
+    }
+
+    protected boolean isForeign(LLVMManagedPointer pointer) {
+        return pointer.getOffset() == 0 && notLLVM(pointer.getObject());
     }
 
     public abstract static class LLVMSignedCastToDoubleNode extends LLVMToDoubleNode {

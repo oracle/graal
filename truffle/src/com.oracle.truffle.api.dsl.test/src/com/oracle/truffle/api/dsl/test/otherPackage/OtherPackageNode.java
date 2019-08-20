@@ -49,8 +49,8 @@ public abstract class OtherPackageNode extends Node {
 
     public abstract Object execute(Object arg);
 
-    @Specialization
-    int doDefault(int arg) {
+    @Specialization(guards = "arg != 0")
+    protected int doDefault(int arg) {
         return arg;
     }
 

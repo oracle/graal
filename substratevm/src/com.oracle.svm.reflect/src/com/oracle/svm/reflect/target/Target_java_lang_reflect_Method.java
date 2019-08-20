@@ -29,13 +29,17 @@ package com.oracle.svm.reflect.target;
 import java.lang.reflect.Method;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.reflect.generics.repository.MethodRepository;
 
 @TargetClass(value = Method.class)
@@ -47,6 +51,9 @@ public final class Target_java_lang_reflect_Method {
     @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
     Target_jdk_internal_reflect_MethodAccessor methodAccessor;
 
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = DefaultValueComputer.class) //
+    Object defaultValue;
+
     @Alias
     native Target_java_lang_reflect_Method copy();
 
@@ -57,4 +64,20 @@ public final class Target_java_lang_reflect_Method {
         }
         return methodAccessor;
     }
+
+    @Substitute
+    public Object getDefaultValue() {
+        Target_java_lang_reflect_Method holder = ReflectionHelper.getHolder(this);
+        return holder.defaultValue;
+    }
+
+    public static final class DefaultValueComputer implements CustomFieldValueComputer {
+
+        @Override
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+            Method method = (Method) receiver;
+            return method.getDefaultValue();
+        }
+    }
+
 }

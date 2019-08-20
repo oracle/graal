@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,12 +33,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class GetElementPointerInstruction extends ValueInstruction {
 
@@ -57,17 +55,6 @@ public final class GetElementPointerInstruction extends ValueInstruction {
     @Override
     public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
-    }
-
-    @Override
-    public int getAlign() {
-        if (base instanceof ValueSymbol) {
-            return ((ValueSymbol) base).getAlign();
-        } else if (base instanceof GetElementPointerConstant) {
-            return ((ValueSymbol) ((GetElementPointerConstant) base).getBasePointer()).getAlign();
-        } else {
-            throw new IllegalStateException("Unknown Source of Alignment: " + base.getClass());
-        }
     }
 
     public SymbolImpl getBasePointer() {
@@ -94,11 +81,11 @@ public final class GetElementPointerInstruction extends ValueInstruction {
         }
     }
 
-    public static GetElementPointerInstruction fromSymbols(SymbolTable symbols, Type type, int pointer, List<Integer> indices, boolean isInbounds) {
-        final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds, indices.size());
+    public static GetElementPointerInstruction fromSymbols(SymbolTable symbols, Type type, int pointer, int[] indices, boolean isInbounds) {
+        final GetElementPointerInstruction inst = new GetElementPointerInstruction(type, isInbounds, indices.length);
         inst.base = symbols.getForwardReferenced(pointer, inst);
-        for (int i = 0; i < indices.size(); i++) {
-            inst.indices[i] = symbols.getForwardReferenced(indices.get(i), inst);
+        for (int i = 0; i < indices.length; i++) {
+            inst.indices[i] = symbols.getForwardReferenced(indices[i], inst);
         }
         return inst;
     }

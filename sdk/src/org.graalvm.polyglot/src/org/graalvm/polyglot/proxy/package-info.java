@@ -54,6 +54,6 @@
  * use this API.
  *
  * @see org.graalvm.polyglot.proxy.Proxy for more an overview over all available proxy interfaces.
- * @since 1.0
+ * @since 19.0
  */
 package org.graalvm.polyglot.proxy;

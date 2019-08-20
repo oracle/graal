@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.runtime;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
@@ -64,14 +65,25 @@ public final class OptionValuesImpl implements OptionValues {
         }
     }
 
+    private <T> boolean contains(OptionKey<T> optionKey) {
+        for (OptionDescriptor descriptor : descriptors) {
+            if (descriptor.getKey() == optionKey) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public OptionDescriptors getDescriptors() {
         return descriptors;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     @TruffleBoundary
     public <T> void set(OptionKey<T> optionKey, T value) {
+        assert contains(optionKey);
         values.put(optionKey, maskNull(value));
     }
 
@@ -79,6 +91,7 @@ public final class OptionValuesImpl implements OptionValues {
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public <T> T get(OptionKey<T> optionKey) {
+        assert contains(optionKey);
         Object value = values.get(optionKey);
         if (value == null) {
             value = optionKey.getDefaultValue();
@@ -89,7 +102,14 @@ public final class OptionValuesImpl implements OptionValues {
     @Override
     @TruffleBoundary
     public boolean hasBeenSet(OptionKey<?> optionKey) {
+        assert contains(optionKey);
         return values.containsKey(optionKey);
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean hasSetOptions() {
+        return !values.isEmpty();
     }
 
     private static Object maskNull(final Object value) {

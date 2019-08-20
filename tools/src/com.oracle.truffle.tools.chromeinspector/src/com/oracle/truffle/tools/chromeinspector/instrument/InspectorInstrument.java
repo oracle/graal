@@ -90,8 +90,15 @@ public final class InspectorInstrument extends TruffleInstrument {
                 port = address.substring(colon + 1);
                 host = address.substring(0, colon);
             } else {
-                port = address;
-                host = null;
+                try {
+                    Integer.parseInt(address);
+                    // Successfully parsed, it's a port number
+                    port = address;
+                    host = null;
+                } catch (NumberFormatException e) {
+                    port = Integer.toString(DEFAULT_PORT);
+                    host = address;
+                }
             }
             return new HostAndPort(host, port);
         }
@@ -209,8 +216,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             HostAndPort hostAndPort = options.get(Inspect);
             connectionWatcher = new ConnectionWatcher();
             try {
-                InetSocketAddress socketAddress = hostAndPort.createSocket();
-                server = new Server(env, "Main Context", socketAddress, options.get(Attach), options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Internal),
+                server = new Server(env, "Main Context", hostAndPort, options.get(Attach), options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Internal),
                                 options.get(Initialization), options.get(Path), options.hasBeenSet(Secure), options.get(Secure), new KeyStoreOptions(options), options.get(SourcePath),
                                 connectionWatcher);
             } catch (IOException e) {
@@ -235,8 +241,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                 connectionWatcher = new ConnectionWatcher();
                 hostAndPort = new HostAndPort(host, port);
                 try {
-                    InetSocketAddress socketAddress = hostAndPort.createSocket();
-                    server = new Server(env, "Main Context", socketAddress, false, false, wait, options.get(HideErrors), options.get(Internal),
+                    server = new Server(env, "Main Context", hostAndPort, false, false, wait, options.get(HideErrors), options.get(Internal),
                                     options.get(Initialization), null, options.hasBeenSet(Secure), options.get(Secure), new KeyStoreOptions(options), options.get(SourcePath), connectionWatcher);
                 } catch (IOException e) {
                     PrintWriter info = new PrintWriter(env.err());
@@ -328,15 +333,15 @@ public final class InspectorInstrument extends TruffleInstrument {
 
         void verify() {
             // Check port:
-            if (port == 0) {
+            if (port == 0 && portStr != null) {
                 try {
                     port = Integer.parseInt(portStr);
                 } catch (NumberFormatException e) {
                     throw new IllegalArgumentException("Port is not a number: " + portStr);
                 }
             }
-            if (port <= 0 || port > 65535) {
-                throw new IllegalArgumentException("Invalid port number: " + port);
+            if (port != 0 && (port < 1024 || 65535 < port)) {
+                throw new IllegalArgumentException("Invalid port number: " + port + ". Needs to be 0, or in range from 1024 to 65535.");
             }
             // Check host:
             if (host != null && !host.isEmpty()) {
@@ -378,9 +383,10 @@ public final class InspectorInstrument extends TruffleInstrument {
         private final String wsURL;
         private final InspectorExecutionContext executionContext;
 
-        Server(final Env env, final String contextName, final InetSocketAddress socketAdress, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
+        Server(final Env env, final String contextName, final HostAndPort hostAndPort, final boolean attach, final boolean debugBreak, final boolean waitAttached, final boolean hideErrors,
                         final boolean inspectInternal, final boolean inspectInitialization, final String pathOrNull, final boolean secureHasBeenSet, final boolean secureValue,
                         final KeyStoreOptions keyStoreOptions, final List<URI> sourcePath, final ConnectionWatcher connectionWatcher) throws IOException {
+            InetSocketAddress socketAddress = hostAndPort.createSocket();
             PrintWriter info = new PrintWriter(env.err(), true);
             if (pathOrNull == null || pathOrNull.isEmpty()) {
                 wsspath = "/" + Long.toHexString(System.identityHashCode(env)) + "-" + Long.toHexString(System.nanoTime() ^ System.identityHashCode(env));
@@ -388,17 +394,17 @@ public final class InspectorInstrument extends TruffleInstrument {
                 String head = pathOrNull.startsWith("/") ? "" : "/";
                 wsspath = head + pathOrNull;
             }
-            boolean secure = (!secureHasBeenSet && socketAdress.getAddress().isLoopbackAddress()) ? false : secureValue;
+            boolean secure = (!secureHasBeenSet && socketAddress.getAddress().isLoopbackAddress()) ? false : secureValue;
 
             PrintWriter err = (hideErrors) ? null : info;
             executionContext = new InspectorExecutionContext(contextName, inspectInternal, inspectInitialization, env, sourcePath, err);
             if (attach) {
-                wss = new InspectWSClient(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
+                wss = new InspectWSClient(socketAddress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, info);
                 wsURL = ((InspectWSClient) wss).getURI().toString();
             } else {
                 URI wsuri;
                 try {
-                    wsuri = new URI(secure ? "wss" : "ws", null, socketAdress.getAddress().getHostAddress(), socketAdress.getPort(), wsspath, null, null);
+                    wsuri = new URI(secure ? "wss" : "ws", null, socketAddress.getAddress().getHostAddress(), socketAddress.getPort(), wsspath, null, null);
                 } catch (URISyntaxException ex) {
                     throw new IOException(ex);
                 }
@@ -412,8 +418,8 @@ public final class InspectorInstrument extends TruffleInstrument {
                 }
                 if (serverEndpoint == null) {
                     interceptor.close(wsspath);
-                    wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                    String wsStr = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
+                    wss = WebSocketServer.get(socketAddress, wsspath, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
+                    String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), wsspath, secure);
                     String address = DEV_TOOLS_PREFIX + wsStr;
                     wsURL = wsStr.replace("=", "://");
                     info.println("Debugger listening on port " + wss.getPort() + ".");
@@ -421,6 +427,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                     info.println("    " + address);
                     info.flush();
                 } else {
+                    restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
                     interceptor.opened(serverEndpoint);
                     wss = interceptor;
                     wsURL = wsuri.toString();
@@ -487,6 +494,25 @@ public final class InspectorInstrument extends TruffleInstrument {
         private static String buildAddress(String hostAddress, int port, String path, boolean secure) {
             String prefix = secure ? WS_PREFIX_SECURE : WS_PREFIX;
             return prefix + hostAddress + ":" + port + path;
+        }
+
+        private static void restartServerEndpointOnClose(HostAndPort hostAndPort, Env env, URI wsuri, InspectorExecutionContext executionContext, ConnectionWatcher connectionWatcher,
+                        InspectServerSession iss, WSInterceptorServer interceptor) {
+            iss.onClose(() -> {
+                // debugBreak = false, do not break on re-connect
+                InspectServerSession newSession = InspectServerSession.create(executionContext, false, connectionWatcher);
+                interceptor.newSession(newSession);
+                MessageEndpoint serverEndpoint;
+                try {
+                    serverEndpoint = env.startServer(wsuri, newSession);
+                } catch (MessageTransport.VetoException vex) {
+                    return;
+                } catch (IOException ioex) {
+                    throw new InspectorIOException(hostAndPort.getHostPort(), ioex);
+                }
+                interceptor.opened(serverEndpoint);
+                restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, newSession, interceptor);
+            });
         }
 
         public void close() throws IOException {

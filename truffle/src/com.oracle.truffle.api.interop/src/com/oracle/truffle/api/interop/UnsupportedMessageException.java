@@ -78,7 +78,7 @@ public final class UnsupportedMessageException extends InteropException {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String getMessage() {
@@ -111,7 +111,7 @@ public final class UnsupportedMessageException extends InteropException {
      * Creates an {@link UnsupportedMessageException} to indicate that an {@link InteropLibrary
      * interop} message is not supported.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static UnsupportedMessageException create() {
         CompilerDirectives.transferToInterpreter();

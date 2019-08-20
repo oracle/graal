@@ -43,11 +43,13 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -60,14 +62,20 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
@@ -91,6 +99,7 @@ import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
@@ -210,6 +219,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerArrayLengthNode((ArrayLengthNode) n, tool);
             } else if (n instanceof LoadHubNode) {
                 lowerLoadHubNode((LoadHubNode) n, tool);
+            } else if (n instanceof LoadHubOrNullNode) {
+                lowerLoadHubOrNullNode((LoadHubOrNullNode) n, tool);
             } else if (n instanceof LoadArrayComponentHubNode) {
                 lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n);
             } else if (n instanceof MonitorEnterNode) {
@@ -432,6 +443,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index) {
+        return createArrayAddress(graph, array, elementKind, elementKind, index);
+    }
+
+    public AddressNode createArrayAddress(StructuredGraph graph, ValueNode array, JavaKind arrayKind, JavaKind elementKind, ValueNode index) {
         ValueNode wordIndex;
         if (target.wordSize > 4) {
             wordIndex = graph.unique(new SignExtendNode(index, target.wordSize * 8));
@@ -443,14 +458,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         int shift = CodeUtil.log2(metaAccess.getArrayIndexScale(elementKind));
         ValueNode scaledIndex = graph.unique(new LeftShiftNode(wordIndex, ConstantNode.forInt(shift, graph)));
 
-        int base = metaAccess.getArrayBaseOffset(elementKind);
+        int base = metaAccess.getArrayBaseOffset(arrayKind);
         ValueNode offset = graph.unique(new AddNode(scaledIndex, ConstantNode.forIntegerKind(target.wordJavaKind, base, graph)));
 
         return graph.unique(new OffsetAddressNode(array, offset));
     }
 
     protected void lowerIndexAddressNode(IndexAddressNode indexAddress) {
-        AddressNode lowered = createArrayAddress(indexAddress.graph(), indexAddress.getArray(), indexAddress.getElementKind(), indexAddress.getIndex());
+        AddressNode lowered = createArrayAddress(indexAddress.graph(), indexAddress.getArray(), indexAddress.getArrayKind(), indexAddress.getElementKind(), indexAddress.getIndex());
         indexAddress.replaceAndDelete(lowered);
     }
 
@@ -552,6 +567,36 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         ValueNode hub = createReadHub(graph, loadHub.getValue(), tool);
         loadHub.replaceAtUsagesAndDelete(hub);
+    }
+
+    protected void lowerLoadHubOrNullNode(LoadHubOrNullNode loadHubOrNullNode, LoweringTool tool) {
+        StructuredGraph graph = loadHubOrNullNode.graph();
+        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+            return;
+        }
+        if (graph.getGuardsStage().allowsFloatingGuards()) {
+            return;
+        }
+        final FixedWithNextNode predecessor = tool.lastFixedNode();
+        final ValueNode value = loadHubOrNullNode.getValue();
+        AbstractPointerStamp stamp = (AbstractPointerStamp) value.stamp(NodeView.DEFAULT);
+        final LogicNode isNull = graph.addOrUniqueWithInputs(IsNullNode.create(value));
+        final EndNode trueEnd = graph.add(new EndNode());
+        final EndNode falseEnd = graph.add(new EndNode());
+        final IfNode ifNode = graph.add(new IfNode(isNull, trueEnd, falseEnd, 0.5));
+        final MergeNode merge = graph.add(new MergeNode());
+        merge.addForwardEnd(trueEnd);
+        merge.addForwardEnd(falseEnd);
+        final AbstractPointerStamp hubStamp = (AbstractPointerStamp) loadHubOrNullNode.stamp(NodeView.DEFAULT);
+        ValueNode nullHub = ConstantNode.forConstant(hubStamp.asAlwaysNull(), JavaConstant.NULL_POINTER, tool.getMetaAccess(), graph);
+        final ValueNode nonNullValue = graph.addOrUniqueWithInputs(PiNode.create(value, stamp.asNonNull(), ifNode.falseSuccessor()));
+        ValueNode hub = createReadHub(graph, nonNullValue, tool);
+        ValueNode[] values = new ValueNode[]{nullHub, hub};
+        final PhiNode hubPhi = graph.unique(new ValuePhiNode(hubStamp, merge, values));
+        final FixedNode oldNext = predecessor.next();
+        predecessor.setNext(ifNode);
+        merge.setNext(oldNext);
+        loadHubOrNullNode.replaceAtUsagesAndDelete(hubPhi);
     }
 
     protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub) {
@@ -762,6 +807,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     } else {
                         newObject = graph.add(createNewArrayFromVirtual(virtual, ConstantNode.forInt(entryCount, graph)));
                     }
+                    // The final STORE_STORE barrier will be emitted by finishAllocatedObjects
+                    newObject.clearEmitMemoryBarrier();
 
                     recursiveLowerings.add(newObject);
                     graph.addBeforeFixed(commit, newObject);
@@ -822,10 +869,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                 if (virtual instanceof VirtualInstanceNode) {
                                     VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
                                     address = createFieldAddress(graph, newObject, virtualInstance.field(i));
-                                    barrierType = BarrierType.IMPRECISE;
+                                    barrierType = fieldStoreBarrierType(virtualInstance.field(i));
                                 } else {
                                     address = createArrayAddress(graph, newObject, virtual.entryKind(i), ConstantNode.forInt(i, graph));
-                                    barrierType = BarrierType.PRECISE;
+                                    barrierType = arrayStoreBarrierType(virtual.entryKind(i));
                                 }
                                 if (address != null) {
                                     WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType);
@@ -939,25 +986,25 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     protected BarrierType fieldStoreBarrierType(ResolvedJavaField field) {
-        if (field.getJavaKind() == JavaKind.Object) {
-            return BarrierType.IMPRECISE;
+        if (getStorageKind(field) == JavaKind.Object) {
+            return BarrierType.FIELD;
         }
         return BarrierType.NONE;
     }
 
     protected BarrierType arrayStoreBarrierType(JavaKind elementKind) {
         if (elementKind == JavaKind.Object) {
-            return BarrierType.PRECISE;
+            return BarrierType.ARRAY;
         }
         return BarrierType.NONE;
     }
 
     public BarrierType fieldInitializationBarrier(JavaKind entryKind) {
-        return entryKind == JavaKind.Object ? BarrierType.IMPRECISE : BarrierType.NONE;
+        return entryKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
     }
 
     public BarrierType arrayInitializationBarrier(JavaKind entryKind) {
-        return entryKind == JavaKind.Object ? BarrierType.PRECISE : BarrierType.NONE;
+        return entryKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
     }
 
     private BarrierType unsafeStoreBarrierType(RawStoreNode store) {
@@ -972,10 +1019,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             // Array types must use a precise barrier, so if the type is unknown or is a supertype
             // of Object[] then treat it as an array.
-            if (type == null || type.isArray() || type.isAssignableFrom(objectArrayType)) {
-                return BarrierType.PRECISE;
+            if (type != null && type.isArray()) {
+                return BarrierType.ARRAY;
+            } else if (type == null || type.isAssignableFrom(objectArrayType)) {
+                return BarrierType.UNKNOWN;
             } else {
-                return BarrierType.IMPRECISE;
+                return BarrierType.FIELD;
             }
         }
         return BarrierType.NONE;

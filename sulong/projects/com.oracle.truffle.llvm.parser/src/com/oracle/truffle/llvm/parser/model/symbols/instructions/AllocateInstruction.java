@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -51,7 +51,6 @@ public final class AllocateInstruction extends ValueInstruction {
         visitor.visit(this);
     }
 
-    @Override
     public int getAlign() {
         return align;
     }
@@ -61,12 +60,7 @@ public final class AllocateInstruction extends ValueInstruction {
     }
 
     public Type getPointeeType() {
-        return getType().getPointeeType();
-    }
-
-    @Override
-    public PointerType getType() {
-        return (PointerType) super.getType();
+        return ((PointerType) super.getType()).getPointeeType();
     }
 
     @Override

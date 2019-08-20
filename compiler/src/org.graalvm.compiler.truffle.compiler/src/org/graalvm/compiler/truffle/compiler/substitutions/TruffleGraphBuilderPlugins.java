@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.compiler.substitutions;
 import static java.lang.Character.toUpperCase;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
+import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIntrinsifyFrameAccess;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
@@ -76,10 +77,7 @@ import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -113,26 +111,15 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  */
 public class TruffleGraphBuilderPlugins {
 
-    public static class Options {
-        @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)//
-        public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
-    }
-
-    public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
-                    KnownTruffleTypes types) {
+    public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, Providers providers, KnownTruffleTypes types) {
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, metaAccess);
         registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
-
-        if (TruffleCompilerOptions.getValue(TruffleUseFrameWithoutBoxing)) {
-            registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, constantReflection, types);
-        } else {
-            registerFrameWithBoxingPlugins(plugins, metaAccess, canDelayIntrinsification);
-        }
-
+        registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
     }
 
     public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
@@ -361,35 +348,13 @@ public class TruffleGraphBuilderPlugins {
     public static void registerCompilerAssertsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
         final ResolvedJavaType compilerAssertsType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.CompilerAsserts");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(compilerAssertsType));
-        r.register1("partialEvaluationConstant", Object.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ValueNode curValue = value;
-                if (curValue instanceof BoxNode) {
-                    BoxNode boxNode = (BoxNode) curValue;
-                    curValue = boxNode.getValue();
-                }
-                if (curValue.isConstant()) {
-                    return true;
-                } else if (canDelayIntrinsification) {
-                    return false;
-                } else {
-                    StringBuilder sb = new StringBuilder();
-                    sb.append(curValue);
-                    if (curValue instanceof ValuePhiNode) {
-                        ValuePhiNode valuePhi = (ValuePhiNode) curValue;
-                        sb.append(" (");
-                        for (Node n : valuePhi.inputs()) {
-                            sb.append(n);
-                            sb.append("; ");
-                        }
-                        sb.append(")");
-                    }
-                    value.getDebug().dump(DebugContext.VERBOSE_LEVEL, value.graph(), "Graph before bailout at node %s", sb);
-                    throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb);
-                }
-            }
-        });
+        PEConstantPlugin peConstantPlugin = new PEConstantPlugin(canDelayIntrinsification);
+        r.register1("partialEvaluationConstant", Object.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", int.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", long.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", float.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", double.class, peConstantPlugin);
+        r.register1("partialEvaluationConstant", boolean.class, peConstantPlugin);
         r.register0("neverPartOfCompilation", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -447,7 +412,7 @@ public class TruffleGraphBuilderPlugins {
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
 
-        if (TruffleCompilerOptions.getValue(Options.TruffleIntrinsifyFrameAccess)) {
+        if (TruffleCompilerOptions.getValue(TruffleIntrinsifyFrameAccess)) {
             registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
             registerFrameAccessors(r, JavaKind.Long, constantReflection, types);
             registerFrameAccessors(r, JavaKind.Int, constantReflection, types);
@@ -456,13 +421,6 @@ public class TruffleGraphBuilderPlugins {
             registerFrameAccessors(r, JavaKind.Boolean, constantReflection, types);
             registerFrameAccessors(r, JavaKind.Byte, constantReflection, types);
         }
-    }
-
-    public static void registerFrameWithBoxingPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
-        ResolvedJavaType frameWithBoxingType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.FrameWithBoxing");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(frameWithBoxingType));
-        registerFrameMethods(r);
-        registerUnsafeCast(r, canDelayIntrinsification);
     }
 
     /**
@@ -568,7 +526,7 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode frame = receiver.get();
-                if (TruffleCompilerOptions.getValue(Options.TruffleIntrinsifyFrameAccess) && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
+                if (TruffleCompilerOptions.getValue(TruffleIntrinsifyFrameAccess) && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
                     Speculation speculation = b.getGraph().getSpeculationLog().speculate(((NewFrameNode) frame).getIntrinsifyAccessorsSpeculation());
                     b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.RuntimeConstraint, speculation));
                     return true;
@@ -737,6 +695,42 @@ public class TruffleGraphBuilderPlugins {
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
         } catch (Throwable t) {
             debug.handle(t);
+        }
+    }
+
+    private static final class PEConstantPlugin implements InvocationPlugin {
+        private final boolean canDelayIntrinsification;
+
+        private PEConstantPlugin(boolean canDelayIntrinsification) {
+            this.canDelayIntrinsification = canDelayIntrinsification;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+            ValueNode curValue = value;
+            if (curValue instanceof BoxNode) {
+                BoxNode boxNode = (BoxNode) curValue;
+                curValue = boxNode.getValue();
+            }
+            if (curValue.isConstant()) {
+                return true;
+            } else if (canDelayIntrinsification) {
+                return false;
+            } else {
+                StringBuilder sb = new StringBuilder();
+                sb.append(curValue);
+                if (curValue instanceof ValuePhiNode) {
+                    ValuePhiNode valuePhi = (ValuePhiNode) curValue;
+                    sb.append(" (");
+                    for (Node n : valuePhi.inputs()) {
+                        sb.append(n);
+                        sb.append("; ");
+                    }
+                    sb.append(")");
+                }
+                value.getDebug().dump(DebugContext.VERBOSE_LEVEL, value.graph(), "Graph before bailout at node %s", sb);
+                throw b.bailout("Partial evaluation did not reduce value to a constant, is a regular compiler node: " + sb);
+            }
         }
     }
 }

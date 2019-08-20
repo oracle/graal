@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,8 @@ import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.llvm.nodes.op.LLVMCompareNode.LLVMEqNode;
+import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMEqNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -70,12 +72,13 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode implements Inst
 
     public abstract int[] getSuccessors();
 
-    public abstract LLVMExpressionNode getCase(int i);
+    public abstract boolean executeIsCase(VirtualFrame frame, int i, Object value);
 
     public static class LLVMSwitchNodeImpl extends LLVMSwitchNode {
         @Children private final LLVMStatementNode[] phiNodes;
         @Child protected LLVMExpressionNode cond;
         @Children protected final LLVMExpressionNode[] cases;
+        @Children protected final LLVMEqNode[] caseEquals;
         @CompilationFinal(dimensions = 1) private final int[] successors;
 
         private final ValueProfile conditionValueClass = ValueProfile.createClassProfile();
@@ -87,6 +90,10 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode implements Inst
             this.phiNodes = phiNodes;
             this.cond = cond;
             this.cases = cases;
+            this.caseEquals = new LLVMEqNode[cases.length];
+            for (int i = 0; i < caseEquals.length; i++) {
+                caseEquals[i] = LLVMEqNodeGen.create(null, null);
+            }
         }
 
         @Override
@@ -110,8 +117,8 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode implements Inst
         }
 
         @Override
-        public LLVMExpressionNode getCase(int i) {
-            return cases[i];
+        public boolean executeIsCase(VirtualFrame frame, int i, Object value) {
+            return caseEquals[i].executeCompare(cases[i].executeGeneric(frame), value);
         }
     }
 }

@@ -33,12 +33,18 @@ from contextlib import contextmanager
 from os.path import exists
 import subprocess
 import re
+from glob import glob
 
 import time
 
 import functools
+import zipfile
 import mx
 import mx_substratevm
+import mx_graal_benchmark
+import mx_benchmark
+
+_suite = mx.suite("substratevm")
 
 _default_image_options = ['-R:+PrintGCSummary', '-R:+PrintGC', '-H:+PrintImageHeapPartitionSizes',
                           '-H:+PrintImageElementSizes']
@@ -61,7 +67,7 @@ def _timedelta(name, out=print):
     yield
     end = time.time()
     elapsed = end - start
-    lf = '' if out == print else '\n'
+    lf = '' if out == print else '\n' # pylint: disable=comparison-with-callable
     out('INFO: TIMEDELTA: ' + name + '%0.2f' % elapsed + lf)
 
 
@@ -70,7 +76,7 @@ def _bench_result(benchmark, metric_name, metric_value, metric_unit, better="low
     if extra is None:
         extra = {}
     unit = {"metric.unit": metric_unit} if metric_unit else {}
-    return dict({
+    return dict(list({
                     "benchmark": benchmark,
                     "metric.name": metric_name,
                     "metric.type": m_type,
@@ -78,7 +84,7 @@ def _bench_result(benchmark, metric_name, metric_value, metric_unit, better="low
                     "metric.score-function": "id",
                     "metric.better": better,
                     "metric.iteration": m_iteration
-                }.items() + unit.items() + extra.items())
+                }.items()) + list(unit.items()) + list(extra.items()))
 
 
 def _get_bench_conf(args):
@@ -224,10 +230,13 @@ def bench_jsimage(bench_conf, out, err, extra_options=None):
 
     image_dir, js_image_name, image_path = _bench_image_params(bench_conf)
     if not exists(image_path):
+        native_image = mx_substratevm.vm_native_image_path(mx_substratevm._graalvm_js_config)
+        if not exists(native_image):
+            mx_substratevm.build_native_image_image(mx_substratevm._graalvm_js_config)
         with _timedelta('IMAGEBUILD: ', out=out):
             out('INFO: EXECUTE IMAGEBUILD: svmimage-%s\n' % bench_conf)
             _, image_building_options = _bench_configs[bench_conf]
-            command = [mx_substratevm.native_image_path(mx_substratevm.suite_native_image_root()), '--language:js', '-H:Path=' + image_dir,
+            command = [native_image, '--language:js', '-H:Path=' + image_dir,
                        '-H:Name=' + js_image_name] + image_building_options + extra_options
             # Print out the command.
             print(' '.join(command))
@@ -274,7 +283,7 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
     _, _, image_path = _bench_image_params(bench_conf)
     if should_bench_compile_server and not exists(image_path):
         for _ in range(_IMAGE_BENCH_REPETITIONS):
-            with mx_substratevm.native_image_context():
+            with mx_substratevm.native_image_context(config=mx_substratevm._graalvm_js_config, build_if_missing=True):
                 _bench_compile_server(bench_conf, out)
 
     image_path = bench_jsimage(bench_conf, out=out, err=err)
@@ -298,3 +307,311 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
     if nonZeroIsFatal:
         mx.abort('Javascript image building for js-benchmarks failed')
     return -1
+
+
+def extract_archive(path, extracted_name):
+    extracted_archive = mx.join(mx.dirname(path), extracted_name)
+    if not mx.exists(extracted_archive):
+        os.makedirs(extracted_archive)
+        arc = zipfile.ZipFile(path, 'r')
+        arc.extractall(extracted_archive)
+        arc.close()
+    return extracted_archive
+
+
+def list_jars(path):
+    jars = []
+    for f in os.listdir(path):
+        if os.path.isfile(mx.join(path, f)) and f.endswith('.jar'):
+            jars.append(f)
+    return jars
+
+
+_RENAISSANCE_EXTRA_VM_ARGS = {
+    "db-shootout"     : '--initialize-at-build-time=net.openhft.chronicle.wire.ReadMarshallable,net.openhft.chronicle.wire.WriteMarshallable',
+}
+
+_RENAISSANCE_EXTRA_AGENT_ARGS = [
+    '-Dnative-image.benchmark.extra-agent-run-arg=-r',
+    '-Dnative-image.benchmark.extra-agent-run-arg=1'
+]
+
+RENAISSANCE_EXTRA_PROFILE_ARGS = [
+    '-Dnative-image.benchmark.extra-profile-run-arg=-r',
+    '-Dnative-image.benchmark.extra-profile-run-arg=5'
+]
+
+_renaissance_config = {
+    "akka-uct"         : ("actors", 11),
+    "reactors"         : ("actors", 11),
+    "scala-kmeans"     : ("scala-stdlib", 12),
+    "mnemonics"        : ("jdk-streams", 12),
+    "par-mnemonics"    : ("jdk-streams", 12),
+    "rx-scrabble"      : ("rx", 11),
+    "als"              : ("apache-spark", 11),
+    "chi-square"       : ("apache-spark", 11),
+    "db-shootout"      : ("database", 11),
+    "dec-tree"         : ("apache-spark", 11),
+    "dotty"            : ("scala-dotty", 12),
+    "finagle-chirper"  : ("twitter-finagle", 11),
+    "finagle-http"     : ("twitter-finagle", 11),
+    "fj-kmeans"        : ("jdk-concurrent", 12),
+    "future-genetic"   : ("jdk-concurrent", 12),
+    "gauss-mix"        : ("apache-spark", 11),
+    "log-regression"   : ("apache-spark", 11),
+    "movie-lens"       : ("apache-spark", 11),
+    "naive-bayes"      : ("apache-spark", 11),
+    "neo4j-analytics"  : ("neo4j", 11),
+    "page-rank"        : ("apache-spark", 11),
+    "philosophers"     : ("scala-stm", 12),
+    "scala-stm-bench7" : ("scala-stm", 12),
+    "scrabble"         : ("jdk-streams", 12)
+}
+
+
+def benchmark_group(benchmark):
+    return _renaissance_config[benchmark][0]
+
+
+def benchmark_scalaversion(benchmark):
+    return _renaissance_config[benchmark][1]
+
+
+class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchmarkSuite): #pylint: disable=too-many-ancestors
+    """
+    Building an image for a renaissance benchmark requires all libraries for the group this benchmark belongs to
+    and a harness project compiled with the same scala version as the benchmark.
+    Since we don't support building an image from fat-jars, we extract them to create project dependencies.
+    Depending on the benchmark's scala version we create corresponding renaissance harness and benchmark projects,
+    we set this harness project as a dependency for the benchmark project and collect project's classpath.
+    For each renaissance benchmark we store an information about the group and scala version in _renaissance-config.
+    We build an image from renaissance jar with the classpath as previously described, provided configurations and extra arguments while neccessary.
+    """
+
+    def name(self):
+        return 'renaissance-native-image'
+
+    def benchSuiteName(self):
+        return 'renaissance'
+
+    def renaissance_harness_lib_name(self):
+        return "RENAISSANCE_HARNESS_11"
+
+    def harness_path(self):
+        lib = mx.library(self.renaissance_harness_lib_name())
+        if lib:
+            return lib.get_path(True)
+        return None
+
+    def renaissance_unpacked(self):
+        return extract_archive(self.renaissancePath(), 'renaissance.extracted')
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        bench_arg = ""
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark.")
+        else:
+            bench_arg = benchmarks[0]
+        run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
+        vm_args = self.vmArgs(bmSuiteArgs) + self.extra_vm_args(bench_arg)
+
+        agent_args = _RENAISSANCE_EXTRA_AGENT_ARGS + ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg]
+        pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg]
+
+        return agent_args + pgo_args + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.renaissancePath()] + run_args + [bench_arg]
+
+    def create_classpath(self, benchArg):
+        harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject('harness', benchmark_scalaversion(benchArg), self)
+        group_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject(benchmark_group(benchArg), benchmark_scalaversion(benchArg), self, harness_project)
+        return ':'.join([mx.classpath(harness_project), mx.classpath(group_project)])
+
+    def extra_vm_args(self, benchmark):
+        if benchmark in _RENAISSANCE_EXTRA_VM_ARGS:
+            return ['-Dnative-image.benchmark.extra-image-build-argument=' + _RENAISSANCE_EXTRA_VM_ARGS[benchmark]]
+        return []
+
+    class RenaissanceDependency(mx.ClasspathDependency):
+        def __init__(self, name, path): # pylint: disable=super-init-not-called
+            mx.Dependency.__init__(self, _suite, name, None)
+            self.path = path
+
+        def classpath_repr(self, resolve=True):
+            return self.path
+
+        def _walk_deps_visit_edges(self, *args, **kwargs):
+            pass
+
+    class RenaissanceProject(mx.ClasspathDependency):
+        def __init__(self, group, scala_version=12, renaissance_suite=None, dep_project=None): # pylint: disable=super-init-not-called
+            mx.Dependency.__init__(self, _suite, group, None)
+            self.suite = renaissance_suite
+            self.deps = self.collect_group_dependencies(group, scala_version)
+            if dep_project is not None:
+                self.deps.append(dep_project)
+
+        def _walk_deps_visit_edges(self, visited, in_edge, preVisit=None, visit=None, ignoredEdges=None, visitEdge=None):
+            deps = [(mx.DEP_STANDARD, self.deps)]
+            self._walk_deps_visit_edges_helper(deps, visited, in_edge, preVisit, visit, ignoredEdges, visitEdge)
+
+        def classpath_repr(self, resolve=True):
+            return None
+
+        def get_dependencies(self, group):
+            deps = []
+            for jar in list_jars(group):
+                deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(os.path.basename(jar), mx.join(group, jar)))
+            return deps
+
+        def collect_group_dependencies(self, group, scala_version):
+            if group == 'harness':
+                if scala_version == 12:
+                    unpacked_renaissance = RenaissanceNativeImageBenchmarkSuite.renaissance_unpacked(self.suite)
+                    path = mx.join(unpacked_renaissance, 'renaissance-harness')
+                else:
+                    path = RenaissanceNativeImageBenchmarkSuite.harness_path(self.suite)
+            else:
+                unpacked_renaissance = RenaissanceNativeImageBenchmarkSuite.renaissance_unpacked(self.suite)
+                path = mx.join(unpacked_renaissance, 'benchmarks', group)
+            return self.get_dependencies(path)
+
+
+mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())
+
+_DACAPO_EXTRA_VM_ARGS = {
+    'avrora' :     ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,'
+                    'org.h2.Driver,org.apache.derby.jdbc.AutoloadedDriver,'
+                    'org.apache.derby.client.am.Configuration,org.apache.derby.iapi.services.info.ProductVersionHolder']
+}
+
+_DACAPO_EXTRA_AGENT_ARGS = [
+    '-Dnative-image.benchmark.extra-agent-run-arg=-n',
+    '-Dnative-image.benchmark.extra-agent-run-arg=1'
+]
+
+_DACAPO_EXTRA_PROFILE_ARGS = [
+    '-Dnative-image.benchmark.extra-profile-run-arg=-n',
+    '-Dnative-image.benchmark.extra-profile-run-arg=5'
+]
+
+'''
+Benchmarks from DaCapo suite may require one or more zip archives from `dat` directory on the classpath.
+After the agent run we have all necessary resources (from `jar` and `dat` folders inside DaCapo fat jar).
+We don't support nested archives and classes directories in a jar so we have to specify them directly on the classpath.
+Since we don't have produced config files available in the suite, we will store paths in `_dacapo_resources`,
+load all resources from specified archives, and collect them on a benchmark classpath.
+'''
+_dacapo_resources = {
+    'avrora'     : ['dat/avrora.zip'],
+    'batik'      : ['dat/batik.zip'],
+    'eclipse'    : ['dat/eclipse.zip'],
+    'fop'        : ['dat/fop.zip'],
+    'h2'         : [],
+    'jython'     : ['dat/jython.zip'],
+    'luindex'    : ['dat/luindex.zip'],
+    'lusearch'   : ['dat/lusearch.zip'],
+    'pmd'        : ['dat/pmd.zip'],
+    'sunflow'    : [],
+    'tomcat'     : ['dat/tomcat.zip'],
+    'tradebeans' : ['dat/daytrader.zip'],
+    'tradesoap'  : ['dat/daytrader.zip'],
+    'xalan'      : ['dat/xalan.zip'],
+}
+
+_daCapo_iterations = {
+    'avrora'     : 20,
+    'batik'      : 40,
+    'eclipse'    : -1, # Not supported on Hotspot
+    'fop'        : 40,
+    'h2'         : 25,
+    'jython'     : -1, # Dynamically generates classes, hence can't be supported on SVM for now
+    'luindex'    : 15,
+    'lusearch'   : 40,
+    'pmd'        : 30,
+    'sunflow'    : 35,
+    'tomcat'     : -1, # Not supported on Hotspot
+    'tradebeans' : -1, # Not supported on Hotspot
+    'tradesoap'  : -1, # Not supported on Hotspot
+    'xalan'      : 30,
+}
+
+
+class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
+    def name(self):
+        return 'dacapo-native-image'
+
+    '''
+    Some methods in DaCapo source are modified because they relied on the jar's nested structure,
+    e.g. loading all configuration files for benchmarks from a nested directory.
+    Therefore, this library is built from the source.
+    '''
+    def dacapo_libname(self):
+        return 'DACAPO_SVM'
+
+    '''
+    `SetBuildInfo` method in DaCapo source contains code not supported on SVM.
+     As a result, instead of the implementation version, it returns `unknown`.
+    '''
+    def daCapoSuiteTitle(self):
+        return "DaCapo unknown"
+
+    def daCapoPath(self):
+        lib = mx.library(self.dacapo_libname(), False)
+        if lib:
+            return lib.get_path(True)
+        return None
+
+    def benchSuiteName(self):
+        return 'dacapo'
+
+    def daCapoIterations(self):
+        return _daCapo_iterations
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        bench_arg = ""
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark.")
+        else:
+            bench_arg = benchmarks[0]
+        agent_args = ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg] + _DACAPO_EXTRA_AGENT_ARGS
+        pgo_args = ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg] + _DACAPO_EXTRA_PROFILE_ARGS
+
+        run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
+        vm_args = self.vmArgs(bmSuiteArgs) + (_DACAPO_EXTRA_VM_ARGS[bench_arg] if bench_arg in _DACAPO_EXTRA_VM_ARGS else [])
+        return agent_args + pgo_args + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.daCapoPath()] + [bench_arg] + run_args
+
+    def create_classpath(self, benchmark):
+        dacapo_nested_resources = []
+        dacapo_dat_resources = []
+        dacapo_extracted = self.extract_dacapo()
+        benchmark_resources = _dacapo_resources[benchmark]
+        if benchmark_resources:
+            for resource in benchmark_resources:
+                dacapo_dat_resource = extract_archive(mx.join(dacapo_extracted, resource), benchmark)
+                dacapo_dat_resources.append(dacapo_dat_resource)
+                #collects nested jar files and classes directories
+                dacapo_nested_resources += self.collect_nested_dependencies(dacapo_dat_resource)
+        dacapo_jars = self.collect_dependencies(os.path.join(dacapo_extracted, 'jar'))
+        cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
+        return cp
+
+    def collect_dependencies(self, path):
+        deps = []
+        for f in list_jars(path):
+            deps.append(mx.join(path, f))
+        return deps
+
+    def extract_dacapo(self):
+        return extract_archive(self.daCapoPath(), 'dacapo.extracted')
+
+    def collect_nested_dependencies(self, path):
+        deps = []
+        deps += [y for x in os.walk(path) for y in glob(os.path.join(x[0], '*.jar'))]
+        deps += [y for x in os.walk(path) for y in glob(os.path.join(x[0], 'classes'))]
+        return deps
+
+
+mx_benchmark.add_bm_suite(DaCapoNativeImageBenchmarkSuite())

@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.ArrayUtils;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.RegexRootNode;
 
 public abstract class InputIndexOfStringNode extends Node {
 
@@ -35,16 +38,21 @@ public abstract class InputIndexOfStringNode extends Node {
         return InputIndexOfStringNodeGen.create();
     }
 
-    public abstract int execute(Object input, String match, int fromIndex, int maxIndex);
+    public abstract int execute(Object input, int fromIndex, int maxIndex, String match, String mask);
 
-    @Specialization
-    public int doString(String input, String match, int fromIndex, int maxIndex) {
+    @Specialization(guards = "mask == null")
+    public int doString(String input, int fromIndex, int maxIndex, String match, @SuppressWarnings("unused") String mask) {
         int result = input.indexOf(match, fromIndex);
         return result >= maxIndex ? -1 : result;
     }
 
+    @Specialization(guards = "mask != null")
+    public int doStringWithMask(String input, int fromIndex, int maxIndex, String match, String mask) {
+        return ArrayUtils.indexOfWithOrMask(input, fromIndex, maxIndex - fromIndex, match, mask);
+    }
+
     @Specialization
-    public int doTruffleObject(TruffleObject input, String match, int fromIndex, int maxIndex,
+    public int doTruffleObject(TruffleObject input, int fromIndex, int maxIndex, String match, String mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputRegionMatchesNode regionMatchesNode) {
         if (maxIndex > lengthNode.execute(input)) {
@@ -54,7 +62,10 @@ public abstract class InputIndexOfStringNode extends Node {
             return -1;
         }
         for (int i = fromIndex; i <= maxIndex - match.length(); i++) {
-            if (regionMatchesNode.execute(input, match, i)) {
+            if (CompilerDirectives.inInterpreter()) {
+                RegexRootNode.checkThreadInterrupted();
+            }
+            if (regionMatchesNode.execute(input, i, match, mask)) {
                 return i;
             }
         }

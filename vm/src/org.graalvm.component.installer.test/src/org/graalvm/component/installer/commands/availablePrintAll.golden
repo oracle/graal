@@ -1,8 +1,8 @@
 LIST_ComponentShortListHeader
-python                   1.0.0-rc3-dev       Graal.Python
-python                   1.0.0-rc3-dev       Graal.Python
-R                        1.0.0-rc3-dev       FastR
-R                        1.0.0-rc3-dev       FastR
-ruby                     1.0.0-rc3-dev       TruffleRuby
-ruby                     1.0.0-rc3-dev       TruffleRuby
+python                   1.0.0-rc3-dev       Graal.Python        acme.org
+python                   1.0.0-rc3-dev       Graal.Python        acme.org
+R                        1.0.0-rc3-dev       FastR               acme.org
+R                        1.0.0-rc3-dev       FastR               acme.org
+ruby                     1.0.0-rc3-dev       TruffleRuby         acme.org
+ruby                     1.0.0-rc3-dev       TruffleRuby         acme.org
 

@@ -26,17 +26,18 @@ package com.oracle.svm.core.deopt;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.convertUnknownValue;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class SubstrateSpeculationLog implements SpeculationLog {
+// Checkstyle: allow synchronization
 
-    private final ConcurrentMap<SpeculationReason, Boolean> failedSpeculations = new ConcurrentHashMap<>();
+public class SubstrateSpeculationLog implements SpeculationLog {
 
     public static final class SubstrateSpeculation extends Speculation {
         public SubstrateSpeculation(SpeculationReason reason) {
@@ -44,18 +45,60 @@ public class SubstrateSpeculationLog implements SpeculationLog {
         }
     }
 
+    private static final class LogEntry {
+        private final SpeculationReason reason;
+        private final LogEntry next;
+
+        private LogEntry(SpeculationReason reason, LogEntry next) {
+            this.reason = reason;
+            this.next = next;
+        }
+    }
+
+    /** The collected set of speculations, for quick access during compilation. */
+    private Map<SpeculationReason, Boolean> failedSpeculations;
+
+    /**
+     * Newly added speculation failures. Atomic linked list to allow lock free append during
+     * deoptimization.
+     */
+    private volatile LogEntry addedFailedSpeculationsHead;
+
+    private static final AtomicReferenceFieldUpdater<SubstrateSpeculationLog, LogEntry> HEAD_UPDATER = AtomicReferenceFieldUpdater.newUpdater(SubstrateSpeculationLog.class,
+                    LogEntry.class, "addedFailedSpeculationsHead");
+
     public void addFailedSpeculation(SpeculationReason speculation) {
-        failedSpeculations.put(speculation, Boolean.TRUE);
+        /*
+         * This method is called from inside the VMOperation that performs deoptimization, and
+         * thefore must not be synchronization free. Note that this even precludes using a
+         * ConcurrentHashMap, because it also has some code paths that require synchronization.
+         *
+         * Therefore we use our own very simple atomic linked list.
+         */
+        while (true) {
+            LogEntry oldHead = addedFailedSpeculationsHead;
+            LogEntry newHead = new LogEntry(speculation, oldHead);
+            if (HEAD_UPDATER.compareAndSet(this, oldHead, newHead)) {
+                break;
+            }
+        }
     }
 
     @Override
-    public void collectFailedSpeculations() {
-        // Nothing to do.
+    public synchronized void collectFailedSpeculations() {
+        LogEntry cur = HEAD_UPDATER.getAndSet(this, null);
+        while (cur != null) {
+            if (failedSpeculations == null) {
+                failedSpeculations = new HashMap<>();
+            }
+            failedSpeculations.put(cur.reason, Boolean.TRUE);
+            cur = cur.next;
+        }
     }
 
     @Override
-    public boolean maySpeculate(SpeculationReason reason) {
-        return !failedSpeculations.containsKey(reason);
+    public synchronized boolean maySpeculate(SpeculationReason reason) {
+        return failedSpeculations == null || !failedSpeculations.containsKey(reason);
     }
 
     @Override

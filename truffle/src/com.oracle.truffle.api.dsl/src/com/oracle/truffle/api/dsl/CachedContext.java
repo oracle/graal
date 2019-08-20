@@ -105,7 +105,7 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * @see Cached @Cached for more information on using this annotation.
  * @see CachedLanguage @CachedLanguage to access the language instance.
- * @since 1.0
+ * @since 19.0
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.PARAMETER})
@@ -115,7 +115,7 @@ public @interface CachedContext {
      * Specifies the language the context should be looked up for. Must be the exact language class
      * annotated by {@link Registration}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @SuppressWarnings("rawtypes")
     Class<? extends TruffleLanguage> value();

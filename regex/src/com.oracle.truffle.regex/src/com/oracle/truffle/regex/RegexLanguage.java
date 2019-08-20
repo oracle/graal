@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -72,7 +73,7 @@ import java.util.Collections;
 
 @TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internal = true, interactive = false)
 @ProvidedTags(StandardTags.RootTag.class)
-public final class RegexLanguage extends TruffleLanguage<Void> {
+public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {
 
     public static final String NAME = "REGEX";
     public static final String ID = "regex";
@@ -96,17 +97,18 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     }
 
     @Override
-    protected Void createContext(Env env) {
-        return null;
+    protected RegexContext createContext(Env env) {
+        return new RegexContext(env);
     }
 
     @Override
-    protected boolean patchContext(Void context, Env newEnv) {
+    protected boolean patchContext(RegexContext context, Env newEnv) {
+        context.patchContext(newEnv);
         return true;
     }
 
     @Override
-    protected Iterable<Scope> findTopScopes(Void context) {
+    protected Iterable<Scope> findTopScopes(RegexContext context) {
         return Collections.emptySet();
     }
 
@@ -129,5 +131,25 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
+    }
+
+    public static RegexContext getCurrentContext() {
+        return getCurrentContext(RegexLanguage.class);
+    }
+
+    public static final class RegexContext {
+        @CompilerDirectives.CompilationFinal private Env env;
+
+        RegexContext(Env env) {
+            this.env = env;
+        }
+
+        void patchContext(Env patchedEnv) {
+            this.env = patchedEnv;
+        }
+
+        public Env getEnv() {
+            return env;
+        }
     }
 }

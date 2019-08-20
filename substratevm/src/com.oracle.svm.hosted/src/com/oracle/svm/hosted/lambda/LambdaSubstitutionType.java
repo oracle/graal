@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.lambda;
 import java.lang.annotation.Annotation;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.svm.core.jdk.IgnoreForGetCallerClass;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -60,18 +60,18 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
 
     @Override
     public Annotation[] getAnnotations() {
-        return IgnoreForGetCallerClass.Holder.ARRAY;
+        return InternalVMMethod.Holder.ARRAY;
     }
 
     @Override
     public boolean isAnnotationPresent(Class<? extends Annotation> annotationClass) {
-        return annotationClass == IgnoreForGetCallerClass.class;
+        return annotationClass == InternalVMMethod.class;
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass == IgnoreForGetCallerClass.class) {
-            return annotationClass.cast(IgnoreForGetCallerClass.Holder.INSTANCE);
+        if (annotationClass == InternalVMMethod.class) {
+            return annotationClass.cast(InternalVMMethod.Holder.INSTANCE);
         }
         return null;
     }

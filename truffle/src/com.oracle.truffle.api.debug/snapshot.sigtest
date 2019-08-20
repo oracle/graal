@@ -140,18 +140,21 @@ meth public abstract void threadDisposed(com.oracle.truffle.api.debug.DebugConte
 meth public abstract void threadInitialized(com.oracle.truffle.api.debug.DebugContext,java.lang.Thread)
 
 CLSS public abstract com.oracle.truffle.api.debug.DebugValue
+meth public !varargs final com.oracle.truffle.api.debug.DebugValue execute(com.oracle.truffle.api.debug.DebugValue[])
 meth public abstract <%0 extends java.lang.Object> {%%0} as(java.lang.Class<{%%0}>)
 meth public abstract boolean hasReadSideEffects()
 meth public abstract boolean hasWriteSideEffects()
 meth public abstract boolean isInternal()
 meth public abstract boolean isReadable()
 meth public abstract boolean isWritable()
+meth public abstract java.lang.String asString()
 meth public abstract java.lang.String getName()
 meth public abstract void set(com.oracle.truffle.api.debug.DebugValue)
 meth public abstract void set(java.lang.Object)
 meth public com.oracle.truffle.api.debug.DebugScope getScope()
 meth public final boolean canExecute()
 meth public final boolean isArray()
+meth public final boolean isNull()
 meth public final com.oracle.truffle.api.debug.DebugValue asInLanguage(com.oracle.truffle.api.nodes.LanguageInfo)
 meth public final com.oracle.truffle.api.debug.DebugValue getMetaObject()
 meth public final com.oracle.truffle.api.debug.DebugValue getProperty(java.lang.String)
@@ -292,8 +295,6 @@ meth public com.oracle.truffle.api.debug.SuspensionFilter$Builder includeInterna
 meth public com.oracle.truffle.api.debug.SuspensionFilter$Builder sourceIs(java.util.function.Predicate<com.oracle.truffle.api.source.Source>)
 supr java.lang.Object
 hfds ignoreLanguageContextInitialization,includeInternal,sourcePredicate
-
-CLSS abstract interface com.oracle.truffle.api.debug.package-info
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.Tag
 cons protected init()

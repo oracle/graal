@@ -266,6 +266,15 @@ class SafeSignedDivNode extends SignedDivNode {
          */
         super(TYPE, x, y, null);
     }
+
+    @Override
+    public boolean canDeoptimize() {
+        /*
+         * All checks have been done. Returning false is the indicator that no FrameState is
+         * necessary anymore for the node.
+         */
+        return false;
+    }
 }
 
 @NodeInfo
@@ -274,6 +283,11 @@ class SafeSignedRemNode extends SignedRemNode {
 
     protected SafeSignedRemNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y, null);
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return false;
     }
 }
 
@@ -284,6 +298,11 @@ class SafeUnsignedDivNode extends UnsignedDivNode {
     protected SafeUnsignedDivNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y, null);
     }
+
+    @Override
+    public boolean canDeoptimize() {
+        return false;
+    }
 }
 
 @NodeInfo
@@ -292,5 +311,10 @@ class SafeUnsignedRemNode extends UnsignedRemNode {
 
     protected SafeUnsignedRemNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y, null);
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return false;
     }
 }

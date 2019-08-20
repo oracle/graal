@@ -90,4 +90,8 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
     // JDK-8015774
     long codeCacheLowBound = getFieldValue("CompilerToVM::Data::CodeCache_low_bound", Long.class, "address");
     long codeCacheHighBound = getFieldValue("CompilerToVM::Data::CodeCache_high_bound", Long.class, "address");
+
+    // JDK-8229258
+    String markWordClassName = "markOopDesc";
+    String markWordFieldType = "markOop";
 }

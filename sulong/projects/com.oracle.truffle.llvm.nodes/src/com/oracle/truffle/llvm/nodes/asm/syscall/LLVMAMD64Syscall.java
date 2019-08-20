@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,83 +29,119 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-public class LLVMAMD64Syscall {
-    public static final int SYS_read = 0;
-    public static final int SYS_write = 1;
-    public static final int SYS_open = 2;
-    public static final int SYS_close = 3;
-    public static final int SYS_stat = 4;
-    public static final int SYS_fstat = 5;
-    public static final int SYS_lstat = 6;
-    public static final int SYS_poll = 7;
-    public static final int SYS_lseek = 8;
-    public static final int SYS_mmap = 9;
-    public static final int SYS_munmap = 11;
-    public static final int SYS_brk = 12;
-    public static final int SYS_rt_sigaction = 13;
-    public static final int SYS_rt_sigprocmask = 14;
-    public static final int SYS_ioctl = 16;
-    public static final int SYS_readv = 19;
-    public static final int SYS_writev = 20;
-    public static final int SYS_access = 21;
-    public static final int SYS_pipe = 22;
-    public static final int SYS_dup = 32;
-    public static final int SYS_dup2 = 33;
-    public static final int SYS_getpid = 39;
-    public static final int SYS_sendfile = 40;
-    public static final int SYS_socket = 41;
-    public static final int SYS_connect = 42;
-    public static final int SYS_accept = 43;
-    public static final int SYS_sendto = 44;
-    public static final int SYS_recvfrom = 45;
-    public static final int SYS_sendmsg = 46;
-    public static final int SYS_recvmsg = 47;
-    public static final int SYS_shutdown = 48;
-    public static final int SYS_bind = 49;
-    public static final int SYS_listen = 50;
-    public static final int SYS_getsockname = 51;
-    public static final int SYS_getpeername = 52;
-    public static final int SYS_socketpair = 53;
-    public static final int SYS_setsockopt = 54;
-    public static final int SYS_getsockopt = 55;
-    public static final int SYS_clone = 56;
-    public static final int SYS_fork = 57;
-    public static final int SYS_vfork = 58;
-    public static final int SYS_exit = 60;
-    public static final int SYS_uname = 63;
-    public static final int SYS_fcntl = 72;
-    public static final int SYS_ftruncate = 77;
-    public static final int SYS_getcwd = 79;
-    public static final int SYS_rename = 82;
-    public static final int SYS_rmdir = 84;
-    public static final int SYS_unlink = 87;
-    public static final int SYS_chmod = 90;
-    public static final int SYS_fchmod = 91;
-    public static final int SYS_chown = 92;
-    public static final int SYS_fchown = 93;
-    public static final int SYS_lchown = 94;
-    public static final int SYS_getuid = 102;
-    public static final int SYS_syslog = 103;
-    public static final int SYS_getgid = 104;
-    public static final int SYS_setuid = 105;
-    public static final int SYS_setgid = 106;
-    public static final int SYS_geteuid = 107;
-    public static final int SYS_getegid = 108;
-    public static final int SYS_getppid = 110;
-    public static final int SYS_getgroups = 115;
-    public static final int SYS_getpgid = 121;
-    public static final int SYS_capget = 125;
-    public static final int SYS_statfs = 137;
-    public static final int SYS_fstatfs = 138;
-    public static final int SYS_arch_prctl = 158;
-    public static final int SYS_gettid = 186;
-    public static final int SYS_futex = 202;
-    public static final int SYS_getdents64 = 217;
-    public static final int SYS_set_tid_address = 218;
-    public static final int SYS_clock_gettime = 228;
-    public static final int SYS_exit_group = 231;
-    public static final int SYS_renameat = 264;
-    public static final int SYS_faccessat = 269;
-    public static final int SYS_utimensat = 280;
-    public static final int SYS_pipe2 = 293;
+import com.oracle.truffle.api.CompilerDirectives;
+
+public enum LLVMAMD64Syscall {
+    SYS_read(0),
+    SYS_write(1),
+    SYS_open(2),
+    SYS_close(3),
+    SYS_stat(4),
+    SYS_fstat(5),
+    SYS_lstat(6),
+    SYS_poll(7),
+    SYS_lseek(8),
+    SYS_mmap(9),
+    SYS_munmap(11),
+    SYS_brk(12),
+    SYS_rt_sigaction(13),
+    SYS_rt_sigprocmask(14),
+    SYS_ioctl(16),
+    SYS_readv(19),
+    SYS_writev(20),
+    SYS_access(21),
+    SYS_pipe(22),
+    SYS_dup(32),
+    SYS_dup2(33),
+    SYS_getpid(39),
+    SYS_sendfile(40),
+    SYS_socket(41),
+    SYS_connect(42),
+    SYS_accept(43),
+    SYS_sendto(44),
+    SYS_recvfrom(45),
+    SYS_sendmsg(46),
+    SYS_recvmsg(47),
+    SYS_shutdown(48),
+    SYS_bind(49),
+    SYS_listen(50),
+    SYS_getsockname(51),
+    SYS_getpeername(52),
+    SYS_socketpair(53),
+    SYS_setsockopt(54),
+    SYS_getsockopt(55),
+    SYS_clone(56),
+    SYS_fork(57),
+    SYS_vfork(58),
+    SYS_exit(60),
+    SYS_uname(63),
+    SYS_fcntl(72),
+    SYS_ftruncate(77),
+    SYS_getcwd(79),
+    SYS_rename(82),
+    SYS_rmdir(84),
+    SYS_unlink(87),
+    SYS_chmod(90),
+    SYS_fchmod(91),
+    SYS_chown(92),
+    SYS_fchown(93),
+    SYS_lchown(94),
+    SYS_getuid(102),
+    SYS_syslog(103),
+    SYS_getgid(104),
+    SYS_setuid(105),
+    SYS_setgid(106),
+    SYS_geteuid(107),
+    SYS_getegid(108),
+    SYS_getppid(110),
+    SYS_getgroups(115),
+    SYS_getpgid(121),
+    SYS_capget(125),
+    SYS_statfs(137),
+    SYS_fstatfs(138),
+    SYS_arch_prctl(158),
+    SYS_gettid(186),
+    SYS_futex(202),
+    SYS_getdents64(217),
+    SYS_set_tid_address(218),
+    SYS_clock_gettime(228),
+    SYS_exit_group(231),
+    SYS_renameat(264),
+    SYS_faccessat(269),
+    SYS_utimensat(280),
+    SYS_pipe2(293);
+
+    public final int value;
+
+    LLVMAMD64Syscall(int value) {
+        this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + " 0x" + Long.toHexString(value) + " (" + value + ")";
+    }
+
+    private static final LLVMAMD64Syscall[] valueToSysCall = new LLVMAMD64Syscall[294];
+
+    static {
+        for (LLVMAMD64Syscall syscall : values()) {
+            valueToSysCall[syscall.value] = syscall;
+        }
+    }
+
+    public static LLVMAMD64Syscall getSyscall(long value) {
+        if (value >= 0 && value < valueToSysCall.length) {
+            LLVMAMD64Syscall syscall = valueToSysCall[(int) value];
+            if (syscall != null) {
+                return syscall;
+            }
+        }
+        throw error(value);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static IllegalArgumentException error(long value) {
+        return new IllegalArgumentException("Unknown syscall number: " + value);
+    }
 }

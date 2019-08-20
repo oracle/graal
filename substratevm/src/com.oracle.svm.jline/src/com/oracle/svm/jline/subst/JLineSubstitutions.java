@@ -28,7 +28,7 @@ package com.oracle.svm.jline.subst;
 import java.io.IOException;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;

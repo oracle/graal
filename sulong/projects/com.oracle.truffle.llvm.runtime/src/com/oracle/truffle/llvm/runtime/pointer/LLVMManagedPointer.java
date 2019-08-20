@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
@@ -50,7 +49,7 @@ public interface LLVMManagedPointer extends LLVMPointer {
     /**
      * Get the managed object that is the base of this pointer. This is guaranteed to be non-null.
      */
-    TruffleObject getObject();
+    Object getObject();
 
     /**
      * Get the offset into the base object.
@@ -75,14 +74,14 @@ public interface LLVMManagedPointer extends LLVMPointer {
     /**
      * Create a new managed pointer, pointing to the beginning of a managed object.
      */
-    static LLVMManagedPointer create(TruffleObject object) {
+    static LLVMManagedPointer create(Object object) {
         return create(object, 0L);
     }
 
     /**
      * Create a new managed pointer, pointing to a particular offset of a managed object.
      */
-    static LLVMManagedPointer create(TruffleObject object, long offset) {
+    static LLVMManagedPointer create(Object object, long offset) {
         return new LLVMPointerImpl(object, offset, null);
     }
 

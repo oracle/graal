@@ -45,7 +45,6 @@ import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.memory.LLVMUniquesRegionAllocNode;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -56,36 +55,21 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     private final FrameSlot exceptionValueSlot;
     private final LLVMSourceLocation source;
     @Children private final LLVMBasicBlockNode[] bodyNodes;
-    @Child private LLVMUniquesRegionAllocNode uniquesRegionAllocNode;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] beforeBlockNuller;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] afterBlockNuller;
-    @Children private final LLVMStatementNode[] copyArgumentsToFrame;
 
-    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, LLVMUniquesRegionAllocNode uniquesRegionAllocNode, FrameSlot[][] beforeBlockNuller,
-                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation source,
-                    LLVMStatementNode[] copyArgumentsToFrame) {
+    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot[][] beforeBlockNuller,
+                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation source) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
-        this.uniquesRegionAllocNode = uniquesRegionAllocNode;
         this.beforeBlockNuller = beforeBlockNuller;
         this.afterBlockNuller = afterBlockNuller;
         this.source = source;
-        this.copyArgumentsToFrame = copyArgumentsToFrame;
-    }
-
-    @ExplodeLoop
-    private void copyArgumentsToFrame(VirtualFrame frame) {
-        for (LLVMStatementNode n : copyArgumentsToFrame) {
-            n.execute(frame);
-        }
     }
 
     @Override
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public Object executeGeneric(VirtualFrame frame) {
-        copyArgumentsToFrame(frame);
-        uniquesRegionAllocNode.execute(frame);
-
         Object returnValue = null;
 
         CompilerAsserts.compilationConstant(bodyNodes.length);
@@ -137,9 +121,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                 Object condition = switchNode.executeCondition(frame);
                 int[] successors = switchNode.getSuccessors();
                 for (int i = 0; i < successors.length - 1; i++) {
-                    Object caseValue = switchNode.getCase(i).executeGeneric(frame);
-                    assert caseValue.getClass() == condition.getClass() : "must be the same type - otherwise equals might wrongly return false";
-                    if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), condition.equals(caseValue))) {
+                    if (CompilerDirectives.injectBranchProbability(bb.getBranchProbability(i), switchNode.executeIsCase(frame, i, condition))) {
                         if (CompilerDirectives.inInterpreter()) {
                             bb.increaseBranchProbability(i);
                             if (successors[i] <= basicBlockIndex) {
@@ -296,7 +278,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.RootTag.class;
+        return tag == StandardTags.RootBodyTag.class;
     }
 
     @Override

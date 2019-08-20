@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
@@ -69,7 +70,11 @@ public interface LLVMNativePointer extends LLVMPointer {
      * Create a null pointer.
      */
     static LLVMNativePointer createNull() {
-        return new LLVMPointerImpl(null, 0, null);
+        if (CompilerDirectives.inCompiledCode()) {
+            return new LLVMPointerImpl(null, 0, null);
+        } else {
+            return LLVMPointerImpl.NULL;
+        }
     }
 
     /**

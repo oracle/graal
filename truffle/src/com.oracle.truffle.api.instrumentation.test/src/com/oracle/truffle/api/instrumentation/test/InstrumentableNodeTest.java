@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,12 +46,27 @@ import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTe
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ConstantTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
@@ -60,6 +75,16 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.M
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
 
 public class InstrumentableNodeTest extends InstrumentationEventTest {
 
@@ -263,4 +288,190 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
         });
     }
 
+    @Test
+    public void testMaterializationCount() {
+        Engine engine = Engine.create();
+        Instrument instr = engine.getInstruments().get(GetEnvInstrument.ID);
+        GetEnvInstrument getEnvInstrument = instr.lookup(GetEnvInstrument.class);
+        Context ctx = Context.newBuilder().engine(engine).build();
+        Source source = Source.create(MaterializationLanguage.ID, "test");
+        // Run a source that creates nodes which are instrumented later on from the instrumentation
+        // thread:
+        ctx.eval(source);
+        int[] numInstrumentations = new int[]{0};
+        getEnvInstrument.instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, new ExecutionEventNodeFactory() {
+            @Override
+            public ExecutionEventNode create(EventContext ec) {
+                numInstrumentations[0]++;
+                return new ExecutionEventNode() {
+                };
+            }
+        });
+        int expectedNumNodes = ((int) Math.pow(MaterializationLanguage.NUM_CHILDREN, MaterializationLanguage.DEPTH + 1) - 1) / (MaterializationLanguage.NUM_CHILDREN - 1) - 1;
+        long numMaterializations = ctx.eval(Source.create(MaterializationLanguage.ID, "numMaterializations")).asLong();
+        assertEquals(expectedNumNodes, numMaterializations);
+        ctx.eval(source); // To create instrumentation nodes
+        assertEquals(expectedNumNodes, numInstrumentations[0]);
+        numMaterializations = ctx.eval(Source.create(MaterializationLanguage.ID, "numMaterializations")).asLong();
+        long numMultipleMaterializations = ctx.eval(Source.create(MaterializationLanguage.ID, "numMultipleMaterializations")).asLong();
+        assertEquals(0, numMultipleMaterializations); // No multiple materializations
+        assertEquals(expectedNumNodes, numMaterializations); // No new materializations
+    }
+
+    @TruffleInstrument.Registration(id = GetEnvInstrument.ID, services = GetEnvInstrument.class)
+    public static class GetEnvInstrument extends TruffleInstrument {
+
+        static final String ID = "test-materialization-get-env";
+        TruffleInstrument.Env instrumentEnv;
+
+        @Override
+        protected void onCreate(TruffleInstrument.Env env) {
+            env.registerService(this);
+            this.instrumentEnv = env;
+        }
+
+    }
+
+    @TruffleLanguage.Registration(id = MaterializationLanguage.ID, name = "Materialization Test Language", version = "1.0")
+    public static class MaterializationLanguage extends ProxyLanguage {
+
+        static final String ID = "truffle-materialization-test-language";
+        static final int NUM_CHILDREN = 4;
+        static final int DEPTH = 6;
+
+        private int numMaterializations;
+        private int numMultipleMaterializations;
+        private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            com.oracle.truffle.api.source.Source source = request.getSource();
+            String code = source.getCharacters().toString();
+            CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(this) {
+
+                @Node.Children private MaterializableNode[] children = code.startsWith("num") ? new MaterializableNode[]{} : createChildren(MaterializationLanguage.this, source, 1);
+
+                @Override
+                @ExplodeLoop
+                public Object execute(VirtualFrame frame) {
+                    if (code.equals("numMaterializations")) {
+                        return numMaterializations;
+                    }
+                    if (code.equals("numMultipleMaterializations")) {
+                        return numMultipleMaterializations;
+                    }
+                    int sum = 0;
+                    for (MaterializableNode node : children) {
+                        sum += node.execute(frame);
+                    }
+                    return sum;
+                }
+
+                @Override
+                public SourceSection getSourceSection() {
+                    return source.createSection(1);
+                }
+
+            });
+            targets.add(target);
+            return target;
+        }
+
+        private static MaterializableNode[] createChildren(MaterializationLanguage language, com.oracle.truffle.api.source.Source source, int depth) {
+            if (depth > DEPTH) {
+                return new MaterializableNode[]{};
+            }
+            MaterializableNode[] children = new MaterializableNode[NUM_CHILDREN];
+            for (int i = 0; i < NUM_CHILDREN; i++) {
+                children[i] = new MaterializableNode(language, source, depth + 1);
+            }
+            return children;
+        }
+
+        @GenerateWrapper
+        static class MaterializableNode extends Node implements InstrumentableNode {
+
+            private final MaterializationLanguage language;
+            private final SourceSection sourceSection;
+            private final int depth;
+            private boolean materialized;
+            @Node.Children private MaterializableNode[] children;
+
+            MaterializableNode(MaterializationLanguage language, com.oracle.truffle.api.source.Source source, int depth) {
+                this.language = language;
+                this.depth = depth;
+                this.sourceSection = source.createSection(1);
+                children = createChildren(language, source, depth);
+            }
+
+            MaterializableNode(MaterializableNode copy) {
+                this.language = copy.language;
+                this.depth = copy.depth;
+                this.sourceSection = copy.sourceSection;
+                children = createChildren(language, copy.sourceSection.getSource(), depth);
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new MaterializableNodeWrapper(this, this, probe);
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                return tag.equals(StandardTags.StatementTag.class);
+            }
+
+            @Override
+            public SourceSection getSourceSection() {
+                return sourceSection;
+            }
+
+            @ExplodeLoop
+            public int execute(@SuppressWarnings("unused") VirtualFrame frame) {
+                int sum = 0;
+                for (MaterializableNode node : children) {
+                    sum += node.execute(frame);
+                }
+                return sum + 1;
+            }
+
+            @Override
+            public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+                if (materialized) {
+                    language.numMultipleMaterializations++;
+                }
+                materialized = true;
+                language.numMaterializations++;
+                return new MaterializedNode(language, sourceSection.getSource(), depth);
+            }
+        }
+
+        @GenerateWrapper
+        static class MaterializedNode extends MaterializableNode {
+
+            MaterializedNode(MaterializationLanguage language, com.oracle.truffle.api.source.Source source, int depth) {
+                super(language, source, depth);
+            }
+
+            MaterializedNode(MaterializedNode copy) {
+                super(copy);
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new MaterializedNodeWrapper(this, this, probe);
+            }
+
+            @Override
+            public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+                return this;
+            }
+        }
+
+    }
 }

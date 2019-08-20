@@ -48,14 +48,14 @@ import com.oracle.truffle.api.nodes.Node;
  * not supposed to be implemented manually.
  *
  * @see GenerateLibrary
- * @since 1.0
+ * @since 19.0
  */
 public abstract class Library extends Node {
 
     /***
      * Default constructor for sub-classes. Libraries always have a no-arg protected constructor.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected Library() {
     }
@@ -83,7 +83,7 @@ public abstract class Library extends Node {
      * restricted in addition to the default accepts implementation.
      *
      * @see LibraryFactory for ways how to dispatch libraries.
-     * @since 1.0
+     * @since 19.0
      */
     public abstract boolean accepts(Object receiver);
 

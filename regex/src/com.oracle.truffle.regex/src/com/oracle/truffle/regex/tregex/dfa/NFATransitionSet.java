@@ -56,7 +56,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
     private static final byte FLAG_HASH_COMPUTED = 1 << 2;
 
     private final NFA nfa;
-    private final NFAStateSet stateSet;
+    private final NFAStateSet targetStateSet;
     private byte flags = 0;
     private short[] transitions;
     private short size = 0;
@@ -64,7 +64,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
 
     NFATransitionSet(NFA nfa, boolean forward) {
         this.nfa = nfa;
-        stateSet = new NFAStateSet(nfa);
+        targetStateSet = new NFAStateSet(nfa);
         if (forward) {
             flags |= FLAG_FORWARD;
         }
@@ -73,7 +73,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
 
     NFATransitionSet(NFATransitionSet copy, int capacity) {
         this.nfa = copy.nfa;
-        this.stateSet = copy.stateSet.copy();
+        this.targetStateSet = copy.targetStateSet.copy();
         this.flags = copy.flags;
         this.transitions = new short[capacity];
         System.arraycopy(copy.transitions, 0, this.transitions, 0, copy.size);
@@ -160,6 +160,10 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
         return nfa.getTransitions()[transitions[i]];
     }
 
+    public NFAStateSet getTargetStateSet() {
+        return targetStateSet;
+    }
+
     /**
      * Add a {@link NFAStateTransition} to this set. Note that this set will refuse to add the
      * transition if it already contains a transition leading to the same <em>target state</em> as
@@ -173,7 +177,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
     void doAdd(NFAStateTransition transition) {
         NFAState target = transition.getTarget(isForward());
         assert !target.isFinalState(isForward());
-        if (!stateSet.add(target)) {
+        if (!targetStateSet.add(target)) {
             return;
         }
         if (target.hasTransitionToUnAnchoredFinalState(isForward())) {
@@ -224,7 +228,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
     @Override
     public int hashCode() {
         if (!isHashComputed()) {
-            cachedHash = Objects.hashCode(stateSet);
+            cachedHash = Objects.hashCode(targetStateSet);
             setHashComputed();
         }
         return cachedHash;
@@ -244,7 +248,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
             return false;
         }
         assert !(obj instanceof PrioritySensitiveNFATransitionSet) : "Do not mix NFATransitionSet and PrioritySensitiveNFATransitionSet!";
-        return Objects.equals(stateSet, ((NFATransitionSet) obj).stateSet);
+        return Objects.equals(targetStateSet, ((NFATransitionSet) obj).targetStateSet);
     }
 
     /**

@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.test.host.AsCollectionsTest.ListBasedTO;
+import java.io.File;
 
 public class VarArgsTest extends ProxyLanguageEnvTest {
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
@@ -118,11 +119,11 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
         result = (TruffleObject) INTEROP.invokeMember(paths, "get", "dir");
         assertEquals("dir", asJavaObject(Path.class, result).toString());
         result = (TruffleObject) INTEROP.invokeMember(paths, "get", "dir1", "dir2");
-        assertEquals("dir1/dir2", asJavaObject(Path.class, result).toString());
+        assertEquals(String.join(File.separator, "dir1", "dir2"), asJavaObject(Path.class, result).toString());
         result = (TruffleObject) INTEROP.invokeMember(paths, "get", "dir1", "dir2", "dir3");
-        assertEquals("dir1/dir2/dir3", asJavaObject(Path.class, result).toString());
+        assertEquals(String.join(File.separator, "dir1", "dir2", "dir3"), asJavaObject(Path.class, result).toString());
         result = (TruffleObject) INTEROP.invokeMember(paths, "get", "dir1", asTruffleObject(new String[]{"dir2", "dir3"}));
-        assertEquals("dir1/dir2/dir3", asJavaObject(Path.class, result).toString());
+        assertEquals(String.join(File.separator, "dir1", "dir2", "dir3"), asJavaObject(Path.class, result).toString());
     }
 
     @Test

@@ -66,7 +66,7 @@ import org.graalvm.word.UnsignedWord;
  * possible, e.g., during a garbage collection or before the heap is set up. If an implementation of
  * the interface allocates a Java object or array, an error is reported during image generation.
  *
- * @since 1.0
+ * @since 19.0
  */
 public interface LogHandler {
 
@@ -78,7 +78,7 @@ public interface LogHandler {
      * implementation of the interface allocates a Java object or array, an error is reported during
      * image generation.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void log(CCharPointer bytes, UnsignedWord length);
 
@@ -90,7 +90,7 @@ public interface LogHandler {
      * implementation of the interface allocates a Java object or array, an error is reported during
      * image generation.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void flush();
 
@@ -104,7 +104,7 @@ public interface LogHandler {
      * implementation of the interface allocates a Java object or array, an error is reported during
      * image generation.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void fatalError();
 }

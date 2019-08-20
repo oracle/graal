@@ -102,7 +102,7 @@ public final class UnsupportedTypeException extends InteropException {
      * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
      * supported.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static UnsupportedTypeException create(Object[] suppliedValues) {
@@ -114,7 +114,7 @@ public final class UnsupportedTypeException extends InteropException {
      * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
      * supported.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public static UnsupportedTypeException create(Object[] suppliedValues, String hint) {

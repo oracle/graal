@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.CompareConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.GetElementPointerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.SelectConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.StringConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
@@ -362,6 +363,14 @@ public final class LLVMSymbolReadResolver {
         }
 
         @Override
+        public void visit(SelectConstant constant) {
+            final LLVMExpressionNode conditionNode = resolve(constant.getCondition());
+            final LLVMExpressionNode trueValueNode = resolve(constant.getTrueValue());
+            final LLVMExpressionNode falseValueNode = resolve(constant.getFalseValue());
+            resolvedNode = nodeFactory.createSelect(constant.getType(), conditionNode, trueValueNode, falseValueNode);
+        }
+
+        @Override
         public void visit(FunctionDeclaration toResolve) {
             LLVMManagedPointer value = LLVMManagedPointer.create(runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable()));
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
@@ -409,7 +418,7 @@ public final class LLVMSymbolReadResolver {
     public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory) {
         this.runtime = runtime;
         this.context = runtime.getContext();
-        this.nodeFactory = context.getNodeFactory();
+        this.nodeFactory = context.getLanguage().getNodeFactory();
         this.frame = frame;
         this.getStackSpaceFactory = getStackSpaceFactory;
     }

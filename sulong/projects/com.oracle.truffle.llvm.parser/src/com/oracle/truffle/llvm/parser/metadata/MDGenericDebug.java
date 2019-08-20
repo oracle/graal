@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.parser.metadata;
+
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
 public final class MDGenericDebug extends MDAggregateNode {
 
@@ -68,21 +70,22 @@ public final class MDGenericDebug extends MDAggregateNode {
         visitor.visit(this);
     }
 
-    private static final int ARGINDEX_TAG = 1;
-    private static final int ARGINDEX_VERSION = 2;
-    private static final int ARGINDEX_HEADER = 3;
-    private static final int ARGINDEX_DATASTART = 4;
+    // private static final int ARGINDEX_TAG = 1;
+    // private static final int ARGINDEX_VERSION = 2;
+    // private static final int ARGINDEX_HEADER = 3;
+    // private static final int ARGINDEX_DATASTART = 4;
 
-    public static MDGenericDebug create38(long[] args, MetadataValueList md) {
-        final long tag = args[ARGINDEX_TAG];
-        final long version = args[ARGINDEX_VERSION];
-
-        final int size = args.length - ARGINDEX_DATASTART;
+    public static MDGenericDebug create38(RecordBuffer buffer, MetadataValueList md) {
+        buffer.skip();
+        final long tag = buffer.read();
+        final long version = buffer.read();
+        long header = buffer.read();
+        final int size = buffer.remaining();
         final MDGenericDebug debug = new MDGenericDebug(tag, version, size);
 
-        debug.header = md.getNullable(args[ARGINDEX_HEADER], debug);
-        for (int i = 0, j = ARGINDEX_DATASTART; i < args.length; i++, j++) {
-            debug.set(i, md.getNullable(args[j], debug));
+        debug.header = md.getNullable(header, debug);
+        for (int i = 0; i < size; i++) {
+            debug.set(i, md.getNullable(buffer.read(), debug));
         }
 
         return debug;

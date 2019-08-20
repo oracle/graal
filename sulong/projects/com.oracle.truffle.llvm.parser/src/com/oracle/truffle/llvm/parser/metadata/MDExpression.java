@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.ListIterator;
 
 public final class MDExpression implements MDBaseNode {
 
@@ -77,6 +75,26 @@ public final class MDExpression implements MDBaseNode {
     private static final int V0_FRAGMENT_OFFSET = 3;
     private static final long DEFAULT_OPERAND = 0;
 
+    private static final class LongList {
+        private long[] array;
+        private int size;
+
+        LongList(int initialCapacity) {
+            this.array = new long[initialCapacity];
+        }
+
+        void add(long value) {
+            if (size >= array.length) {
+                array = Arrays.copyOf(array, Math.max(8, array.length * 2));
+            }
+            array[size++] = value;
+        }
+
+        long[] toArray() {
+            return array.length == size ? array : Arrays.copyOf(array, size);
+        }
+    }
+
     private static long[] upgrade(int version, long[] originalOps) {
         final int numOps = originalOps.length;
         if (numOps == 0 || version >= CURRENT_VERSION) {
@@ -96,7 +114,7 @@ public final class MDExpression implements MDBaseNode {
         }
 
         if (version >= 2) {
-            final LinkedList<Long> buffer = new LinkedList<>();
+            final LongList buffer = new LongList(numOps);
 
             int i = 0;
             while (i < numOps) {
@@ -105,40 +123,33 @@ public final class MDExpression implements MDBaseNode {
                 switch ((int) op) {
 
                     case (int) DwarfOpcode.PLUS:
-                        buffer.addLast(DwarfOpcode.PLUS_UCONST);
-                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        buffer.add(DwarfOpcode.PLUS_UCONST);
+                        buffer.add(i < numOps ? ops[i++] : DEFAULT_OPERAND);
                         break;
 
                     case (int) DwarfOpcode.MINUS:
-                        buffer.addLast(DwarfOpcode.CONSTU);
-                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
-                        buffer.addLast(DwarfOpcode.MINUS);
+                        buffer.add(DwarfOpcode.CONSTU);
+                        buffer.add(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        buffer.add(DwarfOpcode.MINUS);
                         break;
 
                     case (int) DwarfOpcode.CONSTU:
-                        buffer.addLast(op);
-                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        buffer.add(op);
+                        buffer.add(i < numOps ? ops[i++] : DEFAULT_OPERAND);
                         break;
 
                     case (int) DwarfOpcode.LLVM_FRAGMENT:
-                        buffer.addLast(op);
-                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
-                        buffer.addLast(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        buffer.add(op);
+                        buffer.add(i < numOps ? ops[i++] : DEFAULT_OPERAND);
+                        buffer.add(i < numOps ? ops[i++] : DEFAULT_OPERAND);
                         break;
 
                     default:
-                        buffer.addLast(op);
+                        buffer.add(op);
                         break;
                 }
             }
-
-            if (ops.length != buffer.size()) {
-                ops = new long[buffer.size()];
-            }
-            final ListIterator<Long> it = buffer.listIterator();
-            for (int j = 0; j < ops.length && it.hasNext(); j++) {
-                ops[j] = it.next();
-            }
+            return buffer.toArray();
         }
 
         return ops;

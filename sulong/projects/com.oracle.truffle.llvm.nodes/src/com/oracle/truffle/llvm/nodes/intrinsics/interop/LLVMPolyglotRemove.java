@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -60,7 +59,7 @@ public final class LLVMPolyglotRemove {
                         @CachedLibrary(limit = "3") InteropLibrary interop,
                         @Cached BranchProfile notFound,
                         @Cached BranchProfile exception) {
-            TruffleObject foreign = asForeign.execute(value);
+            Object foreign = asForeign.execute(value);
             try {
                 interop.removeMember(foreign, readStr.executeWithTarget(id));
                 return true;
@@ -91,7 +90,7 @@ public final class LLVMPolyglotRemove {
                         @CachedLibrary(limit = "3") InteropLibrary interop,
                         @Cached BranchProfile notFound,
                         @Cached BranchProfile exception) {
-            TruffleObject foreign = asForeign.execute(value);
+            Object foreign = asForeign.execute(value);
             try {
                 interop.removeArrayElement(foreign, idx);
                 return true;

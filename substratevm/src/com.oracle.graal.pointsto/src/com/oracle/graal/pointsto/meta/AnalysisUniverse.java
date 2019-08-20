@@ -31,6 +31,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,9 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -52,6 +51,7 @@ import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
@@ -573,7 +573,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     public Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method) {
-        Set<AnalysisMethod> implementations = new HashSet<>();
+        Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
             if (method.isImplementationInvoked()) {
                 implementations.add(method);
@@ -614,6 +614,23 @@ public class AnalysisUniverse implements Universe {
         return holderOrSubtypeInstantiated;
     }
 
+    public Set<AnalysisType> getSubtypes(AnalysisType baseType) {
+        LinkedHashSet<AnalysisType> result = new LinkedHashSet<>();
+        result.add(baseType);
+        collectSubtypes(baseType, result);
+        return result;
+    }
+
+    private void collectSubtypes(AnalysisType baseType, Set<AnalysisType> result) {
+        for (AnalysisType subType : baseType.subTypes) {
+            if (result.contains(subType)) {
+                continue;
+            }
+            result.add(subType);
+            collectSubtypes(subType, result);
+        }
+    }
+
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
         return snippetReflection;
@@ -626,16 +643,6 @@ public class AnalysisUniverse implements Universe {
     @Override
     public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
         return substitutions.resolve(method);
-    }
-
-    @Override
-    public OptionValues adjustCompilerOptions(OptionValues optionValues, ResolvedJavaMethod method) {
-        /*
-         * For the AnalysisUniverse we want to always disable the liveness analysis, since we want
-         * the points-to analysis to be as conservative as possible. We don't want the optimization
-         * level to affect the execution of the points-to analysis.
-         */
-        return new OptionValues(optionValues, GraalOptions.OptClearNonLiveLocals, false);
     }
 
     @Override
@@ -652,6 +659,13 @@ public class AnalysisUniverse implements Universe {
     }
 
     public boolean platformSupported(AnnotatedElement element) {
+        if (element instanceof ResolvedJavaType) {
+            Package p = OriginalClassProvider.getJavaClass(getOriginalSnippetReflection(), (ResolvedJavaType) element).getPackage();
+            if (p != null && !platformSupported(p)) {
+                return false;
+            }
+        }
+
         Platforms platformsAnnotation = GuardedAnnotationAccess.getAnnotation(element, Platforms.class);
         if (platform == null || platformsAnnotation == null) {
             return true;

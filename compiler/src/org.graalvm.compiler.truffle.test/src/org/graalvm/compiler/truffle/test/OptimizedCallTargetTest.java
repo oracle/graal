@@ -510,4 +510,37 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(0, innerMethod[0]);
         Assert.assertEquals(0, innerBoundary[0]);
     }
+
+    @Test
+    public void testManyArguments() {
+        try (TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(
+                        SharedTruffleRuntimeOptions.TruffleCompileImmediately, true,
+                        SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown, true)) {
+            CallTarget fortyTwo = runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)));
+            OptimizedCallTarget ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)));
+            for (int i = 0; i < 3; i++) {
+                ct.call(IntStream.range(0, 100000).mapToObj(Integer::valueOf).toArray());
+            }
+            assertCompiled(ct);
+        }
+    }
+
+    @Test
+    public void testNoArgumentTypeSpeculation() {
+        try (TruffleRuntimeOptionsOverrideScope scope = TruffleRuntimeOptions.overrideOptions(
+                        SharedTruffleRuntimeOptions.TruffleCompileImmediately, true,
+                        SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown, true,
+                        SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation, false)) {
+            CallTarget fortyTwo = runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)));
+            OptimizedCallTarget ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)));
+            for (int i = 0; i < 3; i++) {
+                ct.call(IntStream.range(0, 20).mapToObj(Integer::valueOf).toArray());
+            }
+            assertCompiled(ct);
+
+            // argument type change does not invalidate
+            ct.call(IntStream.range(0, 20).mapToObj(String::valueOf).toArray());
+            assertCompiled(ct);
+        }
+    }
 }

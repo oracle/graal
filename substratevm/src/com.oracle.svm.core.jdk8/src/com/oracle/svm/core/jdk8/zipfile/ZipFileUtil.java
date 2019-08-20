@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.core.jdk8.zipfile;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-
+import com.oracle.svm.core.SubstrateUtil;
 // Checkstyle: stop
 import sun.misc.JavaUtilZipFileAccess;
 import sun.misc.PerfCounter;
@@ -40,7 +39,7 @@ final class ZipFileUtil {
                         new JavaUtilZipFileAccess() {
                             @Override
                             public boolean startsWithLocHeader(java.util.zip.ZipFile zip) {
-                                return KnownIntrinsics.unsafeCast(zip, ZipFile.class).zsrc.startsWithLoc;
+                                return SubstrateUtil.cast(zip, ZipFile.class).zsrc.startsWithLoc;
                             }
                             // public String[] getMetaInfEntryNames(ZipFile zip) {
                             // return zip.getMetaInfEntryNames();

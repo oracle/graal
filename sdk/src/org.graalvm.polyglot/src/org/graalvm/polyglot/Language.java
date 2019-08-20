@@ -52,7 +52,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
  * name}, {@link #getVersion() version} and {@link #getOptions() options}.
  *
  * @see Engine#getLanguages()
- * @since 1.0
+ * @since 19.0
  */
 public final class Language {
 
@@ -67,7 +67,7 @@ public final class Language {
      * primary way of identifying languages in the polyglot API. (eg. <code>js</code>)
      *
      * @return a language ID string.
-     * @since 1.0
+     * @since 19.0
      */
     public String getId() {
         return impl.getId();
@@ -77,7 +77,7 @@ public final class Language {
      * Gets a human-readable name for the language (for example, "JavaScript").
      *
      * @return the user-friendly name for this language.
-     * @since 1.0
+     * @since 19.0
      */
     public String getName() {
         return impl.getName();
@@ -87,7 +87,7 @@ public final class Language {
      * Gets a human-readable name of the language implementation (for example, "Graal.JS"). Returns
      * <code>null</code> if no implementation name was specified.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getImplementationName() {
         return impl.getImplementationName();
@@ -96,7 +96,7 @@ public final class Language {
     /**
      * Gets the version information of the language in an arbitrary language-specific format.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public String getVersion() {
         return impl.getVersion();
@@ -107,7 +107,7 @@ public final class Language {
      * {@link Source sources}. {@link #isInteractive() Interactive} languages should be displayed in
      * interactive environments and presented to the user.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isInteractive() {
         return impl.isInteractive();
@@ -119,7 +119,7 @@ public final class Language {
      * {@link Context.Builder#option(String, String) context}. The option descriptor
      * {@link OptionDescriptor#getName() name} must be used as the option name.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public OptionDescriptors getOptions() {
         return impl.getOptions();
@@ -132,7 +132,7 @@ public final class Language {
      *
      * @see Source#hasBytes()
      * @see Source#getMimeType()
-     * @since 1.0
+     * @since 19.0
      */
     public String getDefaultMimeType() {
         return impl.getDefaultMimeType();
@@ -142,7 +142,7 @@ public final class Language {
      * Returns the MIME types supported by this language.
      *
      * @see Source#getMimeType()
-     * @since 1.0
+     * @since 19.0
      */
     public Set<String> getMimeTypes() {
         return impl.getMimeTypes();

@@ -166,10 +166,11 @@ public abstract class CompilationWrapper<T> {
     /**
      * Creates the {@link DebugContext} to use when retrying a compilation.
      *
+     * @param initialDebug the debug context used in the failing compilation
      * @param options the options for configuring the debug context
      * @param logStream the log stream to use in the debug context
      */
-    protected abstract DebugContext createRetryDebugContext(OptionValues options, PrintStream logStream);
+    protected abstract DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues options, PrintStream logStream);
 
     @SuppressWarnings("try")
     public final T run(DebugContext initialDebug) {
@@ -277,7 +278,7 @@ public abstract class CompilationWrapper<T> {
 
                 ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
                 PrintStream ps = new PrintStream(logBaos);
-                try (DebugContext retryDebug = createRetryDebugContext(retryOptions, ps)) {
+                try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
                     T res = performCompilation(retryDebug);
                     ps.println("There was no exception during retry.");
                     maybeExitVM(action);
@@ -301,10 +302,16 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
+    /**
+     * Calls {@link System#exit(int)} in the runtime embedding the Graal compiler. This will be a
+     * different runtime than Graal's runtime in the case of libgraal.
+     */
+    protected abstract void exitHostVM(int status);
+
     private void maybeExitVM(ExceptionAction action) {
         if (action == ExitVM) {
             TTY.println("Exiting VM after retry compilation of " + this);
-            System.exit(-1);
+            exitHostVM(-1);
         }
     }
 

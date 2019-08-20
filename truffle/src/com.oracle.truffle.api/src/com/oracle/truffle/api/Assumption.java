@@ -108,7 +108,7 @@ public interface Assumption {
     /**
      * Checks whether an assumption is not <code>null</code> and valid.
      *
-     * @since 1.0
+     * @since 19.0
      */
     static boolean isValidAssumption(Assumption assumption) {
         return assumption != null && assumption.isValid();
@@ -120,7 +120,7 @@ public interface Assumption {
      * designed for compilation. Note that the provided assumptions array must be a compilation
      * final array with {@link CompilationFinal#dimensions() dimensions} set to one.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @ExplodeLoop
     static boolean isValidAssumption(Assumption[] assumptions) {

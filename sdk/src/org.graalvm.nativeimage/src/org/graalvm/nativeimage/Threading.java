@@ -47,7 +47,7 @@ import org.graalvm.nativeimage.impl.ThreadingSupport;
 /**
  * Functionality related to execution in threads.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class Threading {
 
@@ -66,7 +66,7 @@ public final class Threading {
      * Specifying {@code null} for {@code callback} clears the current thread's callback (in which
      * case, the values of {@code interval} and {@code unit} are ignored).
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
         ImageSingletons.lookup(ThreadingSupport.class).registerRecurringCallback(interval, unit, callback);
@@ -75,14 +75,14 @@ public final class Threading {
     /**
      * Interface that a callback handler needs to implement.
      *
-     * @since 1.0
+     * @since 19.0
      */
     @FunctionalInterface
     public interface RecurringCallback {
         /**
          * Method that is called recurringly when the callback handler is installed.
          *
-         * @since 1.0
+         * @since 19.0
          */
         void run(RecurringCallbackAccess access);
     }
@@ -90,14 +90,14 @@ public final class Threading {
     /**
      * Provides methods that are available during the execution of a {@link RecurringCallback}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public interface RecurringCallbackAccess {
         /**
          * Throws an exception from the recurring callback to the code that is regularly executing
          * in the thread.
          *
-         * @since 1.0
+         * @since 19.0
          */
         void throwException(Throwable t);
     }

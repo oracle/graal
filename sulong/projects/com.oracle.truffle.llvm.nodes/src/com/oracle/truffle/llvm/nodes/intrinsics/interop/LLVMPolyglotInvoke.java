@@ -40,7 +40,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -58,6 +57,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
@@ -69,12 +69,12 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
     @Child private ForeignToLLVM toLLVM;
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
-    public LLVMPolyglotInvoke(ForeignToLLVM toLLVM, LLVMExpressionNode[] args) {
+    public LLVMPolyglotInvoke(ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
         this.toLLVM = toLLVM;
         this.args = args;
         this.prepareValuesForEscape = new LLVMDataEscapeNode[args.length];
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
-            prepareValuesForEscape[i] = LLVMDataEscapeNode.create();
+            prepareValuesForEscape[i] = LLVMDataEscapeNode.create(argTypes[i]);
         }
         this.foreignInvoke = InteropLibrary.getFactory().createDispatched(5);
     }
@@ -90,7 +90,7 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
     }
 
     @ExplodeLoop
-    private Object doInvoke(VirtualFrame frame, TruffleObject value, String id, ContextReference<LLVMContext> ctxRef,
+    private Object doInvoke(VirtualFrame frame, Object value, String id, ContextReference<LLVMContext> ctxRef,
                     LLVMGetStackNode getStack) {
         Object[] evaluatedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
@@ -114,7 +114,7 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
-        TruffleObject foreign = asForeign.execute(value);
+        Object foreign = asForeign.execute(value);
         return doInvoke(frame, foreign, readStr.executeWithTarget(id), context, getStack);
     }
 

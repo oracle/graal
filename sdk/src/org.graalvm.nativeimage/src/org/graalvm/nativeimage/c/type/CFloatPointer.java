@@ -47,7 +47,7 @@ import org.graalvm.word.SignedWord;
 /**
  * A pointer to a C primitive 'float' value.
  *
- * @since 1.0
+ * @since 19.0
  */
 @CPointerTo(nameOfCType = "float")
 public interface CFloatPointer extends PointerBase {
@@ -55,7 +55,7 @@ public interface CFloatPointer extends PointerBase {
     /**
      * Reads the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     float read();
 
@@ -63,7 +63,7 @@ public interface CFloatPointer extends PointerBase {
      * Reads the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     float read(int index);
 
@@ -71,14 +71,14 @@ public interface CFloatPointer extends PointerBase {
      * Reads the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     float read(SignedWord index);
 
     /**
      * Writes the value at the pointer address.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(float value);
 
@@ -86,7 +86,7 @@ public interface CFloatPointer extends PointerBase {
      * Writes the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(int index, float value);
 
@@ -94,7 +94,7 @@ public interface CFloatPointer extends PointerBase {
      * Writes the value of the array element with the specified index, treating the pointer as an
      * array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     void write(SignedWord index, float value);
 
@@ -102,7 +102,7 @@ public interface CFloatPointer extends PointerBase {
      * Computes the address of the array element with the specified index, treating the pointer as
      * an array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     CFloatPointer addressOf(int index);
 
@@ -110,7 +110,7 @@ public interface CFloatPointer extends PointerBase {
      * Computes the address of the array element with the specified index, treating the pointer as
      * an array of the C type.
      *
-     * @since 1.0
+     * @since 19.0
      */
     CFloatPointer addressOf(SignedWord index);
 }

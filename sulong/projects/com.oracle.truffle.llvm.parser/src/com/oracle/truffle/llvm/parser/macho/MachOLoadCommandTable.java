@@ -29,8 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.macho;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.ArrayList;
 
 public final class MachOLoadCommandTable {
 
@@ -57,7 +56,7 @@ public final class MachOLoadCommandTable {
 
     public static MachOLoadCommandTable create(MachOHeader header, MachOReader reader) {
         MachOLoadCommand[] loadCommands = new MachOLoadCommand[header.getNCmds()];
-        List<MachOSegmentCommand> segmentCommands = new LinkedList<>();
+        ArrayList<MachOSegmentCommand> segmentCommands = new ArrayList<>();
 
         for (int i = 0; i < header.getNCmds(); i++) {
             loadCommands[i] = parseLoadCommand(reader);
@@ -73,7 +72,6 @@ public final class MachOLoadCommandTable {
         MachOLoadCommand cmd = null;
 
         int cmdID = buffer.getInt(buffer.getPosition());
-        int cmdSize = buffer.getInt(buffer.getPosition() + MachOLoadCommand.CMD_ID_SIZE);
 
         switch (cmdID) {
             case MachOLoadCommand.LC_SEGMENT:
@@ -83,7 +81,11 @@ public final class MachOLoadCommandTable {
             case MachOLoadCommand.LC_LOAD_DYLIB:
                 cmd = MachODylibCommand.create(buffer);
                 break;
+            case MachOLoadCommand.LC_RPATH:
+                cmd = MachORPathCommand.create(buffer);
+                break;
             default:
+                int cmdSize = buffer.getInt(buffer.getPosition() + MachOLoadCommand.CMD_ID_SIZE);
                 cmd = new MachOLoadCommand(cmdID, cmdSize);
                 buffer.setPosition(buffer.getPosition() + cmdSize);
         }

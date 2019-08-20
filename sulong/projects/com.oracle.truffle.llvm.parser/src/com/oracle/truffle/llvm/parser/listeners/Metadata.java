@@ -35,6 +35,7 @@ import java.util.Set;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
+import com.oracle.truffle.llvm.parser.metadata.MDCommonBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
@@ -69,6 +70,7 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.ParseUtil;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -113,6 +115,8 @@ public final class Metadata implements ParserListener {
     private static final int METADATA_GLOBAL_VAR_EXPR = 37;
     private static final int METADATA_INDEX_OFFSET = 38;
     private static final int METADATA_INDEX = 39;
+    // private static final int METADATA_LABEL = 40;
+    private static final int METADATA_COMMON_BLOCK = 44;
 
     public Type getTypeById(long id) {
         return types.get(id);
@@ -141,58 +145,61 @@ public final class Metadata implements ParserListener {
 
     // https://github.com/llvm-mirror/llvm/blob/release_38/include/llvm/Bitcode/LLVMBitCodes.h#L191
     @Override
-    public void record(long id, long[] args) {
-        final int opCode = (int) id;
+    public void record(RecordBuffer buffer) {
+        long[] args = buffer.dumpArray();
+        final int opCode = buffer.getId();
         switch (opCode) {
             case METADATA_STRING:
-                metadata.add(MDString.create(args));
+                metadata.add(MDString.create(buffer));
                 break;
 
             case METADATA_VALUE:
-                metadata.add(MDValue.create(args, scope));
+                buffer.skip();
+                metadata.add(MDValue.create(buffer.read(), scope));
                 break;
 
             case METADATA_DISTINCT_NODE:
                 // we would only care if a node is distinct or not if we wanted to modify the ast
             case METADATA_NODE:
-                metadata.add(MDNode.create38(args, metadata));
+                metadata.add(MDNode.create38(buffer, metadata));
                 break;
 
             case METADATA_NAME:
                 // read the name, this must be followed by a NAMED_NODE which will remove it again
-                lastParsedName = ParseUtil.longArrayToString(0, args);
+                lastParsedName = buffer.readUnicodeString();
                 break;
 
             case METADATA_KIND:
-                metadata.addKind(MDKind.create(args));
+                metadata.addKind(MDKind.create(buffer.read(), buffer.readUnicodeString()));
                 break;
 
             case METADATA_LOCATION:
-                metadata.add(MDLocation.create38(args, metadata));
+                metadata.add(MDLocation.create38(buffer, metadata));
                 break;
 
             case METADATA_OLD_NODE:
-                createOldNode(args);
+                createOldNode(buffer);
                 break;
 
             case METADATA_OLD_FN_NODE:
-                metadata.add(MDValue.create(args, scope));
+                buffer.skip();
+                metadata.add(MDValue.create(buffer.read(), scope));
                 break;
 
             case METADATA_NAMED_NODE:
-                createNamedNode(args);
+                createNamedNode(buffer);
                 break;
 
             case METADATA_ATTACHMENT:
-                createAttachment(args, false);
+                createAttachment(buffer, false);
                 break;
 
             case METADATA_GENERIC_DEBUG:
-                metadata.add(MDGenericDebug.create38(args, metadata));
+                metadata.add(MDGenericDebug.create38(buffer, metadata));
                 break;
 
             case METADATA_SUBRANGE:
-                metadata.add(MDSubrange.createNewFormat(args, metadata));
+                metadata.add(MDSubrange.createNewFormat(buffer, metadata));
                 break;
 
             case METADATA_ENUMERATOR:
@@ -305,9 +312,13 @@ public final class Metadata implements ParserListener {
                 break;
 
             case METADATA_GLOBAL_DECL_ATTACHMENT: {
-                createAttachment(args, true);
+                createAttachment(buffer, true);
                 break;
             }
+
+            case METADATA_COMMON_BLOCK:
+                metadata.add(MDCommonBlock.create(args, metadata));
+                break;
 
             case METADATA_INDEX_OFFSET:
             case METADATA_INDEX:
@@ -320,14 +331,15 @@ public final class Metadata implements ParserListener {
         }
     }
 
-    private void createNamedNode(long[] args) {
+    private void createNamedNode(RecordBuffer buffer) {
         if (lastParsedName != null) {
-            metadata.addNamedNode(MDNamedNode.create(lastParsedName, args, metadata));
+            metadata.addNamedNode(MDNamedNode.create(lastParsedName, buffer.dumpArray(), metadata));
             lastParsedName = null;
         }
     }
 
-    private void createAttachment(long[] args, boolean isGlobal) {
+    private void createAttachment(RecordBuffer buffer, boolean isGlobal) {
+        long[] args = buffer.dumpArray();
         if (args.length > 0) {
             final int offset = args.length % 2;
             final int targetIndex = (int) args[0];
@@ -348,7 +360,8 @@ public final class Metadata implements ParserListener {
 
     private static final int ARGINDEX_IDENT = 0;
 
-    private void createOldNode(long[] args) {
+    private void createOldNode(RecordBuffer buffer) {
+        long[] args = buffer.dumpArray();
         if (ParseUtil.isInteger(args, ARGINDEX_IDENT, this) && DwTagRecord.isDwarfDescriptor(ParseUtil.asLong(args, ARGINDEX_IDENT, this))) {
             // this is a debug information descriptor as described in
             // http://releases.llvm.org/3.2/docs/SourceLevelDebugging.html#debug_info_descriptors

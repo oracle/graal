@@ -27,7 +27,7 @@ package com.oracle.truffle.tools.profiler;
 /**
  * Represents a summary of total and alive instances and object sizes.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class HeapSummary {
 
@@ -53,7 +53,7 @@ public final class HeapSummary {
     /**
      * Returns the total number of allocated instances.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public long getTotalInstances() {
         return totalInstances;
@@ -62,7 +62,7 @@ public final class HeapSummary {
     /**
      * Returns the number of objects that are alive (i.e. not garbage collected).
      *
-     * @since 1.0
+     * @since 19.0
      */
     public long getAliveInstances() {
         return aliveInstances;
@@ -71,7 +71,7 @@ public final class HeapSummary {
     /**
      * Returns the total number of bytes allocated.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public long getTotalBytes() {
         return totalBytes;
@@ -80,7 +80,7 @@ public final class HeapSummary {
     /**
      * Returns the number of bytes used by alive object instances.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public long getAliveBytes() {
         return aliveBytes;
@@ -89,7 +89,7 @@ public final class HeapSummary {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     public String toString() {

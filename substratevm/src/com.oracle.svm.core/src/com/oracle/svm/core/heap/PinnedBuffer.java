@@ -37,9 +37,9 @@ import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -117,7 +117,7 @@ public final class PinnedBuffer implements AutoCloseable {
         } else if (buffer == null) {
             return WordFactory.nullPointer();
         } else {
-            long address = KnownIntrinsics.unsafeCast(buffer, Target_java_nio_Buffer.class).address;
+            long address = SubstrateUtil.cast(buffer, Target_java_nio_Buffer.class).address;
             return WordFactory.pointer(address + (position << shift));
         }
     }

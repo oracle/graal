@@ -27,6 +27,7 @@ package org.graalvm.component.installer;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.ReadableByteChannel;
+import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  * Simple abstraction over an archive, so that both JAR and RPMs (or other packaging) can be read.
@@ -63,6 +64,15 @@ public interface Archive extends Iterable<Archive.FileEntry>, AutoCloseable {
      * @throws IOException
      */
     boolean verifyIntegrity(CommandInput input) throws IOException;
+
+    /**
+     * Completes metadata in `info' with information within the archive's contents. This method may
+     * need to iterate through files in the archive.
+     * 
+     * @param info
+     * @throws IOException
+     */
+    void completeMetadata(ComponentInfo info) throws IOException;
 
     @Override
     void close() throws IOException;

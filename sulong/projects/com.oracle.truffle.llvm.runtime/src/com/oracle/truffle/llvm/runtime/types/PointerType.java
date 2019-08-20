@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -76,12 +76,6 @@ public final class PointerType extends AggregateType {
     @Override
     public int getSize(DataLayout targetDataLayout) {
         return LLVMNode.ADDRESS_SIZE_IN_BYTES;
-    }
-
-    @Override
-    public Type shallowCopy() {
-        final PointerType copy = new PointerType(getPointeeType());
-        return copy;
     }
 
     @Override

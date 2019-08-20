@@ -1,0 +1,12 @@
+There are several versions:
+1.0.0.0 with no update
+1.0.1.0 with a patch 1.0.1.1
+1.1.0.0 with no update
+
+Python will be available in all releases.
+Ruby is available in 1.0.0.0 and 1.0.1.0; patch exists for Ruby
+R is available in 1.0.1.0 and 1.1.0.0; patch exists for R
+No patch exists for Python
+
+Cores are available for 1.0.1.0 and 1.1.0.0
+

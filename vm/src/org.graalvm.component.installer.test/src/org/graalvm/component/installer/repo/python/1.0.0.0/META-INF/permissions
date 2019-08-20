@@ -1,0 +1,4 @@
+jre/languages/python/release = rw-rw-r--
+LICENSE_GRAALPYTHON = rwxrwxrwx
+jre/languages/python/README_GRAALPYTHON.md = rw-r--r--
+jre/languages/python/doc/INTEROP.md = rw-r--r--

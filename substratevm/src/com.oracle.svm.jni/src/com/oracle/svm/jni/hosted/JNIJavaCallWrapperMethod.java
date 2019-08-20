@@ -31,7 +31,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.OS;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -62,17 +61,19 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
-import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode.EnterAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -187,7 +188,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
 
         JavaKind vmThreadKind = metaAccess.lookupJavaType(JNIEnvironment.class).getJavaKind();
         ValueNode vmThread = kit.loadLocal(0, vmThreadKind);
-        kit.append(new CEntryPointEnterNode(EnterAction.Enter, vmThread));
+        kit.append(CEntryPointEnterNode.enter(vmThread));
 
         ResolvedJavaMethod invokeMethod = providers.getMetaAccess().lookupJavaMethod(reflectMethod);
         Signature invokeSignature = invokeMethod.getSignature();
@@ -323,7 +324,50 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         }
         javaIndex += metaAccess.lookupJavaType(JNIMethodId.class).getJavaKind().getSlotCount();
         int count = invokeSignature.getParameterCount(false);
-        if (callVariant == CallVariant.VARARGS) {
+        // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
+        // iOS CallVariant.VARARGS stores values as an array on the stack
+        if ((OS.getCurrent() == OS.DARWIN && Platform.includedIn(Platform.AArch64.class) && callVariant == CallVariant.VARARGS) ||
+                        (OS.getCurrent() == OS.WINDOWS && callVariant == CallVariant.VA_LIST) || callVariant == CallVariant.ARRAY) {
+            ResolvedJavaType elementType = metaAccess.lookupJavaType(JNIValue.class);
+            int elementSize = SizeOf.get(JNIValue.class);
+            ValueNode array;
+            if (callVariant == CallVariant.VARARGS) {
+                array = kit.append(new ReadCallerStackPointerNode());
+            } else {
+                array = kit.loadLocal(javaIndex, elementType.getJavaKind());
+            }
+            for (int i = 0; i < count; i++) {
+                ResolvedJavaType type = (ResolvedJavaType) invokeSignature.getParameterType(i, null);
+                JavaKind readKind = type.getJavaKind();
+                if (callVariant == CallVariant.VARARGS && readKind == JavaKind.Float) {
+                    readKind = JavaKind.Double;
+                }
+                StructFieldInfo fieldInfo = getJNIValueOffsetOf(elementType, readKind);
+                int offset = i * elementSize + fieldInfo.getOffsetInfo().getProperty();
+                ConstantNode offsetConstant = kit.createConstant(JavaConstant.forInt(offset), providers.getWordTypes().getWordKind());
+                OffsetAddressNode address = kit.unique(new OffsetAddressNode(array, offsetConstant));
+                LocationIdentity locationIdentity = fieldInfo.getLocationIdentity();
+                if (locationIdentity == null) {
+                    locationIdentity = LocationIdentity.any();
+                }
+                Stamp readStamp = getNarrowStamp(providers, readKind);
+                ValueNode value = kit.append(new CInterfaceReadNode(address, locationIdentity, readStamp, BarrierType.NONE, "args[" + i + "]"));
+                JavaKind stackKind = readKind.getStackKind();
+                if (callVariant == CallVariant.VARARGS && type.getJavaKind() == JavaKind.Float) {
+                    value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
+                } else if (readKind != stackKind) {
+                    assert stackKind.getBitCount() > readKind.getBitCount() : "read kind must be narrower than stack kind";
+                    if (readKind.isUnsigned()) { // needed or another op may illegally sign-extend
+                        value = kit.unique(new ZeroExtendNode(value, stackKind.getBitCount()));
+                    } else {
+                        value = kit.unique(new SignExtendNode(value, stackKind.getBitCount()));
+                    }
+                } else if (readKind.isObject()) {
+                    value = kit.unboxHandle(value);
+                }
+                args.add(Pair.create(value, type));
+            }
+        } else if (callVariant == CallVariant.VARARGS) {
             for (int i = 0; i < count; i++) {
                 ResolvedJavaType type = (ResolvedJavaType) invokeSignature.getParameterType(i, null);
                 JavaKind kind = type.getJavaKind();
@@ -339,37 +383,6 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 }
                 args.add(Pair.create(value, type));
                 javaIndex += loadKind.getSlotCount();
-            }
-            // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
-        } else if ((OS.getCurrent() == OS.WINDOWS && callVariant == CallVariant.VA_LIST) || callVariant == CallVariant.ARRAY) {
-            ResolvedJavaType elementType = metaAccess.lookupJavaType(JNIValue.class);
-            int elementSize = SizeOf.get(JNIValue.class);
-            ValueNode array = kit.loadLocal(javaIndex, elementType.getJavaKind());
-            for (int i = 0; i < count; i++) {
-                ResolvedJavaType type = (ResolvedJavaType) invokeSignature.getParameterType(i, null);
-                JavaKind readKind = type.getJavaKind();
-                StructFieldInfo fieldInfo = getJNIValueOffsetOf(elementType, readKind);
-                int offset = i * elementSize + fieldInfo.getOffsetInfo().getProperty();
-                ConstantNode offsetConstant = kit.createConstant(JavaConstant.forInt(offset), providers.getWordTypes().getWordKind());
-                OffsetAddressNode address = kit.unique(new OffsetAddressNode(array, offsetConstant));
-                LocationIdentity locationIdentity = fieldInfo.getLocationIdentity();
-                if (locationIdentity == null) {
-                    locationIdentity = LocationIdentity.any();
-                }
-                Stamp readStamp = getNarrowStamp(providers, readKind);
-                ValueNode value = kit.append(new CInterfaceReadNode(address, locationIdentity, readStamp, BarrierType.NONE, "args[" + i + "]"));
-                JavaKind stackKind = readKind.getStackKind();
-                if (readKind != stackKind) {
-                    assert stackKind.getBitCount() > readKind.getBitCount() : "read kind must be narrower than stack kind";
-                    if (readKind.isUnsigned()) { // needed or another op may illegally sign-extend
-                        value = kit.unique(new ZeroExtendNode(value, stackKind.getBitCount()));
-                    } else {
-                        value = kit.unique(new SignExtendNode(value, stackKind.getBitCount()));
-                    }
-                } else if (readKind.isObject()) {
-                    value = kit.unboxHandle(value);
-                }
-                args.add(Pair.create(value, type));
             }
         } else if (callVariant == CallVariant.VA_LIST) {
             ValueNode valist = kit.loadLocal(javaIndex, metaAccess.lookupJavaType(WordBase.class).getJavaKind());

@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 /**
  * Register all <i>named</i> inner classes under {@link #TEST_CLASSES} for reflection, so that they

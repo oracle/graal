@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;
@@ -119,7 +119,7 @@ public final class WindowsJavaThreads extends JavaThreads {
 
         @SuppressWarnings("unused")
         static void enter(WindowsThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate());
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
             if (code != 0) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

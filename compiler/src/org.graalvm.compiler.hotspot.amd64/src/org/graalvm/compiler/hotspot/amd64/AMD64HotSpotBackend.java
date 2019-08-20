@@ -40,7 +40,6 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
@@ -91,7 +90,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         super(config, runtime, providers);
     }
 
-    private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
+    @Override
+    protected FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         FrameMap frameMap = new AMD64FrameMap(getCodeCache(), registerConfigNonNull, this);
         return new AMD64FrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
@@ -100,12 +100,6 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
         return new AMD64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
-    }
-
-    @Override
-    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterConfig registerConfig, StructuredGraph graph, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerConfig), makeCallingConvention(graph, (Stub) stub), stub,
-                        config.requiresReservedStackCheck(graph.getMethods()));
     }
 
     @Override
@@ -219,8 +213,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         }
 
         if (stub != null) {
-            EconomicSet<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
-            updateStub(stub, destroyedCallerRegisters, gen.getCalleeSaveInfo(), frameMap);
+            updateStub(stub, gen, frameMap);
         }
 
         return crb;
@@ -263,14 +256,19 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
             if (config.useCompressedClassPointers) {
                 Register register = r10;
-                AMD64HotSpotMove.decodeKlassPointer(crb, asm, register, providers.getRegisters().getHeapBaseRegister(), src, config);
+                Register heapBase = providers.getRegisters().getHeapBaseRegister();
+                AMD64HotSpotMove.decodeKlassPointer(crb, asm, register, heapBase, src, config);
                 if (GeneratePIC.getValue(crb.getOptions())) {
-                    asm.movq(providers.getRegisters().getHeapBaseRegister(), asm.getPlaceholder(-1));
+                    asm.movq(heapBase, asm.getPlaceholder(-1));
                     crb.recordMark(config.MARKID_NARROW_OOP_BASE_ADDRESS);
                 } else {
                     if (config.narrowKlassBase != 0) {
                         // The heap base register was destroyed above, so restore it
-                        asm.movq(providers.getRegisters().getHeapBaseRegister(), config.narrowOopBase);
+                        if (config.narrowOopBase == 0L) {
+                            asm.xorq(heapBase, heapBase);
+                        } else {
+                            asm.movq(heapBase, config.narrowOopBase);
+                        }
                     }
                 }
                 asm.cmpq(inlineCacheKlass, register);

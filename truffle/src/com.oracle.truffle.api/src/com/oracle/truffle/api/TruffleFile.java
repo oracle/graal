@@ -78,6 +78,7 @@ import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
+import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -97,148 +98,145 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.polyglot.TypeLiteral;
 
 /**
  * An abstract representation of a file used by Truffle languages.
  *
- * @since 1.0
+ * @since 19.0
  */
 public final class TruffleFile {
 
     /**
      * The file's last modified time. Supported by all filesystems.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<FileTime> LAST_MODIFIED_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "lastModifiedTime", FileTime.class);
 
     /**
      * The file's last access time. Supported by all filesystems.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<FileTime> LAST_ACCESS_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "lastAccessTime", FileTime.class);
 
     /**
      * The file's creation time. Supported by all filesystems.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<FileTime> CREATION_TIME = new AttributeDescriptor<>(AttributeGroup.BASIC, "creationTime", FileTime.class);
 
     /**
      * Represents the file a regular file. Supported by all filesystems.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Boolean> IS_REGULAR_FILE = new AttributeDescriptor<>(AttributeGroup.BASIC, "isRegularFile", Boolean.class);
 
     /**
      * Represents the file a directory. Supported by all filesystems.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Boolean> IS_DIRECTORY = new AttributeDescriptor<>(AttributeGroup.BASIC, "isDirectory", Boolean.class);
 
     /**
      * Represents the file a symbolic link. Supported by all filesystems.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Boolean> IS_SYMBOLIC_LINK = new AttributeDescriptor<>(AttributeGroup.BASIC, "isSymbolicLink", Boolean.class);
 
     /**
      * Represents the file a special file (device, named pipe). Supported by all filesystems.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Boolean> IS_OTHER = new AttributeDescriptor<>(AttributeGroup.BASIC, "isOther", Boolean.class);
 
     /**
      * The file's size in bytes. Supported by all filesystems.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Long> SIZE = new AttributeDescriptor<>(AttributeGroup.BASIC, "size", Long.class);
 
     /**
      * The owner of the file. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<UserPrincipal> UNIX_OWNER = new AttributeDescriptor<>(AttributeGroup.POSIX, "owner", UserPrincipal.class);
 
     /**
      * The group owner of the file. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<GroupPrincipal> UNIX_GROUP = new AttributeDescriptor<>(AttributeGroup.POSIX, "group", GroupPrincipal.class);
 
     /**
      * The file's Posix permissions. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
-    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<>(AttributeGroup.POSIX, "permissions",
-                    new TypeLiteral<Set<PosixFilePermission>>() {
-                    });
+    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<Set<PosixFilePermission>>(AttributeGroup.POSIX, Set.class, "permissions");
 
     /**
      * The file's mode containing the protection and file type bits. Supported only by UNIX native
      * filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Integer> UNIX_MODE = new AttributeDescriptor<>(AttributeGroup.UNIX, "mode", Integer.class);
 
     /**
      * The file's inode number. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Long> UNIX_INODE = new AttributeDescriptor<>(AttributeGroup.UNIX, "ino", Long.class);
 
     /**
      * The id of a device containing the file. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Long> UNIX_DEV = new AttributeDescriptor<>(AttributeGroup.UNIX, "dev", Long.class);
 
     /**
      * The id of a device represented by the file. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Long> UNIX_RDEV = new AttributeDescriptor<>(AttributeGroup.UNIX, "rdev", Long.class);
 
     /**
      * The number of hard links. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Integer> UNIX_NLINK = new AttributeDescriptor<>(AttributeGroup.UNIX, "nlink", Integer.class);
 
     /**
      * The user id of file owner. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Integer> UNIX_UID = new AttributeDescriptor<>(AttributeGroup.UNIX, "uid", Integer.class);
 
     /**
      * The group id of file owner. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<Integer> UNIX_GID = new AttributeDescriptor<>(AttributeGroup.UNIX, "gid", Integer.class);
 
     /**
      * The file's last status change time. Supported only by UNIX native filesystem.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final AttributeDescriptor<FileTime> UNIX_CTIME = new AttributeDescriptor<>(AttributeGroup.UNIX, "ctime", FileTime.class);
 
@@ -266,13 +264,17 @@ public final class TruffleFile {
         return normalizedPath;
     }
 
+    FileSystem getSPIFileSystem() {
+        return fileSystemContext.fileSystem;
+    }
+
     /**
      * Tests existence of a file.
      *
      * @param options the options determining how the symbolic links should be handled
      * @return {@code true} if the file exists
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean exists(LinkOption... options) {
@@ -291,7 +293,7 @@ public final class TruffleFile {
      *
      * @return {@code true} if the file exists and is readable
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean isReadable() {
@@ -310,7 +312,7 @@ public final class TruffleFile {
      *
      * @return {@code true} if the file exists and is writable
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean isWritable() {
@@ -329,7 +331,7 @@ public final class TruffleFile {
      *
      * @return {@code true} if the file exists and is executable
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean isExecutable() {
@@ -349,7 +351,7 @@ public final class TruffleFile {
      *            the symbolic links are followed.
      * @return {@code true} if the file exists and is a directory
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean isDirectory(LinkOption... options) {
@@ -371,7 +373,7 @@ public final class TruffleFile {
      *            the symbolic links are followed.
      * @return {@code true} if the file exists and is a regular file
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean isRegularFile(LinkOption... options) {
@@ -391,7 +393,7 @@ public final class TruffleFile {
      *
      * @return {@code true} if the file exists and is a symbolic link
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean isSymbolicLink() {
@@ -410,7 +412,7 @@ public final class TruffleFile {
      * Tests if this {@link TruffleFile}'s path is absolute.
      *
      * @return {@code true} if the file path is absolute
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean isAbsolute() {
@@ -426,7 +428,7 @@ public final class TruffleFile {
      *
      * @return the name of file or directory denoted by this {@link TruffleFile}, or {@code null} if
      *         the file is a root directory
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public String getName() {
@@ -442,7 +444,7 @@ public final class TruffleFile {
      * Returns the string representation of this {@link TruffleFile}.
      *
      * @return the path of this {@link TruffleFile}
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public String getPath() {
@@ -458,7 +460,7 @@ public final class TruffleFile {
      *
      * @return the absolute {@link URI} representing the {@link TruffleFile}
      * @throws SecurityException if the {@link FileSystem} denied a resolution of an absolute path
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public URI toUri() {
@@ -478,7 +480,7 @@ public final class TruffleFile {
      * {@link #isAbsolute() absolute} {@link TruffleFile} it returns an absolute {@link URI}.
      *
      * @return the {@link URI} representing the {@link TruffleFile}
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public URI toRelativeUri() {
@@ -486,7 +488,7 @@ public final class TruffleFile {
             return toUri();
         }
         try {
-            String strPath = "/".equals(fileSystemContext.fileSystem.getSeparator()) ? path.toString() : path.toString().replace(path.getFileSystem().getSeparator(), "/");
+            String strPath = "/".equals(fileSystemContext.fileSystem.getSeparator()) ? path.toString() : path.toString().replace(fileSystemContext.fileSystem.getSeparator(), "/");
             return new URI(null, null, strPath, null);
         } catch (Throwable t) {
             throw wrapHostException(t);
@@ -500,7 +502,7 @@ public final class TruffleFile {
      *
      * @return the absolute {@link TruffleFile}
      * @throws SecurityException if the {@link FileSystem} denied a resolution of an absolute path
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public TruffleFile getAbsoluteFile() {
@@ -524,7 +526,7 @@ public final class TruffleFile {
      * @return a {@link TruffleFile} representing the absolute canonical path
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public TruffleFile getCanonicalFile(LinkOption... options) throws IOException {
@@ -541,7 +543,7 @@ public final class TruffleFile {
      * Returns a parent {@link TruffleFile} or null when the file does not have a parent.
      *
      * @return the parent {@link TruffleFile}
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public TruffleFile getParent() {
@@ -559,7 +561,7 @@ public final class TruffleFile {
      * @param name the path to resolve
      * @return the resolved {@link TruffleFile}
      * @throws InvalidPathException if the path string contains non valid characters
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public TruffleFile resolve(String name) {
@@ -578,7 +580,7 @@ public final class TruffleFile {
      * @param name the path to resolve
      * @return the resolved {@link TruffleFile}
      * @throws InvalidPathException if the path string contains non valid characters
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public TruffleFile resolveSibling(String name) {
@@ -598,7 +600,7 @@ public final class TruffleFile {
      * @return the file size in bytes
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public long size(LinkOption... options) throws IOException {
@@ -618,7 +620,7 @@ public final class TruffleFile {
      * @return the {@link FileTime} representing the time this {@link TruffleFile} was last modified
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public FileTime getLastModifiedTime(LinkOption... options) throws IOException {
@@ -638,7 +640,7 @@ public final class TruffleFile {
      * @param options the options determining how the symbolic links should be handled
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void setLastModifiedTime(FileTime time, LinkOption... options) throws IOException {
@@ -658,7 +660,7 @@ public final class TruffleFile {
      * @return the {@link FileTime} representing the time this {@link TruffleFile} was last accessed
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public FileTime getLastAccessTime(LinkOption... options) throws IOException {
@@ -678,7 +680,7 @@ public final class TruffleFile {
      * @param options the options determining how the symbolic links should be handled
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void setLastAccessTime(FileTime time, LinkOption... options) throws IOException {
@@ -698,7 +700,7 @@ public final class TruffleFile {
      * @return the {@link FileTime} representing the time this {@link TruffleFile} was created
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public FileTime getCreationTime(LinkOption... options) throws IOException {
@@ -718,7 +720,7 @@ public final class TruffleFile {
      * @param options the options determining how the symbolic links should be handled
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void setCreationTime(FileTime time, LinkOption... options) throws IOException {
@@ -739,7 +741,7 @@ public final class TruffleFile {
      *         {@link TruffleFile}
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public Collection<TruffleFile> list() throws IOException {
@@ -775,7 +777,7 @@ public final class TruffleFile {
      *             set atomically
      * @throws IllegalArgumentException in case of invalid options combination
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public SeekableByteChannel newByteChannel(Set<? extends OpenOption> options, FileAttribute<?>... attributes) throws IOException {
@@ -796,7 +798,7 @@ public final class TruffleFile {
      * @throws IOException in case of IO error
      * @throws IllegalArgumentException in case of invalid options combination
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public InputStream newInputStream(OpenOption... options) throws IOException {
@@ -819,7 +821,7 @@ public final class TruffleFile {
      * @return the created {@link BufferedReader}
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public BufferedReader newBufferedReader(Charset charset) throws IOException {
@@ -832,7 +834,7 @@ public final class TruffleFile {
      * @return the created {@link BufferedReader}
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public BufferedReader newBufferedReader() throws IOException {
@@ -846,7 +848,7 @@ public final class TruffleFile {
      * @throws IOException in case of IO error
      * @throws OutOfMemoryError if an array of a file size cannot be allocated
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public byte[] readAllBytes() throws IOException {
@@ -894,7 +896,7 @@ public final class TruffleFile {
      * @throws IOException in case of IO error
      * @throws IllegalArgumentException in case of invalid options combination
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public OutputStream newOutputStream(OpenOption... options) throws IOException {
@@ -923,7 +925,7 @@ public final class TruffleFile {
      * @throws IOException in case of IO error
      * @throws IllegalArgumentException in case of invalid options combination
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public BufferedWriter newBufferedWriter(Charset charset, OpenOption... options) throws IOException {
@@ -938,7 +940,7 @@ public final class TruffleFile {
      * @throws IOException in case of IO error
      * @throws IllegalArgumentException in case of invalid options combination
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public BufferedWriter newBufferedWriter(OpenOption... options) throws IOException {
@@ -954,7 +956,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException if the attributes contain an attribute which cannot be
      *             set atomically
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void createFile(FileAttribute<?>... attributes) throws IOException {
@@ -972,7 +974,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException if the attributes contain an attribute which cannot be
      *             set atomically
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void createDirectory(FileAttribute<?>... attributes) throws IOException {
@@ -996,7 +998,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException if the attributes contain an attribute which cannot be
      *             set atomically
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void createDirectories(FileAttribute<?>... attributes) throws IOException {
@@ -1044,7 +1046,7 @@ public final class TruffleFile {
      * @throws DirectoryNotEmptyException if the {@link TruffleFile} denotes a non empty directory
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void delete() throws IOException {
@@ -1073,7 +1075,7 @@ public final class TruffleFile {
      *             {@link StandardCopyOption#ATOMIC_MOVE} but file cannot be moved atomically
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void move(TruffleFile target, CopyOption... options) throws IOException {
@@ -1095,7 +1097,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException when the Posix permissions are not supported by
      *             filesystem
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     @SuppressWarnings("unchecked")
@@ -1118,7 +1120,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException when the Posix permissions are not supported by
      *             filesystem
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void setPosixPermissions(Set<? extends PosixFilePermission> permissions, LinkOption... linkOptions) throws IOException {
@@ -1134,7 +1136,7 @@ public final class TruffleFile {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     @TruffleBoundary
@@ -1145,7 +1147,7 @@ public final class TruffleFile {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     @TruffleBoundary
@@ -1159,7 +1161,7 @@ public final class TruffleFile {
     /**
      * {@inheritDoc}
      *
-     * @since 1.0
+     * @since 19.0
      */
     @Override
     @TruffleBoundary
@@ -1178,7 +1180,7 @@ public final class TruffleFile {
      * Returns a {@link TruffleFile} with removed redundant name elements in it's path.
      *
      * @return the normalized {@link TruffleFile}
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public TruffleFile normalize() {
@@ -1204,7 +1206,7 @@ public final class TruffleFile {
      *         {@link TruffleFile}s
      * @throws IllegalArgumentException when {@code other} cannot be relativized against this
      *             {@link TruffleFile}
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public TruffleFile relativize(TruffleFile other) {
@@ -1224,7 +1226,7 @@ public final class TruffleFile {
      * @param other the path
      * @return {@code true} if this {@link TruffleFile} path starts with given path
      * @throws IllegalArgumentException if the path cannot be parsed.
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean startsWith(String other) {
@@ -1245,7 +1247,7 @@ public final class TruffleFile {
      * @param other the {@link TruffleFile}
      * @return {@code true} if this {@link TruffleFile} path starts with given {@link TruffleFile}
      *         path
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean startsWith(TruffleFile other) {
@@ -1263,7 +1265,7 @@ public final class TruffleFile {
      * @param other the path
      * @return {@code true} if this {@link TruffleFile} path ends with given path
      * @throws IllegalArgumentException if the path cannot be parsed.
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean endsWith(String other) {
@@ -1283,7 +1285,7 @@ public final class TruffleFile {
      * @param other the {@link TruffleFile}
      * @return {@code true} if this {@link TruffleFile} path ends with given {@link TruffleFile}
      *         path
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public boolean endsWith(TruffleFile other) {
@@ -1303,7 +1305,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException if the {@link FileSystem} implementation does not
      *             support links
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void createLink(TruffleFile target) throws IOException {
@@ -1327,7 +1329,7 @@ public final class TruffleFile {
      *             support symbolic links or the attributes contain an attribute which cannot be set
      *             atomically
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void createSymbolicLink(TruffleFile target, FileAttribute<?>... attrs) throws IOException {
@@ -1349,7 +1351,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException if the {@link FileSystem} implementation does not
      *             support owner attribute
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public UserPrincipal getOwner(LinkOption... options) throws IOException {
@@ -1371,7 +1373,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException if the {@link FileSystem} implementation does not
      *             support group owner attribute
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public GroupPrincipal getGroup(LinkOption... options) throws IOException {
@@ -1400,7 +1402,7 @@ public final class TruffleFile {
      * @return a new opened {@link DirectoryStream} object
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public DirectoryStream<TruffleFile> newDirectoryStream() throws IOException {
@@ -1461,7 +1463,7 @@ public final class TruffleFile {
      * @throws IllegalArgumentException if the {@code maxDepth} parameter is negative
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void visit(FileVisitor<TruffleFile> visitor, int maxDepth, FileVisitOption... options) throws IOException {
@@ -1526,7 +1528,7 @@ public final class TruffleFile {
      *             directory
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public void copy(TruffleFile target, CopyOption... options) throws IOException {
@@ -1545,7 +1547,7 @@ public final class TruffleFile {
      * @return the MIME type or {@code null} if the MIME type is not recognized
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public String getMimeType() throws IOException {
@@ -1594,6 +1596,49 @@ public final class TruffleFile {
         }
     }
 
+    static TruffleFile createTempFile(TruffleFile targetDirectory, String prefix, String suffix, boolean dir, FileAttribute<?>... attrs) throws IOException {
+        Objects.requireNonNull(targetDirectory, "TargetDirectory must be non null.");
+        if (prefix == null) {
+            prefix = "";
+        }
+        if (suffix == null) {
+            suffix = dir ? "" : ".tmp";
+        }
+        while (true) {
+            TruffleFile target;
+            try {
+                target = createUniquePath(targetDirectory, prefix, suffix);
+                if (!target.exists()) {
+                    if (dir) {
+                        target.createDirectory(attrs);
+                    } else {
+                        target.createFile(attrs);
+                    }
+                    return target;
+                }
+            } catch (InvalidPathException e) {
+                throw new IllegalArgumentException("Prefix (" + prefix + ") or suffix (" + suffix + ") are not valid file name components");
+            } catch (FileAlreadyExistsException e) {
+                // retry with different name
+            }
+        }
+    }
+
+    private static TruffleFile createUniquePath(TruffleFile targetDirectory, String prefix, String suffix) {
+        long n = TempFileRandomHolder.RANDOM.nextLong();
+        n = n == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(n);
+        String name = prefix + Long.toString(n) + suffix;
+        TruffleFile result = targetDirectory.resolve(name);
+        if (!targetDirectory.equals(result.getParent())) {
+            throw new InvalidPathException(name, "Must be a simple name");
+        }
+        return result;
+    }
+
+    private static final class TempFileRandomHolder {
+        static final SecureRandom RANDOM = new SecureRandom();
+    }
+
     private static final class AttributeGroup {
 
         static final AttributeGroup BASIC = new AttributeGroup("basic", null);
@@ -1637,7 +1682,7 @@ public final class TruffleFile {
      * getAttributes} method. When more attributes are needed the bulk read provides better
      * performance.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final class AttributeDescriptor<T> {
 
@@ -1651,17 +1696,18 @@ public final class TruffleFile {
             this.clazz = clazz;
         }
 
-        AttributeDescriptor(AttributeGroup group, String name, TypeLiteral<T> typeLiteral) {
+        @SuppressWarnings("unchecked")
+        AttributeDescriptor(AttributeGroup group, Class<?> rawType, String name) {
             this.group = group;
+            this.clazz = (Class<T>) rawType;
             this.name = name;
-            this.clazz = typeLiteral.getRawType();
         }
 
         /**
          *
          * {@inheritDoc}
          *
-         * @since 1.0
+         * @since 19.0
          */
         @Override
         public String toString() {
@@ -1674,7 +1720,7 @@ public final class TruffleFile {
      * {@link TruffleFile#getAttributes(java.util.Collection, java.nio.file.LinkOption...)
      * getAttributes}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public static final class Attributes {
 
@@ -1695,7 +1741,7 @@ public final class TruffleFile {
          * @return the attribute value, may return {@code null} if the filesystem doesn't support
          *         the attribute.
          * @throws IllegalArgumentException if the view was not created for the given attribute
-         * @since 1.0
+         * @since 19.0
          */
         public <T> T get(AttributeDescriptor<T> descriptor) {
             Object value = delegate.get(descriptor.name);
@@ -1719,12 +1765,39 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException when the filesystem does not support required
      *             attribute.
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public <T> T getAttribute(AttributeDescriptor<T> attribute, LinkOption... linkOptions) throws IOException {
         try {
             return getAttributeImpl(createAttributeString(attribute.group, Collections.singleton(attribute.name)), attribute.clazz, linkOptions);
+        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
+    /**
+     * Sets a single file's attribute.
+     *
+     * @param attribute the attribute to set
+     * @param value the attribute value
+     * @param linkOptions the options determining how the symbolic links should be handled
+     * @throws IOException in case of IO error
+     * @throws UnsupportedOperationException when the filesystem does not support given attribute
+     * @throws IllegalArgumentException when the attribute value has an inappropriate value
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 19.1.0
+     */
+    @TruffleBoundary
+    public <T> void setAttribute(AttributeDescriptor<T> attribute, T value, LinkOption... linkOptions) throws IOException {
+        try {
+            fileSystemContext.fileSystem.setAttribute(
+                            normalizedPath,
+                            createAttributeString(attribute.group, Collections.singleton(attribute.name)),
+                            value,
+                            linkOptions);
         } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -1743,7 +1816,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException when the filesystem does not support some of the
      *             required attributes.
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 1.0
+     * @since 19.0
      */
     @TruffleBoundary
     public Attributes getAttributes(Collection<? extends AttributeDescriptor<?>> attributes, LinkOption... linkOptions) throws IOException {
@@ -1783,7 +1856,7 @@ public final class TruffleFile {
      *
      * @see TruffleFile#getMimeType()
      * @see TruffleLanguage.Registration#fileTypeDetectors()
-     * @since 1.0
+     * @since 19.0
      */
     public interface FileTypeDetector {
         /**
@@ -1794,7 +1867,7 @@ public final class TruffleFile {
          * @throws IOException of an I/O error occurs
          * @throws SecurityException if the implementation requires an access the file and the
          *             {@link FileSystem} denies the operation
-         * @since 1.0
+         * @since 19.0
          */
         String findMimeType(TruffleFile file) throws IOException;
 
@@ -1807,7 +1880,7 @@ public final class TruffleFile {
          * @return the file encoding or {@code null} if the file does not provide encoding
          * @throws IOException of an I/O error occurs
          * @throws SecurityException if the {@link FileSystem} denies the file access
-         * @since 1.0
+         * @since 19.0
          */
         Charset findEncoding(TruffleFile file) throws IOException;
     }
@@ -1926,10 +1999,10 @@ public final class TruffleFile {
     }
 
     static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystem fs) {
-        if (TruffleLanguage.AccessAPI.engineAccess().isDefaultFileSystem(fs)) {
+        if (LanguageAccessor.engineAccess().isDefaultFileSystem(fs)) {
             throw sthrow(t);
         }
-        throw TruffleLanguage.AccessAPI.engineAccess().wrapHostException(null, TruffleLanguage.AccessAPI.engineAccess().getCurrentHostContext(), t);
+        throw LanguageAccessor.engineAccess().wrapHostException(null, LanguageAccessor.engineAccess().getCurrentHostContext(), t);
     }
 
     @SuppressWarnings("unchecked")

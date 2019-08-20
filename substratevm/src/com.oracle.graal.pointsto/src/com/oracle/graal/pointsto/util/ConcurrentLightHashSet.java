@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.util;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,56 +37,49 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * set is empty the field is null. In situations where is likely that the set will contain no or
  * only one element there is no memory overhead incurred by allocating the map.
  *
- * @param <T> the type of the elements stored in this set
+ * The value is not referenced by objects of this class but all operations use a
+ * {@link AtomicReferenceFieldUpdater} to a storage location of type {@link Object}. This location
+ * is then populated with three possible values:
+ * <ol>
+ * <li>No elements: the location is set to {@code null}
+ * <li>One element: the single element is stored directly in this location.
+ * <li>Multiple elements: the location points to a {@link ConcurrentHashMap} with the elements as
+ * the keys. The values of the map are unused.
+ * </ol>
  */
-public class ConcurrentLightHashSet<T> {
-    @SuppressWarnings("rawtypes")//
-    private static final AtomicReferenceFieldUpdater<ConcurrentLightHashSet, Object> ELEMENTS_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ConcurrentLightHashSet.class, Object.class, "elements");
+public final class ConcurrentLightHashSet {
 
-    /**
-     * The set of all elements in this set. To be as memory efficient as possible, the field has
-     * three possible values:
-     * <ol>
-     * <li>No elements: the field is {@code null}
-     * <li>One element: the single element is stored directly in the field..
-     * <li>Multiple elements: the field points to a {@link ConcurrentHashMap} with the elements as
-     * the keys. The values of the map are unused.
-     * </ol>
-     */
-    private volatile Object elements;
-
-    public ConcurrentLightHashSet() {
+    private ConcurrentLightHashSet() {
 
     }
 
-    public int size() {
-        Object u = elements;
-        if (u == null) {
+    public static int size(Object elements) {
+        if (elements == null) {
             /* No elements. */
             return 0;
-        } else if (u instanceof ConcurrentHashMap) {
+        } else if (elements instanceof ConcurrentHashMap) {
             /* Multiple elements. */
             @SuppressWarnings("unchecked")
-            ConcurrentHashMap<T, Object> elementsMap = (ConcurrentHashMap<T, Object>) u;
+            ConcurrentHashMap<?, Object> elementsMap = (ConcurrentHashMap<?, Object>) elements;
             return elementsMap.size();
         } else {
             // assert u instanceof T;
             /* One element. */
             return 1;
         }
-
     }
 
-    public boolean addElement(T newElement) {
+    @SuppressWarnings("unchecked")
+    public static <T, U> boolean addElement(U holder, AtomicReferenceFieldUpdater<U, Object> updater, T newElement) {
         assert newElement != null;
         while (true) {
-            Object oldElements = elements;
+            Object oldElements = updater.get(holder);
             if (oldElements == null) {
                 /*
                  * We add the first element. Try to install the element directly in the field. No
                  * ConcurrentHashMap is necessary yet.
                  */
-                if (ELEMENTS_UPDATER.compareAndSet(this, oldElements, newElement)) {
+                if (updater.compareAndSet(holder, oldElements, newElement)) {
                     return true;
                 }
 
@@ -106,7 +100,7 @@ public class ConcurrentLightHashSet<T> {
                 ConcurrentHashMap<Object, Object> newElements = new ConcurrentHashMap<>();
                 newElements.put(oldElements, Boolean.TRUE);
                 newElements.put(newElement, Boolean.TRUE);
-                if (ELEMENTS_UPDATER.compareAndSet(this, oldElements, newElements)) {
+                if (updater.compareAndSet(holder, oldElements, newElements)) {
                     return true;
                 }
 
@@ -122,26 +116,24 @@ public class ConcurrentLightHashSet<T> {
     }
 
     @SuppressWarnings("unchecked")
-    public Set<T> getElements() {
-        Object u = elements;
+    public static <T, U> Collection<T> getElements(U holder, AtomicReferenceFieldUpdater<U, Object> updater) {
+        Object u = updater.get(holder);
         if (u == null) {
             /* No elements. */
             return Collections.emptySet();
-
         } else if (u instanceof ConcurrentHashMap) {
             /* Multiple elements. */
             ConcurrentHashMap<T, Object> elementsMap = (ConcurrentHashMap<T, Object>) u;
             return elementsMap.keySet();
-
         } else {
             /* Single element. */
             return (Set<T>) Collections.singleton(u);
         }
     }
 
-    public boolean removeElement(T element) {
+    public static <T, U> boolean removeElement(U holder, AtomicReferenceFieldUpdater<U, Object> updater, T element) {
         while (true) {
-            Object e = elements;
+            Object e = updater.get(holder);
             if (e instanceof ConcurrentHashMap) {
                 /*
                  * We already have multiple elements, the ConcurrentHashMap takes care of all
@@ -150,13 +142,12 @@ public class ConcurrentLightHashSet<T> {
                 @SuppressWarnings("unchecked")
                 ConcurrentHashMap<T, Object> elementsMap = (ConcurrentHashMap<T, Object>) e;
                 return elementsMap.remove(element) != null;
-
             } else if (element.equals(e)) {
                 /*
                  * We have a match for the single element. Try to update the field directly to null
                  * to remove that element.
                  */
-                if (ELEMENTS_UPDATER.compareAndSet(this, e, null)) {
+                if (updater.compareAndSet(holder, e, null)) {
                     return true;
                 }
 
@@ -170,11 +161,7 @@ public class ConcurrentLightHashSet<T> {
         }
     }
 
-    public void clear() {
-        /* Set the elements field to null. */
-        while (!ELEMENTS_UPDATER.compareAndSet(this, elements, null)) {
-            /* We lost the race with another thread, just try again. */
-        }
+    public static <U> void clear(U holder, AtomicReferenceFieldUpdater<U, Object> updater) {
+        updater.set(holder, null);
     }
-
 }

@@ -26,15 +26,17 @@ package com.oracle.svm.core.code;
 
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.TypeReader;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.ByteArrayReader;
+import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -44,8 +46,8 @@ public class FrameInfoDecoder {
     protected static final int NO_CALLER_BCI = -1;
     protected static final int NO_LOCAL_INFO_BCI = -2;
 
-    protected static boolean isFrameInfoMatch(long frameInfoIndex, byte[] frameInfoEncodings, long searchEncodedBci) {
-        UnsafeArrayTypeReader readBuffer = UnsafeArrayTypeReader.create(frameInfoEncodings, frameInfoIndex, ByteArrayReader.supportsUnalignedMemoryAccess());
+    protected static boolean isFrameInfoMatch(long frameInfoIndex, NonmovableArray<Byte> frameInfoEncodings, long searchEncodedBci) {
+        NonmovableByteArrayTypeReader readBuffer = new NonmovableByteArrayTypeReader(frameInfoEncodings, frameInfoIndex);
         long actualEncodedBci = readBuffer.getSV();
         assert actualEncodedBci != NO_CALLER_BCI;
 
@@ -73,7 +75,7 @@ public class FrameInfoDecoder {
 
         ValueInfo[][] newValueInfoArrayArray(int len);
 
-        void decodeConstant(ValueInfo valueInfo, Object[] frameInfoObjectConstants);
+        void decodeConstant(ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants);
     }
 
     static class HeapBasedValueInfoAllocator implements ValueInfoAllocator {
@@ -97,7 +99,7 @@ public class FrameInfoDecoder {
 
         @Override
         @RestrictHeapAccess(reason = "Whitelisted because some implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
-        public void decodeConstant(ValueInfo valueInfo, Object[] frameInfoObjectConstants) {
+        public void decodeConstant(ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants) {
             switch (valueInfo.type) {
                 case DefaultConstant:
                     switch (valueInfo.kind) {
@@ -112,7 +114,8 @@ public class FrameInfoDecoder {
                 case Constant:
                     switch (valueInfo.kind) {
                         case Object:
-                            valueInfo.value = SubstrateObjectConstant.forObject(frameInfoObjectConstants[TypeConversion.asS4(valueInfo.data)], valueInfo.isCompressedReference);
+                            valueInfo.value = SubstrateObjectConstant.forObject(NonmovableArrays.getObject(frameInfoObjectConstants, TypeConversion.asS4(valueInfo.data)),
+                                            valueInfo.isCompressedReference);
                             break;
                         case Float:
                             valueInfo.value = JavaConstant.forFloat(Float.intBitsToFloat(TypeConversion.asS4(valueInfo.data)));
@@ -131,8 +134,7 @@ public class FrameInfoDecoder {
 
     static final HeapBasedValueInfoAllocator HeapBasedValueInfoAllocator = new HeapBasedValueInfoAllocator();
 
-    protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, Object[] frameInfoObjectConstants,
-                    Class<?>[] frameInfoSourceClasses, String[] frameInfoSourceMethodNames, String[] frameInfoNames,
+    protected static FrameInfoQueryResult decodeFrameInfo(boolean isDeoptEntry, TypeReader readBuffer, CodeInfo info,
                     FrameInfoQueryResultAllocator resultAllocator, ValueInfoAllocator valueInfoAllocator, boolean fetchFirstFrame) {
         FrameInfoQueryResult result = null;
         FrameInfoQueryResult prev = null;
@@ -169,7 +171,7 @@ public class FrameInfoDecoder {
                 int deoptMethodIndex = readBuffer.getSVInt();
                 if (deoptMethodIndex < 0) {
                     /* Negative number is a reference to the target method. */
-                    cur.deoptMethod = (SharedMethod) frameInfoObjectConstants[-1 - deoptMethodIndex];
+                    cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(info.getFrameInfoObjectConstants(), -1 - deoptMethodIndex);
                     cur.deoptMethodOffset = cur.deoptMethod.getDeoptOffsetInImage();
                 } else {
                     /* Positive number is a directly encoded method offset. */
@@ -177,7 +179,7 @@ public class FrameInfoDecoder {
                 }
 
                 curValueInfosLenght = readBuffer.getUVInt();
-                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLenght, readBuffer, frameInfoObjectConstants);
+                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLenght, readBuffer, info.getFrameInfoObjectConstants());
             }
 
             if (prev != null) {
@@ -196,7 +198,7 @@ public class FrameInfoDecoder {
                         virtualObjects = valueInfoAllocator.newValueInfoArrayArray(numVirtualObjects);
                         for (int i = 0; i < numVirtualObjects; i++) {
                             int numValues = readBuffer.getUVInt();
-                            ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, frameInfoObjectConstants);
+                            ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, info.getFrameInfoObjectConstants());
                             if (virtualObjects != null) {
                                 virtualObjects[i] = decodedValues;
                             }
@@ -216,8 +218,8 @@ public class FrameInfoDecoder {
                 cur.sourceClassIndex = sourceClassIndex;
                 cur.sourceMethodNameIndex = sourceMethodNameIndex;
 
-                cur.sourceClass = frameInfoSourceClasses[sourceClassIndex];
-                cur.sourceMethodName = frameInfoSourceMethodNames[sourceMethodNameIndex];
+                cur.sourceClass = NonmovableArrays.getObject(info.getFrameInfoSourceClasses(), sourceClassIndex);
+                cur.sourceMethodName = NonmovableArrays.getObject(info.getFrameInfoSourceMethodNames(), sourceMethodNameIndex);
                 cur.sourceLineNumber = sourceLineNumber;
             }
 
@@ -226,14 +228,14 @@ public class FrameInfoDecoder {
                     int nameIndex = readBuffer.getUVInt();
                     if (cur.valueInfos != null) {
                         cur.valueInfos[i].nameIndex = nameIndex;
-                        cur.valueInfos[i].name = frameInfoNames[nameIndex];
+                        cur.valueInfos[i].name = NonmovableArrays.getObject(info.getFrameInfoNames(), nameIndex);
                     }
                 }
             }
         }
     }
 
-    private static ValueInfo[] decodeValues(ValueInfoAllocator valueInfoAllocator, int numValues, TypeReader readBuffer, Object[] frameInfoObjectConstants) {
+    private static ValueInfo[] decodeValues(ValueInfoAllocator valueInfoAllocator, int numValues, TypeReader readBuffer, NonmovableObjectArray<?> frameInfoObjectConstants) {
         ValueInfo[] valueInfos = valueInfoAllocator.newValueInfoArray(numValues);
 
         for (int i = 0; i < numValues; i++) {

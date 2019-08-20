@@ -47,7 +47,16 @@ import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
 import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
@@ -92,11 +101,31 @@ import com.oracle.truffle.api.nodes.RootNode;
  * <li>{@link #isNull(Object) Null}
  * <li>{@link #isBoolean(Object) Boolean}
  * <li>{@link #isString(Object) String}
- * <li>{@link #isExecutable(Object) Executable} or {@link #isInstantiable(Object) Instantiable}
  * <li>{@link #isNumber(Object) Number}
+ * <li>{@link #isDate(Object) Date}, {@link #isTime(Object) Time} or {@link #isTimeZone(Object)
+ * TimeZone}
+ * <li>{@link #isDuration(Object) Duration}
  * </ul>
- * All receiver values may be {@link #isPointer(Object) pointers}, have {@link #hasMembers(Object)
- * members} or {@link #hasArrayElements(Object) array elements} at the same time.
+ * All receiver values may be {@link #isExecutable(Object) executable},
+ * {@link #isInstantiable(Object) instantiable}, {@link #isPointer(Object) pointers}, have
+ * {@link #hasMembers(Object) members} or {@link #hasArrayElements(Object) array elements} at the
+ * same time.
+ * <p>
+ * <h3>Naive and aware dates and times</h3>
+ * <p>
+ * If a date or time value has a {@link #isTimeZone(Object) timezone} then it is called <i>aware</i>
+ * , otherwise <i>naive</i>
+ * <p>
+ * An aware time and date has sufficient knowledge of applicable algorithmic and political time
+ * adjustments, such as time zone and daylight saving time information, to locate itself relative to
+ * other aware objects. An aware object is used to represent a specific moment in time that is not
+ * open to interpretation.
+ * <p>
+ * A naive time and date does not contain enough information to unambiguously locate itself relative
+ * to other date/time objects. Whether a naive object represents Coordinated Universal Time (UTC),
+ * local time, or time in some other timezone is purely up to the program, just like it is up to the
+ * program whether a particular number represents metres, miles, or mass. Naive objects are easy to
+ * understand and to work with, at the cost of ignoring some aspects of reality.
  * <p>
  * Interop messages throw {@link InteropException checked exceptions} to indicate error states. The
  * target language is supposed to always catch those exceptions and translate them into guest
@@ -104,7 +133,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * (-ea) are enabled.
  *
  * @see com.oracle.truffle.api.library Reference documentation of Truffle Libraries.
- * @since 1.0
+ * @since 19.0
  */
 @GenerateLibrary(assertions = Asserts.class, receiverType = TruffleObject.class)
 @DefaultExport(DefaultBooleanExports.class)
@@ -121,7 +150,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 public abstract class InteropLibrary extends Library {
 
     /**
-     * @since 1.0
+     * @since 19.0
      */
     protected InteropLibrary() {
     }
@@ -131,7 +160,7 @@ public abstract class InteropLibrary extends Library {
      * <code>false</code>. Most object oriented languages have one or many values representing null
      * values. Invoking this message does not cause any observable side-effects.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isNull(Object receiver) {
         return false;
@@ -142,7 +171,7 @@ public abstract class InteropLibrary extends Library {
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
      *
      * @see #asBoolean(Object)
-     * @since 1.0
+     * @since 19.0
      */
     // Boolean Messages
     @Abstract(ifExported = "asBoolean")
@@ -157,7 +186,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isBoolean(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isBoolean(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isBoolean")
     public boolean asBoolean(Object receiver) throws UnsupportedMessageException {
@@ -172,7 +201,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isInstantiable(Object) instantiable}.
      *
      * @see #execute(Object, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "execute")
     public boolean isExecutable(Object receiver) {
@@ -189,7 +218,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isExecutable(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isExecutable(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isExecutable")
     public Object execute(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
@@ -206,7 +235,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isInstantiable(Object) instantiable}.
      *
      * @see #instantiate(Object, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "instantiate")
     public boolean isInstantiable(Object receiver) {
@@ -223,7 +252,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isInstantiable(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isExecutable(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isInstantiable")
     public Object instantiate(Object receiver, Object... arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
@@ -237,7 +266,7 @@ public abstract class InteropLibrary extends Library {
      * <code>false</code>. Invoking this message does not cause any observable side-effects.
      *
      * @see #asString(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "asString")
     public boolean isString(Object receiver) {
@@ -251,7 +280,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isBoolean(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isString")
     public String asString(Object receiver) throws UnsupportedMessageException {
@@ -276,7 +305,7 @@ public abstract class InteropLibrary extends Library {
      * @see #asLong(Object)
      * @see #asFloat(Object)
      * @see #asDouble(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"fitsInByte", "fitsInShort", "fitsInInt", "fitsInLong", "fitsInFloat", "fitsInDouble", "asByte", "asShort", "asInt", "asLong", "asFloat", "asDouble"})
     public boolean isNumber(Object receiver) {
@@ -290,7 +319,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asByte(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInByte(Object receiver) {
@@ -304,7 +333,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asShort(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInShort(Object receiver) {
@@ -318,7 +347,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asInt(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInInt(Object receiver) {
@@ -332,7 +361,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asLong(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInLong(Object receiver) {
@@ -346,7 +375,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asFloat(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInFloat(Object receiver) {
@@ -360,7 +389,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isNumber(Object)
      * @see #asDouble(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public boolean fitsInDouble(Object receiver) {
@@ -375,7 +404,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInByte(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public byte asByte(Object receiver) throws UnsupportedMessageException {
@@ -391,7 +420,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInShort(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public short asShort(Object receiver) throws UnsupportedMessageException {
@@ -407,7 +436,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInInt(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public int asInt(Object receiver) throws UnsupportedMessageException {
@@ -423,7 +452,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInLong(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public long asLong(Object receiver) throws UnsupportedMessageException {
@@ -439,7 +468,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInFloat(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public float asFloat(Object receiver) throws UnsupportedMessageException {
@@ -455,7 +484,7 @@ public abstract class InteropLibrary extends Library {
      *             {@link #isNumber(Object)} or it does not fit without less of precision.
      * @see #isNumber(Object)
      * @see #fitsInDouble(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isNumber")
     public double asDouble(Object receiver) throws UnsupportedMessageException {
@@ -479,7 +508,7 @@ public abstract class InteropLibrary extends Library {
      * @see #writeMember(Object, String, Object)
      * @see #removeMember(Object, String)
      * @see #invokeMember(Object, String, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"getMembers", "isMemberReadable", "readMember", "isMemberModifiable", "isMemberInsertable", "writeMember", "isMemberRemovable", "removeMember", "isMemberInvocable",
                     "invokeMember", "isMemberInternal", "hasMemberReadSideEffects", "hasMemberWriteSideEffects"})
@@ -499,7 +528,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if the receiver does not have any
      *             {@link #hasMembers(Object) members}.
      * @see #hasMembers(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "hasMembers")
     public Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException {
@@ -514,7 +543,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if the receiver has no
      *             {@link #hasMembers(Object) members}.
      * @see #getMembers(Object, boolean)
-     * @since 1.0
+     * @since 19.0
      */
     public final Object getMembers(Object receiver) throws UnsupportedMessageException {
         return getMembers(receiver, false);
@@ -523,11 +552,12 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given member is {@link #readMember(Object, String) readable}.
      * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
-     * <code>true</code> as well. Invoking this message does not cause any observable side-effects.
-     * Returns <code>false</code> by default.
+     * <code>true</code> as well and {@link #isMemberInsertable(Object, String)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
      *
      * @see #readMember(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "readMember")
     public boolean isMemberReadable(Object receiver, String member) {
@@ -544,7 +574,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if the member is not readable
      * @throws UnknownIdentifierException if the given member does not exist.
      * @see #hasMemberReadSideEffects(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isMemberReadable")
     public Object readMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
@@ -555,12 +585,12 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given member is existing and
      * {@link #writeMember(Object, String, Object) writable}. This method may only return
-     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well. Invoking
-     * this message does not cause any observable side-effects. Returns <code>false</code> by
-     * default.
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "writeMember")
     public boolean isMemberModifiable(Object receiver, String member) {
@@ -570,12 +600,12 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given member is not existing and
      * {@link #writeMember(Object, String, Object) writable}. This method may only return
-     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well. Invoking
-     * this message does not cause any observable side-effects. Returns <code>false</code> by
-     * default.
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberExisting(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "writeMember")
     public boolean isMemberInsertable(Object receiver, String member) {
@@ -594,7 +624,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnknownIdentifierException if the given member is not insertable and does not exist.
      * @throws UnsupportedTypeException if the provided value type is not allowed to be written
      * @see #hasMemberWriteSideEffects(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"isMemberModifiable", "isMemberInsertable"})
     public void writeMember(Object receiver, String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
@@ -604,12 +634,12 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if a given member is existing and removable. This method may only
-     * return <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well.
-     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
-     * by default.
+     * return <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #removeMember(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "removeMember")
     public boolean isMemberRemovable(Object receiver, String member) {
@@ -626,7 +656,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnknownIdentifierException if the given member is not existing but removing would be
      *             allowed
      * @see #isMemberRemovable(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isMemberRemovable")
     public void removeMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
@@ -636,12 +666,12 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if a given member is invocable. This method may only return
-     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well. Invoking
-     * this message does not cause any observable side-effects. Returns <code>false</code> by
-     * default.
+     * <code>true</code> if {@link #hasMembers(Object)} returns <code>true</code> as well and
+     * {@link #isMemberInsertable(Object, String)} returns <code>false</code>. Invoking this message
+     * does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #invokeMember(Object, String, Object...)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "invokeMember")
     public boolean isMemberInvocable(Object receiver, String member) {
@@ -658,7 +688,7 @@ public abstract class InteropLibrary extends Library {
      *             actual arguments.
      * @throws UnsupportedMessageException if the member is not invocable
      * @see #isMemberInvocable(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "isMemberInvocable")
     public Object invokeMember(Object receiver, String member, Object... arguments)
@@ -675,7 +705,7 @@ public abstract class InteropLibrary extends Library {
      * observable side-effects. Returns <code>false</code> by default.
      *
      * @see #getMembers(Object, boolean)
-     * @since 1.0
+     * @since 19.0
      */
     public boolean isMemberInternal(Object receiver, String member) {
         return false;
@@ -685,7 +715,7 @@ public abstract class InteropLibrary extends Library {
      * Returns true if the member is {@link #isMemberModifiable(Object, String) modifiable} or
      * {@link #isMemberInsertable(Object, String) insertable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isMemberWritable(Object receiver, String member) {
         return isMemberModifiable(receiver, member) || isMemberInsertable(receiver, member);
@@ -697,7 +727,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isMemberReadable(Object, String) readable}, {@link #isMemberRemovable(Object, String)
      * removable} or {@link #isMemberInvocable(Object, String) invocable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isMemberExisting(Object receiver, String member) {
         return isMemberReadable(receiver, member) || isMemberModifiable(receiver, member) || isMemberRemovable(receiver, member) || isMemberInvocable(receiver, member);
@@ -712,7 +742,7 @@ public abstract class InteropLibrary extends Library {
      * function.
      *
      * @see #readMember(Object, String)
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasMemberReadSideEffects(Object receiver, String member) {
         return false;
@@ -727,7 +757,7 @@ public abstract class InteropLibrary extends Library {
      * setter function.
      *
      * @see #writeMember(Object, String, Object)
-     * @since 1.0
+     * @since 19.0
      */
     public boolean hasMemberWriteSideEffects(Object receiver, String member) {
         return false;
@@ -741,7 +771,7 @@ public abstract class InteropLibrary extends Library {
      * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #getArraySize(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"readArrayElement", "writeArrayElement", "removeArrayElement", "isArrayElementModifiable", "isArrayElementRemovable", "isArrayElementReadable", "getArraySize"})
     public boolean hasArrayElements(Object receiver) {
@@ -754,7 +784,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @throws UnsupportedMessageException if the array element is not readable.
      * @throws InvalidArrayIndexException if the array index is out of bounds or invalid.
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public Object readArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
@@ -767,7 +797,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @throws UnsupportedMessageException if and only if {@link #hasArrayElements(Object)} returns
      *             <code>false</code>.
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public long getArraySize(Object receiver) throws UnsupportedMessageException {
@@ -782,7 +812,7 @@ public abstract class InteropLibrary extends Library {
      * side-effects. Returns <code>false</code> by default.
      *
      * @see #readArrayElement(Object, long)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"hasArrayElements"})
     public boolean isArrayElementReadable(Object receiver, long index) {
@@ -799,7 +829,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if the array element is not writable
      * @throws InvalidArrayIndexException if the array element is not insertable and does not exist.
      * @throws UnsupportedTypeException if the provided value type is not allowed to be written
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"isArrayElementModifiable", "isArrayElementInsertable"})
     public void writeArrayElement(Object receiver, long index, Object value) throws UnsupportedMessageException, UnsupportedTypeException, InvalidArrayIndexException {
@@ -809,15 +839,17 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Remove an array element from the receiver object. Removing member is allowed if the array
-     * element is {@link #isArrayElementRemovable(Object, long) removable}.
+     * element is {@link #isArrayElementRemovable(Object, long) removable}. This method may only
+     * return <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as
+     * well and {@link #isArrayElementInsertable(Object, long)} returns <code>false</code>.
      *
      * This method does not have not observable side-effects other than the removed array element.
      *
      * @throws UnsupportedMessageException if the array element is not removable
      * @throws InvalidArrayIndexException if the given array element index is not existing but
      *             removing would be allowed
-     * @see #isMemberRemovable(Object, String)
-     * @since 1.0
+     * @see #isArrayElementRemovable(Object, long)
+     * @since 19.0
      */
     @Abstract(ifExported = "isArrayElementRemovable")
     public void removeArrayElement(Object receiver, long index) throws UnsupportedMessageException, InvalidArrayIndexException {
@@ -828,12 +860,13 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given array element index is existing and
      * {@link #writeArrayElement(Object, long, Object) writable}. This method may only return
-     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well.
-     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
-     * by default.
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementInsertable(Object, long)} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeArrayElement(Object, long, Object)
-     * @since 1.0
+     * @see #isArrayElementInsertable(Object, long)
+     * @since 19.0
      */
     @Abstract(ifExported = "writeArrayElement")
     public boolean isArrayElementModifiable(Object receiver, long index) {
@@ -841,14 +874,15 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns <code>true</code> if a given array element index is existing and
+     * Returns <code>true</code> if a given array element index is not existing and
      * {@link #writeArrayElement(Object, long, Object) insertable}. This method may only return
-     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well.
-     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
-     * by default.
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementExisting(Object, long)}} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #writeArrayElement(Object, long, Object)
-     * @since 1.0
+     * @see #isArrayElementModifiable(Object, long)
+     * @since 19.0
      */
     @Abstract(ifExported = "writeArrayElement")
     public boolean isArrayElementInsertable(Object receiver, long index) {
@@ -858,12 +892,12 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if a given array element index is existing and
      * {@link #removeArrayElement(Object, long) removable}. This method may only return
-     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well.
-     * Invoking this message does not cause any observable side-effects. Returns <code>false</code>
-     * by default.
+     * <code>true</code> if {@link #hasArrayElements(Object)} returns <code>true</code> as well and
+     * {@link #isArrayElementInsertable(Object, long)}} returns <code>false</code>. Invoking this
+     * message does not cause any observable side-effects. Returns <code>false</code> by default.
      *
      * @see #removeArrayElement(Object, long)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = "removeArrayElement")
     public boolean isArrayElementRemovable(Object receiver, long index) {
@@ -874,7 +908,7 @@ public abstract class InteropLibrary extends Library {
      * Returns true if the array element is {@link #isArrayElementModifiable(Object, long)
      * modifiable} or {@link #isArrayElementInsertable(Object, long) insertable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isArrayElementWritable(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementInsertable(receiver, index);
@@ -886,7 +920,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isArrayElementReadable(Object, long) readable} or
      * {@link #isArrayElementRemovable(Object, long) removable}.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isArrayElementExisting(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementReadable(receiver, index) || isArrayElementRemovable(receiver, index);
@@ -905,7 +939,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #asPointer(Object)
      * @see #toNative(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"asPointer"})
     public boolean isPointer(Object receiver) {
@@ -918,7 +952,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #isPointer(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isPointer(Object)
-     * @since 1.0
+     * @since 19.0
      */
     @Abstract(ifExported = {"isPointer"})
     public long asPointer(Object receiver) throws UnsupportedMessageException {
@@ -933,9 +967,186 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #isPointer(Object)
      * @see #asPointer(Object)
-     * @since 1.0
+     * @since 19.0
      */
     public void toNative(Object receiver) {
+    }
+
+    /**
+     * Returns the receiver as instant if this object represents an {@link #isInstant(Object)
+     * instant}. If a value is an instant then it is also a {@link #isDate(Object) date},
+     * {@link #isTime(Object) time} and {@link #isTimeZone(Object) timezone}. Using this method may
+     * be more efficient than reconstructing the timestamp from the date, time and timezone data.
+     * <p>
+     * Implementers should implement this method if they can provide a more efficient conversion to
+     * Instant than reconstructing it from date, time and timezone date. Implementers must ensure
+     * that the following Java code snippet always holds:
+     *
+     * <pre>
+     * ZoneId zone = getTimeZone(receiver);
+     * LocalDate date = getDate(receiver);
+     * LocalTime time = getTime(receiver);
+     * assert ZonedDateTime.of(date, time, zone).toInstant().equals(getInstant(receiver));
+     * </pre>
+     *
+     * @see #isDate(Object)
+     * @see #isTime(Object)
+     * @see #isTimeZone(Object)
+     * @throws UnsupportedMessageException if {@link #isInstant(Object)} returns <code>false</code>.
+     * @since 20.0.0 beta 2
+     */
+    public Instant asInstant(Object receiver) throws UnsupportedMessageException {
+        if (isDate(receiver) && isTime(receiver) && isTimeZone(receiver)) {
+            LocalDate date = asDate(receiver);
+            LocalTime time = asTime(receiver);
+            ZoneId zone = asTimeZone(receiver);
+            return toInstant(date, time, zone);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static Instant toInstant(LocalDate date, LocalTime time, ZoneId zone) {
+        return ZonedDateTime.of(date, time, zone).toInstant();
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver represents an instant. If a value is an instant
+     * then it is also a {@link #isDate(Object) date}, {@link #isTime(Object) time} and
+     * {@link #isTimeZone(Object) timezone}.
+     *
+     * This method is short-hand for:
+     *
+     * <pre>
+     * {@linkplain #isDate(Object) isDate}(v) && {@link #isTime(Object) isTime}(v) && {@link #isTimeZone(Object) isTimeZone}(v)
+     * </pre>
+     *
+     * @see #isDate(Object)
+     * @see #isTime(Object)
+     * @see #isInstant(Object)
+     * @see #asInstant(Object)
+     * @since 20.0.0 beta 2
+     */
+    public final boolean isInstant(Object receiver) {
+        return isDate(receiver) && isTime(receiver) && isTimeZone(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this object represents a timezone, else <code>false</code>. The
+     * interpretation of timezone objects may vary:
+     * <ul>
+     * <li>If {@link #isDate(Object)} and {@link #isTime(Object)} return <code>true</code>, then the
+     * returned date or time information is aware of this timezone.
+     * <li>If {@link #isDate(Object)} and {@link #isTime(Object)} returns <code>false</code>, then
+     * it represents just timezone information.
+     * </ul>
+     * Objects with only time or only date information must not have timezone information attached,
+     * as aware date or time information always consist of both date and time. If this rule is
+     * violated then an {@link AssertionError} is thrown if assertions are enabled.
+     * <p>
+     * If this method is implemented then also {@link #asTimeZone(Object)} must be implemented.
+     *
+     * @see #asTimeZone(Object)
+     * @see #asInstant(Object)
+     * @since 20.0.0 beta 2
+     */
+    @Abstract(ifExported = {"asTimeZone", "asInstant"})
+    public boolean isTimeZone(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the receiver as timestamp if this object represents a {@link #isTimeZone(Object)
+     * timezone}.
+     *
+     * @throws UnsupportedMessageException if {@link #isTimeZone(Object)} returns <code>false</code>
+     *             .
+     * @see #isTimeZone(Object)
+     * @since 20.0.0 beta 2
+     */
+    @Abstract(ifExported = {"isTimeZone", "asInstant"})
+    public ZoneId asTimeZone(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if this object represents a date, else <code>false</code>. If the
+     * receiver is also a {@link #isTimeZone(Object) timezone} then the date is aware, otherwise it
+     * is naive.
+     *
+     * @see #asDate(Object)
+     * @since 20.0.0 beta 2
+     */
+    @Abstract(ifExported = {"asDate", "asInstant"})
+    public boolean isDate(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the receiver as date if this object represents a {@link #isDate(Object) date}. The
+     * returned date is either aware if the receiver has a {@link #isTimeZone(Object) timezone}
+     * otherwise it is naive.
+     *
+     * @throws UnsupportedMessageException if {@link #isDate(Object)} returns <code>false</code>.
+     * @see #isDate(Object)
+     * @since 20.0.0 beta 2
+     */
+    @Abstract(ifExported = {"isTime", "asInstant"})
+    public LocalDate asDate(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if this object represents a time, else <code>false</code>. If the
+     * receiver is also a {@link #isTimeZone(Object) timezone} then the time is aware, otherwise it
+     * is naive.
+     *
+     * @see #asTime(Object)
+     * @since 20.0.0 beta 2
+     */
+    @Abstract(ifExported = {"asTime", "asInstant"})
+    public boolean isTime(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the receiver as time if this object represents a {@link #isTime(Object) time}. The
+     * returned time is either aware if the receiver has a {@link #isTimeZone(Object) timezone}
+     * otherwise it is naive.
+     *
+     * @throws UnsupportedMessageException if {@link #isTime(Object)} returns <code>false</code>.
+     * @see #isTime(Object)
+     * @since 20.0.0 beta 2
+     */
+    @Abstract(ifExported = {"isTime", "asInstant"})
+    public LocalTime asTime(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if this object represents a duration, else <code>false</code>.
+     *
+     * @see Duration
+     * @see #asDate(Object)
+     * @since 20.0.0 beta 2
+     */
+    @Abstract(ifExported = {"asDuration"})
+    public boolean isDuration(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the receiver as duration if this object represents a {@link #isDuration(Object)
+     * duration}.
+     *
+     * @throws UnsupportedMessageException if {@link #isDuration(Object)} returns <code>false</code>
+     *             .
+     * @see #isDuration(Object)
+     * @since 20.0.0 beta 2
+     */
+    @Abstract(ifExported = {"isDuration"})
+    public Duration asDuration(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
     /**
@@ -943,7 +1154,7 @@ public abstract class InteropLibrary extends Library {
      * {@link LibraryFactory#resolve(Class) ResolvedLibrary.resolve(InteropLibrary.class)}.
      *
      * @see LibraryFactory#resolve(Class)
-     * @since 1.0
+     * @since 19.0
      */
     public static LibraryFactory<InteropLibrary> getFactory() {
         return FACTORY;
@@ -953,7 +1164,7 @@ public abstract class InteropLibrary extends Library {
      * Utility for libraries to require adoption before cached versions of nodes can be executed.
      * Only failes if assertions (-ea) are enabled.
      *
-     * @since 1.0
+     * @since 19.0
      */
     protected final boolean assertAdopted() {
         assert assertAdoptedImpl();
@@ -971,7 +1182,7 @@ public abstract class InteropLibrary extends Library {
             node = node.getParent();
         } while (node != null);
 
-        assert false : "Invalid libray usage. Cached library must be adopted by a RootNode before it is executed.";
+        assert false : "Invalid library usage. Cached library must be adopted by a RootNode before it is executed.";
         return true;
     }
 
@@ -984,9 +1195,9 @@ public abstract class InteropLibrary extends Library {
         public enum Type {
             NULL,
             BOOLEAN,
-            EXECUTABLE,
+            DATE_TIME_ZONE,
+            DURATION,
             STRING,
-            INSTANTIABLE,
             NUMBER,
             POINTER;
         }
@@ -996,7 +1207,11 @@ public abstract class InteropLibrary extends Library {
         }
 
         private static boolean isMultiThreaded(Object receiver) {
-            return InteropAccessor.ACCESSOR.engineSupport().isMultiThreaded(receiver);
+            EngineSupport engine = InteropAccessor.ACCESSOR.engineSupport();
+            if (engine == null) {
+                return false;
+            }
+            return engine.isMultiThreaded(receiver);
         }
 
         @Override
@@ -1017,10 +1232,9 @@ public abstract class InteropLibrary extends Library {
             assert type == Type.NULL || !delegate.isNull(receiver) : violationInvariant(receiver);
             assert type == Type.BOOLEAN || !delegate.isBoolean(receiver) : violationInvariant(receiver);
             assert type == Type.STRING || !delegate.isString(receiver) : violationInvariant(receiver);
-            // (type != EXECUTABLE && type != INSTANTIABLE)
-            // => !(delgate.isExecutable(receiver) && !delgate.isInstantiable(receiver))
-            assert (type == Type.EXECUTABLE || type == Type.INSTANTIABLE) || (!delegate.isExecutable(receiver) && !delegate.isInstantiable(receiver)) : violationInvariant(receiver);
             assert type == Type.NUMBER || !delegate.isNumber(receiver) : violationInvariant(receiver);
+            assert type == Type.DATE_TIME_ZONE || (!delegate.isDate(receiver) && !delegate.isTime(receiver) && !delegate.isTimeZone(receiver)) : violationInvariant(receiver);
+            assert type == Type.DURATION || !delegate.isDuration(receiver) : violationInvariant(receiver);
             return true;
         }
 
@@ -1060,7 +1274,6 @@ public abstract class InteropLibrary extends Library {
         public boolean isExecutable(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isExecutable(receiver);
-            assert !result || notOtherType(receiver, Type.EXECUTABLE);
             return result;
         }
 
@@ -1085,7 +1298,6 @@ public abstract class InteropLibrary extends Library {
         public boolean isInstantiable(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isInstantiable(receiver);
-            assert !result || notOtherType(receiver, Type.INSTANTIABLE);
             return result;
         }
 
@@ -1499,7 +1711,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberReadable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1508,7 +1720,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberModifiable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1517,7 +1729,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberInsertable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberExisting(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1526,7 +1738,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberRemovable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1535,7 +1747,7 @@ public abstract class InteropLibrary extends Library {
             assert preCondition(receiver);
             assert validArgument(receiver, identifier);
             boolean result = delegate.isMemberInvocable(receiver, identifier);
-            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1616,7 +1828,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isArrayElementReadable(Object receiver, long identifier) {
             assert preCondition(receiver);
             boolean result = delegate.isArrayElementReadable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1624,7 +1836,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isArrayElementModifiable(Object receiver, long identifier) {
             assert preCondition(receiver);
             boolean result = delegate.isArrayElementModifiable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1632,7 +1844,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isArrayElementInsertable(Object receiver, long identifier) {
             assert preCondition(receiver);
             boolean result = delegate.isArrayElementInsertable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementExisting(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1640,7 +1852,7 @@ public abstract class InteropLibrary extends Library {
         public boolean isArrayElementRemovable(Object receiver, long identifier) {
             assert preCondition(receiver);
             boolean result = delegate.isArrayElementRemovable(receiver, identifier);
-            assert !result || delegate.hasArrayElements(receiver) : violationInvariant(receiver, identifier);
+            assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
 
@@ -1673,6 +1885,129 @@ public abstract class InteropLibrary extends Library {
                 throw e;
             }
         }
-    }
 
+        @Override
+        public LocalDate asDate(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean hasDate = delegate.isDate(receiver);
+            try {
+                LocalDate result = delegate.asDate(receiver);
+                assert hasDate : violationInvariant(receiver);
+                assert !delegate.isTimeZone(receiver) || delegate.isTime(receiver) : violationInvariant(receiver);
+                assert notOtherType(receiver, Type.DATE_TIME_ZONE);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !hasDate : violationInvariant(receiver);
+                assert !delegate.isTimeZone(receiver) || !delegate.isTime(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public LocalTime asTime(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean hasTime = delegate.isTime(receiver);
+            try {
+                LocalTime result = delegate.asTime(receiver);
+                assert hasTime : violationInvariant(receiver);
+                assert !delegate.isTimeZone(receiver) || delegate.isDate(receiver) : violationInvariant(receiver);
+                assert notOtherType(receiver, Type.DATE_TIME_ZONE);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !hasTime : violationInvariant(receiver);
+                assert !delegate.isTimeZone(receiver) || !delegate.isDate(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public ZoneId asTimeZone(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean hasTimeZone = delegate.isTimeZone(receiver);
+            try {
+                ZoneId result = delegate.asTimeZone(receiver);
+                assert hasTimeZone : violationInvariant(receiver);
+                assert (delegate.isDate(receiver) && delegate.isTime(receiver)) || (!delegate.isDate(receiver) && !delegate.isTime(receiver)) : violationInvariant(receiver);
+                assert notOtherType(receiver, Type.DATE_TIME_ZONE);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !hasTimeZone : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Duration asDuration(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean wasDuration = delegate.isDuration(receiver);
+            try {
+                Duration result = delegate.asDuration(receiver);
+                assert wasDuration : violationInvariant(receiver);
+                assert notOtherType(receiver, Type.DURATION);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasDuration : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Instant asInstant(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean hasDateAndTime = delegate.isDate(receiver) && delegate.isTime(receiver) && delegate.isTimeZone(receiver);
+            try {
+                Instant result = delegate.asInstant(receiver);
+                assert hasDateAndTime : violationInvariant(receiver);
+                assert ZonedDateTime.of(delegate.asDate(receiver), delegate.asTime(receiver),
+                                delegate.asTimeZone(receiver)).//
+                                toInstant().equals(result) : violationInvariant(receiver);
+                assert notOtherType(receiver, Type.DATE_TIME_ZONE);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !hasDateAndTime : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isDate(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isDate(receiver);
+            assert !delegate.isTimeZone(receiver) || (delegate.isTime(receiver) && result) || (!delegate.isTime(receiver) && !result) : violationInvariant(receiver);
+            assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
+            return result;
+        }
+
+        @Override
+        public boolean isTime(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isTime(receiver);
+            assert !delegate.isTimeZone(receiver) || (delegate.isDate(receiver) && result) || (!delegate.isDate(receiver) && !result) : violationInvariant(receiver);
+            assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
+            return result;
+        }
+
+        @Override
+        public boolean isTimeZone(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isTimeZone(receiver);
+            assert !result || (delegate.isDate(receiver) && delegate.isTime(receiver)) || (!delegate.isDate(receiver) && !delegate.isTime(receiver)) : violationInvariant(receiver);
+            assert !result || notOtherType(receiver, Type.DATE_TIME_ZONE);
+            return result;
+        }
+
+        @Override
+        public boolean isDuration(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isDuration(receiver);
+            assert !result || notOtherType(receiver, Type.DURATION);
+            return result;
+        }
+
+    }
 }

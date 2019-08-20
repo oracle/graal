@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.scanner.BitStream;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
 public final class MDString implements MDBaseNode {
 
@@ -57,8 +58,8 @@ public final class MDString implements MDBaseNode {
         return String.format("!\"%s\"", s);
     }
 
-    public static MDString create(long[] chars) {
-        return new MDString(ParseUtil.longArrayToString(0, chars));
+    public static MDString create(RecordBuffer buffer) {
+        return new MDString(buffer.readUnicodeString());
     }
 
     private static final int STRINGS_ARGINDEX_COUNT = 0;

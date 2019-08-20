@@ -151,8 +151,7 @@ public class DebuggerRetrievalTest {
         @Override
         protected void onCreate(TruffleInstrument.Env env) {
             Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
-            env.getOptions().set(debuggerKey, debugger.toString());
-            haveDebugger = true;
+            haveDebugger = debugger != null;
         }
 
         @Override

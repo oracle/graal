@@ -74,9 +74,7 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     @Override
     public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
         if (needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
-            JavaConstant hub = SubstrateObjectConstant.forObject(host.dynamicHub(type));
-            ValueNode[] args = {ConstantNode.forConstant(hub, builder.getMetaAccess(), builder.getGraph())};
-            builder.handleReplacedInvoke(InvokeKind.Special, builder.getMetaAccess().lookupJavaMethod(ENSURE_INITIALIZED_METHOD), args, false);
+            emitEnsureClassInitialized(builder, SubstrateObjectConstant.forObject(host.dynamicHub(type)));
             /*
              * The classInit value is only registered with Invoke nodes. Since we do not need that,
              * we ensure it is null.
@@ -87,6 +85,11 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
             return true;
         }
         return false;
+    }
+
+    public static void emitEnsureClassInitialized(GraphBuilderContext builder, JavaConstant hubConstant) {
+        ValueNode[] args = {ConstantNode.forConstant(hubConstant, builder.getMetaAccess(), builder.getGraph())};
+        builder.handleReplacedInvoke(InvokeKind.Special, builder.getMetaAccess().lookupJavaMethod(ENSURE_INITIALIZED_METHOD), args, false);
     }
 
     /**

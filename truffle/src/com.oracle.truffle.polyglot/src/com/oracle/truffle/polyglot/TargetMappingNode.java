@@ -135,10 +135,12 @@ abstract class TargetMappingNode extends Node {
         protected Object doDefault(Object receiver, @SuppressWarnings("unused") PolyglotTargetMapping cachedMapping,
                         PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly,
                         @Cached("createBinaryProfile()") ConditionProfile acceptsProfile,
+                        @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) boolean allowsImplementation,
                         @Cached ToHostNode toHostRecursive) {
             CompilerAsserts.partialEvaluationConstant(checkOnly);
             Object convertedValue = NO_RESULT;
-            if (acceptsProfile.profile(ToHostNode.canConvert(receiver, cachedMapping.sourceType, cachedMapping.sourceType, context, ToHostNode.MAX, interop, null))) {
+            if (acceptsProfile.profile(ToHostNode.canConvert(receiver, cachedMapping.sourceType, cachedMapping.sourceType,
+                            allowsImplementation, context, ToHostNode.MAX, interop, null))) {
                 if (!checkOnly || cachedMapping.accepts != null) {
                     convertedValue = toHostRecursive.execute(receiver, cachedMapping.sourceType, cachedMapping.sourceType, context, false);
                 }
@@ -153,6 +155,10 @@ abstract class TargetMappingNode extends Node {
             } else {
                 return convert(context, cachedMapping.converter, convertedValue);
             }
+        }
+
+        static boolean allowsImplementation(PolyglotLanguageContext context, Class<?> type) {
+            return ToHostNode.allowsImplementation(context, type);
         }
 
         @TruffleBoundary

@@ -47,7 +47,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 /**
  * A mechanism for Truffle to update a {@link CompilationResult} before it is
- * {@linkplain CompilationResult#close() closed} by the Graal compiler.
+ * {@linkplain CompilationResult#close() closed} by the compiler.
  */
 class TruffleCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
 
@@ -68,8 +68,8 @@ class TruffleCompilationResultBuilderFactory implements CompilationResultBuilder
 
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
-                    OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
-        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, nullRegister) {
+                    OptionValues options, DebugContext debug, CompilationResult compilationResult, Register uncompressedNullRegister) {
+        return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister) {
             @Override
             protected void closeCompilationResult() {
                 CompilationResult result = this.compilationResult;

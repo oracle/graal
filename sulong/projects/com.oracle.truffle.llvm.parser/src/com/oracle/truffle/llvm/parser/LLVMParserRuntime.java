@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -63,27 +63,38 @@ public final class LLVMParserRuntime {
         return context.getGlobalScope();
     }
 
-    public LLVMFunctionDescriptor lookupFunction(String name, boolean useGlobalScope) {
-        return getScope(useGlobalScope).getFunction(name);
+    public LLVMFunctionDescriptor lookupFunction(String name, boolean preferGlobalScope) {
+        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
+        if (symbol != null && symbol.isFunction()) {
+            return symbol.asFunction();
+        }
+        throw new IllegalStateException("Unknown function: " + name);
     }
 
-    public LLVMGlobal lookupGlobal(String name, boolean useGlobalScope) {
-        return getScope(useGlobalScope).getGlobalVariable(name);
+    public LLVMGlobal lookupGlobal(String name, boolean preferGlobalScope) {
+        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
+        if (symbol != null && symbol.isGlobalVariable()) {
+            return symbol.asGlobalVariable();
+        }
+        throw new IllegalStateException("Unknown global: " + name);
     }
 
-    public LLVMSymbol lookupSymbol(String name, boolean useGlobalScope) {
-        LLVMSymbol symbol = getScope(useGlobalScope).get(name);
+    public LLVMSymbol lookupSymbol(String name, boolean preferGlobalScope) {
+        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
         if (symbol != null) {
             return symbol;
         }
         throw new IllegalStateException("Unknown symbol: " + name);
     }
 
-    private LLVMScope getScope(boolean useGlobalScope) {
-        if (useGlobalScope) {
-            return getGlobalScope();
-        } else {
-            return fileScope;
+    private LLVMSymbol lookupSymbolImpl(String name, boolean preferGlobalScope) {
+        LLVMSymbol symbol = null;
+        if (preferGlobalScope) {
+            symbol = getGlobalScope().get(name);
         }
+        if (symbol == null) {
+            symbol = fileScope.get(name);
+        }
+        return symbol;
     }
 }

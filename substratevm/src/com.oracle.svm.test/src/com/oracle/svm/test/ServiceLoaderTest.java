@@ -84,12 +84,12 @@ public class ServiceLoaderTest {
             foundD |= name.equals("ServiceD");
         }
 
+        Assert.assertTrue("Should find ServiceA", foundA);
+        Assert.assertTrue("Should find ServiceB", foundB);
+        Assert.assertFalse("Should not find ServiceHostedOnly", foundHostedOnly);
+        Assert.assertFalse("Should not find ServiceC", foundC);
+        Assert.assertFalse("Should not find ServiceD", foundD);
         Assert.assertEquals(2, numFound);
-        Assert.assertTrue(foundA);
-        Assert.assertTrue(foundB);
-        Assert.assertFalse(foundHostedOnly);
-        Assert.assertFalse(foundC);
-        Assert.assertFalse(foundD);
     }
 
     static void testServicesInHotSpot() {

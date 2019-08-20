@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,7 +93,7 @@ public abstract class DebugValue {
      *
      * @param primitiveValue a primitive value to set
      * @throws DebugException when guest language code throws an exception
-     * @since 1.0
+     * @since 19.0
      */
     public abstract void set(Object primitiveValue) throws DebugException;
 
@@ -121,7 +121,7 @@ public abstract class DebugValue {
      * <code>null</code> otherwise.
      *
      * @throws DebugException when guest language code throws an exception
-     * @since 1.0
+     * @since 19.0
      */
     public abstract String asString() throws DebugException;
 
@@ -147,7 +147,7 @@ public abstract class DebugValue {
      * Returns <code>true</code> if reading of this value can have side-effects, else
      * <code>false</code>. Read has side-effects if it changes runtime state.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public abstract boolean hasReadSideEffects();
 
@@ -155,7 +155,7 @@ public abstract class DebugValue {
      * Returns <code>true</code> if setting a new value can have side-effects, else
      * <code>false</code>. Write has side-effects if it changes runtime state besides this value.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public abstract boolean hasWriteSideEffects();
 
@@ -198,7 +198,7 @@ public abstract class DebugValue {
     /**
      * Test if the value represents 'null'.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean isNull() {
         if (!isReadable()) {
@@ -210,18 +210,17 @@ public abstract class DebugValue {
 
     /**
      * Provides properties representing an internal structure of this value. The returned collection
-     * is not thread-safe. If the value is not {@link #isReadable() readable} then an
-     * {@link IllegalStateException} is thrown.
+     * is not thread-safe. If the value is not {@link #isReadable() readable} then <code>null</code>
+     * is returned.
      *
      * @return a collection of property values, or </code>null</code> when the value does not have
      *         any concept of properties.
      * @throws DebugException when guest language code throws an exception
-     * @throws IllegalStateException if the value is not {@link #isReadable() readable}
      * @since 0.19
      */
     public final Collection<DebugValue> getProperties() throws DebugException {
         if (!isReadable()) {
-            throw new IllegalStateException("Value is not readable");
+            return null;
         }
         Object value = get();
         try {
@@ -252,12 +251,11 @@ public abstract class DebugValue {
      * @param name name of a property
      * @return the property value, or <code>null</code> if the property does not exist.
      * @throws DebugException when guest language code throws an exception
-     * @throws IllegalStateException if the value is not {@link #isReadable() readable}
-     * @since 1.0
+     * @since 19.0
      */
     public final DebugValue getProperty(String name) throws DebugException {
         if (!isReadable()) {
-            throw new IllegalStateException("Value is not readable");
+            return null;
         }
         Object value = get();
         if (value != null) {
@@ -390,9 +388,12 @@ public abstract class DebugValue {
      * Returns <code>true</code> if this value can be executed (represents a guest language
      * function), else <code>false</code>.
      *
-     * @since 1.0
+     * @since 19.0
      */
     public final boolean canExecute() throws DebugException {
+        if (!isReadable()) {
+            return false;
+        }
         Object value = get();
         try {
             return INTEROP.isExecutable(value);
@@ -410,7 +411,7 @@ public abstract class DebugValue {
      * @return the result of the execution
      * @throws DebugException when guest language code throws an exception
      * @see #canExecute()
-     * @since 1.0
+     * @since 19.0
      */
     public final DebugValue execute(DebugValue... arguments) throws DebugException {
         Object value = get();
@@ -482,7 +483,7 @@ public abstract class DebugValue {
      */
     @Override
     public String toString() {
-        return "DebugValue(name=" + getName() + ", value = " + as(String.class) + ")";
+        return "DebugValue(name=" + getName() + ", value = " + (isReadable() ? as(String.class) : "<not readable>") + ")";
     }
 
     abstract static class AbstractDebugValue extends DebugValue {

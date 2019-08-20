@@ -29,33 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
-import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.AggregateConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatingPointConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public interface Constant extends SymbolImpl {
-
-    static Constant createFromData(Type type, long datum) {
-        if (Type.isIntegerType(type)) {
-            return IntegerConstant.fromDatum(type, datum);
-
-        } else if (Type.isFloatingpointType(type)) {
-            return FloatingPointConstant.create(type, new long[]{datum});
-
-        } else {
-            throw new LLVMParserException("No datum constant implementation for " + type);
-        }
-    }
-
-    static Constant createFromData(Type type, long[] data) {
-        return AggregateConstant.fromData(type, data);
-    }
-
-    static Constant createFromValues(Type type, SymbolTable symbols, int[] valueIndices) {
-        return AggregateConstant.fromSymbols(symbols, type, valueIndices);
-    }
 }

@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.INSTRUMENT;
+import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Instrument;
