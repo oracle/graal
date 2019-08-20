@@ -468,7 +468,7 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
-    "com.oracle.truffle.llvm.tests.debugexpr" : {
+    "com.oracle.truffle.llvm.tests.debugexpr.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O1", "O0", "O0_MEM2REG"],
@@ -1051,7 +1051,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcodeformat.native/*",
           "dependency:com.oracle.truffle.llvm.tests.debug.native/*",
-          "dependency:com.oracle.truffle.llvm.tests.debugexpr/*",
+          "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.interop.native/*",
           "dependency:com.oracle.truffle.llvm.tests.other.native/*",
