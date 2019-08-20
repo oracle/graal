@@ -216,7 +216,6 @@ public final class GraphOrder {
                                             }
                                         }
                                     }
-
                                     // loop contents are only accessible via proxies at the exit
                                     currentState.clearAll();
                                     currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));
@@ -235,6 +234,17 @@ public final class GraphOrder {
                                                 }
                                             });
                                         } else {
+                                            if (!currentState.isMarked(input) && hasMarkedProxyUsage(input, currentState)) {
+                                                /*
+                                                 * GVN and scheduling late out of loops allows for a
+                                                 * value node to be behind a proxy at one use-site
+                                                 * and without a proxy on another after loop exit;
+                                                 * we put those nodes in current state as they were
+                                                 * cleared by the loop exit. For example, see
+                                                 * com.oracle.svm.jtt.optimize.VN_Loop01.test2
+                                                 */
+                                                currentState.mark(input);
+                                            }
                                             assert currentState.isMarked(input) || input instanceof VirtualObjectNode || input instanceof ConstantNode : input + " not available at " + node +
                                                             " in block " + block + "\n" + list;
                                         }
@@ -266,6 +276,15 @@ public final class GraphOrder {
                         });
                     }
                     return currentState;
+                }
+
+                private boolean hasMarkedProxyUsage(Node input, NodeBitMap currentState) {
+                    for (Node usage : input.usages()) {
+                        if (usage instanceof ProxyNode && currentState.isMarked(usage)) {
+                            return true;
+                        }
+                    }
+                    return false;
                 }
 
                 @Override
