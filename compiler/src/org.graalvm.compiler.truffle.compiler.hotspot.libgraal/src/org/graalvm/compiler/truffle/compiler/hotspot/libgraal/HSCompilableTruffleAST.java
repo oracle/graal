@@ -37,11 +37,12 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilabl
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCompilableName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetFailedSpeculationsAddress;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callOnCompilationFailed;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.createString;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.env;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.createString;
 
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
@@ -50,7 +51,6 @@ import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
 import org.graalvm.libgraal.LibGraal;
 
-import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -96,7 +96,7 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
             res = callGetFailedSpeculationsAddress(env(), getHandle());
             cachedFailedSpeculationsAddress = res;
         }
-        return new HotSpotSpeculationLog(cachedFailedSpeculationsAddress);
+        return HotSpotGraalServices.newHotSpotSpeculationLog(cachedFailedSpeculationsAddress);
     }
 
     @SVMToHotSpot(AsJavaConstant)

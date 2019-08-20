@@ -24,11 +24,17 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Objects;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotMetaData;
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
 
 /**
@@ -40,6 +46,8 @@ public class HotSpotGraalServices {
     private static final Method runtimeExitHotSpot;
     private static final Method scopeOpenLocalScope;
     private static final Method scopeEnterGlobalScope;
+
+    private static final Constructor<HotSpotSpeculationLog> hotSpotSpeculationLogConstructor;
 
     static {
         Method implicitExceptionBytes = null;
@@ -65,6 +73,14 @@ public class HotSpotGraalServices {
         runtimeExitHotSpot = exitHotSpot;
         scopeEnterGlobalScope = enterGlobalScope;
         scopeOpenLocalScope = openLocalScope;
+
+        Constructor<HotSpotSpeculationLog> constructor = null;
+        try {
+            constructor = HotSpotSpeculationLog.class.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class);
+        } catch (NoSuchMethodException e) {
+            throw new InternalError("EncodedSpeculationReason exists but constructor is missing", e);
+        }
+        hotSpotSpeculationLogConstructor = constructor;
     }
 
     /**
@@ -119,4 +135,17 @@ public class HotSpotGraalServices {
             System.exit(status);
         }
     }
+
+    public static SpeculationLog newHotSpotSpeculationLog(long cachedFailedSpeculationsAddress) {
+        if (hotSpotSpeculationLogConstructor != null) {
+            try {
+                return hotSpotSpeculationLogConstructor.newInstance(cachedFailedSpeculationsAddress);
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw new InternalError(e);
+            }
+        } else {
+            throw shouldNotReachHere();
+        }
+    }
+
 }
