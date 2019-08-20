@@ -1154,7 +1154,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     private void boundsCheck(int start, int len, int arrayLength) {
         assert arrayLength >= 0;
-        if (start < 0 || start + (long) len > arrayLength) {
+        if (start < 0 || len < 0 || start + (long) len > arrayLength) {
             throw getMeta().throwEx(ArrayIndexOutOfBoundsException.class);
         }
     }
@@ -1617,9 +1617,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
         char[] chars = ((StaticObject) getMeta().String_value.get(string)).unwrap();
-        ByteBuffer region = allocateDirect(chars.length, JavaKind.Char);
-        region.asCharBuffer().put(chars);
-        return byteBufferAddress(region);
+        // Add one for zero termination.
+        ByteBuffer bb = allocateDirect(chars.length + 1, JavaKind.Char);
+        CharBuffer region = bb.asCharBuffer();
+        region.put(chars);
+        region.put((char) 0);
+        return byteBufferAddress(bb);
     }
 
     /**
