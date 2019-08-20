@@ -30,7 +30,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +105,9 @@ public class LLVMFeature implements Feature, GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        checkLLVMVersion();
+        if (!LLVMOptions.CustomLLC.hasBeenSet()) {
+            checkLLVMVersion();
+        }
 
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override
@@ -169,9 +170,23 @@ public class LLVMFeature implements Feature, GraalFeature {
         }
     }
 
-    private static void checkLLVMVersion() {
-        List<String> supportedVersions = Arrays.asList("6.0.0", "6.0.1");
+    private static final int MIN_LLVM_MAJOR_VERSION = 6;
+    private static final int MIN_LLVM_MINOR_VERSION = 0;
 
+    private static void checkLLVMVersion() {
+        String version = getLLVMVersion();
+
+        String[] splitVersion = version.split("\\.");
+        assert splitVersion.length == 3;
+        int majorVersion = Integer.parseInt(splitVersion[0]);
+        int minorVersion = Integer.parseInt(splitVersion[1]);
+
+        if (majorVersion < MIN_LLVM_MAJOR_VERSION || (majorVersion == MIN_LLVM_MAJOR_VERSION && minorVersion < MIN_LLVM_MINOR_VERSION)) {
+            throw UserError.abort("Unsupported LLVM version: " + version + ". Supported versions are LLVM " + MIN_LLVM_MAJOR_VERSION + "." + MIN_LLVM_MINOR_VERSION + ".0 and above");
+        }
+    }
+
+    private static String getLLVMVersion() {
         int status;
         String output = null;
         try (OutputStream os = new ByteArrayOutputStream()) {
@@ -193,9 +208,8 @@ public class LLVMFeature implements Feature, GraalFeature {
         if (status != 0) {
             throw UserError.abort("Using the LLVM backend requires LLVM to be installed on your machine.");
         }
-        if (!supportedVersions.contains(output)) {
-            throw UserError.abort("Unsupported LLVM version: " + output + ". Supported versions are: [" + String.join(", ", supportedVersions) + "]");
-        }
+
+        return output;
     }
 }
 
