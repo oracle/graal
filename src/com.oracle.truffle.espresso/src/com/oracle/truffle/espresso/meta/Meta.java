@@ -159,6 +159,7 @@ public final class Meta implements ContextAccess {
         NoClassDefFoundError = knownKlass(Type.NoClassDefFoundError);
         InterruptedException = knownKlass(Type.InterruptedException);
         RuntimeException = knownKlass(Type.RuntimeException);
+        IllegalMonitorStateException = knownKlass(Type.IllegalMonitorStateException);
 
         StackOverflowError = knownKlass(Type.StackOverflowError);
         OutOfMemoryError = knownKlass(Type.OutOfMemoryError);
@@ -420,6 +421,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass InvocationTargetException;
     public final ObjectKlass NegativeArraySizeException;
     public final ObjectKlass IllegalArgumentException;
+    public final ObjectKlass IllegalMonitorStateException;
     public final ObjectKlass NullPointerException;
     public final ObjectKlass ClassNotFoundException;
     public final ObjectKlass NoClassDefFoundError;

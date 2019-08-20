@@ -552,9 +552,36 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
         return null;
     }
 
+    public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType, boolean isStatic) {
+        fieldLookupCount.inc();
+        // TODO(peterssen): Improve lookup performance.
+
+        Field field = lookupDeclaredField(fieldName, fieldType);
+        if (field != null && field.isStatic() == isStatic) {
+            return field;
+        }
+
+        if (isStatic) {
+            for (ObjectKlass superI : getSuperInterfaces()) {
+                field = superI.lookupField(fieldName, fieldType, isStatic);
+                if (field != null) {
+                    assert field.isStatic();
+                    return field;
+                }
+            }
+        }
+
+        if (getSuperKlass() != null) {
+            return getSuperKlass().lookupField(fieldName, fieldType, isStatic);
+        }
+
+        return null;
+    }
+
     public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         fieldLookupCount.inc();
         // TODO(peterssen): Improve lookup performance.
+
         Field field = lookupDeclaredField(fieldName, fieldType);
         if (field == null && getSuperKlass() != null) {
             return getSuperKlass().lookupField(fieldName, fieldType);

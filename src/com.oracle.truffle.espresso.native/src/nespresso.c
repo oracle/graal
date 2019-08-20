@@ -379,7 +379,7 @@ static jfloat jvalues_pop_float(struct Varargs* varargs) {
 }
 static jdouble jvalues_pop_double(struct Varargs* varargs) {
     struct VarargsA* a = (struct VarargsA*) varargs;
-    return a->args++->f;
+    return a->args++->d;
   
 }
 static jlong jvalues_pop_long(struct Varargs* varargs) {
@@ -620,12 +620,15 @@ jobject NewObject(JNIEnv *env, jclass clazz, jmethodID methodID, ...) {
 }
 
 jint RegisterNatives(JNIEnv *env, jclass clazz, const JNINativeMethod *methods, jint nMethods) {  
-  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;  
+  struct NespressoEnv *nespresso_env = (struct NespressoEnv*) (*env)->reserved0;
+  jint ret = JNI_OK;
   for (jint i = 0; i < nMethods; ++i) {    
-    nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, methods[i].fnPtr);
+    ret = nespresso_env->RegisterNative(env, clazz, methods[i].name, methods[i].signature, methods[i].fnPtr);
+    if (ret != JNI_OK) {
+        break;
+    }
   }
-  // TODO(peterssen): Always OK?.
-  return JNI_OK;
+  return ret;
 }
 
 jboolean IsSameObject(JNIEnv *env, jobject first, jobject second) {
@@ -645,12 +648,17 @@ void DeleteGlobalRef(JNIEnv *env, jobject globalRef) {
 
 jobject NewWeakGlobalRef(JNIEnv *env, jobject obj) {
   TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
+  if (obj == NULL) {
+      return NULL;
+  }
   return (jobject) (*truffle_env)->newWeakObjectRef(truffle_env, (TruffleObject) obj);
 }
 
 void DeleteWeakGlobalRef(JNIEnv *env, jobject globalRef) {
   TruffleEnv *truffle_env = (*truffle_ctx)->getTruffleEnv(truffle_ctx);
-  (*truffle_env)->releaseWeakObjectRef(truffle_env, (TruffleObject) globalRef);
+  if (globalRef != NULL) {
+    (*truffle_env)->releaseWeakObjectRef(truffle_env, (TruffleObject) globalRef);
+  }
 }
 
 static void unset_function_error() {

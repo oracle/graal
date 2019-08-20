@@ -1184,7 +1184,7 @@ void *JVM_RawMonitorCreate(void) {
   NATIVE(JVM_RawMonitorCreate);
   // TODO(peterssen): Cache class and method.
   JNIEnv* jniEnv = getGuestJNI();  
-  jclass java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java.lang.Object");
+  jclass java_lang_Object = (*jniEnv)->FindClass(jniEnv, "java/lang/Object");
   jmethodID constructor = (*jniEnv)->GetMethodID(jniEnv, java_lang_Object, "<init>", "()V");
   jobject lock = (*jniEnv)->NewObject(jniEnv, java_lang_Object, constructor);
   return (void*) (*jniEnv)->NewGlobalRef(jniEnv, lock);

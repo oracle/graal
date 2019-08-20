@@ -749,4 +749,12 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     public void invalidateLeaf() {
         isLeaf.invalidate();
     }
+
+    public void unregisterNative() {
+        assert isNative();
+        if (callTarget != null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            callTarget = null;
+        }
+    }
 }

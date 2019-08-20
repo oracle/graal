@@ -65,7 +65,7 @@ public abstract class ByteSequence {
     }
 
     public static ByteSequence wrap(final byte[] underlyingBytes, int offset, int length) {
-        if (offset >= underlyingBytes.length || offset + length > underlyingBytes.length || length < 0 || offset < 0) {
+        if ((length > 0 && offset >= underlyingBytes.length) || offset + length > underlyingBytes.length || length < 0 || offset < 0) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("ByteSequence illegal bounds: offset: " + offset + " length: " + length + " bytes length: " + underlyingBytes.length);
         }

@@ -1468,11 +1468,20 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 }
                 break;
             case INVOKESPECIAL:
+                // Otherwise, if the resolved method is an instance initialization method, and the
+                // class in which it is declared is not the class symbolically referenced by the
+                // instruction, a NoSuchMethodError is thrown.
                 if (resolutionSeed.isConstructor()) {
                     if (resolutionSeed.getDeclaringKlass().getName() != getConstantPool().methodAt(bs.readCPI(curBCI)).getHolderKlassName(getConstantPool())) {
                         CompilerDirectives.transferToInterpreter();
                         throw getMeta().throwEx(NoSuchMethodError.class);
                     }
+                }
+                // Otherwise, if the resolved method is a class (static) method, the invokespecial
+                // instruction throws an IncompatibleClassChangeError.
+                if (resolutionSeed.isStatic()) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw getMeta().throwEx(IncompatibleClassChangeError.class);
                 }
                 break;
             default:
@@ -1807,7 +1816,6 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
      */
     private int putField(final VirtualFrame frame, int top, Field field, int opcode) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
-        assert field.isStatic() == (opcode == PUTSTATIC);
 
         if (opcode == PUTFIELD) {
             // Otherwise, if the resolved field is a static field, putfield throws an
@@ -1847,6 +1855,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             }
         }
 
+        assert field.isStatic() == (opcode == PUTSTATIC);
+
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(peekObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
@@ -1883,7 +1893,6 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
      */
     private int getField(final VirtualFrame frame, int top, Field field, int opcode) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
-        assert field.isStatic() == (opcode == GETSTATIC);
         CompilerAsserts.partialEvaluationConstant(field);
 
         if (opcode == GETFIELD) {
@@ -1901,6 +1910,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 throw getMeta().throwEx(IncompatibleClassChangeError.class);
             }
         }
+
+        assert field.isStatic() == (opcode == GETSTATIC);
 
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
