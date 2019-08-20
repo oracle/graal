@@ -219,6 +219,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.wasm.binary.constants.ExportIdentifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
+import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
@@ -349,9 +350,6 @@ public class BinaryReader extends BinaryStreamReader {
                     Assert.fail(String.format("Invalid limits prefix (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
             }
         }
-    }
-
-    private void readDataSection() {
     }
 
     private void readCodeSection() {
@@ -957,8 +955,8 @@ public class BinaryReader extends BinaryStreamReader {
                         value = readFloatAsInt64();
                         break;
                     case GLOBAL_GET:
-                        // The global.get instructions in global initializers are only allowed to refer to imported globals.
-                        // Imported globals are not yet supported in our implementation.
+                        // The global.get instructions in constant expressions are only allowed to refer to
+                        // imported globals, which are not yet supported in our implementation.
                         throw new NotImplementedException();
                     case END:
                         break;
@@ -968,6 +966,47 @@ public class BinaryReader extends BinaryStreamReader {
                 }
             } while (instruction != END);
             wasmModule.globals().register(globalIndex, value, type, mut != GlobalModifier.CONSTANT);
+        }
+    }
+
+    private void readDataSection() {
+        WasmMemory memory = WasmLanguage.getCurrentContext().memory();
+        int numDataSections = readVectorLength();
+        for (int i = 0; i != numDataSections; ++i) {
+            int memIndex = readUnsignedInt32();
+            // At the moment, WebAssembly only supports one memory instance, thus the only valid memory index is 0.
+            Assert.assertEquals(memIndex, 0, "Invalid memory index");
+            long offset = 0;
+            byte instruction;
+            do {
+                instruction = read1();
+                // Data offset expression must be a constant expression with result type i32.
+                // https://webassembly.github.io/spec/core/syntax/modules.html#data-segments
+                // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+
+                switch (instruction) {
+                    case I32_CONST:
+                        offset = readSignedInt32();
+                        break;
+                    case GLOBAL_GET:
+                        // The global.get instructions in constant expressions are only allowed to refer to
+                        // imported globals, which are not yet supported in our implementation.
+                        throw new NotImplementedException();
+                    case END:
+                        break;
+                    default:
+                        Assert.fail(String.format("Invalid instruction for data offset expression: 0x%02X", instruction));
+                }
+            } while (instruction != END);
+            int byteLength = readVectorLength();
+
+            long baseAddress = memory.startAddress() + offset;
+            memory.validateAddress(baseAddress, byteLength);
+
+            for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
+                byte b = read1();
+                memory.store_i32_8(baseAddress + writeOffset, b);
+            }
         }
     }
 

@@ -334,6 +334,10 @@ public class NFAState implements IndexedState, JsonConvertible {
         }
     }
 
+    public boolean isDead(boolean forward) {
+        return !isFinalState(forward) && (getNext(forward).isEmpty() || getNext(forward).size() == 1 && getNext(forward).get(0).getTarget(forward) == this);
+    }
+
     @TruffleBoundary
     public String idToString() {
         return getStateSet().stream().map(x -> String.valueOf(x.getId())).collect(Collectors.joining(",", "(", ")")) + "[" + id + "]";

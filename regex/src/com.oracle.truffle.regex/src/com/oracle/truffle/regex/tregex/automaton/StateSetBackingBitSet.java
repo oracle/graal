@@ -104,6 +104,11 @@ public class StateSetBackingBitSet implements StateSetBackingSet {
     }
 
     @Override
+    public boolean contains(StateSetBackingSet other) {
+        return bitSet.contains(((StateSetBackingBitSet) other).bitSet);
+    }
+
+    @Override
     public PrimitiveIterator.OfInt iterator() {
         return bitSet.iterator();
     }

@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "19.2.0",
+  "version" : "19.3.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -618,6 +618,17 @@ suite = {
       "multiReleaseJarVersion" : "13",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "13+",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk14" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies": ["org.graalvm.compiler.hotspot"],
+      "overlayTarget" : "org.graalvm.compiler.hotspot",
+      "multiReleaseJarVersion" : "14",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "14+",
       "workingSets" : "Graal,HotSpot",
     },
 

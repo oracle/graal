@@ -31,7 +31,6 @@ import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyIndexOf;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyStartsWith;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EndsWith;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.Equals;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfChar;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfString;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.RegionMatches;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.StartsWith;
@@ -46,7 +45,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
  * whenever possible:
  * <ul>
  * <li>{@link String#isEmpty()}: {@link EmptyEquals}</li>
- * <li>{@link String#indexOf(int)}: {@link IndexOfChar}</li>
+ * <li>{@link String#indexOf(String)}: {@link IndexOfString}</li>
  * <li>{@link String#startsWith(String)}: {@link StartsWith}</li>
  * <li>{@link String#endsWith(String)}: {@link EndsWith}</li>
  * <li>{@link String#equals(Object)}: {@link Equals}</li>
@@ -67,7 +66,7 @@ public final class LiteralRegexEngine {
         PreCalcResultVisitor preCalcResultVisitor = PreCalcResultVisitor.run(ast, true);
         boolean caret = ast.getRoot().startsWithCaret();
         boolean dollar = ast.getRoot().endsWithDollar();
-        if (preCalcResultVisitor.getLiteral().length() == 0) {
+        if (ast.getRoot().getMinPath() == 0) {
             if (caret) {
                 if (dollar) {
                     return new EmptyEquals(language, ast, preCalcResultVisitor);
@@ -90,9 +89,6 @@ public final class LiteralRegexEngine {
         }
         if (ast.getFlags().isSticky()) {
             return new RegionMatches(language, ast, preCalcResultVisitor);
-        }
-        if (preCalcResultVisitor.getLiteral().length() == 1) {
-            return new IndexOfChar(language, ast, preCalcResultVisitor);
         }
         if (preCalcResultVisitor.getLiteral().length() <= 64) {
             return new IndexOfString(language, ast, preCalcResultVisitor);

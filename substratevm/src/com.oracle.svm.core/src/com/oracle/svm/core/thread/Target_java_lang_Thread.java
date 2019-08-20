@@ -324,7 +324,7 @@ final class Target_java_lang_Thread {
     private StackTraceElement[] getStackTrace() {
         if (JavaThreads.fromTarget(this) == Thread.currentThread()) {
             /* We can walk our own stack without a VMOperation. */
-            return StackTraceUtils.getStackTrace(false, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+            return StackTraceUtils.getStackTrace(false, KnownIntrinsics.readCallerStackPointer());
         } else {
             return JavaThreads.getStackTrace(JavaThreads.fromTarget(this));
         }

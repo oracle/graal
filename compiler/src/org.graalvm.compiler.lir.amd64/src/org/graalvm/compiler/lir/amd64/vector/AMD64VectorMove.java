@@ -28,7 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU32;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSS;
@@ -266,8 +266,8 @@ public class AMD64VectorMove {
     public static class SaveRegistersOp extends AMD64SaveRegistersOp {
         public static final LIRInstructionClass<SaveRegistersOp> TYPE = LIRInstructionClass.create(SaveRegistersOp.class);
 
-        public SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] slots, boolean supportsRemove) {
-            super(TYPE, savedRegisters, slots, supportsRemove);
+        public SaveRegistersOp(Register[] savedRegisters, AllocatableValue[] slots) {
+            super(TYPE, savedRegisters, slots);
         }
 
         @Override
@@ -334,7 +334,7 @@ public class AMD64VectorMove {
             case DOUBLE:
                 return VMOVUPD;
             default:
-                return VMOVDQU;
+                return VMOVDQU32;
         }
     }
 

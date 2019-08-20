@@ -31,12 +31,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode.OSRRootNode;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -135,9 +137,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
         final GraalTVMCI tvmci = runtime().getTvmci();
-        engineData = tvmci.getEngineData(rootNode);
-        uninitializedNodeCount = tvmci.adoptChildrenAndCount(this.rootNode);
-        knownCallNodes = engineData.options.isLegacySplitting() ? null : new ArrayList<>(1);
+        this.engineData = GraalTVMCI.getEngineData(rootNode);
+        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
+        this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? tvmci.adoptChildrenAndCount(this.rootNode) : -1;
+        this.knownCallNodes = engineData.options.isLegacySplitting() ? null : new ArrayList<>(1);
         tvmci.setCallTarget(rootNode, this);
     }
 
@@ -154,7 +157,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     private Assumption initializeNodeRewritingAssumption() {
         Assumption newAssumption = runtime().createAssumption(
-                        !TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TraceTruffleAssumptions) ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
+                        !getOptionValue(PolyglotCompilerOptions.TraceAssumptions) ? NODE_REWRITING_ASSUMPTION_NAME : NODE_REWRITING_ASSUMPTION_NAME + " of " + rootNode);
         if (NODE_REWRITING_ASSUMPTION_UPDATER.compareAndSet(this, null, newAssumption)) {
             return newAssumption;
         } else {
@@ -366,11 +369,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final OptionValues getOptionValues() {
-        return runtime().getTvmci().getCompilerOptionValues(rootNode);
+        return engineData.engineOptions;
+    }
+
+    public <T> T getOptionValue(OptionKey<T> key) {
+        return PolyglotCompilerOptions.getValue(getOptionValues(), key);
     }
 
     private OptimizedCompilationProfile createCompilationProfile() {
-        return OptimizedCompilationProfile.create(PolyglotCompilerOptions.getPolyglotValues(rootNode));
+        return OptimizedCompilationProfile.create(getOptionValues());
     }
 
     /**
@@ -407,13 +414,17 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     initialize();
                 }
                 if (!isCompiling()) {
-                    this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
+                    try {
+                        this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
+                    } catch (RejectedExecutionException e) {
+                        return false;
+                    }
                 }
             }
             if (task != null) {
-                boolean allowBackgroundCompilation = !TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal) &&
-                                !TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown);
-                boolean mayBeAsynchronous = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleBackgroundCompilation) && allowBackgroundCompilation;
+                boolean allowBackgroundCompilation = !getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal) &&
+                                !getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown);
+                boolean mayBeAsynchronous = allowBackgroundCompilation && getOptionValue(PolyglotCompilerOptions.BackgroundCompilation);
                 runtime().finishCompilation(this, task, mayBeAsynchronous);
                 return !mayBeAsynchronous;
             }
@@ -478,7 +489,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
         }
-        return (OptimizedCallTarget) runtime().createClonedCallTarget(this, clonedRoot);
+        return runtime().createClonedCallTarget(clonedRoot, this);
     }
 
     /**
@@ -522,16 +533,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              */
         } else {
             compilationProfile.reportCompilationFailure();
-            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown)) {
+            if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown)) {
                 final InternalError error = new InternalError(reasonAndStackTrace.get());
                 throw new OptimizationFailedException(error, this);
             }
 
-            boolean truffleCompilationExceptionsAreFatal = TruffleRuntimeOptions.areTruffleCompilationExceptionsFatal();
-            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
+            boolean truffleCompilationExceptionsAreFatal = TruffleRuntimeOptions.areTruffleCompilationExceptionsFatal(this);
+            if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
                 log(reasonAndStackTrace.get());
                 if (truffleCompilationExceptionsAreFatal) {
-                    log("Exiting VM due to " + (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreFatal) ? "TruffleCompilationExceptionsAreFatal"
+                    log("Exiting VM due to " + (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal) ? "TruffleCompilationExceptionsAreFatal"
                                     : "TrufflePerformanceWarningsAreFatal") + "=true");
                     System.exit(-1);
                 }
@@ -698,6 +709,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     int getUninitializedNodeCount() {
+        assert uninitializedNodeCount >= 0;
         return uninitializedNodeCount;
     }
 
@@ -744,10 +756,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             assert this.compilationTask != null;
             this.compilationTask = null;
         }
-    }
-
-    public <T> T getOptionValue(OptionKey<T> key) {
-        return PolyglotCompilerOptions.getValue(rootNode, key);
     }
 
     synchronized void addKnownCallNode(OptimizedDirectCallNode directCallNode) {

@@ -77,8 +77,8 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * +=================+-------+-------------------------------------+
  * </pre>
  *
- * The HeapChunk fields and the isPinned field can be accessed as declared fields, but the card
- * "table" and the location of the Object are just computed as Pointers.
+ * The HeapChunk fields can be accessed as declared fields, but the card "table" and the location of
+ * the Object are just computed as Pointers.
  *
  * In this implementation, I am only implementing precise card remembered sets, so I only need one
  * entry for the whole Object. But for consistency I am treating it as a 1-element table.

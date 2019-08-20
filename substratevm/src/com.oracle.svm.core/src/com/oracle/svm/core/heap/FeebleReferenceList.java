@@ -44,7 +44,7 @@ import com.oracle.svm.core.util.TimeUtils;
 public final class FeebleReferenceList<T> {
 
     /** The head of the list of FeebleReference<T>. */
-    private UninterruptibleUtils.AtomicReference<FeebleReference<? extends T>> head;
+    private final UninterruptibleUtils.AtomicReference<FeebleReference<? extends T>> head;
 
     /**
      * Notification of other threads that FeebleReferences might be available.
@@ -65,6 +65,11 @@ public final class FeebleReferenceList<T> {
     /** Constructor for subclasses. */
     private FeebleReferenceList() {
         head = new UninterruptibleUtils.AtomicReference<>(null);
+    }
+
+    /** Whether the list is empty at the time of the call. */
+    public boolean isEmpty() {
+        return getHead() == null;
     }
 
     /**
@@ -192,12 +197,12 @@ public final class FeebleReferenceList<T> {
      * Manipulations of head.
      */
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private FeebleReference<? extends T> getHead() {
         return head.get();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean compareAndSetHead(FeebleReference<? extends T> expect, FeebleReference<? extends T> update) {
         return head.compareAndSet(expect, update);
     }
@@ -206,12 +211,12 @@ public final class FeebleReferenceList<T> {
      * Methods on the lock and condition variable, for {@link #remove(long)}.
      */
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void lock() {
         availableLock.lockNoTransition();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void unlock() {
         availableLock.unlock();
     }
@@ -344,7 +349,7 @@ public final class FeebleReferenceList<T> {
      */
 
     /** Clean the list state that is kept in a FeebleReference. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void clean(FeebleReference<?> fr) {
         fr.listRemove();
     }

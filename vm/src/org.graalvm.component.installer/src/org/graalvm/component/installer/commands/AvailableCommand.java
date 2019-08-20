@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -53,6 +54,10 @@ public class AvailableCommand extends ListInstalledCommand {
         opts.put(Commands.LONG_OPTION_ALL, Commands.OPTION_ALL);
         opts.put(Commands.OPTION_VERSION, "s");
         opts.put(Commands.LONG_OPTION_VERSION, Commands.OPTION_VERSION);
+
+        opts.put(Commands.OPTION_CATALOG, "X");
+        opts.put(Commands.OPTION_FOREIGN_CATALOG, "s");
+        opts.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
         return opts;
     }
 
@@ -69,6 +74,15 @@ public class AvailableCommand extends ListInstalledCommand {
         if (v != null) {
             vmatch = Version.versionFilter(v);
         }
+    }
+
+    @Override
+    public int execute() throws IOException {
+        if (input.optValue(Commands.OPTION_HELP) != null) {
+            feedback.output("AVAILABLE_Help");
+            return 0;
+        }
+        return super.execute();
     }
 
     @Override

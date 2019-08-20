@@ -42,7 +42,7 @@ package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
 import java.util.Objects;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -227,18 +227,6 @@ public abstract class TVMCI {
     }
 
     /**
-     * Invoked when a call target is invoked to find out its option values.
-     * {@link OptionValues#getDescriptors()} must match the value returned by
-     * {@link #getCompilerOptionDescriptors()}.
-     *
-     * @since 0.27
-     */
-    protected OptionValues getCompilerOptionValues(RootNode rootNode) {
-        EngineSupport engine = TVMCIAccessor.engineAccess();
-        return engine != null ? engine.getCompilerOptionValues(rootNode) : null;
-    }
-
-    /**
      * Returns <code>true</code> if the java stack frame is a representing a guest language call.
      * Needs to return <code>true</code> only once per java stack frame per guest language call.
      *
@@ -286,29 +274,34 @@ public abstract class TVMCI {
 
     private static volatile Object fallbackEngineData;
 
-    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
+    /**
+     * Used to get an {@link org.graalvm.compiler.truffle.runtime.EngineData}, which contains the
+     * option values for --engine options, and other per-Engine data. Called in the
+     * {@link org.graalvm.compiler.truffle.runtime.OptimizedCallTarget} constructor.
+     * <p>
+     * The resulting instance is cached in the Engine.
+     */
+    @SuppressWarnings("unchecked")
+    protected static <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
         Objects.requireNonNull(constructor);
         final Accessor.NodeSupport nodesAccess = TVMCIAccessor.nodesAccess();
         final EngineSupport engineAccess = TVMCIAccessor.engineAccess();
-        if (rootNode != null && nodesAccess != null && engineAccess != null) {
-            final Object sourceVM = nodesAccess.getSourceVM(rootNode);
-            if (sourceVM != null) {
-                final T runtimeData = engineAccess.getOrCreateRuntimeData(sourceVM, constructor);
-                if (runtimeData != null) {
-                    return runtimeData;
-                }
+
+        final Object sourceVM;
+        if (rootNode == null) {
+            sourceVM = engineAccess.getCurrentVM();
+        } else {
+            sourceVM = nodesAccess.getSourceVM(rootNode);
+        }
+
+        if (sourceVM != null) {
+            return engineAccess.getOrCreateRuntimeData(sourceVM, constructor);
+        } else {
+            if (fallbackEngineData == null) {
+                fallbackEngineData = engineAccess.getOrCreateRuntimeData(null, constructor);
             }
-
+            return (T) fallbackEngineData;
         }
-        return getOrCreateFallbackEngineData(constructor);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> T getOrCreateFallbackEngineData(Supplier<T> constructor) {
-        if (fallbackEngineData == null) {
-            fallbackEngineData = constructor.get();
-        }
-        return (T) fallbackEngineData;
     }
 
     @SuppressWarnings("unused")

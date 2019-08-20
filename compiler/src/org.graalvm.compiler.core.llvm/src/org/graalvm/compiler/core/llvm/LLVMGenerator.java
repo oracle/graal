@@ -66,6 +66,7 @@ import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMVariable;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
@@ -172,15 +173,15 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         if (stamp instanceof RawPointerStamp) {
             return builder.rawPointerType();
         }
-        return builder.getLLVMType(getTypeKind(stamp.javaType(getMetaAccess())));
+        return builder.getLLVMType(getTypeKind(stamp.javaType(getMetaAccess()), false));
     }
 
-    protected JavaKind getTypeKind(@SuppressWarnings("unused") ResolvedJavaType type) {
+    protected JavaKind getTypeKind(@SuppressWarnings("unused") ResolvedJavaType type, @SuppressWarnings("unused") boolean forMainFunction) {
         throw unimplemented();
     }
 
     public LLVMValueRef getFunction(ResolvedJavaMethod method) {
-        LLVMTypeRef functionType = getLLVMFunctionType(method);
+        LLVMTypeRef functionType = getLLVMFunctionType(method, false);
         return builder.getFunction(getFunctionName(method), functionType);
     }
 
@@ -190,19 +191,19 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         return method.getName();
     }
 
-    LLVMTypeRef getLLVMFunctionReturnType(ResolvedJavaMethod method) {
+    LLVMTypeRef getLLVMFunctionReturnType(ResolvedJavaMethod method, boolean forMainFunction) {
         ResolvedJavaType returnType = method.getSignature().getReturnType(null).resolve(null);
-        return builder.getLLVMStackType(getTypeKind(returnType));
+        return builder.getLLVMStackType(getTypeKind(returnType, forMainFunction));
     }
 
-    protected LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method) {
+    protected LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
         ResolvedJavaType receiver = method.hasReceiver() ? method.getDeclaringClass() : null;
         JavaType[] parameterTypes = method.getSignature().toParameterTypes(receiver);
-        return Arrays.stream(parameterTypes).map(type -> builder.getLLVMStackType(getTypeKind(type.resolve(null)))).toArray(LLVMTypeRef[]::new);
+        return Arrays.stream(parameterTypes).map(type -> builder.getLLVMStackType(getTypeKind(type.resolve(null), forMainFunction))).toArray(LLVMTypeRef[]::new);
     }
 
-    public LLVMTypeRef getLLVMFunctionType(ResolvedJavaMethod method) {
-        return builder.functionType(getLLVMFunctionReturnType(method), getLLVMFunctionArgTypes(method));
+    public LLVMTypeRef getLLVMFunctionType(ResolvedJavaMethod method, boolean forMainFunction) {
+        return builder.functionType(getLLVMFunctionReturnType(method, forMainFunction), getLLVMFunctionArgTypes(method, forMainFunction));
     }
 
     private long nextConstantId = 0L;
@@ -460,7 +461,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         LLVMValueRef[] callArguments = getCallArguments(args, getCallingConventionType(linkage.getOutgoingCallingConvention()), targetMethod);
 
         LLVMValueRef call = builder.buildCall(callee, patchpointId, callArguments);
-        return (isVoidType(getLLVMFunctionReturnType(targetMethod))) ? null : new LLVMVariable(call);
+        return (isVoidType(getLLVMFunctionReturnType(targetMethod, false))) ? null : new LLVMVariable(call);
     }
 
     protected abstract CallingConvention.Type getCallingConventionType(CallingConvention callingConvention);
@@ -569,11 +570,16 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
                 }
             } else if (returnsEnum && javaKind == JavaKind.Long) {
                 /* Enum values are returned as long */
-                retVal = builder.buildIntToPtr(retVal, builder.rawPointerType());
-                retVal = builder.buildRegisterObject(retVal);
+                retVal = convertEnumReturnValue(retVal);
             }
             builder.buildRet(retVal);
         }
+    }
+
+    protected LLVMValueRef convertEnumReturnValue(LLVMValueRef longValue) {
+        LLVMValueRef retVal = builder.buildIntToPtr(longValue, builder.rawPointerType());
+        retVal = builder.buildRegisterObject(retVal);
+        return retVal;
     }
 
     void indent() {
@@ -717,7 +723,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, boolean directPointers) {
         LLVMTypeRef elemType = builder.getLLVMType(kind);
 
         LLVMValueRef inArray1;
@@ -736,7 +742,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
             inArray2 = builder.buildGEP(inArray2, builder.constantInt(arrayBaseOffset));
             inArray2 = builder.buildBitcast(inArray2, builder.pointerType(elemType, false));
         }
-
+        int constantLength = LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1;
         if (constantLength == 0) {
             return new LLVMVariable(builder.constantBoolean(true));
         }
@@ -995,12 +1001,17 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public StandardOp.SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         throw unimplemented();
     }
 
     @Override
-    public StandardOp.SaveRegistersOp createZapRegisters() {
+    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters) {
+        throw unimplemented();
+    }
+
+    @Override
+    public StandardOp.ZapRegistersOp createZapRegisters() {
         throw unimplemented();
     }
 

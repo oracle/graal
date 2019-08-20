@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.io.PrintStream;
-import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
 
 /**
  * Encapsulates logic for locating libraries.
@@ -41,48 +41,54 @@ import com.oracle.truffle.api.CompilerDirectives;
 public abstract class LibraryLocator {
 
     @CompilerDirectives.TruffleBoundary
-    public Path locate(LLVMContext context, String lib, Object reason) {
-        if (context.ldDebugEnabled()) {
+    public final TruffleFile locate(LLVMContext context, String lib, Object reason) {
+        if (context != null && context.ldDebugEnabled()) {
             LibraryLocator.traceLoader(context, "\n");
         }
         traceFind(context, lib, reason);
         return locateLibrary(context, lib, reason);
     }
 
-    protected abstract Path locateLibrary(LLVMContext context, String lib, Object reason);
+    protected abstract TruffleFile locateLibrary(LLVMContext context, String lib, Object reason);
 
     public static void traceFind(LLVMContext context, Object lib, Object reason) {
-        if (context.ldDebugEnabled()) {
+        if (context != null && context.ldDebugEnabled()) {
             traceLoader(context, "find external library=%s; needed by %s\n", lib, reason);
         }
     }
 
     public static void traceTry(LLVMContext context, Object file) {
-        if (context.ldDebugEnabled()) {
+        if (context != null && context.ldDebugEnabled()) {
             traceLoader(context, "  trying file=%s\n", file);
         }
     }
 
+    public static void traceDelegateNative(LLVMContext context, Object file) {
+        if (context != null && context.ldDebugEnabled()) {
+            traceLoader(context, "  delegating to native=%s\n", file);
+        }
+    }
+
     public static void traceSearchPath(LLVMContext context, List<?> paths) {
-        if (context.ldDebugEnabled()) {
+        if (context != null && context.ldDebugEnabled()) {
             traceLoader(context, " search path=%s\n", paths);
         }
     }
 
     public static void traceSearchPath(LLVMContext context, List<?> paths, Object reason) {
-        if (context.ldDebugEnabled()) {
+        if (context != null && context.ldDebugEnabled()) {
             traceLoader(context, " search path=%s (local path from %s)\n", paths, reason);
         }
     }
 
     public static void traceParseBitcode(LLVMContext context, Object path) {
-        if (context.ldDebugEnabled()) {
+        if (context != null && context.ldDebugEnabled()) {
             traceLoader(context, "parse bitcode=%s\n", path);
         }
     }
 
     public static void traceAlreadyLoaded(LLVMContext context, Object path) {
-        if (context.ldDebugEnabled()) {
+        if (context != null && context.ldDebugEnabled()) {
             traceLoader(context, "library already located: %s\n", path);
         }
     }

@@ -26,8 +26,8 @@ package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.RuntimeMethodInfo;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * implementation of {@link SubstrateInstalledCode}, so no code within Substrate VM must assume that
  * this is the only representation of runtime compiled code.
  *
- * Metadata for the code is maintained by the class {@link RuntimeMethodInfo}.
+ * Metadata for the code is maintained by the class {@link CodeInfo}.
  */
 public class SubstrateInstalledCodeImpl extends InstalledCode implements SubstrateInstalledCode {
 

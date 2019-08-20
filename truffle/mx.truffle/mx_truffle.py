@@ -619,7 +619,7 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
             content_file.write(content)
 
 
-class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):
+class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.
 
     The build is performed by:

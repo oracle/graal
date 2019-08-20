@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -74,6 +75,7 @@ import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -111,7 +113,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
@@ -130,6 +131,7 @@ import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.compiler.test.JLModule;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
@@ -342,6 +344,13 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected LIRSuites createLIRSuites(OptionValues opts) {
         LIRSuites ret = backend.getSuites().getDefaultLIRSuites(opts).copy();
         return ret;
+    }
+
+    private static final ThreadLocal<HashMap<ResolvedJavaMethod, InstalledCode>> cache = ThreadLocal.withInitial(HashMap::new);
+
+    @BeforeClass
+    public static void resetCache() {
+        cache.get().clear();
     }
 
     public GraalCompilerTest() {
@@ -923,8 +932,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    private Map<ResolvedJavaMethod, InstalledCode> cache = new ConcurrentHashMap<>();
-
     /**
      * Gets installed code for a given method, compiling it first if necessary. The graph is parsed
      * {@link #parseEager eagerly}.
@@ -976,7 +983,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         boolean useCache = !forceCompile && getArgumentToBind() == null;
         if (useCache && graph == null) {
-            InstalledCode cached = cache.get(installedCodeOwner);
+            InstalledCode cached = cache.get().get(installedCodeOwner);
             if (cached != null) {
                 if (cached.isValid()) {
                     return cached;
@@ -1023,7 +1030,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             if (useCache) {
-                cache.put(installedCodeOwner, installedCode);
+                cache.get().put(installedCodeOwner, installedCode);
             }
             return installedCode;
         }

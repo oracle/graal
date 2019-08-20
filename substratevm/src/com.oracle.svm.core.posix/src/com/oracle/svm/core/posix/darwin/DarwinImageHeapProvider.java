@@ -117,7 +117,7 @@ public class DarwinImageHeapProvider implements ImageHeapProvider {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean canUnmapInsteadOfTearDown(PointerBase heapBase) {
         return true; // only done when caller also provided the virtual memory for the image heap
     }

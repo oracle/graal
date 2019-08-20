@@ -83,7 +83,6 @@ public class GCCExceptionTable {
         int typeEncodingEncoding = Byte.toUnsignedInt(buffer.readByte(offset.read()));
         offset.write(offset.read() + Byte.BYTES);
         log.string("typeEncodingEncoding: ").hex(typeEncodingEncoding).newline();
-        assert typeEncodingEncoding == 155;
 
         long typeBaseOffset = getULSB(buffer, offset);
         long typeEnd = typeBaseOffset + offset.read();
@@ -96,7 +95,6 @@ public class GCCExceptionTable {
 
         long siteTableLength = getULSB(buffer, offset);
         log.string("siteTableLength: ").signed(siteTableLength).newline();
-        assert siteTableLength % 13 == 0;
 
         long siteTableEnd = offset.read() + siteTableLength;
         log.string("siteTableEnd: ").signed(siteTableEnd).newline();
@@ -116,6 +114,8 @@ public class GCCExceptionTable {
             if (action != 0) {
                 assert action == 1;
             }
+
+            assert offset.read() <= siteTableEnd;
         }
 
         return null;

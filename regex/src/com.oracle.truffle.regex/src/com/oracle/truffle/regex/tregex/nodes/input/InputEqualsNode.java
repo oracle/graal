@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -35,22 +36,38 @@ public abstract class InputEqualsNode extends Node {
         return InputEqualsNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, String string);
+    public abstract boolean execute(Object input, String string, String mask);
 
-    @Specialization
-    public boolean execEquals(String input, String string) {
+    @Specialization(guards = "mask == null")
+    public boolean execEquals(String input, String string, @SuppressWarnings("unused") String mask) {
         return input.equals(string);
     }
 
-    @Specialization
-    public boolean execEquals(TruffleObject input, String string,
+    @Specialization(guards = "mask != null")
+    public boolean execEqualsWithMask(String input, String string, String mask) {
+        return input.length() == string.length() && ArrayUtils.regionEqualsWithOrMask(input, 0, string, 0, mask.length(), mask);
+    }
+
+    @Specialization(guards = "mask == null")
+    public boolean equalsTruffleObjNoMask(TruffleObject input, String string, String mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputCharAtNode charAtNode) {
+        return equalsTruffleObj(input, string, mask, lengthNode, charAtNode);
+    }
+
+    @Specialization(guards = "mask != null")
+    public boolean equalsTruffleObjWithMask(TruffleObject input, String string, String mask,
+                    @Cached("create()") InputLengthNode lengthNode,
+                    @Cached("create()") InputCharAtNode charAtNode) {
+        return equalsTruffleObj(input, string, mask, lengthNode, charAtNode);
+    }
+
+    private static boolean equalsTruffleObj(TruffleObject input, String string, String mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
         if (lengthNode.execute(input) != string.length()) {
             return false;
         }
         for (int i = 0; i < string.length(); i++) {
-            if (charAtNode.execute(input, i) != string.charAt(i)) {
+            if (InputCharAtNode.charAtWithMask(input, i, mask, i, charAtNode) != string.charAt(i)) {
                 return false;
             }
         }

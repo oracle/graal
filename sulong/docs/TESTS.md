@@ -39,7 +39,7 @@ stored in `<Sulong base dir>/cache/tests`. Sulong's internal testsuites are comp
 together with Sulong. To recompile them one needs to do a complete rebuild of Sulong
 using `mx clean && mx build` or `mx build -c`. You can find the sources in
 `<Sulong base dir>/tests/com.oracle.truffle.llvm.tests.*` and the compiled files
-in `<Sulong base dir>/mxbuild//sulong-test-suites`.
+in `<Sulong base dir>/mxbuild/<os>-<arch>/SULONG_TEST_SUITES`.
 
 For easier use there are also some compound tags to execute smaller testsuites together.
 

@@ -58,6 +58,11 @@ public class UnsafeWasmMemory implements WasmMemory {
     }
 
     @Override
+    public long startAddress() {
+        return start;
+    }
+
+    @Override
     public int load_i32(long address) {
         return unsafe.getInt(start + address);
     }
@@ -150,27 +155,27 @@ public class UnsafeWasmMemory implements WasmMemory {
     }
 
     @Override
-    public void store_i32_8(long address, int value) {
-        unsafe.putByte(start + address, (byte) value);
+    public void store_i32_8(long address, byte value) {
+        unsafe.putByte(start + address, value);
     }
 
     @Override
-    public void store_i32_16(long address, int value) {
-        unsafe.putShort(start + address, (short) value);
+    public void store_i32_16(long address, short value) {
+        unsafe.putShort(start + address, value);
     }
 
     @Override
-    public void store_i64_8(long address, long value) {
-        unsafe.putByte(start + address, (byte) value);
+    public void store_i64_8(long address, byte value) {
+        unsafe.putByte(start + address, value);
     }
 
     @Override
-    public void store_i64_16(long address, long value) {
-        unsafe.putShort(start + address, (short) value);
+    public void store_i64_16(long address, short value) {
+        unsafe.putShort(start + address, value);
     }
 
     @Override
-    public void store_i64_32(long address, long value) {
-        unsafe.putInt(start + address, (int) value);
+    public void store_i64_32(long address, int value) {
+        unsafe.putInt(start + address, value);
     }
 }

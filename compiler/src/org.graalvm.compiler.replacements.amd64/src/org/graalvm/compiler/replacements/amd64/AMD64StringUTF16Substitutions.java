@@ -122,8 +122,6 @@ public class AMD64StringUTF16Substitutions {
         ReplacementsUtil.runtimeAssert(sourceCount >= targetCount, "StringUTF16.indexOfUnsafe invalid args: sourceCount < targetCount");
         if (targetCount == 1) {
             return AMD64ArrayIndexOf.indexOf1Char(source, sourceCount, fromIndex, StringUTF16Substitutions.getChar(target, 0));
-        } else if (targetCount == 2) {
-            return AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(source, sourceCount, fromIndex, StringUTF16Substitutions.getChar(target, 0), StringUTF16Substitutions.getChar(target, 1));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
@@ -136,7 +134,7 @@ public class AMD64StringUTF16Substitutions {
                 offset = indexOfResult;
                 Pointer cmpSourcePointer = charOffsetPointer(source, offset);
                 Pointer targetPointer = pointer(target);
-                if (ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char)) {
+                if (targetCount == 2 || ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char)) {
                     return offset;
                 }
                 offset++;
@@ -153,8 +151,6 @@ public class AMD64StringUTF16Substitutions {
         ReplacementsUtil.runtimeAssert(sourceCount >= targetCount, "StringUTF16.indexOfLatin1Unsafe invalid args: sourceCount < targetCount");
         if (targetCount == 1) {
             return AMD64ArrayIndexOf.indexOf1Char(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(target[0]));
-        } else if (targetCount == 2) {
-            return AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(target[0]), (char) Byte.toUnsignedInt(target[1]));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
@@ -166,7 +162,7 @@ public class AMD64StringUTF16Substitutions {
                 offset = indexOfResult;
                 Pointer cmpSourcePointer = charOffsetPointer(source, offset);
                 Pointer targetPointer = pointer(target);
-                if (ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char, JavaKind.Byte)) {
+                if (targetCount == 2 || ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char, JavaKind.Byte)) {
                     return offset;
                 }
                 offset++;

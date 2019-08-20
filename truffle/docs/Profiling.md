@@ -2,7 +2,7 @@
 
 There is no shortage of tools for profiling interpreters written using
 Truffle. When running in JVM mode, we can use standard JVM tooling, such as
-VisualVM and Java Flight Recorder. When run as a Native Image we can use
+VisualVM, Java Flight Recorder and Oracle Developer Studio. When run as a Native Image we can use
 callgrind from the Valgrind tool suite and other system tools, such as strace.
 As a GraalVM language we can also use other GraalVM tools. For a broad enough
 definition of profiling, we can also use the Ideal Graph Visualizer (IGV) and
@@ -73,3 +73,30 @@ for SVG files. While loading the file in such an application make render a graph
 will not handle the interactive components of the flame graph. Firefox may work as well,
 but Chromium-based browsers seem to have better support and performance for the flame graph
 files as of this writing (Dec. 2018).
+
+### Profiling with Oracle Developer Studio
+
+[Oracle Developer Studio](https://www.oracle.com/technetwork/server-storage/developerstudio/overview/index.html) includes a
+[performance analyzer](https://www.oracle.com/technetwork/server-storage/solarisstudio/features/performance-analyzer-2292312.html) that can be used with GraalVM.
+Developer Studio can be [downloaded from OTN](https://www.oracle.com/technetwork/server-storage/developerstudio/downloads/index.html)
+and the current version at time of writing (12.6) provides a perpetual no-cost license for production use and the development of commercial applications.
+
+Using Developer Studio Performance Analyser is straightforward, include the path to the Developer Studio binaries in your `PATH`
+and then prefix your normal command-line with `collect`, for example:
+
+```bash
+$ collect js mybenchmark.js
+```
+ 
+On completion an "experiment" (.er) directory will have been created containing the profiling data for the command execution, `test.1.er` by default.
+To view the profiling results, use the `analyzer` tool:
+
+```bash
+$ analyzer test.1.er
+```
+
+The `analyzer` GUI allows you to view the captured profiling information in several different ways, for example
+the timeline of your application, a flat function list, the call tree, a flame graph etc. There is also a command-line tool,
+`er_print` which can be used for outputting the profiling information in textual form, for further analysis.
+ 
+For full details, see the [Performance Analyzer](https://docs.oracle.com/cd/E77782_01/html/E77798/index.html) documentation.

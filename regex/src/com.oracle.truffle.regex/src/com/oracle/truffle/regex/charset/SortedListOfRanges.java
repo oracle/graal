@@ -442,6 +442,32 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
+     * Returns {@code true} if this list intersects with {@code o}.
+     */
+    default boolean intersects(SortedListOfRanges o) {
+        if (matchesNothing() || o.matchesNothing() || getHi(size() - 1) < o.getLo(0) || o.getHi(o.size() - 1) < getLo(0)) {
+            return false;
+        }
+        SortedListOfRanges a = this;
+        SortedListOfRanges b = o;
+        if (size() > o.size()) {
+            a = o;
+            b = this;
+        }
+        for (int ia = 0; ia < a.size(); ia++) {
+            int search = b.binarySearch(a.getLo(ia));
+            if (b.binarySearchExactMatch(search, a, ia)) {
+                return true;
+            }
+            int firstIntersection = b.binarySearchGetFirstIntersecting(search, a, ia);
+            if (!(b.binarySearchNoIntersectingFound(firstIntersection) || b.rightOf(firstIntersection, a, ia))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Converts {@code target} to the union of {@code a} and {@code b}.
      */
     static void union(SortedListOfRanges a, SortedListOfRanges b, RangesBuffer target) {

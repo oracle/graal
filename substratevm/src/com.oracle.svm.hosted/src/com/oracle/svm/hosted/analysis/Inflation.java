@@ -109,10 +109,6 @@ public class Inflation extends BigBang {
         interfacesEncodings = new HashMap<>();
     }
 
-    public SVMAnalysisPolicy svmAnalysisPolicy() {
-        return (SVMAnalysisPolicy) super.analysisPolicy();
-    }
-
     @Override
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodFlow) {
         return new SVMMethodTypeFlowBuilder(bb, methodFlow);

@@ -101,8 +101,12 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         }
     }
 
-    private NFAState getUnAnchoredInitialState() {
+    public NFAState getUnAnchoredInitialState() {
         return unAnchoredEntry[0].getTarget();
+    }
+
+    public NFAState getAnchoredInitialState() {
+        return anchoredEntry[0].getTarget();
     }
 
     public boolean hasReverseUnAnchoredEntry() {
@@ -185,6 +189,10 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         return preCalculatedResults;
     }
 
+    public NFAStateTransition getInitialLoopBackTransition() {
+        return initialLoopBack;
+    }
+
     public boolean isTraceFinderNFA() {
         return preCalculatedResults != null;
     }
@@ -197,6 +205,10 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     @Override
     public NFAState getState(int id) {
         return states[id];
+    }
+
+    public boolean isDead() {
+        return anchoredEntry != null ? getAnchoredInitialState().isDead(true) : (reverseAnchoredEntry.getSource().isDead(false) && reverseUnAnchoredEntry.getSource().isDead(false));
     }
 
     public void setInitialLoopBack(boolean enable) {

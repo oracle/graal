@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.regex.literal;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
@@ -33,7 +32,6 @@ import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputEndsWithNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputEqualsNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputRegionMatchesNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputStartsWithNode;
@@ -46,25 +44,27 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public abstract class LiteralRegexExecRootNode extends RegexExecRootNode implements JsonConvertible {
 
-    protected final String literal;
     protected final PreCalculatedResultFactory resultFactory;
 
     public LiteralRegexExecRootNode(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
         super(language, ast.getSource(), ast.getFlags().isUnicode());
-        this.literal = preCalcResultVisitor.getLiteral();
         this.resultFactory = preCalcResultVisitor.getResultFactory();
+    }
+
+    protected String getLiteral() {
+        return "";
     }
 
     @Override
     protected final String getEngineLabel() {
-        return "literal";
+        return "literal:" + getImplName() + "(" + getLiteral() + ")";
     }
 
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
         return Json.obj(Json.prop("method", getImplName()),
-                        Json.prop("literal", DebugUtil.escapeString(literal)),
+                        Json.prop("literal", DebugUtil.escapeString(getLiteral())),
                         Json.prop("factory", resultFactory));
     }
 
@@ -140,33 +140,24 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
         }
     }
 
-    public static final class IndexOfChar extends LiteralRegexExecRootNode {
+    abstract static class NonEmptyLiteralRegexExecRootNode extends LiteralRegexExecRootNode {
 
-        @CompilationFinal(dimensions = 1) private final char[] c;
-        @Child InputIndexOfNode indexOfNode = InputIndexOfNode.create();
+        protected final String literal;
+        protected final String mask;
 
-        public IndexOfChar(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
+        NonEmptyLiteralRegexExecRootNode(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, ast, preCalcResultVisitor);
-            assert literal.length() == 1;
-            c = new char[]{literal.charAt(0)};
+            literal = preCalcResultVisitor.getLiteral();
+            mask = preCalcResultVisitor.getMask();
         }
 
         @Override
-        protected String getImplName() {
-            return "indexOfChar";
-        }
-
-        @Override
-        protected RegexResult execute(Object input, int fromIndex) {
-            int start = indexOfNode.execute(input, fromIndex, inputLength(input), c);
-            if (start == -1) {
-                return NoMatchResult.getInstance();
-            }
-            return resultFactory.createFromStart(start);
+        protected String getLiteral() {
+            return literal;
         }
     }
 
-    public static final class IndexOfString extends LiteralRegexExecRootNode {
+    public static final class IndexOfString extends NonEmptyLiteralRegexExecRootNode {
 
         @Child InputIndexOfStringNode indexOfStringNode = InputIndexOfStringNode.create();
 
@@ -181,7 +172,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            int start = indexOfStringNode.execute(input, literal, fromIndex, inputLength(input));
+            int start = indexOfStringNode.execute(input, fromIndex, inputLength(input), literal, mask);
             if (start == -1) {
                 return NoMatchResult.getInstance();
             }
@@ -189,7 +180,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
         }
     }
 
-    public static final class StartsWith extends LiteralRegexExecRootNode {
+    public static final class StartsWith extends NonEmptyLiteralRegexExecRootNode {
 
         @Child InputStartsWithNode startsWithNode = InputStartsWithNode.create();
 
@@ -204,7 +195,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (fromIndex == 0 && startsWithNode.execute(input, literal)) {
+            if (fromIndex == 0 && startsWithNode.execute(input, literal, mask)) {
                 return resultFactory.createFromStart(0);
             } else {
                 return NoMatchResult.getInstance();
@@ -212,7 +203,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
         }
     }
 
-    public static final class EndsWith extends LiteralRegexExecRootNode {
+    public static final class EndsWith extends NonEmptyLiteralRegexExecRootNode {
 
         @Child InputEndsWithNode endsWithNode = InputEndsWithNode.create();
 
@@ -227,7 +218,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (fromIndex <= inputLength(input) - literal.length() && endsWithNode.execute(input, literal)) {
+            if (fromIndex <= inputLength(input) - literal.length() && endsWithNode.execute(input, literal, mask)) {
                 return resultFactory.createFromEnd(inputLength(input));
             } else {
                 return NoMatchResult.getInstance();
@@ -235,7 +226,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
         }
     }
 
-    public static final class Equals extends LiteralRegexExecRootNode {
+    public static final class Equals extends NonEmptyLiteralRegexExecRootNode {
 
         @Child InputEqualsNode equalsNode = InputEqualsNode.create();
 
@@ -250,7 +241,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (fromIndex == 0 && equalsNode.execute(input, literal)) {
+            if (fromIndex == 0 && equalsNode.execute(input, literal, mask)) {
                 return resultFactory.createFromStart(0);
             } else {
                 return NoMatchResult.getInstance();
@@ -258,7 +249,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
         }
     }
 
-    public static final class RegionMatches extends LiteralRegexExecRootNode {
+    public static final class RegionMatches extends NonEmptyLiteralRegexExecRootNode {
 
         @Child InputRegionMatchesNode regionMatchesNode = InputRegionMatchesNode.create();
 
@@ -273,7 +264,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (regionMatchesNode.execute(input, literal, fromIndex)) {
+            if (regionMatchesNode.execute(input, fromIndex, literal, mask)) {
                 return resultFactory.createFromStart(fromIndex);
             } else {
                 return NoMatchResult.getInstance();

@@ -53,6 +53,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -89,6 +90,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
+import java.nio.file.Path;
 import java.util.List;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -253,8 +255,6 @@ public abstract class Accessor {
 
         public abstract Object getVMFromLanguageObject(Object engineObject);
 
-        public abstract OptionValues getCompilerOptionValues(RootNode rootNode);
-
         public abstract Object lookupHostSymbol(Object vmObject, Env env, String symbolName);
 
         public abstract Object asHostSymbol(Object vmObject, Class<?> symbolClass);
@@ -307,7 +307,7 @@ public abstract class Accessor {
 
         public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
 
-        public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor);
+        public abstract <T> T getOrCreateRuntimeData(Object sourceVM, Function<OptionValues, T> constructor);
 
         public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
 
@@ -392,7 +392,8 @@ public abstract class Accessor {
         public abstract void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object languageVmObject, Object languageInstanceVMObject);
 
         public abstract Env createEnv(Object vmObject, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
+                        String[] applicationArguments, FileSystem fileSystem, FileSystem internalFileSystem,
+                        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
 
         public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
 
@@ -455,7 +456,7 @@ public abstract class Accessor {
         public abstract Iterable<Scope> findTopScopes(Env env);
 
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
+                        FileSystem fileSystem, FileSystem internalFileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
 
         public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
 
@@ -498,6 +499,10 @@ public abstract class Accessor {
         public abstract TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
 
         public abstract SecurityException throwSecurityException(String message);
+
+        public abstract FileSystem getFileSystem(TruffleFile truffleFile);
+
+        public abstract Path getPath(TruffleFile truffleFile);
     }
 
     public abstract static class InstrumentSupport {
@@ -640,7 +645,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.debug.Debugger$AccessorDebug":
             case "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor":
             case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
-            case "com.oracle.truffle.api.test.polyglot.VirtualizedFileSystemTest$TestAPIAccessor":
+            case "com.oracle.truffle.api.test.polyglot.FileSystemsTest$TestAPIAccessor":
             case "com.oracle.truffle.api.impl.TVMCIAccessor":
                 // OK, classes allowed to use accessors
                 break;

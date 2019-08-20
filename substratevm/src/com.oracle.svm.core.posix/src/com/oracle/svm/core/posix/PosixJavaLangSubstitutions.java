@@ -380,7 +380,7 @@ final class Target_java_lang_System {
     static volatile Console cons;
 
     @Substitute
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long currentTimeMillis() {
         timeval timeval = StackValue.get(timeval.class);
         timezone timezone = WordFactory.nullPointer();

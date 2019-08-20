@@ -30,6 +30,7 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.util.Collections;
 
 import org.bytedeco.javacpp.LLVM;
+import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
 import org.graalvm.compiler.code.CompilationResult;
@@ -77,7 +78,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         SubstrateLLVMGenerator generator = new SubstrateLLVMGenerator(getProviders(), genResult, method, context, 0);
         LLVMIRBuilder builder = generator.getBuilder();
 
-        builder.addMainFunction(generator.getLLVMFunctionType(method));
+        builder.addMainFunction(generator.getLLVMFunctionType(method, true));
         builder.setAttribute(builder.getMainFunction(), LLVM.LLVMAttributeFunctionIndex, "naked");
 
         LLVMBasicBlockRef block = builder.appendBasicBlock("main");
@@ -86,8 +87,9 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         long startPatchpointId = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
         builder.buildStackmap(builder.constantLong(startPatchpointId));
 
-        LLVM.LLVMValueRef methodBase = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
-        LLVM.LLVMValueRef jumpAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(offset));
+        LLVMValueRef methodBase = builder.buildInlineGetRegister(methodIdArg.getRegister().name);
+        LLVMValueRef jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(offset));
+        LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());
         builder.buildInlineJump(jumpAddress);
         builder.buildUnreachable();
 

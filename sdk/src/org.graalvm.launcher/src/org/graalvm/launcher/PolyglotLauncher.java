@@ -79,7 +79,7 @@ public final class PolyglotLauncher extends Launcher {
 
     @Override
     protected void printHelp(OptionCategory maxCategory) {
-        Engine engine = Engine.create();
+        Engine engine = getTempEngine();
         // @formatter:off
         printVersion(engine);
         System.out.println();
@@ -113,7 +113,7 @@ public final class PolyglotLauncher extends Launcher {
 
     @Override
     protected void printVersion() {
-        printVersion(Engine.create());
+        printVersion(getTempEngine());
     }
 
     protected static void printVersion(Engine engine) {

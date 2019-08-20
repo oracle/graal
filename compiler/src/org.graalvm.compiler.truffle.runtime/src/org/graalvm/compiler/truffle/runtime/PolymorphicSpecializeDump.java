@@ -58,7 +58,7 @@ class PolymorphicSpecializeDump {
     }
 
     private static TruffleDebugContext openDebugContext() {
-        return GraalTruffleRuntime.getRuntime().getTruffleCompiler().openDebugContext(TruffleRuntimeOptions.asMap(TruffleRuntimeOptions.getOptions()), null);
+        return GraalTruffleRuntime.getRuntime().getTruffleCompiler().openDebugContext(TruffleRuntimeOptions.getOptionsForCompiler(), null);
     }
 
     static class PolymorphicSpecializeGraph {

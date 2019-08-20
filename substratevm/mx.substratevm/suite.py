@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.223.0",
     "name": "substratevm",
-    "version" : "19.2.0",
+    "version" : "19.3.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -47,7 +47,12 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
             "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
             "packedResource": True,
-        }
+        },
+
+        "DACAPO_SVM" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
+            "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
+        },
     },
 
     "projects": {
@@ -320,7 +325,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN"],
+                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
             },
@@ -345,7 +350,7 @@ suite = {
                         "ignore": "sparcv9 is not supported",
                     },
                     "<others>": {
-                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN"],
+                        "cflags": ["-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
             },
@@ -358,16 +363,16 @@ suite = {
             "use_jdk_headers" : True,
             "os_arch" : {
                 "darwin": {
-                    "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2"],
+                    "<others>" : {
+                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
                 "linux": {
-                    "amd64" : {
-                        "cflags": ["-g", "-fPIC", "-O2"],
+                    "sparcv9": {
+                        "ignore": "sparcv9 is not supported",
                     },
-                    "aarch64" : {
-                        "cflags": ["-g", "-fPIC", "-O2"],
+                    "<others>" : {
+                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden"],
                     },
                 },
                 "<others>": {
@@ -710,7 +715,6 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
-
         "com.oracle.svm.agent": {
             "subDir": "src",
             "sourceDirs": [
@@ -731,6 +735,19 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
+        },
+        "com.oracle.svm.truffle.tck" : {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "checkstyle" : "com.oracle.svm.truffle",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "1.8",
         },
     },
 
@@ -1024,6 +1041,14 @@ suite = {
                 "compiler:GRAAL_LLVM"
             ],
             "maven" : False,
-        }
+        },
+
+        "SVM_TRUFFLE_TCK" : {
+            "subDir" : "src",
+            "description" : "Truffle TCK",
+            "dependencies" : ["com.oracle.svm.truffle.tck"],
+            "distDependencies" : ["SVM"],
+            "maven" : True,
+        },
     },
 }

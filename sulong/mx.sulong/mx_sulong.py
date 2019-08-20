@@ -30,6 +30,7 @@
 import sys
 import tarfile
 import os
+import tempfile
 from os.path import join
 import shutil
 import subprocess
@@ -51,7 +52,6 @@ import mx_testsuites
 # re-export SulongTestSuite class so it can be used from suite.py
 from mx_testsuites import SulongTestSuite #pylint: disable=unused-import
 from mx_testsuites import ExternalTestSuite #pylint: disable=unused-import
-from mx_testsuites import GlobNativeProject #pylint: disable=unused-import
 
 if sys.version_info[0] < 3:
     def _decode(x):
@@ -102,9 +102,10 @@ clangFormatCheckPaths = [
     join(_suite.dir, "include"),
     join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src"),
     join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "include"),
-    join(_root, "com.oracle.truffle.llvm.pipe.native", "src"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulong"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.pipe.native", "src"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.sulong.native"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp.native"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.linker.native"),
     join(_testDir, "interoptests"),
     join(_testDir, "inlineassemblytests"),
     join(_testDir, "other")
@@ -162,10 +163,14 @@ def _sulong_gate_runner(args, tasks):
         if t:
             if mx.checkcopyrights(['--primary']) != 0:
                 t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
+
+    with Task('BuildLLVMorg', tasks, tags=['style', 'clangformat']) as t:
+        # needed for clang-format
+        if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: clangformatcheck()
     _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
-    _sulong_gate_unittest('Types', 'SULONG_TEST', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.types.floating.test'])
+    _sulong_gate_unittest('Types', 'SULONG_TEST', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.types.floating'])
     _sulong_gate_unittest('Pipe', 'SULONG_TEST', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
     _sulong_gate_testsuite('LLVM', 'llvm', tasks, args, tags=['llvm', 'sulongCoverage'])
     _sulong_gate_testsuite('NWCC', 'nwcc', tasks, args, tags=['nwcc', 'sulongCoverage'])
@@ -174,15 +179,16 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_testsuite('GCC_CPP', 'gcc_cpp', tasks, args, tags=['gcc_cpp', 'sulongCoverage'])
     _sulong_gate_testsuite('GCC_Fortran', 'gcc_fortran', tasks, args, tags=['gcc_fortran', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Sulong', tasks, args, testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.test.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('Interop', tasks, args, testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_sulongsuite_unittest('Linker', tasks, args, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('Debug', tasks, args, testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('IRDebug', tasks, args, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
     _sulong_gate_sulongsuite_unittest('BitcodeFormat', tasks, args, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_sulongsuite_unittest('OtherTests', tasks, args, testClasses='com.oracle.truffle.llvm.test.other', tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
-    _sulong_gate_testsuite('Assembly', 'inlineassemblytests', tasks, args, testClasses='InlineAssemblyTest', tags=['assembly', 'sulongCoverage'])
-    _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.MainArgsTest'])
-    _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.CallbackTest'])
-    _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.test.VAArgsTest'])
+    _sulong_gate_sulongsuite_unittest('OtherTests', tasks, args, testClasses='com.oracle.truffle.llvm.tests.other', tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
+    _sulong_gate_testsuite('Assembly', 'inlineassemblytests', tasks, args, testClasses='InlineAssemblyTest', tags=['assembly', 'sulongMisc', 'sulongCoverage'])
+    _sulong_gate_testsuite('Args', 'other', tasks, args, tags=['args', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'])
+    _sulong_gate_testsuite('Callback', 'other', tasks, args, tags=['callback', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'])
+    _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'])
     with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
         if t:
             mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
@@ -243,8 +249,15 @@ def runLLVMUnittests(unittest_runner):
 
     run_args = [libpath, libs] + java_run_props
     build_args = ['--language:llvm'] + java_run_props
-    unittest_runner(['com.oracle.truffle.llvm.test.interop', '--run-args'] + run_args +
+    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--run-args'] + run_args +
                     ['--build-args', '--initialize-at-build-time'] + build_args)
+
+
+def build_llvm_org(args=None):
+    defaultBuildArgs = ['-p']
+    if not args.no_warning_as_error:
+        defaultBuildArgs += ['--warning-as-error']
+    mx.command_function('build')(defaultBuildArgs + ['--project', 'SULONG_LLVM_ORG'] + args.extra_build_args)
 
 
 def clangformatcheck(args=None):
@@ -265,9 +278,7 @@ def checkCFiles(targetDir):
 
 def checkCFile(targetFile):
     """ Checks the formatting of a C file and returns True if the formatting is okay """
-    clangFormat = findInstalledLLVMProgram('clang-format', clangFormatVersions)
-    if clangFormat is None:
-        exit("Unable to find 'clang-format' executable with one the supported versions '" + ", ".join(clangFormatVersions) + "'")
+    clangFormat = findBundledLLVMProgram('clang-format')
     formatCommand = [clangFormat, targetFile]
     formattedContent = _decode(subprocess.check_output(formatCommand)).splitlines()
     with open(targetFile) as f:
@@ -647,6 +658,17 @@ def findGCCProgram(gccProgram, optional=False):
     else:
         return installedProgram
 
+def findBundledLLVMProgram(llvm_program):
+    llvm_dist = 'SULONG_LLVM_ORG'
+    dep = mx.dependency(llvm_dist, fatalIfMissing=True)
+    return os.path.join(dep.get_output(), 'bin', llvm_program)
+
+def llvm_tool(args=None, out=None):
+    if len(args) < 1:
+        mx.abort("usage: mx llvm-tool <llvm-tool> [args...]")
+    llvm_program = findBundledLLVMProgram(args[0])
+    mx.run([llvm_program] + args[1:], out=out)
+
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
     return mx.get_runtime_jvm_args(['SULONG', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
@@ -682,6 +704,48 @@ def runLLVM(args=None, out=None, get_classpath_options=getClasspathOptions):
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, out=out)
 
 
+def extract_bitcode(args=None, out=None):
+    return mx.run_java(mx.get_runtime_jvm_args(["com.oracle.truffle.llvm.tools"]) + ["com.oracle.truffle.llvm.tools.ExtractBitcode"] + args, out=out)
+
+
+def llvm_dis(args=None, out=None):
+    parser = ArgumentParser(prog='mx llvm-dis', description='Disassemble (embedded) LLVM bitcode to LLVM assembly.')
+    parser.add_argument('input', help='The input file.', metavar='<input>')
+    parser.add_argument('output', help='The output file. If omitted, <input>.ll is used. If <input> ends with ".bc", the ".bc" part is replaced with ".ll".', metavar='<output>', default=None, nargs='?')
+    parser.add_argument('llvm_dis_args', help='Additional arguments forwarded to the llvm-dis command', metavar='<arg>', nargs='*')
+    parsed_args = parser.parse_args(args)
+
+    def get_bc_filename(orig_path):
+        filename, ext = os.path.splitext(orig_path)
+        return orig_path if ext == ".bc" else filename + ".bc"
+
+    def get_ll_filename(orig_path):
+        filename, ext = os.path.splitext(orig_path)
+        return filename + ".ll" if ext == ".bc" else orig_path + ".ll"
+
+    tmp_dir = None
+    try:
+        # create temp dir
+        tmp_dir = tempfile.mkdtemp()
+        in_file = parsed_args.input
+        tmp_path = os.path.join(tmp_dir, os.path.basename(get_bc_filename(in_file)))
+
+        extract_bitcode([in_file, tmp_path])
+
+        # disassemble into temporary file
+        ll_tmp_path = get_ll_filename(tmp_path)
+        llvm_tool(["llvm-dis", tmp_path, "-o", ll_tmp_path] + parsed_args.llvm_dis_args)
+
+        # write output file and patch paths
+        ll_path = parsed_args.output or get_ll_filename(in_file)
+        with open(ll_tmp_path, 'r') as ll_tmp_f, open(ll_path, 'w') as ll_f:
+            ll_f.writelines((l.replace(tmp_path, in_file) for l in ll_tmp_f))
+
+    finally:
+        if tmp_dir:
+            shutil.rmtree(tmp_dir)
+
+
 _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
@@ -712,7 +776,7 @@ class ArchiveProject(mx.ArchivableProject):
     def getResults(self):
         return mx.ArchivableProject.walk(self.output_dir())
 
-class SulongDocsProject(ArchiveProject):
+class SulongDocsProject(ArchiveProject):  # pylint: disable=too-many-ancestors
     doc_files = (glob.glob(join(_suite.dir, 'LICENSE')) +
         glob.glob(join(_suite.dir, '*.md')))
 
@@ -820,7 +884,7 @@ class ToolchainConfig(object):
         ]
 
 
-class ToolchainLauncherProject(mx.NativeProject):
+class ToolchainLauncherProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True, **attrs):
         results = ["bin/" + e for e in suite.toolchain._supported_exes()]
         projectDir = attrs.pop('dir', None)
@@ -923,9 +987,11 @@ def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
 
-
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],
     'test-llvm-image' : [_test_llvm_image, 'test a pre-built LLVM image'],
     'create-asm-parser' : [create_asm_parser, 'create the inline assembly parser using antlr'],
+    'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
+    'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
+    'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],
 })

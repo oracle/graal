@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -66,7 +67,7 @@ class Package_jdk_internal_misc implements Function<TargetClass, String> {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 @TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal")
 final class Target_jdk_internal_misc_Signal {
 
@@ -105,7 +106,7 @@ final class Target_jdk_internal_misc_Signal {
 }
 
 /** Support for Target_sun_misc_Signal. */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 final class Util_jdk_internal_misc_Signal {
 
     /** A thread to dispatch signals as they are raised. */
@@ -411,7 +412,7 @@ final class Target_sun_misc_NativeSignalHandler {
     }
 }
 
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({InternalPlatform.LINUX_AND_JNI.class, InternalPlatform.DARWIN_AND_JNI.class})
 @AutomaticFeature
 class IgnoreSIGPIPEFeature implements Feature {
 

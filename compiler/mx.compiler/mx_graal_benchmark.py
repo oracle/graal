@@ -94,7 +94,7 @@ _IMAGE_JMH_BENCHMARK_ARGS = [
     '-Dnative-image.benchmark.extra-run-arg=-f0',
 
     # GR-17177 should remove this from args.
-    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh'
+    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh',
 
     # Don't waste time and energy collecting reflection config.
     '-Dnative-image.benchmark.extra-agent-run-arg=-f0',
@@ -1657,6 +1657,9 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def subgroup(self):
         return "graal-compiler"
 
+    def benchSuiteName(self):
+        return self.name()
+
     def renaissanceLibraryName(self):
         return "RENAISSANCE"
 
@@ -1676,7 +1679,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         if args.r:
             if args.r.isdigit():
                 return ["-r", args.r] + remaining
-            if args.n == "-1":
+            if args.r == "-1":
                 return None
         else:
             iterations = self.renaissanceIterations()[benchname]
@@ -1711,6 +1714,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
                 {
                     "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "warmup",
@@ -1726,6 +1730,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
                 {
                     "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "final-time",

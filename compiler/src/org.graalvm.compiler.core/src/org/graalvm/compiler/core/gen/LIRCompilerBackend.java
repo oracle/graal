@@ -145,7 +145,8 @@ public class LIRCompilerBackend {
             LIR lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder, graph.getOptions(), graph.getDebug());
 
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
-            LIRGenerationResult lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerConfig, graph, stub);
+            RegisterAllocationConfig registerAllocationConfig = backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo);
+            LIRGenerationResult lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, graph, stub);
             LIRGeneratorTool lirGen = lirBackend.newLIRGenerator(lirGenRes);
             NodeLIRBuilderTool nodeLirGen = lirBackend.newNodeLIRBuilder(graph, lirGen);
 
@@ -156,7 +157,7 @@ public class LIRCompilerBackend {
             try (DebugContext.Scope s = debug.scope("LIRStages", nodeLirGen, lirGenRes, lir)) {
                 // Dump LIR along with HIR (the LIR is looked up from context)
                 debug.dump(DebugContext.BASIC_LEVEL, graph.getLastSchedule(), "After LIR generation");
-                LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo));
+                LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, registerAllocationConfig);
                 return result;
             } catch (Throwable e) {
                 throw debug.handle(e);
