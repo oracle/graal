@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -51,6 +50,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -79,8 +79,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     private ExternalLibrary library;
 
     @CompilationFinal private String name;
-    @CompilationFinal private Function function;
-    @CompilationFinal private Assumption functionAssumption;
+    private final AssumedValue<Function> function;
 
     @CompilationFinal private TruffleObject nativeWrapper;
     @CompilationFinal private long nativePointer;
@@ -227,7 +226,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         }
     }
 
-    static final class UnresolvedFunction extends Function {
+    public static final class UnresolvedFunction extends Function {
         @Override
         void resolve(LLVMFunctionDescriptor descriptor) {
             CompilerAsserts.neverPartOfCompilation();
@@ -235,8 +234,8 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
             // libraries could have been loaded in the meantime
             LLVMContext context = descriptor.getContext();
             NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
-            LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getContextExtensionOrNull(LLVMIntrinsicProvider.class);
-            assert intrinsicProvider == null || !intrinsicProvider.isIntrinsified(descriptor.getName());
+            LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+            assert !intrinsicProvider.isIntrinsified(descriptor.getName());
             if (nfiContextExtension != null) {
                 NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
                 if (nativeFunction != null) {
@@ -275,41 +274,22 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         }
     }
 
-    static final class NullFunction extends Function {
-        @Override
-        TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
-            return LLVMNativePointer.createNull();
-        }
-    }
-
     private void setFunction(Function newFunction) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        synchronized (this) {
-            functionAssumption.invalidate();
-            this.function = newFunction;
-            this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
-        }
+        function.set(newFunction);
     }
 
     public Function getFunction() {
-        if (!functionAssumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
-        return function;
+        return function.get();
     }
 
-    private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId, Function function) {
+    public LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId, Function function, ExternalLibrary library) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
         this.name = name;
         this.type = type;
         this.functionId = functionId;
-        this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
-        this.function = function;
-    }
-
-    public static LLVMFunctionDescriptor createDescriptor(LLVMContext context, String name, FunctionType type, int functionId) {
-        return new LLVMFunctionDescriptor(context, name, type, functionId, new UnresolvedFunction());
+        this.function = new AssumedValue<>("LLVMFunctionDescriptor.functionAssumption", function);
+        this.library = library;
     }
 
     public interface LazyToTruffleConverter {
@@ -333,7 +313,8 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
     }
 
     public boolean isLLVMIRFunction() {
-        return getFunction() instanceof LLVMIRFunction || getFunction() instanceof LazyLLVMIRFunction;
+        final Function currentFunction = getFunction();
+        return currentFunction instanceof LLVMIRFunction || currentFunction instanceof LazyLLVMIRFunction;
     }
 
     public boolean isIntrinsicFunction() {
@@ -348,11 +329,11 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
 
     @Override
     public boolean isDefined() {
-        return !(function instanceof UnresolvedFunction);
+        return !(getFunction() instanceof UnresolvedFunction);
     }
 
     public void define(LLVMIntrinsicProvider intrinsicProvider) {
-        assert intrinsicProvider != null && intrinsicProvider.isIntrinsified(name);
+        assert intrinsicProvider.isIntrinsified(name);
         Intrinsic intrinsification = new Intrinsic(intrinsicProvider, name);
         define(intrinsicProvider.getLibrary(), new LLVMFunctionDescriptor.IntrinsicFunction(intrinsification), true);
     }

@@ -136,7 +136,7 @@ final class DIScopeBuilder {
 
         final String relativePath = name.substring(pathStartIndex);
         try {
-            return context.getEnv().getTruffleFile(pathPrefix).resolve(relativePath);
+            return context.getEnv().getInternalTruffleFile(pathPrefix).resolve(relativePath);
         } catch (InvalidPathException ex) {
             throw new LLVMParserException(ex.getMessage());
         }
@@ -158,7 +158,7 @@ final class DIScopeBuilder {
         Env env = context.getEnv();
 
         if (path.isAbsolute()) {
-            return env.getTruffleFile(path.toUri());
+            return env.getInternalTruffleFile(path.toUri());
         }
 
         // relative path: search for source file
@@ -168,7 +168,7 @@ final class DIScopeBuilder {
         for (String sourcePath : sourcePathList) {
             try {
                 Path absPath = Paths.get(sourcePath, name);
-                TruffleFile file = env.getTruffleFile(absPath.toUri());
+                TruffleFile file = env.getInternalTruffleFile(absPath.toUri());
                 if (file.exists()) {
                     return file;
                 }
@@ -183,7 +183,7 @@ final class DIScopeBuilder {
         if (directory != null) {
             try {
                 Path absPath = Paths.get(directory, name);
-                TruffleFile file = env.getTruffleFile(absPath.toUri());
+                TruffleFile file = env.getInternalTruffleFile(absPath.toUri());
                 if (file.exists()) {
                     return file;
                 }
@@ -194,7 +194,7 @@ final class DIScopeBuilder {
         }
 
         // fallback to relative path
-        return env.getTruffleFile(name);
+        return env.getInternalTruffleFile(name);
     }
 
     private TruffleFile getSourceFile(MDFile file) {

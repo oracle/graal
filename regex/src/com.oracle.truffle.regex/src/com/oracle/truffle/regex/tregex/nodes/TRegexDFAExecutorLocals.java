@@ -144,4 +144,12 @@ public final class TRegexDFAExecutorLocals {
     public DFACaptureGroupTrackingData getCGData() {
         return cgData;
     }
+
+    public static int backwardMaxIndex(int fromIndex, int prefixLength) {
+        return Math.max(-1, fromIndex - 1 - prefixLength);
+    }
+
+    public TRegexDFAExecutorLocals toBackwardLocals(int prefixLength) {
+        return new TRegexDFAExecutorLocals(input, fromIndex, index - 1, backwardMaxIndex(fromIndex, prefixLength), null);
+    }
 }

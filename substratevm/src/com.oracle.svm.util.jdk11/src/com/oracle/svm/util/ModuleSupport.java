@@ -58,4 +58,9 @@ public final class ModuleSupport {
             Modules.addOpens(declaringModule, packageName, accessingModule);
         }
     }
+
+    public static ClassLoader getPlatformClassLoader() {
+        return ClassLoader.getPlatformClassLoader();
+    }
+
 }

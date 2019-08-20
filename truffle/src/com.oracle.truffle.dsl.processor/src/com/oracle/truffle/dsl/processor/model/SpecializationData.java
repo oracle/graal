@@ -48,12 +48,18 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.AbstractDSLExpressionVisitor;
+import com.oracle.truffle.dsl.processor.expression.DSLExpression.Call;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public final class SpecializationData extends TemplateMethod {
@@ -237,6 +243,34 @@ public final class SpecializationData extends TemplateMethod {
         this.kind = kind;
     }
 
+    static final String[] DYNAMIC_RESULT_VALUES = new String[]{
+                    "get", ContextReference.class.getCanonicalName(),
+                    "get", LanguageReference.class.getCanonicalName(),
+    };
+
+    static final class FindDynamicBindingVisitor extends AbstractDSLExpressionVisitor {
+
+        boolean found;
+
+        @Override
+        public void visitCall(Call binary) {
+            ExecutableElement method = binary.getResolvedMethod();
+            String methodName = method.getSimpleName().toString();
+            Element enclosingElement = method.getEnclosingElement();
+            if (enclosingElement == null || !enclosingElement.getKind().isClass()) {
+                return;
+            }
+            String className = ((TypeElement) enclosingElement).getQualifiedName().toString();
+            for (int i = 0; i < DYNAMIC_RESULT_VALUES.length; i = i + 2) {
+                String searchMethod = DYNAMIC_RESULT_VALUES[i];
+                String searchClass = DYNAMIC_RESULT_VALUES[i + 1];
+                if (searchMethod.equals(methodName) && className.equals(searchClass)) {
+                    found = true;
+                }
+            }
+        }
+    }
+
     public boolean isDynamicParameterBound(DSLExpression expression, boolean transitive) {
         Set<VariableElement> boundVariables = expression.findBoundVariableElements();
         for (Parameter parameter : getDynamicParameters()) {
@@ -244,13 +278,20 @@ public final class SpecializationData extends TemplateMethod {
                 return true;
             }
         }
+        FindDynamicBindingVisitor visitor = new FindDynamicBindingVisitor();
+        expression.accept(visitor);
+        if (visitor.found) {
+            return true;
+        }
+
         if (transitive) {
             for (CacheExpression cache : getBoundCaches(expression)) {
-                if (cache.isCachedContext() || cache.isCachedLanguage()) {
+                if ((cache.isCachedContext() || cache.isCachedLanguage()) && !cache.isReference()) {
                     return true;
                 }
             }
         }
+
         return false;
     }
 

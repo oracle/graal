@@ -26,8 +26,20 @@ package com.oracle.svm.graal.hotspot.libgraal;
 
 import org.graalvm.compiler.options.OptionDescriptors;
 
+import com.oracle.svm.hosted.NativeImageGenerator;
+
+/**
+ * Only a subset of {@link OptionDescriptors} available on the image class loader class path are
+ * applicable to libgraal. Until the {@link NativeImageGenerator} runs on a class path isolated from
+ * that used by the image class loader (GR-14237), we need to filter the non-applicable
+ * {@link OptionDescriptors}.
+ */
 public class OptionDescriptorsFilter {
     public static boolean shouldIncludeDescriptors(Class<? extends OptionDescriptors> clazz) {
-        return clazz.getClassLoader() == null;
+        if (clazz.getName().contains("SVMJUnitRunner")) {
+            // Avoids trying to include com/oracle/mxtool/junit/MxJUnitRequest$Builder
+            return false;
+        }
+        return true;
     }
 }

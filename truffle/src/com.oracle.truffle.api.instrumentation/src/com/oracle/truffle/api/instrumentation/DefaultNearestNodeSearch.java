@@ -87,7 +87,7 @@ class DefaultNearestNodeSearch {
         int endIndex = getCharEndIndex(section);
         if (startIndex <= offset && offset <= endIndex) {
             Node parent = findParentTaggedNode(node, tags);
-            Node ch = findChildTaggedNode(node, offset, tags, parent != null, false);
+            Node ch = findChildTaggedNode(node, offset, tags, parent != null, false, true);
             while (ch == null) {
                 if (node == parent) {
                     return parent;
@@ -96,7 +96,7 @@ class DefaultNearestNodeSearch {
                 if (node == null) {
                     break;
                 }
-                ch = findChildTaggedNode(node, offset, tags, parent != null, false);
+                ch = findChildTaggedNode(node, offset, tags, parent != null, false, true);
             }
             return ch;
         } else if (endIndex < offset) {
@@ -110,7 +110,7 @@ class DefaultNearestNodeSearch {
      * Finds the nearest tagged {@link Node node}. See the algorithm description at
      * {@link InstrumentableNode#findNearestNodeAt(int, Set)}.
      */
-    private static Node findChildTaggedNode(Node node, int offset, Set<Class<? extends Tag>> tags, boolean haveOuterCandidate, boolean preferFirst) {
+    private static Node findChildTaggedNode(Node node, int offset, Set<Class<? extends Tag>> tags, boolean haveOuterCandidate, boolean preferFirst, boolean doNest) {
         Node[] highestLowerNode = new Node[]{null};
         Node[] highestLowerTaggedNode = new Node[]{null};
         Node[] lowestHigherNode = new Node[]{null};
@@ -122,6 +122,10 @@ class DefaultNearestNodeSearch {
             int highestLowerTaggedNodeIndex = 0;
             int lowestHigherNodeIndex = 0;
             int lowestHigherTaggedNodeIndex = 0;
+            int lowerTaggedParentStart = -1;
+            int lowerTaggedParentEnd = -1;
+            int higherTaggedParentStart = -1;
+            int higherTaggedParentEnd = -1;
 
             @Override
             public boolean visit(Node childNode) {
@@ -133,7 +137,7 @@ class DefaultNearestNodeSearch {
                 if (ch instanceof InstrumentableNode && ((InstrumentableNode) ch).isInstrumentable()) {
                     ch = (Node) ((InstrumentableNode) ch).materializeInstrumentableNodes(tags);
                     ss = ch.getSourceSection();
-                    if (ss == null) {
+                    if (ss == null || !ss.isAvailable()) {
                         return true;
                     }
                 } else {
@@ -151,10 +155,13 @@ class DefaultNearestNodeSearch {
                 }
                 if (i1 <= offset && offset <= i2) {
                     // In an encapsulating source section
-                    Node taggedNode = findChildTaggedNode(ch, offset, tags, isTagged || haveOuterCandidate, preferFirst);
-                    if (taggedNode != null) {
-                        foundNode[0] = taggedNode;
-                        return false;
+                    Node taggedNode;
+                    if (doNest) {
+                        taggedNode = findChildTaggedNode(ch, offset, tags, isTagged || haveOuterCandidate, preferFirst, doNest);
+                        if (taggedNode != null) {
+                            foundNode[0] = taggedNode;
+                            return false;
+                        }
                     }
                     if (isTagged) {
                         // If nothing in and is tagged, return it
@@ -162,7 +169,7 @@ class DefaultNearestNodeSearch {
                         return false;
                     }
                 }
-                if (offset < i1) {
+                if (offset < i1 && !(higherTaggedParentStart <= i1 && i2 <= higherTaggedParentEnd)) {
                     // We're after the offset
                     if (lowestHigherNode[0] == null || lowestHigherNodeIndex > i1) {
                         lowestHigherNode[0] = ch;
@@ -172,19 +179,23 @@ class DefaultNearestNodeSearch {
                         if (lowestHigherTaggedNode[0] == null || lowestHigherTaggedNodeIndex > i1) {
                             lowestHigherTaggedNode[0] = ch;
                             lowestHigherTaggedNodeIndex = i1;
+                            higherTaggedParentStart = i1;
+                            higherTaggedParentEnd = i2;
                         }
                     }
                 }
-                if (i2 < offset) {
+                if (i2 < offset && !(lowerTaggedParentStart <= i1 && i2 <= lowerTaggedParentEnd)) {
                     // We're before the offset
-                    if (highestLowerNode[0] == null || (preferFirst ? i1 < highestLowerNodeIndex : highestLowerNodeIndex < i1)) {
+                    if (highestLowerNode[0] == null || (highestLowerNodeIndex < i1)) {
                         highestLowerNode[0] = ch;
                         highestLowerNodeIndex = i1;
                     }
                     if (isTagged) {
-                        if (highestLowerTaggedNode[0] == null || (preferFirst ? i1 < highestLowerTaggedNodeIndex : highestLowerTaggedNodeIndex < i1)) {
+                        if (highestLowerTaggedNode[0] == null || (highestLowerTaggedNodeIndex < i1)) {
                             highestLowerTaggedNode[0] = ch;
                             highestLowerTaggedNodeIndex = i1;
+                            lowerTaggedParentStart = i1;
+                            lowerTaggedParentEnd = i2;
                         }
                     }
                 }
@@ -218,8 +229,8 @@ class DefaultNearestNodeSearch {
         // Try to go in the preferred node:
         Node taggedNode = null;
         if (!haveOuterCandidate) {
-            if (primaryNode != null) {
-                taggedNode = findChildTaggedNode(primaryNode, offset, tags, haveOuterCandidate, true);
+            if (primaryNode != null && doNest) {
+                taggedNode = findChildTaggedNode(primaryNode, offset, tags, haveOuterCandidate, true, true);
             }
         }
         if (taggedNode == null && primaryTaggedNode != null) {
@@ -230,8 +241,8 @@ class DefaultNearestNodeSearch {
         }
         // Try to go in a node before:
         if (!haveOuterCandidate) {
-            if (taggedNode == null && secondaryNode != null) {
-                taggedNode = findChildTaggedNode(secondaryNode, offset, tags, haveOuterCandidate, true);
+            if (taggedNode == null && secondaryNode != null && doNest) {
+                taggedNode = findChildTaggedNode(secondaryNode, offset, tags, haveOuterCandidate, true, false);
             }
         }
         if (taggedNode == null && secondaryTaggedNode != null) {

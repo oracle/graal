@@ -28,7 +28,6 @@ import java.io.FileDescriptor;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.MappedByteBuffer;
-import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -56,11 +55,6 @@ public class DisallowedImageHeapObjectFeature implements Feature {
     }
 
     private Object replacer(Object original) {
-        if (original == ForkJoinPool.commonPool()) {
-            throw error("Detected the ForkJoinPool.commonPool() in the image heap. " +
-                            "The common pool must be created at run time because the parallelism depends on the number of cores available at run time. " +
-                            "Therefore the common pool used during image generation must not be reachable, e.g., via a static field that caches a copy of the common pool. ");
-        }
         /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {
             final Thread asThread = (Thread) original;
@@ -110,7 +104,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
     }
 
     private static RuntimeException error(String msg) {
-        throw new UnsupportedFeatureException(msg +
+        throw new UnsupportedFeatureException(msg + " " +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "You can request class initialization at image run time by using the option " +
                         SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>", "initialize-at-build-time") + ". " +

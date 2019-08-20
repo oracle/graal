@@ -841,7 +841,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                     } else {
                         methodsBySignature.put(signatureString, current);
                     }
-                    defineMethodSymbol(symName, entryPoints.contains(current), textSection, current, ent.getValue());
+                    defineMethodSymbol(symName, false, textSection, current, ent.getValue());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {

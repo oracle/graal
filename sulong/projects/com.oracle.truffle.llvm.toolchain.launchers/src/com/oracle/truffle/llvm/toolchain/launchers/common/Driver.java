@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.toolchain.launchers.common;
 import org.graalvm.polyglot.Engine;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -114,11 +116,21 @@ public class Driver {
         if (earlyExit) {
             System.exit(0);
         }
-        ProcessBuilder pb = new ProcessBuilder(toolArgs).inheritIO();
+        ProcessBuilder pb = new ProcessBuilder(toolArgs);
+        if (verbose) {
+            // do no filter input/output streams if in verbose mode
+            setupRedirectsDefault(pb);
+        } else {
+            setupRedirects(pb);
+        }
         Process p = null;
         try {
             // start process
             p = pb.start();
+            if (!verbose) {
+                // process IO (if not in verbose mode)
+                processIO(p.getInputStream(), p.getOutputStream(), p.getErrorStream());
+            }
             // wait for process termination
             p.waitFor();
             // set exit code
@@ -136,6 +148,18 @@ public class Driver {
             System.err.println("Exception: " + e);
             System.exit(1);
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void processIO(InputStream inputStream, OutputStream outputStream, InputStream errorStream) {
+    }
+
+    protected ProcessBuilder setupRedirects(ProcessBuilder pb) {
+        return setupRedirectsDefault(pb);
+    }
+
+    private static ProcessBuilder setupRedirectsDefault(ProcessBuilder pb) {
+        return pb.inheritIO();
     }
 
     private void printMissingToolMessage() {

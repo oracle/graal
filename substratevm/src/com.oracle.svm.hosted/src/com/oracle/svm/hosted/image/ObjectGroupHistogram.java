@@ -33,6 +33,7 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -111,7 +112,7 @@ public final class ObjectGroupHistogram {
          * order in which types are prcessed matters.
          */
         processType(DynamicHub.class, "DynamicHub", true, null, ObjectGroupHistogram::filterDynamicHubField);
-        processObject(DynamicHubSupport.getReferenceMapEncoding(), "DynamicHub", true, null, null);
+        processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.getReferenceMapEncoding()), "DynamicHub", true, null, null);
         processObject(CodeInfoTable.getImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
 
         processObject(readGraalSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);

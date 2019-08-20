@@ -1,0 +1,16 @@
+{
+    "Polyglot_eval": {
+        "prefix": "eval.polyglot",
+        "body": [
+            "eval.polyglot('${1|js,ruby,python|}', ${2|'',path='file'|})"
+        ],
+        "description": "Eval.polyglot Call"
+    },
+    "Java_type": {
+        "prefix": "new",
+        "body": [
+            "new(${1:'type'}, ${2})"
+        ],
+        "description": "Java Type Instantiation"
+    }
+}

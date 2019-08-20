@@ -91,6 +91,7 @@ import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfNode;
@@ -99,8 +100,6 @@ import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.graal.nodes.FormatObjectNode;
-import com.oracle.svm.core.graal.nodes.NewPinnedArrayNode;
-import com.oracle.svm.core.graal.nodes.NewPinnedInstanceNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.ReadRegisterFixedNode;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
@@ -112,7 +111,6 @@ import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
-import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
@@ -145,7 +143,7 @@ class Options {
 }
 
 public class SubstrateGraphBuilderPlugins {
-    public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
+    public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, MetaAccessProvider metaAccess,
                     SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, BytecodeProvider bytecodeProvider, boolean analysis) {
 
         // register the substratevm plugins
@@ -157,7 +155,6 @@ public class SubstrateGraphBuilderPlugins {
         registerUnsafePlugins(plugins);
         registerKnownIntrinsicsPlugins(plugins, analysis);
         registerStackValuePlugins(snippetReflection, plugins);
-        registerPinnedAllocatorPlugins(constantReflection, plugins);
         registerArraysPlugins(plugins, analysis);
         registerArrayPlugins(plugins);
         registerClassPlugins(plugins);
@@ -171,15 +168,17 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
-        Registration proxyRegistration = new Registration(plugins, System.class);
-        proxyRegistration.register0("getSecurityManager", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                /* System.getSecurityManager() always returns null. */
-                b.addPush(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(null), metaAccess, b.getGraph()));
-                return true;
-            }
-        });
+        if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
+            Registration proxyRegistration = new Registration(plugins, System.class);
+            proxyRegistration.register0("getSecurityManager", new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    /* System.getSecurityManager() always returns null. */
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(null), metaAccess, b.getGraph()));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerImageInfoPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
@@ -687,30 +686,6 @@ public class SubstrateGraphBuilderPlugins {
                 int size = SizeOf.get(clazz);
                 StackSlotIdentity slotIdentity = new StackSlotIdentity(b.getGraph().method().asStackTraceElement(b.bci()).toString());
                 b.addPush(JavaKind.Object, new StackValueNode(numElements, size, slotIdentity));
-                return true;
-            }
-        });
-    }
-
-    private static void registerPinnedAllocatorPlugins(ConstantReflectionProvider constantReflection, InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, PinnedAllocator.class);
-
-        r.register2("newInstance", Receiver.class, Class.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver pinnedAllocator, ValueNode instanceClassNode) {
-                ResolvedJavaType instanceClass = typeValue(constantReflection, b, targetMethod, instanceClassNode, "instanceClass");
-                ValueNode pinnedAllocatorNode = pinnedAllocator.get();
-                b.addPush(JavaKind.Object, new NewPinnedInstanceNode(instanceClass, pinnedAllocatorNode));
-                return true;
-            }
-        });
-
-        r.register3("newArray", Receiver.class, Class.class, int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver pinnedAllocator, ValueNode componentTypeNode, ValueNode length) {
-                ResolvedJavaType componentType = typeValue(constantReflection, b, targetMethod, componentTypeNode, "componentType");
-                ValueNode pinnedAllocatorNode = pinnedAllocator.get();
-                b.addPush(JavaKind.Object, new NewPinnedArrayNode(componentType, length, pinnedAllocatorNode));
                 return true;
             }
         });

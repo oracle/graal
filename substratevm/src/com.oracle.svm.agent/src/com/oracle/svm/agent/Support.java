@@ -57,8 +57,14 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 public final class Support {
 
+    public static boolean isInitialized() {
+        boolean initialized = jvmtiEnv.isNonNull();
+        assert initialized == jniFunctions.isNonNull() && initialized == (handles != null);
+        return initialized;
+    }
+
     public static void initialize(JvmtiEnv jvmti, JNIEnvironment localJni) {
-        VMError.guarantee(jvmtiEnv.isNull() && jniFunctions.isNull() && handles == null);
+        VMError.guarantee(!isInitialized());
 
         WordPointer functionsPtr = StackValue.get(WordPointer.class);
         check(jvmti.getFunctions().GetJNIFunctionTable().invoke(jvmti, functionsPtr));
@@ -79,13 +85,13 @@ public final class Support {
 
     static String getSystemProperty(JvmtiEnv jvmti, String propertyName) {
         try (CCharPointerHolder propertyKey = toCString(propertyName)) {
+            String propertyValue = null;
             CCharPointerPointer propertyValuePtr = StackValue.get(CCharPointerPointer.class);
-            check(jvmti.getFunctions().GetSystemProperty().invoke(jvmti, propertyKey.get(), propertyValuePtr));
-            String propertyValue = fromCString(propertyValuePtr.read());
-            check(jvmti.getFunctions().Deallocate().invoke(jvmti, propertyValuePtr.read()));
+            if (jvmti.getFunctions().GetSystemProperty().invoke(jvmti, propertyKey.get(), propertyValuePtr) == JvmtiError.JVMTI_ERROR_NONE) {
+                propertyValue = fromCString(propertyValuePtr.read());
+                check(jvmti.getFunctions().Deallocate().invoke(jvmti, propertyValuePtr.read()));
+            }
             return propertyValue;
-        } catch (Throwable t) {
-            return null;
         }
     }
 

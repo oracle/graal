@@ -63,11 +63,6 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * <p>
  * Objects in a AlignedHeapChunk have to be promoted by copying from their current HeapChunk to a
  * destination HeapChunk.
- * <p>
- * An Object in an AlignedHeapChunk can be pinned, by pinning the whole AlignedHeapChunk, so that
- * promotion does not copy the objects in the AlignedHeapChunk, but moves the whole AlignedHeapChunk
- * from one Space to another, that is, without changing the addresses of any of the Objects in the
- * AlignedHeapChunk.
  *
  * An AlignedHeapChunk is laid out:
  *
@@ -380,12 +375,6 @@ public class AlignedHeapChunk extends HeapChunk {
             result = false;
             final Log verifyLog = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("[AlignedHeapChunk.verify:");
             verifyLog.string("  identifier: ").hex(that).string("  superclass fails to verify]").newline();
-        }
-        /* AlignedHeapChunks should not be pinned. */
-        if (result && that.getPinned()) {
-            result = false;
-            final Log verifyLog = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("[AlignedHeapChunk.verify:");
-            verifyLog.string("  identifier: ").hex(that).string("  isPinned.]").newline();
         }
         /* Verify the object headers. */
         if (result && !verifyHeaders(that)) {

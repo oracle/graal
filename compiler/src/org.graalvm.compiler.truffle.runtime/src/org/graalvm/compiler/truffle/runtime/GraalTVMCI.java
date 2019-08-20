@@ -24,10 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.util.function.Supplier;
-
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
@@ -83,11 +80,6 @@ final class GraalTVMCI extends TVMCI {
         return PolyglotCompilerOptions.getDescriptors();
     }
 
-    @Override
-    protected OptionValues getCompilerOptionValues(RootNode rootNode) {
-        return super.getCompilerOptionValues(rootNode);
-    }
-
     void onFirstExecution(OptimizedCallTarget callTarget) {
         super.onFirstExecution(callTarget.getRootNode());
     }
@@ -137,12 +129,7 @@ final class GraalTVMCI extends TVMCI {
         return OptimizedIndirectCallNode.createUncached();
     }
 
-    @Override
-    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
-        return super.getOrCreateRuntimeData(rootNode, constructor);
-    }
-
-    EngineData getEngineData(RootNode rootNode) {
+    static EngineData getEngineData(RootNode rootNode) {
         return getOrCreateRuntimeData(rootNode, EngineData.ENGINE_DATA_SUPPLIER);
     }
 

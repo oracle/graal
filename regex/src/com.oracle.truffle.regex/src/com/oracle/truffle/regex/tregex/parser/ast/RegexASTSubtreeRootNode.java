@@ -87,20 +87,6 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         matchFound.setParent(this);
     }
 
-    /**
-     * Marks the node as dead, i.e. unmatchable.
-     * <p>
-     * Note that using this setter also traverses the ancestors and children of this node and
-     * updates their "dead" status as well.
-     */
-    @Override
-    public void markAsDead() {
-        super.markAsDead();
-        if (!group.isDead()) {
-            group.markAsDead();
-        }
-    }
-
     @Override
     public boolean visitorHasNext() {
         return !visitorGroupVisited;

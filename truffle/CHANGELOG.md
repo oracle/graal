@@ -2,6 +2,13 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 19.3.0
+* Added ability to obtain an [Internal Truffle File](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-). The internal file is located in the language home directories and it's readable even when IO is not allowed by the Context.
+* Deprecated `TruffleLanguage.Env.getTruffleFile` use [getInternalTruffleFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-) for language standard library files located in language home or [getPublicTruffleFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPublicTruffleFile-java.lang.String-) for user files.
+* Added primitive specializations to `CompilerAsserts.partialEvaluationConstant()`.
+* Added support for temporary [files](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#createTempFile-com.oracle.truffle.api.TruffleFile-java.lang.String-java.lang.String-java.nio.file.attribute.FileAttribute...-) and [directories](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#createTempDirectory-com.oracle.truffle.api.TruffleFile-java.lang.String-java.nio.file.attribute.FileAttribute...-).
+* Threads created by the embedder may now be collected by the GC before they can be [disposed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#disposeThread-C-java.lang.Thread-). If languages hold onto thread objects exposed via `initializeThread` they now need to do so with `WeakReference` to avoid leaking thread instances.
+
 ## Version 19.2.0
 * Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).
 * Added `RootNode.getQualifiedName()` for a better distinction when printing stack traces. Languages are encouraged to implement it, in case it differs from the root name.

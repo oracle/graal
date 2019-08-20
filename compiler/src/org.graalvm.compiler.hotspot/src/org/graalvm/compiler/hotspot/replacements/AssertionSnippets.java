@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
+import static org.graalvm.compiler.api.directives.GraalDirectives.SLOWPATH_PROBABILITY;
+import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static org.graalvm.compiler.replacements.nodes.CStringConstant.cstring;
 
@@ -58,14 +60,14 @@ public class AssertionSnippets implements Snippets {
 
     @Snippet
     public static void assertion(boolean condition, @ConstantParameter String message) {
-        if (!condition) {
+        if (injectBranchProbability(SLOWPATH_PROBABILITY, !condition)) {
             vmMessageC(ASSERTION_VM_MESSAGE_C, true, cstring(message), 0L, 0L, 0L);
         }
     }
 
     @Snippet
     public static void stubAssertion(boolean condition, @ConstantParameter String message) {
-        if (!condition) {
+        if (injectBranchProbability(SLOWPATH_PROBABILITY, !condition)) {
             vmMessageC(ASSERTION_VM_MESSAGE_C, true, cstring(message), 0L, 0L, 0L);
         }
     }

@@ -37,13 +37,8 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 
 /**
- * An OldGeneration has three Spaces,
- * <ul>
- * <li>fromSpace for existing objects,</li>
- * <li>toSpace for newly-allocated or promoted objects, and</li>
- * <li>pinnedSpace for pinned objects.</li>
- * </ul>
- * An OldGeneration also keeps a list of PinnedAllocators.
+ * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
+ * for newly-allocated or promoted objects.
  */
 public class OldGeneration extends Generation {
 
@@ -54,12 +49,9 @@ public class OldGeneration extends Generation {
     /* This Spaces are final, though their contents change during semi-space flips. */
     private final Space fromSpace;
     private final Space toSpace;
-    private final Space pinnedFromSpace;
-    private final Space pinnedToSpace;
 
     /** Walkers of Spaces where there might be grey objects. */
     private final GreyObjectsWalker toGreyObjectsWalker;
-    private final GreyObjectsWalker pinnedToGreyObjectsWalker;
 
     /** Constructor. */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -67,10 +59,7 @@ public class OldGeneration extends Generation {
         super(name);
         this.fromSpace = new Space("fromSpace", false);
         this.toSpace = new Space("toSpace", false);
-        this.pinnedFromSpace = new Space("pinnedFromSpace", false);
-        this.pinnedToSpace = new Space("pinnedToSpace", false);
         this.toGreyObjectsWalker = GreyObjectsWalker.factory();
-        this.pinnedToGreyObjectsWalker = GreyObjectsWalker.factory();
     }
 
     /** Return all allocated virtual memory chunks to HeapChunkProvider. */
@@ -78,8 +67,6 @@ public class OldGeneration extends Generation {
     public final void tearDown() {
         fromSpace.tearDown();
         toSpace.tearDown();
-        pinnedFromSpace.tearDown();
-        pinnedToSpace.tearDown();
     }
 
     /*
@@ -96,14 +83,10 @@ public class OldGeneration extends Generation {
         if (!getToSpace().walkObjects(visitor)) {
             return false;
         }
-        /* There might be objects in the pinned space. */
-        if (!getPinnedFromSpace().walkObjects(visitor)) {
-            return false;
-        }
         return true;
     }
 
-    /** Promote an Object to ToSpace if it is not already in ToSpace or PinnedToSpace. */
+    /** Promote an Object to ToSpace if it is not already in ToSpace. */
     @Override
     public Object promoteObject(Object original) {
         final Log trace = Log.noopLog().string("[OldGeneration.promoteObject:").string("  original: ").object(original).newline();
@@ -125,10 +108,8 @@ public class OldGeneration extends Generation {
     void releaseSpaces() {
         /* Release any spaces associated with this generation after a collection. */
         getFromSpace().release();
-        assert getPinnedFromSpace().isEmpty() : "pinnedFromSpace should be empty.";
         /* Clean the spaces that have been scanned for grey objects. */
         getToSpace().cleanRememberedSet();
-        getPinnedToSpace().cleanRememberedSet();
     }
 
     private boolean shouldPromoteFrom(Space originalSpace) {
@@ -212,105 +193,17 @@ public class OldGeneration extends Generation {
 
     protected void walkDirtyObjects(ObjectVisitor visitor, boolean clean) {
         getToSpace().walkDirtyObjects(visitor, clean);
-        getPinnedToSpace().walkDirtyObjects(visitor, clean);
     }
 
     protected void prepareForPromotion() {
         /* Prepare the Space walkers. */
         getToGreyObjectsWalker().setScanStart(getToSpace());
-        getPinnedToGreyObjectsWalker().setScanStart(getPinnedToSpace());
     }
 
     protected void scanGreyObjects() {
         final Log trace = Log.noopLog().string("[OldGeneration.scanGreyObjects:");
-        /*
-         * The PinnedToSpace will have grey objects after the PinnedFromSpace is promoted, but no
-         * other Objects will be promoted into it later, so I walk it before I walk ToSpace so it
-         * isn't part of the transitive closure when I walk ToSpace.
-         *
-         * TODO: Does this argue for a "blackenPinnedObjects()", like "blackenBootImageObjects()"?
-         */
         final GCImpl gc = HeapImpl.getHeapImpl().getGCImpl();
-        getPinnedToGreyObjectsWalker().walkGreyObjects(gc.getGreyToBlackObjectVisitor());
         getToGreyObjectsWalker().walkGreyObjects(gc.getGreyToBlackObjectVisitor());
-        trace.string("]").newline();
-    }
-
-    /*
-     * Pinned allocator collection methods.
-     */
-
-    protected void promotePinnedAllocatorChunks(boolean completeCollection) {
-        final Log trace = Log.noopLog();
-        trace.string("[OldGeneration.promotePinnedAllocatorChunks:");
-        trace.string("  completeCollection: ").bool(completeCollection);
-        /*
-         * First, walk the list of PinnedAllocators distributing their chunks marking all the chunks
-         * that should be pinned.
-         */
-        PinnedAllocatorImpl.markPinnedChunks();
-        /*
-         * Then, walk pinned from space and distribute chunks to pinned toSpace or unpinned
-         * fromSpace as appropriate.
-         */
-        distributePinnedChunks(completeCollection);
-        trace.string("]").newline();
-    }
-
-    private void distributePinnedChunks(boolean completeCollection) {
-        final Log trace = Log.noopLog().string("[OldGeneration.distributePinnedChunks:").string("  completeCollection: ").bool(completeCollection);
-        final Space unpinnedSpace = (completeCollection ? getFromSpace() : getToSpace());
-        trace.string("  unpinnedSpace: ").string(unpinnedSpace.getName());
-        distributePinnedAlignedChunks(getPinnedToSpace(), unpinnedSpace);
-        distributePinnedUnalignedChunks(getPinnedToSpace(), unpinnedSpace);
-    }
-
-    private void distributePinnedAlignedChunks(Space pinnedSpace, Space unpinnedSpace) {
-        final Log trace = Log.noopLog().string("[OldGeneration.distributePinnedAlignedChunks:");
-        AlignedHeapChunk.AlignedHeader aChunk = getPinnedFromSpace().getFirstAlignedHeapChunk();
-        while (aChunk.isNonNull()) {
-            trace.newline();
-            /* Set up for the next iteration. */
-            final AlignedHeapChunk.AlignedHeader next = aChunk.getNext();
-            /* Move the chunk to pinned toSpace or the unpinned space. */
-            getPinnedFromSpace().extractAlignedHeapChunk(aChunk);
-            if (aChunk.getPinned()) {
-                /* Clean up for the next collection. */
-                aChunk.setPinned(false);
-                trace.string("  to pinned space");
-                pinnedSpace.appendAlignedHeapChunk(aChunk);
-            } else {
-                trace.string("  to unpinned space");
-                unpinnedSpace.appendAlignedHeapChunk(aChunk);
-            }
-            /* Advance to the next chunk. */
-            aChunk = next;
-        }
-        trace.string("]").newline();
-    }
-
-    private void distributePinnedUnalignedChunks(Space pinnedSpace, Space unpinnedSpace) {
-        final Log trace = Log.noopLog();
-        trace.string("[OldGeneration.distributePinnedUnalignedChunks:");
-        UnalignedHeapChunk.UnalignedHeader uChunk = getPinnedFromSpace().getFirstUnalignedHeapChunk();
-        while (uChunk.isNonNull()) {
-            trace.newline();
-            /* Set up for the next iteration. */
-            final UnalignedHeapChunk.UnalignedHeader next = uChunk.getNext();
-            /* Move the chunk to pinned toSpace or the unpinned space. */
-            getPinnedFromSpace().extractUnalignedHeapChunk(uChunk);
-            if (uChunk.getPinned()) {
-                /* Clean up for the next collection. */
-                uChunk.setPinned(false);
-                trace.string("  to pinned space");
-                pinnedSpace.appendUnalignedHeapChunk(uChunk);
-            } else {
-                trace.string("  to unpinned space");
-                unpinnedSpace.appendUnalignedHeapChunk(uChunk);
-            }
-            /* Advance to the next chunk. */
-            uChunk = next;
-        }
         trace.string("]").newline();
     }
 
@@ -319,16 +212,13 @@ public class OldGeneration extends Generation {
         log.string("[Old generation: ").indent(true);
         getFromSpace().report(log, traceHeapChunks).newline();
         getToSpace().report(log, traceHeapChunks).newline();
-        getPinnedFromSpace().report(log, traceHeapChunks).newline();
-        getPinnedToSpace().report(log, traceHeapChunks);
         log.redent(false).string("]");
         return log;
     }
 
     @Override
     protected boolean isValidSpace(Space space) {
-        return (space == getFromSpace() || (space == getToSpace()) ||
-                        (space == getPinnedFromSpace()) || (space == getPinnedToSpace()));
+        return space == getFromSpace() || space == getToSpace();
     }
 
     @Override
@@ -366,41 +256,12 @@ public class OldGeneration extends Generation {
                 heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old to space contains chunks").string("]").newline();
             }
         }
-        /*
-         * ... and a pinned from space, which should be clean after a collection ...
-         */
-        spaceVerifier.initialize(heap.getOldGeneration().getPinnedFromSpace());
-        if (!spaceVerifier.verify()) {
-            result = false;
-            heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old pinned from space fails to verify").string("]").newline();
-        }
-        if (occasion.equals(HeapVerifier.Occasion.AFTER_COLLECTION)) {
-            if (!spaceVerifier.verifyOnlyCleanCards()) {
-                result = false;
-                heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old pinned from space contains dirty cards").string("]").newline();
-            }
-        }
-        /*
-         * ... and a pinned to space, which should be empty except during a collection ...
-         */
-        spaceVerifier.initialize(heap.getOldGeneration().getPinnedToSpace());
-        if (!spaceVerifier.verify()) {
-            result = false;
-            heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old pinned to space fails to verify").string("]").newline();
-        }
-        if (!occasion.equals(HeapVerifier.Occasion.DURING_COLLECTION)) {
-            if (spaceVerifier.containsChunks()) {
-                result = false;
-                heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old to space contains chunks").string("]").newline();
-            }
-        }
         return result;
     }
 
     boolean slowlyFindPointer(Pointer p) {
         /*
-         * FromSpace and PinnedFromSpace are "in" the Heap, ToSpace and PinnedToSpace are not "in"
-         * the Heap, because they should be empty.
+         * FromSpace is "in" the Heap, ToSpace is not "in" the Heap, because it should be empty.
          */
         if (slowlyFindPointerInFromSpace(p)) {
             return true;
@@ -411,20 +272,6 @@ public class OldGeneration extends Generation {
                     paranoia.string("[OldGeneration.slowlyFindPointerInOldGeneration:");
                     paranoia.string("  p: ").hex(p);
                     paranoia.string("  found in: ").string(getToSpace().getName());
-                    paranoia.string("]").newline();
-                }
-            }
-            return false;
-        }
-        if (slowlyFindPointerInPinnedFromSpace(p)) {
-            return true;
-        }
-        if (slowlyFindPointerInPinnedToSpace(p)) {
-            try (Log paranoia = Log.noopLog()) {
-                if (paranoia.isEnabled()) {
-                    paranoia.string("[OldGeneration.slowlyFindPointerInOldGeneration:");
-                    paranoia.string("  p: ").hex(p);
-                    paranoia.string("  found in: ").string(getPinnedToSpace().getName());
                     paranoia.string("]").newline();
                 }
             }
@@ -441,14 +288,6 @@ public class OldGeneration extends Generation {
         return HeapVerifierImpl.slowlyFindPointerInSpace(getToSpace(), p, HeapVerifierImpl.ChunkLimit.top);
     }
 
-    boolean slowlyFindPointerInPinnedFromSpace(Pointer p) {
-        return HeapVerifierImpl.slowlyFindPointerInSpace(getPinnedFromSpace(), p, HeapVerifierImpl.ChunkLimit.top);
-    }
-
-    boolean slowlyFindPointerInPinnedToSpace(Pointer p) {
-        return HeapVerifierImpl.slowlyFindPointerInSpace(getPinnedToSpace(), p, HeapVerifierImpl.ChunkLimit.top);
-    }
-
     /* This could return an enum, but I want to be able to examine it easily from a debugger. */
     int classifyPointer(Pointer p) {
         if (p.isNull()) {
@@ -459,12 +298,6 @@ public class OldGeneration extends Generation {
         }
         if (slowlyFindPointerInToSpace(p)) {
             return 2;
-        }
-        if (slowlyFindPointerInPinnedFromSpace(p)) {
-            return 3;
-        }
-        if (slowlyFindPointerInPinnedToSpace(p)) {
-            return 4;
         }
         return -1;
     }
@@ -483,19 +316,9 @@ public class OldGeneration extends Generation {
         return toSpace;
     }
 
-    Space getPinnedFromSpace() {
-        return pinnedFromSpace;
-    }
-
-    Space getPinnedToSpace() {
-        return pinnedToSpace;
-    }
-
     void swapSpaces() {
         assert getFromSpace().isEmpty() : "fromSpace should be empty.";
         getFromSpace().absorb(getToSpace());
-        assert getPinnedFromSpace().isEmpty() : "pinnedFromSpace should be empty.";
-        getPinnedFromSpace().absorb(getPinnedToSpace());
     }
 
     /* Extract all the HeapChunks from FromSpace and append them to ToSpace. */
@@ -507,16 +330,8 @@ public class OldGeneration extends Generation {
         return toGreyObjectsWalker;
     }
 
-    private GreyObjectsWalker getPinnedToGreyObjectsWalker() {
-        return pinnedToGreyObjectsWalker;
-    }
-
     boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
         /* In no particular order visit all the spaces. */
-        final boolean result = (getFromSpace().walkHeapChunks(visitor) &&
-                        getToSpace().walkHeapChunks(visitor) &&
-                        getPinnedFromSpace().walkHeapChunks(visitor) &&
-                        getPinnedToSpace().walkHeapChunks(visitor));
-        return result;
+        return getFromSpace().walkHeapChunks(visitor) && getToSpace().walkHeapChunks(visitor);
     }
 }

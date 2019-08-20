@@ -29,11 +29,18 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers;
 
+import static com.oracle.truffle.llvm.toolchain.launchers.common.Driver.OS;
+
 import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
+import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinClangLike;
 
 public final class Clang {
 
     public static void main(String[] args) {
-        ClangLike.runClang(args);
+        if (OS.getCurrent() == OS.DARWIN) {
+            DarwinClangLike.runClang(args);
+        } else {
+            ClangLike.runClang(args);
+        }
     }
 }

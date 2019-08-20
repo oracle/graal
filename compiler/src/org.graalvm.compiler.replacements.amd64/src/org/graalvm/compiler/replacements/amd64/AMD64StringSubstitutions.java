@@ -85,8 +85,6 @@ public class AMD64StringSubstitutions {
 
         if (targetCount == 1) {
             return AMD64ArrayIndexOf.indexOf1Char(source, sourceCount, totalOffset, target[targetOffset]);
-        } else if (targetCount == 2) {
-            return AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(source, sourceCount, totalOffset, target[targetOffset], target[targetOffset + 1]);
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             while (totalOffset < haystackLength) {
@@ -97,7 +95,7 @@ public class AMD64StringSubstitutions {
                 totalOffset = indexOfResult;
                 Pointer cmpSourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
                 Pointer targetPointer = Word.objectToTrackedPointer(target).add(charArrayBaseOffset(INJECTED)).add(targetOffset * charArrayIndexScale(INJECTED));
-                if (ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char)) {
+                if (targetCount == 2 || ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char)) {
                     return totalOffset;
                 }
                 totalOffset++;

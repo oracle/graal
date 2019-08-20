@@ -35,6 +35,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 @AutomaticFeature
 @Platforms(Platform.AArch64.class)
@@ -47,6 +48,7 @@ class AMD64FrameAccessFeature implements Feature {
 
 public class AArch64FrameAccess extends FrameAccess {
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer readReturnAddress(Pointer sourceSp) {
         /* Read the return address, which is stored immediately below the stack pointer. */
         return (CodePointer) sourceSp.readWord(-returnAddressSize());

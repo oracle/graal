@@ -48,15 +48,18 @@ public final class OptimizedCompilationProfile {
      * Number of times an installed code for this tree was seen invalidated.
      */
     private int invalidationCount;
-
     private int callCount;
     private int callAndLoopCount;
-    private int lastTierCompilationCallAndLoopThreshold;
-    private boolean multiTierEnabled;
 
-    private long timestamp;
+    private final int lastTierCompilationCallAndLoopThreshold;
+    private final boolean multiTierEnabled;
+    private final long timestamp;
+    private final OptionValues options;
 
-    // The values below must only be written under lock, or in the constructor.
+    /**
+     * The values below must only be written under lock, or in the constructor, because they are
+     * modified by {@link #ensureProfiling(int, int)}.
+     */
     private int compilationCallThreshold;
     private int compilationCallAndLoopThreshold;
 
@@ -81,17 +84,18 @@ public final class OptimizedCompilationProfile {
     @CompilationFinal private boolean callProfiled;
 
     public OptimizedCompilationProfile(OptionValues options) {
-        boolean compileImmediately = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleCompileImmediately);
-        int callThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMinInvokeThreshold);
+        this.options = options;
+        boolean compileImmediately = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompileImmediately);
+        int callThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.MinInvokeThreshold);
         int callAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.CompilationThreshold);
         assert callThreshold >= 0;
         assert callAndLoopThreshold >= 0;
-        this.multiTierEnabled = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMultiTier);
+        this.multiTierEnabled = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.MultiTier);
         this.compilationCallThreshold = compileImmediately ? 0 : Math.min(callThreshold, callAndLoopThreshold);
         this.compilationCallAndLoopThreshold = compileImmediately ? 0 : callAndLoopThreshold;
         this.lastTierCompilationCallAndLoopThreshold = this.compilationCallAndLoopThreshold;
         if (multiTierEnabled) {
-            int firstTierCallThreshold = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleFirstTierMinInvokeThreshold);
+            int firstTierCallThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.FirstTierMinInvokeThreshold);
             int firstTierCallAndLoopThreshold = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.FirstTierCompilationThreshold);
             this.compilationCallThreshold = compileImmediately ? 0 : Math.min(firstTierCallThreshold, firstTierCallAndLoopThreshold);
             this.compilationCallAndLoopThreshold = firstTierCallAndLoopThreshold;
@@ -212,7 +216,7 @@ public final class OptimizedCompilationProfile {
         if (CompilerDirectives.inInterpreter() && returnTypeAssumption == null) {
             // we only profile return values in the interpreter as we don't want to deoptimize
             // for immediate compiles.
-            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleReturnTypeSpeculation)) {
+            if (PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ReturnTypeSpeculation)) {
                 profiledReturnType = classOf(result);
                 profiledReturnTypeAssumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
             }
@@ -292,13 +296,13 @@ public final class OptimizedCompilationProfile {
 
     void reportInvalidated() {
         invalidationCount++;
-        int reprofile = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInvalidationReprofileCount);
+        int reprofile = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.InvalidationReprofileCount);
         ensureProfiling(reprofile, reprofile);
     }
 
     void reportNodeReplaced() {
         // delay compilation until tree is deemed stable enough
-        int replaceBackoff = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleReplaceReprofileCount);
+        int replaceBackoff = PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ReplaceReprofileCount);
         ensureProfiling(1, replaceBackoff);
     }
 
@@ -332,7 +336,7 @@ public final class OptimizedCompilationProfile {
 
     private void initializeProfiledArgumentTypes(Object[] args) {
         CompilerAsserts.neverPartOfCompilation();
-        if (args.length <= MAX_PROFILED_ARGUMENTS && TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleArgumentTypeSpeculation)) {
+        if (args.length <= MAX_PROFILED_ARGUMENTS && PolyglotCompilerOptions.getValue(options, PolyglotCompilerOptions.ArgumentTypeSpeculation)) {
             Class<?>[] result = new Class<?>[args.length];
             for (int i = 0; i < args.length; i++) {
                 result[i] = classOf(args[i]);

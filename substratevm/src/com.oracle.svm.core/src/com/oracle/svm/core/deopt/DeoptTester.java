@@ -35,12 +35,13 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.VMOperation;
@@ -67,7 +68,7 @@ public class DeoptTester {
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Only deals with IPs, not Objects.")
-        public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame) {
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
             handledPCs.add(ip.rawValue());
             return true;
         }
@@ -110,11 +111,10 @@ public class DeoptTester {
             }
 
             Pointer startSp = KnownIntrinsics.readCallerStackPointer();
-            CodePointer startIp = KnownIntrinsics.readReturnAddress();
 
             int numHandledPCs = handledPCs.size();
 
-            JavaStackWalker.walkCurrentThread(startSp, startIp, collectPcVisitor);
+            JavaStackWalker.walkCurrentThread(startSp, collectPcVisitor);
 
             if (handledPCs.size() > numHandledPCs) {
                 Deoptimizer.deoptimizeAll();

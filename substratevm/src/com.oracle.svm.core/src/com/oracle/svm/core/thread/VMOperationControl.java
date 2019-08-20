@@ -97,6 +97,7 @@ public final class VMOperationControl {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     VMOperation getInProgress() {
         return inProgress;
     }

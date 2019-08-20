@@ -175,6 +175,19 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         return true;
     }
 
+    public boolean contains(CompilationFinalBitSet other) {
+        for (int i = 0; i < other.words.length; i++) {
+            if (i >= words.length) {
+                if (other.words[i] != 0) {
+                    return false;
+                }
+            } else if ((words[i] & other.words[i]) != other.words[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     @Override
     public boolean equals(Object obj) {
         return obj == this || (obj instanceof CompilationFinalBitSet && Arrays.equals(words, ((CompilationFinalBitSet) obj).words));

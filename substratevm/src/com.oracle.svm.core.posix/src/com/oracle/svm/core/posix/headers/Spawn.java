@@ -25,8 +25,6 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -34,10 +32,12 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
+import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
 import org.graalvm.word.PointerBase;
 
 /** Definitions hand-translated from <spawn.h>. */
-@Platforms({DARWIN.class, LINUX.class})
+@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
 @CContext(PosixDirectives.class)
 public class Spawn {
     /* Allow lower-case type names: Checkstyle: stop. */

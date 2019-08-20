@@ -54,9 +54,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
  * static methods that take the HeapChunk.Header as a parameter.
  * <p>
  * HeapChunks maintain Pointers to the current allocation point (top) with them, and the limit (end)
- * where Objects can be allocated. Subclasses of HeapChunks can add additional fields as needed. For
- * example, a HeapChunk in the CardRememberedSet heap can be pinned, and maintains an additional
- * field in its header to record if a HeapChunk is pinned or not.
+ * where Objects can be allocated. Subclasses of HeapChunks can add additional fields as needed.
  * <p>
  * HeapChunks maintain some fields that would otherwise have to be maintained in per-HeapChunk
  * memory by the Space that contains them. For example, the fields for linking lists of HeapChunks
@@ -133,17 +131,6 @@ public class HeapChunk {
         void setEnd(Pointer newEnd);
 
         /**
-         * Whether this chunk is pinned.
-         */
-        @RawField
-        @UniqueLocationIdentity
-        boolean getPinned();
-
-        @RawField
-        @UniqueLocationIdentity
-        void setPinned(boolean isPinned);
-
-        /**
          * The Space this HeapChunk is part of.
          *
          * All Space instances are in the native image heap, so it is safe to have a reference to a
@@ -218,7 +205,7 @@ public class HeapChunk {
     }
 
     /** How much space is available for objects in a HeapChunk? */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord availableObjectMemory(Header<?> that) {
         final Pointer top = that.getTop();
         final Pointer end = that.getEnd();
@@ -226,7 +213,7 @@ public class HeapChunk {
     }
 
     /** Set top, being careful that it is between the current top and end. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void setTopCarefully(Header<?> that, Pointer newTop) {
         assert that.getTop().belowOrEqual(newTop) : "newTop too low.";
         assert newTop.belowOrEqual(that.getEnd()) : "newTop too high.";
@@ -280,15 +267,6 @@ public class HeapChunk {
             return result;
         }
 
-        @Override
-        public boolean isPinned(T heapChunk) {
-            /*
-             * Pinned chunks are those in the pinned space of the old generation. I.e., from
-             * PinnedAllocators. I do not try to identify individual objects that have been pinned,
-             * because that would be slow.
-             */
-            return (heapChunk.getSpace() == HeapImpl.getHeapImpl().getOldGeneration().getPinnedFromSpace());
-        }
     }
 
     /*

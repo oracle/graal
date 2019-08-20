@@ -95,6 +95,7 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToVectorZeroExtNodeFactory.LLVMUns
 import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMConditionalBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMDispatchBasicBlockNode;
+import com.oracle.truffle.llvm.nodes.control.LLVMFunctionRootNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMIndirectBranchNode;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVM80BitFloatRetNodeGen;
 import com.oracle.truffle.llvm.nodes.control.LLVMRetNodeFactory.LLVMAddressRetNodeGen;
@@ -139,6 +140,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpec
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMExpectFactory.LLVMExpectI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMFrameAddressNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMI64ObjectSizeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicWrapperNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantEndNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMInvariantStartNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIsConstantNodeGen;
@@ -385,6 +387,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebugGlobalVariable;
@@ -1685,9 +1688,9 @@ public class BasicNodeFactory implements NodeFactory {
                     FrameSlot[][] beforeBlockNuller,
                     FrameSlot[][] afterBlockNuller, LLVMSourceLocation location, LLVMStatementNode[] copyArgumentsToFrame) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegionAllocator);
-        return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), uniquesRegionAllocNode, beforeBlockNuller,
-                        afterBlockNuller, location,
-                        copyArgumentsToFrame);
+        LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller,
+                        afterBlockNuller, location);
+        return new LLVMFunctionRootNode(uniquesRegionAllocNode, location, copyArgumentsToFrame, body);
     }
 
     @Override
@@ -1714,8 +1717,8 @@ public class BasicNodeFactory implements NodeFactory {
         } catch (AsmParseException e) {
             assemblyRoot = getLazyUnsupportedInlineRootNode(sourceSection, asmExpression, e);
         }
-        LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(context, "<asm>", new FunctionType(MetaType.UNKNOWN, Type.EMPTY_ARRAY, false), -1);
-        asm.define(library, new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null));
+        LLVMIRFunction function = new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null);
+        LLVMFunctionDescriptor asm = new LLVMFunctionDescriptor(context, "<asm>", new FunctionType(MetaType.UNKNOWN, Type.EMPTY_ARRAY, false), -1, function, library);
         LLVMManagedPointerLiteralNode asmFunction = new LLVMManagedPointerLiteralNode(LLVMManagedPointer.create(asm));
 
         return new LLVMCallNode(new FunctionType(MetaType.UNKNOWN, argTypes, false), asmFunction, args, sourceSection);
@@ -1777,28 +1780,38 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, LLVMSourceLocation sourceSection) {
-        /*
-         * This LLVM Builtins are *not* function intrinsics. Builtins replace statements that look
-         * like function calls but are actually LLVM intrinsics. An example is llvm.stackpointer.
-         * Also, it is not possible to retrieve the functionpointer of such pseudo-call-targets.
-         *
-         * This builtins shall not be used for regular function intrinsification!
-         */
+    public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, Type[] argsTypes, int callerArgumentCount, LLVMSourceLocation sourceSection) {
         if (target instanceof FunctionDeclaration) {
             FunctionDeclaration declaration = (FunctionDeclaration) target;
-            if (declaration.getName().startsWith("llvm.")) {
+            String name = declaration.getName();
+            /*
+             * These "llvm." builtins are *not* function intrinsics. Builtins replace statements
+             * that look like function calls but are actually LLVM intrinsics. An example is
+             * llvm.stackpointer. Also, it is not possible to retrieve the functionpointer of such
+             * pseudo-call-targets.
+             *
+             * These builtins shall not be used for regular function intrinsification!
+             */
+            if (name.startsWith("llvm.")) {
                 return getLLVMBuiltin(declaration, args, callerArgumentCount, sourceSection);
-            } else if (declaration.getName().startsWith("__builtin_")) {
+            } else if (name.startsWith("__builtin_")) {
                 return getGccBuiltin(declaration, args, sourceSection);
-            } else if (declaration.getName().equals("polyglot_get_arg")) {
+            } else if (name.equals("polyglot_get_arg")) {
                 // this function accesses the frame directly
                 // it must therefore not be hidden behind a call target
                 return LLVMTruffleGetArgNodeGen.create(args[1], sourceSection);
-            } else if (declaration.getName().equals("polyglot_get_arg_count")) {
+            } else if (name.equals("polyglot_get_arg_count")) {
                 // this function accesses the frame directly
                 // it must therefore not be hidden behind a call target
                 return LLVMTruffleGetArgCountNodeGen.create(sourceSection);
+            } else {
+                // Inline Sulong intrinsics directly at their call site, to avoid the overhead of a
+                // call node and extra argument nodes.
+                LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+                LLVMExpressionNode intrinsicNode = intrinsicProvider.generateIntrinsicNode(name, args, argsTypes);
+                if (intrinsicNode != null) {
+                    return new LLVMIntrinsicWrapperNode(sourceSection, intrinsicNode);
+                }
             }
         }
         return null;

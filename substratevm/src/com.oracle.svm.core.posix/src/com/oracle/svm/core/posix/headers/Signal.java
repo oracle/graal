@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.c.struct.CFieldOffset;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
 /**
@@ -144,7 +145,7 @@ public class Signal {
                 __sigset_t uc_sigmask;
                 struct _libc_fpstate __fpregs_mem;
               } ucontext_t;
-        
+
             // Context to describe whole processor state.
             typedef struct
               {
@@ -392,7 +393,7 @@ public class Signal {
 
     /** An alphabetical list of Linux-specific signals. */
     /* Workaround for GR-7858: @Platform @CEnum members. */
-    @Platforms(Platform.LINUX.class)
+    @Platforms(InternalPlatform.LINUX_AND_JNI.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum LinuxSignalEnum {
@@ -407,7 +408,7 @@ public class Signal {
 
     /** An alphabetical list of Darwin-specific signals. */
     /* Workaround for GR-7858: @Platform @CEnum members. */
-    @Platforms(Platform.DARWIN.class)
+    @Platforms(InternalPlatform.DARWIN_AND_JNI.class)
     @CEnum
     @CContext(PosixDirectives.class)
     public enum DarwinSignalEnum {

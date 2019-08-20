@@ -100,7 +100,7 @@ public class VMMutex implements AutoCloseable {
         unlock();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void assertIsLocked(String message) {
         assert locked : message;
     }
@@ -115,7 +115,7 @@ public class VMMutex implements AutoCloseable {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void guaranteeIsLocked(String message) {
         VMError.guarantee(locked, message);
     }

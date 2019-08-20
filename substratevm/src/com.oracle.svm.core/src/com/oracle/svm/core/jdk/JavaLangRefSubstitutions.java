@@ -214,6 +214,10 @@ final class Target_java_lang_ref_ReferenceQueue {
 
     @KeepOriginal
     native boolean enqueue(Reference<?> r);
+
+    public boolean isEmpty() {
+        return feeble.isEmpty();
+    }
 }
 
 /** SubstrateVM does not support Finalizer references. */

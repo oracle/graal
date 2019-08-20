@@ -38,7 +38,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.SystemContextExtension;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -54,7 +54,7 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
 
     protected LLVMSyscallOperationNode createNode(long rax) {
-        return LLVMLanguage.getLanguage().getContextExtension(SystemContextExtension.class).createSyscallNode(rax);
+        return LLVMLanguage.getLanguage().getCapability(PlatformCapability.class).createSyscallNode(rax);
     }
 
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")

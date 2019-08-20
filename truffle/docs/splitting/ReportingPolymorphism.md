@@ -27,14 +27,14 @@ Since the Truffle DSL automates much of the transitions between specializations,
 we added the `@ReportPolymorphism` [annotation for automated reporting of
 polymorphic
 specializations](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.html).
-This annotation instructs the DSL include checks for polymorphism after
-specializations and too call `Node#reportPolymorphicSpecialize` if needed.
+This annotation instructs the DSL to include checks for polymorphism after
+specializations and to call `Node#reportPolymorphicSpecialize` if needed.
 
 For an example on how to use this annotation, consider the
 `com.oracle.truffle.sl.nodes.SLStatementNode`. It is the base class for all
 Simple Language nodes and, since the `ReportPolymorphism` annotation is
 inherited, simply annotating this class will enable reporting of polymorphic
-specializations for all Simple Language nodes. Bellow is the diff of the change
+specializations for all Simple Language nodes. Below is the diff of the change
 that adds this annotation to he `SLStatementNode`
 
 ```
@@ -79,7 +79,7 @@ which is applicable to classes (disabling automated reporting for the entire
 class) or to individual specializations (excluding those specializations from
 consideration when checking for polymorphism).
 
-### Tools Suppot
+### Tools Support
 
 Knowing which nodes should and should not report polymorphic specializations is
 for the language developer to conclude through either knowledge of the language

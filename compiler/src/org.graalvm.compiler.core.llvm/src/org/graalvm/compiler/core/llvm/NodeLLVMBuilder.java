@@ -117,7 +117,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
         this.builder = gen.getBuilder();
         this.debugInfoBuilder = debugInfoProvider.apply(this, graph.getDebug());
 
-        gen.getBuilder().addMainFunction(gen.getLLVMFunctionType(graph.method()));
+        gen.getBuilder().addMainFunction(gen.getLLVMFunctionType(graph.method(), true));
 
         for (Block block : graph.getLastSchedule().getCFG().getBlocks()) {
             gen.appendBasicBlock(block);
@@ -398,7 +398,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
         long patchpointId = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
         if (callTarget instanceof DirectCallTargetNode) {
             callee = gen.getFunction(targetMethod);
-            isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod));
+            isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod, false));
             gen.getLLVMResult().recordDirectCall(targetMethod, patchpointId, debugInfo);
         } else if (callTarget instanceof IndirectCallTargetNode) {
             LLVMValueRef computedAddress = llvmOperand(((IndirectCallTargetNode) callTarget).computedAddress());
@@ -407,12 +407,12 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
             }
             if (targetMethod != null) {
                 callee = builder.buildIntToPtr(computedAddress,
-                                builder.pointerType(gen.getLLVMFunctionType(targetMethod), false));
-                isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod));
+                                builder.pointerType(gen.getLLVMFunctionType(targetMethod, false), false));
+                isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod, false));
             } else {
                 LLVMTypeRef returnType = gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
                 isVoid = isVoidType(returnType);
-                LLVMTypeRef[] argTypes = Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMStackType(gen.getTypeKind(argType.resolve(null)))).toArray(LLVMTypeRef[]::new);
+                LLVMTypeRef[] argTypes = Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMStackType(gen.getTypeKind(argType.resolve(null), false))).toArray(LLVMTypeRef[]::new);
                 assert args.length == argTypes.length;
 
                 callee = builder.buildIntToPtr(computedAddress,

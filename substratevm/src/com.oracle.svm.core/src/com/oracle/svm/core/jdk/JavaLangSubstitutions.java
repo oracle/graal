@@ -200,7 +200,7 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer());
         return this;
     }
 
@@ -545,6 +545,26 @@ final class Target_java_lang_Compiler {
                         "with the first element being a String providing the name of the SVM command to run " +
                         "and subsequent elements being the arguments to the command");
     }
+
+    @SuppressWarnings({"unused"})
+    @Substitute
+    static boolean compileClass(Class<?> clazz) {
+        return false;
+    }
+
+    @SuppressWarnings({"unused"})
+    @Substitute
+    static boolean compileClasses(String string) {
+        return false;
+    }
+
+    @Substitute
+    static void enable() {
+    }
+
+    @Substitute
+    static void disable() {
+    }
 }
 
 final class IsSingleThreaded implements Predicate<Class<?>> {
@@ -806,6 +826,7 @@ class JavaLangSubstituteFeature implements Feature {
             JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
             JNIRuntimeAccess.register(java.io.IOException.class);
             JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
+            JNIRuntimeAccess.register(java.io.FileNotFoundException.class.getDeclaredConstructor(String.class, String.class));
             if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
                 JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
@@ -821,6 +842,7 @@ public final class JavaLangSubstitutions {
 
     public static class ClassLoaderSupport {
         public Target_java_lang_ClassLoader systemClassLoader;
+        public Target_java_lang_ClassLoader platformClassLoader;
 
         @Platforms(Platform.HOSTED_ONLY.class) public Map<ClassLoader, Target_java_lang_ClassLoader> classLoaders = Collections.synchronizedMap(new IdentityHashMap<>());
 

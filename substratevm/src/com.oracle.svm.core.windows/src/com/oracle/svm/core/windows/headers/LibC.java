@@ -145,7 +145,7 @@ public class LibC {
 
     public static final int EXIT_CODE_ABORT = 99;
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void abort() {
         exit(EXIT_CODE_ABORT);
     }

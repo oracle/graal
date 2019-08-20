@@ -28,15 +28,16 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 
 import jdk.vm.ci.meta.Constant;
@@ -60,7 +62,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, Comparable<HostedMethod> {
+public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, Comparable<HostedMethod>, OriginalMethodProvider {
 
     public final AnalysisMethod wrapped;
 
@@ -469,5 +471,10 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         }
         assert result != 0;
         return result;
+    }
+
+    @Override
+    public Executable getJavaMethod() {
+        return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
     }
 }

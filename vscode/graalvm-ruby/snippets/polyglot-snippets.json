@@ -1,0 +1,23 @@
+{
+    "Polyglot_eval": {
+        "prefix": "Polyglot.eval",
+        "body": [
+            "Polyglot.eval('${1|js,R,python|}', ${2:''})"
+        ],
+        "description": "Polyglot.eval Call"
+    },
+    "Polyglot_eval_file": {
+        "prefix": "Polyglot.eval_file",
+        "body": [
+            "Polyglot.eval_file('${1|js,R,python|}', ${2:'file'})"
+        ],
+        "description": "Polyglot.eval_file Call"
+    },
+    "Java_type": {
+        "prefix": "Java.type",
+        "body": [
+            "Java.type(${1:'type'})"
+        ],
+        "description": "Java.type Call"
+    }
+}

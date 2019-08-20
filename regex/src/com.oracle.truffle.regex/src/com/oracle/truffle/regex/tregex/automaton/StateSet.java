@@ -180,6 +180,9 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
     @Override
     public boolean containsAll(Collection<?> c) {
+        if (useBackingSet() && c instanceof StateSet<?> && ((StateSet<?>) c).useBackingSet()) {
+            return backingSet.contains(((StateSet<?>) c).backingSet);
+        }
         for (Object o : c) {
             if (!contains(o)) {
                 return false;
@@ -369,10 +372,10 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
     /**
      * Returns the hash code value for this set.
-     * 
+     *
      * Note that unlike other {@link Set}s, the hash code value returned by this implementation is
      * <em>not</em> the sum of the hash codes of its elements.
-     * 
+     *
      * @see Set#hashCode()
      */
     @Override
@@ -409,10 +412,10 @@ public class StateSet<S extends IndexedState> implements Set<S>, Iterable<S> {
 
     /**
      * Compares the specified object with this set for equality.
-     * 
+     *
      * Note that unlike other {@link Set} s, {@link StateSet}s are only equal to other
      * {@link StateSet}s.
-     * 
+     *
      * @see Set#equals(Object)
      */
     @SuppressWarnings("unchecked")
