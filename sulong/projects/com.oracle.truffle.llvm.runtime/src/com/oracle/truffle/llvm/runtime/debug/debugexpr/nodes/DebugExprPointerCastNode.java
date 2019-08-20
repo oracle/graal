@@ -72,7 +72,7 @@ public class DebugExprPointerCastNode extends LLVMExpressionNode implements Memb
 
             LLVMDebugObject llvmPointerObject = (LLVMDebugObject) executedPointerNode;
             Object llvmPointerValue = llvmPointerObject.getValue();
-            Builder builder = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createDebugValueBuilder();
+            Builder builder = LLVMLanguage.getLLVMContextReference().get().getLanguage().getNodeFactory().createDebugValueBuilder();
             LLVMDebugValue pointerValue = builder.build(llvmPointerValue);
             LLVMDebugObject llvmDebugObject = LLVMDebugObject.instantiate(llvmSourcePointerType, 0L,
                             pointerValue, null);

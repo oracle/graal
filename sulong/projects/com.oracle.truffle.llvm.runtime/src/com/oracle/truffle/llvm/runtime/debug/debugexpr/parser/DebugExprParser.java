@@ -44,13 +44,13 @@ public class DebugExprParser {
     private final Scanner scanner;
     private final CocoInputStream cis;
 
-    public DebugExprParser(InlineParsingRequest request, Iterable<Scope> globalScopes) {
+    public DebugExprParser(LLVMLanguage language, InlineParsingRequest request, Iterable<Scope> globalScopes) {
         cis = new CocoInputStream(request.getSource().getCharacters());
         scanner = new Scanner(cis);
         parser = new Parser(scanner);
 
         final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), LLVMLanguage.getLLVMContextReference().get());
-        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(LLVMLanguage.getLLVMContextReference(), scopes, globalScopes);
+        DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(language.getNodeFactory(), scopes, globalScopes);
         parser.setNodeFactory(nodeFactory);
     }
 

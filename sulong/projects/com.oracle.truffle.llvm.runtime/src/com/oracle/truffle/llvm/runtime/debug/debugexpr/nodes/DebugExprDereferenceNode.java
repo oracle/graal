@@ -83,7 +83,7 @@ public class DebugExprDereferenceNode extends LLVMExpressionNode implements Memb
 
             LLVMDebugObject llvmPointerObject = (LLVMDebugObject) executedPointerNode;
             Object llvmPointerValue = llvmPointerObject.getValue();
-            Builder builder = LLVMLanguage.getLLVMContextReference().get().getNodeFactory().createDebugDeclarationBuilder();
+            Builder builder = LLVMLanguage.getLLVMContextReference().get().getLanguage().getNodeFactory().createDebugDeclarationBuilder();
             LLVMDebugValue dereferencedValue = builder.build(llvmPointerValue);
             LLVMDebugObject llvmDebugObject = LLVMDebugObject.instantiate(llvmSourceType, 0L,
                             dereferencedValue, null);
