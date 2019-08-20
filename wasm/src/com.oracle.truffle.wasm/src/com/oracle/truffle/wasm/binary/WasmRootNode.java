@@ -50,7 +50,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     }
 
     public void setBody(WasmBlockNode body) {
-        this.body = body;
+        this.body = insert(body);
     }
 
     @Override
@@ -68,8 +68,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
          */
         initializeLocals(frame);
 
-        // TODO: Accessing the context like this seems to be quite slow.
-        body.execute(WasmContext.getCurrent(), frame);
+        body.execute(lookupContextReference(WasmLanguage.class).get(), frame);
 
         long returnValue = pop(frame, 0);
         switch (body.returnTypeId()) {

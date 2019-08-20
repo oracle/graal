@@ -216,8 +216,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialByteConstantOffset;
     @CompilationFinal private final int initialIntConstantOffset;
     @CompilationFinal private final int initialNumericLiteralOffset;
-    @CompilationFinal(dimensions = 1) WasmNode[] nestedControlTable;
-    @CompilationFinal(dimensions = 1) DirectCallNode[] callNodeTable;
+    @Children WasmNode[] nestedControlTable;
+    @Children DirectCallNode[] callNodeTable;
 
     public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int initialIntConstantOffset, int initialNumericLiteralOffset) {
         super(wasmModule, codeEntry, -1, -1, -1);
@@ -1859,7 +1859,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Override
     public int executeRepeatingWithStatus(VirtualFrame frame) {
         // TODO: Accessing the context like this seems to be quite slow.
-        return execute(WasmContext.getCurrent(), frame);
+        return execute(lookupContextReference(WasmLanguage.class).get(), frame);
     }
 
     @Override

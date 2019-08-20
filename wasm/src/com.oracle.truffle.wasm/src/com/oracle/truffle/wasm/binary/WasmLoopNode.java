@@ -29,14 +29,12 @@
  */
 package com.oracle.truffle.wasm.binary;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 
 public class WasmLoopNode extends WasmNode {
-    @CompilationFinal private final LoopNode loopNode;
+    @Child private LoopNode loopNode;
 
     WasmLoopNode(WasmBlockNode block) {
         super(block.wasmModule(), block.codeEntry(), block.byteLength(), block.byteConstantLength(), block.numericLiteralLength());
