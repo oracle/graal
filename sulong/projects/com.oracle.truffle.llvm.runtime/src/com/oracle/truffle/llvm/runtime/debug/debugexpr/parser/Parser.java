@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactor
 
 import java.util.List;
 
+@SuppressWarnings("all")
 public class Parser {
     public static final int _EOF = 0;
     public static final int _ident = 1;
@@ -711,6 +712,7 @@ public class Parser {
     }
 } // end Parser
 
+@SuppressWarnings("all")
 class Errors {
     public int count = 0;                                    // number of errors detected
     public java.io.PrintStream errorStream = System.out;     // error messages go to this stream
@@ -915,6 +917,7 @@ class Errors {
     }
 } // Errors
 
+@SuppressWarnings("all")
 class FatalError extends RuntimeException {
     public static final long serialVersionUID = 1L;
 

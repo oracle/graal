@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import java.io.RandomAccessFile;
 import java.util.Map;
 import java.util.HashMap;
 
+@SuppressWarnings("all")
 class Token {
     public int kind;    // token kind
     public int pos;     // token position in bytes in the source text (starting at 0)
@@ -50,6 +51,7 @@ class Token {
 // -----------------------------------------------------------------------------------
 // Buffer
 // -----------------------------------------------------------------------------------
+@SuppressWarnings("all")
 class Buffer {
     // This Buffer supports the following cases:
     // 1) seekable stream (file)
@@ -226,6 +228,7 @@ class Buffer {
 // -----------------------------------------------------------------------------------
 // UTF8Buffer
 // -----------------------------------------------------------------------------------
+@SuppressWarnings("all")
 class UTF8Buffer extends Buffer {
     UTF8Buffer(Buffer b) {
         super(b);
@@ -273,6 +276,7 @@ class UTF8Buffer extends Buffer {
 // -----------------------------------------------------------------------------------
 // StartStates -- maps characters to start states of tokens
 // -----------------------------------------------------------------------------------
+@SuppressWarnings("all")
 class StartStates {
     private static class Elem {
         public int key, val;
@@ -304,6 +308,7 @@ class StartStates {
 // -----------------------------------------------------------------------------------
 // Scanner
 // -----------------------------------------------------------------------------------
+@SuppressWarnings("all")
 public class Scanner {
     static final char EOL = '\n';
     static final int eofSym = 0;
