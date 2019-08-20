@@ -159,7 +159,7 @@ public final class RegexParser {
         if (!properties.hasNonLiteralLookBehindAssertions()) {
             ast.createPrefix();
             InitIDVisitor.init(ast);
-            if (!properties.hasBackReferences()) {
+            if (!properties.hasBackReferences() && !properties.hasLargeCountedRepetitions()) {
                 new MarkLookBehindEntriesVisitor(ast).run();
             }
         }
@@ -474,8 +474,8 @@ public final class RegexParser {
         return characterClass;
     }
 
-    private void createOptionalBranch(Term term, boolean greedy, int recurse) throws RegexSyntaxException {
-        addTerm(copyVisitor.copy(term));
+    private void createOptionalBranch(Term term, boolean greedy, boolean copy, int recurse) throws RegexSyntaxException {
+        addTerm(copy ? copyVisitor.copy(term) : term);
         // When translating a quantified expression that allows zero occurrences into a
         // disjunction of the form (curTerm|), we must make sure that curTerm cannot match the
         // empty string, as is specified in step 2a of RepeatMatcher from ECMAScript draft 2018,
@@ -484,10 +484,10 @@ public final class RegexParser {
         if (curTerm instanceof Group) {
             ((Group) curTerm).setExpandedQuantifier(true);
         }
-        createOptional(term, greedy, recurse - 1);
+        createOptional(term, greedy, true, recurse - 1);
     }
 
-    private void createOptional(Term term, boolean greedy, int recurse) throws RegexSyntaxException {
+    private void createOptional(Term term, boolean greedy, boolean copy, int recurse) throws RegexSyntaxException {
         if (recurse < 0) {
             return;
         }
@@ -498,11 +498,11 @@ public final class RegexParser {
             curGroup.setEnclosedCaptureGroupsHigh(((Group) term).getEnclosedCaptureGroupsHigh());
         }
         if (greedy) {
-            createOptionalBranch(term, greedy, recurse);
+            createOptionalBranch(term, greedy, copy, recurse);
             addSequence(null);
         } else {
             addSequence(null);
-            createOptionalBranch(term, greedy, recurse);
+            createOptionalBranch(term, greedy, copy, recurse);
         }
         popGroup(null);
     }
@@ -636,7 +636,9 @@ public final class RegexParser {
             return;
         }
         if (quantifier.getMin() == 0) {
-            deleteVisitor.run(curSequence.getLastTerm());
+            if (curTerm instanceof LookAroundAssertion) {
+                deleteVisitor.run(curSequence.getLastTerm());
+            }
             curSequence.removeLastTerm();
         }
         Term t = curTerm;
@@ -653,10 +655,10 @@ public final class RegexParser {
                 }
             }
             if (quantifier.isInfiniteLoop()) {
-                createOptional(t, quantifier.isGreedy(), 0);
+                createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, 0);
                 setLoop();
             } else {
-                createOptional(t, quantifier.isGreedy(), (quantifier.getMax() - quantifier.getMin()) - 1);
+                createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, (quantifier.getMax() - quantifier.getMin()) - 1);
             }
         }
     }
