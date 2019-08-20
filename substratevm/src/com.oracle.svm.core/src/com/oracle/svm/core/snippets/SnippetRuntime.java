@@ -57,6 +57,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -236,6 +237,7 @@ public class SnippetRuntime {
             Throwable exception = currentException.get();
             currentException.set(null);
 
+            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
             StackOverflowCheck.singleton().protectYellowZone();
 
             KnownIntrinsics.farReturn(exception, sp, handlerIP);
@@ -260,11 +262,6 @@ public class SnippetRuntime {
     public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
 
     @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
-    public static boolean isUnwindingForException() {
-        return currentException.get() != null;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
     static boolean exceptionsAreFatal() {
         /*
          * If an exception is thrown while the thread is not in the Java state, most likely
@@ -276,10 +273,16 @@ public class SnippetRuntime {
 
     /** Foreign call: {@link #UNWIND_EXCEPTION}. */
     @SubstrateForeignCallTarget
-    @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
+    @Uninterruptible(reason = "Must not execute recurring callbacks or a stack overflow check.", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
     private static void unwindException(Throwable exception, Pointer callerSP) {
+        /*
+         * Make the yellow zone available and pause recurring callbacks to avoid that unexpected
+         * exceptions are thrown. This is reverted before execution continues in the exception
+         * handler (see ExceptionStackFrameVisitor.visitFrame).
+         */
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        ThreadingSupportImpl.pauseRecurringCallback("Arbitrary code must not be executed while unwinding.");
 
         if (currentException.get() != null) {
             /*
@@ -299,6 +302,7 @@ public class SnippetRuntime {
             ImageSingletons.lookup(LogHandler.class).fatalError();
             return;
         }
+
         /*
          * callerSP and callerIP identify already the caller of the frame that wants to unwind an
          * exception. So we can start looking for the exception handler immediately in that frame,

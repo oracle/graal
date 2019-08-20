@@ -332,7 +332,7 @@ public class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.THREAD_MUTEX.guaranteeIsLocked("Trying to append an aligned heap chunk but no mutual exclusion.");
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
         }
         final Log trace = Log.noopLog().string("[SpaceImpl.appendAlignedHeapChunk:").newline();
         if (trace.isEnabled()) {
@@ -435,7 +435,7 @@ public class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.THREAD_MUTEX.guaranteeIsLocked("Trying to append an unaligned chunk but no mutual exclusion.");
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
         }
         appendUnalignedHeapChunkUninterruptibly(uChunk);
         getAccounting().noteUnalignedHeapChunk(UnalignedHeapChunk.committedObjectMemoryOfUnalignedHeapChunk(uChunk));

@@ -36,12 +36,14 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
 import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
-import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.posix.headers.Time.timespec;
+import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 
 //Checkstyle: stop
 
@@ -57,7 +59,7 @@ public class Pthread {
      * Thread identifiers. The structure of the attribute type is not exposed on purpose.
      */
 
-    public interface pthread_t extends ComparableWord {
+    public interface pthread_t extends OSThreadHandle, OSThreadId {
     }
 
     @CPointerTo(nameOfCType = "pthread_t")
@@ -149,8 +151,8 @@ public class Pthread {
 
     /* Detach state. */
 
-    // FIXME: @CConstant
-    // FIXME: public static native int PTHREAD_CREATE_JOINABLE();
+    @CConstant
+    public static native int PTHREAD_CREATE_JOINABLE();
 
     @CConstant
     public static native int PTHREAD_CREATE_DETACHED();
@@ -273,6 +275,9 @@ public class Pthread {
     @CFunction
     public static native int pthread_join(pthread_t th, WordPointer thread_return);
 
+    @CFunction(value = "pthread_join", transition = Transition.NO_TRANSITION)
+    public static native int pthread_join_no_transition(pthread_t th, WordPointer thread_return);
+
     /**
      * Check whether thread TH has terminated. If yes return the status of the thread in
      * *THREAD_RETURN, if THREAD_RETURN is not NULL.
@@ -297,6 +302,7 @@ public class Pthread {
 
     /** Obtain the identifier of the current thread. */
     @CFunction(transition = Transition.NO_TRANSITION)
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static native pthread_t pthread_self();
 
     /** Compare two thread identifiers. */

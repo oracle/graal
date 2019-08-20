@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
+import com.oracle.svm.core.heap.GCCause;
 
-//Allow methods with non-standard names: Checkstyle: stop
+public final class GenScavengeGCCause extends GCCause {
+    public static final GCCause OnAllocationAlways = new GenScavengeGCCause("CollectOnAllocation.Always");
+    public static final GCCause OnAllocationSometimes = new GenScavengeGCCause("CollectOnAllocation.Sometimes");
 
-/*
- * The definitions I need, manually translated from the C header file <sched.h>.
- */
-
-@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
-@CContext(PosixDirectives.class)
-public class Sched {
-
-    /**
-     * sched_yield() causes the calling thread to relinquish the CPU. The thread is moved to the end
-     * of the queue for its static priority and a new thread gets to run.
-     */
-    @CFunction
-    public static native int sched_yield();
+    private GenScavengeGCCause(String name) {
+        super(name);
+    }
 }

@@ -51,6 +51,10 @@ public class Process {
     @CFunction
     public static native int _execv(CCharPointer path, CCharPointerPointer argv);
 
+    /** Returns a pseudo-handle to the current process. */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native WinBase.HANDLE GetCurrentProcess();
+
     /**
      * Thread Creation
      */
@@ -72,6 +76,16 @@ public class Process {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetCurrentThreadId();
+
+    /** Returns a pseudo-handle that points to the current thread. */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native WinBase.HANDLE GetCurrentThread();
+
+    /**
+     * Thread access rights.
+     */
+    @CConstant
+    public static native int SYNCHRONIZE();
 
     /**
      * Windows Thread local storage functions

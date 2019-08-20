@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,12 +45,17 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -61,6 +66,7 @@ import com.oracle.svm.core.heap.CollectionWatcher;
 import com.oracle.svm.core.heap.DiscoverableReference;
 import com.oracle.svm.core.heap.FramePointerMapWalker;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
@@ -75,6 +81,9 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.NativeVMOperation;
+import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -85,77 +94,46 @@ import com.sun.management.GcInfo;
 import sun.management.Util;
 //Checkstyle: resume
 
+/**
+ * Most of the GC state is preallocated at image build time.
+ */
 public class GCImpl implements GC {
-
-    /** Options for this implementation. */
     static final class Options {
-
         @Option(help = "How much history to maintain about garbage collections.")//
         public static final HostedOptionKey<Integer> GCHistory = new HostedOptionKey<>(1);
     }
 
     private static final int DECIMALS_IN_TIME_PRINTING = 7;
 
-    /*
-     * State.
-     *
-     * These are things I need during collection, so I allocate them during native image
-     * construction, and initialize them in the constructor.
-     */
-
-    /**
-     * A visitor for an Object reference that promotes the Object (if necessary) and updates the
-     * Object reference.
-     */
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor;
     /**
      * A visitor for a frame that walks all the Object references in the frame.
      */
     private final FramePointerMapWalker frameWalker;
-    /**
-     * A visitor for an Object that scans all the interior Object references.
-     */
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor;
-    /**
-     * A policy instance for collectCompletely(String).
-     */
     private final CollectionPolicy alwaysCompletelyInstance;
 
-    /** Accounting for this collection. */
     private final Accounting accounting;
-
-    /** The VMOperation for collections. */
-    private final CollectionVMOperation collectVMOperation;
+    private final CollectionVMOperation collectOperation;
 
     private final OutOfMemoryError oldGenerationSizeExceeded;
     private final UnpinnedObjectReferenceWalkerException unpinnedObjectReferenceWalkerException;
 
-    /*
-     * Immutable state that references mutable state.
-     *
-     * Rather than make these static final, I make them final and initialize them in the
-     * constructor, so that new instances are made for each native image.
-     */
     private final AllocationFreeList<ObjectReferenceWalker> objectReferenceWalkerList;
     private final AllocationFreeList<CollectionWatcher> collectionWatcherList;
     private final NoAllocationVerifier noAllocationVerifier;
 
     private final GarbageCollectorManagementFactory gcManagementFactory;
 
-    /*
-     * Mutable state.
-     */
-
     private CollectionPolicy policy;
     private boolean completeCollection;
     private UnsignedWord sizeBefore;
 
-    /** Constructor for subclasses. */
     @Platforms(Platform.HOSTED_ONLY.class)
     protected GCImpl(FeatureAccess access) {
         this.rememberedSetConstructor = new RememberedSetConstructor();
         this.accounting = Accounting.factory();
-        this.collectVMOperation = new CollectionVMOperation();
+        this.collectOperation = new CollectionVMOperation();
 
         this.collectionEpoch = WordFactory.zero();
         this.objectReferenceWalkerList = AllocationFreeList.factory();
@@ -197,12 +175,8 @@ public class GCImpl implements GC {
         RuntimeSupport.getRuntimeSupport().addShutdownHook(this::printGCSummary);
     }
 
-    /*
-     * Collection methods.
-     */
-
     @Override
-    public void collect(String cause) {
+    public void collect(GCCause cause) {
         final UnsignedWord requestingEpoch = possibleCollectionPrologue();
         /* Collect without allocating. */
         collectWithoutAllocating(cause);
@@ -211,30 +185,29 @@ public class GCImpl implements GC {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of garbage collection.")
-    void collectWithoutAllocating(String cause) {
-        /* Queue a VMOperation to do the collection. */
-        collectVMOperation.enqueue(cause, getCollectionEpoch());
-        OutOfMemoryError result = collectVMOperation.getResult();
-        if (result != null) {
-            throw result;
+    void collectWithoutAllocating(GCCause cause) {
+        int size = SizeOf.get(CollectionVMOperationData.class);
+        CollectionVMOperationData data = StackValue.get(size);
+        MemoryUtil.fillToMemoryAtomic((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+        data.setNativeVMOperation(collectOperation);
+        data.setCauseId(cause.getId());
+        data.setRequestingEpoch(getCollectionEpoch());
+        collectOperation.enqueue(data);
+
+        if (data.getOutOfMemory()) {
+            throw oldGenerationSizeExceeded;
         }
     }
 
     /** The body of the VMOperation to do the collection. */
-    @SuppressWarnings("try")
-    private OutOfMemoryError collectOperation(String cause, UnsignedWord requestingEpoch) {
+    private boolean collectOperation(GCCause cause, UnsignedWord requestingEpoch) {
         final Log trace = Log.noopLog().string("[GCImpl.collectOperation:").newline()
                         .string("  epoch: ").unsigned(getCollectionEpoch())
-                        .string("  cause: ").string(cause)
+                        .string("  cause: ").string(cause.getName())
                         .string("  requestingEpoch: ").unsigned(requestingEpoch)
                         .newline();
         VMOperation.guaranteeInProgress("Collection should be a VMOperation.");
-
-        /* if there has been a collection since the requesting epoch, then just return. */
-        if (getCollectionEpoch().aboveThan(requestingEpoch)) {
-            trace.string("  epoch has moved on]").newline();
-            return null;
-        }
+        assert getCollectionEpoch().equal(requestingEpoch);
 
         /* Stop the mutator timer. */
         mutatorTimer.close();
@@ -248,23 +221,23 @@ public class GCImpl implements GC {
         /* Flush chunks from thread-local lists to global lists. */
         ThreadLocalAllocation.disableThreadLocalAllocation();
         /* Report the heap before the collection. */
-        printGCBefore(cause);
+        printGCBefore(cause.getName());
         /* Scrub the lists I maintain, before the collection. */
         scrubLists();
         /* Run any collection watchers before the collection. */
         visitWatchersBefore();
 
         /* Collect. */
-        collectImpl(cause);
+        collectImpl(cause.getName());
 
         /* Check if out of memory. */
-        final OutOfMemoryError result = checkIfOutOfMemory();
+        boolean outOfMemory = checkIfOutOfMemory();
         /* Run any collection watchers after the collection. */
         visitWatchersAfter();
         /* Reset for the next collection. */
         HeapPolicy.bytesAllocatedSinceLastCollection.set(WordFactory.zero());
         /* Print the heap after the collection. */
-        printGCAfter(cause);
+        printGCAfter(cause.getName());
         /* Note that the collection is finished. */
         finishCollection();
 
@@ -272,7 +245,7 @@ public class GCImpl implements GC {
         mutatorTimer.open();
 
         trace.string("]").newline();
-        return result;
+        return outOfMemory;
     }
 
     @SuppressWarnings("try")
@@ -479,15 +452,11 @@ public class GCImpl implements GC {
         }
     }
 
-    private OutOfMemoryError checkIfOutOfMemory() {
-        OutOfMemoryError result = null;
+    private boolean checkIfOutOfMemory() {
         final UnsignedWord allowed = HeapPolicy.getMaximumHeapSize();
         /* Only the old generation has objects in it because the young generation is empty. */
         final UnsignedWord inUse = getAccounting().getOldGenerationAfterChunkBytes();
-        if (allowed.belowThan(inUse)) {
-            result = oldGenerationSizeExceeded;
-        }
-        return result;
+        return allowed.belowThan(inUse);
     }
 
     @Fold
@@ -496,7 +465,7 @@ public class GCImpl implements GC {
     }
 
     @Override
-    public void collectCompletely(final String cause) {
+    public void collectCompletely(final GCCause cause) {
         final CollectionPolicy oldPolicy = getPolicy();
         try {
             setPolicy(alwaysCompletelyInstance);
@@ -695,7 +664,7 @@ public class GCImpl implements GC {
                  * Scan the stacks of all the threads. Other threads will be blocked at a safepoint
                  * (or in native code) so they will each have a JavaFrameAnchor in their VMThread.
                  */
-                for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
+                for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (vmThread == CurrentIsolate.getCurrentThread()) {
                         /*
                          * The current thread is already scanned by code above, so we do not have to
@@ -978,7 +947,7 @@ public class GCImpl implements GC {
          * the list I am walking, even though I am in a VMOperation. I consider that a small-enough
          * possibility.
          */
-        VMOperation.enqueueBlockingNoSafepoint("GCImpl.visitWatchersReport", () -> {
+        JavaVMOperation.enqueueBlockingNoSafepoint("GCImpl.visitWatchersReport", () -> {
             for (CollectionWatcher watcher = collectionWatcherList.getFirst(); watcher != null; watcher = watcher.getNextElement()) {
                 try {
                     watcher.report();
@@ -1521,34 +1490,14 @@ public class GCImpl implements GC {
         private static final long serialVersionUID = -4473303241014559591L;
     }
 
-    public static final class CollectionVMOperation extends VMOperation {
-
-        /* State. */
-        private String cause;
-        private UnsignedWord requestingEpoch;
-        private OutOfMemoryError result;
-
-        /** Constructor. */
-        @Platforms(Platform.HOSTED_ONLY.class)
-        CollectionVMOperation() {
-            super("GarbageCollection", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
-            this.cause = "TooSoonToTell";
-            this.requestingEpoch = WordFactory.zero();
-            this.result = null;
+    private static class CollectionVMOperation extends NativeVMOperation {
+        protected CollectionVMOperation() {
+            super("Garbage collection", SystemEffect.SAFEPOINT);
         }
 
-        /** A convenience "enqueue" method that sets "cause" and "requestingEpoch" first. */
-        void enqueue(String causeArg, UnsignedWord requestingEpochArg) {
-            cause = causeArg;
-            requestingEpoch = requestingEpochArg;
-            result = null;
-            enqueue();
-        }
-
-        /** What happens when this VMOperation executes. */
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while collecting")
-        public void operate() {
+        protected void operate(NativeVMOperationData data) {
             /*
              * Exceptions during collections are fatal. The heap is likely in an inconsistent state.
              * The GC must also be allocation free, i.e., we cannot allocate exception stack traces
@@ -1559,7 +1508,9 @@ public class GCImpl implements GC {
              */
             ImplicitExceptions.activateImplicitExceptionsAreFatal();
             try {
-                result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause, requestingEpoch);
+                CollectionVMOperationData d = (CollectionVMOperationData) data;
+                boolean outOfMemory = HeapImpl.getHeapImpl().getGCImpl().collectOperation(GCCause.fromId(d.getCauseId()), d.getRequestingEpoch());
+                d.setOutOfMemory(outOfMemory);
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere(t);
             } finally {
@@ -1567,9 +1518,32 @@ public class GCImpl implements GC {
             }
         }
 
-        OutOfMemoryError getResult() {
-            return result;
+        @Override
+        protected boolean hasWork(NativeVMOperationData data) {
+            CollectionVMOperationData d = (CollectionVMOperationData) data;
+            return HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
         }
+    }
+
+    @RawStructure
+    private interface CollectionVMOperationData extends NativeVMOperationData {
+        @RawField
+        int getCauseId();
+
+        @RawField
+        void setCauseId(int value);
+
+        @RawField
+        UnsignedWord getRequestingEpoch();
+
+        @RawField
+        void setRequestingEpoch(UnsignedWord value);
+
+        @RawField
+        boolean getOutOfMemory();
+
+        @RawField
+        void setOutOfMemory(boolean value);
     }
 
     /* Invoked by a shutdown hook registered in the GCImpl constructor. */
@@ -1588,7 +1562,7 @@ public class GCImpl implements GC {
         log.string(prefix).string("AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
 
         /* Add in any young objects allocated since the last collection. */
-        VMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableThreadLocalAllocation);
+        JavaVMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableThreadLocalAllocation);
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final Space youngSpace = heap.getYoungGeneration().getSpace();
         final UnsignedWord youngChunkBytes = youngSpace.getChunkBytes();
