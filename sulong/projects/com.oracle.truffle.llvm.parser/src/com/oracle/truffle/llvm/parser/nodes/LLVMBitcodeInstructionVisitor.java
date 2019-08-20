@@ -977,7 +977,15 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 lastLocation = location;
                 break;
             case ONLY_FIRST_STATEMENT_ON_LOCATION:
-                if (!Objects.equals(location, lastLocation)) {
+                if (lastLocation == location) {
+                    // shortcut for locations assigned by DEBUG_LOC_AGAIN
+                    break;
+                } else if (lastLocation != null && Objects.equals(lastLocation.describeFile(), location.describeFile()) && lastLocation.getLine() == location.getLine()) {
+                    // only mark the first node occurring at a particular line in a particular file
+                    // as statement. this way, Sulong can simulate statement-level debugging even
+                    // though llvm debug information does not actually describe statement boundaries
+                    break;
+                } else {
                     sourceDescriptor.setEnableStandardTags(true);
                     lastLocation = location;
                 }
@@ -994,8 +1002,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         // display a call-stack and offer step-into / step-over
         FORCED,
 
-        // the avoid the debugger stepping on the same line/column repeatedly only the first node
-        // with that location should be instrumentable
+        // the avoid the debugger stepping on the same line repeatedly only the first node with that
+        // location should be instrumentable
         ONLY_FIRST_STATEMENT_ON_LOCATION,
 
         // some nodes should not be instrumentable, but still have a source location attached so
