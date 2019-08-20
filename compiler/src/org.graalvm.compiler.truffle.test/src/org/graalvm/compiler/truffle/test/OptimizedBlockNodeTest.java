@@ -303,7 +303,7 @@ public class OptimizedBlockNodeTest {
         OptimizedCallTarget target;
         PartialBlocks<TestElement> partialBlocks;
         Object expectedResult;
-        boolean[] elementExecuted;
+        int[] elementExecuted;
 
         setup(2);
 
@@ -316,29 +316,29 @@ public class OptimizedBlockNodeTest {
         partialBlocks = block.getPartialBlocks();
         assertValid(target, partialBlocks);
         assertEquals(expectedResult, target.call(1));
-        assertFalse(elementExecuted[0]);
-        assertTrue(elementExecuted[1]);
-        assertTrue(elementExecuted[2]);
-        assertTrue(elementExecuted[3]);
-        assertTrue(elementExecuted[4]);
+        assertEquals(0, elementExecuted[0]);
+        assertEquals(1, elementExecuted[1]);
+        assertEquals(1, elementExecuted[2]);
+        assertEquals(1, elementExecuted[3]);
+        assertEquals(1, elementExecuted[4]);
         target.compile(true);
         partialBlocks = block.getPartialBlocks();
         assertValid(target, partialBlocks);
         assertEquals(expectedResult, target.call(3));
-        assertFalse(elementExecuted[0]);
-        assertFalse(elementExecuted[1]);
-        assertFalse(elementExecuted[2]);
-        assertTrue(elementExecuted[3]);
-        assertTrue(elementExecuted[4]);
+        assertEquals(0, elementExecuted[0]);
+        assertEquals(0, elementExecuted[1]);
+        assertEquals(0, elementExecuted[2]);
+        assertEquals(1, elementExecuted[3]);
+        assertEquals(1, elementExecuted[4]);
         assertValid(target, partialBlocks);
         target.compile(true);
         assertValid(target, partialBlocks);
         assertEquals(expectedResult, target.call(4));
-        assertFalse(elementExecuted[0]);
-        assertFalse(elementExecuted[1]);
-        assertFalse(elementExecuted[2]);
-        assertFalse(elementExecuted[3]);
-        assertTrue(elementExecuted[4]);
+        assertEquals(0, elementExecuted[0]);
+        assertEquals(0, elementExecuted[1]);
+        assertEquals(0, elementExecuted[2]);
+        assertEquals(0, elementExecuted[3]);
+        assertEquals(1, elementExecuted[4]);
         assertValid(target, partialBlocks);
         target.compile(true);
         try {
@@ -346,11 +346,11 @@ public class OptimizedBlockNodeTest {
             fail();
         } catch (IllegalArgumentException e) {
         }
-        assertFalse(elementExecuted[0]);
-        assertFalse(elementExecuted[1]);
-        assertFalse(elementExecuted[2]);
-        assertFalse(elementExecuted[3]);
-        assertFalse(elementExecuted[4]);
+        assertEquals(0, elementExecuted[0]);
+        assertEquals(0, elementExecuted[1]);
+        assertEquals(0, elementExecuted[2]);
+        assertEquals(0, elementExecuted[3]);
+        assertEquals(0, elementExecuted[4]);
     }
 
     @Test
@@ -655,7 +655,7 @@ public class OptimizedBlockNodeTest {
         }
 
         public Object execute(VirtualFrame frame) {
-            root.elementExecuted[childIndex] = true;
+            root.elementExecuted[childIndex]++;
             if (childBlock != null) {
                 return childBlock.executeGeneric(frame, BlockNode.NO_ARGUMENT);
             }
@@ -667,7 +667,7 @@ public class OptimizedBlockNodeTest {
     static class TestRootNode extends RootNode {
 
         @Child BlockNode<?> block;
-        final boolean[] elementExecuted;
+        final int[] elementExecuted;
 
         private final String name;
 
@@ -675,7 +675,7 @@ public class OptimizedBlockNodeTest {
             super(null);
             this.block = block;
             this.name = name;
-            this.elementExecuted = new boolean[block.getElements().length];
+            this.elementExecuted = new int[block.getElements().length];
         }
 
         @Override
@@ -686,7 +686,7 @@ public class OptimizedBlockNodeTest {
         @Override
         public Object execute(VirtualFrame frame) {
             for (int i = 0; i < elementExecuted.length; i++) {
-                elementExecuted[i] = false;
+                elementExecuted[i] = 0;
             }
             int argument;
             if (frame.getArguments().length > 0) {

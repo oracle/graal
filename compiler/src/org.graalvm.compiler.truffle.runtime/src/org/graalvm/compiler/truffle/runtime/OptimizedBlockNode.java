@@ -509,7 +509,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
             NodeExecutor<T> ex = block.executor;
             T[] e = block.getElements();
             int last = endIndex - 1;
-            for (int i = 0; i < last; ++i) {
+            for (int i = startIndex; i < last; ++i) {
                 ex.executeVoid(outerFrame, e[i], i, arg);
             }
             if (last == block.getElements().length - 1) {
