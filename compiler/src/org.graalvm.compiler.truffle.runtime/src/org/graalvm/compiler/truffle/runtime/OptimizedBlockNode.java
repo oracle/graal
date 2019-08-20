@@ -44,7 +44,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> implements ReplaceObserver {
@@ -448,7 +447,6 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
         private final int startIndex;
         private final int endIndex;
         private final int blockIndex;
-        @CompilationFinal private ValueProfile ehClassProfile;
 
         PartialBlockRootNode(FrameDescriptor descriptor, OptimizedBlockNode<T> block, int startIndex, int endIndex, int blockIndex) {
             super(null, descriptor);
