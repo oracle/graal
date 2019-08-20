@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,42 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
-
-public class LLVMAMD64UnknownSyscallNode extends LLVMSyscallOperationNode {
-
-    private final long nr;
-    private final LLVMAMD64Syscall syscallValue;
-    @Child private LLVMAMD64PosixCallNode syscall;
-
-    public LLVMAMD64UnknownSyscallNode(long nr) {
-        this(nr, null);
-    }
-
-    public LLVMAMD64UnknownSyscallNode(LLVMAMD64Syscall syscall) {
-        this(syscall.value(), syscall);
-    }
-
-    private LLVMAMD64UnknownSyscallNode(long nr, LLVMAMD64Syscall syscallValue) {
-        this.nr = nr;
-        this.syscallValue = syscallValue;
-        this.syscall = LLVMAMD64PosixCallNodeGen.create("syscall", "(SINT64, POINTER, POINTER, POINTER, POINTER, POINTER, POINTER):SINT64");
-    }
-
-    @Override
-    public final String getName() {
-        if (syscallValue != null) {
-            return syscallValue.toString();
-        }
-        return "unknown(" + nr + ")";
-    }
-
-    @Override
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
-        return (long) syscall.execute(nr, rdi, rsi, rdx, r10, r8, r9);
-    }
+public interface LLVMSyscallEntry {
+    int value();
 }

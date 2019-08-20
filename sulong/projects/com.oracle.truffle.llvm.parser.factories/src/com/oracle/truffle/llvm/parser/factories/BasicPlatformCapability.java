@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallSetTidA
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallUnameNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
 
-public final class BasicPlatformCapability extends PlatformCapability {
+public final class BasicPlatformCapability extends PlatformCapability<LLVMAMD64Syscall> {
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
     public static final String LIBSULONG_FILENAME = "libsulong.bc";
@@ -60,6 +60,7 @@ public final class BasicPlatformCapability extends PlatformCapability {
     private final boolean loadCxxLibraries;
 
     public BasicPlatformCapability(boolean loadCxxLibraries) {
+        super(LLVMAMD64Syscall.class);
         this.loadCxxLibraries = loadCxxLibraries;
     }
 
@@ -80,7 +81,7 @@ public final class BasicPlatformCapability extends PlatformCapability {
     @Override
     public LLVMSyscallOperationNode createSyscallNode(long index) {
         try {
-            return createSyscallNode(LLVMAMD64Syscall.getSyscall((int) index));
+            return createSyscallNode(getSyscall(index));
         } catch (IllegalArgumentException e) {
             return new LLVMAMD64UnknownSyscallNode(index);
         }

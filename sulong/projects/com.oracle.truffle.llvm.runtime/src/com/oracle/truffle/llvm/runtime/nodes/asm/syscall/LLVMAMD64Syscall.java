@@ -29,9 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 
-public enum LLVMAMD64Syscall {
+public enum LLVMAMD64Syscall implements LLVMSyscallEntry {
     SYS_read(0),
     SYS_write(1),
     SYS_open(2),
@@ -368,10 +368,15 @@ public enum LLVMAMD64Syscall {
     SYS_io_pgetevents(333),
     SYS_rseq(334);
 
-    public final int value;
+    private final int value;
 
     LLVMAMD64Syscall(int value) {
         this.value = value;
+    }
+
+    @Override
+    public int value() {
+        return value;
     }
 
     @Override
@@ -379,31 +384,4 @@ public enum LLVMAMD64Syscall {
         return super.toString() + " 0x" + Long.toHexString(value) + " (" + value + ")";
     }
 
-    private static final LLVMAMD64Syscall[] valueToSysCall;
-
-    static {
-        int max = -1;
-        for (LLVMAMD64Syscall syscall : values()) {
-            max = Math.max(max, syscall.value);
-        }
-        valueToSysCall = new LLVMAMD64Syscall[max + 1];
-        for (LLVMAMD64Syscall syscall : values()) {
-            valueToSysCall[syscall.value] = syscall;
-        }
-    }
-
-    public static LLVMAMD64Syscall getSyscall(long value) {
-        if (value >= 0 && value < valueToSysCall.length) {
-            LLVMAMD64Syscall syscall = valueToSysCall[(int) value];
-            if (syscall != null) {
-                return syscall;
-            }
-        }
-        throw error(value);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static IllegalArgumentException error(long value) {
-        return new IllegalArgumentException("Unknown syscall number: " + value);
-    }
 }
