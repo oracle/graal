@@ -1829,14 +1829,14 @@ suite = {
       "workingSets" : "Graal,Truffle",
     },
 
-    "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk9" : {
+    "org.graalvm.compiler.truffle.runtime.serviceprovider.jdk11" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.runtime.serviceprovider",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "9+",
+      "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.serviceprovider",
       "multiReleaseJarVersion" : "9",
@@ -2007,12 +2007,12 @@ suite = {
       ],
       "checkPackagePrefix" : "false",
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8,11+",
+      "javaCompliance" : "8,13+",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.hotspot",
       "workingSets" : "Graal,Truffle",
     },
 
-    "org.graalvm.compiler.truffle.runtime.hotspot.jdk9" : {
+    "org.graalvm.compiler.truffle.runtime.hotspot.jdk11" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -2026,7 +2026,7 @@ suite = {
       },
       "checkPackagePrefix" : "false",
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "9+",
+      "javaCompliance" : "11+",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.hotspot",
       "multiReleaseJarVersion" : "9",
       "workingSets" : "Graal,Truffle",
