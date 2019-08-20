@@ -302,6 +302,7 @@ public class Pthread {
 
     /** Obtain the identifier of the current thread. */
     @CFunction(transition = Transition.NO_TRANSITION)
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     public static native pthread_t pthread_self();
 
     /** Compare two thread identifiers. */

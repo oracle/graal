@@ -335,6 +335,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
      * {@linkplain SubstrateOptions#MultiThreaded} is disabled as callbacks are not supported in
      * that case.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isRecurringCallbackPaused() {
         if (!MultiThreaded.getValue()) {
             return false;
