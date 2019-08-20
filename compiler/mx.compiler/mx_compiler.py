@@ -858,6 +858,9 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
     else:
         graaljdk = _graaljdk_override
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    add_exports = join(graaljdk.home, '.add_exports')
+    if exists(add_exports):
+        args = ['@' + add_exports] + args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
     with StdoutUnstripping(args, out, err) as u:
@@ -1038,7 +1041,7 @@ def makegraaljdk_cli(args):
         if args.force:
             shutil.rmtree(dst_jdk_dir)
 
-    _, updated = _update_graaljdk(jdk, dst_jdk_dir)
+    _, updated = _update_graaljdk(jdk, dst_jdk_dir, export_truffle=False, with_compiler_name_file=True)
     dst_jdk = mx.JDKConfig(dst_jdk_dir)
     if not updated:
         mx.log(dst_jdk_dir + ' is already up to date')
@@ -1054,7 +1057,7 @@ def makegraaljdk_cli(args):
         mx.log('Archiving {}'.format(args.archive))
         create_archive(dst_jdk_dir, args.archive, basename(args.dest) + '/')
 
-def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
+def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_truffle=True, with_compiler_name_file=False):
     """
     Creates or updates a GraalJDK in `dst_jdk_dir` from `src_jdk`.
 
@@ -1062,6 +1065,13 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
                             derived based on _graalvm_components and `root_module_names`.
     :param list root_module_names: names of modules in the root set for the new JDK image. If None,
                             the root set is derived from _graalvm_components.
+    :param bool export_truffle: specifies if Truffle API packages should be visible to the app class loader.
+                            On JDK 8, this causes Truffle to be on the boot class path. On JDK 9+, this results
+                            in a ``.add_exports`` file in `dst_dst_dir` which can be used as an @argfile VM argument.
+    :param bool with_compiler_name_file: if True, a ``compiler-name`` file is written in the ``jvmci`` directory under
+                            `dst_jdk_dir`. Depending on `src_jdk`, the existence of this file can set the
+                            value of UseJVMCICompiler be true. For example, see
+                            https://github.com/graalvm/graal-jvmci-8/blob/master/src/share/vm/jvmci/jvmci_globals.hpp#L52
     :return: a tuple containing the path where the GraalJDK is located and a boolean denoting whether
                             the GraalJDK was update/created (True) or was already up to date (False)
 
@@ -1126,7 +1136,13 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
         for src_jar in _graal_config().jvmci_jars:
             _update_file(src_jar, join(jvmci_dir, basename(src_jar)))
         for src_jar in _graal_config().boot_jars:
-            _update_file(src_jar, join(boot_dir, basename(src_jar)))
+            if basename(src_jar) == 'truffle-api.jar' and not export_truffle:
+                truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
+                _update_file(src_jar, join(truffle_dir, basename(src_jar)))
+                with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
+                    fp.write(join('..', 'truffle', 'truffle-api.jar'))
+            else:
+                _update_file(src_jar, join(boot_dir, basename(src_jar)))
 
     else:
         module_dists = _graal_config().dists
@@ -1136,9 +1152,22 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None):
         jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names)
         jre_dir = dst_jdk_dir
         jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
+        if export_truffle:
+            jmd = as_java_module(_graal_config().dists_dict['truffle:TRUFFLE_API'], jdk)
+            add_exports = []
+            for package in jmd.packages:
+                if package == 'com.oracle.truffle.api.impl':
+                    # The impl package should remain private
+                    continue
+                if jmd.get_package_visibility(package, "<unnamed>") == 'concealed':
+                    add_exports.append('--add-exports={}/{}=ALL-UNNAMED'.format(jmd.name, package))
+            if add_exports:
+                with open(join(dst_jdk_dir, '.add_exports'), 'w') as fp:
+                    fp.write(os.linesep.join(add_exports))
 
-    with open(join(jvmci_dir, 'compiler-name'), 'w') as fp:
-        print('graal', file=fp)
+    if with_compiler_name_file:
+        with open(join(jvmci_dir, 'compiler-name'), 'w') as fp:
+            print('graal', file=fp)
 
     if jdk.javaCompliance < '9' and mx.get_os() not in ['darwin', 'windows']:
         # On JDK 8, the server directory containing the JVM library is
@@ -1203,6 +1232,7 @@ class GraalConfig:
         self.jvmci_dists = [mx.distribution(e) for component in graalvm_components for e in component.jvmci_jars]
         self.boot_dists = [mx.distribution(e) for component in graalvm_components for e in component.boot_jars]
         self.dists = self.jvmci_dists + self.boot_dists
+        self.dists_dict = {e.suite.name + ':' + e.name : e for e in self.dists}
 
         self.jvmci_jars = [d.classpath_repr() for d in self.jvmci_dists]
         self.boot_jars = [d.classpath_repr() for d in self.boot_dists]
