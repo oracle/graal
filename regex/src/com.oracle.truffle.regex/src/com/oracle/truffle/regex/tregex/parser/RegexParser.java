@@ -603,6 +603,7 @@ public final class RegexParser {
                     if (tryMergeSingleCharClassAlternations()) {
                         curGroup.removeLastSequence();
                     }
+                    tryMergeCommonPrefixes();
                     popGroup(token);
                     break;
                 case charClass:
@@ -689,6 +690,57 @@ public final class RegexParser {
             }
         }
         return false;
+    }
+
+    /**
+     * Simplify redundant alternation prefixes, e.g. {@code /ab|ac/ -> /a(?:b|c)/}. This method
+     * should be called when {@code curGroup} is about to be closed.
+     */
+    private void tryMergeCommonPrefixes() {
+        if (curGroup.size() < 2) {
+            return;
+        }
+        int prefixSize = 0;
+        while (groupHasEqualCharClassesAt(prefixSize)) {
+            prefixSize++;
+        }
+        if (prefixSize > 0) {
+            Sequence prefixSeq = ast.createSequence();
+            for (int i = 0; i < prefixSize; i++) {
+                prefixSeq.add(curGroup.getAlternatives().get(0).getTerms().get(i));
+            }
+            Group innerGroup = ast.createGroup();
+            innerGroup.setEnclosedCaptureGroupsLow(curGroup.getEnclosedCaptureGroupsLow());
+            innerGroup.setEnclosedCaptureGroupsHigh(curGroup.getEnclosedCaptureGroupsHigh());
+            prefixSeq.add(innerGroup);
+            for (Sequence s : curGroup.getAlternatives()) {
+                assert s.size() >= prefixSize;
+                Sequence copy = innerGroup.addSequence(ast);
+                for (int i = prefixSize; i < s.size(); i++) {
+                    copy.add(s.getTerms().get(i));
+                }
+            }
+            curGroup.getAlternatives().clear();
+            curGroup.add(prefixSeq);
+        }
+    }
+
+    private boolean groupHasEqualCharClassesAt(int i) {
+        CharacterClass cmp = null;
+        for (Sequence s : curGroup.getAlternatives()) {
+            if (s.size() <= i || !(s.getTerms().get(i) instanceof CharacterClass)) {
+                return false;
+            }
+            CharacterClass cc = (CharacterClass) s.getTerms().get(i);
+            if (cmp == null) {
+                cmp = cc;
+            } else {
+                if (!cc.getCharSet().equals(cmp.getCharSet())) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private RegexSyntaxException syntaxError(String msg) {
