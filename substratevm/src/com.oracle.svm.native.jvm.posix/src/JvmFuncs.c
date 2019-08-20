@@ -34,7 +34,6 @@
 #include <netdb.h>
 #include <errno.h>
 #include <dlfcn.h>
-#include <signal.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
@@ -55,18 +54,6 @@
   RESTARTABLE(_cmd, _result); \
   return _result; \
 } while(0)
-
-typedef unsigned char u_char;
-typedef u_char*       address;
-typedef uintptr_t     address_word;
-inline address_word  castable_address(address x) { return (address_word)(x) ; }
-#define CAST_TO_FN_PTR(func_type, value) ((func_type)(castable_address(value)))
-#define CAST_FROM_FN_PTR(new_type, func_ptr) ((new_type)((address_word)(func_ptr)))
-
-typedef void (*sa_handler_t)(int);
-typedef void (*sa_sigaction_t)(int, siginfo_t *, void *);
-typedef sa_handler_t (*signal_t)(int, sa_handler_t);
-typedef int (*sigaction_t)(int, const struct sigaction *, struct sigaction *);
 
 JNIEXPORT void initialize() {
 }
@@ -123,132 +110,12 @@ JNIEXPORT int JVM_Socket(int domain, int type, int protocol) {
     return socket(domain, type, protocol);
 }
 
-struct siglabel {
-  const char *name;
-  int   number;
-};
-
-#define ARRAY_SIZE(array) (sizeof(array)/sizeof((array)[0]))
-
-#ifdef __linux__
-struct siglabel siglabels[] = {
-  /* derived from /usr/include/bits/signum.h on RH7.2 */
-   "HUP",       SIGHUP,         /* Hangup (POSIX).  */
-  "INT",        SIGINT,         /* Interrupt (ANSI).  */
-  "QUIT",       SIGQUIT,        /* Quit (POSIX).  */
-  "ILL",        SIGILL,         /* Illegal instruction (ANSI).  */
-  "TRAP",       SIGTRAP,        /* Trace trap (POSIX).  */
-  "ABRT",       SIGABRT,        /* Abort (ANSI).  */
-  "IOT",        SIGIOT,         /* IOT trap (4.2 BSD).  */
-  "BUS",        SIGBUS,         /* BUS error (4.2 BSD).  */
-  "FPE",        SIGFPE,         /* Floating-point exception (ANSI).  */
-  "KILL",       SIGKILL,        /* Kill, unblockable (POSIX).  */
-  "USR1",       SIGUSR1,        /* User-defined signal 1 (POSIX).  */
-  "SEGV",       SIGSEGV,        /* Segmentation violation (ANSI).  */
-  "USR2",       SIGUSR2,        /* User-defined signal 2 (POSIX).  */
-  "PIPE",       SIGPIPE,        /* Broken pipe (POSIX).  */
-  "ALRM",       SIGALRM,        /* Alarm clock (POSIX).  */
-  "TERM",       SIGTERM,        /* Termination (ANSI).  */
-#ifdef SIGSTKFLT
-  "STKFLT",     SIGSTKFLT,      /* Stack fault.  */
-#endif
-  "CLD",        SIGCLD,         /* Same as SIGCHLD (System V).  */
-  "CHLD",       SIGCHLD,        /* Child status has changed (POSIX).  */
-  "CONT",       SIGCONT,        /* Continue (POSIX).  */
-  "STOP",       SIGSTOP,        /* Stop, unblockable (POSIX).  */
-  "TSTP",       SIGTSTP,        /* Keyboard stop (POSIX).  */
-  "TTIN",       SIGTTIN,        /* Background read from tty (POSIX).  */
-  "TTOU",       SIGTTOU,        /* Background write to tty (POSIX).  */
-  "URG",        SIGURG,         /* Urgent condition on socket (4.2 BSD).  */
-  "XCPU",       SIGXCPU,        /* CPU limit exceeded (4.2 BSD).  */
-  "XFSZ",       SIGXFSZ,        /* File size limit exceeded (4.2 BSD).  */
-  "VTALRM",     SIGVTALRM,      /* Virtual alarm clock (4.2 BSD).  */
-  "PROF",       SIGPROF,        /* Profiling alarm clock (4.2 BSD).  */
-  "WINCH",      SIGWINCH,       /* Window size change (4.3 BSD, Sun).  */
-  "POLL",       SIGPOLL,        /* Pollable event occurred (System V).  */
-  "IO",         SIGIO,          /* I/O now possible (4.2 BSD).  */
-  "PWR",        SIGPWR,         /* Power failure restart (System V).  */
-#ifdef SIGSYS
-  "SYS",        SIGSYS          /* Bad system call. Only on some Linuxen! */
-#endif
-  };
-#endif
-
-#ifdef __APPLE__
-struct siglabel siglabels[] = {
-  /* derived from /usr/include/bits/signum.h on RH7.2 */
-   "HUP",       SIGHUP,         /* Hangup (POSIX).  */
-  "INT",        SIGINT,         /* Interrupt (ANSI).  */
-  "QUIT",       SIGQUIT,        /* Quit (POSIX).  */
-  "ILL",        SIGILL,         /* Illegal instruction (ANSI).  */
-  "TRAP",       SIGTRAP,        /* Trace trap (POSIX).  */
-  "ABRT",       SIGABRT,        /* Abort (ANSI).  */
-  "EMT",        SIGEMT,         /* EMT trap  */
-  "FPE",        SIGFPE,         /* Floating-point exception (ANSI).  */
-  "KILL",       SIGKILL,        /* Kill, unblockable (POSIX).  */
-  "BUS",        SIGBUS,         /* BUS error (4.2 BSD).  */
-  "SEGV",       SIGSEGV,        /* Segmentation violation (ANSI).  */
-  "SYS",        SIGSYS,         /* Bad system call. Only on some Bsden! */
-  "PIPE",       SIGPIPE,        /* Broken pipe (POSIX).  */
-  "ALRM",       SIGALRM,        /* Alarm clock (POSIX).  */
-  "TERM",       SIGTERM,        /* Termination (ANSI).  */
-  "URG",        SIGURG,         /* Urgent condition on socket (4.2 BSD).  */
-  "STOP",       SIGSTOP,        /* Stop, unblockable (POSIX).  */
-  "TSTP",       SIGTSTP,        /* Keyboard stop (POSIX).  */
-  "CONT",       SIGCONT,        /* Continue (POSIX).  */
-  "CHLD",       SIGCHLD,        /* Child status has changed (POSIX).  */
-  "TTIN",       SIGTTIN,        /* Background read from tty (POSIX).  */
-  "TTOU",       SIGTTOU,        /* Background write to tty (POSIX).  */
-  "IO",         SIGIO,          /* I/O now possible (4.2 BSD).  */
-  "XCPU",       SIGXCPU,        /* CPU limit exceeded (4.2 BSD).  */
-  "XFSZ",       SIGXFSZ,        /* File size limit exceeded (4.2 BSD).  */
-  "VTALRM",     SIGVTALRM,      /* Virtual alarm clock (4.2 BSD).  */
-  "PROF",       SIGPROF,        /* Profiling alarm clock (4.2 BSD).  */
-  "WINCH",      SIGWINCH,       /* Window size change (4.3 BSD, Sun).  */
-  "INFO",       SIGINFO,        /* Information request.  */
-  "USR1",       SIGUSR1,        /* User-defined signal 1 (POSIX).  */
-  "USR2",       SIGUSR2         /* User-defined signal 2 (POSIX).  */
-  };
-#endif
-
-JNIEXPORT int JVM_FindSignal(const char *name) {
-    /* find and return the named signal's number */
-    uint i;
-
-    for (i = 0; i < ARRAY_SIZE(siglabels); i++) {
-        if(!strcmp(name, siglabels[i].name)) {
-            return siglabels[i].number;
-        }
-    }
-    return -1;
-}
-
 JNIEXPORT int JVM_GetSockName(int fd, struct sockaddr* him, socklen_t* len) {
     return getsockname(fd, him, len);
 }
 
 JNIEXPORT int JVM_Listen(int fd, int count) {
     return listen(fd, count);
-}
-
-JNIEXPORT int JVM_RaiseSignal(int sig) {
-  raise(sig);
-  return 1;
-}
-
-JNIEXPORT void * JVM_RegisterSignal(int sig, void* handler) {
-    struct sigaction sigAct, oldSigAct;
-
-    sigfillset(&(sigAct.sa_mask));
-    sigAct.sa_flags   = SA_RESTART|SA_SIGINFO;
-    sigAct.sa_handler = CAST_TO_FN_PTR(sa_handler_t, handler);
-
-    if (sigaction(sig, &sigAct, &oldSigAct)) {
-        /* -1 means registration failed */
-        return (void *)-1;
-    }
-
-    return CAST_FROM_FN_PTR(void*, oldSigAct.sa_handler);
 }
 
 JNIEXPORT int JVM_Send(int fd, char* buf, size_t nBytes, uint flags) {
@@ -312,10 +179,10 @@ JNIEXPORT jlong JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offse
     long minDiffSecs = -maxDiffSecs;
     struct timeval time;
     int status = gettimeofday(&time, NULL);
-    
+
     long seconds = time.tv_sec;
     long nanos = time.tv_usec * 1000;
-    
+
     long diff = seconds - offset_secs;
     if (diff >= maxDiffSecs || diff <= minDiffSecs) {
         return -1;

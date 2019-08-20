@@ -43,13 +43,13 @@ class LinuxErrno {
     static final class Target_com_oracle_svm_core_headers_Errno {
 
         @Substitute
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private static int errno() {
             return Util_com_oracle_svm_core_headers_Errno.__errno_location().read();
         }
 
         @Substitute
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void set_errno(int value) {
             Util_com_oracle_svm_core_headers_Errno.__errno_location().write(value);
         }

@@ -202,7 +202,7 @@ public final class FeebleReferenceList<T> {
         return head.get();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean compareAndSetHead(FeebleReference<? extends T> expect, FeebleReference<? extends T> update) {
         return head.compareAndSet(expect, update);
     }
@@ -211,12 +211,12 @@ public final class FeebleReferenceList<T> {
      * Methods on the lock and condition variable, for {@link #remove(long)}.
      */
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void lock() {
         availableLock.lockNoTransition();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void unlock() {
         availableLock.unlock();
     }
@@ -349,7 +349,7 @@ public final class FeebleReferenceList<T> {
      */
 
     /** Clean the list state that is kept in a FeebleReference. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void clean(FeebleReference<?> fr) {
         fr.listRemove();
     }

@@ -156,7 +156,7 @@ public class WindowsUtils {
     public static final int NANOSECS_PER_MILLISEC = 1000000;
 
     /** Retrieve a nanosecond counter for elapsed time measurement. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getNanoCounter() {
         if (performanceFrequency == 0L) {
             CLongPointer count = StackValue.get(CLongPointer.class);
