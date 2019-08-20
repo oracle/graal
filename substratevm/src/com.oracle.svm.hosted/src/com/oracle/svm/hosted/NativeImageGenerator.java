@@ -123,7 +123,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
-import org.graalvm.nativeimage.impl.DeprecatedPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
@@ -350,7 +349,7 @@ public class NativeImageGenerator {
             }
         } else if (hostedArchitecture instanceof AArch64) {
             if (OS.getCurrent() == OS.LINUX) {
-                return new DeprecatedPlatform.LINUX_SUBSTITUTION_AARCH64();
+                return new Platform.LINUX_AARCH64();
             } else {
                 throw VMError.shouldNotReachHere("Unsupported architecture/operating system: " + hostedArchitecture.getName() + "/" + currentOs.className);
             }
