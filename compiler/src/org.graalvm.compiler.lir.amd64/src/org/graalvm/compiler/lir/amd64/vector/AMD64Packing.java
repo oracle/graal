@@ -177,14 +177,16 @@ public final class AMD64Packing {
      * @param srcKind The AMD64Kind of the src value.
      * @param scratch A scratch register to use if necessary. Must be allocated by the caller as an @Temp.
      */
-    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, AMD64Kind srcKind, Register scratch) {
+    private static void move(CompilationResultBuilder crb, AMD64MacroAssembler masm, AMD64Address dst, Value src, AMD64Kind srcKind, Register scratch, AMD64Address backupSlot) {
         if (isRegister(src)) {
             reg2addr(crb, masm, srcKind, dst, asRegister(src));
         } else if (isStackSlot(src)) {
             // We move first to the scratch register, then to our destination.
-            // Is there a faster solution?
+            // TODO: Is there a faster solution?
+            reg2addr(crb, masm, srcKind, backupSlot, scratch);
             addr2reg(crb, masm, srcKind, scratch, (AMD64Address) crb.asAddress(src));
             reg2addr(crb, masm, srcKind, dst, scratch);
+            addr2reg(crb, masm, srcKind, scratch, backupSlot);
         } else if (isJavaConstant(src)) {
             const2addr(crb, masm, srcKind, dst, asJavaConstant(src));
         }
@@ -447,11 +449,12 @@ public final class AMD64Packing {
         // Our destination should always be a register.
         @Def({REG}) private AllocatableValue result;
 
-        // We need a scratch register for any possible memory-to-memory moves (see move(...) above).
-        @Temp({REG}) private AllocatableValue scratch;
-
         // The values we're going to be packing.
         @Use({REG, STACK}) private AllocatableValue[] values;
+
+        // We need a scratch register for any possible memory-to-memory moves (see move(...) above).
+        @Temp({REG}) private AllocatableValue scratch;
+        @Temp({STACK}) private AllocatableValue backupSlot;
         @Temp({STACK}) private AllocatableValue packSpace;
 
         /**
@@ -472,6 +475,7 @@ public final class AMD64Packing {
             this.scratch = tool.newVariable(LIRKind.value(AMD64Kind.QWORD));
             this.values = values.toArray(new AllocatableValue[0]);
 
+            this.backupSlot = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
             this.packSpace = tool.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.V256_BYTE));
         }
 
@@ -483,13 +487,14 @@ public final class AMD64Packing {
             final AMD64Kind vectorKind = (AMD64Kind) result.getPlatformKind();
             final AMD64Kind scalarKind = vectorKind.getScalar();
 
+            final AMD64Address backupSlotAddress = (AMD64Address) crb.asAddress(backupSlot);
             final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
 
             int stackOffset = 0;
             for (AllocatableValue value : values) {
                 // Move value into the temporary stack space.
                 final AMD64Address target = displace(packSpaceAddress, stackOffset);
-                move(crb, masm, target, value, scalarKind, asRegister(scratch));
+                move(crb, masm, target, value, scalarKind, asRegister(scratch), backupSlotAddress);
 
                 // Increment address offset so that we place the next value further into the
                 // temporary space.
