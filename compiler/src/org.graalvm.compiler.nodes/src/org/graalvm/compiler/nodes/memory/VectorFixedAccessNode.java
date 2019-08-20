@@ -34,7 +34,10 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
 
-@NodeInfo
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
+
+@NodeInfo(cycles = CYCLES_8, size = SIZE_16)
 public abstract class VectorFixedAccessNode extends FixedWithNextNode implements VectorAccess, IterableNodeType  {
     public static final NodeClass<VectorFixedAccessNode> TYPE = NodeClass.create(VectorFixedAccessNode.class);
 

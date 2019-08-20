@@ -45,6 +45,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_16;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_32;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+
 public final class VectorSupport {
     private VectorSupport() { }
 
@@ -52,7 +57,7 @@ public final class VectorSupport {
      * This node is a node whose input is a vector value and whose output is a scalar element from
      *  that vector.
      */
-    @NodeInfo(nameTemplate = "VectorExtract@{p#index/s}")
+    @NodeInfo(nameTemplate = "VectorExtract@{p#index/s}", cycles = CYCLES_8, size = SIZE_8)
     public static final class VectorExtractNode extends FloatingNode implements LIRLowerable {
         public static final NodeClass<VectorExtractNode> TYPE = NodeClass.create(VectorExtractNode.class);
 
@@ -89,7 +94,7 @@ public final class VectorSupport {
         }
     }
 
-    @NodeInfo(nameTemplate = "VectorPack")
+    @NodeInfo(nameTemplate = "VectorPack", cycles = CYCLES_16, size = SIZE_32)
     public static final class VectorPackNode extends FloatingNode implements Canonicalizable, LIRLowerable {
 
         public static final NodeClass<VectorPackNode> TYPE = NodeClass.create(VectorPackNode.class);
