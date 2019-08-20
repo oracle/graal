@@ -142,7 +142,7 @@ public class SubstrateUtil {
         FileDescriptor fd;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static FileDescriptor getFileDescriptor(FileOutputStream out) {
         return SubstrateUtil.cast(out, Target_java_io_FileOutputStream.class).fd;
     }
@@ -167,7 +167,7 @@ public class SubstrateUtil {
     /**
      * Returns the length of a C {@code char*} string.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
         UnsignedWord n = WordFactory.zero();
         while (((Pointer) str).readByte(n) != 0) {
@@ -179,7 +179,7 @@ public class SubstrateUtil {
     /**
      * Returns a pointer to the matched character or NULL if the character is not found.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CCharPointer strchr(CCharPointer str, int c) {
         int index = 0;
         while (true) {

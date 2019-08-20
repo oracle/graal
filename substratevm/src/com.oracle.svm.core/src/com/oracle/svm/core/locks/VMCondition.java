@@ -48,7 +48,7 @@ public class VMCondition {
         this.mutex = mutex;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public VMMutex getMutex() {
         return mutex;
     }

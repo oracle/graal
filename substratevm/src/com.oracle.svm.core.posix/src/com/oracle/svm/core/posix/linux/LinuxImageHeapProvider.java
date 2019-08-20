@@ -269,7 +269,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean canUnmapInsteadOfTearDown(PointerBase heapBase) {
         return heapBase.notEqual(IMAGE_HEAP_BEGIN.get());
     }

@@ -256,7 +256,7 @@ public class InstalledCodeBuilder {
             ReferenceAccess.singleton().writeObjectAt(address, object, compressed);
         }
 
-        @Uninterruptible(reason = ".")
+        @Uninterruptible(reason = ".", mayBeInlined = true)
         @Override
         public int getPosition() {
             return position;

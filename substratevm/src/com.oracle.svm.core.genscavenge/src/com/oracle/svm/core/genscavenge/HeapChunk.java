@@ -205,7 +205,7 @@ public class HeapChunk {
     }
 
     /** How much space is available for objects in a HeapChunk? */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord availableObjectMemory(Header<?> that) {
         final Pointer top = that.getTop();
         final Pointer end = that.getEnd();
@@ -213,7 +213,7 @@ public class HeapChunk {
     }
 
     /** Set top, being careful that it is between the current top and end. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void setTopCarefully(Header<?> that, Pointer newTop) {
         assert that.getTop().belowOrEqual(newTop) : "newTop too low.";
         assert newTop.belowOrEqual(that.getEnd()) : "newTop too high.";
