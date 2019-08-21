@@ -677,7 +677,7 @@ def _remove_redundant_entries(cp):
     if isJDK8:
         # Remove entries from class path that are in Graal or on the boot class path
         redundantClasspathEntries = set()
-        for dist in _graal_config().jvmci_dists:
+        for dist in _graal_config().dists:
             redundantClasspathEntries.update((d.output_dir() for d in dist.archived_deps() if d.isJavaProject()))
             redundantClasspathEntries.add(dist.path)
     else:
@@ -1135,14 +1135,19 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
         for src_jar in _graal_config().jvmci_jars:
             _update_file(src_jar, join(jvmci_dir, basename(src_jar)))
-        for src_jar in _graal_config().boot_jars:
-            if basename(src_jar) == 'truffle-api.jar' and not export_truffle:
-                truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
+
+        boot_jars = _graal_config().boot_jars
+        if not export_truffle:
+            truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
+            for src_jar in _graal_config().truffle_jars:
                 _update_file(src_jar, join(truffle_dir, basename(src_jar)))
                 with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
-                    fp.write(join('..', 'truffle', 'truffle-api.jar'))
-            else:
-                _update_file(src_jar, join(boot_dir, basename(src_jar)))
+                    fp.write(join('..', 'truffle', basename(src_jar)))
+        else:
+            boot_jars += _graal_config().truffle_jars
+
+        for src_jar in boot_jars:
+            _update_file(src_jar, join(boot_dir, basename(src_jar)))
 
     else:
         module_dists = _graal_config().dists
@@ -1186,7 +1191,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             s = d.suite
             print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
             vm_name = vm_name + ':' + s.name + '_' + s.version()
-        for d in _graal_config().boot_dists:
+        for d in _graal_config().boot_dists + _graal_config().truffle_dists:
             s = d.suite
             print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
 
@@ -1231,12 +1236,14 @@ class GraalConfig:
     def __init__(self, graalvm_components):
         self.jvmci_dists = [mx.distribution(e) for component in graalvm_components for e in component.jvmci_jars]
         self.boot_dists = [mx.distribution(e) for component in graalvm_components for e in component.boot_jars]
-        self.dists = self.jvmci_dists + self.boot_dists
+        self.truffle_dists = [mx.distribution('truffle:TRUFFLE_API')] if isJDK8 else []
+        self.dists = self.jvmci_dists + self.boot_dists + self.truffle_dists
         self.dists_dict = {e.suite.name + ':' + e.name : e for e in self.dists}
 
         self.jvmci_jars = [d.classpath_repr() for d in self.jvmci_dists]
         self.boot_jars = [d.classpath_repr() for d in self.boot_dists]
-        self.jars = self.jvmci_jars + self.boot_jars
+        self.truffle_jars = [d.classpath_repr() for d in self.truffle_dists]
+        self.jars = self.jvmci_jars + self.boot_jars + self.truffle_jars
 
     # Singleton instance.
     _instance = None
@@ -1245,6 +1252,13 @@ def _graal_config():
     if GraalConfig._instance is None:
         GraalConfig._instance = GraalConfig(_graalvm_components)
     return GraalConfig._instance
+
+def _boot_jars():
+    if not isJDK8:
+        return ['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API']
+    else:
+        # In JDK 8, Truffle is not a boot jar and is added separately to GraalVM
+        return ['sdk:GRAAL_SDK']
 
 # The community compiler component
 _compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
@@ -1266,10 +1280,7 @@ _compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
     ],
-    boot_jars=[
-        'sdk:GRAAL_SDK',
-        'truffle:TRUFFLE_API',
-    ],
+    boot_jars=_boot_jars(),
     graal_compiler='graal',
 ))
 

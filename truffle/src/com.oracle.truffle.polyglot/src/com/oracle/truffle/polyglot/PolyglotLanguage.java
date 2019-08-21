@@ -147,6 +147,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                     try {
                         this.initLanguage = ensureInitialized(new PolyglotLanguageInstance(this));
                     } catch (IllegalAccessError e) {
+                        // Do not swallow module access violations
                         throw e;
                     } catch (Throwable e) {
                         // failing to initialize the language for getting the option descriptors

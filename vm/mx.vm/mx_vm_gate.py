@@ -205,7 +205,7 @@ def gate_python(tasks):
 def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
     cp = None
     for dist in svm_suite.dists:
-        if 'SVM_TRUFFLE_TCK' == dist.name:
+        if dist.name == 'SVM_TRUFFLE_TCK':
             cp = dist.classpath_repr()
             break
     if not cp:
