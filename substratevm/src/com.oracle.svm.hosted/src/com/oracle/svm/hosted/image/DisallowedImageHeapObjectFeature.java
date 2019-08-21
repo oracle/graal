@@ -67,7 +67,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
         /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {
             final Thread asThread = (Thread) original;
-            if (asThread.getState() != Thread.State.NEW) {
+            if (asThread.getState() != Thread.State.NEW && asThread.getState() != Thread.State.TERMINATED) {
                 throw error("Detected a started Thread in the image heap. " +
                                 "Threads running in the image generator are no longer running at image run time. " +
                                 classInitialization.objectInstantiationTraceMessage(asThread, "Try avoiding to initialize the class that caused initialization of the Thread."));
