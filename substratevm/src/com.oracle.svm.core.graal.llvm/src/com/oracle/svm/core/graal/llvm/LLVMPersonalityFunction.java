@@ -80,7 +80,7 @@ public class LLVMPersonalityFunction {
      * NodeLLVMBuilder.emitReadExceptionObject).
      */
     @CEntryPoint
-    @CEntryPointOptions(include = IncludeForLLVMOnly.class)
+    @CEntryPointOptions(include = IncludeForLLVMOnly.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     @SuppressWarnings("unused")
     public static int personality(int version, int action, IsolateThread thread, _Unwind_Exception unwindException, _Unwind_Context context) {
         Pointer ip = getIP(context);
