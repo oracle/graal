@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 51 CONTINUE "main"
+BREAK 55 CONTINUE "main"
 	"3+" "member at ADD is not available"
 	"r-<w" "member at SUB is not available"
 	"-" "member at - is not available"
@@ -36,7 +36,7 @@ BREAK 51 CONTINUE "main"
 	"a>>>b" "member at >> is not available"
 	END
 
-BREAK 56 CONTINUE "main"
+BREAK 60 CONTINUE "main"
 	"3+" "member at ADD is not available"
 	"r-<w" "member at SUB is not available"
 	"-" "member at - is not available"

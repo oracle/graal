@@ -29,14 +29,13 @@
  */
 #include <stdio.h>
 
-
 __attribute__((constructor)) int main() {
-	float a=2;
-	float b=4.5;
-	float c=4e4;
-	float d=2E-1;
-	__builtin_debugtrap();
-	float sum=a+b+c+d;
-	printf("%f",sum);
-	return 0;
+  float a = 2;
+  float b = 4.5;
+  float c = 4e4;
+  float d = 2E-1;
+  __builtin_debugtrap();
+  float sum = a + b + c + d;
+  printf("%f", sum);
+  return 0;
 }

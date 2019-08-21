@@ -32,39 +32,37 @@
 #include <math.h>
 
 struct Point {
-	int x;
-	int y;
+  int x;
+  int y;
 };
 
 struct Line {
-	struct Point start;
-	struct Point end;
+  struct Point start;
+  struct Point end;
 };
 
-void printPoint(struct Point* p) {
-	printf("Point: x=%i, y=%i",p->x,p->y);
+void printPoint(struct Point *p) {
+  printf("Point: x=%i, y=%i", p->x, p->y);
 }
 
-double getLineLength(struct Line* l) {
-	int difX = l->end.x - l->start.x;
-	int difY = l->end.y - l->start.y;
-	return sqrt(difX*difX+difY*difY);
+double getLineLength(struct Line *l) {
+  int difX = l->end.x - l->start.x;
+  int difY = l->end.y - l->start.y;
+  return sqrt(difX * difX + difY * difY);
 }
 
 __attribute__((constructor)) int main() {
-	struct Point p;
-	p.x = 3;
-	p.y = 4;
-	struct Line line;
-	line.start = p;
-	line.end.x = 6;
-	line.end.y = 0;
-	line.start.x = p.x;
-	double len = getLineLength(&line);
-	__builtin_debugtrap();
-	printPoint(&p);
-	printf("Length of line: %f", len);
-	return 0;
+  struct Point p;
+  p.x = 3;
+  p.y = 4;
+  struct Line line;
+  line.start = p;
+  line.end.x = 6;
+  line.end.y = 0;
+  line.start.x = p.x;
+  double len = getLineLength(&line);
+  __builtin_debugtrap();
+  printPoint(&p);
+  printf("Length of line: %f", len);
+  return 0;
 }
-
-

@@ -32,10 +32,10 @@
 typedef int Int;
 
 __attribute__((constructor)) int main() {
-	Int a=54;
-	Int b=2016;
-	__builtin_debugtrap();
-	Int sum = a + b;
-	printf("%i\n", sum);
-	return 0;
+  Int a = 54;
+  Int b = 2016;
+  __builtin_debugtrap();
+  Int sum = a + b;
+  printf("%i\n", sum);
+  return 0;
 }

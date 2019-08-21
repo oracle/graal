@@ -29,27 +29,26 @@
  */
 #include <stdio.h>
 
-
-void swap(int* a, int* b) {
-	int tmp = *a;
-	*a = *b;
-	*b = tmp;
+void swap(int *a, int *b) {
+  int tmp = *a;
+  *a = *b;
+  *b = tmp;
 }
 
 __attribute__((constructor)) int main() {
-	int a=1;
-	int b=2;
-	int* pa = &a;
-	int* pb = &b;
-	__builtin_debugtrap();
-	*pa = a; 
-	*pb = b; 
-	__builtin_debugtrap();
-	swap(&a, &b);
-	__builtin_debugtrap();
-	swap(pa, pb);
-	__builtin_debugtrap();
-	int psum = *pa+*pb;
-	printf("%i\n", psum);
-	return 0;
+  int a = 1;
+  int b = 2;
+  int *pa = &a;
+  int *pb = &b;
+  __builtin_debugtrap();
+  *pa = a;
+  *pb = b;
+  __builtin_debugtrap();
+  swap(&a, &b);
+  __builtin_debugtrap();
+  swap(pa, pb);
+  __builtin_debugtrap();
+  int psum = *pa + *pb;
+  printf("%i\n", psum);
+  return 0;
 }

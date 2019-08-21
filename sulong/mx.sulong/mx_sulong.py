@@ -106,6 +106,7 @@ clangFormatCheckPaths = [
     join(_testDir, "com.oracle.truffle.llvm.tests.sulong.native"),
     join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp.native"),
     join(_testDir, "com.oracle.truffle.llvm.tests.linker.native"),
+    join(_testDir, "com.oracle.truffle.llvm.tests.debugexpr.native"),
     join(_testDir, "interoptests"),
     join(_testDir, "inlineassemblytests"),
     join(_testDir, "other")

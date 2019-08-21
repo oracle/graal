@@ -30,31 +30,35 @@
 #include <stdio.h>
 
 /*
- * Code in this file is basically irrelevant, as only invalid expressions are tested. 
- * However, code lines of '__builtin_debugtrap()' MUST NOT BE CHANGED due to the 
+ * Code in this file is basically irrelevant, as only invalid expressions are tested.
+ * However, code lines of '__builtin_debugtrap()' MUST NOT BE CHANGED due to the
  * testing framework without adjusting the lines in the testInvalid.txt file.
  * Relative path of testInvalid.txt: '../testExpr/testInvalid.txt'
  */
 
 int gcd(int a, int b) {
-	if(a<0) a=-a;
-	if(b<0) b=-b;
-	if(a==0) return b;
-	if(b==0) return a;
-	return gcd(b, a%b);
+  if (a < 0)
+    a = -a;
+  if (b < 0)
+    b = -b;
+  if (a == 0)
+    return b;
+  if (b == 0)
+    return a;
+  return gcd(b, a % b);
 }
 
 __attribute__((constructor)) int main() {
-	int a=54;
-	int b=2016;
-	int* pa = &a;
-	__builtin_debugtrap();
-	int sum = a + b;
-	int prod = a * b;
-	int rem = a % b;
-	int g = gcd(a, b);
-	__builtin_debugtrap();
-	printf("%i\n",g);
-	printf("%i\n",*pa);
-	return 0;
+  int a = 54;
+  int b = 2016;
+  int *pa = &a;
+  __builtin_debugtrap();
+  int sum = a + b;
+  int prod = a * b;
+  int rem = a % b;
+  int g = gcd(a, b);
+  __builtin_debugtrap();
+  printf("%i\n", g);
+  printf("%i\n", *pa);
+  return 0;
 }

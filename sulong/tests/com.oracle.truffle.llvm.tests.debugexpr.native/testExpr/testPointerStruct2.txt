@@ -28,14 +28,14 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 64 CONTINUE "main"
+BREAK 63 CONTINUE "main"
 	"p->x" "2"
 	"((typeof(p))q)->x" "-4"
 	"p->y" "3"
 	"((typeof(p))q)->y" "-5"
 	END
 
-BREAK 67 CONTINUE "main"
+BREAK 66 CONTINUE "main"
 	"p->x" "-4"
 	"((typeof(p))q)->x" "2"
 	"p->y" "-5"
