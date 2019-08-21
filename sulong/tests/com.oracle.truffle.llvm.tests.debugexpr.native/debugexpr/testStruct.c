@@ -31,31 +31,31 @@
 #include <stdlib.h>
 #include <math.h>
 
-typedef struct {
+struct Point {
 	int x;
 	int y;
-} Point;
+};
 
-typedef struct {
-	Point start;
-	Point end;
-} Line;
+struct Line {
+	struct Point start;
+	struct Point end;
+};
 
-void printPoint(Point* p) {
+void printPoint(struct Point* p) {
 	printf("Point: x=%i, y=%i",p->x,p->y);
 }
 
-double getLineLength(Line* l) {
+double getLineLength(struct Line* l) {
 	int difX = l->end.x - l->start.x;
 	int difY = l->end.y - l->start.y;
 	return sqrt(difX*difX+difY*difY);
 }
 
 __attribute__((constructor)) int main() {
-	Point p;
+	struct Point p;
 	p.x = 3;
 	p.y = 4;
-	Line line;
+	struct Line line;
 	line.start = p;
 	line.end.x = 6;
 	line.end.y = 0;
