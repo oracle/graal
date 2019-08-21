@@ -694,7 +694,9 @@ public class NativeImage {
             String modulePath = config.getBuilderModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
-            addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
+            if (!modulePath.isEmpty()) {
+                addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
+            }
             String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
