@@ -78,8 +78,6 @@ public class Parser {
 
     private int stopPosition = 0;
     private int proposalToken = _EOF;
-    private List<String> ccSymbols = null;
-    private List<String> proposals = null;
     private Token dummy = new Token();
 
     boolean IsCast() {
@@ -139,7 +137,6 @@ public class Parser {
         if (isContentAssistant && updateProposals) {
             la = la.next;
             if (!errorsDetected) {
-                proposals = ccSymbols;
 
                 errorsDetected = true;
             }
@@ -172,7 +169,6 @@ public class Parser {
             updateProposals = true;
 
         }
-        ccSymbols = null;
     }
 
     void Expect(int n) {
@@ -694,7 +690,7 @@ public class Parser {
     }
 
     public List<String> getCodeCompletionProposals() {
-        return proposals;
+        return null;
     }
 
     private Token createDummy() {
