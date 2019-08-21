@@ -469,7 +469,7 @@ public final class DebugExprType {
                 return Boolean.parseBoolean(member.toString());
             case UNSIGNED_CHAR:
             case SIGNED_CHAR:
-                return Character.toString((char) (Short.parseShort(member.toString())));
+                return member.toString();
             case UNSIGNED_SHORT:
                 return Short.toUnsignedInt(Short.parseShort(member.toString()));
             case SIGNED_SHORT:
