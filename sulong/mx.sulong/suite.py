@@ -475,7 +475,7 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "SUITE_CFLAGS" : "<clangImplicitArgs> -g",
-        "SUITE_CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS> -g",
+        "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -I<path:SULONG_HOME>/include -g",
       },
       "dependencies" : [
         "SULONG_TEST",
