@@ -46,7 +46,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.BlockNode.NodeExecutor;
+import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -56,7 +56,7 @@ import com.oracle.truffle.sl.nodes.SLStatementNode;
  * A statement node that just executes a list of other statements.
  */
 @NodeInfo(shortName = "block", description = "The node implementing a source code block")
-public final class SLBlockNode extends SLStatementNode implements BlockNode.NodeExecutor<SLStatementNode> {
+public final class SLBlockNode extends SLStatementNode implements BlockNode.ElementExecutor<SLStatementNode> {
 
     /**
      * The block of child nodes. Using the block node allows Truffle to split the block into
@@ -96,7 +96,7 @@ public final class SLBlockNode extends SLStatementNode implements BlockNode.Node
     }
 
     /**
-     * Truffle nodes don't have a fixed execute signature. The {@link NodeExecutor} interface tells
+     * Truffle nodes don't have a fixed execute signature. The {@link ElementExecutor} interface tells
      * the framework how block element nodes should be executed. The executor allows to add a custom
      * exception handler for each element, e.g. to handle a specific {@link ControlFlowException} or
      * to pass a customizable argument, that allows implement startsWith semantics if needed. For SL

@@ -47,16 +47,16 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
-    final NodeExecutor<T> executor;
+    final ElementExecutor<T> executor;
 
-    DefaultBlockNode(T[] elements, NodeExecutor<T> executor) {
+    DefaultBlockNode(T[] elements, ElementExecutor<T> executor) {
         super(elements);
         this.executor = executor;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame, int arg) {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -67,7 +67,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public void executeVoid(VirtualFrame frame, int arg) {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         for (int i = 0; i < e.length; ++i) {
             ex.executeVoid(frame, e[i], i, arg);
@@ -76,7 +76,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public byte executeByte(VirtualFrame frame, int arg) throws UnexpectedResultException {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -87,7 +87,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public short executeShort(VirtualFrame frame, int arg) throws UnexpectedResultException {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -98,7 +98,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public char executeChar(VirtualFrame frame, int arg) throws UnexpectedResultException {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -109,7 +109,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public int executeInt(VirtualFrame frame, int arg) throws UnexpectedResultException {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -120,7 +120,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public long executeLong(VirtualFrame frame, int arg) throws UnexpectedResultException {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -131,7 +131,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public float executeFloat(VirtualFrame frame, int arg) throws UnexpectedResultException {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -142,7 +142,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public double executeDouble(VirtualFrame frame, int arg) throws UnexpectedResultException {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -153,7 +153,7 @@ final class DefaultBlockNode<T extends Node> extends BlockNode<T> {
 
     @Override
     public boolean executeBoolean(VirtualFrame frame, int arg) throws UnexpectedResultException {
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {

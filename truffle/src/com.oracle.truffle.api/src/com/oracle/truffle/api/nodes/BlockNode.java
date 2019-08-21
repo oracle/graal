@@ -48,7 +48,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.BlockNode.NodeExecutor;
+import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 
 /**
  * Represents a standard node for guest language blocks. Using standard blocks in a guest language
@@ -56,15 +56,15 @@ import com.oracle.truffle.api.nodes.BlockNode.NodeExecutor;
  * compilation of very big methods into multiple compilation units. Block nodes may be executed with
  * a customizable argument to resume the execution at a particular location.
  * <p>
- * Elements are executed using the {@link NodeExecutor} provided when
- * {@link #create(Node[], NodeExecutor) creating} the block node. When a block is executed then all
- * elements are executed using {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)
+ * Elements are executed using the {@link ElementExecutor} provided when
+ * {@link #create(Node[], ElementExecutor) creating} the block node. When a block is executed then all
+ * elements are executed using {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)
  * executeVoid} except the last element which will be executed using the typed execute method also
  * used to execute the block node. This allows to implement boxing elimination of the return value
  * of blocks in the interpreter. For example, if {@link #executeInt(VirtualFrame, int) executeInt}
  * is invoked on the block , then all elements except the last one is executed using
- * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int) executeVoid}, but the last one with
- * {@link NodeExecutor#executeInt(VirtualFrame, Node, int, int) executeInt}.
+ * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int) executeVoid}, but the last one with
+ * {@link ElementExecutor#executeInt(VirtualFrame, Node, int, int) executeInt}.
  * <p>
  * The optimizing runtime may decide to group elements of a block into multiple block compilation
  * units. This may happen if the block is too big to be compiled with a single compilation unit. If
@@ -107,7 +107,7 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns no value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block.
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom argument that is forwarded to the executor as is. If no argument is
@@ -118,9 +118,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns a generic value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeGeneric(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeGeneric(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -131,9 +131,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns a byte value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeByte(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeByte(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -144,9 +144,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns a short value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeShort(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeShort(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -157,9 +157,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns an int value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeInt(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeInt(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -170,9 +170,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns a char value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeChar(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeChar(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -183,9 +183,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns a float value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeFloat(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeFloat(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -196,9 +196,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns a double value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeDouble(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeDouble(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -209,9 +209,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns a long value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeLong(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeLong(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -222,9 +222,9 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Executes the block and returns a boolean value. The block implementation calls
-     * {@link NodeExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
+     * {@link ElementExecutor#executeVoid(VirtualFrame, Node, int, int)} for all elements of the block
      * except the last element. The last element is executed using
-     * {@link NodeExecutor#executeBoolean(VirtualFrame, Node, int, int)}.
+     * {@link ElementExecutor#executeBoolean(VirtualFrame, Node, int, int)}.
      *
      * @param frame the frame to execute the block in.
      * @param argument a custom value that is forwarded to the executor as is. If no argument is
@@ -235,7 +235,7 @@ public abstract class BlockNode<T extends Node> extends Node {
 
     /**
      * Returns the elements of the block node. Elements of block nodes are provided using
-     * {@link #create(Node[], NodeExecutor)}.
+     * {@link #create(Node[], ElementExecutor)}.
      *
      * @since 19.3
      */
@@ -263,7 +263,7 @@ public abstract class BlockNode<T extends Node> extends Node {
      *
      * @since 19.3
      */
-    public static <T extends Node> BlockNode<T> create(T[] elements, NodeExecutor<T> executor) {
+    public static <T extends Node> BlockNode<T> create(T[] elements, ElementExecutor<T> executor) {
         Objects.requireNonNull(elements);
         Objects.requireNonNull(executor);
         if (elements.length == 0) {
@@ -279,7 +279,7 @@ public abstract class BlockNode<T extends Node> extends Node {
      * @see BlockNode
      * @since 19.3
      */
-    public interface NodeExecutor<T extends Node> {
+    public interface ElementExecutor<T extends Node> {
         /**
          * Executes the block node element without expecting any return value.
          *
@@ -442,7 +442,7 @@ class BlockNodeSnippets {
     }
 
     final class LanguageBlockNode extends LanguageNode
-                    implements NodeExecutor<LanguageNode> {
+                    implements ElementExecutor<LanguageNode> {
 
         @Child private BlockNode<LanguageNode> block;
 
@@ -481,7 +481,7 @@ class BlockNodeSnippets {
     }
 
     final class ResumableBlockNode extends LanguageNode
-                    implements NodeExecutor<LanguageNode> {
+                    implements ElementExecutor<LanguageNode> {
 
         @CompilationFinal private FrameSlot indexSlot;
         @Child private BlockNode<LanguageNode> block;

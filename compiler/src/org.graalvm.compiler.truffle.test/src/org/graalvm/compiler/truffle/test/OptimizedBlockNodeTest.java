@@ -58,7 +58,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.BlockNode.NodeExecutor;
+import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -468,7 +468,7 @@ public class OptimizedBlockNodeTest {
         return createBlock(blockSize, depth, returnValue, new TestElementExecutor());
     }
 
-    private static OptimizedBlockNode<TestElement> createBlock(int blockSize, int depth, Object returnValue, NodeExecutor<TestElement> executor) {
+    private static OptimizedBlockNode<TestElement> createBlock(int blockSize, int depth, Object returnValue, ElementExecutor<TestElement> executor) {
         if (depth == 0) {
             return null;
         }
@@ -613,7 +613,7 @@ public class OptimizedBlockNodeTest {
 
     }
 
-    static class TestElementExecutor implements BlockNode.NodeExecutor<TestElement> {
+    static class TestElementExecutor implements BlockNode.ElementExecutor<TestElement> {
 
         @Override
         public void executeVoid(VirtualFrame frame, TestElement node, int index, int argument) {

@@ -305,7 +305,7 @@ public class BlockNodeTest {
         return create(elements, new TestExecutor());
     }
 
-    static BlockNode<TestBlockElement> create(TestBlockElement[] elements, BlockNode.NodeExecutor<TestBlockElement> executor) {
+    static BlockNode<TestBlockElement> create(TestBlockElement[] elements, BlockNode.ElementExecutor<TestBlockElement> executor) {
         DummyRootNode root = new DummyRootNode();
         BlockNode<TestBlockElement> block = BlockNode.create(elements, executor);
         root.block = block;
@@ -545,7 +545,7 @@ public class BlockNodeTest {
 
     }
 
-    static class TestExecutor implements BlockNode.NodeExecutor<TestBlockElement> {
+    static class TestExecutor implements BlockNode.ElementExecutor<TestBlockElement> {
 
         public void executeVoid(VirtualFrame frame, TestBlockElement node, int index, int argument) {
             node.execute(Mode.VOID, Object.class);

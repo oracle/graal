@@ -49,10 +49,10 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
 public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> implements ReplaceObserver {
 
     @CompilationFinal private volatile PartialBlocks<T> partialBlocks;
-    private final NodeExecutor<T> executor;
+    private final ElementExecutor<T> executor;
     @CompilationFinal private volatile Assumption alwaysNoArgument;
 
-    OptimizedBlockNode(T[] elements, NodeExecutor<T> executor) {
+    OptimizedBlockNode(T[] elements, ElementExecutor<T> executor) {
         super(elements);
         this.executor = executor;
     }
@@ -67,7 +67,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.execute(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -109,7 +109,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return;
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         for (int i = 0; i < e.length; ++i) {
             ex.executeVoid(frame, e[i], i, arg);
@@ -126,7 +126,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.executeByte(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -145,7 +145,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.executeShort(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -164,7 +164,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.executeChar(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -183,7 +183,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.executeInt(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -202,7 +202,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.executeLong(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -221,7 +221,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.executeFloat(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -240,7 +240,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.executeDouble(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -259,7 +259,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 return g.executeBoolean(frame, arg);
             }
         }
-        NodeExecutor<T> ex = this.executor;
+        ElementExecutor<T> ex = this.executor;
         T[] e = getElements();
         int last = e.length - 1;
         for (int i = 0; i < last; ++i) {
@@ -506,7 +506,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
             Object[] arguments = frame.getArguments();
             MaterializedFrame outerFrame = (MaterializedFrame) arguments[0];
             int arg = readAndProfileArg(arguments);
-            NodeExecutor<T> ex = block.executor;
+            ElementExecutor<T> ex = block.executor;
             T[] e = block.getElements();
             int last = endIndex - 1;
             for (int i = startIndex; i < last; ++i) {
