@@ -32,12 +32,15 @@ package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 public class WasmIfNode extends WasmNode {
     @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final int initialStackPointer;
-    @Child WasmNode trueBranch;
-    @Child WasmNode falseBranch;
+    @Child private WasmNode trueBranch;
+    @Child private WasmNode falseBranch;
+
+    private final ConditionProfile condition = ConditionProfile.createCountingProfile();
 
     public WasmIfNode(WasmModule wasmModule, WasmCodeEntry codeEntry, WasmNode trueBranch, WasmNode falseBranch, int byteLength, byte returnTypeId, int initialStackPointer, int byteConstantLength, int numericLiteralLength) {
         super(wasmModule, codeEntry, byteLength, byteConstantLength, numericLiteralLength);
@@ -50,8 +53,7 @@ public class WasmIfNode extends WasmNode {
     @Override
     public int execute(WasmContext context, VirtualFrame frame) {
         int stackPointer = initialStackPointer - 1;
-        int condition = popInt(frame, stackPointer);
-        if (condition != 0) {
+        if (condition.profile(popInt(frame, stackPointer) != 0)) {
             return trueBranch.execute(context, frame);
         } else {
             return falseBranch.execute(context, frame);
