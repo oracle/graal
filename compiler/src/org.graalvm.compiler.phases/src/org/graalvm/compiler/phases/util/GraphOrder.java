@@ -158,7 +158,7 @@ public final class GraphOrder {
     public static boolean assertSchedulableGraph(final StructuredGraph graph) {
         assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
         try (DebugContext.Scope s = graph.getDebug().scope("AssertSchedulableGraph")) {
-            final SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
+            final SchedulePhase schedulePhase = new SchedulePhase(getSchedulingPolicy(graph), true);
             final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
             schedulePhase.apply(graph, false);
             final ScheduleResult schedule = graph.getLastSchedule();
@@ -220,6 +220,7 @@ public final class GraphOrder {
                                     currentState.clearAll();
                                     currentState.markAll(loopEntryStates.get(((LoopExitNode) node).loopBegin()));
                                 }
+
                                 // Loop proxies aren't scheduled, so they need to be added
                                 // explicitly
                                 currentState.markAll(((LoopExitNode) node).proxies());
@@ -234,17 +235,6 @@ public final class GraphOrder {
                                                 }
                                             });
                                         } else {
-                                            if (!currentState.isMarked(input) && hasMarkedProxyUsage(input, currentState)) {
-                                                /*
-                                                 * GVN and scheduling late out of loops allows for a
-                                                 * value node to be behind a proxy at one use-site
-                                                 * and without a proxy on another after loop exit;
-                                                 * we put those nodes in current state as they were
-                                                 * cleared by the loop exit. For example, see
-                                                 * com.oracle.svm.jtt.optimize.VN_Loop01.test2
-                                                 */
-                                                currentState.mark(input);
-                                            }
                                             assert currentState.isMarked(input) || input instanceof VirtualObjectNode || input instanceof ConstantNode : input + " not available at " + node +
                                                             " in block " + block + "\n" + list;
                                         }
@@ -278,15 +268,6 @@ public final class GraphOrder {
                     return currentState;
                 }
 
-                private boolean hasMarkedProxyUsage(Node input, NodeBitMap currentState) {
-                    for (Node usage : input.usages()) {
-                        if (usage instanceof ProxyNode && currentState.isMarked(usage)) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-
                 @Override
                 protected NodeBitMap merge(Block merge, List<NodeBitMap> states) {
                     NodeBitMap result = states.get(0);
@@ -315,5 +296,15 @@ public final class GraphOrder {
             graph.getDebug().handle(t);
         }
         return true;
+    }
+
+    /*
+     * Complexity of verification for LATEST_OUT_OF_LOOPS with value proxies exceeds the benefits.
+     * The problem are floating values that can be scheduled before the loop and have proxies only
+     * on some use edges after the loop. These values, which are hard to detect, get scheduled
+     * before the loop exit and are not visible in the state after the loop exit.
+     */
+    private static SchedulingStrategy getSchedulingPolicy(StructuredGraph graph) {
+        return graph.hasValueProxies() ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS;
     }
 }
