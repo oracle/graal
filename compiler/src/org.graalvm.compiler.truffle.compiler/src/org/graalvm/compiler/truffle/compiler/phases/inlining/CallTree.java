@@ -34,19 +34,24 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
-public class CallTree extends Graph {
+public final class CallTree extends Graph {
 
-    final GraphManager graphManager;
+    private final InliningPolicy policy;
+    private final GraphManager graphManager;
     private final CallNode root;
     int expanded = 1;
     int inlined = 1;
-    TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
 
     CallTree(PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
         super(ir.getOptions(), ir.getDebug());
-        graphManager = new GraphManager(ir, partialEvaluator, callNodeProvider);
+        this.policy = policy;
+        this.graphManager = new GraphManager(ir, partialEvaluator, callNodeProvider);
         // Should be kept as the last call in the constructor, as this is an argument.
-        this.root = CallNode.makeRoot(this, truffleAST, ir, policy);
+        this.root = CallNode.makeRoot(this, truffleAST, ir);
+    }
+
+    InliningPolicy getPolicy() {
+        return policy;
     }
 
     public CallNode getRoot() {
@@ -61,26 +66,27 @@ public class CallTree extends Graph {
         return expanded;
     }
 
-    public GraphManager getGraphManager() {
+    GraphManager getGraphManager() {
         return graphManager;
     }
 
     public void trace() {
         final Boolean details = TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TraceTruffleInliningDetails);
         if (TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TraceTruffleInlining) || details) {
+            TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
-            traceRecursive(root, details, 0);
+            traceRecursive(runtime, root, details, 0);
             runtime.logEvent(0, "inline done", root.getName(), root.getStringProperties());
         }
     }
 
-    private void traceRecursive(CallNode node, boolean details, int depth) {
+    private void traceRecursive(TruffleCompilerRuntime runtime, CallNode node, boolean details, int depth) {
         if (depth != 0) {
             runtime.logEvent(depth, node.getState().toString(), node.getName(), node.getStringProperties());
         }
         if (node.getState() == CallNode.State.Inlined || details) {
             for (CallNode child : node.getChildren()) {
-                traceRecursive(child, details, depth + 1);
+                traceRecursive(runtime, child, details, depth + 1);
             }
         }
     }

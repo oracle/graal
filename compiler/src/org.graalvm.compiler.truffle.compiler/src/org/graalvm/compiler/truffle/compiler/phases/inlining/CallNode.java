@@ -45,15 +45,14 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 
 @NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
-public class CallNode extends Node {
+public final class CallNode extends Node {
 
     private static final NodeClass<CallNode> TYPE = NodeClass.create(CallNode.class);
-    private final InliningPolicy policy;
-    private final double rootRelativeFrequency;
-    private final TruffleCallNode truffleCallNode;
+    private final TruffleCallNode truffleCaller;
     private final CompilableTruffleAST truffleAST;
-    private final TruffleCallNode[] truffleCallNodes;
-    InliningPolicy.CallNodeData data;
+    private final TruffleCallNode[] truffleCallees;
+    private final double rootRelativeFrequency;
+    private Object data;
     private State state;
     @Successor private NodeSuccessorList<CallNode> children;
     private int recursionDepth;
@@ -65,34 +64,37 @@ public class CallNode extends Node {
     private EconomicMap<CallNode, Invoke> childInvokes;
 
     // Needs to be protected because of the @NodeInfo annotation
-    protected CallNode(CallTree tree, TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency, InliningPolicy policy) {
+    protected CallNode(TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency) {
         super(TYPE);
         this.state = State.Cutoff;
         this.recursionDepth = -1;
         this.rootRelativeFrequency = rootRelativeFrequency;
-        this.truffleCallNode = truffleCallNode;
+        this.truffleCaller = truffleCallNode;
         this.truffleAST = truffleAST;
-        truffleCallNodes = truffleAST.getCallNodes();
+        this.truffleCallees = truffleAST.getCallNodes();
         this.ir = ir;
         this.childInvokes = EconomicMap.create();
         this.children = new NodeSuccessorList<>(this, 0);
-        this.policy = policy;
-        tree.add(this);
+    }
+
+    public InliningPolicy getPolicy() {
+        return getCallTree().getPolicy();
     }
 
     /**
      * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
      */
-    static CallNode makeRoot(CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir, InliningPolicy policy) {
+    static CallNode makeRoot(CallTree callTree, CompilableTruffleAST truffleAST, StructuredGraph ir) {
         Objects.requireNonNull(callTree);
         Objects.requireNonNull(truffleAST);
         Objects.requireNonNull(ir);
-        final CallNode root = new CallNode(callTree, null, truffleAST, ir, 1, policy);
-        root.data = policy.newCallNodeData(root);
+        final CallNode root = new CallNode(null, truffleAST, ir, 1);
+        callTree.add(root);
+        root.data = callTree.getPolicy().newCallNodeData(root);
         assert root.state == State.Cutoff : "Cannot expand a non-cutoff node. State is " + root.state;
         root.addChildren();
         root.partiallyEvaluateRoot();
-        policy.afterExpand(root);
+        callTree.getPolicy().afterExpand(root);
         return root;
     }
 
@@ -100,9 +102,9 @@ public class CallNode extends Node {
         properties.put("Frequency", rootRelativeFrequency);
         properties.put("Recursion Depth", getRecursionDepth());
         properties.put("IR Nodes", ir == null ? 0 : ir.getNodeCount());
-        properties.put("Truffle Call Nodes", truffleCallNodes.length);
+        properties.put("Truffle Callees", truffleCallees.length);
         properties.put("Explore/inline ratio", exploreInlineRatio());
-        policy.putProperties(this, properties);
+        getPolicy().putProperties(this, properties);
     }
 
     private double exploreInlineRatio() {
@@ -135,23 +137,24 @@ public class CallNode extends Node {
 
     private void addChildren() {
         // In the current implementation, this may be called only once.
-        for (TruffleCallNode childCallNode : truffleCallNodes) {
+        for (TruffleCallNode childCallNode : truffleCallees) {
             final int targetCallCount = isRoot() ? truffleAST.getCallCount() - 1 : truffleAST.getCallCount();
             final double relativeFrequency = (double) childCallNode.getCallCount() / targetCallCount;
             final double childFrequency = relativeFrequency * this.rootRelativeFrequency;
-            CallNode callNode = new CallNode(getCallTree(), childCallNode, childCallNode.getCurrentCallTarget(), null, childFrequency, policy);
+            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), null, childFrequency);
+            getCallTree().add(callNode);
             this.children.add(callNode);
-            callNode.data = policy.newCallNodeData(callNode);
+            callNode.data = getPolicy().newCallNodeData(callNode);
         }
-        policy.afterAddChildren(this);
+        getPolicy().afterAddChildren(this);
     }
 
     private void partiallyEvaluateRoot() {
         assert getParent() == null;
-        final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = getCallTree().graphManager.peRoot(truffleAST);
+        final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = getCallTree().getGraphManager().peRoot(truffleAST);
         state = State.Inlined;
         for (CallNode child : children) {
-            final Invoke invoke = truffleCallNodeToInvoke.get(child.getTruffleCallNode());
+            final Invoke invoke = truffleCallNodeToInvoke.get(child.getTruffleCaller());
             putChildInvokeOrRemoveChild(child, invoke);
         }
     }
@@ -159,7 +162,7 @@ public class CallNode extends Node {
     private void putChildInvokeOrRemoveChild(CallNode child, Invoke invoke) {
         if (invoke == null || !invoke.isAlive()) {
             child.state = State.Removed;
-            policy.removedNode(this, child);
+            getPolicy().removedNode(this, child);
         } else {
             childInvokes.put(child, invoke);
         }
@@ -167,10 +170,10 @@ public class CallNode extends Node {
 
     private void updateChildrenList(EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke) {
         for (CallNode child : children) {
-            final Invoke childInvoke = truffleCallNodeToInvoke.get(child.getTruffleCallNode());
+            final Invoke childInvoke = truffleCallNodeToInvoke.get(child.getTruffleCaller());
             if (childInvoke == null || !childInvoke.isAlive()) {
                 child.state = State.Removed;
-                policy.removedNode(this, child);
+                getPolicy().removedNode(this, child);
             }
         }
     }
@@ -182,16 +185,15 @@ public class CallNode extends Node {
         getCallTree().expanded++;
         this.addChildren();
         final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeInvoke = partiallyEvaluate();
-        policy.afterPartialEvaluation(this);
+        getPolicy().afterPartialEvaluation(this);
         updateChildrenList(truffleCallNodeInvoke);
-        policy.afterExpand(this);
+        getPolicy().afterExpand(this);
     }
 
     private EconomicMap<TruffleCallNode, Invoke> partiallyEvaluate() {
         assert state == State.Expanded;
         assert ir == null;
-        final CallTree callTree = getCallTree();
-        GraphManager.Entry entry = callTree.graphManager.get(truffleAST);
+        GraphManager.Entry entry = getCallTree().getGraphManager().get(truffleAST);
         ir = copyGraphAndUpdateInvokes(entry);
         return entry.truffleCallNodeToInvoke;
     }
@@ -202,11 +204,11 @@ public class CallNode extends Node {
             @Override
             public void accept(UnmodifiableEconomicMap<Node, Node> duplicates) {
                 for (CallNode child : children) {
-                    final TruffleCallNode childTruffleCallNode = child.getTruffleCallNode();
+                    final TruffleCallNode childTruffleCallNode = child.getTruffleCaller();
                     final Invoke original = entry.truffleCallNodeToInvoke.get(childTruffleCallNode);
                     if (original == null || !original.isAlive()) {
                         child.state = State.Removed;
-                        policy.removedNode(CallNode.this, child);
+                        getPolicy().removedNode(CallNode.this, child);
                     } else {
                         final Invoke replacement = (Invoke) duplicates.get((Node) original);
                         putChildInvokeOrRemoveChild(child, replacement);
@@ -225,13 +227,13 @@ public class CallNode extends Node {
             state = State.Removed;
             return;
         }
-        final UnmodifiableEconomicMap<Node, Node> replacements = getCallTree().graphManager.doInline(invoke, ir, truffleAST);
+        final UnmodifiableEconomicMap<Node, Node> replacements = getCallTree().getGraphManager().doInline(invoke, ir, truffleAST);
         for (CallNode child : childInvokes.getKeys()) {
             if (child.state != State.Removed) {
                 final Node childInvoke = (Node) childInvokes.get(child);
                 if (!childInvoke.isAlive()) {
                     child.state = State.Removed;
-                    policy.removedNode(this, child);
+                    getPolicy().removedNode(this, child);
                     continue;
                 }
                 final Invoke value = (Invoke) replacements.get(childInvoke);
@@ -254,7 +256,7 @@ public class CallNode extends Node {
     }
 
     public boolean isForced() {
-        return truffleCallNode.isInliningForced();
+        return truffleCaller.isInliningForced();
     }
 
     private Invoke getChildInvoke(CallNode child) {
@@ -275,7 +277,7 @@ public class CallNode extends Node {
     }
 
     public boolean isRoot() {
-        return truffleCallNode == null;
+        return truffleCaller == null;
     }
 
     public String getName() {
@@ -294,8 +296,8 @@ public class CallNode extends Node {
         return (CallTree) graph();
     }
 
-    TruffleCallNode getTruffleCallNode() {
-        return truffleCallNode;
+    TruffleCallNode getTruffleCaller() {
+        return truffleCaller;
     }
 
     @Override
@@ -322,12 +324,12 @@ public class CallNode extends Node {
         return rootRelativeFrequency;
     }
 
-    public InliningPolicy.CallNodeData getData() {
+    public Object getData() {
         return data;
     }
 
-    public TruffleCallNode[] getTruffleCallNodes() {
-        return truffleCallNodes;
+    public TruffleCallNode[] getTruffleCallees() {
+        return truffleCallees;
     }
 
     @Override
@@ -335,7 +337,7 @@ public class CallNode extends Node {
         return "CallNode{" +
                         "state=" + state +
                         ", children=" + children +
-                        ", truffleCallNode=" + truffleCallNode +
+                        ", truffleCallNode=" + truffleCaller +
                         ", truffleAST=" + truffleAST +
                         '}';
     }

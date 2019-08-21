@@ -37,7 +37,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
-public class AgnosticInliningPhase extends BasePhase<CoreProviders> {
+public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
     private static final InliningPolicyProvider POLICY_PROVIDER;
 
@@ -80,7 +80,7 @@ public class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         if (!TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleFunctionInlining)) {
             return;
         }
-        InliningPolicy policy = POLICY_PROVIDER.get(graph.getOptions());
+        InliningPolicy policy = POLICY_PROVIDER.get(coreProviders, graph.getOptions());
         policy.run(new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy));
     }
 }

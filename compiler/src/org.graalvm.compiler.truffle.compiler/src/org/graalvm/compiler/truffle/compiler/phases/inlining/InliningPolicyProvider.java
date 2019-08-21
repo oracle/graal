@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 
 public abstract class InliningPolicyProvider implements Comparable<InliningPolicyProvider> {
@@ -36,18 +37,20 @@ public abstract class InliningPolicyProvider implements Comparable<InliningPolic
         this.name = name;
     }
 
-    public abstract InliningPolicy get(OptionValues optionValues);
+    public abstract InliningPolicy get(CoreProviders providers, OptionValues optionValues);
 
     @Override
     public int compareTo(InliningPolicyProvider o) {
         return Integer.compare(o.priority, priority);
     }
 
-    public int getPriority() {
-        return priority;
-    }
-
     public String getName() {
         return name;
     }
+
+    @Override
+    public String toString() {
+        return "InliningPolicyProvider[" + name + "]";
+    }
+
 }

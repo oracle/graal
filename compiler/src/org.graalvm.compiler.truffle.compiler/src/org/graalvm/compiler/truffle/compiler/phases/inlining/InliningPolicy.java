@@ -26,38 +26,28 @@ package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
 import java.util.Map;
 
+@SuppressWarnings("unused")
 public interface InliningPolicy {
 
-    @SuppressWarnings("unused")
     default void afterAddChildren(CallNode callNode) {
     }
 
-    @SuppressWarnings("unused")
     default void removedNode(CallNode callNode, CallNode child) {
     }
 
-    @SuppressWarnings("unused")
-    default CallNodeData newCallNodeData(CallNode callNode) {
-        return new CallNodeData() {
-        };
+    default Object newCallNodeData(CallNode callNode) {
+        return null;
     }
 
-    @SuppressWarnings("unused")
     default void afterPartialEvaluation(CallNode node) {
     }
 
-    @SuppressWarnings("unused")
     default void putProperties(CallNode callNode, Map<Object, Object> properties) {
     }
 
-    @SuppressWarnings("unused")
     default void afterExpand(CallNode callNode) {
     }
 
-    @SuppressWarnings("unused")
     default void run(CallTree tree) {
-    }
-
-    interface CallNodeData {
     }
 }

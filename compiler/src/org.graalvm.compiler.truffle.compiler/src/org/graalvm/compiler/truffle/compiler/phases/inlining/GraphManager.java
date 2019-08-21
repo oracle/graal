@@ -51,17 +51,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class GraphManager {
+final class GraphManager {
 
     private final PartialEvaluator partialEvaluator;
     private final StructuredGraph rootIR;
     private final CallNodeProvider callNodeProvider;
-    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining = EconomicMap.create();
-    EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
+    private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCacheForInlining = EconomicMap.create();
+    private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
 
     GraphManager(StructuredGraph ir, PartialEvaluator partialEvaluator, CallNodeProvider callNodeProvider) {
         this.partialEvaluator = partialEvaluator;
-        rootIR = ir;
+        this.rootIR = ir;
         this.callNodeProvider = callNodeProvider;
     }
 
@@ -72,6 +72,10 @@ public class GraphManager {
             }
         }
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
+    }
+
+    boolean contains(CompilableTruffleAST truffleAST) {
+        return irCache.containsKey(truffleAST);
     }
 
     Entry get(CompilableTruffleAST truffleAST) {

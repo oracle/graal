@@ -30,12 +30,12 @@ import java.util.List;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 
-public class DefaultPolicy implements InliningPolicy {
+final class DefaultPolicy implements InliningPolicy {
 
     private final OptionValues optionValues;
     private int expandedCount = 0;
 
-    public DefaultPolicy(OptionValues optionValues) {
+    DefaultPolicy(OptionValues optionValues) {
         this.optionValues = optionValues;
     }
 
