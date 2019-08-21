@@ -72,13 +72,13 @@ def rename_packages(filepath, verbose=False):
     for old_name, new_name in package_renamings.items():
         new_contents = new_contents.replace(old_name, new_name)
         if new_contents != contents:
-             with open(filepath, 'w') as fp:
-                 fp.write(new_contents)
-                 if verbose:
-                     mx.log('  updated ' + filepath)
+            with open(filepath, 'w') as fp:
+                fp.write(new_contents)
+                if verbose:
+                    mx.log('  updated ' + filepath)
 
 # Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
-# as it on the class path and not clash with packages in the jdk.internal.vm.compiler module.
+# as is on the class path and not clash with packages in the jdk.internal.vm.compiler module.
 # Also used by other script.
 package_renamings = {
     'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
@@ -154,7 +154,7 @@ def updategraalinopenjdk(args):
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:
             if filename.endswith('.gmk'):
-                 rename_packages(join(dirpath, filename), True)
+                rename_packages(join(dirpath, filename), True)
 
     java_package_re = re.compile(r"^\s*package\s+(?P<package>[a-zA-Z_][\w\.]*)\s*;$", re.MULTILINE)
 
