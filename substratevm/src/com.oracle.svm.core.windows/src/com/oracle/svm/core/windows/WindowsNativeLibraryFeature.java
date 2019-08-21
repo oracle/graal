@@ -72,10 +72,6 @@ class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
         if (!JDKLibZipSubstitutions.initIDs()) {
             return false;
         }
-        if (!WindowsJavaNIOSubstitutions.initIDs()) {
-            return false;
-        }
-
         try {
             WinSock.init();
             System.loadLibrary("net");

@@ -54,6 +54,15 @@ public class DisallowedImageHeapObjectFeature implements Feature {
         access.registerObjectReplacer(this::replacer);
     }
 
+    private static final Class<?> CANCELLABLE_CLASS;
+    static {
+        try {
+            CANCELLABLE_CLASS = Class.forName("sun.nio.fs.Cancellable");
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     private Object replacer(Object original) {
         /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {
@@ -98,6 +107,12 @@ public class DisallowedImageHeapObjectFeature implements Feature {
             throw error("Detected a ZipFile object in the image heap. " +
                             "A ZipFile object contains pointers to unmanaged C memory and file descriptors, and these resources are no longer available at image run time. " +
                             classInitialization.objectInstantiationTraceMessage(original, "Try avoiding to initialize the class that caused initialization of the direct Buffer."));
+        }
+
+        if (CANCELLABLE_CLASS.isInstance(original)) {
+            throw error("Detected an instance of a class that extends " + CANCELLABLE_CLASS.getTypeName() + ": " + original.getClass().getTypeName() + ". " +
+                            "It contains a pointer to unmanaged C memory, which is no longer available at image run time. " +
+                            classInitialization.objectInstantiationTraceMessage(original, "Try avoiding to initialize the class that caused initialization of the object."));
         }
 
         return original;
