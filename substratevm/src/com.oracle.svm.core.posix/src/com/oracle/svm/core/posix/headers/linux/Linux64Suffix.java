@@ -45,6 +45,7 @@ import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Stat.stat;
+import com.oracle.svm.core.posix.headers.Statvfs.statvfs;
 import com.oracle.svm.core.posix.headers.Stdio.FILE;
 
 //Checkstyle: stop
@@ -115,7 +116,7 @@ class Linux64Suffix {
         private static native int F_SETLK();
 
         @Substitute
-        @CConstant("F_SETLKW")
+        @CConstant("F_SETLKW64")
         private static native int F_SETLKW();
     }
 
@@ -214,11 +215,11 @@ class Linux64Suffix {
         private static native int lstat(CCharPointer file, stat buf);
     }
 
-    @TargetClass(com.oracle.svm.core.posix.headers.Statvfs.statvfs.class)
+    @TargetClass(statvfs.class)
     @Substitute
     @CStruct(addStructKeyword = true)
     @CContext(PosixDirectives.class)
-    interface statvfs extends PointerBase {
+    interface statvfs64 extends PointerBase {
         @KeepOriginal
         long f_bsize();
 
@@ -267,7 +268,7 @@ class Linux64Suffix {
     @TargetClass(com.oracle.svm.core.posix.headers.Stdio.class)
     static final class Target_com_oracle_svm_core_posix_headers_Stdio {
         @Substitute
-        @CFunction("fopen")
+        @CFunction("fopen64")
         private static native FILE fopen(CCharPointer filename, CCharPointer modes);
     }
 
