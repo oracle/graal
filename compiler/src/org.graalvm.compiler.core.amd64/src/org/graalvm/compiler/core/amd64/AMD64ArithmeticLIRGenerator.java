@@ -122,6 +122,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SD;
@@ -646,7 +647,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             int length = kind.getVectorLength();
             switch (scalarKind) {
                 case SINGLE:
-                    return emitBinary(resultKind, VDIVSD, a, b);
+                    return emitBinary(resultKind, VDIVPS, a, b);
                 case DOUBLE:
                     return emitBinary(resultKind, VDIVPD, a, b);
                 default:
