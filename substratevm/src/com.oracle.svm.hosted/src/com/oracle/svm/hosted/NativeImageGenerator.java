@@ -479,7 +479,7 @@ public class NativeImageGenerator {
 
     private static void setSystemPropertiesForImageLate(NativeImageKind imageKind) {
         VMError.guarantee(ImageInfo.inImageBuildtimeCode(), "System property to indicate image build time is set earlier, before listing classes");
-        if (imageKind.executable) {
+        if (imageKind.isExecutable) {
             System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
         } else {
             System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY);
@@ -532,7 +532,6 @@ public class NativeImageGenerator {
             }
 
             NativeImageHeap heap;
-            HostedMethod mainEntryPointHostedStub;
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
             try (StopTimer t = new Timer(imageName, "universe").start()) {
@@ -559,14 +558,6 @@ public class NativeImageGenerator {
                         assert found != null;
                         hostedEntryPoints.add(found);
                     }
-                }
-                /* Find main entry point */
-                if (!Pair.<Method, CEntryPointData> empty().equals(mainEntryPoint)) {
-                    AnalysisMethod analysisStub = CEntryPointCallStubSupport.singleton().getStubForMethod(mainEntryPoint.getLeft());
-                    mainEntryPointHostedStub = (HostedMethod) hMetaAccess.getUniverse().lookup(analysisStub);
-                    assert hostedEntryPoints.contains(mainEntryPointHostedStub);
-                } else {
-                    mainEntryPointHostedStub = null;
                 }
                 if (hostedEntryPoints.size() == 0) {
                     throw UserError.abort("Warning: no entry points found, i.e., no method annotated with @" + CEntryPoint.class.getSimpleName());
@@ -629,7 +620,7 @@ public class NativeImageGenerator {
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
-                        this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, mainEntryPointHostedStub, loader.getClassLoader());
+                        this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
                         image.build(debug);
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
