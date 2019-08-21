@@ -1488,7 +1488,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (usage == merge.stateAfter()) {
                 continue;
             }
-            // We also want to allow the usage to be on the loop-proxy if one of the branches is a loop exit.
+            // We also want to allow the usage to be on the loop-proxy if one of the branches is a
+            // loop exit.
             if (usage instanceof ValueProxyNode) {
                 ValueProxyNode proxy = (ValueProxyNode) usage;
                 if (proxy.proxyPoint() == trueSuccessor || proxy.proxyPoint() == falseSuccessor) {
