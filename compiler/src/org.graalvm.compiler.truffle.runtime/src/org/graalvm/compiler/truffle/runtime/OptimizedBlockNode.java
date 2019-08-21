@@ -281,6 +281,14 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
         return Collections.emptyList();
     }
 
+    /*
+     * The partial blocks are computed depth first. The deepest block is computed first and if that
+     * block computes partial blocks then these nodes will be subtracted from the parent block
+     * computation. A block might be split if it has at least two elements. A set of block elements
+     * is split if it reaches the maxBlockSize limit. If the total number of child nodes of a block
+     * is smaller than the maxBlockSize limit, then the block will not be split. A parent block
+     * might still split in that case.
+     */
     private static <T extends Node> PartialBlocks<T> computePartialBlocks(OptimizedCallTarget rootCompilation, OptimizedBlockNode<T> currentBlock, BlockVisitor visitor, Object[] array,
                     int maxBlockSize) {
         int currentBlockSize = 0;
