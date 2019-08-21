@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -223,6 +224,8 @@ public final class DebugExprType {
             DebugExprType innerType = getTypeFromSymbolTableMetaObject(arrayType.getElementType(0));
             return new DebugExprType(Kind.ARRAY, innerType, arrayType.getElementCount());
         } else if (metaObj instanceof LLVMSourceDecoratorType) {
+            return getTypeFromSymbolTableMetaObject(((LLVMSourceDecoratorType) metaObj).getActualType());
+        } else if (metaObj instanceof LLVMSourceStructLikeType) {
             return new DebugExprType(Kind.STRUCT, null);
         } else if (metaObj instanceof LLVMSourcePointerType) {
             LLVMSourcePointerType pointerType = (LLVMSourcePointerType) metaObj;
