@@ -29,24 +29,16 @@
 import os
 import shutil
 from argparse import ArgumentParser
-from os.path import join, exists, dirname
+from os.path import join, exists
 
 import mx
-import mx_compiler
+from mx_updategraalinopenjdk import package_renamings, rename_packages
 
 def renamegraalpackages(args):
     """ rename Graal packages to match names in OpenJDK"""
-    parser = ArgumentParser(prog='mx updategraalinopenjdk')
+    parser = ArgumentParser(prog='mx renamegraalpackages')
 
     args = parser.parse_args(args)
-
-    # Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
-    # as it on the class path and not clash with packages in the jdk.internal.vm.compiler module.
-    package_renamings = {
-        'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
-        'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
-        'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal'
-    }
 
     package_suffixes = {
         'org.graalvm.collections' : ['', '.test'],
@@ -54,31 +46,26 @@ def renamegraalpackages(args):
         'org.graalvm.libgraal'    : ['', '.jdk8', '.jdk11', '.jdk13']
     }
     vc_dir = mx.primary_suite().vc_dir
+
     # rename packages
     for proj_dir in [join(vc_dir, x) for x in os.listdir(vc_dir) if exists(join(vc_dir, x, 'mx.' + x, 'suite.py'))]:
         for dirpath, _, filenames in os.walk(proj_dir):
             for filename in filenames:
                 if filename.endswith('.java') or filename == 'suite.py' or filename == 'generate_unicode_properties.py':
-                    filepath = join(dirpath, filename)
-                    with open(filepath) as fp:
-                        contents = fp.read()
-                    new_contents = contents
-                    for old_name, new_name in package_renamings.items():
-                        new_contents = new_contents.replace(old_name, new_name)
-                    if new_contents != contents:
-                        with open(filepath, 'w') as fp:
-                            fp.write(new_contents)
-        # move directories accoding to new package name
+                    rename_packages(join(dirpath, filename))
+
+        # move directories according to new package name
         for old_name, new_name in package_renamings.items():
             for sfx in package_suffixes[old_name]:
                 old_dir = join(proj_dir, 'src', old_name + sfx, 'src', old_name.replace('.', os.sep))
                 if exists(old_dir):
-                    if exists(join(proj_dir, 'src', new_name + sfx)):
-                        shutil.rmtree(join(proj_dir, 'src', new_name + sfx))
-                    new_dir = join(proj_dir, 'src', new_name + sfx, 'src', new_name.replace('.', os.sep))
+                    new_name_sfx = new_name + sfx
+                    if exists(join(proj_dir, 'src', new_name_sfx)):
+                        shutil.rmtree(join(proj_dir, 'src', new_name_sfx))
+                    new_dir = join(proj_dir, 'src', new_name_sfx, 'src', new_name.replace('.', os.sep))
                     os.makedirs(new_dir)
-                    for file in os.listdir(old_dir):
-                        shutil.move(os.path.join(old_dir, file), new_dir)
+                    for f in os.listdir(old_dir):
+                        shutil.move(os.path.join(old_dir, f), new_dir)
                     shutil.rmtree(join(proj_dir, 'src', old_name + sfx))
 
     # rename in additional place
