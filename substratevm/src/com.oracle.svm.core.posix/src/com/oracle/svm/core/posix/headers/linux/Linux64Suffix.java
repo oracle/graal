@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
@@ -45,10 +44,8 @@ import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
-import com.oracle.svm.core.posix.headers.Resource.rlimit;
 import com.oracle.svm.core.posix.headers.Stat.stat;
 import com.oracle.svm.core.posix.headers.Stdio.FILE;
-import com.oracle.svm.core.posix.headers.Uio.iovec;
 
 //Checkstyle: stop
 
@@ -64,48 +61,14 @@ class Linux64Suffix {
         long d_ino();
 
         @KeepOriginal
-        long d_off();
-
-        @KeepOriginal
-        short d_reclen();
-
-        @KeepOriginal
-        byte d_type();
-
-        @KeepOriginal
         CCharPointer d_name();
     }
 
     @TargetClass(com.oracle.svm.core.posix.headers.Dirent.class)
     static final class Target_com_oracle_svm_core_posix_headers_Dirent {
-
-        @Substitute
-        @CFunction("readdir64")
-        private static native dirent readdir(DIR dirp);
-
         @Substitute
         @CFunction("readdir64_r")
         private static native int readdir_r(DIR dirp, dirent entry, direntPointer result);
-
-        @Substitute
-        @CFunction("scandir64")
-        private static native int scandir(CCharPointer dir, PointerBase namelist, CFunctionPointer selector, CFunctionPointer cmp);
-
-        @Substitute
-        @CFunction("scandirat64")
-        private static native int scandirat(int dfd, CCharPointer dir, PointerBase namelist, CFunctionPointer selector, CFunctionPointer cmp);
-
-        @Substitute
-        @CFunction("alphasort64")
-        private static native int alphasort(direntPointer e1, direntPointer e2);
-
-        @Substitute
-        @CFunction("getdirentries64")
-        private static native SignedWord getdirentries(int fd, CCharPointer buf, SignedWord nbytes, PointerBase basep);
-
-        @Substitute
-        @CFunction("versionsort64")
-        private static native int versionsort(direntPointer e1, direntPointer e2);
     }
 
     @TargetClass(com.oracle.svm.core.posix.headers.Fcntl.flock.class)
@@ -148,10 +111,6 @@ class Linux64Suffix {
     @CContext(PosixDirectives.class)
     static final class Target_com_oracle_svm_core_posix_headers_Fcntl {
         @Substitute
-        @CConstant("F_GETLK64")
-        private static native int F_GETLK();
-
-        @Substitute
         @CConstant("F_SETLK64")
         private static native int F_SETLK();
 
@@ -182,10 +141,6 @@ class Linux64Suffix {
 
     @TargetClass(com.oracle.svm.core.posix.headers.Resource.class)
     static final class Target_com_oracle_svm_core_posix_headers_Resource {
-        @Substitute
-        @CFunction("prlimit64")
-        private static native int prlimit(int pid, int resource, rlimit new_limit, rlimit old_limit);
-
         @Substitute
         @CFunction("getrlimit64")
         private static native int getrlimit(int resource, rlimit64 rlimits);
@@ -314,17 +269,6 @@ class Linux64Suffix {
         @Substitute
         @CFunction("fopen")
         private static native FILE fopen(CCharPointer filename, CCharPointer modes);
-    }
-
-    @TargetClass(com.oracle.svm.core.posix.headers.Uio.class)
-    static final class Target_com_oracle_svm_core_posix_headers_Uio {
-        @Substitute
-        @CFunction("preadv64")
-        private static native SignedWord preadv(int fd, iovec iovec, int count, long offset);
-
-        @Substitute
-        @CFunction("pwritev64")
-        private static native SignedWord pwritev(int fd, iovec iovec, int count, long offset);
     }
 
     @TargetClass(com.oracle.svm.core.posix.headers.Unistd.class)

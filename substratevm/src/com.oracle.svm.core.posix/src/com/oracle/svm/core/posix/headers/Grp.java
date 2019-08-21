@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
@@ -42,22 +41,17 @@ import org.graalvm.word.UnsignedWord;
  */
 @CContext(PosixDirectives.class)
 public class Grp {
-    /** The group structure. */
     @CStruct(addStructKeyword = true)
     public interface group extends PointerBase {
-        /** Group name. */
         @CField
         CCharPointer gr_name();
 
-        /** Password. */
         @CField
         CCharPointer gr_passwd();
 
-        /** Group ID. */
         @CField
         int gr_gid();
 
-        /** Member list. */
         @CField
         CCharPointerPointer gr_mem();
     }
@@ -69,62 +63,24 @@ public class Grp {
         void write(PointerBase value);
     }
 
-    /** Rewind the group-file stream. */
     @CFunction
     public static native void setgrent();
 
-    /** Close the group-file stream. */
     @CFunction
     public static native void endgrent();
 
-    /** Read an entry from the group-file stream, opening it if necessary. */
     @CFunction
     public static native group getgrent();
 
-    /** Search for an entry with a matching group ID. */
     @CFunction
     public static native group getgrgid(int gid);
 
-    /** Search for an entry with a matching group name. */
     @CFunction
     public static native group getgrnam(CCharPointer name);
 
-    // /**
-    // * Reasonable value for the buffer sized used in the reentrant functions below. But better use
-    // * `sysconf'.
-    // */
-    // @CConstant
-    // public static native int NSS_BUFLEN_GROUP();
-
-    /** Reentrant versions of some of the functions above. */
-
-    @CFunction
-    public static native int getgrent_r(group resultbuf, CCharPointer buffer, UnsignedWord buflen, groupPointer result);
-
-    /** Search for an entry with a matching group ID. */
     @CFunction
     public static native int getgrgid_r(int gid, group resultbuf, CCharPointer buffer, UnsignedWord buflen, groupPointer result);
 
-    /** Search for an entry with a matching group name. */
     @CFunction
     public static native int getgrnam_r(CCharPointer name, group resultbuf, CCharPointer buffer, UnsignedWord buflen, groupPointer result);
-
-    /** Set the group set for the current user to GROUPS (N of them). */
-    @CFunction
-    public static native int setgroups(UnsignedWord n, CIntPointer groups);
-
-    /**
-     * Store at most *NGROUPS members of the group set for USER into GROUPS. Also include GROUP. The
-     * actual number of groups found is returned in *NGROUPS. Return -1 if the if *NGROUPS is too
-     * small.
-     */
-    @CFunction
-    public static native int getgrouplist(CCharPointer user, int group, CIntPointer groups, CIntPointer ngroups);
-
-    /**
-     * Initialize the group set for the current user by reading the group database and using all
-     * groups of which USER is a member. Also include GROUP.
-     */
-    @CFunction
-    public static native int initgroups(CCharPointer user, int group);
 }

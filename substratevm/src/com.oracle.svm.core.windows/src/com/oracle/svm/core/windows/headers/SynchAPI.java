@@ -41,9 +41,6 @@ import org.graalvm.word.PointerBase;
 @Platforms(Platform.WINDOWS.class)
 public class SynchAPI {
 
-    /**
-     * Create an Event Object
-     */
     @CFunction
     public static native WinBase.HANDLE CreateEventA(PointerBase lpEventAttributes, int bManualReset, int bInitialState, PointerBase lpName);
 
@@ -63,9 +60,10 @@ public class SynchAPI {
     @CConstant
     public static native int INFINITE();
 
-    /**
+    /*
      * Result codes for WaitForSingleObject
      */
+
     @CConstant
     public static native int WAIT_OBJECT_0();
 

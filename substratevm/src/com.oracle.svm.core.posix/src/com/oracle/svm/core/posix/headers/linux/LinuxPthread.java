@@ -29,18 +29,17 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
 @Platforms(InternalPlatform.LINUX_AND_JNI.class)
 public class LinuxPthread {
-
     /* { Allow names with underscores: Checkstyle: stop */
 
-    /** Set thread name visible in the kernel and its interfaces. */
     @CFunction
     public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
 

@@ -43,8 +43,6 @@ public class Spawn {
     /* Allow lower-case type names: Checkstyle: stop. */
 
     /**
-     * A pointer to a process identifier.
-     *
      * Process identifiers are 32-bit signed integers on both Darwin and Linux.
      */
     @CPointerTo(nameOfCType = "pid_t")
@@ -55,12 +53,10 @@ public class Spawn {
         void write(int value);
     }
 
-    /** A pointer to an opaque action type. */
     @CStruct
     public interface posix_spawn_file_actions_t extends PointerBase {
     }
 
-    /** A pointer to an opaque attribute type. */
     @CStruct
     public interface posix_spawnattr_t extends PointerBase {
     }
