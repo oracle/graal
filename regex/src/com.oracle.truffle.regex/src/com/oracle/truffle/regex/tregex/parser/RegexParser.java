@@ -25,8 +25,6 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -35,13 +33,14 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -58,6 +57,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CalcMinPathsVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DeleteVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
@@ -115,13 +115,10 @@ public final class RegexParser {
     private Group curGroup;
     private Term curTerm;
 
-    private RegexFeatures features;
-
-    private IntRangesBuffer tmpRangesBuffer1;
-    private IntRangesBuffer tmpRangesBuffer2;
+    private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    public RegexParser(RegexSource source, RegexOptions options) throws RegexSyntaxException {
+    public RegexParser(RegexSource source, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.source = source;
         this.flags = RegexFlags.parseFlags(source.getFlags());
         this.options = options;
@@ -132,15 +129,11 @@ public final class RegexParser {
         this.copyVisitor = new CopyVisitor(ast);
         this.deleteVisitor = new DeleteVisitor(ast);
         this.setSourceSectionVisitor = options.isDumpAutomata() ? new SetSourceSectionVisitor() : null;
+        this.compilationBuffer = compilationBuffer;
     }
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
-        return new RegexParser(new RegexSource(pattern), RegexOptions.DEFAULT).parse(false);
-    }
-
-    @TruffleBoundary
-    public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexParser(source, RegexOptions.DEFAULT).validate();
+        return new RegexParser(new RegexSource(pattern), RegexOptions.DEFAULT, new CompilationBuffer()).parse(false);
     }
 
     @TruffleBoundary
@@ -151,6 +144,9 @@ public final class RegexParser {
                 properties.setNonLiteralLookBehindAssertions();
                 break;
             }
+        }
+        if (properties.hasQuantifiers() && !properties.hasLargeCountedRepetitions()) {
+            UnrollQuantifiersVisitor.unrollQuantifiers(this, ast.getRoot());
         }
         final CalcMinPathsVisitor calcMinPathsVisitor = new CalcMinPathsVisitor();
         calcMinPathsVisitor.runReverse(ast.getRoot());
@@ -196,34 +192,8 @@ public final class RegexParser {
         }
     }
 
-    @TruffleBoundary
-    public void validate() throws RegexSyntaxException {
-        features = new RegexFeatures();
-        parseDryRun();
-    }
-
-    @TruffleBoundary
-    public int getNumberOfCaptureGroups() {
-        return lexer.numberOfCaptureGroups();
-    }
-
-    @TruffleBoundary
-    public Map<String, Integer> getNamedCaptureGroups() {
-        return lexer.getNamedCaptureGroups();
-    }
-
     public RegexFlags getFlags() {
         return flags;
-    }
-
-    /**
-     * Returns the features used by the regular expression that was just validated. This property is
-     * only populated after a call to {@link #validate()} and should therefore only be accessed
-     * then.
-     */
-    public RegexFeatures getFeatures() {
-        assert features != null;
-        return features;
     }
 
     /* AST manipulation */
@@ -322,27 +292,13 @@ public final class RegexParser {
         createGroup(token, false, false, lookAhead);
     }
 
-    private IntRangesBuffer getTmpRangesBuffer1() {
-        if (tmpRangesBuffer1 == null) {
-            tmpRangesBuffer1 = new IntRangesBuffer();
-        }
-        return tmpRangesBuffer1;
-    }
-
-    private IntRangesBuffer getTmpRangesBuffer2() {
-        if (tmpRangesBuffer2 == null) {
-            tmpRangesBuffer2 = new IntRangesBuffer();
-        }
-        return tmpRangesBuffer2;
-    }
-
     private Term translateUnicodeCharClass(Token.CharacterClass token) {
         CodePointSet codePointSet = token.getCodePointSet();
         SourceSection src = token.getSourceSection();
         Group group = ast.createGroup();
         group.setEnclosedCaptureGroupsLow(groupCount.getCount());
         group.setEnclosedCaptureGroupsHigh(groupCount.getCount());
-        IntRangesBuffer tmp = getTmpRangesBuffer1();
+        IntRangesBuffer tmp = compilationBuffer.getIntRangesBuffer1();
         CodePointSet bmpRanges = codePointSet.createIntersection(Constants.BMP_WITHOUT_SURROGATES, tmp);
         CodePointSet astralRanges = codePointSet.createIntersection(Constants.ASTRAL_SYMBOLS, tmp);
         CodePointSet loneLeadSurrogateRanges = codePointSet.createIntersection(Constants.LEAD_SURROGATES, tmp);
@@ -370,7 +326,7 @@ public final class RegexParser {
         if (astralRanges.matchesSomething()) {
             // completeRanges matches surrogate pairs where leading surrogates can be followed by
             // any trailing surrogates
-            IntRangesBuffer completeRanges = getTmpRangesBuffer2();
+            IntRangesBuffer completeRanges = compilationBuffer.getIntRangesBuffer2();
             completeRanges.clear();
 
             char curLead = Character.highSurrogate(astralRanges.getLo(0));
@@ -512,6 +468,72 @@ public final class RegexParser {
         ((Group) curTerm).setLoop(true);
     }
 
+    private void expandQuantifier(Term toExpand) {
+        assert toExpand.hasQuantifier();
+        Token.Quantifier quantifier = toExpand.getQuantifier();
+        toExpand.setQuantifier(null);
+        assert quantifier.getMin() <= TRegexOptions.TRegexMaxCountedRepetition && quantifier.getMax() <= TRegexOptions.TRegexMaxCountedRepetition;
+        curTerm = toExpand;
+        curSequence = (Sequence) curTerm.getParent();
+        curGroup = curSequence.getParent();
+
+        ObjectArrayBuffer buf = compilationBuffer.getObjectBuffer1();
+        int size = curSequence.size();
+        for (int i = curTerm.getSeqIndex() + 1; i < size; i++) {
+            buf.add(curSequence.getLastTerm());
+            curSequence.removeLastTerm();
+        }
+
+        if (quantifier.getMin() == 0) {
+            curSequence.removeLastTerm();
+        }
+        Term t = curTerm;
+        for (int i = quantifier.getMin(); i > 1; i--) {
+            addTerm(copyVisitor.copy(t));
+            if (curTerm instanceof Group) {
+                ((Group) curTerm).setExpandedQuantifier(true);
+            }
+        }
+        if (quantifier.isInfiniteLoop()) {
+            createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, 0);
+            setLoop();
+        } else {
+            createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, (quantifier.getMax() - quantifier.getMin()) - 1);
+        }
+        for (int i = buf.length() - 1; i >= 0; i--) {
+            curSequence.add((Term) buf.get(i));
+        }
+    }
+
+    private static final class UnrollQuantifiersVisitor extends DepthFirstTraversalRegexASTVisitor {
+
+        private final RegexParser parser;
+
+        private UnrollQuantifiersVisitor(RegexParser parser) {
+            this.parser = parser;
+        }
+
+        public static void unrollQuantifiers(RegexParser parser, RegexASTNode runRoot) {
+            new UnrollQuantifiersVisitor(parser).run(runRoot);
+        }
+
+        @Override
+        protected void visit(CharacterClass characterClass) {
+            expand(characterClass);
+        }
+
+        @Override
+        protected void leave(Group group) {
+            expand(group);
+        }
+
+        private void expand(Term t) {
+            if (t.hasQuantifier()) {
+                parser.expandQuantifier(t);
+            }
+        }
+    }
+
     private boolean curTermIsAnchor(PositionAssertion.Type type) {
         return curTerm instanceof PositionAssertion && ((PositionAssertion) curTerm).type == type;
     }
@@ -602,6 +624,7 @@ public final class RegexParser {
                 case groupEnd:
                     if (tryMergeSingleCharClassAlternations()) {
                         curGroup.removeLastSequence();
+                        ast.getNodeCount().dec();
                     }
                     tryMergeCommonPrefixes();
                     popGroup(token);
@@ -635,32 +658,21 @@ public final class RegexParser {
             addTerm(createCharClass(CharSet.getEmpty(), null));
             return;
         }
-        if (quantifier.getMin() == 0) {
-            if (curTerm instanceof LookAroundAssertion) {
-                deleteVisitor.run(curSequence.getLastTerm());
-            }
+        if (quantifier.getMax() == 0 || (curTerm instanceof LookAroundAssertion && quantifier.getMin() == 0)) {
+            deleteVisitor.run(curSequence.getLastTerm());
             curSequence.removeLastTerm();
+            return;
         }
-        Term t = curTerm;
-        if (!(curTerm instanceof LookAroundAssertion)) {
-            if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
-                properties.setLargeCountedRepetitions();
-                // avoid tree explosion. note that this will result in an incorrect parse tree!
-                return;
-            }
-            for (int i = quantifier.getMin(); i > 1; i--) {
-                addTerm(copyVisitor.copy(t));
-                if (curTerm instanceof Group) {
-                    ((Group) curTerm).setExpandedQuantifier(true);
-                }
-            }
-            if (quantifier.isInfiniteLoop()) {
-                createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, 0);
-                setLoop();
-            } else {
-                createOptional(t, quantifier.isGreedy(), quantifier.getMin() > 0, (quantifier.getMax() - quantifier.getMin()) - 1);
-            }
+        if (curTerm instanceof LookAroundAssertion) {
+            // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
+            // ignore.
+            return;
         }
+        if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
+            properties.setLargeCountedRepetitions();
+        }
+        curTerm.setQuantifier(quantifier);
+        properties.setQuantifiers();
     }
 
     /**
@@ -682,6 +694,7 @@ public final class RegexParser {
                 CharacterClass curCC = (CharacterClass) curSequence.getFirstTerm();
                 prevCC.setCharSet(prevCC.getCharSet().union(curCC.getCharSet()));
                 curSequence.removeLastTerm();
+                ast.getNodeCount().dec();
                 if (options.isDumpAutomata()) {
                     // set source section to cover both char classes and the "|" in between
                     SourceSection prevCCSrc = prevCC.getSourceSection();
@@ -730,7 +743,7 @@ public final class RegexParser {
     private boolean groupHasEqualCharClassesAt(int i) {
         CharacterClass cmp = null;
         for (Sequence s : curGroup.getAlternatives()) {
-            if (s.size() <= i || !(s.getTerms().get(i) instanceof CharacterClass)) {
+            if (s.size() <= i || s.getTerms().get(i).hasQuantifier() || !(s.getTerms().get(i) instanceof CharacterClass)) {
                 return false;
             }
             CharacterClass cc = (CharacterClass) s.getTerms().get(i);
@@ -746,155 +759,6 @@ public final class RegexParser {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(source.getPattern(), source.getFlags(), msg);
+        return new RegexSyntaxException(source, msg);
     }
-
-    /**
-     * A type representing an entry in the stack of currently open parenthesized expressions in a
-     * RegExp.
-     */
-    private enum RegexStackElem {
-        Group,
-        LookAheadAssertion,
-        LookBehindAssertion
-    }
-
-    /**
-     * Information about the state of the {@link #curTerm} field. The field can be either null,
-     * point to a lookahead assertion node, to a lookbehind assertion node or to some other non-null
-     * node.
-     */
-    private enum CurTermState {
-        Null,
-        LookAheadAssertion,
-        LookBehindAssertion,
-        Other
-    }
-
-    /**
-     * Like {@link #parse(boolean)}, but does not construct any AST, only checks for syntax errors.
-     * <p>
-     * This method simulates the state of {@link RegexParser} as it runs {@link #parse(boolean)}.
-     * Most of the syntax errors are handled by {@link RegexLexer}. In order to correctly identify
-     * the remaining syntax errors, we need to track only a fraction of the parser's state (the
-     * stack of open parenthesized expressions and a short characterization of the last term).
-     * <p>
-     * Unlike {@link #parse(boolean)}, this method will never throw an
-     * {@link UnsupportedRegexException}.
-     *
-     * @throws RegexSyntaxException when a syntax error is detected in the RegExp
-     */
-    private void parseDryRun() throws RegexSyntaxException {
-        List<RegexStackElem> syntaxStack = new ArrayList<>();
-        int lookBehindDepth = 0;
-        CurTermState curTermState = CurTermState.Null;
-        while (lexer.hasNext()) {
-            Token token = lexer.next();
-            if (lookBehindDepth > 0 && token.kind != Token.Kind.charClass && token.kind != Token.Kind.groupEnd) {
-                features.setNonLiteralLookBehindAssertions();
-            }
-            switch (token.kind) {
-                case caret:
-                    curTermState = CurTermState.Other;
-                    break;
-                case dollar:
-                    if (lookBehindDepth > 0 && !flags.isMultiline()) {
-                        features.setEndOfStringAssertionsInLookBehind();
-                    }
-                    curTermState = CurTermState.Other;
-                    break;
-                case wordBoundary:
-                case nonWordBoundary:
-                    if (lookBehindDepth > 0) {
-                        features.setWordBoundaryAssertionsInLookBehind();
-                    }
-                    curTermState = CurTermState.Other;
-                    break;
-                case backReference:
-                    features.setBackReferences();
-                    if (lookBehindDepth > 0) {
-                        features.setBackReferencesInLookBehind();
-                    }
-                    curTermState = CurTermState.Other;
-                    break;
-                case charClass:
-                    curTermState = CurTermState.Other;
-                    break;
-                case quantifier:
-                    switch (curTermState) {
-                        case Null:
-                            throw syntaxError(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
-                        case LookAheadAssertion:
-                            if (flags.isUnicode()) {
-                                throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
-                            }
-                            break;
-                        case LookBehindAssertion:
-                            throw syntaxError(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
-                        case Other:
-                            Token.Quantifier quantifier = (Token.Quantifier) token;
-                            if (lookBehindDepth > 0 && quantifier.getMin() != quantifier.getMax()) {
-                                features.setNonTrivialQuantifiersInLookBehind();
-                            }
-                            if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
-                                features.setLargeCountedRepetitions();
-                            }
-                            break;
-                    }
-                    curTermState = CurTermState.Other;
-                    break;
-                case alternation:
-                    curTermState = CurTermState.Null;
-                    break;
-                case captureGroupBegin:
-                case nonCaptureGroupBegin:
-                    syntaxStack.add(RegexStackElem.Group);
-                    curTermState = CurTermState.Null;
-                    break;
-                case lookAheadAssertionBegin:
-                    if (((Token.LookAheadAssertionBegin) token).isNegated()) {
-                        features.setNegativeLookAheadAssertions();
-                    }
-                    if (lookBehindDepth > 0) {
-                        features.setLookAheadAssertionsInLookBehind();
-                    }
-                    syntaxStack.add(RegexStackElem.LookAheadAssertion);
-                    curTermState = CurTermState.Null;
-                    break;
-                case lookBehindAssertionBegin:
-                    if (((Token.LookBehindAssertionBegin) token).isNegated()) {
-                        features.setNegativeLookBehindAssertions();
-                        if (lookBehindDepth > 0) {
-                            features.setNegativeLookBehindAssertionsInLookBehind();
-                        }
-                    }
-                    syntaxStack.add(RegexStackElem.LookBehindAssertion);
-                    lookBehindDepth++;
-                    curTermState = CurTermState.Null;
-                    break;
-                case groupEnd:
-                    if (syntaxStack.isEmpty()) {
-                        throw syntaxError(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
-                    }
-                    RegexStackElem poppedElem = syntaxStack.remove(syntaxStack.size() - 1);
-                    switch (poppedElem) {
-                        case LookAheadAssertion:
-                            curTermState = CurTermState.LookAheadAssertion;
-                            break;
-                        case LookBehindAssertion:
-                            lookBehindDepth--;
-                            curTermState = CurTermState.LookBehindAssertion;
-                            break;
-                        case Group:
-                            curTermState = CurTermState.Other;
-                            break;
-                    }
-                    break;
-            }
-        }
-        if (!syntaxStack.isEmpty()) {
-            throw syntaxError(ErrorMessages.UNTERMINATED_GROUP);
-        }
-    }
-
 }

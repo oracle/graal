@@ -28,7 +28,7 @@ package com.oracle.truffle.regex.tregex.parser;
  * This class describes the features found in a regular expression which are salient for determining
  * whether or not the regular expression can be supported by our regex engines.
  * <p>
- * Instances of this class are created and populated by calls to {@link RegexParser#validate()}.
+ * Instances of this class are created and populated by calls to {@link RegexValidator#validate()}.
  * </p>
  */
 public class RegexFeatures {
