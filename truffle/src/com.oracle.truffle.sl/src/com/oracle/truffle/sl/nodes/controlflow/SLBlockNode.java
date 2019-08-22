@@ -96,13 +96,13 @@ public final class SLBlockNode extends SLStatementNode implements BlockNode.Elem
     }
 
     /**
-     * Truffle nodes don't have a fixed execute signature. The {@link ElementExecutor} interface tells
-     * the framework how block element nodes should be executed. The executor allows to add a custom
-     * exception handler for each element, e.g. to handle a specific {@link ControlFlowException} or
-     * to pass a customizable argument, that allows implement startsWith semantics if needed. For SL
-     * we don't need to pass any argument as we just have plain block nodes, therefore we pass
-     * {@link BlockNode#NO_ARGUMENT}. In our case the executor does not need to remember any state
-     * so we reuse a singleton instance.
+     * Truffle nodes don't have a fixed execute signature. The {@link ElementExecutor} interface
+     * tells the framework how block element nodes should be executed. The executor allows to add a
+     * custom exception handler for each element, e.g. to handle a specific
+     * {@link ControlFlowException} or to pass a customizable argument, that allows implement
+     * startsWith semantics if needed. For SL we don't need to pass any argument as we just have
+     * plain block nodes, therefore we pass {@link BlockNode#NO_ARGUMENT}. In our case the executor
+     * does not need to remember any state so we reuse a singleton instance.
      */
     public void executeVoid(VirtualFrame frame, SLStatementNode node, int index, int argument) {
         node.executeVoid(frame);
