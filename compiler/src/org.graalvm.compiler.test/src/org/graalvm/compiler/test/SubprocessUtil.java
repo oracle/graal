@@ -298,7 +298,11 @@ public final class SubprocessUtil {
         while (i < commandLine.size()) {
             String s = commandLine.get(i);
             if (s.charAt(0) != '-') {
-                return i;
+                // https://bugs.openjdk.java.net/browse/JDK-8027634
+                if (isJava8OrEarlier || s.charAt(0) != '@') {
+                    return i;
+                }
+                i++;
             } else if (hasArg(s)) {
                 i += 2;
             } else {

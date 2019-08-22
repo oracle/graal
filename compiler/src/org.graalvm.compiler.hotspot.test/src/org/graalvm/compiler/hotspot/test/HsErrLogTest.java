@@ -92,7 +92,7 @@ public class HsErrLogTest extends GraalCompilerTest {
             }
         }
 
-        Assert.fail("Could not find " + re.pattern());
+        Assert.fail(String.format("Could not find %s%n%s", re.pattern(), proc));
     }
 
     private static void checkHsErr(File hsErrPath) {
