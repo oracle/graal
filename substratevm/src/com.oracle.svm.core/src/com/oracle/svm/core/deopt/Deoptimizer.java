@@ -507,8 +507,11 @@ public final class Deoptimizer {
         final Pointer newSp = KnownIntrinsics.readStackPointer()
                         /* Remove the size of this frame... */
                         .add(WordFactory.unsigned(deoptStubFrameSize))
-                        /* ... but compensate that there was no return address pushed. */
-                        .subtract(FrameAccess.returnAddressSize())
+                        /*
+                         * ... but compensate that there was no call which entered this method (eg.
+                         * no return address pushed).
+                         */
+                        .subtract(FrameAccess.singleton().stackPointerAdjustmentOnCall())
                         /* Remove the size of the frame that gets deoptimized. */
                         .add(WordFactory.unsigned(frame.getSourceTotalFrameSize()))
                         /* Add the size of the deoptimization target frames. */

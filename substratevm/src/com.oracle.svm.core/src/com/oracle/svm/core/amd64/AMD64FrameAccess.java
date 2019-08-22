@@ -70,4 +70,11 @@ public final class AMD64FrameAccess extends FrameAccess {
             return 0;
         }
     }
+
+    @Override
+    @Fold
+    public int stackPointerAdjustmentOnCall() {
+        // A call on AMD64 pushes %rip onto the stack and increments %rsp by wordSize().
+        return wordSize();
+    }
 }

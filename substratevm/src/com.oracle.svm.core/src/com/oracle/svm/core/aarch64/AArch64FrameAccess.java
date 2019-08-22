@@ -62,10 +62,14 @@ public class AArch64FrameAccess extends FrameAccess {
     @Fold
     @Override
     public int savedBasePointerSize() {
-        if (SubstrateOptions.PreserveFramePointer.getValue()) {
-            return wordSize();
-        } else {
-            return 0;
-        }
+        // The base pointer is always saved with stp instruction on method entry
+        return wordSize();
+    }
+
+    @Override
+    @Fold
+    public int stackPointerAdjustmentOnCall() {
+        // A call on AArch64 does not touch the SP.
+        return 0;
     }
 }
