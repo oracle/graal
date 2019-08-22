@@ -84,17 +84,13 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
 
     /**
      * Describes whether this node has source-level debug information attached and should be
-     * considered a source-level entity for instrumentation. Individual nodes can use this to
-     * determine whether they should provide any of the {@link StandardTags}. Per default, all nodes
-     * for which this method returns {@code true} provide the
-     * {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag}. Individual nodes
-     * can implement {@link InstrumentableNode#hasTag(Class)} to change this.
+     * considered a source-level statement for instrumentation.
      *
-     * @return whether this node both provides a valid {@link SourceSection} and should be
-     *         considered for source-level instrumentation
+     * @return whether this node may provide the
+     *         {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag}
      */
-    protected boolean isSourceInstrumentationEnabled() {
-        return sourceDescriptor != null && sourceDescriptor.isSourceInstrumentationEnabled();
+    private boolean hasStatementTag() {
+        return sourceDescriptor != null && sourceDescriptor.hasStatementTag();
     }
 
     /**
@@ -108,19 +104,19 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     }
 
     /**
-     * If this node {@link LLVMInstrumentableNode#isSourceInstrumentationEnabled() is enabled for
-     * source-level instrumentatipon}, this function considers the node to be tagged with
+     * If this node {@link LLVMInstrumentableNode#hasStatementTag() is a statement for source-level
+     * instrumentatipon}, this function considers the node to be tagged with
      * {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag}.
      *
      * @param tag class of a tag {@link com.oracle.truffle.api.instrumentation.ProvidedTags
      *            provided} by {@link com.oracle.truffle.llvm.runtime.LLVMLanguage}
      *
-     * @return whether this node is associated with the given tag.
+     * @return whether this node is associated with the given tag
      */
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.StatementTag.class) {
-            return isSourceInstrumentationEnabled();
+            return hasStatementTag();
         } else {
             return false;
         }

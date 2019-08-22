@@ -973,7 +973,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         assert instrumentationStrategy != null;
         switch (instrumentationStrategy) {
             case FORCED:
-                sourceDescriptor.setEnableStandardTags(true);
+                sourceDescriptor.setHasStatementTag(true);
                 lastLocation = location;
                 break;
             case ONLY_FIRST_STATEMENT_ON_LOCATION:
@@ -986,7 +986,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                     // though llvm debug information does not actually describe statement boundaries
                     break;
                 } else {
-                    sourceDescriptor.setEnableStandardTags(true);
+                    sourceDescriptor.setHasStatementTag(true);
                     lastLocation = location;
                 }
                 break;

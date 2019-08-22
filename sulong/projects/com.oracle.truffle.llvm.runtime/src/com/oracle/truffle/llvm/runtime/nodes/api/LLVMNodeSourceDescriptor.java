@@ -44,7 +44,7 @@ public final class LLVMNodeSourceDescriptor {
     }
 
     private LLVMSourceLocation sourceLocation;
-    private boolean enableStandardTags;
+    private boolean hasStatementTag;
 
     public LLVMSourceLocation getSourceLocation() {
         return sourceLocation;
@@ -57,8 +57,8 @@ public final class LLVMNodeSourceDescriptor {
         return sourceLocation.getSourceSection();
     }
 
-    public boolean isSourceInstrumentationEnabled() {
-        return enableStandardTags && sourceLocation != null;
+    public boolean hasStatementTag() {
+        return hasStatementTag && sourceLocation != null;
     }
 
     public void setSourceLocation(LLVMSourceLocation sourceLocation) {
@@ -66,8 +66,8 @@ public final class LLVMNodeSourceDescriptor {
         this.sourceLocation = sourceLocation;
     }
 
-    public void setEnableStandardTags(boolean enableStandardTags) {
+    public void setHasStatementTag(boolean hasStatementTag) {
         CompilerAsserts.neverPartOfCompilation();
-        this.enableStandardTags = enableStandardTags;
+        this.hasStatementTag = hasStatementTag;
     }
 }
