@@ -63,6 +63,12 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
     }
 
     @Override
+    protected boolean isInstrumentable() {
+        // Sulong does not keep source locations for inline assembly nodes
+        return false;
+    }
+
+    @Override
     public Object execute(VirtualFrame frame) {
         prologue.execute(frame);
         block.execute(frame);

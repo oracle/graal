@@ -45,11 +45,16 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     @Child private LLVMLookupDispatchTargetNode dispatchTargetNode;
     @Child private LLVMDispatchNode dispatchNode;
 
-    public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes) {
+    // this node is also used to execute inline assembly, which is not instrumentable and should
+    // therefore not be considered a function call for the debugger
+    private final boolean isSourceCall;
+
+    public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, boolean isSourceCall) {
         this.argumentNodes = argumentNodes;
         this.prepareArgumentNodes = createPrepareArgumentNodes(argumentNodes);
         this.dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
         this.dispatchNode = LLVMDispatchNodeGen.create(functionType);
+        this.isSourceCall = isSourceCall;
     }
 
     @ExplodeLoop
@@ -76,7 +81,7 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.CallTag.class) {
-            return getSourceLocation() != null;
+            return isSourceCall && getSourceLocation() != null;
         } else {
             return super.hasTag(tag);
         }
