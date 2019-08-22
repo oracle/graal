@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ public class LLVMAMD64RepNode extends LLVMStatementNode {
 
     @Override
     public void execute(VirtualFrame frame) {
-        loop.executeLoop(frame);
+        loop.execute(frame);
     }
 
     private static class LLVMAMD64RepLoopNode extends LLVMNode implements RepeatingNode {

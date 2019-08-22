@@ -1626,7 +1626,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             frame.setObject(getResult(), Null.INSTANCE);
             frame.setInt(getLoopIndex(), 0);
-            loop.executeLoop(frame);
+            loop.execute(frame);
             try {
                 return frame.getObject(loopResultSlot);
             } catch (FrameSlotTypeException e) {
