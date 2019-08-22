@@ -161,7 +161,7 @@ public class NativeImageOptions {
     public static final HostedOptionKey<Boolean> ExitAfterAnalysis = new HostedOptionKey<>(false);
 
     @Option(help = "Exit after writing relocatable file")//
-    public static final HostedOptionKey<Boolean> ExitAfterWrite = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> ExitAfterRelocatableImageWrite = new HostedOptionKey<>(false);
 
     @Option(help = "Throw unsafe operation offset errors.)")//
     public static final HostedOptionKey<Boolean> ThrowUnsafeOffsetErrors = new HostedOptionKey<>(true);
