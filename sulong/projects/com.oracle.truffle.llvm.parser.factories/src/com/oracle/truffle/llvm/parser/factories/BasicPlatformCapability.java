@@ -32,26 +32,16 @@ package com.oracle.truffle.llvm.parser.factories;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64Syscall;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallArchPrctlNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallBrkNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallClockGetTimeNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallExitNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallFutexNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetPpidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetcwdNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetpidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGettidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigactionNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigprocmaskNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallSetTidAddressNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallUnameNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
 
-public final class BasicPlatformCapability extends PlatformCapability<LLVMAMD64Syscall> {
+public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapability<S> {
+
+    public static BasicPlatformCapability create(boolean loadCxxLibraries) {
+        return new LinuxAMD64PlatformCapability(loadCxxLibraries);
+    }
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
     public static final String LIBSULONG_FILENAME = "libsulong.bc";
@@ -59,8 +49,8 @@ public final class BasicPlatformCapability extends PlatformCapability<LLVMAMD64S
 
     private final boolean loadCxxLibraries;
 
-    public BasicPlatformCapability(boolean loadCxxLibraries) {
-        super(LLVMAMD64Syscall.class);
+    protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
+        super(cls);
         this.loadCxxLibraries = loadCxxLibraries;
     }
 
@@ -87,39 +77,5 @@ public final class BasicPlatformCapability extends PlatformCapability<LLVMAMD64S
         }
     }
 
-    private static LLVMSyscallOperationNode createSyscallNode(LLVMAMD64Syscall syscall) {
-        switch (syscall) {
-            case SYS_mmap:
-                return LLVMAMD64SyscallMmapNodeGen.create();
-            case SYS_brk:
-                return LLVMAMD64SyscallBrkNodeGen.create();
-            case SYS_rt_sigaction:
-                return LLVMAMD64SyscallRtSigactionNodeGen.create();
-            case SYS_rt_sigprocmask:
-                return LLVMAMD64SyscallRtSigprocmaskNodeGen.create();
-            case SYS_getpid:
-                return new LLVMAMD64SyscallGetpidNode();
-            case SYS_exit:
-            case SYS_exit_group: // TODO: implement difference to SYS_exit
-                return new LLVMAMD64SyscallExitNode();
-            case SYS_uname:
-                return LLVMAMD64SyscallUnameNodeGen.create();
-            case SYS_getcwd:
-                return LLVMAMD64SyscallGetcwdNodeGen.create();
-            case SYS_getppid:
-                return new LLVMAMD64SyscallGetPpidNode();
-            case SYS_arch_prctl:
-                return LLVMAMD64SyscallArchPrctlNodeGen.create();
-            case SYS_gettid:
-                return new LLVMAMD64SyscallGettidNode();
-            case SYS_futex:
-                return LLVMAMD64SyscallFutexNodeGen.create();
-            case SYS_set_tid_address:
-                return LLVMAMD64SyscallSetTidAddressNodeGen.create();
-            case SYS_clock_gettime:
-                return LLVMAMD64SyscallClockGetTimeNodeGen.create();
-            default:
-                return new LLVMAMD64UnknownSyscallNode(syscall);
-        }
-    }
+    protected abstract LLVMSyscallOperationNode createSyscallNode(S syscall);
 }

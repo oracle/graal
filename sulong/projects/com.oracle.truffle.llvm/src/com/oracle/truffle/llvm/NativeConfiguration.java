@@ -62,7 +62,7 @@ public final class NativeConfiguration implements Configuration {
     NativeConfiguration(LLVMLanguage language, Key key) {
         loader = new DefaultLoader();
         intrinsicProvider = new BasicIntrinsicsProvider(language);
-        platformCapability = new BasicPlatformCapability(key.loadCxxLibraries);
+        platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
     }
 
     @Override
