@@ -89,6 +89,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
     ret->LibFFIType_type = (*env)->GetFieldID(env, LibFFIType, "type", "J");
     ret->LibFFIType_EnvType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$EnvType"));
     ret->LibFFIType_ObjectType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$ObjectType"));
+    ret->LibFFIType_NullableType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$NullableType"));
     ret->LibFFIType_StringType = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIType$StringType"));
 
     ret->NativeString = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NativeString"));
@@ -132,6 +133,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
 
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "STRING", &ffi_type_pointer);
     cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "OBJECT", &ffi_type_pointer);
+    cacheFFIType(env, NativeSimpleType, context, initializeSimpleType, "NULLABLE", &ffi_type_pointer);
 
 #if !defined(_WIN32)
     initializeFlag(env, NFIContext, context, "RTLD_GLOBAL", RTLD_GLOBAL);
@@ -152,6 +154,7 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_disposeNative
 
     (*env)->DeleteGlobalRef(env, ctx->LibFFIType_EnvType);
     (*env)->DeleteGlobalRef(env, ctx->LibFFIType_ObjectType);
+    (*env)->DeleteGlobalRef(env, ctx->LibFFIType_NullableType);
     (*env)->DeleteGlobalRef(env, ctx->LibFFIType_StringType);
 
     (*env)->DeleteGlobalRef(env, ctx->NativeString);
