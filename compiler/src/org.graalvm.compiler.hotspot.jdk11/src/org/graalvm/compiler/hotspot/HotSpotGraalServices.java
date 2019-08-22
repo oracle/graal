@@ -54,6 +54,7 @@ public class HotSpotGraalServices {
         Method exitHotSpot = null;
         Method enterGlobalScope = null;
         Method openLocalScope = null;
+        Constructor<HotSpotSpeculationLog> constructor = null;
         boolean firstFound = false;
         try {
             Class<?> scopeClass = Class.forName("jdk.vm.ci.hotspot.HotSpotObjectConstantScope");
@@ -62,24 +63,18 @@ public class HotSpotGraalServices {
             openLocalScope = scopeClass.getDeclaredMethod("openLocalScope", Object.class);
             implicitExceptionBytes = HotSpotMetaData.class.getDeclaredMethod("implicitExceptionBytes");
             exitHotSpot = HotSpotJVMCIRuntime.class.getDeclaredMethod("exitHotSpot", Integer.TYPE);
+            constructor = HotSpotSpeculationLog.class.getDeclaredConstructor(Long.TYPE);
         } catch (Exception e) {
             // If the very first method is unavailable assume nothing is available. Otherwise only
             // some are missing so complain about it.
             if (firstFound) {
-                throw new InternalError("some methods are unavailable", e);
+                throw new InternalError("some JVMCI features are unavailable", e);
             }
         }
         metaDataImplicitExceptionBytes = implicitExceptionBytes;
         runtimeExitHotSpot = exitHotSpot;
         scopeEnterGlobalScope = enterGlobalScope;
         scopeOpenLocalScope = openLocalScope;
-
-        Constructor<HotSpotSpeculationLog> constructor = null;
-        try {
-            constructor = HotSpotSpeculationLog.class.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class);
-        } catch (NoSuchMethodException e) {
-            throw new InternalError("EncodedSpeculationReason exists but constructor is missing", e);
-        }
         hotSpotSpeculationLogConstructor = constructor;
     }
 

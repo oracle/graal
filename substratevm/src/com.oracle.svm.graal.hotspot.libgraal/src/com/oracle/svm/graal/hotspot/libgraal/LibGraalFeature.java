@@ -124,6 +124,14 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     }
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        if (!LibGraal.isSupported()) {
+            throw new InternalError("LibGraalFeature is not supported by the current JDK");
+        }
+        return true;
+    }
+
+    @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Arrays.asList(JNIFeature.class, GraalFeature.class, ReflectionFeature.class);
     }
