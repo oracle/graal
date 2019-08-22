@@ -119,9 +119,9 @@ suite = {
         },
         "TruffleJSON" : {
           "urls" : [
-            "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180130.jar",
+            "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180813.jar",
           ],
-          "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
+          "sha1" : "c556821b83878d3a327bc07dedc1bf2998f99a8f",
         },
         "Java-WebSocket" : {
             "path" : "lib/Java-WebSocket-1.3.9.jar",
