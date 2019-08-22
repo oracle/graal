@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -101,16 +100,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMPointer doPointer(LLVMPointer addr, long incr) {
-            return addr.increment(incr);
-        }
-
-        @Specialization
-        protected LLVMVirtualAllocationAddress doTruffleObject(LLVMVirtualAllocationAddress addr, int incr) {
-            return addr.increment(incr);
-        }
-
-        @Specialization
-        protected LLVMVirtualAllocationAddress doTruffleObject(LLVMVirtualAllocationAddress addr, long incr) {
             return addr.increment(incr);
         }
     }

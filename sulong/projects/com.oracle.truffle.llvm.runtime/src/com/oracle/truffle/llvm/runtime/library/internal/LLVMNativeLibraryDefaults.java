@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.library.internal;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -138,6 +139,28 @@ abstract class LLVMNativeLibraryDefaults {
         @ExportMessage
         static LLVMNativePointer toNativePointer(Long receiver) {
             return LLVMNativePointer.create(receiver);
+        }
+    }
+
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = int[].class)
+    @SuppressWarnings("unused")
+    static class ArrayLibrary {
+
+        @ExportMessage
+        static boolean isPointer(int[] receiver) {
+            return false;
+        }
+
+        @ExportMessage
+        static long asPointer(int[] receiver) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+
+        @ExportMessage
+        static LLVMNativePointer toNativePointer(int[] receiver,
+                        @CachedLibrary("receiver") LLVMNativeLibrary self) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(self, "Cannot convert virtual allocation object to native pointer.", receiver);
         }
     }
 }

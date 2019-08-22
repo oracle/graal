@@ -29,13 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.IntValueProfile;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -52,12 +49,6 @@ public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
     protected int doI32DerefHandle(LLVMNativePointer addr,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doI32Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
-    }
-
-    @Specialization
-    protected int doI32(LLVMVirtualAllocationAddress address,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        return address.getI32(memory);
     }
 
     @Specialization(limit = "3")

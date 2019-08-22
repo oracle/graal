@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  * Library for container objects that behave like raw memory that can be written.
  */
 @GenerateLibrary
+@DefaultExport(LLVMManagedAccessDefaults.VirtualAlloc.class)
 @DefaultExport(LLVMManagedAccessDefaults.FallbackWrite.class)
 public abstract class LLVMManagedWriteLibrary extends Library {
 

@@ -29,12 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -61,15 +58,6 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
     @Specialization
     protected Object doOp(LLVMPointer address, byte value, long length, boolean isVolatile) {
         memSet.executeWithTarget(address, value, length);
-        return address;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doOp(LLVMVirtualAllocationAddress address, byte value, long length, boolean isVolatile, @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        for (int i = 0; i < length; i++) {
-            address.writeI8(memory, value);
-        }
         return address;
     }
 }

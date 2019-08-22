@@ -29,17 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMVirtualMalloc extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doIntrinsic(long size) {
-        return new LLVMVirtualAllocationAddress(size, 0);
+    protected LLVMPointer doIntrinsic(long size) {
+        long s = (size + 3) / 4;
+        int is = (int) s;
+        if (is == s) {
+            return LLVMManagedPointer.create(new int[(int) s]);
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, "Virtual allocation too large: %d", size);
+        }
     }
 }

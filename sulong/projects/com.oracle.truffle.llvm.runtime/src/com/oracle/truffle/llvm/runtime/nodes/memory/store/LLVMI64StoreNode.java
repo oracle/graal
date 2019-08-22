@@ -32,9 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -67,12 +65,6 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
     protected void doOp(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress) {
         getLLVMMemoryCached().putI64(addr, toAddress.executeWithTarget(value).asNative());
-    }
-
-    @Specialization
-    protected void doOp(LLVMVirtualAllocationAddress address, long value,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        address.writeI64(memory, value);
     }
 
     @Specialization(limit = "3")

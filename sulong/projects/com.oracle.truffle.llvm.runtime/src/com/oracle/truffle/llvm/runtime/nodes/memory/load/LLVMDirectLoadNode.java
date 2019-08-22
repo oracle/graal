@@ -35,10 +35,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMIVarBitDirectLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -131,12 +129,6 @@ public abstract class LLVMDirectLoadNode {
         protected LLVMPointer doDerefHandle(LLVMNativePointer addr,
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             return doIndirectedForeign(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
-        }
-
-        @Specialization
-        protected LLVMNativePointer doLLVMByteArrayAddress(LLVMVirtualAllocationAddress address,
-                        @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-            return LLVMNativePointer.create(address.getI64(memory));
         }
 
         @Specialization(limit = "3")

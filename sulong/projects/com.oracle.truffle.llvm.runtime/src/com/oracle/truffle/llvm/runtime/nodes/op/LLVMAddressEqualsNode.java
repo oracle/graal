@@ -34,11 +34,10 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMPointToSameObjectNode;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMPointToSameObjectNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -83,11 +82,6 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
         protected boolean doForeign(LLVMManagedPointer a, LLVMManagedPointer b,
                         @Cached LLVMPointToSameObjectNode pointToSameObject) {
             return pointToSameObject.execute(a, b) && a.getOffset() == b.getOffset();
-        }
-
-        @Specialization
-        protected boolean doVirtual(LLVMVirtualAllocationAddress v1, LLVMVirtualAllocationAddress v2) {
-            return v1.getObject() == v2.getObject() && v1.getOffset() == v2.getOffset();
         }
 
         @Specialization(guards = "isNative(p1) || isNative(p2)")

@@ -29,12 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -49,12 +46,6 @@ public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
     protected short doShortDerefHandle(LLVMNativePointer addr,
                     @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
         return doShortManaged(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
-    }
-
-    @Specialization
-    protected short doI16(LLVMVirtualAllocationAddress address,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        return address.getI16(memory);
     }
 
     @Specialization(limit = "3")

@@ -38,13 +38,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue.ManagedToComparableValue;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNodeGen.LLVMPointToSameObjectNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue.ManagedToComparableValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -172,22 +171,6 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
             return op.compare(convertA.executeWithTarget(a), convertB.executeWithTarget(b));
         }
 
-        @Specialization(guards = "pointToSameObject.execute(a, b)")
-        protected boolean doVirtual(LLVMVirtualAllocationAddress a, @SuppressWarnings("unused") LLVMNativeLibrary libA,
-                        LLVMVirtualAllocationAddress b, @SuppressWarnings("unused") LLVMNativeLibrary libB, NativePointerCompare op,
-                        @Cached("create()") @SuppressWarnings("unused") LLVMPointToSameObjectNode pointToSameObject) {
-            return op.compare(TYPICAL_POINTER + a.getOffset(), TYPICAL_POINTER + b.getOffset());
-        }
-
-        @Specialization(guards = "!pointToSameObject.execute(a, b)")
-        protected boolean doVirtual(LLVMVirtualAllocationAddress a, @SuppressWarnings("unused") LLVMNativeLibrary libA,
-                        LLVMVirtualAllocationAddress b, @SuppressWarnings("unused") LLVMNativeLibrary libB, NativePointerCompare op,
-                        @Cached("create()") @SuppressWarnings("unused") LLVMPointToSameObjectNode pointToSameObject,
-                        @Cached("createIgnoreOffset()") ManagedToComparableValue convertA,
-                        @Cached("createIgnoreOffset()") ManagedToComparableValue convertB) {
-            return op.compare(convertA.executeWithTarget(a), convertB.executeWithTarget(b));
-        }
-
         @Specialization(guards = "libA.isPointer(a)", rewriteOn = UnsupportedMessageException.class)
         @SuppressWarnings("unused")
         protected boolean doNativeManaged(Object a, LLVMNativeLibrary libA, Object b, LLVMNativeLibrary libB, NativePointerCompare op,
@@ -224,11 +207,6 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
         protected boolean pointToSameObjectCached(LLVMManagedPointer a, LLVMManagedPointer b,
                         @Cached("create()") LLVMObjectEqualsNode equalsNode) {
             return equalsNode.execute(a.getObject(), b.getObject());
-        }
-
-        @Specialization
-        protected boolean pointToSameObject(LLVMVirtualAllocationAddress a, LLVMVirtualAllocationAddress b) {
-            return a.getObject() == b.getObject();
         }
 
         @TruffleBoundary

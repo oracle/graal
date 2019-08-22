@@ -31,15 +31,21 @@ package com.oracle.truffle.llvm.runtime.library.internal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 abstract class LLVMManagedAccessDefaults {
@@ -148,6 +154,113 @@ abstract class LLVMManagedAccessDefaults {
         static void writePointer(Object obj, long offset, LLVMPointer value,
                         @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
             write.executeWrite(obj, offset, value, ForeignToLLVMType.POINTER);
+        }
+    }
+
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = int[].class)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = int[].class)
+    static class VirtualAlloc {
+
+        @ExportMessage(name = "isReadable")
+        @ExportMessage(name = "isWritable")
+        static boolean isAccessible(@SuppressWarnings("unused") int[] obj) {
+            return true;
+        }
+
+        @ExportMessage
+        static byte readI8(int[] obj, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(UnsafeArrayAccess.class).getI8(obj, offset);
+        }
+
+        @ExportMessage
+        static short readI16(int[] obj, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(UnsafeArrayAccess.class).getI16(obj, offset);
+        }
+
+        @ExportMessage
+        static int readI32(int[] obj, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(UnsafeArrayAccess.class).getI32(obj, offset);
+        }
+
+        // @ExportMessage(name = "readI64") for boxing elimination (blocked by GR-17850)
+        @ExportMessage(name = "readGenericI64")
+        static long readI64(int[] obj, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(UnsafeArrayAccess.class).getI64(obj, offset);
+        }
+
+        @ExportMessage
+        static float readFloat(int[] obj, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(UnsafeArrayAccess.class).getFloat(obj, offset);
+        }
+
+        @ExportMessage
+        static double readDouble(int[] obj, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(UnsafeArrayAccess.class).getDouble(obj, offset);
+        }
+
+        @ExportMessage
+        static LLVMPointer readPointer(int[] obj, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return LLVMNativePointer.create(readI64(obj, offset, language));
+        }
+
+        @ExportMessage
+        static void writeI8(int[] obj, long offset, byte value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(UnsafeArrayAccess.class).writeI8(obj, offset, value);
+        }
+
+        @ExportMessage
+        static void writeI16(int[] obj, long offset, short value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(UnsafeArrayAccess.class).writeI16(obj, offset, value);
+        }
+
+        @ExportMessage
+        static void writeI32(int[] obj, long offset, int value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(UnsafeArrayAccess.class).writeI32(obj, offset, value);
+        }
+
+        @ExportMessage
+        static void writeI64(int[] obj, long offset, long value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(UnsafeArrayAccess.class).writeI64(obj, offset, value);
+        }
+
+        @ExportMessage
+        static void writeFloat(int[] obj, long offset, float value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(UnsafeArrayAccess.class).writeFloat(obj, offset, value);
+        }
+
+        @ExportMessage
+        static void writeDouble(int[] obj, long offset, double value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(UnsafeArrayAccess.class).writeDouble(obj, offset, value);
+        }
+
+        @ExportMessage
+        static class WriteGenericI64 {
+
+            @Specialization
+            static void writeI64(int[] obj, long offset, long value,
+                            @CachedLanguage LLVMLanguage language) {
+                language.getCapability(UnsafeArrayAccess.class).writeI64(obj, offset, value);
+            }
+
+            @Specialization(limit = "3")
+            static void writePointer(int[] obj, long offset, LLVMPointer value,
+                            @CachedLibrary("value") LLVMNativeLibrary nativeLib,
+                            @CachedLanguage LLVMLanguage language) {
+                writeI64(obj, offset, nativeLib.toNativePointer(value).asNative(), language);
+            }
         }
     }
 }

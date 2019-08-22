@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  * Library for container objects that behave like raw memory that can be read.
  */
 @GenerateLibrary
+@DefaultExport(LLVMManagedAccessDefaults.VirtualAlloc.class)
 @DefaultExport(LLVMManagedAccessDefaults.FallbackRead.class)
 public abstract class LLVMManagedReadLibrary extends Library {
 

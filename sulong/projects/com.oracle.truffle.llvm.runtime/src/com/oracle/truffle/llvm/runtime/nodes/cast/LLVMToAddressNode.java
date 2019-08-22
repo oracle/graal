@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.cast;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -68,11 +67,6 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
 
     @Specialization
     protected LLVMPointer doLLVMPointer(LLVMPointer from) {
-        return from;
-    }
-
-    @Specialization
-    protected LLVMVirtualAllocationAddress doVirtualAllocationAddress(LLVMVirtualAllocationAddress from) {
         return from;
     }
 
