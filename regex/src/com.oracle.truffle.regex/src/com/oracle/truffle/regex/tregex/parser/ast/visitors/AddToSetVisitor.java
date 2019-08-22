@@ -25,15 +25,8 @@
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
 import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
-import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
-import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 
 public final class AddToSetVisitor extends DepthFirstTraversalRegexASTVisitor {
 
@@ -48,36 +41,7 @@ public final class AddToSetVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     @Override
-    protected void visit(BackReference backReference) {
-    }
-
-    @Override
-    protected void visit(Group group) {
-    }
-
-    @Override
-    protected void visit(Sequence sequence) {
-    }
-
-    @Override
-    protected void visit(PositionAssertion assertion) {
-    }
-
-    @Override
-    protected void visit(LookBehindAssertion assertion) {
-    }
-
-    @Override
-    protected void visit(LookAheadAssertion assertion) {
-    }
-
-    @Override
     protected void visit(CharacterClass characterClass) {
         set.add(characterClass);
     }
-
-    @Override
-    protected void visit(MatchFound matchFound) {
-    }
-
 }

@@ -68,7 +68,7 @@ public class TRegexOptions {
      * {@link com.oracle.truffle.regex.tregex.matchers.RangeListMatcher} or
      * {@link com.oracle.truffle.regex.tregex.matchers.RangeTreeMatcher}. The threshold value must
      * be greater than 1. Example:
-     * 
+     *
      * <pre>
      *     [\u1000-\u1020], [\u1030-\u1040], [\u1050-\u1060]
      *     are three ranges that have the same high byte (0x10).
