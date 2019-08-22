@@ -78,7 +78,6 @@ import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
-import java.security.SecureRandom;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -98,6 +97,7 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.util.Random;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -1636,7 +1636,7 @@ public final class TruffleFile {
     }
 
     private static final class TempFileRandomHolder {
-        static final SecureRandom RANDOM = new SecureRandom();
+        static final Random RANDOM = new Random();
     }
 
     private static final class AttributeGroup {
