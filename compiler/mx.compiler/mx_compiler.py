@@ -51,6 +51,7 @@ from mx_unittest import unittest
 
 from mx_javamodules import as_java_module
 from mx_updategraalinopenjdk import updategraalinopenjdk
+from mx_renamegraalpackages import renamegraalpackages
 import mx_jaotc
 
 import mx_graal_benchmark # pylint: disable=unused-import
@@ -1262,6 +1263,7 @@ mx.update_commands(_suite, {
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
+    'renamegraalpackages' : [renamegraalpackages, '[options]'],
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
