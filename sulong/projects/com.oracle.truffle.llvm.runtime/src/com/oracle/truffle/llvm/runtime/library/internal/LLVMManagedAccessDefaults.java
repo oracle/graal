@@ -36,6 +36,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
@@ -94,6 +95,59 @@ abstract class LLVMManagedAccessDefaults {
                         @Cached LLVMToPointerNode toPointer,
                         @Shared("read") @Cached(value = "createRead()", allowUncached = true) LLVMObjectReadNode read) {
             return toPointer.executeWithTarget(read.executeRead(obj, offset, ForeignToLLVMType.POINTER));
+        }
+    }
+
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = Object.class)
+    @ImportStatic(LLVMObjectAccessFactory.class)
+    static class FallbackWrite {
+
+        @ExportMessage
+        static boolean isWritable(Object obj,
+                        @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
+            return write.canAccess(obj);
+        }
+
+        @ExportMessage
+        static void writeI8(Object obj, long offset, byte value,
+                        @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
+            write.executeWrite(obj, offset, value, ForeignToLLVMType.I8);
+        }
+
+        @ExportMessage
+        static void writeI16(Object obj, long offset, short value,
+                        @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
+            write.executeWrite(obj, offset, value, ForeignToLLVMType.I16);
+        }
+
+        @ExportMessage
+        static void writeI32(Object obj, long offset, int value,
+                        @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
+            write.executeWrite(obj, offset, value, ForeignToLLVMType.I32);
+        }
+
+        @ExportMessage
+        static void writeGenericI64(Object obj, long offset, Object value,
+                        @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
+            write.executeWrite(obj, offset, value, ForeignToLLVMType.I64);
+        }
+
+        @ExportMessage
+        static void writeFloat(Object obj, long offset, float value,
+                        @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
+            write.executeWrite(obj, offset, value, ForeignToLLVMType.FLOAT);
+        }
+
+        @ExportMessage
+        static void writeDouble(Object obj, long offset, double value,
+                        @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
+            write.executeWrite(obj, offset, value, ForeignToLLVMType.DOUBLE);
+        }
+
+        @ExportMessage
+        static void writePointer(Object obj, long offset, LLVMPointer value,
+                        @Shared("write") @Cached(value = "createWrite()", allowUncached = true) LLVMObjectWriteNode write) {
+            write.executeWrite(obj, offset, value, ForeignToLLVMType.POINTER);
         }
     }
 }

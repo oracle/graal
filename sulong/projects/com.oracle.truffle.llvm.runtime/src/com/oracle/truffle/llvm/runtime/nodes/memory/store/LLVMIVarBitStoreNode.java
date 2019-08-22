@@ -29,13 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
+
+    static LLVMIVarBitStoreNode create() {
+        return LLVMIVarBitStoreNodeGen.create(null, null);
+    }
+
+    protected abstract void executeManaged(LLVMManagedPointer address, LLVMIVarBit value);
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doOp(LLVMNativePointer addr, LLVMIVarBit value) {
@@ -43,17 +51,19 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected void doOpDerefHandle(LLVMNativePointer addr, LLVMIVarBit value) {
-        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandle(LLVMNativePointer addr, LLVMIVarBit value,
+                    @Cached LLVMIVarBitStoreNode store) {
+        store.executeManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
-    @Specialization
-    protected void doOpManaged(LLVMManagedPointer address, LLVMIVarBit value) {
+    @Specialization(limit = "3")
+    protected void doOpManaged(LLVMManagedPointer address, LLVMIVarBit value,
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
         byte[] bytes = value.getBytes();
-        LLVMManagedPointer currentPtr = address;
+        long curOffset = address.getOffset();
         for (int i = bytes.length - 1; i >= 0; i--) {
-            getForeignWriteNode().executeWrite(currentPtr.getObject(), currentPtr.getOffset(), bytes[i], ForeignToLLVMType.I8);
-            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
+            nativeWrite.writeI8(address.getObject(), curOffset, bytes[i]);
+            curOffset += I8_SIZE_IN_BYTES;
         }
     }
 }

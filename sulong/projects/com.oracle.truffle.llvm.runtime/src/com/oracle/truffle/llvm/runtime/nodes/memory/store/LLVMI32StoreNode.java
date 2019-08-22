@@ -31,8 +31,9 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -45,8 +46,9 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected void doOpDerefHandle(LLVMNativePointer addr, int value) {
-        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandle(LLVMNativePointer addr, int value,
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value, nativeWrite);
     }
 
     @Specialization
@@ -55,8 +57,9 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
         address.writeI32(memory, value);
     }
 
-    @Specialization
-    protected void doOpManaged(LLVMManagedPointer address, int value) {
-        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.I32);
+    @Specialization(limit = "3")
+    protected void doOpManaged(LLVMManagedPointer address, int value,
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+        nativeWrite.writeI32(address.getObject(), address.getOffset(), value);
     }
 }

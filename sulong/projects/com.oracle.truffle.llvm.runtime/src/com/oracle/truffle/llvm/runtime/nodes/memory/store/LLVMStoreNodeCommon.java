@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -42,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
 
     @CompilationFinal private LLVMMemory llvmMemory;
-    @Child protected LLVMObjectWriteNode foreignWriteNode;
 
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
 
@@ -52,14 +50,6 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
             derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create());
         }
         return derefHandleGetReceiverNode;
-    }
-
-    protected LLVMObjectWriteNode getForeignWriteNode() {
-        if (foreignWriteNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            foreignWriteNode = (LLVMObjectWriteNode) insert((Node) LLVMObjectAccessFactory.createWrite());
-        }
-        return foreignWriteNode;
     }
 
     protected static LLVMObjectWriteNode createForeignWrite() {
