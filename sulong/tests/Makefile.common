@@ -29,6 +29,8 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
+.PHONY: default
+
 ifdef CLANG_CC
   CLANG=$(CLANG_CC)
 else
@@ -61,6 +63,17 @@ EMBED_BC=-fembed-bitcode
 else
 EMBED_BC=
 endif
+
+tool-info.txt:
+	@echo "Tools:" > $@
+	@echo "  CLANG: $(CLANG)" >> $@
+	@echo "  CLANGXX: $(CLANGXX)" >> $@
+	@echo "  LLVM_AS: $(LLVM_AS)" >> $@
+	@echo "  LLVM_OPT: $(LLVM_OPT)" >> $@
+	@echo "  FC: $(FC)" >> $@
+	@cat $@
+
+default: tool-info.txt
 
 %.c.dir/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
