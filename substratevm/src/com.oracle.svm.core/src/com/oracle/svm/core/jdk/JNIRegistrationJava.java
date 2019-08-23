@@ -66,6 +66,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(fields(a, "java.lang.Integer", "value"));
         JNIRuntimeAccess.register(clazz(a, "java.lang.Boolean"));
         JNIRuntimeAccess.register(constructor(a, "java.lang.Boolean", boolean.class));
+        JNIRuntimeAccess.register(fields(a, "java.lang.Boolean", "value"));
         JNIRuntimeAccess.register(method(a, "java.lang.Boolean", "getBoolean", String.class));
 
         /*
