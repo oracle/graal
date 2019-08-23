@@ -106,16 +106,16 @@ public final class CallTree extends Graph {
         }
     }
 
-    public void dump() {
-        dump(DebugContext.BASIC_LEVEL, "Final", "");
-    }
-
-    public void dump(int level, String format, Object arg) {
-        getDebug().dump(level, this, format, arg);
-    }
-
     @Override
     public String toString() {
         return "Call Tree";
+    }
+
+    public void dumpBasic(String format, Object arg) {
+        getDebug().dump(DebugContext.BASIC_LEVEL, this, format, arg);
+    }
+
+    public void dumpInfo(String format, Object arg) {
+        getDebug().dump(DebugContext.INFO_LEVEL, this, format, arg);
     }
 }
