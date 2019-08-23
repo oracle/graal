@@ -29,10 +29,26 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-CLANG?=clang
-CLANGXX?=clang++
-LLVM_AS?=llvm-as
-OPT?=opt
+ifdef CLANG_CC
+  CLANG=$(CLANG_CC)
+else
+  CLANG?=clang
+endif
+ifdef CLANG_CXX
+  CLANGXX=$(CLANG_CXX)
+else
+  CLANGXX?=clang++
+endif
+ifdef CLANG_LLVM_AS
+  LLVM_AS=$(CLANG_LLVM_AS)
+else
+  LLVM_AS?=llvm-as
+endif
+ifdef CLANG_LLVM_OPT
+  LLVM_OPT=$(CLANG_LLVM_OPT)
+else
+  LLVM_OPT?=opt
+endif
 FC?=gfortran
 
 CFLAGS+= $(SUITE_CFLAGS)
