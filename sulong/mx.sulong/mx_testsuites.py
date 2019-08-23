@@ -153,6 +153,11 @@ class SulongTestSuite(mx.NativeProject):  # pylint: disable=too-many-ancestors
         env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
         env['SO_EXT'] = mx.add_lib_suffix("")
         env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
+        env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
+        env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
+        env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
+        env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
             env['DRAGONEGG_GCC'] = mx_sulong.getGCC()

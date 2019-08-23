@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -48,8 +48,15 @@ else
 endif
 ifdef CLANG_LLVM_OPT
   LLVM_OPT=$(CLANG_LLVM_OPT)
+  OPT=$(CLANG_LLVM_OPT)
 else
   LLVM_OPT?=opt
+  OPT=$(LLVM_OPT)
+endif
+ifdef CLANG_LLVM_OBJCOPY
+  LLVM_OBJCOPY=$(CLANG_LLVM_OBJCOPY)
+else
+  LLVM_OBJCOPY?=llvm-objcopy
 endif
 FC?=gfortran
 

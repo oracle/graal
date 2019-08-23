@@ -27,7 +27,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-QUIETLY$(MX_VERBOSE)  = @
+TOP := $(dir $(lastword $(MAKEFILE_LIST)))
 
 ifeq ($(BUILD_REF),1)
 REF_TARGETS:=$(TESTS:%=%/ref.out)
@@ -44,25 +44,16 @@ else
 BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var).bc))
 endif
 
-CLANG?=clang
-CLANGXX?=clang++
-LLVM_AS?=llvm-as
-OPT?=opt
-FC?=gfortran
-
-CFLAGS+= $(SUITE_CFLAGS)
-CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
-CPPFLAGS+= $(SUITE_CPPFLAGS)
-LDFLAGS+= $(SUITE_LDFLAGS)
+CXXFLAGS+=-DLIBCXXABI_SILENT_TERMINATE
 
 .PHONY: default
 default: $(REF_TARGETS) $(BC_TARGETS)
 
+include $(TOP)/Makefile.common
+
 ifeq ($(OS), darwin)
-EMBED_BC=-fembed-bitcode
 BC_FILE=
 else
-EMBED_BC=
 BC_FILE=%/O0.bc.o
 
 %.bc.o: %.bc
@@ -135,7 +126,7 @@ else
 	$(QUIETLY) $(CLANG) -c -O0 -Wno-everything -fPIC $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
 
 %_BC_EMBED_PIC.o: %_BC_NO_EMBED_PIC.o %.bc
-	$(QUIETLY) objcopy --add-section .llvmbc=$(word 2, $^) --set-section-flags .llvmbc=alloc,contents,load,readonly $< $@
+	$(QUIETLY) $(LLVM_OBJCOPY) --add-section .llvmbc=$(word 2, $^) --set-section-flags .llvmbc=alloc,contents,load,readonly $< $@
 endif
 
 %$(SO_EXT): %_BC_EMBED_PIC.o
