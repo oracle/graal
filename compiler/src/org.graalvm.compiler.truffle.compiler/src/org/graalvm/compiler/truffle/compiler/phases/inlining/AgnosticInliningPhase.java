@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler.phases.inlining;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
@@ -82,8 +83,9 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         }
         final InliningPolicy policy = POLICY_PROVIDER.get(coreProviders, graph.getOptions());
         final CallTree tree = new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy);
+        tree.dump(DebugContext.BASIC_LEVEL, "Before Inline", "");
         policy.run(tree);
+        tree.dump(DebugContext.BASIC_LEVEL, "After Inline", "");
         tree.trace();
-        tree.dump();
     }
 }

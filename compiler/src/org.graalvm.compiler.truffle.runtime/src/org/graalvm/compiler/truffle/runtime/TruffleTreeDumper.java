@@ -90,6 +90,9 @@ public final class TruffleTreeDumper {
             astOutput.endGroup(); // AST
             astOutput.close();
 
+            if (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining)) {
+                return;
+            }
             CallTree callTree = new CallTree(callTarget, null);
             final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(6, 1));
             callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, debug.getVersionProperties());
