@@ -111,24 +111,6 @@ public class Option {
             .def("false")
             .help("Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental)."),
 
-        option("TruffleInliningPolicy")
-            .type("String")
-            .category("EXPERT")
-            .def("\"\"")
-            .help("Explicitly pick a inlining policy by name. Highest priority chosen by default."),
-
-        option("TruffleInliningExpansionBaseBudget")
-            .type("Integer")
-            .category("EXPERT")
-            .def("50000")
-            .help("The base expansion budget for language-agnostic inlining."),
-
-        option("TruffleInliningInliningBaseBudget")
-            .type("Integer")
-            .category("EXPERT")
-            .def("45000")
-            .help("The base inlining budget for language-agnostic inlining"),
-
         option("TruffleInliningMaxCallerSize")
             .type("Integer")
             .category("EXPERT")
@@ -322,12 +304,6 @@ public class Option {
             .def("false")
             .help("Print information for inlining for each compilation.")
             .deprecatedBy("TraceInlining"),
-
-        option("TraceTruffleInliningDetails")
-            .type("Boolean")
-            .category("INTERNAL")
-            .def("false")
-            .help("Print detailed information for inlining (i.e. the entire explored call tree)."),
 
         option("TraceTruffleSplitting")
             .type("Boolean")

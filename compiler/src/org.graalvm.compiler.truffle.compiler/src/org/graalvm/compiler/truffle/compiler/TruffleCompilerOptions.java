@@ -93,6 +93,20 @@ public final class TruffleCompilerOptions {
 
     @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)
     public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
+
+    // Language agnostic inlining
+
+    @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TraceTruffleInliningDetails = new OptionKey<>(false);
+
+    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", type = OptionType.Expert)
+    public static final OptionKey<String> TruffleInliningPolicy = new OptionKey<>("");
+
+    @Option(help = "The base expansion budget for language-agnostic inlining.", type = OptionType.Expert)
+    public static final OptionKey<Integer> TruffleInliningExpansionBudget = new OptionKey<>(50_000);
+
+    @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert)
+    public static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(45_000);
     // @formatter:on
 
     private TruffleCompilerOptions() {

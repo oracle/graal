@@ -47,7 +47,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         for (InliningPolicyProvider provider : services) {
             providers.add(provider);
         }
-        final String policy = TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleInliningPolicy);
+        final String policy = TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleInliningPolicy);
         POLICY_PROVIDER = policy.equals("") ? maxPriorityProvider(providers) : chosenProvider(providers, policy);
     }
 

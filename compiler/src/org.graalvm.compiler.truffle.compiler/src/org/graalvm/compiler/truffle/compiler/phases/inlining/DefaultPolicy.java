@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 final class DefaultPolicy implements InliningPolicy {
 
@@ -46,7 +46,7 @@ final class DefaultPolicy implements InliningPolicy {
 
     @Override
     public void run(CallTree tree) {
-        while (expandedCount <= SharedTruffleCompilerOptions.TruffleInliningExpansionBaseBudget.getValue(optionValues)) {
+        while (expandedCount <= TruffleCompilerOptions.TruffleInliningExpansionBudget.getValue(optionValues)) {
             final CallNode highestFrequencyNode = getNodeToExpand(tree);
             if (highestFrequencyNode != null) {
                 highestFrequencyNode.expand();
@@ -54,7 +54,7 @@ final class DefaultPolicy implements InliningPolicy {
                 break;
             }
         }
-        while (tree.getRoot().getIR().getNodeCount() <= SharedTruffleCompilerOptions.TruffleInliningInliningBaseBudget.getValue(optionValues)) {
+        while (tree.getRoot().getIR().getNodeCount() <= TruffleCompilerOptions.TruffleInliningInliningBudget.getValue(optionValues)) {
             final CallNode highestFrequencyNode = getNodeToInline(tree);
             if (highestFrequencyNode != null) {
                 highestFrequencyNode.inline();

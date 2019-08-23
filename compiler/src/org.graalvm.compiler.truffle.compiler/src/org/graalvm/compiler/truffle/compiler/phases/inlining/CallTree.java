@@ -71,7 +71,7 @@ public final class CallTree extends Graph {
     }
 
     public void trace() {
-        final Boolean details = TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TraceTruffleInliningDetails);
+        final Boolean details = TruffleCompilerOptions.getValue(TruffleCompilerOptions.TraceTruffleInliningDetails);
         if (TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TraceTruffleInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
             runtime.logEvent(0, "inline start", root.getName(), root.getStringProperties());
