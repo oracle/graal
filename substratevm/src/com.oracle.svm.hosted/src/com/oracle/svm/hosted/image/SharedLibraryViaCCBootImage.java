@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
 
+import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.svm.core.LinkerInvocation;
@@ -54,6 +55,9 @@ public class SharedLibraryViaCCBootImage extends NativeBootImageViaCC {
     @Override
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         LinkerInvocation inv = super.write(debug, outputDirectory, tempDirectory, imageName, config);
+        if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+            return inv;
+        }
         writeHeaderFiles(outputDirectory, imageName, inv.getSymbolAliases(), false);
         writeHeaderFiles(outputDirectory, imageName, inv.getSymbolAliases(), true);
         return inv;
