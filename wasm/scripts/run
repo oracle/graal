@@ -1,3 +1,9 @@
 #!/usr/bin/env bash
 
-mx --dy /compiler --jdk jvmci unittest -Dgraal.Dump= -Dgraal.PrintGraph=Network -Dwasmtest.watToWasmExecutable=/usr/local/bin/wat2wasm -Dwasmtest.testSourcePath="src/com.oracle.truffle.wasm.test/src/tests" $@
+if [ $(uname) == "Linux" ]; then
+    WAT_TO_WASM=$HOME/.local/bin/wat2wasm
+else
+    WAT_TO_WASM=/usr/local/bin/wat2wasm
+fi
+
+mx --dy /compiler --jdk jvmci unittest -Dgraal.Dump= -Dgraal.PrintGraph=Network -Dwasmtest.watToWasmExecutable=$WAT_TO_WASM -Dwasmtest.testSourcePath="src/com.oracle.truffle.wasm.test/src/tests" $@
