@@ -43,7 +43,7 @@ final class BooleanCoverageNode extends AbstractCoverageNode {
     }
 
     @Override
-    public void onReturnValue(VirtualFrame vFrame, Object result) {
+    protected void onEnter(VirtualFrame frame) {
         if (!covered) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             covered = true;

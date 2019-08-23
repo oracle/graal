@@ -73,7 +73,7 @@ public final class CoverageTest {
     public void testBasic() {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
-        Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").option("cpusampler.Output", "json").build();
+        Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").build();
         Source source = makeSource(defaultSource);
         context.eval(source);
         final CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine());

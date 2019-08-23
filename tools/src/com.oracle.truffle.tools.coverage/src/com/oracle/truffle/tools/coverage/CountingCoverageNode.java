@@ -44,7 +44,7 @@ public class CountingCoverageNode extends AbstractCoverageNode {
     }
 
     @Override
-    public void onReturnValue(VirtualFrame vFrame, Object result) {
+    protected void onEnter(VirtualFrame frame) {
         this.count.incrementAndGet();
     }
 
