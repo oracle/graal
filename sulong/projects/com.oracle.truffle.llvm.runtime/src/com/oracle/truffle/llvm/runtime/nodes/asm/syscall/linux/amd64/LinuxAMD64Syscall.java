@@ -27,11 +27,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
+package com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.amd64;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 
-public enum LLVMAMD64Syscall implements LLVMSyscallEntry {
+public enum LinuxAMD64Syscall implements LLVMSyscallEntry {
     SYS_read(0),
     SYS_write(1),
     SYS_open(2),
@@ -370,7 +370,7 @@ public enum LLVMAMD64Syscall implements LLVMSyscallEntry {
 
     private final int value;
 
-    LLVMAMD64Syscall(int value) {
+    LinuxAMD64Syscall(int value) {
         this.value = value;
     }
 

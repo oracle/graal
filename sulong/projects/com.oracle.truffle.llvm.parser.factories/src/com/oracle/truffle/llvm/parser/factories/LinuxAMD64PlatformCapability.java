@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64Syscall;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallArchPrctlNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallBrkNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallClockGetTimeNodeGen;
@@ -45,16 +45,16 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigpr
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallSetTidAddressNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallUnameNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.amd64.LinuxAMD64Syscall;
 
-final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LLVMAMD64Syscall> {
+final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAMD64Syscall> {
 
     LinuxAMD64PlatformCapability(boolean loadCxxLibraries) {
-        super(LLVMAMD64Syscall.class, loadCxxLibraries);
+        super(LinuxAMD64Syscall.class, loadCxxLibraries);
     }
 
     @Override
-    protected LLVMSyscallOperationNode createSyscallNode(LLVMAMD64Syscall syscall) {
+    protected LLVMSyscallOperationNode createSyscallNode(LinuxAMD64Syscall syscall) {
         switch (syscall) {
             case SYS_mmap:
                 return LLVMAMD64SyscallMmapNodeGen.create();
