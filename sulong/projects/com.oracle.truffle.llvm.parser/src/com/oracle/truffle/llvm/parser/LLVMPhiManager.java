@@ -83,7 +83,7 @@ public final class LLVMPhiManager {
         }
     }
 
-    static final class Phi {
+    public static final class Phi {
 
         private final InstructionBlock block;
 

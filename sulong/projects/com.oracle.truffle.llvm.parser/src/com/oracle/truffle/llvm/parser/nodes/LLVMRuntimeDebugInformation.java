@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.parser.nodes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +56,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstr
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
-import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -71,7 +70,7 @@ import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
-final class LLVMRuntimeDebugInformation {
+public final class LLVMRuntimeDebugInformation {
 
     private final FrameDescriptor frame;
     private final LLVMContext context;
@@ -80,7 +79,7 @@ final class LLVMRuntimeDebugInformation {
     private final boolean isEnabled;
     private final StaticValueAccessVisitor staticValueAccessVisitor;
 
-    LLVMRuntimeDebugInformation(FrameDescriptor frame, LLVMContext context, List<FrameSlot> notNullableSlots, LLVMSymbolReadResolver symbols) {
+    public LLVMRuntimeDebugInformation(FrameDescriptor frame, LLVMContext context, List<FrameSlot> notNullableSlots, LLVMSymbolReadResolver symbols) {
         this.frame = frame;
         this.context = context;
         this.notNullableSlots = notNullableSlots;
@@ -188,7 +187,7 @@ final class LLVMRuntimeDebugInformation {
         return DwarfOpcode.isDeref(expr) || (type != null && !type.isPointer() && value instanceof AllocateInstruction);
     }
 
-    void registerStaticDebugSymbols(FunctionDefinition fn) {
+    public void registerStaticDebugSymbols(FunctionDefinition fn) {
         if (!isEnabled) {
             return;
         }
@@ -224,7 +223,7 @@ final class LLVMRuntimeDebugInformation {
         }
     }
 
-    LLVMStatementNode createInitializer(SourceVariable variable) {
+    public LLVMStatementNode createInitializer(SourceVariable variable) {
         if (!isEnabled) {
             return null;
         }
@@ -323,5 +322,4 @@ final class LLVMRuntimeDebugInformation {
         final LLVMExpressionNode containerRead = context.getLanguage().getNodeFactory().createFrameRead(MetaType.DEBUG, targetSlot);
         return context.getLanguage().getNodeFactory().createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
     }
-
 }
