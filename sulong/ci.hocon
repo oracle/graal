@@ -41,6 +41,7 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
         NO_FEMBED_BITCODE: "true"
         CLANG_CC: "clang-3.8"
         CLANG_CXX: "clang-3.8 --driver-mode=g++"
+        CLANG_LLVM_OBJCOPY: "objcopy"
     }
 }
 
@@ -51,6 +52,7 @@ sulong-gateTest40-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
     environment: {
         CLANG_CC: "clang-4.0"
         CLANG_CXX: "clang-4.0 --driver-mode=g++"
+        CLANG_LLVM_OBJCOPY: "objcopy"
     }
 }
 
