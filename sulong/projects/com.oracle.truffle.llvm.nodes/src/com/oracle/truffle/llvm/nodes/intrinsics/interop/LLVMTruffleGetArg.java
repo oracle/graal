@@ -30,23 +30,17 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
-@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
 public abstract class LLVMTruffleGetArg extends LLVMIntrinsic {
     @Child ToPointer toPointer = ToPointer.create();
-
-    @Override
-    public abstract LLVMSourceLocation getSourceLocation();
 
     @Specialization(rewriteOn = ArrayIndexOutOfBoundsException.class)
     protected Object doIntrinsic(VirtualFrame frame, int index) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,28 +30,19 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
 
-    private final LLVMSourceLocation source;
-
     @Child private LLVMExpressionNode target;
 
-    public LLVMX86_64BitVAEnd(LLVMExpressionNode target, LLVMSourceLocation source) {
+    public LLVMX86_64BitVAEnd(LLVMExpressionNode target) {
         this.target = target;
-        this.source = source;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         // nop
         return null;
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
     }
 }

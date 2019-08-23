@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,20 @@
  */
 package com.oracle.truffle.llvm.nodes.others;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
+@GenerateWrapper
 public class LLVMUnreachableNode extends LLVMControlFlowNode {
 
     public static class LLVMUnreachableException extends ControlFlowException {
         private static final long serialVersionUID = 1L;
-    }
-
-    public LLVMUnreachableNode() {
-        super(null);
     }
 
     @Override
@@ -53,7 +55,13 @@ public class LLVMUnreachableNode extends LLVMControlFlowNode {
         return null;
     }
 
-    public void execute() {
+    public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
+        CompilerDirectives.transferToInterpreter();
         throw new LLVMUnreachableException();
+    }
+
+    @Override
+    public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+        return new LLVMUnreachableNodeWrapper(this, probe);
     }
 }

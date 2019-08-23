@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,38 +33,23 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @GenerateWrapper
-public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode implements InstrumentableNode {
+public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
 
-    public static LLVMIndirectBranchNode create(LLVMBranchAddressNode branchAddress, int[] indices, LLVMStatementNode[] phiWriteNodes, LLVMSourceLocation sourceSection) {
-        return new LLVMIndirectBranchNodeImpl(branchAddress, indices, phiWriteNodes, sourceSection);
-    }
-
-    public LLVMIndirectBranchNode(LLVMSourceLocation sourceSection) {
-        super(sourceSection);
-    }
-
-    protected LLVMIndirectBranchNode(LLVMIndirectBranchNode delegate) {
-        super(delegate.getSourceLocation());
+    public static LLVMIndirectBranchNode create(LLVMBranchAddressNode branchAddress, int[] indices, LLVMStatementNode[] phiWriteNodes) {
+        return new LLVMIndirectBranchNodeImpl(branchAddress, indices, phiWriteNodes);
     }
 
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
-        return new LLVMIndirectBranchNodeWrapper(this, this, probe);
-    }
-
-    @Override
-    public boolean isInstrumentable() {
-        return getSourceLocation() != null;
+        return new LLVMIndirectBranchNodeWrapper(this, probe);
     }
 
     public abstract int executeCondition(VirtualFrame frame);
@@ -77,8 +62,7 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode impleme
         @Children private final LLVMStatementNode[] phiWriteNodes;
         @CompilationFinal(dimensions = 1) private final int[] successors;
 
-        private LLVMIndirectBranchNodeImpl(LLVMBranchAddressNode branchAddress, int[] indices, LLVMStatementNode[] phiWriteNodes, LLVMSourceLocation sourceSection) {
-            super(sourceSection);
+        private LLVMIndirectBranchNodeImpl(LLVMBranchAddressNode branchAddress, int[] indices, LLVMStatementNode[] phiWriteNodes) {
             assert indices.length > 1;
             this.successors = indices;
             this.branchAddress = branchAddress;

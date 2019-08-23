@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
@@ -42,20 +41,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
 
-    private final LLVMSourceLocation source;
     @CompilationFinal private LLVMMemory llvmMemory;
     @Child protected LLVMObjectWriteNode foreignWriteNode;
 
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
-
-    public LLVMStoreNodeCommon(LLVMSourceLocation source) {
-        this.source = source;
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
-    }
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
         if (derefHandleGetReceiverNode == null) {

@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -47,11 +46,6 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
     @Child private LLVMMemMoveNode memMove;
 
     protected LLVMStructStoreNode(LLVMMemMoveNode memMove) {
-        this(null, memMove);
-    }
-
-    protected LLVMStructStoreNode(LLVMSourceLocation sourceLocation, LLVMMemMoveNode memMove) {
-        super(sourceLocation);
         this.memMove = memMove;
     }
 

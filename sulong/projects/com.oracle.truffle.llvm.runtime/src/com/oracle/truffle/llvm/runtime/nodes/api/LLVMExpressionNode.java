@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -54,21 +53,11 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
  * operation.
  */
 @GenerateWrapper
-public abstract class LLVMExpressionNode extends LLVMNode implements InstrumentableNode {
-
-    @Override
-    public WrapperNode createWrapper(ProbeNode probe) {
-        return new LLVMExpressionNodeWrapper(this, probe);
-    }
+public abstract class LLVMExpressionNode extends LLVMInstrumentableNode {
 
     @GenerateWrapper.OutgoingConverter
     Object convertOutgoing(@SuppressWarnings("unused") Object object) {
         return null;
-    }
-
-    @Override
-    public boolean isInstrumentable() {
-        return getSourceLocation() != null;
     }
 
     public static final LLVMExpressionNode[] NO_EXPRESSIONS = {};
@@ -157,6 +146,11 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
 
     public String getSourceDescription() {
         return getRootNode().getName();
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new LLVMExpressionNodeWrapper(this, probe);
     }
 
     public static boolean notLLVM(Object object) {
