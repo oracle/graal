@@ -62,7 +62,6 @@ final class DefaultPolicy implements InliningPolicy {
                 break;
             }
         }
-        tree.trace();
     }
 
     private CallNode getNodeToInline(CallTree tree) {

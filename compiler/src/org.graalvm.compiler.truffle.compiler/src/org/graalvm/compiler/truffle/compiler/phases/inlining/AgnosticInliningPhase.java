@@ -80,7 +80,10 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         if (!TruffleCompilerOptions.getValue(SharedTruffleCompilerOptions.TruffleFunctionInlining)) {
             return;
         }
-        InliningPolicy policy = POLICY_PROVIDER.get(coreProviders, graph.getOptions());
-        policy.run(new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy));
+        final InliningPolicy policy = POLICY_PROVIDER.get(coreProviders, graph.getOptions());
+        final CallTree tree = new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy);
+        policy.run(tree);
+        tree.trace();
+        tree.dump();
     }
 }

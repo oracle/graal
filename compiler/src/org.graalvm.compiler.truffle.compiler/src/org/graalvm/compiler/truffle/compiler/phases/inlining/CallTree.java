@@ -106,12 +106,12 @@ public final class CallTree extends Graph {
         }
     }
 
-    public void dump(String s) {
-        dump(s, "");
+    public void dump() {
+        dump(DebugContext.BASIC_LEVEL, "Inlining Decisions", "");
     }
 
-    public void dump(String s, Object arg) {
-        getDebug().dump(DebugContext.BASIC_LEVEL, this, s, arg);
+    public void dump(int level, String format, Object arg) {
+        getDebug().dump(level, this, format, arg);
     }
 
 }
