@@ -40,7 +40,7 @@ sulong-gateTest38-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
     environment: {
         NO_FEMBED_BITCODE: "true"
         CLANG_CC: "clang-3.8"
-        CLANG_CXX: "clang-3.8 -x c++"
+        CLANG_CXX: "clang-3.8 --driver-mode=g++"
     }
 }
 
@@ -50,7 +50,7 @@ sulong-gateTest40-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
     }
     environment: {
         CLANG_CC: "clang-4.0"
-        CLANG_CXX: "clang-4.0 -x c++"
+        CLANG_CXX: "clang-4.0 --driver-mode=g++"
     }
 }
 
@@ -60,7 +60,7 @@ sulong-gateTest60-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
     }
     environment: {
         CLANG_CC: "clang-6.0"
-        CLANG_CXX: "clang-6.0 -x c++"
+        CLANG_CXX: "clang-6.0 --driver-mode=g++"
     }
 }
 
@@ -70,7 +70,7 @@ sulong-gateTest80-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
     }
     environment: {
         CLANG_CC: "clang-8"
-        CLANG_CXX: "clang-8 -x c++"
+        CLANG_CXX: "clang-8 --driver-mode=g++"
     }
 }
 
@@ -84,7 +84,7 @@ darwin-llvm: ${sulong-gateTest-default-tools} {
     }
     environment: {
         CLANG_CC: "clang-4.0"
-        CLANG_CXX: "clang-4.0 -x c++"
+        CLANG_CXX: "clang-4.0 --driver-mode=g++"
     }
 }
 
