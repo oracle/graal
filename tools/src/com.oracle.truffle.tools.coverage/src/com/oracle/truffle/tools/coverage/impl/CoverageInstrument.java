@@ -249,11 +249,11 @@ public class CoverageInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env env) {
         tracker = factory.apply(env);
+        env.registerService(tracker);
         final OptionValues options = env.getOptions();
         enabled = ENABLED.getValue(options);
         if (enabled) {
             tracker.start(new CoverageTracker.Config(getSourceSectionFilter(options), COUNT.getValue(options)));
-            env.registerService(tracker);
         }
     }
 

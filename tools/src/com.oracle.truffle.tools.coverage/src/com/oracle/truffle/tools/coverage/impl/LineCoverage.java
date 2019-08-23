@@ -35,7 +35,7 @@ import com.oracle.truffle.tools.coverage.RootCoverage;
 import com.oracle.truffle.tools.coverage.SectionCoverage;
 import com.oracle.truffle.tools.coverage.SourceCoverage;
 
-class LineCoverage {
+final class LineCoverage {
 
     private final Set<SourceSection> loadedSourceSections;
     private final Set<SourceSection> coveredSourceSections;

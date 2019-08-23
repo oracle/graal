@@ -32,7 +32,7 @@ public final class SectionCoverage {
     private final boolean covered;
     private final long count;
 
-    public SectionCoverage(SourceSection sourceSection, boolean covered, long count) {
+    SectionCoverage(SourceSection sourceSection, boolean covered, long count) {
         this.sourceSection = sourceSection;
         this.covered = covered;
         this.count = count;

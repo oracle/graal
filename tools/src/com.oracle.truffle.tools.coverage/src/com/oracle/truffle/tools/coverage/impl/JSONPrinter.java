@@ -33,7 +33,7 @@ import com.oracle.truffle.tools.coverage.SourceCoverage;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
-class JSONPrinter {
+final class JSONPrinter {
 
     private final PrintStream out;
     private final SourceCoverage[] sourceCoverages;

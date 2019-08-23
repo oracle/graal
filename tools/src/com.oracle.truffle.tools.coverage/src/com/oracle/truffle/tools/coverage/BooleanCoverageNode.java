@@ -29,11 +29,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-final class CoverageNode extends AbstractCoverageNode {
+final class BooleanCoverageNode extends AbstractCoverageNode {
 
     @CompilerDirectives.CompilationFinal volatile boolean covered;
 
-    CoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
+    BooleanCoverageNode(SourceSection sourceSection, Node instrumentedNode, boolean isRoot, boolean isStatement) {
         super(sourceSection, instrumentedNode, isRoot, isStatement);
     }
 

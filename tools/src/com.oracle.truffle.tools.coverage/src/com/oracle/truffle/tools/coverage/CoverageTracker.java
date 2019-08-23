@@ -114,7 +114,7 @@ public final class CoverageTracker implements AutoCloseable {
         if (config.count) {
             return new CountingCoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode(), isRoot, isStatement);
         } else {
-            return new CoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode(), isRoot, isStatement);
+            return new BooleanCoverageNode(context.getInstrumentedSourceSection(), context.getInstrumentedNode(), isRoot, isStatement);
         }
     }
 
@@ -233,10 +233,14 @@ public final class CoverageTracker implements AutoCloseable {
             @Override
             public ExecutionEventNode create(EventContext context) {
                 final AbstractCoverageNode coverageNode = makeCoverageNode(context, config);
-                coverageNodes.add(coverageNode);
+                addCoverageNode(coverageNode);
                 return coverageNode;
             }
         });
+    }
+
+    private synchronized void addCoverageNode(AbstractCoverageNode coverageNode) {
+        coverageNodes.add(coverageNode);
     }
 
     private void instrumentLoadedStatements(Instrumenter instrumenter, SourceSectionFilter f) {
