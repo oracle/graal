@@ -22,25 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexRootNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
-import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 
-public final class TRegexDFAExecutorNode extends Node {
+public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     public static final int NO_MATCH = -2;
     private final TRegexDFAExecutorProperties props;
     private final int maxNumberOfNFAStates;
-    @Child private InputLengthNode lengthNode = InputLengthNode.create();
-    @Child private InputCharAtNode charAtNode = InputCharAtNode.create();
     @Children private final DFAAbstractStateNode[] states;
     @Children private final DFACaptureGroupLazyTransitionNode[] cgTransitions;
     private final TRegexDFAExecutorDebugRecorder debugRecorder;
@@ -114,11 +111,26 @@ public final class TRegexDFAExecutorNode extends Node {
         return debugRecorder;
     }
 
+    @Override
+    public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
+        return new TRegexDFAExecutorLocals(input, fromIndex, index, maxIndex, createCGData());
+    }
+
+    private DFACaptureGroupTrackingData createCGData() {
+        if (props.isTrackCaptureGroups()) {
+            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), props.getNumberOfCaptureGroups());
+        } else {
+            return null;
+        }
+    }
+
     /**
      * records position of the END of the match found, or -1 if no match exists.
      */
+    @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    protected Object execute(final TRegexDFAExecutorLocals locals, final boolean compactString) {
+    public Object execute(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
+        TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
         CompilerAsserts.compilationConstant(states);
         CompilerAsserts.compilationConstant(states.length);
@@ -203,21 +215,6 @@ public final class TRegexDFAExecutorNode extends Node {
         if (hasSuccessor) {
             debugRecorder.recordTransition(locals.getIndex() + (isForward() ? -1 : 1), ip, locals.getSuccessorIndex());
         }
-    }
-
-    /**
-     * The length of the {@code input} argument given to
-     * {@link TRegexExecRootNode#execute(Object, int)}.
-     *
-     * @return the length of the {@code input} argument given to
-     *         {@link TRegexExecRootNode#execute(Object, int)}.
-     */
-    public int getInputLength(TRegexDFAExecutorLocals locals) {
-        return lengthNode.execute(locals.getInput());
-    }
-
-    public char getChar(TRegexDFAExecutorLocals locals) {
-        return charAtNode.execute(locals.getInput(), locals.getIndex());
     }
 
     public void advance(TRegexDFAExecutorLocals locals) {

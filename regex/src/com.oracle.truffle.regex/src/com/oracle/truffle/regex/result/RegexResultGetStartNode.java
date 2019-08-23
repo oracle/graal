@@ -64,9 +64,8 @@ abstract class RegexResultGetStartNode extends Node {
                     @Cached("createBinaryProfile()") ConditionProfile boundsProfile,
                     @Exclusive @Cached("createBinaryProfile()") ConditionProfile calcLazyProfile) {
         if (boundsProfile.profile(groupNumber == 0)) {
-            if (calcLazyProfile.profile(receiver.getStart() == -1)) {
-                receiver.setStart((int) calcResult.execute(receiver.getFindStartCallTarget(),
-                                new Object[]{receiver.getInput(), receiver.getEnd() - 1, receiver.getFromIndex()}) + 1);
+            if (calcLazyProfile.profile(!receiver.isStartCalculated())) {
+                receiver.applyFindStartResult((int) calcResult.execute(receiver.getFindStartCallTarget(), receiver.createArgsFindStart()));
             }
             return receiver.getStart();
         } else {

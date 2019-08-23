@@ -292,6 +292,10 @@ public final class Group extends Term implements RegexASTVisitorIterable {
         return alternatives.size();
     }
 
+    public boolean isEmpty() {
+        return size() == 0;
+    }
+
     /**
      * Adds a new alternative to this group. The new alternative will be <em>appended to the
      * end</em>, meaning it will have the <em>lowest priority</em> among all the alternatives.
@@ -300,6 +304,7 @@ public final class Group extends Term implements RegexASTVisitorIterable {
      */
     public void add(Sequence sequence) {
         sequence.setParent(this);
+        sequence.setGroupIndex(alternatives.size());
         alternatives.add(sequence);
     }
 
@@ -313,6 +318,9 @@ public final class Group extends Term implements RegexASTVisitorIterable {
     public void insertFirst(Sequence sequence) {
         sequence.setParent(this);
         alternatives.add(0, sequence);
+        for (int i = 0; i < alternatives.size(); i++) {
+            alternatives.get(i).setGroupIndex(i);
+        }
     }
 
     /**
@@ -356,11 +364,11 @@ public final class Group extends Term implements RegexASTVisitorIterable {
     }
 
     public String loopToString() {
-        return isLoop() ? "*" : "";
+        return isLoop() ? "*" : quantifierToString();
     }
 
-    @Override
     @TruffleBoundary
+    @Override
     public String toString() {
         return "(" + (isCapturing() ? "" : "?:") + alternativesToString() + ")" + loopToString();
     }

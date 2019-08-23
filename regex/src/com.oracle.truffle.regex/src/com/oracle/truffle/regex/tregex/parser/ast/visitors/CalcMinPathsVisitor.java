@@ -119,6 +119,18 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
             minPath = Math.min(minPath, s.getMinPath());
             maxPath = Math.max(maxPath, s.getMaxPath());
         }
+        if (group.hasQuantifier()) {
+            if (group.getQuantifier().getMin() == 0) {
+                caret = false;
+                dollar = false;
+            }
+            minPath = group.getMinPath() + ((minPath - group.getMinPath()) * group.getQuantifier().getMin());
+            if (group.getQuantifier().isInfiniteLoop()) {
+                hasLoops = true;
+            } else {
+                maxPath = group.getMaxPath() + ((minPath - group.getMaxPath()) * group.getQuantifier().getMax());
+            }
+        }
         group.setStartsWithCaret(caret);
         group.setEndsWithDollar(dollar);
         group.setHasLoops(hasLoops);
@@ -218,8 +230,19 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(CharacterClass characterClass) {
-        characterClass.getParent().incMinPath();
-        characterClass.getParent().incMaxPath();
+        if (characterClass.hasQuantifier()) {
+            characterClass.getParent().incMinPath(characterClass.getQuantifier().getMin());
+            if (characterClass.getQuantifier().isInfiniteLoop()) {
+                characterClass.getParent().incMaxPath(characterClass.getQuantifier().getMin());
+                characterClass.setHasLoops();
+                characterClass.getParent().setHasLoops();
+            } else {
+                characterClass.getParent().incMaxPath(characterClass.getQuantifier().getMax());
+            }
+        } else {
+            characterClass.getParent().incMinPath();
+            characterClass.getParent().incMaxPath();
+        }
         characterClass.setMinPath(characterClass.getParent().getMinPath());
         characterClass.setMaxPath(characterClass.getParent().getMaxPath());
         if (characterClass.isDead()) {

@@ -54,13 +54,14 @@ public class BackReference extends Term {
         return ast.register(new BackReference(this));
     }
 
-    @Override
-    public String toString() {
-        return "\\" + groupNr;
-    }
-
     public int getGroupNr() {
         return groupNr;
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return "\\" + groupNr + quantifierToString();
     }
 
     @TruffleBoundary

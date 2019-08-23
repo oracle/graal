@@ -34,6 +34,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -62,6 +63,8 @@ public class NFAState implements IndexedState, JsonConvertible {
     private static final byte MASK_FORWARD_FINAL_STATES = FLAG_FORWARD_ANCHORED_FINAL_STATE | FLAG_FORWARD_UN_ANCHORED_FINAL_STATE;
     private static final byte MASK_REVERSE_FINAL_STATES = FLAG_REVERSE_ANCHORED_FINAL_STATE | FLAG_REVERSE_UN_ANCHORED_FINAL_STATE;
 
+    private static final NFAStateTransition[] EMPTY_TRANSITIONS = new NFAStateTransition[0];
+
     private final short id;
     private final ASTNodeSet<? extends RegexASTNode> stateSet;
     private byte flags;
@@ -69,8 +72,9 @@ public class NFAState implements IndexedState, JsonConvertible {
     private short transitionToUnAnchoredFinalState = -1;
     private short revTransitionToAnchoredFinalState = -1;
     private short revTransitionToUnAnchoredFinalState = -1;
-    private List<NFAStateTransition> next;
-    private List<NFAStateTransition> prev;
+    private NFAStateTransition[] next;
+    private NFAStateTransition[] prev;
+    private short prevLength = 0;
     private List<Integer> possibleResults;
     private final CharSet matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
@@ -81,7 +85,7 @@ public class NFAState implements IndexedState, JsonConvertible {
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates) {
         this(id, stateSet, hasPrefixStates ? FLAG_HAS_PREFIX_STATES : FLAGS_NONE,
-                        new ArrayList<>(), new ArrayList<>(), null, matcherBuilder, finishedLookBehinds);
+                        EMPTY_TRANSITIONS, EMPTY_TRANSITIONS, null, matcherBuilder, finishedLookBehinds);
     }
 
     private NFAState(short id,
@@ -89,14 +93,14 @@ public class NFAState implements IndexedState, JsonConvertible {
                     byte flags,
                     CharSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
-        this(id, stateSet, flags, new ArrayList<>(), new ArrayList<>(), null, matcherBuilder, finishedLookBehinds);
+        this(id, stateSet, flags, EMPTY_TRANSITIONS, EMPTY_TRANSITIONS, null, matcherBuilder, finishedLookBehinds);
     }
 
     private NFAState(short id,
                     ASTNodeSet<? extends RegexASTNode> stateSet,
                     byte flags,
-                    List<NFAStateTransition> next,
-                    List<NFAStateTransition> prev,
+                    NFAStateTransition[] next,
+                    NFAStateTransition[] prev,
                     List<Integer> possibleResults,
                     CharSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
@@ -114,7 +118,7 @@ public class NFAState implements IndexedState, JsonConvertible {
         return new NFAState(copyID, getStateSet(), getFlags(), matcherBuilder, finishedLookBehinds);
     }
 
-    public CharSet getMatcherBuilder() {
+    public CharSet getCharSet() {
         return matcherBuilder;
     }
 
@@ -206,9 +210,13 @@ public class NFAState implements IndexedState, JsonConvertible {
         return (forward ? transitionToAnchoredFinalState : revTransitionToAnchoredFinalState) >= 0;
     }
 
+    public short getTransitionToAnchoredFinalStateId(boolean forward) {
+        return forward ? transitionToAnchoredFinalState : revTransitionToAnchoredFinalState;
+    }
+
     public NFAStateTransition getTransitionToAnchoredFinalState(boolean forward) {
         assert hasTransitionToAnchoredFinalState(forward);
-        return forward ? next.get(transitionToAnchoredFinalState) : prev.get(revTransitionToAnchoredFinalState);
+        return forward ? next[transitionToAnchoredFinalState] : prev[revTransitionToAnchoredFinalState];
     }
 
     public boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
@@ -217,49 +225,48 @@ public class NFAState implements IndexedState, JsonConvertible {
 
     public NFAStateTransition getTransitionToUnAnchoredFinalState(boolean forward) {
         assert hasTransitionToUnAnchoredFinalState(forward);
-        return forward ? next.get(transitionToUnAnchoredFinalState) : prev.get(revTransitionToUnAnchoredFinalState);
+        return forward ? next[transitionToUnAnchoredFinalState] : prev[revTransitionToUnAnchoredFinalState];
+    }
+
+    public short getTransitionToUnAnchoredFinalStateId(boolean forward) {
+        return forward ? transitionToUnAnchoredFinalState : revTransitionToUnAnchoredFinalState;
     }
 
     /**
      * List of possible next states, sorted by priority.
      */
-    public List<NFAStateTransition> getNext() {
+    public NFAStateTransition[] getNext() {
         return next;
     }
 
-    public List<NFAStateTransition> getNext(boolean forward) {
+    public NFAStateTransition[] getNext(boolean forward) {
         return forward ? next : prev;
     }
 
     public void addLoopBackNext(NFAStateTransition transition) {
         // loopBack transitions always have minimal priority, so no sorting is necessary
-        updateFinalStateTransitions(transition, (short) next.size());
-        next.add(transition);
+        updateFinalStateTransitions(transition, (short) next.length);
+        next = Arrays.copyOf(next, next.length + 1);
+        next[next.length - 1] = transition;
     }
 
     public void removeLoopBackNext() {
-        next.remove(next.size() - 1);
-        if (transitionToAnchoredFinalState == next.size()) {
+        next = Arrays.copyOf(next, next.length - 1);
+        if (transitionToAnchoredFinalState == next.length) {
             transitionToAnchoredFinalState = -1;
         }
-        if (transitionToUnAnchoredFinalState == next.size()) {
+        if (transitionToUnAnchoredFinalState == next.length) {
             transitionToUnAnchoredFinalState = -1;
         }
     }
 
-    public void setNext(ArrayList<NFAStateTransition> transitions, boolean createReverseTransitions) {
+    public void setNext(NFAStateTransition[] transitions, boolean createReverseTransitions) {
         this.next = transitions;
-        for (short i = 0; i < transitions.size(); i++) {
-            NFAStateTransition t = transitions.get(i);
+        for (short i = 0; i < transitions.length; i++) {
+            NFAStateTransition t = transitions[i];
             updateFinalStateTransitions(t, i);
             if (createReverseTransitions) {
-                if (isReverseAnchoredFinalState()) {
-                    t.getTarget().revTransitionToAnchoredFinalState = (short) t.getTarget().prev.size();
-                }
-                if (isReverseUnAnchoredFinalState()) {
-                    t.getTarget().revTransitionToUnAnchoredFinalState = (short) t.getTarget().prev.size();
-                }
-                t.getTarget().prev.add(t);
+                t.getTarget().prevLength++;
             }
         }
     }
@@ -274,29 +281,63 @@ public class NFAState implements IndexedState, JsonConvertible {
     }
 
     public void removeNext(NFAState state) {
-        NFAStateTransition transitionToAFS = hasTransitionToAnchoredFinalState(true) ? getTransitionToAnchoredFinalState(true) : null;
-        NFAStateTransition transitionToUFS = hasTransitionToUnAnchoredFinalState(true) ? getTransitionToUnAnchoredFinalState(true) : null;
-        next.removeIf(x -> x.getTarget() == state);
-        if (hasTransitionToAnchoredFinalState(true)) {
-            this.transitionToAnchoredFinalState = (short) next.indexOf(transitionToAFS);
+        int remove = indexOfTransition(state);
+        if (remove == -1) {
+            return;
         }
-        if (hasTransitionToUnAnchoredFinalState(true)) {
-            this.transitionToUnAnchoredFinalState = (short) next.indexOf(transitionToUFS);
+        NFAStateTransition[] newNext = new NFAStateTransition[next.length - 1];
+        System.arraycopy(next, 0, newNext, 0, remove);
+        System.arraycopy(next, remove + 1, newNext, remove, newNext.length - remove);
+        next = newNext;
+        if (transitionToAnchoredFinalState == remove) {
+            transitionToAnchoredFinalState = -1;
+        } else if (transitionToAnchoredFinalState > remove) {
+            transitionToAnchoredFinalState--;
+        }
+        if (transitionToUnAnchoredFinalState == remove) {
+            transitionToUnAnchoredFinalState = -1;
+        } else if (transitionToUnAnchoredFinalState > remove) {
+            transitionToUnAnchoredFinalState--;
         }
     }
 
-    public void setPrev(ArrayList<NFAStateTransition> transitions) {
+    private int indexOfTransition(NFAState target) {
+        for (int i = 0; i < next.length; i++) {
+            if (next[i].getTarget() == target) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public void linkPrev() {
+        for (NFAStateTransition t : next) {
+            if (t.getTarget().prev == EMPTY_TRANSITIONS) {
+                t.getTarget().prev = new NFAStateTransition[t.getTarget().prevLength];
+            }
+            t.getTarget().prevLength--;
+            if (isReverseAnchoredFinalState()) {
+                t.getTarget().revTransitionToAnchoredFinalState = t.getTarget().prevLength;
+            }
+            if (isReverseUnAnchoredFinalState()) {
+                t.getTarget().revTransitionToUnAnchoredFinalState = t.getTarget().prevLength;
+            }
+            t.getTarget().prev[t.getTarget().prevLength] = t;
+        }
+    }
+
+    public void setPrev(NFAStateTransition[] transitions) {
         this.prev = transitions;
     }
 
     /**
      * List of possible previous states, unsorted.
      */
-    public List<NFAStateTransition> getPrev() {
+    public NFAStateTransition[] getPrev() {
         return prev;
     }
 
-    public List<NFAStateTransition> getPrev(boolean forward) {
+    public NFAStateTransition[] getPrev(boolean forward) {
         return forward ? prev : next;
     }
 
@@ -335,7 +376,7 @@ public class NFAState implements IndexedState, JsonConvertible {
     }
 
     public boolean isDead(boolean forward) {
-        return !isFinalState(forward) && (getNext(forward).isEmpty() || getNext(forward).size() == 1 && getNext(forward).get(0).getTarget(forward) == this);
+        return !isFinalState(forward) && (getNext(forward).length == 0 || getNext(forward).length == 1 && getNext(forward)[0].getTarget(forward) == this);
     }
 
     @TruffleBoundary
@@ -377,8 +418,8 @@ public class NFAState implements IndexedState, JsonConvertible {
                         Json.prop("forwardUnAnchoredFinalState", isForwardUnAnchoredFinalState()),
                         Json.prop("reverseAnchoredFinalState", isReverseAnchoredFinalState()),
                         Json.prop("reverseUnAnchoredFinalState", isReverseUnAnchoredFinalState()),
-                        Json.prop("next", next.stream().map(x -> Json.val(x.getId()))),
-                        Json.prop("prev", prev.stream().map(x -> Json.val(x.getId()))));
+                        Json.prop("next", Arrays.stream(next).map(x -> Json.val(x.getId()))),
+                        Json.prop("prev", Arrays.stream(prev).map(x -> Json.val(x.getId()))));
     }
 
     @TruffleBoundary
@@ -389,6 +430,6 @@ public class NFAState implements IndexedState, JsonConvertible {
                         Json.prop("matcherBuilder", matcherBuilder.toString()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState(forward)),
                         Json.prop("unAnchoredFinalState", isUnAnchoredFinalState(forward)),
-                        Json.prop("transitions", getNext(forward).stream().map(x -> Json.val(x.getId()))));
+                        Json.prop("transitions", Arrays.stream(getNext(forward)).map(x -> Json.val(x.getId()))));
     }
 }

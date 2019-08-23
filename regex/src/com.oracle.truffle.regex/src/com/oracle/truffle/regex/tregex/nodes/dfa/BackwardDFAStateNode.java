@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 

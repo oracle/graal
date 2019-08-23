@@ -56,19 +56,19 @@ import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.AllTransitionsInOneTreeMatcher;
-import com.oracle.truffle.regex.tregex.nodes.BackwardDFAStateNode;
-import com.oracle.truffle.regex.tregex.nodes.CGTrackingDFAStateNode;
-import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
-import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupLazyTransitionNode;
-import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
-import com.oracle.truffle.regex.tregex.nodes.DFAFindInnerLiteralStateNode;
-import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
-import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
-import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorDebugRecorder;
-import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorProperties;
-import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.AllTransitionsInOneTreeMatcher;
+import com.oracle.truffle.regex.tregex.nodes.dfa.BackwardDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.CGTrackingDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupLazyTransitionNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransitionNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAFindInnerLiteralStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorDebugRecorder;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorProperties;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplitBailoutException;
 import com.oracle.truffle.regex.tregex.parser.Counter;
@@ -313,7 +313,7 @@ public final class DFAGenerator implements JsonConvertible {
         nfa.setInitialLoopBack(isSearching() && !nfa.getAst().getFlags().isSticky());
         for (int i = 0; i < numberOfEntryPoints; i++) {
             NFATransitionSet anchoredEntryStateSet = createNFATransitionSet(nfa.getAnchoredEntry()[i]);
-            if (nfa.getUnAnchoredEntry()[i].getTarget().getNext().isEmpty()) {
+            if (nfa.getUnAnchoredEntry()[i].getTarget().getNext().length == 0) {
                 entryStates[numberOfEntryPoints + i] = null;
             } else {
                 NFATransitionSet unAnchoredEntryStateSet = createNFATransitionSet(nfa.getUnAnchoredEntry()[i]);
@@ -365,7 +365,7 @@ public final class DFAGenerator implements JsonConvertible {
                 if (!target.isFinalState(isForward()) && (!state.isBackwardPrefixState() || target.hasPrefixStates())) {
                     anyPrefixStateSuccessors |= target.hasPrefixStates();
                     allPrefixStateSuccessors &= target.hasPrefixStates();
-                    expandDFATransitions.add(createTransitionBuilder(target.getMatcherBuilder(), createNFATransitionSet(nfaTransition)));
+                    expandDFATransitions.add(createTransitionBuilder(target.getCharSet(), createNFATransitionSet(nfaTransition)));
                 } else if (isForward() && target.isForwardUnAnchoredFinalState()) {
                     assert target == nfa.getReverseUnAnchoredEntry().getSource();
                     break outer;
@@ -675,6 +675,7 @@ public final class DFAGenerator implements JsonConvertible {
                 nfa.getReverseUnAnchoredEntry().setSource(literalFirstState);
                 prefixMatcher = compilationReqest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, getOptions().isRegressionTestMode(),
                                 nfa.getAst().getNumberOfCaptureGroups(), rootSeq.getTerms().get(literalStart - 1).getMinPath()), "innerLiteralPrefix");
+                prefixMatcher.setRoot(compilationReqest.getRoot());
                 nfa.setInitialLoopBack(true);
                 nfa.getReverseAnchoredEntry().setSource(reverseAnchoredInitialState);
                 nfa.getReverseUnAnchoredEntry().setSource(reverseUnAnchoredInitialState);
@@ -710,7 +711,7 @@ public final class DFAGenerator implements JsonConvertible {
                     if (i == literalStart && !prefixNFAStates.contains(t.getTarget())) {
                         continue;
                     }
-                    if (c.intersects(t.getTarget().getMatcherBuilder())) {
+                    if (c.intersects(t.getTarget().getCharSet())) {
                         nextState.add(t.getTarget());
                     }
                 }

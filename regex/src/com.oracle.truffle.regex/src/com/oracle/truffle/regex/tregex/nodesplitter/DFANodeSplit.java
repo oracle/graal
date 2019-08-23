@@ -30,8 +30,8 @@ import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSortedArray;
 import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
-import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
-import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.ArrayDeque;

@@ -29,8 +29,8 @@ import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSortedArray;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
-import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
-import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
 
 import java.util.Arrays;
 import java.util.Iterator;

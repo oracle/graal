@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 public final class DFACaptureGroupTrackingData {
 

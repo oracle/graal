@@ -110,7 +110,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public boolean hasReverseUnAnchoredEntry() {
-        return reverseUnAnchoredEntry != null && !reverseUnAnchoredEntry.getSource().getPrev().isEmpty();
+        return reverseUnAnchoredEntry != null && reverseUnAnchoredEntry.getSource().getPrev().length > 0;
     }
 
     public RegexAST getAst() {
@@ -212,10 +212,10 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public void setInitialLoopBack(boolean enable) {
-        if (getUnAnchoredInitialState().getNext().isEmpty()) {
+        if (getUnAnchoredInitialState().getNext().length == 0) {
             return;
         }
-        NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getNext().get(getUnAnchoredInitialState().getNext().size() - 1);
+        NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getNext()[getUnAnchoredInitialState().getNext().length - 1];
         if (enable) {
             if (lastInitTransition != initialLoopBack) {
                 getUnAnchoredInitialState().addLoopBackNext(initialLoopBack);

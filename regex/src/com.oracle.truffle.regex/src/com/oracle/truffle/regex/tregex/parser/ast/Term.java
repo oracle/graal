@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token;
 
 /**
@@ -68,6 +69,11 @@ public abstract class Term extends RegexASTNode {
 
     public void setQuantifier(Token.Quantifier quantifier) {
         this.quantifier = quantifier;
+    }
+
+    @TruffleBoundary
+    protected String quantifierToString() {
+        return hasQuantifier() ? quantifier.toString() : "";
     }
 
     @Override

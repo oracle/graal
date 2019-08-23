@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import java.util.Arrays;
 
@@ -34,6 +34,8 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -239,9 +241,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
     /**
      * Finds the first matching transition. The index of the element of {@link #getMatchers()} that
      * matched the current input character (
-     * {@link TRegexDFAExecutorNode#getChar(TRegexDFAExecutorLocals)}) or
-     * {@link #FS_RESULT_NO_SUCCESSOR} is stored via
-     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
+     * {@link TRegexExecutorNode#getChar(TRegexExecutorLocals)}) or {@link #FS_RESULT_NO_SUCCESSOR}
+     * is stored via {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}.
      *
      * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.

@@ -215,6 +215,16 @@ public final class CharSet implements ImmutableSortedListOfRanges, Comparable<Ch
         arr[i * 2 + 1] = (char) hi;
     }
 
+    @Override
+    public boolean matchesNothing() {
+        return this == getEmpty();
+    }
+
+    @Override
+    public boolean matchesEverything() {
+        return this == getFull();
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public CharSet createEmpty() {

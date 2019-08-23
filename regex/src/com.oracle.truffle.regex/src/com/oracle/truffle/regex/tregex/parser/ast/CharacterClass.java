@@ -147,9 +147,10 @@ public class CharacterClass extends Term {
         }
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
-        return charSet.toString();
+        return charSet.toString() + quantifierToString();
     }
 
     @TruffleBoundary

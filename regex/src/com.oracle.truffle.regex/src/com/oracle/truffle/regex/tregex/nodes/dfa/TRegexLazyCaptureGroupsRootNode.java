@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.RegexBodyNode;
 import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexProfile;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.result.LazyCaptureGroupsResult;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
-public class TRegexLazyFindStartRootNode extends RegexBodyNode {
+public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
 
-    private final int prefixLength;
-    @Child private TRegexDFAExecutorEntryNode entryNode;
+    @Child private TRegexExecutorEntryNode entryNode;
+    private final RegexProfile.TracksRegexProfile profiler;
 
-    public TRegexLazyFindStartRootNode(RegexLanguage language, RegexSource source, int prefixLength, TRegexDFAExecutorNode backwardNode) {
+    public TRegexLazyCaptureGroupsRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode captureGroupNode, RegexProfile.TracksRegexProfile profiler) {
         super(language, source);
-        this.prefixLength = prefixLength;
-        this.entryNode = TRegexDFAExecutorEntryNode.create(backwardNode);
+        this.entryNode = insert(captureGroupNode);
+        this.profiler = profiler;
     }
 
     @Override
-    public final Object execute(VirtualFrame frame) {
+    public final Void execute(VirtualFrame frame) {
         final Object[] args = frame.getArguments();
         assert args.length == 3;
-        final Object input = args[0];
-        final int fromIndexArg = (int) args[1];
+        final LazyCaptureGroupsResult receiver = (LazyCaptureGroupsResult) args[0];
+        final int startIndex = (int) args[1];
         final int max = (int) args[2];
-        return (int) entryNode.execute(input, max, fromIndexArg, TRegexDFAExecutorLocals.backwardMaxIndex(max, prefixLength));
+        final int[] result = (int[]) entryNode.execute(receiver.getInput(), receiver.getFromIndex(), startIndex, max);
+        if (CompilerDirectives.inInterpreter()) {
+            RegexProfile profile = profiler.getRegexProfile();
+            profile.profileCaptureGroupAccess(result[1] - result[0], result[1] - (receiver.getFromIndex() + 1));
+        }
+        receiver.setResult(result);
+        return null;
     }
 
     @Override
-    public String getEngineLabel() {
-        return "TRegex bck";
+    protected String getEngineLabel() {
+        return "TRegex cg";
     }
 }

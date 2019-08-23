@@ -31,7 +31,10 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode.LazyCaptureGroupRegexSearchNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 
 public final class TRegexCompiler implements RegexCompiler {
 
@@ -60,5 +63,10 @@ public final class TRegexCompiler implements RegexCompiler {
     @TruffleBoundary
     public TRegexDFAExecutorNode compileEagerDFAExecutor(RegexSource source) {
         return new TRegexCompilationRequest(this, source).compileEagerDFAExecutor();
+    }
+
+    @TruffleBoundary
+    public LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(NFA nfa, TRegexExecRootNode rootNode) {
+        return new TRegexCompilationRequest(this, nfa).compileLazyDFAExecutor(rootNode);
     }
 }

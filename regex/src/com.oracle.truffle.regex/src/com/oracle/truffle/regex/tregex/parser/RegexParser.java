@@ -145,6 +145,13 @@ public final class RegexParser {
                 break;
             }
         }
+        final CalcMinPathsVisitor calcMinPathsVisitor = new CalcMinPathsVisitor();
+        calcMinPathsVisitor.runReverse(ast.getRoot());
+        calcMinPathsVisitor.run(ast.getRoot());
+        return ast;
+    }
+
+    public void prepareForDFA() {
         if (properties.hasQuantifiers() && !properties.hasLargeCountedRepetitions()) {
             UnrollQuantifiersVisitor.unrollQuantifiers(this, ast.getRoot());
         }
@@ -160,11 +167,10 @@ public final class RegexParser {
             }
         }
         checkInnerLiteral();
-        return ast;
     }
 
     private void checkInnerLiteral() {
-        if (ast.isLiteralString() || ast.getRoot().startsWithCaret() || ast.getRoot().endsWithDollar() || ast.getRoot().getAlternatives().size() != 1) {
+        if (ast.isLiteralString() || ast.getRoot().startsWithCaret() || ast.getRoot().endsWithDollar() || ast.getRoot().size() != 1) {
             return;
         }
         ArrayList<Term> terms = ast.getRoot().getAlternatives().get(0).getTerms();
@@ -241,7 +247,7 @@ public final class RegexParser {
      *            sequence.
      */
     private void addSequence(Token token) {
-        if (!curGroup.getAlternatives().isEmpty()) {
+        if (!curGroup.isEmpty()) {
             setComplexLookAround();
         }
         curSequence = curGroup.addSequence(ast);
@@ -391,11 +397,11 @@ public final class RegexParser {
             }
         }
 
-        if (group.getAlternatives().size() > 1) {
+        if (group.size() > 1) {
             properties.setAlternations();
         }
 
-        if (group.getAlternatives().size() == 1 && group.getAlternatives().get(0).getTerms().size() == 1) {
+        if (group.size() == 1 && group.getAlternatives().get(0).getTerms().size() == 1) {
             // If we are generating a group with only one alternative consisting of one term, then
             // we unwrap the group and return the term directly (this makes inspecting the resulting
             // terms easier).
@@ -471,8 +477,8 @@ public final class RegexParser {
     private void expandQuantifier(Term toExpand) {
         assert toExpand.hasQuantifier();
         Token.Quantifier quantifier = toExpand.getQuantifier();
+        assert quantifier.getMin() <= TRegexOptions.TRegexMaxCountedRepetition && quantifier.getMax() <= TRegexOptions.TRegexMaxCountedRepetition : toExpand + " in " + source;
         toExpand.setQuantifier(null);
-        assert quantifier.getMin() <= TRegexOptions.TRegexMaxCountedRepetition && quantifier.getMax() <= TRegexOptions.TRegexMaxCountedRepetition;
         curTerm = toExpand;
         curSequence = (Sequence) curTerm.getParent();
         curGroup = curSequence.getParent();
@@ -658,21 +664,49 @@ public final class RegexParser {
             addTerm(createCharClass(CharSet.getEmpty(), null));
             return;
         }
-        if (quantifier.getMax() == 0 || (curTerm instanceof LookAroundAssertion && quantifier.getMin() == 0)) {
+        if (quantifier.getMax() == 0 || (quantifier.getMin() == 0 && (curTerm instanceof LookAroundAssertion || (curTerm instanceof CharacterClass && ((CharacterClass) curTerm).isDead())))) {
             deleteVisitor.run(curSequence.getLastTerm());
             curSequence.removeLastTerm();
             return;
+        }
+        if (options.isDumpAutomata()) {
+            SourceSection src = curTerm.getSourceSection();
+            curTerm.setSourceSection(src.getSource().createSection(src.getCharIndex(), src.getCharLength() + quantifier.getSourceSection().getCharLength()));
         }
         if (curTerm instanceof LookAroundAssertion) {
             // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
             // ignore.
             return;
         }
+        if (quantifier.getMin() == 1 && quantifier.getMax() == 1) {
+            // x{1,1} -> x
+            return;
+        }
+        setQuantifier(curTerm, quantifier);
+        // merge equal successive quantified character classes
+        if (curSequence.size() > 1 && curTerm instanceof CharacterClass && curSequence.getTerms().get(curSequence.size() - 2) instanceof CharacterClass) {
+            CharacterClass prev = (CharacterClass) curSequence.getTerms().get(curSequence.size() - 2);
+            if (prev.hasQuantifier() && ((CharacterClass) curTerm).getCharSet().equals(prev.getCharSet())) {
+                setQuantifier(prev, new Token.Quantifier(
+                                prev.getQuantifier().getMin() + quantifier.getMin(),
+                                prev.getQuantifier().isInfiniteLoop() || quantifier.isInfiniteLoop() ? -1 : prev.getQuantifier().getMax() + quantifier.getMax(),
+                                prev.getQuantifier().isGreedy() || quantifier.isGreedy()));
+                deleteVisitor.run(curSequence.getLastTerm());
+                curSequence.removeLastTerm();
+                curTerm = prev;
+            }
+        }
+    }
+
+    private void setQuantifier(Term term, Token.Quantifier quantifier) {
         if (quantifier.getMin() > TRegexOptions.TRegexMaxCountedRepetition || quantifier.getMax() > TRegexOptions.TRegexMaxCountedRepetition) {
             properties.setLargeCountedRepetitions();
         }
-        curTerm.setQuantifier(quantifier);
+        term.setQuantifier(quantifier);
         properties.setQuantifiers();
+        if (quantifier.getMin() != quantifier.getMax()) {
+            properties.setAlternations();
+        }
     }
 
     /**

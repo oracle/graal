@@ -178,6 +178,38 @@ public class Token implements JsonConvertible {
             return greedy;
         }
 
+        @Override
+        public int hashCode() {
+            return 31 * min + 31 * max + (greedy ? 1 : 0);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof Quantifier)) {
+                return false;
+            }
+            Quantifier o = (Quantifier) obj;
+            return min == o.min && max == o.max && greedy == o.greedy;
+        }
+
+        @TruffleBoundary
+        @Override
+        public String toString() {
+            if (min == 0 && max == 1) {
+                return "?";
+            }
+            if (min == 0 && isInfiniteLoop()) {
+                return "*";
+            }
+            if (min == 1 && isInfiniteLoop()) {
+                return "+";
+            }
+            return String.format("{%d,%s}", min, isInfiniteLoop() ? "" : String.valueOf(max));
+        }
+
         @TruffleBoundary
         @Override
         public JsonObject toJson() {

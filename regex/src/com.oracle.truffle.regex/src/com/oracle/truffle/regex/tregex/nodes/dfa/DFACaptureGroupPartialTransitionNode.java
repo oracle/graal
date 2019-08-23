@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -303,6 +303,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
         return result;
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("DfaCGTransition");
@@ -322,6 +323,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
         return sb.toString();
     }
 
+    @TruffleBoundary
     private static void indexManipulationsToString(StringBuilder sb, byte[][] indexManipulations, String name) {
         if (indexManipulations.length > 0) {
             sb.append(System.lineSeparator()).append(name).append(": ");
@@ -359,6 +361,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
         return json;
     }
 
+    @TruffleBoundary
     private static JsonObject.JsonObjectProperty indexManipulationToProp(String name, byte[] values) {
         return Json.prop(name, Json.obj(
                         Json.prop("target", Byte.toUnsignedInt(values[0])),

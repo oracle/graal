@@ -46,6 +46,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public final class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
 
     private final ArrayList<Term> terms = new ArrayList<>();
+    private short groupIndex;
     private short visitorIterationIndex = 0;
 
     Sequence() {
@@ -74,6 +75,15 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
     public void setParent(RegexASTNode parent) {
         assert parent instanceof Group;
         super.setParent(parent);
+    }
+
+    public short getGroupIndex() {
+        assert getParent().getAlternatives().get(groupIndex) == this;
+        return groupIndex;
+    }
+
+    public void setGroupIndex(int groupIndex) {
+        this.groupIndex = (short) groupIndex;
     }
 
     /**
@@ -131,6 +141,19 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
         terms.remove(terms.size() - 1);
     }
 
+    public boolean isFirstInGroup() {
+        return getParent().getAlternatives().get(0) == this;
+    }
+
+    public boolean isLastInGroup() {
+        return getParent().getAlternatives().get(getParent().getAlternatives().size() - 1) == this;
+    }
+
+    public boolean isPenultimateInGroup() {
+        ArrayList<Sequence> alt = getParent().getAlternatives();
+        return alt.size() > 1 && alt.get(alt.size() - 2) == this;
+    }
+
     public boolean isLiteral() {
         if (isEmpty()) {
             return false;
@@ -145,6 +168,38 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
 
     public boolean isSingleCharClass() {
         return size() == 1 && isLiteral();
+    }
+
+    public int getEnclosedCaptureGroupsLow() {
+        int lo = Integer.MAX_VALUE;
+        for (Term t : terms) {
+            if (t instanceof Group) {
+                Group g = (Group) t;
+                if (g.getEnclosedCaptureGroupsLow() != g.getEnclosedCaptureGroupsHigh()) {
+                    lo = Math.min(lo, g.getEnclosedCaptureGroupsLow());
+                }
+                if (g.isCapturing()) {
+                    lo = Math.min(lo, g.getGroupNumber());
+                }
+            }
+        }
+        return lo == Integer.MAX_VALUE ? -1 : lo;
+    }
+
+    public int getEnclosedCaptureGroupsHigh() {
+        int hi = Integer.MIN_VALUE;
+        for (Term t : terms) {
+            if (t instanceof Group) {
+                Group g = (Group) t;
+                if (g.getEnclosedCaptureGroupsLow() != g.getEnclosedCaptureGroupsHigh()) {
+                    hi = Math.max(hi, g.getEnclosedCaptureGroupsHigh());
+                }
+                if (g.isCapturing()) {
+                    hi = Math.max(hi, g.getGroupNumber() + 1);
+                }
+            }
+        }
+        return hi == Integer.MIN_VALUE ? -1 : hi;
     }
 
     @Override

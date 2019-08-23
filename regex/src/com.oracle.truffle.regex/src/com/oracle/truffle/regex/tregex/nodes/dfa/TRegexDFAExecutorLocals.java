@@ -22,18 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nodes;
+package com.oracle.truffle.regex.tregex.nodes.dfa;
+
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 
 /**
- * Container for all local variables used in
- * {@link TRegexDFAExecutorNode#execute(TRegexDFAExecutorLocals, boolean)}.
+ * Container for all local variables used in {@link TRegexDFAExecutorNode}.
  */
-public final class TRegexDFAExecutorLocals {
+public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
 
-    private final Object input;
-    private final int fromIndex;
-    private final int maxIndex;
-    private int index;
     private int curMaxIndex;
     private int successorIndex;
     private int result;
@@ -42,52 +39,8 @@ public final class TRegexDFAExecutorLocals {
     private final DFACaptureGroupTrackingData cgData;
 
     public TRegexDFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, DFACaptureGroupTrackingData cgData) {
-        this.input = input;
-        this.fromIndex = fromIndex;
-        this.index = index;
-        this.maxIndex = maxIndex;
+        super(input, fromIndex, maxIndex, index);
         this.cgData = cgData;
-    }
-
-    /**
-     * The {@code input} argument given to {@link TRegexExecRootNode#execute(Object, int)}.
-     *
-     * @return the {@code input} argument given to {@link TRegexExecRootNode#execute(Object, int)}.
-     */
-    public Object getInput() {
-        return input;
-    }
-
-    /**
-     * The {@code fromIndex} argument given to {@link TRegexExecRootNode#execute(Object, int)}.
-     *
-     * @return the {@code fromIndex} argument given to
-     *         {@link TRegexExecRootNode#execute(Object, int)}.
-     */
-    public int getFromIndex() {
-        return fromIndex;
-    }
-
-    /**
-     * The maximum index as given by the parent {@link TRegexExecRootNode}.
-     *
-     * @return the maximum index as given by the parent {@link TRegexExecRootNode}.
-     */
-    public int getMaxIndex() {
-        return maxIndex;
-    }
-
-    /**
-     * The index pointing into {@link #getInput()}.
-     *
-     * @return the current index of {@link #getInput()} that is being processed.
-     */
-    public int getIndex() {
-        return index;
-    }
-
-    public void setIndex(int index) {
-        this.index = index;
     }
 
     /**
@@ -150,6 +103,6 @@ public final class TRegexDFAExecutorLocals {
     }
 
     public TRegexDFAExecutorLocals toBackwardLocals(int prefixLength) {
-        return new TRegexDFAExecutorLocals(input, fromIndex, index - 1, backwardMaxIndex(fromIndex, prefixLength), null);
+        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex() - 1, backwardMaxIndex(getFromIndex(), prefixLength), null);
     }
 }
