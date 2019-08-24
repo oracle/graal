@@ -401,7 +401,11 @@ class UnitTestRun:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if t: unittest(['--suite', suite, '--fail-fast'] + extra_args + self.args + _remove_empty_entries(extraVMarguments))
+                if 'coverage' not in self.tags:
+                    # If this is a coverage execution, we want maximal coverage
+                    # and thus must not fail fast.
+                    extra_args += ['--fail-fast']
+                if t: unittest(['--suite', suite] + extra_args + self.args + _remove_empty_entries(extraVMarguments))
 
 class BootstrapTest:
     def __init__(self, name, args, tags, suppress=None):

@@ -80,4 +80,3 @@ def renamegraalpackages(args):
     if new_contents != contents:
         with open(filepath, 'w') as fp:
             fp.write(new_contents)
-
