@@ -40,18 +40,24 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     @Override
     protected void run(StructuredGraph graph, MidTierContext context) {
         LoopsData loops = new LoopsData(graph);
-        if (context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions()) && graph.getGuardsStage().allowsFloatingGuards()) {
-            loops.detectedCountedLoops();
-            for (LoopEx loop : loops.countedLoops()) {
-                if (loop.loop().getChildren().isEmpty() && loop.counted().getStamp().getBits() <= 32) {
-                    boolean hasSafepoint = false;
-                    for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
-                        hasSafepoint |= loopEnd.canSafepoint();
+        loops.detectedCountedLoops();
+        for (LoopEx loop : loops.countedLoops()) {
+            if (loop.loop().getChildren().isEmpty() && loop.counted().getStamp().getBits() <= 32) {
+                boolean hasSafepoint = false;
+                for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
+                    hasSafepoint |= loopEnd.canSafepoint();
+                }
+                if (hasSafepoint) {
+                    if (!loop.counted().counterNeverOverflows()) {
+                        // Counter can overflow, need to create a guard.
+                        if (context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions()) && graph.getGuardsStage().allowsFloatingGuards()) {
+                            loop.counted().createOverFlowGuard();
+                        } else {
+                            // Cannot disable this safepoint, because the loop could overflow.
+                            continue;
+                        }
                     }
-                    if (hasSafepoint) {
-                        loop.counted().createOverFlowGuard();
-                        loop.loopBegin().disableSafepoint();
-                    }
+                    loop.loopBegin().disableSafepoint();
                 }
             }
         }
