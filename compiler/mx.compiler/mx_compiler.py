@@ -711,6 +711,7 @@ def _unittest_config_participant(config):
             for dist in _graal_config().dists:
                 jmd = as_java_module(dist, jdk)
                 mainClassArgs.extend(['-JUnitOpenPackages', jmd.name + '/*'])
+                vmArgs.append('--add-modules=' + jmd.name)
 
     vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
     vmArgs.append('-esa')
@@ -1253,6 +1254,20 @@ def _graal_config():
         GraalConfig._instance = GraalConfig(_graalvm_components)
     return GraalConfig._instance
 
+def _jvmci_jars():
+    if not isJDK8:
+        return [
+            'compiler:GRAAL',
+            'compiler:GRAAL_MANAGEMENT',
+            'compiler:JAOTC',
+        ]
+    else:
+        # JAOTC is JDK 9+
+        return [
+            'compiler:GRAAL',
+            'compiler:GRAAL_MANAGEMENT',
+        ]
+
 def _boot_jars():
     if not isJDK8:
         return ['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API']
@@ -1276,10 +1291,7 @@ _compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
         'compiler:GRAAL_REPLACEMENTS_PROCESSOR',
         'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
     ],
-    jvmci_jars=[
-        'compiler:GRAAL',
-        'compiler:GRAAL_MANAGEMENT',
-    ],
+    jvmci_jars=_jvmci_jars(),
     boot_jars=_boot_jars(),
     graal_compiler='graal',
 ))
