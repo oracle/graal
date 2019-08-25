@@ -53,7 +53,26 @@
 				"category": "GraalVM"
 			}
 		],
+		"languages": [
+			{
+				"id": "sl",
+				"aliases": [
+					"SL",
+					"SimpleLanguage",
+					"Simple-Language"
+				],
+				"extensions": [
+					".sl"
+				],
+				"configuration": "./sl-language-configuration.json"
+			}
+		],
 		"grammars": [
+			{
+				"language": "sl",
+				"scopeName": "source.sl",
+				"path": "./syntaxes/sl.tmLanguage.json"
+			},
 			{
 				"path": "./syntaxes/polyglot-injection.json",
 				"injectTo": [
