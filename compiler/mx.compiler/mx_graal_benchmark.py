@@ -93,8 +93,8 @@ _IMAGE_JMH_BENCHMARK_ARGS = [
     # JMH does not support forks with native-image. In the distant future we can capture this case.
     '-Dnative-image.benchmark.extra-run-arg=-f0',
 
-    # GR-17177 should remove this from args.
-    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh',
+    # JMH does HotSpot-specific field offset checks in class initializers
+    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal',
 
     # Don't waste time and energy collecting reflection config.
     '-Dnative-image.benchmark.extra-agent-run-arg=-f0',

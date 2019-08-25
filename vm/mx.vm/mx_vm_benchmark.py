@@ -226,7 +226,7 @@ class NativeImageVM(GraalVm):
                     hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
 
                 if config.extra_agent_run_args:
-                    hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo else config.extra_agent_run_args
+                    hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo and not self.is_gate else config.extra_agent_run_args
                 else:
                     hotspot_run_args += image_run_args
 
