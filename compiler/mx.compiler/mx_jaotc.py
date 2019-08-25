@@ -35,7 +35,6 @@ from argparse import ArgumentParser, ZERO_OR_MORE
 import mx
 import mx_compiler
 from mx_gate import Task
-from mx_javamodules import as_java_module
 
 jdk = mx.get_jdk(tag='default')
 
@@ -45,31 +44,16 @@ def run_jaotc(args, classpath=None, cwd=None):
     if jdk.javaCompliance < '11':
         mx.abort('jaotc command is only available if JAVA_HOME is JDK 11 or later')
 
-    vm_args = [a[2:] for a in args if a.startswith('-J')]
+    vm_args = [a for a in args if a.startswith('-J')]
     args = [a for a in args if not a.startswith('-J')]
 
     verbose = ['--verbose'] if mx._opts.very_verbose else []
-    cp = ['-cp', classpath] if classpath else []
+    cp = ['-J--class-path=' + classpath] if classpath else []
 
-    jaotc_module = as_java_module(mx.distribution('JAOTC'), jdk)
-    mx_compiler.run_vm(
-        ['--add-exports=jdk.internal.vm.ci/jdk.vm.ci.aarch64=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.amd64=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.site=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.common=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.aarch64=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.amd64=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot.sparc=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.sparc=jdk.internal.vm.compiler,jdk.aot',
-         '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.hotspot.meta=jdk.aot',
-         '--upgrade-module-path=' + jaotc_module.jarpath,
-         '-XX:+CalculateClassFingerprint'] + vm_args + cp + ['-m', 'jdk.aot/jdk.tools.jaotc.Main'] + verbose + args,
-        cwd=cwd)
+    graaljdk_dir, _ = mx_compiler._update_graaljdk(mx_compiler.jdk)
+    graaljdk = mx.JDKConfig(graaljdk_dir)
+    jaotc_exe = graaljdk.exe_path('jaotc', 'bin')
+    mx.run([jaotc_exe] + vm_args + cp + verbose + args, cwd=cwd)
 
 def jaotc_gate_runner(tasks):
     with Task('jaotc', tasks, tags=['jaotc', 'fulltest']) as t:
