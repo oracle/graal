@@ -39,7 +39,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -49,19 +48,12 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 public abstract class LLVMWriteNode extends LLVMStatementNode {
 
     protected final FrameSlot slot;
-    protected final LLVMSourceLocation source;
 
-    protected LLVMWriteNode(FrameSlot slot, LLVMSourceLocation source) {
+    protected LLVMWriteNode(FrameSlot slot) {
         this.slot = slot;
-        this.source = source;
     }
 
     public abstract void executeWithTarget(VirtualFrame frame, Object value);
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
-    }
 
     @Override
     public String getSourceDescription() {
@@ -77,8 +69,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteI1Node extends LLVMWriteNode {
-        protected LLVMWriteI1Node(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteI1Node(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -88,8 +80,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteI8Node extends LLVMWriteNode {
-        protected LLVMWriteI8Node(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteI8Node(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -99,8 +91,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteI16Node extends LLVMWriteNode {
-        protected LLVMWriteI16Node(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteI16Node(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -110,8 +102,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteI32Node extends LLVMWriteNode {
-        protected LLVMWriteI32Node(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteI32Node(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -121,8 +113,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteI64Node extends LLVMWriteNode {
-        protected LLVMWriteI64Node(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteI64Node(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -145,8 +137,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteIVarBitNode extends LLVMWriteNode {
-        protected LLVMWriteIVarBitNode(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteIVarBitNode(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -156,8 +148,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteFloatNode extends LLVMWriteNode {
-        protected LLVMWriteFloatNode(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteFloatNode(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -167,8 +159,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteDoubleNode extends LLVMWriteNode {
-        protected LLVMWriteDoubleNode(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteDoubleNode(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -178,8 +170,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWrite80BitFloatingNode extends LLVMWriteNode {
-        protected LLVMWrite80BitFloatingNode(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWrite80BitFloatingNode(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -189,8 +181,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWritePointerNode extends LLVMWriteNode {
-        protected LLVMWritePointerNode(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWritePointerNode(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization
@@ -200,8 +192,8 @@ public abstract class LLVMWriteNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMWriteVectorNode extends LLVMWriteNode {
-        protected LLVMWriteVectorNode(FrameSlot slot, LLVMSourceLocation source) {
-            super(slot, source);
+        protected LLVMWriteVectorNode(FrameSlot slot) {
+            super(slot);
         }
 
         @Specialization

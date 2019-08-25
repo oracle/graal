@@ -26,18 +26,19 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.XOptions;
-import com.oracle.svm.core.util.AtomicUnsigned;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -417,7 +418,7 @@ public class HeapPolicy {
 
             @Override
             public void maybeCauseCollection() {
-                HeapImpl.getHeapImpl().getGCImpl().collectWithoutAllocating("CollectOnAllocationPolicy.Always");
+                HeapImpl.getHeapImpl().getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocationAlways);
             }
 
             Always() {
@@ -439,7 +440,7 @@ public class HeapPolicy {
                 final HeapImpl heap = HeapImpl.getHeapImpl();
                 /* Has there been enough allocation to provoke a collection? */
                 if (bytesAllocatedSinceLastCollection.get().aboveOrEqual(getMaximumYoungGenerationSize())) {
-                    heap.getGCImpl().collectWithoutAllocating("CollectOnAllocation.Sometimes");
+                    heap.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocationSometimes);
                 }
             }
 
@@ -451,13 +452,13 @@ public class HeapPolicy {
 
     public interface HintGCPolicy {
         @SuppressWarnings("SameParameterValue")
-        void maybeCauseCollection(String message);
+        void maybeCauseCollection(GCCause cause);
     }
 
     public static class AlwaysCollectCompletely implements HeapPolicy.HintGCPolicy {
         @Override
-        public void maybeCauseCollection(String message) {
-            HeapImpl.getHeapImpl().getGC().collectCompletely(message);
+        public void maybeCauseCollection(GCCause cause) {
+            HeapImpl.getHeapImpl().getGC().collectCompletely(cause);
         }
     }
 
@@ -467,9 +468,9 @@ public class HeapPolicy {
      */
     public static class ScepticallyCollect implements HeapPolicy.HintGCPolicy {
         @Override
-        public void maybeCauseCollection(String message) {
+        public void maybeCauseCollection(GCCause cause) {
             if (bytesAllocatedSinceLastCollection.get().aboveOrEqual(collectScepticallyThreshold())) {
-                HeapImpl.getHeapImpl().getGCImpl().collect(message);
+                HeapImpl.getHeapImpl().getGCImpl().collect(cause);
             }
         }
 

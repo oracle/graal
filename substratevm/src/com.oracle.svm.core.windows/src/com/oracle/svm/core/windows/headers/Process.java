@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordBase;
 
 //Checkstyle: stop
 
@@ -47,13 +46,12 @@ import org.graalvm.word.WordBase;
 @Platforms(Platform.WINDOWS.class)
 public class Process {
 
-    /** Execute path with arguments argv. */
     @CFunction
     public static native int _execv(CCharPointer path, CCharPointerPointer argv);
 
-    /**
-     * Thread Creation
-     */
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native WinBase.HANDLE GetCurrentProcess();
+
     @CFunction
     public static native WinBase.HANDLE _beginthreadex(PointerBase security, int stacksize, CFunctionPointer start_address,
                     PointerBase arglist, int initflag, CIntPointer thrdaddr);
@@ -73,31 +71,11 @@ public class Process {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetCurrentThreadId();
 
-    /**
-     * Windows Thread local storage functions
-     */
-
-    /** Allocate a slot in the thread local storage area */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int TlsAlloc();
-
-    /** Destroy tlsIndex */
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int TlsFree(int tlsIndex);
+    public static native WinBase.HANDLE GetCurrentThread();
 
-    /** Return current value of the thread-specific data slot identified by tlsIndex. */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native <T extends WordBase> T TlsGetValue(int tlsIndex);
-
-    /**
-     * Store POINTER in the thread-specific data slot identified by tlsIndex.
-     */
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int TlsSetValue(int tlsIndex, WordBase value);
-
-    /**
-     * Windows Critical Section (for supporting Mutexes) functions and structure declarations
-     */
+    @CConstant
+    public static native int SYNCHRONIZE();
 
     @CStruct
     public interface PCRITICAL_SECTION extends PointerBase {
@@ -107,27 +85,20 @@ public class Process {
     public interface CRITICAL_SECTION extends PointerBase {
     }
 
-    /** Initialize a Critical Section */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void InitializeCriticalSection(PCRITICAL_SECTION mutex);
 
-    /** Enter a Critical Section */
     @CFunction(transition = Transition.TO_NATIVE)
     public static native void EnterCriticalSection(PCRITICAL_SECTION mutex);
 
     @CFunction(value = "EnterCriticalSection", transition = Transition.NO_TRANSITION)
     public static native void EnterCriticalSectionNoTrans(PCRITICAL_SECTION mutex);
 
-    /** Exit a Critical Section */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void LeaveCriticalSection(PCRITICAL_SECTION mutex);
 
     @CFunction(value = "LeaveCriticalSection", transition = Transition.NO_TRANSITION)
     public static native void LeaveCriticalSectionNoTrans(PCRITICAL_SECTION mutex);
-
-    /**
-     * Windows Condition Variable functions and structure declarations
-     */
 
     @CStruct
     public interface PCONDITION_VARIABLE extends PointerBase {
@@ -137,22 +108,18 @@ public class Process {
     public interface CONDITION_VARIABLE extends PointerBase {
     }
 
-    /** Initialize a condition variable */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void InitializeConditionVariable(PCONDITION_VARIABLE cond);
 
-    /** Wait on condition variable */
     @CFunction
     public static native int SleepConditionVariableCS(PCONDITION_VARIABLE cond, PCRITICAL_SECTION mutex, int dwMilliseconds);
 
     @CFunction(value = "SleepConditionVariableCS", transition = Transition.NO_TRANSITION)
     public static native int SleepConditionVariableCSNoTrans(PCONDITION_VARIABLE cond, PCRITICAL_SECTION mutex, int dwMilliseconds);
 
-    /** Wake a single thread waiting on the condition variable */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void WakeConditionVariable(PCONDITION_VARIABLE cond);
 
-    /** Wake all threads waiting on the condition variable */
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void WakeAllConditionVariable(PCONDITION_VARIABLE cond);
 }

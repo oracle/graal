@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,49 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.types.floating;
+package com.oracle.truffle.llvm.nodes.func;
 
-import static org.junit.Assert.assertEquals;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-import org.junit.Test;
+abstract class LLVMPrepareArgumentNode extends LLVMNode {
 
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+    protected abstract Object executeWithTarget(Object value);
 
-public class LLVM80BitFromStringTest extends LLVM80BitTest {
-
-    @Test
-    public void testPositiveInt() {
-        String test = "40099A40000000000000";
-        assertEquals(val(1234), LLVM80BitFloat.fromString(test));
+    @Specialization
+    protected LLVMPointer doPointer(LLVMPointer address) {
+        return address.copy();
     }
 
-    @Test
-    public void testNegativeInt() {
-        String test = "C0099A40000000000000";
-        assertEquals(val(-1234), LLVM80BitFloat.fromString(test));
-    }
-
-    @Test
-    public void testZero() {
-        String test = "00000000000000000000";
-        assertEquals(zero(), LLVM80BitFloat.fromString(test));
-    }
-
-    @Test
-    public void testMinusZero() {
-        String test = "BFFF8000000000000000";
-        assertEquals(minusOne(), LLVM80BitFloat.fromString(test));
-    }
-
-    @Test
-    public void testPi() {
-        String test = "4000C90FDAA22168C235";
-        assertEquals(LLVM80BitFloat.fromRawValues(false, 0x4000, 0xc90fdaa22168c235L), LLVM80BitFloat.fromString(test));
-    }
-
-    @Test
-    public void testMinusOne() {
-        String test = "BFFF8000000000000000";
-        assertEquals(LLVM80BitFloat.fromRawValues(true, 0x3fff, 0x8000000000000000L), LLVM80BitFloat.fromString(test));
+    @Fallback
+    protected Object doOther(Object value) {
+        return value;
     }
 }

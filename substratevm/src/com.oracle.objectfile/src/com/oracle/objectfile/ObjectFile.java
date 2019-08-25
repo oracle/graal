@@ -156,8 +156,6 @@ public abstract class ObjectFile {
 
     public abstract void setByteOrder(ByteOrder byteOrder);
 
-    public abstract void setMainEntryPoint(String name);
-
     // FIXME: replace OS string with enum (or just get rid of the concept,
     // perhaps merging with getFilenameSuffix).
     private static String getHostOS() {

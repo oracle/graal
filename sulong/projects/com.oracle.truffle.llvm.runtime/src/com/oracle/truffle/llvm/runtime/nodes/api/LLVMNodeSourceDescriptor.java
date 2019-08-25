@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,47 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
+package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-/**
- * A node to wrap an intrinsic node inlined in the AST, to give it a SourceLocation.
- */
-public class LLVMIntrinsicWrapperNode extends LLVMExpressionNode {
+public final class LLVMNodeSourceDescriptor {
 
-    private final LLVMSourceLocation sourceLocation;
-    @Child private LLVMExpressionNode intrinsic;
+    private static final SourceSection DEFAULT_SOURCE_SECTION;
 
-    public LLVMIntrinsicWrapperNode(LLVMSourceLocation sourceLocation, LLVMExpressionNode intrinsic) {
-        this.sourceLocation = sourceLocation;
-        this.intrinsic = intrinsic;
+    static {
+        final Source source = Source.newBuilder("llvm", "LLVM IR", "<llvm ir>").mimeType("text/plain").build();
+        DEFAULT_SOURCE_SECTION = source.createUnavailableSection();
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return intrinsic.executeGeneric(frame);
-    }
+    private LLVMSourceLocation sourceLocation;
+    private boolean hasStatementTag;
 
-    @Override
     public LLVMSourceLocation getSourceLocation() {
         return sourceLocation;
+    }
+
+    public SourceSection getSourceSection() {
+        if (sourceLocation == null) {
+            return DEFAULT_SOURCE_SECTION;
+        }
+        return sourceLocation.getSourceSection();
+    }
+
+    public boolean hasStatementTag() {
+        return hasStatementTag && sourceLocation != null;
+    }
+
+    public void setSourceLocation(LLVMSourceLocation sourceLocation) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.sourceLocation = sourceLocation;
+    }
+
+    public void setHasStatementTag(boolean hasStatementTag) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.hasStatementTag = hasStatementTag;
     }
 }

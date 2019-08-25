@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
+import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 
@@ -39,7 +42,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
  * since it will store its current state directly in the AST, using the methods of
  * {@link RegexASTVisitorIterable} implemented by {@link Group}, {@link Sequence} and
  * {@link com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode}!
- * 
+ *
  * <pre>
  * {@code
  * execution example on tree (a(bc(d|e)f)):
@@ -115,6 +118,38 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
         } else {
             return advanceLeafNode(cur);
         }
+    }
+
+    @Override
+    protected void visit(BackReference backReference) {
+    }
+
+    @Override
+    protected void visit(Group group) {
+    }
+
+    @Override
+    protected void visit(Sequence sequence) {
+    }
+
+    @Override
+    protected void visit(PositionAssertion assertion) {
+    }
+
+    @Override
+    protected void visit(LookBehindAssertion assertion) {
+    }
+
+    @Override
+    protected void visit(LookAheadAssertion assertion) {
+    }
+
+    @Override
+    protected void visit(CharacterClass characterClass) {
+    }
+
+    @Override
+    protected void visit(MatchFound matchFound) {
     }
 
     @Override

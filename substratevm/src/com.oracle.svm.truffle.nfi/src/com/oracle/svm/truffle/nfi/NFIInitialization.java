@@ -79,6 +79,7 @@ public final class NFIInitialization {
 
         initializeNativeSimpleType(context, NativeSimpleType.STRING, ffi_type_pointer.get());
         initializeNativeSimpleType(context, NativeSimpleType.OBJECT, ffi_type_pointer.get());
+        initializeNativeSimpleType(context, NativeSimpleType.NULLABLE, ffi_type_pointer.get());
     }
 
     static void initializeContext(NativeTruffleContext ctx) {

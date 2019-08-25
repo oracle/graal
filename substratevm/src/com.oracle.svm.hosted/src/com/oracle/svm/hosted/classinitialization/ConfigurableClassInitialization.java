@@ -372,6 +372,14 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     private void setSubclassesAsRunTime(Class<?> clazz) {
+        if (clazz.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(clazz))) {
+            /*
+             * An interface that does not declare a default method is independent from a class
+             * initialization point of view, i.e., it is not initialized when a class implementing
+             * that interface is initialized.
+             */
+            return;
+        }
         loader.findSubclasses(clazz, false).stream()
                         .filter(c -> !c.equals(clazz))
                         .filter(c -> !(c.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(c))))
@@ -555,7 +563,16 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     private InitKind processInterfaces(Class<?> clazz, boolean memoizeEager) {
-        InitKind result = computeInitKindForClass(clazz);
+        /*
+         * Note that we do not call computeInitKindForClass(clazz) on purpose: if clazz is the root
+         * class or an interface declaring default methods, then
+         * computeInitKindAndMaybeInitializeClass() already calls computeInitKindForClass. If the
+         * interface does not declare default methods, than we must not take the InitKind of that
+         * interface into account, because interfaces without default methods are independent from a
+         * class initialization point of view.
+         */
+        InitKind result = InitKind.BUILD_TIME;
+
         for (Class<?> iface : clazz.getInterfaces()) {
             if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
                 /*

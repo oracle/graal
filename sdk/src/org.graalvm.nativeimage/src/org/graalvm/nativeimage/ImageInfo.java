@@ -148,6 +148,7 @@ public final class ImageInfo {
      * @since 19.0
      */
     public static boolean isExecutable() {
+        ensureKindAvailable();
         return PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
     }
 
@@ -157,6 +158,14 @@ public final class ImageInfo {
      * @since 19.0
      */
     public static boolean isSharedLibrary() {
+        ensureKindAvailable();
         return PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
+    }
+
+    private static void ensureKindAvailable() {
+        if (inImageCode() && System.getProperty(PROPERTY_IMAGE_KIND_KEY) == null) {
+            throw new UnsupportedOperationException(
+                            "The kind of image that is built (executable or shared library) is not available yet because the relevant command line option has not been parsed yet.");
+        }
     }
 }

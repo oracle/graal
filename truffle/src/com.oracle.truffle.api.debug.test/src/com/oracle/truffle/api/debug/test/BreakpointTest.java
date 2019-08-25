@@ -63,6 +63,7 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Source;
@@ -1171,6 +1172,53 @@ public class BreakpointTest extends AbstractDebugTest {
 
                 event.prepareContinue();
             });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testLazyParsingBreak() throws Exception {
+        ProxyLanguage.setDelegate(new TestLazyParsingLanguage());
+        Source source = Source.create(ProxyLanguage.ID, "" +
+                        "main\n" +
+                        "\n" +
+                        "foo\n" +
+                        "\n" +
+                        "foo2\n" +
+                        "\n");
+        final int lineCount = source.getLineCount();
+        final Breakpoint[] breakpoints = new Breakpoint[lineCount];
+        final int[] resolvedLines = new int[lineCount];
+        try (DebuggerSession session = tester.startSession()) {
+            assertTrue((Boolean) ReflectionUtils.getField(session, "breakpointsUnresolvedEmpty"));
+            for (int l = 1; l <= lineCount; l++) {
+                final int line = l;
+                Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(line).resolveListener((Breakpoint b, SourceSection section) -> {
+                    resolvedLines[line - 1] = section.getStartLine();
+                }).build();
+                breakpoints[line - 1] = breakpoint;
+                session.install(breakpoint);
+            }
+            assertFalse((Boolean) ReflectionUtils.getField(session, "breakpointsUnresolvedEmpty"));
+            tester.startEval(source);
+            for (int l = 1; l <= lineCount; l += 2) {
+                final int line = l;
+                expectSuspended((SuspendedEvent event) -> {
+                    assertEquals(line, event.getSourceSection().getStartLine());
+                    assertTrue("Breakpoint at line " + line, breakpoints[line - 1] == event.getBreakpoints().get(0) || breakpoints[line - 1] == event.getBreakpoints().get(1));
+                    assertTrue("Breakpoint at line " + (line + 1), breakpoints[line] == event.getBreakpoints().get(0) || breakpoints[line] == event.getBreakpoints().get(1));
+                    // This and the next breakpoints are both resolved to this line
+                    assertEquals(line, resolvedLines[line - 1]);
+                    assertEquals(line, resolvedLines[line]);
+                    // Breakpoints on further lines are not resolved yet:
+                    for (int l2 = line + 2; l2 < lineCount; l2++) {
+                        assertFalse(breakpoints[l2 - 1].isResolved());
+                        assertEquals(0, resolvedLines[l2 - 1]);
+                    }
+                    event.prepareContinue();
+                });
+            }
+            assertTrue((Boolean) ReflectionUtils.getField(session, "breakpointsUnresolvedEmpty"));
         }
         expectDone();
     }

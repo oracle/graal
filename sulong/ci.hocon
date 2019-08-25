@@ -104,6 +104,12 @@ sulong-coverage-linux: ${sulong-gateTest38-linux} ${requireGCC} ${sulong-weekly-
     timelimit: "1:00:00"
 }
 
+sulong-openjdk11-only: ${openjdk11} {
+    downloads: {
+        "EXTRA_JAVA_HOMES": {"pathlist": []}
+    }
+}
+
 builds += [
   ${sulong-gateStyle} { name: gate-sulong-style, run: [[mx, gate, --tags, "style"]] }
   ${sulong-gateStyle} ${jdt} { name: gate-sulong-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
@@ -120,6 +126,8 @@ builds += [
   ${sulong-gateTest40-darwin} { name: gate-sulong-basic_mac, run: [[mx, gate, --tags, "build,sulongBasic,nwcc,llvm,toolchain"]] }
 
   ${sulong-gateTest80-linux} ${sulong-ruby-downstream-test} { name: gate-sulong-ruby-downstream }
+
+  ${sulong-gateTest60-linux} ${sulong-openjdk11-only} ${linux-aarch64} { name: gate-sulong-basic_v60-linux-aarch64, run: [[mx, gate, --tags, "build"]] }
 
   ${sulong-coverage-linux} { name: weekly-sulong-coverage }
 ]

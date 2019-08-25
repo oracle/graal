@@ -40,6 +40,7 @@ import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 
 /**
@@ -173,7 +174,7 @@ public class HeapVerifierImpl implements HeapVerifier {
     }
 
     /** A VMOperation that verifies the heap. */
-    protected static final class VerifyVMOperation extends VMOperation {
+    protected static final class VerifyVMOperation extends JavaVMOperation {
 
         private final String message;
         private final HeapVerifierImpl verifier;
@@ -181,7 +182,7 @@ public class HeapVerifierImpl implements HeapVerifier {
         private boolean result;
 
         VerifyVMOperation(String message, HeapVerifierImpl verifier, HeapVerifier.Occasion occasion) {
-            super("HeapVerification", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
+            super("HeapVerification", SystemEffect.SAFEPOINT);
             this.message = message;
             this.verifier = verifier;
             this.occasion = occasion;

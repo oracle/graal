@@ -24,10 +24,7 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
@@ -85,74 +82,9 @@ public class Statvfs {
         long f_namemax();
     }
 
-    /*
-     * Definitions for the flag in `f_flag'. These definitions should be kept in sync with the
-     * definitions in <sys/mount.h>.
-     */
-    /** Mount read-only. */
-    @CConstant
-    public static native int ST_RDONLY();
-
-    /** Ignore suid and sgid bits. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_NOSUID();
-
-    /** Disallow access to device special files. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_NODEV();
-
-    /** Disallow program execution. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_NOEXEC();
-
-    /** Writes are synced at once. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_SYNCHRONOUS();
-
-    /** Allow mandatory locks on an FS. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_MANDLOCK();
-
-    /** Write on file/directory/symlink. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_WRITE();
-
-    /** Append-only file. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_APPEND();
-
-    /** Immutable file. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_IMMUTABLE();
-
-    /** Do not update access times. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_NOATIME();
-
-    /** Do not update directory access times. */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ST_NODIRATIME();
-
-    // [not present on old Linux systems]
-    // /** Update atime relative to mtime/ctime. */
-    // @CConstant
-    // public static native int ST_RELATIME();
-
-    /** Return information about the filesystem on which FILE resides. */
     @CFunction
     public static native int statvfs(CCharPointer file, statvfs buf);
 
-    /** Return information about the filesystem containing the file FILDES refers to. */
     @CFunction
     public static native int fstatvfs(int fildes, statvfs buf);
 }

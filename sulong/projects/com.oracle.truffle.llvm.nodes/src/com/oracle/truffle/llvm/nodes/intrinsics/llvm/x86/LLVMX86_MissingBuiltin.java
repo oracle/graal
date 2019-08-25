@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,25 +31,16 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMBuiltin;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 public final class LLVMX86_MissingBuiltin extends LLVMBuiltin {
-
-    private final LLVMSourceLocation sourceLocation;
     private final String name;
 
-    private LLVMX86_MissingBuiltin(LLVMSourceLocation sourceLocation, String name) {
-        this.sourceLocation = sourceLocation;
+    private LLVMX86_MissingBuiltin(String name) {
         this.name = name;
     }
 
-    public static LLVMX86_MissingBuiltin create(LLVMSourceLocation sourceLocation, String name) {
-        return new LLVMX86_MissingBuiltin(sourceLocation, name);
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return sourceLocation;
+    public static LLVMX86_MissingBuiltin create(String name) {
+        return new LLVMX86_MissingBuiltin(name);
     }
 
     @Override

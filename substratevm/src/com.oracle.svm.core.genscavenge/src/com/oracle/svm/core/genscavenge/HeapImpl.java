@@ -63,6 +63,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
@@ -85,11 +86,6 @@ import sun.management.Util;
 /** An implementation of a card remembered set generational heap. */
 public class HeapImpl extends Heap {
 
-    /*
-     * Final state.
-     */
-
-    /* The Generations, etc. */
     private final YoungGeneration youngGeneration;
     private final OldGeneration oldGeneration;
     final HeapChunkProvider chunkProvider;
@@ -119,7 +115,6 @@ public class HeapImpl extends Heap {
             this.stackVerifier = null;
         }
         chunkProvider = new HeapChunkProvider();
-        this.objectVisitorWalkerOperation = new ObjectVisitorWalkerOperation();
         this.gcProvider = new GenScavengeGCProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.classList = null;
@@ -153,51 +148,10 @@ public class HeapImpl extends Heap {
         ThreadLocalAllocation.disableThreadLocalAllocation(vmThread);
     }
 
-    /*
-     * Other interface methods from Heap.
-     */
-
-    /* Object walking. */
-
-    /* State. */
-    private final ObjectVisitorWalkerOperation objectVisitorWalkerOperation;
-
-    private ObjectVisitorWalkerOperation getObjectVisitorWalkerOperation() {
-        return objectVisitorWalkerOperation;
-    }
-
-    /* Walk the objects of the heap. */
     @Override
     public void walkObjects(ObjectVisitor visitor) {
-        try (ObjectVisitorWalkerOperation operation = getObjectVisitorWalkerOperation().open(visitor)) {
-            operation.enqueue();
-        }
-    }
-
-    static class ObjectVisitorWalkerOperation extends VMOperation implements AutoCloseable {
-
-        /** A lazily-initialized visitor. */
-        private ObjectVisitor visitor = null;
-
-        ObjectVisitorWalkerOperation() {
-            super("ObjectVisitorWalker", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
-        }
-
-        ObjectVisitorWalkerOperation open(ObjectVisitor value) {
-            this.visitor = value;
-            return this;
-        }
-
-        @Override
-        public void operate() {
-            assert visitor != null : "HeapImpl.ObjectVisitorWalkerOperation.operate: null visitor";
-            HeapImpl.getHeapImpl().doWalkObjects(visitor);
-        }
-
-        @Override
-        public void close() {
-            visitor = null;
-        }
+        VMOperation.guaranteeInProgressAtSafepoint("must only be executed by the GC");
+        HeapImpl.getHeapImpl().doWalkObjects(visitor);
     }
 
     private void doWalkObjects(ObjectVisitor visitor) {
@@ -885,6 +839,6 @@ final class Target_java_lang_Runtime {
      */
     @Substitute
     private void gc() {
-        HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection("java.lang.Runtime.gc()");
+        HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection(GCCause.JavaLangSystemGC);
     }
 }

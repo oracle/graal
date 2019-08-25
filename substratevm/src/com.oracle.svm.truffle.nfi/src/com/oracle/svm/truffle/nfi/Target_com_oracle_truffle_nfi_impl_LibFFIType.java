@@ -45,6 +45,10 @@ final class Target_com_oracle_truffle_nfi_impl_LibFFIType_StringType {
 final class Target_com_oracle_truffle_nfi_impl_LibFFIType_ObjectType {
 }
 
+@TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", innerClass = "NullableType", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_impl_LibFFIType_NullableType {
+}
+
 @TargetClass(className = "com.oracle.truffle.nfi.impl.LibFFIType", innerClass = "EnvType", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType {
 }

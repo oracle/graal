@@ -106,6 +106,9 @@ public class SubstrateUtil {
             case "x86_64":
                 arch = "amd64";
                 break;
+            case "arm64":
+                arch = "aarch64";
+                break;
             case "sparcv9":
                 arch = "sparc";
                 break;
@@ -139,7 +142,7 @@ public class SubstrateUtil {
         FileDescriptor fd;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static FileDescriptor getFileDescriptor(FileOutputStream out) {
         return SubstrateUtil.cast(out, Target_java_io_FileOutputStream.class).fd;
     }
@@ -164,7 +167,7 @@ public class SubstrateUtil {
     /**
      * Returns the length of a C {@code char*} string.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
         UnsignedWord n = WordFactory.zero();
         while (((Pointer) str).readByte(n) != 0) {
@@ -176,7 +179,7 @@ public class SubstrateUtil {
     /**
      * Returns a pointer to the matched character or NULL if the character is not found.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CCharPointer strchr(CCharPointer str, int c) {
         int index = 0;
         while (true) {
@@ -324,7 +327,8 @@ public class SubstrateUtil {
         }
 
         if (VMOperationControl.isFrozen()) {
-            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
+            /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
+            for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
@@ -432,7 +436,8 @@ public class SubstrateUtil {
     private static void dumpVMThreads(Log log) {
         log.string("VMThreads info:").newline();
         log.indent(true);
-        for (IsolateThread vmThread = VMThreads.firstThread(); vmThread != VMThreads.nullThread(); vmThread = VMThreads.nextThread(vmThread)) {
+        /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
+        for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
                             .spaces(2).object(JavaThreads.fromVMThread(vmThread)).newline();
         }

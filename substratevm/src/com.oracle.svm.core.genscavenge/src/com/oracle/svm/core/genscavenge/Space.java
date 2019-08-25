@@ -73,7 +73,7 @@ public class Space {
     /**
      * The name of this Space. This method is used in logging and so should not require any work.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getName() {
         return name;
     }
@@ -332,7 +332,7 @@ public class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.THREAD_MUTEX.guaranteeIsLocked("Trying to append an aligned heap chunk but no mutual exclusion.");
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
         }
         final Log trace = Log.noopLog().string("[SpaceImpl.appendAlignedHeapChunk:").newline();
         if (trace.isEnabled()) {
@@ -435,7 +435,7 @@ public class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.THREAD_MUTEX.guaranteeIsLocked("Trying to append an unaligned chunk but no mutual exclusion.");
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
         }
         appendUnalignedHeapChunkUninterruptibly(uChunk);
         getAccounting().noteUnalignedHeapChunk(UnalignedHeapChunk.committedObjectMemoryOfUnalignedHeapChunk(uChunk));
@@ -515,42 +515,42 @@ public class Space {
      * The "get" methods are protected, but the "set" methods are private.
      */
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     AlignedHeapChunk.AlignedHeader getFirstAlignedHeapChunk() {
         return firstAlignedHeapChunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setFirstAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
         firstAlignedHeapChunk = chunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     AlignedHeapChunk.AlignedHeader getLastAlignedHeapChunk() {
         return lastAlignedHeapChunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setLastAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
         lastAlignedHeapChunk = chunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnalignedHeapChunk.UnalignedHeader getFirstUnalignedHeapChunk() {
         return firstUnalignedHeapChunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setFirstUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
         this.firstUnalignedHeapChunk = chunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnalignedHeapChunk.UnalignedHeader getLastUnalignedHeapChunk() {
         return lastUnalignedHeapChunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setLastUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
         lastUnalignedHeapChunk = chunk;
     }

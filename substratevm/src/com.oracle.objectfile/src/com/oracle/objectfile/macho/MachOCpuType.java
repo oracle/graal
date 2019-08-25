@@ -47,6 +47,18 @@ public enum MachOCpuType {
         throw new IllegalStateException("unknown CPU type");
     }
 
+    public static MachOCpuType from(String s) {
+        switch (s) {
+            case "amd64":
+            case "x86_64":
+                return X86_64;
+            case "arm64":
+            case "aarch64":
+                return ARM64;
+        }
+        throw new IllegalStateException("unknown CPU type: " + s);
+    }
+
     public int toInt() {
         switch (this) {
             case X86_64:

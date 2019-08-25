@@ -97,6 +97,7 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.util.Random;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -1593,6 +1594,49 @@ public final class TruffleFile {
         } catch (Throwable t) {
             throw wrapHostException(t);
         }
+    }
+
+    static TruffleFile createTempFile(TruffleFile targetDirectory, String prefix, String suffix, boolean dir, FileAttribute<?>... attrs) throws IOException {
+        Objects.requireNonNull(targetDirectory, "TargetDirectory must be non null.");
+        if (prefix == null) {
+            prefix = "";
+        }
+        if (suffix == null) {
+            suffix = dir ? "" : ".tmp";
+        }
+        while (true) {
+            TruffleFile target;
+            try {
+                target = createUniquePath(targetDirectory, prefix, suffix);
+                if (!target.exists()) {
+                    if (dir) {
+                        target.createDirectory(attrs);
+                    } else {
+                        target.createFile(attrs);
+                    }
+                    return target;
+                }
+            } catch (InvalidPathException e) {
+                throw new IllegalArgumentException("Prefix (" + prefix + ") or suffix (" + suffix + ") are not valid file name components");
+            } catch (FileAlreadyExistsException e) {
+                // retry with different name
+            }
+        }
+    }
+
+    private static TruffleFile createUniquePath(TruffleFile targetDirectory, String prefix, String suffix) {
+        long n = TempFileRandomHolder.RANDOM.nextLong();
+        n = n == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(n);
+        String name = prefix + Long.toString(n) + suffix;
+        TruffleFile result = targetDirectory.resolve(name);
+        if (!targetDirectory.equals(result.getParent())) {
+            throw new InvalidPathException(name, "Must be a simple name");
+        }
+        return result;
+    }
+
+    private static final class TempFileRandomHolder {
+        static final Random RANDOM = new Random();
     }
 
     private static final class AttributeGroup {

@@ -74,16 +74,19 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean isInlinable() {
+        CompilerAsserts.neverPartOfCompilation();
         return true;
     }
 
     @Override
     public void forceInlining() {
+        CompilerAsserts.neverPartOfCompilation();
         inliningForced = true;
     }
 
     @Override
     public boolean isInliningForced() {
+        CompilerAsserts.neverPartOfCompilation();
         return inliningForced;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -44,13 +43,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class LLVMAMD64WriteAddressRegisterNode extends LLVMStatementNode {
 
-    public LLVMAMD64WriteAddressRegisterNode(LLVMSourceLocation source) {
-        this.source = source;
-    }
-
     public abstract FrameSlot getSlot();
-
-    private final LLVMSourceLocation source;
 
     @Specialization
     protected void doI8(VirtualFrame frame, byte value) {
@@ -80,10 +73,5 @@ public abstract class LLVMAMD64WriteAddressRegisterNode extends LLVMStatementNod
     protected void doAddress(VirtualFrame frame, LLVMPointer value) {
         frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
         frame.setObject(getSlot(), value);
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.parser.nodes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +35,8 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis;
+import com.oracle.truffle.llvm.parser.LLVMPhiManager;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
@@ -83,7 +85,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
@@ -95,6 +96,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNodeSourceDescriptor;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -106,21 +109,27 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
+public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
-    static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
+    public static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
+
+    public static LLVMBitcodeInstructionVisitor create(FrameDescriptor frame, UniquesRegion uniquesRegion, List<Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols, LLVMContext context,
+                    ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
+        return new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, nullerInfos, notNullable, dbgInfoHandler);
+    }
+
+    private final LLVMContext context;
+    private final NodeFactory nodeFactory;
 
     private final FrameDescriptor frame;
-    private final List<Phi> blockPhis;
-    private final NodeFactory nodeFactory;
+    private final List<LLVMPhiManager.Phi> blockPhis;
     private final int argCount;
     private final LLVMSymbolReadResolver symbols;
-    private final LLVMContext context;
-    private final ExternalLibrary library;
+    private final LLVMContext.ExternalLibrary library;
     private final ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos;
     private final List<FrameSlot> notNullable;
     private final LLVMRuntimeDebugInformation dbgInfoHandler;
-    private final UniquesRegion uniquesRegion;
+    private final LLVMStack.UniquesRegion uniquesRegion;
 
     private final List<LLVMStatementNode> blockInstructions;
     private int instructionIndex;
@@ -128,14 +137,15 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private LLVMSourceLocation lastLocation;
 
-    LLVMBitcodeInstructionVisitor(FrameDescriptor frame, UniquesRegion uniquesRegion, List<Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols, LLVMContext context,
-                    ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
+    private LLVMBitcodeInstructionVisitor(FrameDescriptor frame, LLVMStack.UniquesRegion uniquesRegion, List<LLVMPhiManager.Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols,
+                    LLVMContext context, LLVMContext.ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable,
+                    LLVMRuntimeDebugInformation dbgInfoHandler) {
+        this.context = context;
+        this.nodeFactory = context.getLanguage().getNodeFactory();
         this.frame = frame;
         this.blockPhis = blockPhis;
-        this.nodeFactory = context.getLanguage().getNodeFactory();
         this.argCount = argCount;
         this.symbols = symbols;
-        this.context = context;
         this.library = library;
         this.nullerInfos = nullerInfos;
         this.notNullable = notNullable;
@@ -150,11 +160,11 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         return blockInstructions.toArray(LLVMStatementNode.NO_STATEMENTS);
     }
 
-    LLVMControlFlowNode getControlFlowNode() {
+    public LLVMControlFlowNode getControlFlowNode() {
         return controlFlowNode;
     }
 
-    void setInstructionIndex(int instructionIndex) {
+    public void setInstructionIndex(int instructionIndex) {
         this.instructionIndex = instructionIndex;
     }
 
@@ -177,7 +187,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         final SymbolImpl count = allocate.getCount();
-        final LLVMExpressionNode result;
+        LLVMExpressionNode result;
         if (count instanceof NullConstant) {
             result = nodeFactory.createAlloca(type, alignment);
         } else if (count instanceof IntegerConstant) {
@@ -195,11 +205,13 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         // we never want to step on allocations, only to actual assignments in the source
-        LLVMSourceLocation location = null;
+        final SourceInstrumentationStrategy intention;
         if (context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
-            location = getSourceLocation(allocate);
+            intention = SourceInstrumentationStrategy.FORCED;
+        } else {
+            intention = SourceInstrumentationStrategy.DISABLED;
         }
-        createFrameWrite(result, allocate, location);
+        createFrameWrite(result, allocate, intention);
     }
 
     @Override
@@ -214,8 +226,16 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(BranchInstruction branch) {
         LLVMControlFlowNode unconditionalBranchNode = nodeFactory.createUnconditionalBranch(branch.getSuccessor().getBlockIndex(),
-                        getPhiWriteNodes(branch)[0], getSourceLocation(branch));
-        setControlFlowNode(unconditionalBranchNode);
+                        getPhiWriteNodes(branch)[0]);
+        setControlFlowNode(unconditionalBranchNode, branch);
+    }
+
+    private LLVMExpressionNode tryGenerateBuiltinNode(SymbolImpl target, LLVMExpressionNode[] argNodes, Type[] argTypes, Instruction callInstruction, SourceInstrumentationStrategy intention) {
+        final LLVMExpressionNode llvmBuiltin = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount);
+        if (llvmBuiltin != null) {
+            assignSourceLocation(llvmBuiltin, callInstruction, intention);
+        }
+        return llvmBuiltin;
     }
 
     @Override
@@ -245,22 +265,27 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argIndex++;
         }
 
-        final LLVMSourceLocation source = getSourceLocation(call, false);
         final SymbolImpl target = call.getCallTarget();
-        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(target, argNodes, argTypes, argCount, source);
+        LLVMExpressionNode result = tryGenerateBuiltinNode(target, argNodes, argTypes, call, SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION);
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-                result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, targetType, source);
+                result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, targetType);
+                assignSourceLocation(result, call);
 
             } else {
                 LLVMExpressionNode function = symbols.resolve(target);
-                result = nodeFactory.createFunctionCall(function, argNodes, new FunctionType(targetType, argTypes, false), source);
+                result = nodeFactory.createFunctionCall(function, argNodes, new FunctionType(targetType, argTypes, false));
+
+                // the callNode needs to be instrumentable so that the debugger can see the CallTag.
+                // If it did not provide a source location, the debugger may not be able to show the
+                // node on the call stack or offer stepping into the call.
+                assignSourceLocation(result, call, SourceInstrumentationStrategy.FORCED);
             }
         }
 
         // the SourceSection references the call, not the return value assignment
-        createFrameWrite(result, call, null);
+        createFrameWrite(result, call, SourceInstrumentationStrategy.DISABLED);
     }
 
     @Override
@@ -279,8 +304,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(ResumeInstruction resumeInstruction) {
-        LLVMControlFlowNode resume = nodeFactory.createResumeInstruction(getExceptionSlot(), getSourceLocation(resumeInstruction));
-        setControlFlowNode(resume);
+        LLVMControlFlowNode resume = nodeFactory.createResumeInstruction(getExceptionSlot());
+        setControlFlowNode(resume, resumeInstruction);
     }
 
     @Override
@@ -314,7 +339,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(DebugTrapInstruction inst) {
-        addInstruction(nodeFactory.createDebugTrap(inst.getSourceLocation()));
+        final LLVMStatementNode debugTrap = nodeFactory.createDebugTrap();
+        assignSourceLocation(debugTrap, inst, SourceInstrumentationStrategy.FORCED);
+        addInstruction(debugTrap);
     }
 
     @Override
@@ -338,19 +365,26 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argIndex++;
         }
 
-        final LLVMSourceLocation source = getSourceLocation(call, false);
         final SymbolImpl target = call.getCallTarget();
-        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(target, args, argsType, argCount, source);
+        LLVMExpressionNode node = tryGenerateBuiltinNode(target, args, argsType, call, SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION);
         if (node == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-                node = createInlineAssemblerNode(inlineAsmConstant, args, argsType, call.getType(), source);
+                node = createInlineAssemblerNode(inlineAsmConstant, args, argsType, call.getType());
+                assignSourceLocation(node, call);
+
             } else {
                 final LLVMExpressionNode function = symbols.resolve(target);
                 final FunctionType functionType = new FunctionType(call.getType(), argsType, false);
-                node = nodeFactory.createFunctionCall(function, args, functionType, source);
+                node = nodeFactory.createFunctionCall(function, args, functionType);
+
+                // the callNode needs to be instrumentable so that the debugger can see the CallTag.
+                // If it did not provide a source location, the debugger may not be able to show the
+                // node on the call stack or offer stepping into the call.
+                assignSourceLocation(node, call, SourceInstrumentationStrategy.FORCED);
             }
         }
+
         addInstruction(LLVMVoidStatementNodeGen.create(node));
     }
 
@@ -389,7 +423,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         List<LLVMExpressionNode> normalValue = new ArrayList<>();
         List<LLVMExpressionNode> unwindValue = new ArrayList<>();
         if (blockPhis != null) {
-            for (Phi phi : blockPhis) {
+            for (LLVMPhiManager.Phi phi : blockPhis) {
                 FrameSlot slot = getSlot(phi.getPhiValue());
                 LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
@@ -409,14 +443,13 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMStatementNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(LLVMExpressionNode.NO_EXPRESSIONS), unwindTo.toArray(NO_SLOTS),
                         unwindType.toArray(Type.EMPTY_ARRAY));
 
-        final LLVMSourceLocation source = getSourceLocation(call, false);
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = symbols.resolve(target);
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(getSlot(call), function, argNodes, new FunctionType(targetType, argTypes, false),
                         regularIndex, unwindIndex, normalPhi,
-                        unwindPhi, source);
+                        unwindPhi);
 
-        setControlFlowNode(result);
+        setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
     }
 
     @Override
@@ -452,7 +485,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         List<LLVMExpressionNode> normalValue = new ArrayList<>();
         List<LLVMExpressionNode> unwindValue = new ArrayList<>();
         if (blockPhis != null) {
-            for (Phi phi : blockPhis) {
+            for (LLVMPhiManager.Phi phi : blockPhis) {
                 FrameSlot slot = getSlot(phi.getPhiValue());
                 LLVMExpressionNode value = symbols.resolve(phi.getValue());
                 if (call.normalSuccessor() == phi.getBlock()) {
@@ -472,13 +505,12 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMStatementNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(LLVMExpressionNode.NO_EXPRESSIONS), unwindTo.toArray(NO_SLOTS),
                         unwindType.toArray(Type.EMPTY_ARRAY));
 
-        final LLVMSourceLocation source = getSourceLocation(call, false);
         // Builtins are not AST-inlined for Invokes, instead a generic LLVMDispatchNode is used.
         LLVMExpressionNode function = symbols.resolve(target);
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(null, function, args, new FunctionType(call.getType(), argsType, false),
-                        regularIndex, unwindIndex, normalPhi, unwindPhi, source);
+                        regularIndex, unwindIndex, normalPhi, unwindPhi);
 
-        setControlFlowNode(result);
+        setControlFlowNode(result, call, SourceInstrumentationStrategy.FORCED);
 
     }
 
@@ -518,9 +550,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         int falseIndex = branch.getFalseSuccessor().getBlockIndex();
 
         LLVMStatementNode[] phiWriteNodes = getPhiWriteNodes(branch);
-        LLVMControlFlowNode node = nodeFactory.createConditionalBranch(trueIndex, falseIndex, conditionNode, phiWriteNodes[0], phiWriteNodes[1], getSourceLocation(branch));
+        LLVMControlFlowNode node = nodeFactory.createConditionalBranch(trueIndex, falseIndex, conditionNode, phiWriteNodes[0], phiWriteNodes[1]);
 
-        setControlFlowNode(node);
+        setControlFlowNode(node, branch);
     }
 
     @Override
@@ -579,13 +611,12 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
             LLVMExpressionNode value = symbols.resolve(branch.getAddress());
 
-            LLVMControlFlowNode node = nodeFactory.createIndirectBranch(value, labelTargets, getPhiWriteNodes(branch), getSourceLocation(branch));
-            setControlFlowNode(node);
+            LLVMControlFlowNode node = nodeFactory.createIndirectBranch(value, labelTargets, getPhiWriteNodes(branch));
+            setControlFlowNode(node, branch);
         } else {
             assert branch.getSuccessorCount() == 1;
-            LLVMControlFlowNode node = nodeFactory.createUnconditionalBranch(branch.getSuccessor(0).getBlockIndex(), getPhiWriteNodes(branch)[0],
-                            getSourceLocation(branch));
-            setControlFlowNode(node);
+            LLVMControlFlowNode node = nodeFactory.createUnconditionalBranch(branch.getSuccessor(0).getBlockIndex(), getPhiWriteNodes(branch)[0]);
+            setControlFlowNode(node, branch);
         }
     }
 
@@ -637,15 +668,14 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(ReturnInstruction ret) {
         LLVMControlFlowNode node;
-        final LLVMSourceLocation location = getSourceLocation(ret, false);
         if (ret.getValue() == null) {
-            node = nodeFactory.createRetVoid(location);
+            node = nodeFactory.createRetVoid();
         } else {
             final Type type = ret.getValue().getType();
             final LLVMExpressionNode value = symbols.resolve(ret.getValue());
-            node = nodeFactory.createNonVoidRet(value, type, location);
+            node = nodeFactory.createNonVoidRet(value, type);
         }
-        setControlFlowNode(node);
+        setControlFlowNode(node, ret);
     }
 
     @Override
@@ -679,13 +709,14 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         Type type = store.getSource().getType();
 
-        LLVMSourceLocation source = null;
+        SourceInstrumentationStrategy intention = SourceInstrumentationStrategy.DISABLED;
         if (!(store.getSource() instanceof CallInstruction || store.getSource() instanceof InvokeInstruction) || context.getEnv().getOptions().get(SulongEngineOption.LL_DEBUG)) {
             // otherwise the debugger would stop on both the call and the store of the return value
-            source = getSourceLocation(store);
+            intention = SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION;
         }
 
-        final LLVMStatementNode node = nodeFactory.createStore(pointerNode, valueNode, type, source);
+        final LLVMStatementNode node = nodeFactory.createStore(pointerNode, valueNode, type);
+        assignSourceLocation(node, store, intention);
         addInstruction(node);
     }
 
@@ -728,6 +759,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(FenceInstruction fence) {
         final LLVMStatementNode node = nodeFactory.createFence();
+        assignSourceLocation(node, fence);
         addInstruction(node);
     }
 
@@ -746,19 +778,23 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             cases[i] = symbols.resolve(zwitch.getCaseValue(i));
         }
 
-        LLVMControlFlowNode node = nodeFactory.createSwitch(cond, successors, cases, llvmType, getPhiWriteNodes(zwitch), getSourceLocation(zwitch));
-        setControlFlowNode(node);
+        LLVMControlFlowNode node = nodeFactory.createSwitch(cond, successors, cases, llvmType, getPhiWriteNodes(zwitch));
+        setControlFlowNode(node, zwitch);
     }
 
     private LLVMStatementNode[] getPhiWriteNodes(TerminatingInstruction terminatingInstruction) {
         if (blockPhis != null) {
-            ArrayList<Phi>[] phisPerSuccessor = LLVMPhiManager.getPhisForSuccessors(terminatingInstruction, blockPhis);
+            ArrayList<LLVMPhiManager.Phi>[] phisPerSuccessor = LLVMPhiManager.getPhisForSuccessors(terminatingInstruction, blockPhis);
             return convertToPhiWriteNodes(phisPerSuccessor);
         }
         return new LLVMStatementNode[terminatingInstruction.getSuccessorCount()];
     }
 
-    private LLVMStatementNode[] convertToPhiWriteNodes(ArrayList<Phi>[] phisPerSuccessor) {
+    private LLVMStatementNode createAggregatePhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types) {
+        return nodeFactory.createPhi(from, to, types);
+    }
+
+    private LLVMStatementNode[] convertToPhiWriteNodes(ArrayList<LLVMPhiManager.Phi>[] phisPerSuccessor) {
         if (phisPerSuccessor.length == 0) {
             return LLVMStatementNode.NO_STATEMENTS;
         }
@@ -774,7 +810,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 from[j] = symbols.resolve(phi.getValue());
                 types[j] = phi.getValue().getType();
             }
-            result[i] = nodeFactory.createPhi(from, to, types);
+            result[i] = createAggregatePhi(from, to, types);
         }
         return result;
     }
@@ -809,32 +845,34 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             }
         }
 
-        LLVMControlFlowNode node = nodeFactory.createSwitch(cond, successors, cases, llvmType, getPhiWriteNodes(zwitch), getSourceLocation(zwitch));
-        setControlFlowNode(node);
+        LLVMControlFlowNode node = nodeFactory.createSwitch(cond, successors, cases, llvmType, getPhiWriteNodes(zwitch));
+        setControlFlowNode(node, zwitch);
     }
 
     @Override
     public void visit(UnreachableInstruction ui) {
-        setControlFlowNode(nodeFactory.createUnreachableNode());
+        final LLVMControlFlowNode node = nodeFactory.createUnreachableNode();
+        setControlFlowNode(node, ui);
     }
 
     private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source) {
-        createFrameWrite(result, source, getSourceLocation(source));
+        createFrameWrite(result, source, SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION);
     }
 
-    private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, LLVMSourceLocation sourceLocation) {
-        final LLVMStatementNode node = nodeFactory.createFrameWrite(source.getType(), result, getSlot(source), sourceLocation);
-        addInstruction(node);
+    private void createFrameWrite(LLVMExpressionNode valueNode, ValueInstruction sourceInstruction, SourceInstrumentationStrategy intention) {
+        final LLVMStatementNode writeNode = nodeFactory.createFrameWrite(sourceInstruction.getType(), valueNode, getSlot(sourceInstruction));
+        assignSourceLocation(writeNode, sourceInstruction, intention);
+        addInstruction(writeNode);
     }
 
-    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, Type retType, LLVMSourceLocation sourceLocation) {
+    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, Type retType) {
         if (inlineAsmConstant.needsAlignedStack()) {
             throw new LLVMParserException("Assembly Expressions that require an aligned Stack are not supported yet!");
         }
         if (inlineAsmConstant.getDialect() != AsmDialect.AT_T) {
             throw new LLVMParserException("Unsupported Assembly Dialect: " + inlineAsmConstant.getDialect());
         }
-        return nodeFactory.createInlineAssemblerExpression(library, inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), argNodes, argsType, retType, sourceLocation);
+        return nodeFactory.createInlineAssemblerExpression(library, inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), argNodes, argsType, retType);
     }
 
     private FrameSlot getSlot(ValueInstruction instruction) {
@@ -854,7 +892,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         handleNullerInfo();
     }
 
-    void addInstructionUnchecked(LLVMStatementNode instruction) {
+    public void addInstructionUnchecked(LLVMStatementNode instruction) {
         blockInstructions.add(instruction);
     }
 
@@ -877,9 +915,14 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
     }
 
-    private void setControlFlowNode(LLVMControlFlowNode controlFlowNode) {
+    private void setControlFlowNode(LLVMControlFlowNode controlFlowNode, Instruction sourceInstruction) {
+        setControlFlowNode(controlFlowNode, sourceInstruction, SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION);
+    }
+
+    private void setControlFlowNode(LLVMControlFlowNode controlFlowNode, Instruction sourceInstruction, SourceInstrumentationStrategy intention) {
         assert this.controlFlowNode == null;
         this.controlFlowNode = controlFlowNode;
+        assignSourceLocation(controlFlowNode, sourceInstruction, intention);
     }
 
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
@@ -896,22 +939,6 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         return nodeFactory.createVarArgCompoundValue(size, alignment, child);
     }
 
-    private LLVMSourceLocation getSourceLocation(Instruction inst) {
-        return getSourceLocation(inst, true);
-    }
-
-    private LLVMSourceLocation getSourceLocation(Instruction inst, boolean skipRepeatingLocation) {
-        final LLVMSourceLocation location = inst.getSourceLocation();
-        if (location == null) {
-            return null;
-        } else if (Objects.equals(lastLocation, location) && skipRepeatingLocation) {
-            return null;
-        } else {
-            lastLocation = location;
-            return location;
-        }
-    }
-
     private static boolean isByValue(AttributesGroup parameter) {
         if (parameter == null) {
             return false;
@@ -924,5 +951,63 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         return false;
+    }
+
+    private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction) {
+        assignSourceLocation(node, sourceInstruction, SourceInstrumentationStrategy.ONLY_FIRST_STATEMENT_ON_LOCATION);
+    }
+
+    private void assignSourceLocation(LLVMInstrumentableNode node, Instruction sourceInstruction, SourceInstrumentationStrategy instrumentationStrategy) {
+        if (node == null) {
+            return;
+        }
+
+        final LLVMSourceLocation location = sourceInstruction.getSourceLocation();
+        if (location == null) {
+            return;
+        }
+
+        final LLVMNodeSourceDescriptor sourceDescriptor = node.getOrCreateSourceDescriptor();
+        sourceDescriptor.setSourceLocation(location);
+
+        assert instrumentationStrategy != null;
+        switch (instrumentationStrategy) {
+            case FORCED:
+                sourceDescriptor.setHasStatementTag(true);
+                lastLocation = location;
+                break;
+            case ONLY_FIRST_STATEMENT_ON_LOCATION:
+                if (lastLocation == location) {
+                    // shortcut for locations assigned by DEBUG_LOC_AGAIN
+                    break;
+                } else if (lastLocation != null && Objects.equals(lastLocation.describeFile(), location.describeFile()) && lastLocation.getLine() == location.getLine()) {
+                    // only mark the first node occurring at a particular line in a particular file
+                    // as statement. this way, Sulong can simulate statement-level debugging even
+                    // though llvm debug information does not actually describe statement boundaries
+                    break;
+                } else {
+                    sourceDescriptor.setHasStatementTag(true);
+                    lastLocation = location;
+                }
+                break;
+            case DISABLED:
+                break;
+            default:
+                throw new LLVMParserException("Unknown instrumentation strategy: " + instrumentationStrategy);
+        }
+    }
+
+    private enum SourceInstrumentationStrategy {
+        // calls and invokes should always be instrumentable so that the debugger can properly
+        // display a call-stack and offer step-into / step-over
+        FORCED,
+
+        // the avoid the debugger stepping on the same line repeatedly only the first node with that
+        // location should be instrumentable
+        ONLY_FIRST_STATEMENT_ON_LOCATION,
+
+        // some nodes should not be instrumentable, but still have a source location attached so
+        // that a proper stack-trace can be built in case of an exception
+        DISABLED
     }
 }

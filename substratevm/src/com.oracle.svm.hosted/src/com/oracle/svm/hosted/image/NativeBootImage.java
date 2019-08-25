@@ -717,7 +717,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     public NativeBootImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader imageClassLoader) {
+                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
 
         uniqueEntryPoints.addAll(entryPoints);
@@ -726,13 +726,6 @@ public abstract class NativeBootImage extends AbstractBootImage {
             objectFile = new MachOObjectFile();
         } else {
             objectFile = ObjectFile.getNativeObjectFile();
-            if (objectFile == null) {
-                throw new Error("Unsupported objectfile format: " + ObjectFile.getNativeFormat());
-            }
-        }
-
-        if (mainEntryPoint != null) {
-            objectFile.setMainEntryPoint(globalSymbolNameForMethod(mainEntryPoint));
         }
 
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
@@ -841,7 +834,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                     } else {
                         methodsBySignature.put(signatureString, current);
                     }
-                    defineMethodSymbol(symName, entryPoints.contains(current), textSection, current, ent.getValue());
+                    defineMethodSymbol(symName, false, textSection, current, ent.getValue());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {

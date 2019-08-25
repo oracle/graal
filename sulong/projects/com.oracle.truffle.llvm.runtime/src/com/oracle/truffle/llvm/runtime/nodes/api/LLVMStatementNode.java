@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,24 +31,13 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 
 /**
  * An statement node is a node that returns no result.
  */
 @GenerateWrapper
-public abstract class LLVMStatementNode extends LLVMNode implements InstrumentableNode {
-
-    @Override
-    public WrapperNode createWrapper(ProbeNode probe) {
-        return new LLVMStatementNodeWrapper(this, probe);
-    }
-
-    @Override
-    public boolean isInstrumentable() {
-        return getSourceLocation() != null;
-    }
+public abstract class LLVMStatementNode extends LLVMInstrumentableNode {
 
     public static final LLVMStatementNode[] NO_STATEMENTS = {};
 
@@ -56,5 +45,10 @@ public abstract class LLVMStatementNode extends LLVMNode implements Instrumentab
 
     public String getSourceDescription() {
         return getRootNode().getName();
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new LLVMStatementNodeWrapper(this, probe);
     }
 }

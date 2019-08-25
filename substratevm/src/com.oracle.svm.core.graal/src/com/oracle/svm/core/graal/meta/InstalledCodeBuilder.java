@@ -70,7 +70,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -256,7 +256,7 @@ public class InstalledCodeBuilder {
             ReferenceAccess.singleton().writeObjectAt(address, object, compressed);
         }
 
-        @Uninterruptible(reason = ".")
+        @Uninterruptible(reason = ".", mayBeInlined = true)
         @Override
         public int getPosition() {
             return position;
@@ -309,7 +309,7 @@ public class InstalledCodeBuilder {
         RuntimeMethodInfoAccess.setData(runtimeMethodInfo, installedCode, tier, observerHandles);
 
         Throwable[] errorBox = {null};
-        VMOperation.enqueueBlockingSafepoint("Install code", () -> {
+        JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
             try {
                 CodeInfoTable.getRuntimeCodeCache().addMethod(runtimeMethodInfo);
                 /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
+package org.graalvm.compiler.core.test;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.compiler.printer.CanonicalStringGraphPrinter;
+import org.junit.Test;
 
-/** The definitions I need, manually translated from the C header file. */
-@Platforms({Platform.DARWIN.class, Platform.LINUX.class})
-@CContext(PosixDirectives.class)
-public class NetinetIp {
-    // { Allow names with underscores: Checkstyle: stop
+import jdk.vm.ci.meta.JavaConstant;
 
-    @Platforms({Platform.LINUX.class})
-    @CConstant
-    public static native int IPTOS_TOS_MASK();
+/**
+ * Tests related to graph printing.
+ */
+public class GraphPrinterTest extends GraalCompilerTest {
 
-    @Platforms({Platform.LINUX.class})
-    @CConstant
-    public static native int IPTOS_PREC_MASK();
-
-    // } Allow names with underscores: Checkstyle: resume
+    /**
+     * Tests that a self-recursive object does not cause stack overflow when formatted as a string.
+     */
+    @Test
+    public void testGraphPrinterDoesNotStackOverflow() {
+        CanonicalStringGraphPrinter printer = new CanonicalStringGraphPrinter(getSnippetReflection());
+        Object[] topArray = {null};
+        Object[] parent = topArray;
+        Object[] lastArray = null;
+        for (int i = 0; i < 5; i++) {
+            lastArray = new Object[1];
+            parent[0] = lastArray;
+            parent = lastArray;
+        }
+        lastArray[0] = topArray;
+        JavaConstant constant = getSnippetReflection().forObject(topArray);
+        printer.format(constant);
+    }
 }

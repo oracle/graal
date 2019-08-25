@@ -65,12 +65,12 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
-        ldcClassLiteralSupported = version >= Opcodes.V1_7;
+        ldcClassLiteralSupported = (version & 0x0000FFFF) >= Opcodes.V1_7;
     }
 
     @Override
     public void visitEnd() {
-        if (!hasClinit && instrumentationSupported()) {
+        if (!hasClinit && instrumentationSupported() && clinitInstrumentationSupported()) {
             MethodVisitor mv = visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
             mv.visitCode();
             mv.visitInsn(RETURN);
