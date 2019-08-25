@@ -138,8 +138,7 @@ public final class CallNode extends Node {
     private void addChildren() {
         // In the current implementation, this may be called only once.
         for (TruffleCallNode childCallNode : truffleCallees) {
-            final int targetCallCount = isRoot() ? truffleAST.getCallCount() - 1 : truffleAST.getCallCount();
-            final double relativeFrequency = (double) childCallNode.getCallCount() / targetCallCount;
+            final double relativeFrequency = calculateFrequency(truffleAST, childCallNode);
             final double childFrequency = relativeFrequency * this.rootRelativeFrequency;
             CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), null, childFrequency);
             getCallTree().add(callNode);
@@ -147,6 +146,10 @@ public final class CallNode extends Node {
             callNode.data = getPolicy().newCallNodeData(callNode);
         }
         getPolicy().afterAddChildren(this);
+    }
+
+    private static double calculateFrequency(CompilableTruffleAST target, TruffleCallNode callNode) {
+        return (double) Math.max(1, callNode.getCallCount()) / (double) Math.max(1, target.getCallCount());
     }
 
     private void partiallyEvaluateRoot() {
