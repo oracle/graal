@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.nodes.op.ToComparableValueNodeGen;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -43,17 +42,9 @@ public final class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
     @Child private LLVMExpressionNode thrownTypeID;
     @Child private ToComparableValue toComparableValue;
 
-    private final LLVMSourceLocation source;
-
-    public LLVMTypeIdForExceptionNode(LLVMExpressionNode thrownTypeID, LLVMSourceLocation sourceSection) {
+    public LLVMTypeIdForExceptionNode(LLVMExpressionNode thrownTypeID) {
         this.thrownTypeID = thrownTypeID;
-        this.source = sourceSection;
         this.toComparableValue = ToComparableValueNodeGen.create();
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
     }
 
     @Override

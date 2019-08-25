@@ -30,10 +30,10 @@ import java.util.List;
 public interface GC {
 
     /** Cause a collection of the Heap's choosing. */
-    void collect(String cause);
+    void collect(GCCause cause);
 
     /** Cause a full collection. */
-    void collectCompletely(String cause);
+    void collectCompletely(GCCause cause);
 
     /*
      * Registered walkers of object reference roots. Since these walkers are used during collection,

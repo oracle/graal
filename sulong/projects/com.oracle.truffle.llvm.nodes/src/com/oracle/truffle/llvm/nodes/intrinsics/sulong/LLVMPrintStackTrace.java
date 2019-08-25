@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNode.LLVMI
 import com.oracle.truffle.llvm.runtime.SulongStackTrace;
 import com.oracle.truffle.llvm.runtime.SulongStackTrace.Element;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
@@ -96,8 +97,8 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
         }
 
         LLVMSourceLocation location = null;
-        if (node instanceof LLVMNode && ((LLVMNode) node).getSourceLocation() != null) {
-            location = ((LLVMNode) node).getSourceLocation();
+        if (node instanceof LLVMInstrumentableNode) {
+            location = ((LLVMInstrumentableNode) node).getSourceLocation();
         }
         if (location == null) {
             location = block.getSourceLocation();

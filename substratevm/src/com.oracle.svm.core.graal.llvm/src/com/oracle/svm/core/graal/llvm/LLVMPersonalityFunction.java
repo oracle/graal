@@ -48,6 +48,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 
 @CContext(LLVMDirectives.class)
@@ -106,6 +107,7 @@ public class LLVMPersonalityFunction {
             setGR(context, typeRegister, 1);
             setIP(context, functionStart.add(handlerOffset.intValue()));
 
+            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
             StackOverflowCheck.singleton().protectYellowZone();
             return _URC_INSTALL_CONTEXT();
         } else {

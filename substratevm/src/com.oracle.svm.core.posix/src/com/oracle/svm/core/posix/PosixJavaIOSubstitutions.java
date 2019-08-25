@@ -228,20 +228,22 @@ final class Target_java_io_UnixFileSystem {
             return null;
         }
 
-        List<String> entries = new ArrayList<>();
-        dirent dirent = StackValue.get(SizeOf.get(dirent.class) + PATH_MAX() + 1);
-        direntPointer resultDirent = StackValue.get(direntPointer.class);
+        try {
+            List<String> entries = new ArrayList<>();
+            dirent dirent = StackValue.get(SizeOf.get(dirent.class) + PATH_MAX() + 1);
+            direntPointer resultDirent = StackValue.get(direntPointer.class);
 
-        while (readdir_r(dir, dirent, resultDirent) == 0 && !resultDirent.read().isNull()) {
-            String name = CTypeConversion.toJavaString(dirent.d_name());
-            if (name.equals(".") || name.equals("..")) {
-                continue;
+            while (readdir_r(dir, dirent, resultDirent) == 0 && !resultDirent.read().isNull()) {
+                String name = CTypeConversion.toJavaString(dirent.d_name());
+                if (name.equals(".") || name.equals("..")) {
+                    continue;
+                }
+                entries.add(name);
             }
-            entries.add(name);
+            return entries.toArray(new String[entries.size()]);
+        } finally {
+            closedir(dir);
         }
-
-        closedir(dir);
-        return entries.toArray(new String[entries.size()]);
     }
 
     @Substitute

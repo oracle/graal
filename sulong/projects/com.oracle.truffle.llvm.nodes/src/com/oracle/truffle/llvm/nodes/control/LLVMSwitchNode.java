@@ -32,40 +32,20 @@ package com.oracle.truffle.llvm.nodes.control;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.nodes.op.LLVMCompareNode.LLVMEqNode;
 import com.oracle.truffle.llvm.nodes.op.LLVMCompareNodeFactory.LLVMEqNodeGen;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @GenerateWrapper
-public abstract class LLVMSwitchNode extends LLVMControlFlowNode implements InstrumentableNode {
-
-    public LLVMSwitchNode(LLVMSourceLocation sourceSection) {
-        super(sourceSection);
-    }
-
-    protected LLVMSwitchNode(LLVMSwitchNode delegate) {
-        super(delegate.getSourceLocation());
-    }
+public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
-        return new LLVMSwitchNodeWrapper(this, this, probe);
-    }
-
-    @GenerateWrapper.OutgoingConverter
-    Object convertOutgoing(@SuppressWarnings("unused") Object object) {
-        return null;
-    }
-
-    @Override
-    public boolean isInstrumentable() {
-        return getSourceLocation() != null;
+        return new LLVMSwitchNodeWrapper(this, probe);
     }
 
     public abstract Object executeCondition(VirtualFrame frame);
@@ -83,8 +63,7 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode implements Inst
 
         private final ValueProfile conditionValueClass = ValueProfile.createClassProfile();
 
-        public LLVMSwitchNodeImpl(int[] successors, LLVMStatementNode[] phiNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases, LLVMSourceLocation sourceSection) {
-            super(sourceSection);
+        public LLVMSwitchNodeImpl(int[] successors, LLVMStatementNode[] phiNodes, LLVMExpressionNode cond, LLVMExpressionNode[] cases) {
             assert successors.length == cases.length + 1 : "the last entry of the successors array must be the default case";
             this.successors = successors;
             this.phiNodes = phiNodes;

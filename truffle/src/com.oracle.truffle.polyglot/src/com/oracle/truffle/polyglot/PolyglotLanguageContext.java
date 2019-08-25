@@ -266,8 +266,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         boolean singleThreaded = context.isSingleThreaded();
         Thread firstFailingThread = null;
         for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-            if (!LANGUAGE.isThreadAccessAllowed(localEnv, threadInfo.thread, singleThreaded)) {
-                firstFailingThread = threadInfo.thread;
+            if (!LANGUAGE.isThreadAccessAllowed(localEnv, threadInfo.getThread(), singleThreaded)) {
+                firstFailingThread = threadInfo.getThread();
                 break;
             }
         }
@@ -351,12 +351,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 throw new AssertionError("The language did not complete all polyglot threads but should have: " + lazy.activePolyglotThreads);
             }
             for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                assert threadInfo.thread != null;
-                if (threadInfo.isPolyglotThread(context)) {
+                assert threadInfo != PolyglotThreadInfo.NULL;
+                final Thread thread = threadInfo.getThread();
+                if (thread == null || threadInfo.isPolyglotThread(context)) {
                     // polyglot threads need to be cleaned up by the language
                     continue;
                 }
-                LANGUAGE.disposeThread(localEnv, threadInfo.thread);
+                LANGUAGE.disposeThread(localEnv, thread);
             }
             LANGUAGE.dispose(localEnv);
             return true;
@@ -526,10 +527,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         }
 
                         for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                            if (threadInfo.thread == Thread.currentThread()) {
+                            final Thread thread = threadInfo.getThread();
+                            if (thread == Thread.currentThread()) {
                                 continue;
                             }
-                            LANGUAGE.initializeThread(env, threadInfo.thread);
+                            LANGUAGE.initializeThread(env, thread);
                         }
 
                         wasInitialized = true;

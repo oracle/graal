@@ -71,7 +71,10 @@ public abstract class Heap {
      * Other interface methods for the rest of the virtual machine.
      */
 
-    /** Walk all the Objects in the Heap, passing each to the visitor. */
+    /**
+     * Walk all the Objects in the Heap, passing each to the visitor. Must only be executed as part
+     * of a VM operation that causes a safepoint.
+     */
     public abstract void walkObjects(ObjectVisitor visitor);
 
     /** Return a list of all the classes in the heap. */
@@ -86,7 +89,7 @@ public abstract class Heap {
      *
      * TODO: Would an "Unsigned getBootImageObjectHeaderBits()" method be sufficient?
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
 
     /** Get the MemoryMXBean for this heap. */

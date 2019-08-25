@@ -326,6 +326,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 'exclude': exclusion_list + [
                     exclude_base + '/COPYRIGHT',
                     exclude_base + '/LICENSE',
+                    exclude_base + '/README.html',
+                    exclude_base + '/THIRDPARTYLICENSEREADME.txt',
+                    exclude_base + '/THIRDPARTYLICENSEREADME-JAVAFX.txt',
                     exclude_base + '/release',
                     exclude_base + '/bin/jvisualvm',
                     exclude_base + '/bin/jvisualvm.exe',
@@ -408,7 +411,12 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _add(layout, '<jre_base>/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
             _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions], _component, with_sources=True)
             _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component, with_sources=True)
-            _add(layout, _component_base, ['extracted-dependency:' + d for d in _component.support_distributions], _component)
+            _add(layout, _component_base, [{
+                'source_type': 'extracted-dependency',
+                'dependency': d,
+                'exclude': _component.license_files if mx.get_opts().no_licenses else [],
+                'path': None,
+            } for d in _component.support_distributions], _component)
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent):
                 _add(layout, '<jre_base>/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component, with_sources=True)
 
@@ -417,7 +425,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 _jdk_jre_bin = '<jre_base>/bin/'
 
-            for _license in _component.license_files + _component.third_party_license_files:
+            _licenses = _component.third_party_license_files
+            if not mx.get_opts().no_licenses:
+                _licenses += _component.license_files
+            for _license in _licenses:
                 if mx.is_windows() or isinstance(self, mx.AbstractJARDistribution):
                     if _component_base == '<jdk_base>/':
                         pass  # already in place from the support dist
@@ -607,6 +618,8 @@ def _get_graalvm_configuration(base_name, stage1=False):
                 for library_config in _get_library_configs(component):
                     if _skip_libraries(library_config):
                         components_set.add('s' + remove_lib_prefix_suffix(basename(library_config.destination)))
+        if mx.get_opts().no_licenses:
+            components_set.add('nolic')
 
         # Use custom distribution name and base dir for registered vm configurations
         vm_dist_name = None
@@ -2286,6 +2299,7 @@ mx.add_argument('--snapshot-catalog', action='store', help='Change the default U
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
 mx.add_argument('--extra-image-builder-argument', action='append', help='Add extra arguments to the image builder.', default=[])
 mx.add_argument('--image-profile', action='append', help='Add a profile to be used while building a native image.', default=[])
+mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
 
 if mx.get_os() == 'windows':
     register_vm_config('ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'ins', 'js', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl', 'vvm'], env_file='ce-win')

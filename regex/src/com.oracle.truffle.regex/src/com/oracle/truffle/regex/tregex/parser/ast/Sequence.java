@@ -114,6 +114,17 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
     }
 
     /**
+     * Replaces the term at position {@code index} with the given {@link Term}.
+     *
+     * @param term
+     */
+    public void replace(int index, Term term) {
+        term.setParent(this);
+        term.setSeqIndex(index);
+        terms.set(index, term);
+    }
+
+    /**
      * Removes the last {@link Term} from this {@link Sequence}.
      */
     public void removeLastTerm() {
@@ -125,7 +136,7 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
             return false;
         }
         for (Term t : terms) {
-            if (!(t instanceof CharacterClass)) {
+            if (!(t instanceof CharacterClass) || t.hasQuantifier()) {
                 return false;
             }
         }

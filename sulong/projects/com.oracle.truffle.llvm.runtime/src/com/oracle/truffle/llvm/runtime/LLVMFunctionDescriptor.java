@@ -456,8 +456,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         @SuppressWarnings("unused")
         static Object doCached(LLVMFunctionDescriptor self, Object[] args,
                         @Cached("self") LLVMFunctionDescriptor cachedSelf,
-                        @Cached(parameters = "cachedSelf.getForeignCallTarget()") DirectCallNode call) {
-            call.forceInlining();
+                        @Cached("create(cachedSelf.getForeignCallTarget())") DirectCallNode call) {
             return call.call(args);
         }
 

@@ -47,6 +47,7 @@ import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.bytedeco.javacpp.PointerPointer;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -59,35 +60,31 @@ public class LLVMIRBuilder {
     private LLVMBuilderRef builder;
 
     private String functionName;
-    private final boolean trackPointers;
     private LLVMValueRef gcRegisterFunction;
 
-    public LLVMIRBuilder(String functionName, LLVMContextRef context, boolean trackPointers) {
+    public LLVMIRBuilder(String functionName, LLVMContextRef context) {
         this.context = context;
         this.functionName = functionName;
-        this.trackPointers = trackPointers;
 
         this.module = LLVM.LLVMModuleCreateWithNameInContext(functionName, context);
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
 
-        if (trackPointers) {
-            /*
-             * This function declares a GC-tracked pointer from an untracked pointer. This is needed
-             * as the statepoint emission pass, which tracks live references in the function,
-             * doesn't recognize an address space cast (see pointerType()) as declaring a new
-             * reference, but it does a function return value.
-             */
-            gcRegisterFunction = addFunction(LLVMUtils.GC_REGISTER_FUNCTION_NAME, functionType(objectType(), rawPointerType()));
-            LLVM.LLVMSetLinkage(gcRegisterFunction, LLVM.LLVMLinkOnceAnyLinkage);
-            setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
-            setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
+        /*
+         * This function declares a GC-tracked pointer from an untracked pointer. This is needed as
+         * the statepoint emission pass, which tracks live references in the function, doesn't
+         * recognize an address space cast (see pointerType()) as declaring a new reference, but it
+         * does a function return value.
+         */
+        gcRegisterFunction = addFunction(LLVMUtils.GC_REGISTER_FUNCTION_NAME, functionType(objectType(), rawPointerType()));
+        LLVM.LLVMSetLinkage(gcRegisterFunction, LLVM.LLVMLinkOnceAnyLinkage);
+        setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.ALWAYS_INLINE);
+        setAttribute(gcRegisterFunction, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
 
-            LLVMBasicBlockRef block = appendBasicBlock("main", gcRegisterFunction);
-            positionAtEnd(block);
-            LLVMValueRef arg = getParam(gcRegisterFunction, 0);
-            LLVMValueRef ref = buildAddrSpaceCast(arg, objectType());
-            buildRet(ref);
-        }
+        LLVMBasicBlockRef block = appendBasicBlock("main", gcRegisterFunction);
+        positionAtEnd(block);
+        LLVMValueRef arg = getParam(gcRegisterFunction, 0);
+        LLVMValueRef ref = buildAddrSpaceCast(arg, objectType());
+        buildRet(ref);
     }
 
     public LLVMModuleRef getModule() {
@@ -109,6 +106,7 @@ public class LLVMIRBuilder {
         LLVM.LLVMSetGC(function, "statepoint-example");
         setLinkage(function, LLVM.LLVMExternalLinkage);
         setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "noinline");
+        setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "noredzone");
     }
 
     public LLVMValueRef getMainFunction() {
@@ -167,7 +165,6 @@ public class LLVMIRBuilder {
         LLVM.LLVMTypeRef wrapperType = prependArguments(calleeType, rawPointerType(), typeOf(callee));
         LLVMValueRef transitionWrapper = addFunction(LLVMUtils.JNI_WRAPPER_PREFIX + intrinsicType(calleeType), wrapperType);
         LLVM.LLVMSetLinkage(transitionWrapper, LLVM.LLVMLinkOnceAnyLinkage);
-        setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         setAttribute(transitionWrapper, LLVM.LLVMAttributeFunctionIndex, "noinline");
 
         LLVM.LLVMBasicBlockRef block = appendBasicBlock("main", transitionWrapper);
@@ -184,6 +181,7 @@ public class LLVMIRBuilder {
         }
         LLVMValueRef target = getParam(transitionWrapper, 1);
         LLVMValueRef ret = buildCall(target, args);
+        setCallSiteAttribute(ret, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
 
         if (isVoidType(getReturnType(calleeType))) {
             buildRetVoid();
@@ -620,21 +618,8 @@ public class LLVMIRBuilder {
 
     LLVMValueRef buildCall(LLVMValueRef callee, long statepointId, LLVMValueRef... args) {
         LLVMValueRef result;
-        if (trackPointers) {
-            result = buildCall(callee, args);
-            addCallSiteAttribute(result, "statepoint-id", Long.toString(statepointId));
-        } else {
-            LLVMTypeRef calleeType = typeOf(callee);
-            LLVMValueRef token = buildCall(getStatepointIntrinsic(calleeType), getStatepointArgs(statepointId, callee, args));
-
-            LLVMTypeRef resultType = getReturnType(getElementType(calleeType));
-            if (isVoidType(resultType)) {
-                result = token;
-            } else {
-                LLVMTypeRef gcResultType = functionType(resultType, tokenType());
-                result = buildIntrinsicCall("llvm.experimental.gc.result." + intrinsicType(resultType), gcResultType, token);
-            }
-        }
+        result = buildCall(callee, args);
+        addCallSiteAttribute(result, "statepoint-id", Long.toString(statepointId));
         return result;
     }
 
@@ -644,44 +629,9 @@ public class LLVMIRBuilder {
 
     LLVMValueRef buildInvoke(LLVMValueRef callee, LLVMBasicBlockRef successor, LLVMBasicBlockRef handler, long statepointId, LLVMValueRef... args) {
         LLVMValueRef result;
-        if (trackPointers) {
-            result = buildInvoke(callee, successor, handler, args);
-            addCallSiteAttribute(result, "statepoint-id", Long.toString(statepointId));
-        } else {
-            LLVMTypeRef calleeType = typeOf(callee);
-            LLVMValueRef token = buildInvoke(getStatepointIntrinsic(calleeType), successor, handler, getStatepointArgs(statepointId, callee, args));
-            LLVMTypeRef resultType = getReturnType(getElementType(calleeType));
-            if (isVoidType(resultType)) {
-                result = token;
-            } else {
-                positionAtEnd(successor);
-                LLVMTypeRef gcResultType = functionType(resultType, tokenType());
-                result = buildIntrinsicCall("llvm.experimental.gc.result." + intrinsicType(resultType), gcResultType, token);
-                /* No need to set the builder back as invoke is a terminator instruction */
-            }
-        }
-
+        result = buildInvoke(callee, successor, handler, args);
+        addCallSiteAttribute(result, "statepoint-id", Long.toString(statepointId));
         return result;
-    }
-
-    private LLVMValueRef getStatepointIntrinsic(LLVMTypeRef calleeType) {
-        LLVMTypeRef statepointType = functionType(tokenType(), true, longType(), intType(), calleeType, intType(), intType());
-        return getFunction("llvm.experimental.gc.statepoint." + intrinsicType(calleeType), statepointType);
-    }
-
-    private LLVMValueRef[] getStatepointArgs(long statepointId, LLVMValueRef callee, LLVMValueRef... args) {
-        LLVMValueRef[] statepointArgs = new LLVMValueRef[args.length + 7];
-
-        statepointArgs[0] = constantLong(statepointId);
-        statepointArgs[1] = constantInt(0); /* numPatchBytes */
-        statepointArgs[2] = callee;
-        statepointArgs[3] = constantInt(args.length);
-        statepointArgs[4] = constantInt(0); /* flags */
-        System.arraycopy(args, 0, statepointArgs, 5, args.length);
-        statepointArgs[5 + args.length] = constantLong(0L); /* numTransitionArgs */
-        statepointArgs[6 + args.length] = constantLong(0L); /* numDeoptArgs */
-
-        return statepointArgs;
     }
 
     private void addCallSiteAttribute(LLVMValueRef call, String key, String value) {
@@ -789,7 +739,7 @@ public class LLVMIRBuilder {
         }
     }
 
-    LLVMValueRef buildICmp(Condition cond, LLVMValueRef a, LLVMValueRef b) {
+    public LLVMValueRef buildICmp(Condition cond, LLVMValueRef a, LLVMValueRef b) {
         return LLVM.LLVMBuildICmp(builder, getLLVMIntCond(cond), a, b, DEFAULT_INSTR_NAME);
     }
 
@@ -992,7 +942,7 @@ public class LLVMIRBuilder {
     }
 
     LLVMValueRef buildRegisterObject(LLVMValueRef pointer) {
-        return trackPointers ? buildCall(gcRegisterFunction, pointer) : buildAddrSpaceCast(pointer, objectType());
+        return buildCall(gcRegisterFunction, pointer);
     }
 
     public LLVMValueRef buildIntToPtr(LLVMValueRef value, LLVMTypeRef type) {
@@ -1161,14 +1111,15 @@ public class LLVMIRBuilder {
     /* Inline assembly */
 
     public LLVMValueRef buildInlineGetRegister(String registerName) {
-        LLVMValueRef getRegister = buildInlineAsm(functionType(rawPointerType()), LLVMUtils.TargetSpecific.get().getRegisterInlineAsm(registerName), "={" + registerName + "}", false, false);
+        LLVMValueRef getRegister = buildInlineAsm(functionType(rawPointerType()), TargetSpecific.get().getRegisterInlineAsm(registerName),
+                        "={" + TargetSpecific.get().getLLVMRegisterName(registerName) + "}", false, false);
         LLVMValueRef call = buildCall(getRegister);
         setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         return call;
     }
 
     public LLVMValueRef buildInlineJump(LLVMValueRef address) {
-        LLVMValueRef jump = buildInlineAsm(functionType(voidType(), rawPointerType()), LLVMUtils.TargetSpecific.get().getJumpInlineAsm(), "r", true, false);
+        LLVMValueRef jump = buildInlineAsm(functionType(voidType(), rawPointerType()), TargetSpecific.get().getJumpInlineAsm(), "r", true, false);
         LLVMValueRef call = buildCall(jump, address);
         setCallSiteAttribute(call, LLVM.LLVMAttributeFunctionIndex, LLVMUtils.GC_LEAF_FUNCTION_NAME);
         return call;

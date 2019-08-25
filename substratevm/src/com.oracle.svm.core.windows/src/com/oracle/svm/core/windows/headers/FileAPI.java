@@ -43,15 +43,10 @@ import org.graalvm.word.UnsignedWord;
 @Platforms(Platform.WINDOWS.class)
 public class FileAPI {
 
-    /**
-     * Write nNumberOfBytesToWrite of lpBuffer to HANDLE hFile. Return non zero on success, zero on
-     * failure
-     */
     @CFunction
     public static native int WriteFile(int hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite,
                     CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
 
-    /** Flush the File Buffers for hFile. Return non zero on success, zero on failure */
     @CFunction
     public static native int FlushFileBuffers(int hFile);
 
@@ -64,7 +59,6 @@ public class FileAPI {
     @CConstant
     public static native int STD_ERROR_HANDLE();
 
-    /** Retrieve a handle for standard input, output, error */
     @CFunction
     public static native int GetStdHandle(int stdHandle);
 

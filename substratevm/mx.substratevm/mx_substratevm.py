@@ -697,13 +697,12 @@ def _helloworld(native_image, javac_command, path, args):
             stdout = os.dup(1)  # save original stdout
             pout, pin = os.pipe()
             os.dup2(pin, 1)  # connect stdout to pipe
-            run_main = 'run_main' if mx.get_os() != 'windows' else 'main'
             os.environ[envkey] = output
-            getattr(lib, run_main)(1, 'dummy')  # call run_main of shared lib
+            lib.run_main(1, 'dummy')  # call run_main of shared lib
             call_stdout = os.read(pout, 120)  # get pipe contents
             actual_output.append(call_stdout)
             os.dup2(stdout, 1)  # restore original stdout
-            mx.log("Stdout from calling {} in shared object {}:".format(run_main, so_name))
+            mx.log('Stdout from calling run_main in shared object {}:'.format(so_name))
             mx.log(call_stdout)
             actual_output = list(map(_decode, actual_output))
         finally:

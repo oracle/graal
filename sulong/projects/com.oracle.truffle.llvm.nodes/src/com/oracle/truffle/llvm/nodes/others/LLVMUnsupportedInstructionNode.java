@@ -33,49 +33,33 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public final class LLVMUnsupportedInstructionNode extends LLVMStatementNode {
 
     public static LLVMUnsupportedInstructionNode create(UnsupportedReason reason) {
-        return new LLVMUnsupportedInstructionNode(null, reason, null);
+        return new LLVMUnsupportedInstructionNode(reason, null);
     }
 
-    public static LLVMUnsupportedInstructionNode create(LLVMSourceLocation location, UnsupportedReason reason) {
-        return new LLVMUnsupportedInstructionNode(location, reason, null);
-    }
-
-    public static LLVMUnsupportedInstructionNode create(LLVMSourceLocation location, UnsupportedReason reason, String message) {
-        return new LLVMUnsupportedInstructionNode(location, reason, message);
+    public static LLVMUnsupportedInstructionNode create(UnsupportedReason reason, String message) {
+        return new LLVMUnsupportedInstructionNode(reason, message);
     }
 
     public static LLVMUnsupportedExpressionNode createExpression(UnsupportedReason reason) {
         return new LLVMUnsupportedExpressionNode(create(reason));
     }
 
-    public static LLVMUnsupportedExpressionNode createExpression(LLVMSourceLocation location, UnsupportedReason reason) {
-        return new LLVMUnsupportedExpressionNode(create(location, reason));
+    public static LLVMUnsupportedExpressionNode createExpression(UnsupportedReason reason, String message) {
+        return new LLVMUnsupportedExpressionNode(create(reason, message));
     }
 
-    public static LLVMUnsupportedExpressionNode createExpression(LLVMSourceLocation location, UnsupportedReason reason, String message) {
-        return new LLVMUnsupportedExpressionNode(create(location, reason, message));
-    }
-
-    private final LLVMSourceLocation source;
     private final String message;
     private final UnsupportedReason reason;
 
-    private LLVMUnsupportedInstructionNode(LLVMSourceLocation location, UnsupportedReason reason, String message) {
-        this.source = location;
+    private LLVMUnsupportedInstructionNode(UnsupportedReason reason, String message) {
         this.message = message;
         this.reason = reason;
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
     }
 
     @Override

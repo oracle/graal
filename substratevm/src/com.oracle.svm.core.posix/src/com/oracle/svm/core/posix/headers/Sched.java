@@ -25,10 +25,10 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
+import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
 
 //Allow methods with non-standard names: Checkstyle: stop
 
@@ -46,5 +46,4 @@ public class Sched {
      */
     @CFunction
     public static native int sched_yield();
-
 }

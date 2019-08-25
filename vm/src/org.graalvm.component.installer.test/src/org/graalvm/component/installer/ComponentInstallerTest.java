@@ -24,19 +24,27 @@
  */
 package org.graalvm.component.installer;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.Assert;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**
  *
  * @author sdedic
  */
-public class ComponentInstallerTest extends TestBase {
+public class ComponentInstallerTest extends CommandTestBase {
     StringBuilder message = new StringBuilder();
     boolean cmdReported;
     String currentCmd;
@@ -72,7 +80,8 @@ public class ComponentInstallerTest extends TestBase {
                 if ("X".equals(v)) {
                     continue;
                 }
-                if (ComponentInstaller.globalOptions.containsKey(k)) {
+                if (ComponentInstaller.globalOptions.containsKey(k) &&
+                                !ComponentInstaller.componentOptions.containsKey(k)) {
                     reportOption(k);
                 }
             }
@@ -88,6 +97,7 @@ public class ComponentInstallerTest extends TestBase {
     @Test
     public void testMainHelpConsistent() {
         ComponentInstaller.initCommands();
+        discoverOptions();
         startCommand("Global");
         String help = ResourceBundle.getBundle(
                         "org.graalvm.component.installer.Bundle").getString("INFO_Usage");
@@ -132,7 +142,7 @@ public class ComponentInstallerTest extends TestBase {
                 Assert.fail("Options do not exist: " + message.toString());
             }
             for (String s : new ArrayList<>(cmdOptions.keySet())) {
-                if (s.length() > 1 || "X".equals(cmdOptions.get(s))) {
+                if (s.length() > 1 || "X".equals(cmdOptions.get(s)) || deprecatedOptions.contains(s)) {
                     cmdOptions.remove(s);
                 }
             }
@@ -153,5 +163,209 @@ public class ComponentInstallerTest extends TestBase {
         if (!allCmds.isEmpty()) {
             Assert.fail("Not all commands documented: " + allCmds);
         }
+    }
+
+    List<String> helpLines = new ArrayList<>();
+    Set<String> deprecatedOptions = new HashSet<>();
+    Set<String> allOptions = new HashSet<>();
+
+    private void discoverOptions() {
+        try {
+            Field[] flds = Commands.class.getFields();
+            for (Field f : flds) {
+                if (f.getType() != String.class) {
+                    continue;
+                }
+                if (!(f.getName().startsWith("OPTION_") || f.getName().startsWith("LONG_OPTION_"))) {
+                    continue;
+                }
+                String v = (String) f.get(null);
+                allOptions.add(v);
+                if (f.getAnnotation(Deprecated.class) != null) {
+                    deprecatedOptions.add(v);
+                }
+            }
+        } catch (ReflectiveOperationException ex) {
+
+        }
+    }
+
+    List<String> errors = new ArrayList<>();
+
+    private void checkCommandAndOptionsList(InstallerCommand cmd) {
+        boolean overviewFound = false;
+        String prefix = "gu " + currentCmd + " ";
+        List<String> optionLines = new ArrayList<>();
+        boolean optionBlockStarted = false;
+        Set<String> optionsInOverview = new HashSet<>();
+
+        Map<String, String> cmdOpts = new HashMap<>(cmd.supportedOptions());
+        cmdOpts.remove(Commands.DO_NOT_PROCESS_OPTIONS);
+
+        Map<String, String> opts = new HashMap<>(cmdOpts);
+        for (String l : helpLines) {
+            if (l.startsWith(prefix)) {
+                if (overviewFound) {
+                    errors.add("Command " + currentCmd + ": Duplicate overviews not permitted");
+                }
+                int optsStart = l.indexOf('[');
+                int optsEnd = l.indexOf(']');
+
+                if (optsStart == -1) {
+                    if (!opts.isEmpty()) {
+                        errors.add("Command " + currentCmd + ": Options block missing");
+                    }
+                    continue;
+                }
+                if (optsEnd <= optsStart + 1) {
+                    errors.add("Command " + currentCmd + ": Options block malformed");
+                }
+
+                String optList = l.substring(optsStart + 1, optsEnd);
+                if (optList.startsWith("-")) {
+                    optList = optList.substring(1);
+                }
+
+                for (int i = 0; i < optList.length(); i++) {
+                    String o = optList.substring(i, i + 1);
+
+                    if ("X".equals(opts.get(o))) {
+                        errors.add("Command " + currentCmd + ": Disabled option listed - " + o);
+                    }
+
+                    if (!(opts.containsKey(o) || ComponentInstaller.globalOptions.containsKey(o))) {
+                        errors.add("Command " + currentCmd + ": Unsupported option listed - " + o);
+                    }
+                    opts.remove(o);
+                    optionsInOverview.add(o);
+                }
+
+                List<String> oneChars = opts.keySet().stream().filter((s) -> s.length() == 1         // one-liner
+                                && !"X".equals(opts.get(s))       // not disabled
+                                && !deprecatedOptions.contains(s) // not deprecated
+                ).sorted().collect(Collectors.toList());
+                if (!oneChars.isEmpty()) {
+                    errors.add("Command " + currentCmd + ": Option(s) missing in command overview - " + oneChars);
+                }
+                overviewFound = true;
+            }
+
+            if (l.toLowerCase().endsWith("options:")) {
+                optionBlockStarted = true;
+            }
+            if (optionBlockStarted) {
+                if (l.trim().startsWith("-")) {
+                    optionLines.add(l.substring(l.indexOf('-')));
+                }
+            }
+        }
+        if (!overviewFound) {
+            errors.add("Command " + currentCmd + ": Overview line not found");
+        }
+
+        Set<String> coveredOptions = new HashSet<>();
+        for (int i = 0; i < optionLines.size(); i++) {
+            String l = optionLines.get(i);
+            if (l.startsWith("--")) {
+                String longOption = l.substring(2).trim();
+
+                if (longOption.length() < 2) {
+                    errors.add("Command " + currentCmd + ": Long option too short: " + longOption);
+                } else {
+                    coveredOptions.add(longOption);
+                }
+                String shopt = cmdOpts.get(longOption);
+                if (shopt == null) {
+                    shopt = ComponentInstaller.globalOptions.get(longOption);
+                }
+                if (shopt == null) {
+                    errors.add("Command " + currentCmd + ": Long option not found: " + longOption);
+                } else if (!(cmdOpts.containsKey(shopt) || ComponentInstaller.globalOptions.containsKey(shopt))) {
+                    errors.add("Command " + currentCmd + ": Long option mapped to bad char: " + longOption);
+                } else if (i >= optionLines.size() - 1) {
+                    errors.add("Command " + currentCmd + ": Long option not followed by short: " + longOption);
+                } else {
+                    String shoptline = optionLines.get(i + 1);
+                    if (!shoptline.startsWith("-" + shopt)) {
+                        errors.add("Command " + currentCmd + ": Long option with bad short option: " + longOption);
+                    }
+                }
+            } else if (l.startsWith("-")) {
+                String[] spl = l.split("\\p{Blank}");
+                String shOpt = spl[0].trim().substring(1);
+                if (shOpt.length() != 1) {
+                    errors.add("Command " + currentCmd + ": Invalid short option: " + shOpt);
+                } else {
+                    coveredOptions.add(shOpt);
+                }
+                String def = cmdOpts.get(shOpt);
+                if (def == null) {
+                    def = ComponentInstaller.globalOptions.get(shOpt);
+                }
+                if (def == null) {
+                    errors.add("Command " + currentCmd + ": Unsupported option: " + shOpt);
+                } else if (deprecatedOptions.contains(shOpt) || def.startsWith("=")) {
+                    errors.add("Command " + currentCmd + ": Deperecated option: " + shOpt);
+                    continue;
+                }
+            }
+        }
+        List<String> a = new ArrayList<>(cmdOpts.keySet());
+        Collections.sort(a, Collections.reverseOrder());
+
+        for (String s : a) {
+            String r = cmdOpts.get(s);
+            if (s.length() > 1) {
+                r = cmdOpts.get(r);
+            }
+            if ("X".equals(r)) {
+                cmdOpts.remove(s);
+            }
+        }
+        cmdOpts.keySet().removeAll(coveredOptions);
+        cmdOpts.keySet().removeAll(deprecatedOptions);
+        if (!cmdOpts.isEmpty()) {
+            errors.add("Command " + currentCmd + ": Option(s) missing in option list - " + cmdOpts.keySet());
+        }
+    }
+
+    @Test
+    public void testCommandHelpConsistent() throws Exception {
+        discoverOptions();
+
+        ComponentInstaller.initCommands();
+        Map<String, InstallerCommand> allCmds = new HashMap<>(ComponentInstaller.commands);
+
+        delegateFeedback(new FeedbackAdapter() {
+            @Override
+            public void output(String bundleKey, Object... params) {
+                super.output(bundleKey, params);
+                helpLines.addAll(Arrays.asList(reallyl10n(bundleKey, params).split("\n")));
+            }
+
+            @Override
+            public void message(String bundleKey, Object... params) {
+                output(bundleKey, params);
+            }
+
+        });
+        options.put(Commands.OPTION_HELP, "");
+        for (String cmd : allCmds.keySet()) {
+            if (cmd.startsWith("#")) {
+                continue;
+            }
+            // exception: rebuild-images delegates help to others:
+            if ("rebuild-images".equals(cmd)) {
+                continue;
+            }
+
+            InstallerCommand cc = allCmds.get(cmd);
+            helpLines.clear();
+            cc.init(this, this.withBundle(cc.getClass()));
+            startCommand(cmd);
+            cc.execute();
+            checkCommandAndOptionsList(cc);
+        }
+        assertTrue("Help inconsistencies found: \n " + String.join("\n", errors), errors.isEmpty());
     }
 }

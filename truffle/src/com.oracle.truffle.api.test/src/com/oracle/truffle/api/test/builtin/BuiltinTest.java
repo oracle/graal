@@ -52,8 +52,8 @@ import com.oracle.truffle.api.test.interop.InteropLibraryBaseTest;
 
 public class BuiltinTest extends InteropLibraryBaseTest {
 
-    private static final String EXISTING = "testMethod";
-    private static final String NOT_EXISTING = "testMethod_";
+    private static final String EXISTING = "testArg1";
+    private static final String NOT_EXISTING = "testArg1_";
 
     @Test
     public void testExisting() throws InteropException {
@@ -76,8 +76,8 @@ public class BuiltinTest extends InteropLibraryBaseTest {
         Object members = builtinLib.getMembers(testObject);
         InteropLibrary membersLib = createLibrary(InteropLibrary.class, members);
         Assert.assertTrue(membersLib.hasArrayElements(members));
-        Assert.assertEquals(1, membersLib.getArraySize(members));
-        Assert.assertEquals(EXISTING, membersLib.readArrayElement(members, 0));
+        Assert.assertEquals(4, membersLib.getArraySize(members));
+        Assert.assertEquals(EXISTING, membersLib.readArrayElement(members, 1));
     }
 
     @Test

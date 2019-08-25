@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.graal.llvm.LLVMOptions.KeepLLVMBitcodeFiles;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
@@ -57,6 +58,7 @@ import org.bytedeco.javacpp.Pointer;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.llvm.LLVMUtils;
+import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -70,7 +72,6 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
@@ -108,6 +109,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         try {
             basePath = Files.createTempDirectory("native-image-llvm");
+            if (!KeepLLVMBitcodeFiles.getValue()) {
+                basePath.toFile().deleteOnExit();
+            }
             if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
                 stackMapDump = new FileWriter(LLVMOptions.DumpLLVMStackMap.getValue());
             } else {
@@ -255,7 +259,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             CompilationResult compilation = compilations.get(method);
             long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
                             .orElseThrow(() -> new GraalError("no method start infopoint: " + methodSymbolName)).pcOffset;
-            int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + FrameAccess.returnAddressSize());
+            int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + TargetSpecific.get().getCallFrameSeparation());
             compilation.setTotalFrameSize(totalFrameSize);
 
             StringBuilder patchpointsDump = null;
@@ -462,6 +466,16 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             List<String> cmd = new ArrayList<>();
             cmd.add("opt");
+
+            /*
+             * The x86 backend of LLVM has a bug which prevents the use of bitcode-level
+             * optimizations. This bug will be fixed in the LLVM 9.0.0 release.
+             */
+            if (!Platform.includedIn(Platform.AMD64.class)) {
+                cmd.add("-disable-inlining");
+                cmd.add("-O2");
+            }
+
             /*
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
@@ -494,13 +508,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("llc");
+            cmd.add((LLVMOptions.CustomLLC.hasBeenSet()) ? LLVMOptions.CustomLLC.getValue() : "llc");
             cmd.add("-relocation-model=pic");
-
-            /* X86 call frame optimization causes variable sized stack frames */
-            if (targetPlatform instanceof Platform.AMD64) {
-                cmd.add("-no-x86-call-frame-opt");
-            }
+            cmd.add("-march=" + TargetSpecific.get().getLLVMArchName());
+            cmd.addAll(TargetSpecific.get().getLLCAdditionalOptions());
             cmd.add("-O2");
             cmd.add("-filetype=obj");
             cmd.add("-o");

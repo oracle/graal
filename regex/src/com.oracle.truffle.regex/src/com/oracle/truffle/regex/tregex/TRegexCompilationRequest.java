@@ -210,7 +210,7 @@ public final class TRegexCompilationRequest {
             phaseEnd("Flavor");
         }
         phaseStart("Parser");
-        ast = new RegexParser(ecmascriptSource, options).parse();
+        ast = new RegexParser(ecmascriptSource, options, compilationBuffer).parse();
         phaseEnd("Parser");
         debugAST();
     }

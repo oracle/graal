@@ -46,6 +46,9 @@ import org.graalvm.word.PointerBase;
 public class NetIf {
 
     @CConstant
+    public static native int IFF_POINTOPOINT();
+
+    @CConstant
     public static native int IFF_UP();
 
     @CConstant
@@ -54,15 +57,12 @@ public class NetIf {
     @CConstant
     public static native int IFF_LOOPBACK();
 
-    // #define IF_NAMESIZE 16
     @CConstant
     public static native int IF_NAMESIZE();
 
-    // #define IFNAMSIZ IF_NAMESIZE
     @CConstant
     public static native int IFNAMSIZ();
 
-    // #define IFHWADDRLEN 6;
     @CConstant
     @Platforms(Platform.LINUX.class)
     public static native int IFHWADDRLEN();

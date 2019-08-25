@@ -24,33 +24,46 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.word.ComparableWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Pthread;
-import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.posix.headers.Stdio.FILE;
+import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
 
 public final class PosixVMThreads extends VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    protected ComparableWord getCurrentOSThreadId() {
+    protected OSThreadHandle getCurrentOSThreadHandle() {
         return Pthread.pthread_self();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    protected OSThreadId getCurrentOSThreadId() {
+        return Pthread.pthread_self();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Override
+    protected void joinNoTransition(OSThreadHandle osThreadHandle) {
+        Pthread.pthread_t pthread = (Pthread.pthread_t) osThreadHandle;
+        PosixUtils.checkStatusIs0(Pthread.pthread_join_no_transition(pthread, WordFactory.nullPointer()), "Pthread.joinNoTransition");
     }
 
     @Uninterruptible(reason = "Thread state not set up.")

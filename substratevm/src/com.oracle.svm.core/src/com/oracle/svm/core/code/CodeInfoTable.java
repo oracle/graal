@@ -46,7 +46,7 @@ import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 import com.oracle.svm.core.util.VMError;
@@ -181,7 +181,7 @@ public class CodeInfoTable {
 
     public static void invalidateInstalledCode(SubstrateInstalledCode installedCode) {
         /* Captures "installedCode" for the VMOperation. */
-        VMOperation.enqueueBlockingSafepoint("CodeInfoTable.invalidateInstalledCode", () -> {
+        JavaVMOperation.enqueueBlockingSafepoint("CodeInfoTable.invalidateInstalledCode", () -> {
             counters().invalidateInstalledCodeCount.inc();
             if (installedCode.isValid()) {
                 final RuntimeCodeInfo codeCache = getRuntimeCodeCache();

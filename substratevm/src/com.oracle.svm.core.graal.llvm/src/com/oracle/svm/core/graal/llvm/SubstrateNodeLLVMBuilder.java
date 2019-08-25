@@ -28,6 +28,7 @@ import static com.oracle.svm.core.graal.code.SubstrateBackend.getJavaFrameAnchor
 import static com.oracle.svm.core.graal.code.SubstrateBackend.hasJavaFrameAnchor;
 
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
+import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
 import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMVariable;
 import org.graalvm.compiler.core.llvm.NodeLLVMBuilder;
@@ -111,7 +112,7 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
             LLVMValueRef safepointCount = builder.buildLoad(safepointCounterAddr, builder.intType());
             safepointCount = builder.buildSub(safepointCount, builder.constantInt(1));
             builder.buildStore(safepointCount, safepointCounterAddr);
-            return builder.buildIsNull(safepointCount);
+            return builder.buildICmp(Condition.LE, safepointCount, builder.constantInt(0));
         }
         return super.emitCondition(condition);
     }

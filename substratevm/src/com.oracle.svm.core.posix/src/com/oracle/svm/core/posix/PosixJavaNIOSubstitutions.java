@@ -123,7 +123,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -134,7 +133,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
@@ -142,7 +140,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -158,7 +155,6 @@ import com.oracle.svm.core.headers.Errno;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.darwin.DarwinCoreFoundationUtils;
@@ -192,84 +188,6 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.CoreFoundation;
 import com.oracle.svm.core.posix.headers.linux.Mntent;
 import com.oracle.svm.core.posix.headers.linux.Mntent.mntent;
-import com.oracle.svm.core.util.VMError;
-
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-@AutomaticFeature
-@CLibrary(value = "nio", requireStatic = true)
-class PosixJavaNIOSubstituteFeature implements Feature {
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.FileKey"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.fs.UnixNativeDispatcher"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.ServerSocketChannelImpl"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.IOUtil"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.nio.ch.FileChannelImpl"), "required for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.nio.file.FileSystems"), "required for substitutions");
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-            if (OS.getCurrent() == OS.DARWIN || OS.getCurrent() == OS.LINUX) {
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mode"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ino"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_dev"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_rdev"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_nlink"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_uid"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_gid"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_size"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_atime_sec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_atime_nsec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mtime_sec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_mtime_nsec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ctime_sec"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_ctime_nsec"));
-
-                // Only needed ifdef _DARWIN_FEATURE_64_BIT_INODE
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileAttributes").getDeclaredField("st_birthtime_sec"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_frsize"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_blocks"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_bfree"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixFileStoreAttributes").getDeclaredField("f_bavail"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("name"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("dir"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("fstype"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("opts"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixMountEntry").getDeclaredField("dev"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey").getDeclaredField("st_dev"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileKey").getDeclaredField("st_ino"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileChannelImpl"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.FileChannelImpl").getDeclaredField("fd"));
-
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("sender"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("cachedSenderInetAddress"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.ch.DatagramChannelImpl").getDeclaredField("cachedSenderPort"));
-
-                JNIRuntimeAccess.register(access.findClassByName("java.lang.Exception"));
-                JNIRuntimeAccess.register(access.findClassByName("java.lang.Exception").getDeclaredConstructor());
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException"));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException").getDeclaredConstructor(int.class));
-                JNIRuntimeAccess.register(access.findClassByName("sun.nio.fs.UnixException").getDeclaredConstructor(String.class));
-            }
-
-        } catch (NoSuchFieldException | NoSuchMethodException e) {
-            VMError.shouldNotReachHere("JNIRuntimeAccess.register failed: ", e);
-
-        }
-    }
-}
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public final class PosixJavaNIOSubstitutions {
