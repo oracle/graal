@@ -94,8 +94,8 @@ public interface Commands {
     /**
      * Verifies JAR integrity.
      */
-    String OPTION_VERIFY_JARS = "s";
-    String LONG_OPTION_VERIFY_JARS = "verify-jars";
+    String OPTION_NO_VERIFY_JARS = "s";
+    String LONG_OPTION_NO_VERIFY_JARS = "no-verify-jars";
 
     /**
      * Do not use tabular list.

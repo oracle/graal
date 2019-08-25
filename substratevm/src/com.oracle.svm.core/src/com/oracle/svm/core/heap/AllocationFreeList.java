@@ -26,7 +26,6 @@ package com.oracle.svm.core.heap;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.thread.VMOperation;
 
 /**
@@ -91,11 +90,12 @@ public class AllocationFreeList<T extends AllocationFreeList.Element<T>> {
     }
 
     /**
-     * Remove any disabled elements from the list. This method is *not* thread-safe with respect to
-     * other changes in the list.
+     * Remove any disabled elements from the list. To ensure that this method is thread-safe with
+     * respect to other changes in the list, it must only be called from within a VM operation that
+     * causes a safepoint.
      */
     public void scrub() {
-        guaranteeSingleThreaded("AllocationFreeList.scrub");
+        VMOperation.guaranteeInProgressAtSafepoint("AllocationFreeList.scrub");
         final Element<T> headSample = sampleHead();
         if (headSample != null) {
             Element<T> newHead = null;
@@ -129,13 +129,6 @@ public class AllocationFreeList<T extends AllocationFreeList.Element<T>> {
      */
     private Element<T> sampleHead() {
         return head.get();
-    }
-
-    /** Guarantee that I am single-threaded. */
-    static void guaranteeSingleThreaded(String message) {
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMOperation.guaranteeInProgress(message);
-        }
     }
 
     /** For testing, to iterate without scrubbing. */

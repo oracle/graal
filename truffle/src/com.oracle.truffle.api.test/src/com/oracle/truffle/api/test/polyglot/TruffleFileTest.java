@@ -144,6 +144,29 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         assertTrue("text/x-duplicate-mime-1".equals(result) || "text/x-duplicate-mime-2".equals(result));
     }
 
+    @Test
+    public void testCreateTempFileInvalidNames() throws IOException {
+        String separator = languageEnv.getFileNameSeparator();
+        try {
+            languageEnv.createTempFile(null, "a" + separator + "b", ".tmp");
+            Assert.fail("IllegalArgumentException expected.");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+        try {
+            languageEnv.createTempFile(null, "ab", ".tmp" + separator + "2");
+            Assert.fail("IllegalArgumentException expected.");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+        try {
+            languageEnv.createTempDirectory(null, "a" + separator + "b");
+            Assert.fail("IllegalArgumentException expected.");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+    }
+
     public static class BaseDetector implements TruffleFile.FileTypeDetector {
 
         private static Map<Class<? extends BaseDetector>, BaseDetector> INSTANCES = new HashMap<>();

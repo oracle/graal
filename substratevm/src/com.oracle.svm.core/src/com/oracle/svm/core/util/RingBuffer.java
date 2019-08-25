@@ -49,12 +49,12 @@ public final class RingBuffer<T> {
         this.entries = (T[]) new Object[numEntries];
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private int advance(int p) {
         return (p + 1) % entries.length;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void append(T entry) {
         entries[pos] = entry;
         int posNext = advance(pos);

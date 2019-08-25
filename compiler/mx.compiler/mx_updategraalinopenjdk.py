@@ -65,6 +65,27 @@ def _is_git_repo(jdkrepo):
     git_dir = join(jdkrepo, '.git')
     return exists(git_dir)
 
+def rename_packages(filepath, verbose=False):
+    with open(filepath) as fp:
+        contents = fp.read()
+    new_contents = contents
+    for old_name, new_name in package_renamings.items():
+        new_contents = new_contents.replace(old_name, new_name)
+        if new_contents != contents:
+            with open(filepath, 'w') as fp:
+                fp.write(new_contents)
+                if verbose:
+                    mx.log('  updated ' + filepath)
+
+# Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
+# as is on the class path and not clash with packages in the jdk.internal.vm.compiler module.
+# Also used by other script.
+package_renamings = {
+    'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
+    'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
+    'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal'
+}
+
 SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
 GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
 
@@ -97,14 +118,6 @@ def updategraalinopenjdk(args):
             # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
             [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
     ]
-
-    # Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
-    # as it on the class path and not clash with packages in the jdk.internal.vm.compiler module.
-    package_renamings = {
-        'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
-        'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
-        'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal'
-    }
 
     # Strings to be replaced in files copied to OpenJDK.
     replacements = {
@@ -141,16 +154,7 @@ def updategraalinopenjdk(args):
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:
             if filename.endswith('.gmk'):
-                filepath = join(dirpath, filename)
-                with open(filepath) as fp:
-                    contents = fp.read()
-                new_contents = contents
-                for old_name, new_name in package_renamings.items():
-                    new_contents = new_contents.replace(old_name, new_name)
-                if new_contents != contents:
-                    with open(filepath, 'w') as fp:
-                        fp.write(new_contents)
-                        mx.log('  updated ' + filepath)
+                rename_packages(join(dirpath, filename), True)
 
     java_package_re = re.compile(r"^\s*package\s+(?P<package>[a-zA-Z_][\w\.]*)\s*;$", re.MULTILINE)
 

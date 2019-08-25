@@ -27,7 +27,7 @@ package com.oracle.svm.core.jdk;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.thread.ThreadingSupportImpl.PauseRecurringCallback;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 /** Access to methods in support of {@link sun.misc}. */
 public class SunMiscSupport {
@@ -35,10 +35,10 @@ public class SunMiscSupport {
     @SuppressFBWarnings(value = "BC", justification = "Target_jdk_internal_ref_Cleaner is an alias for a class that extends Reference")
     @SuppressWarnings("try")
     public static void drainCleanerQueue() {
-        // An exception in a recurring callback could interrupt Cleaner processing and leak memory
         Target_java_lang_ref_ReferenceQueue queue = SubstrateUtil.cast(Target_jdk_internal_ref_Cleaner.dummyQueue, Target_java_lang_ref_ReferenceQueue.class);
         if (!queue.isEmpty()) {
-            try (PauseRecurringCallback prc = new PauseRecurringCallback()) {
+            ThreadingSupportImpl.pauseRecurringCallback("An exception in a recurring callback must not interrupt the cleaner processing as this would result in a memory leak.");
+            try {
                 for (; /* return */ ;) {
                     final Object entry = queue.poll();
                     if (entry == null) {
@@ -49,6 +49,8 @@ public class SunMiscSupport {
                         cleaner.clean();
                     }
                 }
+            } finally {
+                ThreadingSupportImpl.resumeRecurringCallback();
             }
         }
     }

@@ -4742,6 +4742,20 @@ final class Target_java_net_NetworkInterface {
         return (((ret & NetIf.IFF_UP()) != 0) && (ret & NetIf.IFF_RUNNING()) != 0);
     }
 
+    // 491   /*
+    // 492    * Class:     java_net_NetworkInterface
+    // 493    * Method:    isP2P0
+    // 494    * Signature: (Ljava/lang/String;I)Z
+    // 495    */
+    @Substitute
+    @SuppressWarnings({"unused"})
+    private static boolean isP2P0(String name, int ind) throws SocketException {
+        //    499    int ret = getFlags0(env, name);
+        int ret = JavaNetNetworkInterface.getFlags0(name);
+        //    500    return (ret & IFF_POINTOPOINT) ? JNI_TRUE :  JNI_FALSE;
+        return ((ret & NetIf.IFF_POINTOPOINT()) != 0);
+    }
+
     /*
      * Translated from jdk8u/jdk/src/solaris/native/java/net/NetworkInterface.c
      */

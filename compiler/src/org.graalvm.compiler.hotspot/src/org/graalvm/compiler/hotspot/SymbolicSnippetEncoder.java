@@ -790,7 +790,11 @@ public class SymbolicSnippetEncoder {
         @Override
         public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
             JavaConstant javaConstant = constantReflection.readFieldValue(field, receiver);
-            if (!safeConstants.contains(receiver) && !field.getDeclaringClass().getName().contains("graalvm") && !field.getDeclaringClass().getName().contains("jdk/vm/ci/") &&
+            if (!safeConstants.contains(receiver) &&
+                            !field.getDeclaringClass().getName().contains("graalvm") &&
+                            !field.getDeclaringClass().getName().contains("jdk/vm/ci/") &&
+                            !field.getDeclaringClass().getName().contains("jdk/internal/vm/compiler") &&
+
                             !field.getName().equals("TYPE")) {
                 // Only permit constant reflection on compiler classes. This is necessary primarily
                 // because of the boxing snippets which are compiled as snippets but are really just

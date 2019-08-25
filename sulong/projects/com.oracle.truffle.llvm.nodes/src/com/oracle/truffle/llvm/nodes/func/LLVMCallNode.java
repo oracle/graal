@@ -29,17 +29,11 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.nodes.func.LLVMCallNodeFactory.ArgumentNodeGen;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class LLVMCallNode extends LLVMExpressionNode {
@@ -47,18 +41,20 @@ public final class LLVMCallNode extends LLVMExpressionNode {
     public static final int USER_ARGUMENT_OFFSET = 1;
 
     @Children private final LLVMExpressionNode[] argumentNodes;
-    @Children private final ArgumentNode[] prepareArgumentNodes;
+    @Children private final LLVMPrepareArgumentNode[] prepareArgumentNodes;
     @Child private LLVMLookupDispatchTargetNode dispatchTargetNode;
     @Child private LLVMDispatchNode dispatchNode;
 
-    private final LLVMSourceLocation source;
+    // this node is also used to execute inline assembly, which is not instrumentable and should
+    // therefore not be considered a function call for the debugger
+    private final boolean isSourceCall;
 
-    public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, LLVMSourceLocation source) {
+    public LLVMCallNode(FunctionType functionType, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes, boolean isSourceCall) {
         this.argumentNodes = argumentNodes;
         this.prepareArgumentNodes = createPrepareArgumentNodes(argumentNodes);
         this.dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
         this.dispatchNode = LLVMDispatchNodeGen.create(functionType);
-        this.source = source;
+        this.isSourceCall = isSourceCall;
     }
 
     @ExplodeLoop
@@ -74,36 +70,20 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         return dispatchNode.executeDispatch(function, argValues);
     }
 
-    private static ArgumentNode[] createPrepareArgumentNodes(LLVMExpressionNode[] argumentNodes) {
-        ArgumentNode[] nodes = new ArgumentNode[argumentNodes.length];
+    private static LLVMPrepareArgumentNode[] createPrepareArgumentNodes(LLVMExpressionNode[] argumentNodes) {
+        LLVMPrepareArgumentNode[] nodes = new LLVMPrepareArgumentNode[argumentNodes.length];
         for (int i = 0; i < nodes.length; i++) {
-            nodes[i] = ArgumentNodeGen.create();
+            nodes[i] = LLVMPrepareArgumentNodeGen.create();
         }
         return nodes;
     }
 
-    protected abstract static class ArgumentNode extends LLVMNode {
-
-        protected abstract Object executeWithTarget(Object value);
-
-        @Specialization
-        protected LLVMPointer doPointer(LLVMPointer address) {
-            return address.copy();
-        }
-
-        @Fallback
-        protected Object doOther(Object value) {
-            return value;
-        }
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
-    }
-
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
-        return tag == StandardTags.StatementTag.class || tag == StandardTags.CallTag.class || super.hasTag(tag);
+        if (tag == StandardTags.CallTag.class) {
+            return isSourceCall && getSourceLocation() != null;
+        } else {
+            return super.hasTag(tag);
+        }
     }
 }

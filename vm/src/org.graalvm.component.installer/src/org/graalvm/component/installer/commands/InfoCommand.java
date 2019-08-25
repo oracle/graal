@@ -35,6 +35,7 @@ import java.util.zip.ZipException;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.FailedOperationException;
@@ -54,16 +55,19 @@ public class InfoCommand extends QueryCommandBase {
 
     static {
         OPTIONS.putAll(BASE_OPTIONS);
+        OPTIONS.putAll(ComponentInstaller.componentOptions);
 
-        OPTIONS.put(Commands.OPTION_VERIFY_JARS, "");
+        OPTIONS.put(Commands.OPTION_NO_VERIFY_JARS, "");
         OPTIONS.put(Commands.OPTION_FULL_PATHS, "");
         OPTIONS.put(Commands.OPTION_IGNORE_OPEN_ERRORS, "");
         OPTIONS.put(Commands.OPTION_SUPPRESS_TABLE, "");
+        OPTIONS.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
 
-        OPTIONS.put(Commands.LONG_OPTION_VERIFY_JARS, Commands.OPTION_VERIFY_JARS);
+        OPTIONS.put(Commands.LONG_OPTION_NO_VERIFY_JARS, Commands.OPTION_NO_VERIFY_JARS);
         OPTIONS.put(Commands.LONG_OPTION_FULL_PATHS, Commands.OPTION_FULL_PATHS);
         OPTIONS.put(Commands.LONG_OPTION_IGNORE_OPEN_ERRORS, Commands.OPTION_IGNORE_OPEN_ERRORS);
         OPTIONS.put(Commands.LONG_OPTION_SUPPRESS_TABLE, Commands.OPTION_SUPPRESS_TABLE);
+        OPTIONS.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
 
         OPTIONS.put(Commands.OPTION_VERSION, "s");
         OPTIONS.put(Commands.LONG_OPTION_VERSION, Commands.OPTION_VERSION);
@@ -120,7 +124,7 @@ public class InfoCommand extends QueryCommandBase {
     public void init(CommandInput commandInput, Feedback feedBack) {
         super.init(commandInput, feedBack);
         ignoreOpenErrors = input.optValue(Commands.OPTION_IGNORE_OPEN_ERRORS) != null;
-        verifyJar = input.optValue(Commands.OPTION_VERIFY_JARS) != null;
+        verifyJar = input.optValue(Commands.OPTION_NO_VERIFY_JARS) == null;
         suppressTable = input.optValue(Commands.OPTION_SUPPRESS_TABLE) != null;
         fullPath = input.optValue(Commands.OPTION_FULL_PATHS) != null;
 

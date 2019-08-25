@@ -50,6 +50,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
+import com.oracle.svm.core.thread.JavaVMOperation;
 
 public class PathExhibitor {
 
@@ -645,7 +646,26 @@ public class PathExhibitor {
         }
 
         public static PathElement findPathToObject(final PathExhibitor exhibitor, final Object obj) {
-            return exhibitor.findPathToObject(obj);
+            FindPathToObjectOperation op = new FindPathToObjectOperation(exhibitor, obj);
+            op.enqueue();
+            return op.result;
+        }
+    }
+
+    private static final class FindPathToObjectOperation extends JavaVMOperation {
+        private final PathExhibitor exhibitor;
+        private final Object object;
+        private PathElement result;
+
+        FindPathToObjectOperation(PathExhibitor exhibitor, Object object) {
+            super("FindPathToObjectOperation", SystemEffect.SAFEPOINT);
+            this.exhibitor = exhibitor;
+            this.object = object;
+        }
+
+        @Override
+        protected void operate() {
+            result = exhibitor.findPathToObject(object);
         }
     }
 }

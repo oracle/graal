@@ -47,7 +47,12 @@ suite = {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
             "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
             "packedResource": True,
-        }
+        },
+
+        "DACAPO_SVM" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
+            "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
+        },
     },
 
     "projects": {
@@ -710,7 +715,6 @@ suite = {
             "javaCompliance": "8+",
             "spotbugs": "false",
         },
-
         "com.oracle.svm.agent": {
             "subDir": "src",
             "sourceDirs": [
@@ -731,6 +735,19 @@ suite = {
             ],
             "javaCompliance": "8+",
             "spotbugs": "false",
+        },
+        "com.oracle.svm.truffle.tck" : {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "checkstyle" : "com.oracle.svm.truffle",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "1.8",
         },
     },
 
@@ -1024,6 +1041,14 @@ suite = {
                 "compiler:GRAAL_LLVM"
             ],
             "maven" : False,
-        }
+        },
+
+        "SVM_TRUFFLE_TCK" : {
+            "subDir" : "src",
+            "description" : "Truffle TCK",
+            "dependencies" : ["com.oracle.svm.truffle.tck"],
+            "distDependencies" : ["SVM"],
+            "maven" : True,
+        },
     },
 }

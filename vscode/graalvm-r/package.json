@@ -1,0 +1,111 @@
+{
+	"name": "graalvm-r",
+	"displayName": "GraalVM R",
+	"description": "Support for GraalVM R",
+	"version": "0.0.1",
+	"license": "SEE LICENSE IN LICENSE.txt",
+	"publisher": "OracleLabs",
+	"icon": "images/graalvm-r-logo.png",
+	"homepage": "https://github.com/oracle/graal/blob/master/vscode/graalvm-r/README.md",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/oracle/graal.git"
+	},
+	"engines": {
+		"vscode": "^1.32.0"
+	},
+	"categories": [
+		"Programming Languages",
+		"Debuggers",
+		"Snippets",
+		"Other"
+	],
+	"activationEvents": [
+		"onDebugInitialConfigurations",
+		"onLanguage:r"
+	],
+	"main": "./dist/extension",
+	"contributes": {
+		"grammars": [
+			{
+				"path": "./syntaxes/polyglot-injection.json",
+				"injectTo": [
+					"source.r",
+					"source.js",
+					"source.ruby",
+					"source.python"
+				],
+				"scopeName": "r-inline.polyglot-langauges",
+				"embeddedLanguages": {
+					"meta.embedded.inline.js": "javascript",
+					"meta.embedded.inline.python": "python",
+					"meta.embedded.inline.ruby": "ruby"
+				}
+			}
+		],
+		"snippets": [
+			{
+				"language": "r",
+				"path": "./snippets/polyglot-snippets.json"
+			}
+		],
+		"debuggers": [
+			{
+				"type": "graalvm-r",
+				"label": "GraalVM",
+				"languages": [
+					"r"
+				],
+				"configurationSnippets": [
+					{
+						"label": "GraalVM: Launch R Script",
+						"description": "Launch an R Script in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch R Script",
+							"runtimeExecutable": "Rscript",
+							"program": "^\"${1:\\${file\\}}\""
+						}
+					},
+					{
+						"label": "GraalVM: Launch R Terminal",
+						"description": "Launch an R terminal in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch R Term",
+							"runtimeExecutable": "R",
+							"runtimeArgs": [
+								"--inspect.Suspend=false"
+							],
+							"console": "integratedTerminal"
+						}
+					}
+				]
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "webpack --mode production",
+		"compile": "webpack --mode none",
+		"info": "webpack --display-modules",
+		"watch": "webpack --mode none --watch",
+		"test-compile": "tsc -p ./",
+		"postinstall": "node ./node_modules/vscode/bin/install"
+	},
+	"devDependencies": {
+		"@types/mocha": "^2.2.42",
+		"@types/node": "^8.10.51",
+		"ts-loader": "^6.0.4",
+		"tslint": "^5.18.0",
+		"typescript": "^3.5.3",
+		"vscode": "^1.1.36",
+		"webpack": "^4.39.1",
+		"webpack-cli": "^3.3.6"
+	},
+	"extensionDependencies": [
+		"OracleLabs.graalvm",
+		"Ikuyadeu.r"
+	]
+}

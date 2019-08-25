@@ -72,17 +72,16 @@ public abstract class AbstractBootImage {
         EXECUTABLE(true),
         STATIC_EXECUTABLE(true);
 
-        public final boolean executable;
+        public final boolean isExecutable;
+        public final String mainEntryPointName;
 
         NativeImageKind(boolean executable) {
-            this.executable = executable;
+            isExecutable = executable;
+            mainEntryPointName = executable ? "main" : "run_main";
         }
 
         public String getFilenameSuffix() {
-            if (executable) {
-                return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
-            }
-            return "";
+            return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
         }
 
         public String getFilenamePrefix() {
@@ -142,12 +141,12 @@ public abstract class AbstractBootImage {
     // factory method
     public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
                     NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader classLoader) {
+                    List<HostedMethod> entryPoints, ClassLoader classLoader) {
         switch (k) {
             case SHARED_LIBRARY:
-                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
+                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
             default:
-                return new ExecutableViaCCBootImage(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
+                return new ExecutableViaCCBootImage(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
         }
     }
 

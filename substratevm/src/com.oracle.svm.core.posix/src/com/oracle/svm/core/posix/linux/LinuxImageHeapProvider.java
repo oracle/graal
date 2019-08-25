@@ -36,23 +36,22 @@ import static com.oracle.svm.core.posix.headers.LibC.free;
 import static com.oracle.svm.core.posix.headers.LibC.malloc;
 import static com.oracle.svm.core.posix.headers.LibC.memcpy;
 import static com.oracle.svm.core.posix.headers.Stat.fstat_no_transition;
-import static com.oracle.svm.core.posix.headers.Unistd.NoTransitions.close;
+import static com.oracle.svm.core.posix.headers.UnistdNoTransitions.close;
 import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 import static org.graalvm.word.WordFactory.signed;
 import static org.graalvm.word.WordFactory.unsigned;
 
-import com.oracle.svm.core.posix.PosixUtils;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.LocationIdentity;
@@ -71,6 +70,7 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Stat;
@@ -269,7 +269,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean canUnmapInsteadOfTearDown(PointerBase heapBase) {
         return heapBase.notEqual(IMAGE_HEAP_BEGIN.get());
     }

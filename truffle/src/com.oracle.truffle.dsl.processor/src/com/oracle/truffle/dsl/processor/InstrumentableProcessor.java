@@ -561,6 +561,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             ExecutableElement executeMethod = method;
             CodeExecutableElement wrappedExecute = CodeExecutableElement.clone(executeMethod);
             wrappedExecute.getModifiers().remove(Modifier.ABSTRACT);
+            wrappedExecute.getModifiers().remove(Modifier.DEFAULT);
             wrappedExecute.getAnnotationMirrors().clear();
 
             String frameParameterName = "null";
@@ -705,6 +706,7 @@ public final class InstrumentableProcessor extends AbstractProcessor {
             CodeExecutableElement generatedMethod = CodeExecutableElement.clone(delegateMethod);
 
             generatedMethod.getModifiers().remove(Modifier.ABSTRACT);
+            generatedMethod.getModifiers().remove(Modifier.DEFAULT);
 
             CodeTreeBuilder callDelegate = generatedMethod.createBuilder();
             if (ElementUtils.isVoid(delegateMethod.getReturnType())) {

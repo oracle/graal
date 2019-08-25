@@ -132,7 +132,7 @@ public abstract class LoopNode extends Node {
     }
 
     /**
-     * Invokes one loop invocation by repeatedly call
+     * Invokes one loop invocation by repeatedly calling
      * {@link RepeatingNode#executeRepeating(VirtualFrame) execute)} on the repeating node the loop
      * was initialized with. Any exceptions that occur in the execution of the repeating node will
      * just be forwarded to this method and will cancel the current loop invocation.
@@ -140,8 +140,26 @@ public abstract class LoopNode extends Node {
      * @param frame the current execution frame or null if the repeating node does not require a
      *            frame
      * @since 0.8 or earlier
+     * @deprecated use {@link #execute(VirtualFrame)} instead
      */
+    @Deprecated
     public abstract void executeLoop(VirtualFrame frame);
+
+    /**
+     * Invokes one loop invocation by repeatedly calling
+     * {@link RepeatingNode#executeRepeating(VirtualFrame) execute)} on the repeating node the loop
+     * was initialized with. Any exceptions that occur in the execution of the repeating node will
+     * just be forwarded to this method and will cancel the current loop invocation.
+     *
+     * @param frame the current execution frame or null if the repeating node does not require a
+     *            frame
+     * @return a value different than {@link RepeatingNode#CONTINUE_LOOP_STATUS}, which can be used
+     *         in a language-specific way (for example, to encode structured jumps)
+     * @since 19.3
+     */
+    public Object execute(VirtualFrame frame) {
+        throw new AbstractMethodError("This method must be overridden in concrete subclasses.");
+    }
 
     /**
      * Returns the repeating node the loop node was created with.

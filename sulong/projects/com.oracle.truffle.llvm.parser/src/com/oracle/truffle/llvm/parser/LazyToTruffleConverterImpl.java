@@ -35,6 +35,8 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
+import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -137,7 +139,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(LLVMStatementNode.NO_STATEMENTS);
         LLVMExpressionNode body = runtime.getContext().getLanguage().getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), visitor.getBlocks(),
                         uniquesRegion.build(),
-                        nullableBeforeBlock, nullableAfterBlock, location, copyArgumentsToFrameArray);
+                        nullableBeforeBlock, nullableAfterBlock, copyArgumentsToFrameArray, location);
 
         RootNode rootNode = runtime.getContext().getLanguage().getNodeFactory().createFunctionStartNode(body, frame, method.getName(), method.getSourceName(),
                         method.getParameters().size(), source, location);
@@ -179,7 +181,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         List<FunctionParameter> parameters = method.getParameters();
         List<LLVMStatementNode> formalParamInits = new ArrayList<>();
         LLVMExpressionNode stackPointerNode = runtime.getContext().getLanguage().getNodeFactory().createFunctionArgNode(0, PrimitiveType.I64);
-        formalParamInits.add(runtime.getContext().getLanguage().getNodeFactory().createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID), null));
+        formalParamInits.add(runtime.getContext().getLanguage().getNodeFactory().createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID)));
 
         int argIndex = 1;
         if (method.getType().getReturnType() instanceof StructureType) {
@@ -192,10 +194,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                 Type type = ((PointerType) parameter.getType()).getPointeeType();
                 formalParamInits.add(
                                 runtime.getContext().getLanguage().getNodeFactory().createFrameWrite(parameter.getType(),
-                                                runtime.getContext().getLanguage().getNodeFactory().createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot,
-                                                null));
+                                                runtime.getContext().getLanguage().getNodeFactory().createCopyStructByValue(type, GetStackSpaceFactory.createAllocaFactory(), parameterNode), slot));
             } else {
-                formalParamInits.add(runtime.getContext().getLanguage().getNodeFactory().createFrameWrite(parameter.getType(), parameterNode, slot, null));
+                formalParamInits.add(runtime.getContext().getLanguage().getNodeFactory().createFrameWrite(parameter.getType(), parameterNode, slot));
             }
         }
         return formalParamInits;

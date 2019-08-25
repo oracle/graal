@@ -46,7 +46,6 @@ import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -84,7 +83,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     private final boolean returnsCEnum;
 
     SubstrateLLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
-        super(providers, generationResult, method, new LLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context, shouldTrackPointers(method)),
+        super(providers, generationResult, method, new LLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context),
                         new LLVMKindTool(context), debugLevel);
         this.isEntryPoint = isEntryPoint(method);
         this.canModifySpecialRegisters = canModifySpecialRegisters(method);
@@ -93,11 +92,14 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
         if (isEntryPoint) {
             aliases.add(SubstrateUtil.mangleName(builder.getFunctionName()));
 
-            CEntryPointData entryPointData = (CEntryPointData) ((HostedMethod) method).getWrapped().getEntryPointData();
-            String entryPointSymbolName = entryPointData.getSymbolName();
-            assert !entryPointSymbolName.isEmpty();
-            if (entryPointData.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
-                aliases.add(entryPointSymbolName);
+            Object entryPointData = ((HostedMethod) method).getWrapped().getEntryPointData();
+            if (entryPointData instanceof CEntryPointData) {
+                CEntryPointData cEntryPointData = (CEntryPointData) entryPointData;
+                String entryPointSymbolName = cEntryPointData.getSymbolName();
+                assert !entryPointSymbolName.isEmpty();
+                if (cEntryPointData.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
+                    aliases.add(entryPointSymbolName);
+                }
             }
         }
 
@@ -111,10 +113,6 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     List<String> getAliases() {
         return aliases;
-    }
-
-    private static boolean shouldTrackPointers(ResolvedJavaMethod method) {
-        return !GuardedAnnotationAccess.isAnnotationPresent(method, Uninterruptible.class);
     }
 
     private static boolean isEntryPoint(ResolvedJavaMethod method) {

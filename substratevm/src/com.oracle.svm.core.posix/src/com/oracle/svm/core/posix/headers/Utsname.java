@@ -54,9 +54,6 @@ public class Utsname {
         CCharPointer machine();
     }
 
-    /**
-     * int uname(struct utsname *name);
-     */
     @CFunction
     public static native int uname(utsname name);
 }

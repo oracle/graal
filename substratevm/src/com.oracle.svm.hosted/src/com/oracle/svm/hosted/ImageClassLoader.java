@@ -100,6 +100,14 @@ public final class ImageClassLoader {
     }
 
     public static ImageClassLoader create(Platform platform, String[] classpathAll, NativeImageClassLoader classLoader) {
+        /*
+         * Iterating all classes can already trigger class initialization: We need annotation
+         * information, which triggers class initialization of annotation classes and enum classes
+         * referenced by annotations. Therefore, we need to have the system properties that indicate
+         * "during image build" set up already at this time.
+         */
+        NativeImageGenerator.setSystemPropertiesForImageEarly();
+
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
 
@@ -201,32 +209,51 @@ public final class ImageClassLoader {
     }
 
     private void findSystemElements(Class<?> systemClass) {
+        Method[] declaredMethods = null;
         try {
-            for (Method systemMethod : systemClass.getDeclaredMethods()) {
-                if (NativeImageGenerator.includedIn(platform, systemMethod.getAnnotation(Platforms.class))) {
+            declaredMethods = systemClass.getDeclaredMethods();
+        } catch (Throwable t) {
+            handleClassLoadingError(t);
+        }
+        if (declaredMethods != null) {
+            for (Method systemMethod : declaredMethods) {
+                if (annotationsAvailable(systemMethod) && NativeImageGenerator.includedIn(platform, systemMethod.getAnnotation(Platforms.class))) {
                     synchronized (systemMethods) {
                         systemMethods.add(systemMethod);
                     }
                 }
             }
+        }
+
+        Field[] declaredFields = null;
+        try {
+            declaredFields = systemClass.getDeclaredFields();
         } catch (Throwable t) {
             handleClassLoadingError(t);
         }
-        try {
-            for (Field systemField : systemClass.getDeclaredFields()) {
-                if (NativeImageGenerator.includedIn(platform, systemField.getAnnotation(Platforms.class))) {
+        if (declaredFields != null) {
+            for (Field systemField : declaredFields) {
+                if (annotationsAvailable(systemField) && NativeImageGenerator.includedIn(platform, systemField.getAnnotation(Platforms.class))) {
                     synchronized (systemFields) {
                         systemFields.add(systemField);
                     }
                 }
             }
+        }
+    }
+
+    private static boolean annotationsAvailable(AnnotatedElement element) {
+        try {
+            element.getAnnotations();
+            return true;
         } catch (Throwable t) {
             handleClassLoadingError(t);
+            return false;
         }
     }
 
     @SuppressWarnings("unused")
-    private void handleClassLoadingError(Throwable t) {
+    private static void handleClassLoadingError(Throwable t) {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
@@ -236,10 +263,15 @@ public final class ImageClassLoader {
             return;
         }
         String className = unversionedClassFileNameWithoutSuffix.replace(fileSystemSeparatorChar, '.');
+
+        Class<?> clazz = null;
         try {
-            handleClass(forName(className));
+            clazz = forName(className);
         } catch (Throwable t) {
             handleClassLoadingError(t);
+        }
+        if (clazz != null) {
+            handleClass(clazz);
         }
     }
 
@@ -315,6 +347,9 @@ public final class ImageClassLoader {
             cur = clazz;
         }
         do {
+            if (!annotationsAvailable(cur)) {
+                return;
+            }
             Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
             if (containsHostedOnly(platformsAnnotation)) {
                 isHostedOnly = true;
@@ -325,7 +360,12 @@ public final class ImageClassLoader {
             if (cur instanceof Package) {
                 cur = clazz;
             } else {
-                cur = ((Class<?>) cur).getEnclosingClass();
+                try {
+                    cur = ((Class<?>) cur).getEnclosingClass();
+                } catch (Throwable t) {
+                    handleClassLoadingError(t);
+                    cur = null;
+                }
             }
         } while (cur != null);
 

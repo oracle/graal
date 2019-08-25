@@ -112,7 +112,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
         try (TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope s = TruffleRuntimeOptions.overrideOptions(TruffleCompilationThreshold, 3)) {
             TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(factory, new TestRepeatingNode());
-            OptimizedCallTarget target = runtime.createOptimizedCallTarget(null, rootNode);
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
             target.call(OSR_THRESHOLD + 1);
             assertCompiled(rootNode.getOSRTarget());
             assertNotCompiled(target);

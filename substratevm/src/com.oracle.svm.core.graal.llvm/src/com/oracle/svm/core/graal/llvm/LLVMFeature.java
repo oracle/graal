@@ -30,13 +30,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.llvm.LLVMUtils;
+import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -51,8 +51,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -76,7 +78,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 
 @AutomaticFeature
 @CLibrary("m")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@Platforms({Platform.LINUX.class, InternalPlatform.LINUX_AND_JNI.class, Platform.DARWIN.class, InternalPlatform.DARWIN_AND_JNI.class})
 public class LLVMFeature implements Feature, GraalFeature {
 
     private static HostedMethod personalityStub;
@@ -103,7 +105,9 @@ public class LLVMFeature implements Feature, GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        checkLLVMVersion();
+        if (!LLVMOptions.CustomLLC.hasBeenSet()) {
+            checkLLVMVersion();
+        }
 
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override
@@ -166,9 +170,23 @@ public class LLVMFeature implements Feature, GraalFeature {
         }
     }
 
-    private static void checkLLVMVersion() {
-        List<String> supportedVersions = Arrays.asList("6.0.0", "6.0.1");
+    private static final int MIN_LLVM_MAJOR_VERSION = 6;
+    private static final int MIN_LLVM_MINOR_VERSION = 0;
 
+    private static void checkLLVMVersion() {
+        String version = getLLVMVersion();
+
+        String[] splitVersion = version.split("\\.");
+        assert splitVersion.length == 3;
+        int majorVersion = Integer.parseInt(splitVersion[0]);
+        int minorVersion = Integer.parseInt(splitVersion[1]);
+
+        if (majorVersion < MIN_LLVM_MAJOR_VERSION || (majorVersion == MIN_LLVM_MAJOR_VERSION && minorVersion < MIN_LLVM_MINOR_VERSION)) {
+            throw UserError.abort("Unsupported LLVM version: " + version + ". Supported versions are LLVM " + MIN_LLVM_MAJOR_VERSION + "." + MIN_LLVM_MINOR_VERSION + ".0 and above");
+        }
+    }
+
+    private static String getLLVMVersion() {
         int status;
         String output = null;
         try (OutputStream os = new ByteArrayOutputStream()) {
@@ -190,15 +208,17 @@ public class LLVMFeature implements Feature, GraalFeature {
         if (status != 0) {
             throw UserError.abort("Using the LLVM backend requires LLVM to be installed on your machine.");
         }
-        if (!supportedVersions.contains(output)) {
-            throw UserError.abort("Unsupported LLVM version: " + output + ". Supported versions are: [" + String.join(", ", supportedVersions) + "]");
-        }
+
+        return output;
     }
 }
 
 @AutomaticFeature
 @Platforms(Platform.AMD64.class)
 class LLVMAMD64TargetSpecificFeature implements Feature {
+    private static final int AMD64_RSP_IDX = 7;
+    private static final int AMD64_RBP_IDX = 6;
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return CompilerBackend.getValue().equals("llvm");
@@ -206,7 +226,7 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(LLVMUtils.TargetSpecific.class, new LLVMUtils.TargetSpecific() {
+        ImageSingletons.add(TargetSpecific.class, new TargetSpecific() {
             @Override
             public String getRegisterInlineAsm(String register) {
                 return "movq %" + register + ", $0";
@@ -214,7 +234,115 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
 
             @Override
             public String getJumpInlineAsm() {
-                return "jmpq *($0)";
+                return "jmpq *$0";
+            }
+
+            @Override
+            public String getLLVMArchName() {
+                return "x86-64";
+            }
+
+            /*
+             * The return address is pushed to the stack just before each call, but is not part of
+             * the stack frame of the callee. It is therefore not accounted for in either call
+             * frame.
+             */
+            @Override
+            public int getCallFrameSeparation() {
+                return FrameAccess.returnAddressSize();
+            }
+
+            /*
+             * The frame pointer is stored as the first element on the stack, just below the return
+             * address.
+             */
+            @Override
+            public int getFramePointerOffset() {
+                return -FrameAccess.wordSize();
+            }
+
+            @Override
+            public int getStackPointerDwarfRegNum() {
+                return AMD64_RSP_IDX;
+            }
+
+            @Override
+            public int getFramePointerDwarfRegNum() {
+                return AMD64_RBP_IDX;
+            }
+
+            @Override
+            public List<String> getLLCAdditionalOptions() {
+                return Collections.singletonList("-no-x86-call-frame-opt");
+            }
+        });
+    }
+}
+
+@AutomaticFeature
+@Platforms(Platform.AArch64.class)
+class LLVMAArch64TargetSpecificFeature implements Feature {
+    private static final int AARCH64_FP_IDX = 29;
+    private static final int AARCH64_SP_IDX = 31;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return CompilerBackend.getValue().equals("llvm");
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(TargetSpecific.class, new TargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "MOV $0, " + getLLVMRegisterName(register);
+            }
+
+            @Override
+            public String getJumpInlineAsm() {
+                return "BR $0";
+            }
+
+            @Override
+            public String getLLVMArchName() {
+                return "aarch64";
+            }
+
+            /*
+             * The return address is not saved on the stack on ARM, so the stack frames have no
+             * space inbetween them.
+             */
+            @Override
+            public int getCallFrameSeparation() {
+                return 0;
+            }
+
+            /*
+             * The frame pointer is stored below the saved value for the link register.
+             */
+            @Override
+            public int getFramePointerOffset() {
+                return -2 * FrameAccess.wordSize();
+            }
+
+            @Override
+            public int getStackPointerDwarfRegNum() {
+                return AARCH64_SP_IDX;
+            }
+
+            @Override
+            public int getFramePointerDwarfRegNum() {
+                return AARCH64_FP_IDX;
+            }
+
+            @Override
+            public List<String> getLLCAdditionalOptions() {
+                return Collections.singletonList("--frame-pointer=all");
+            }
+
+            @Override
+            public String getLLVMRegisterName(String register) {
+                return register.replace("r", "x");
             }
         });
     }

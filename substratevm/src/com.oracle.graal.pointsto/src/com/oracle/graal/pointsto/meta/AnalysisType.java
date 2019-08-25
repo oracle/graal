@@ -235,6 +235,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return contextInsensitiveAnalysisObject;
     }
 
+    public AnalysisObject getUniqueConstantObject() {
+        return uniqueConstant;
+    }
+
     public AnalysisObject getCachedConstantObject(BigBang bb, JavaConstant constant) {
 
         /*
@@ -250,7 +254,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
             return uniqueConstant;
         }
 
-        if (constantObjectsCache.size() > PointstoOptions.MaxConstantObjectsPerType.getValue(bb.getOptions())) {
+        if (constantObjectsCache.size() >= PointstoOptions.MaxConstantObjectsPerType.getValue(bb.getOptions())) {
             // The number of constant objects has increased above the limit,
             // merge the constants in the uniqueConstant and return it
             mergeConstantObjects(bb);
@@ -278,6 +282,12 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         ConstantContextSensitiveObject uConstant = new ConstantContextSensitiveObject(bb, this, null);
         if (UNIQUE_CONSTANT_UPDATER.compareAndSet(this, null, uConstant)) {
             constantObjectsCache.values().stream().forEach(constantObject -> {
+                /*
+                 * The order of the two lines below matters: setting the merged flag first, before
+                 * doing the actual merging, ensures that concurrent updates to the flow are still
+                 * merged correctly.
+                 */
+                constantObject.setMergedWithUniqueConstantObject();
                 constantObject.mergeInstanceFieldsFlows(bb, uniqueConstant);
             });
         }

@@ -26,6 +26,8 @@ package com.oracle.svm.core.jdk;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -124,23 +126,159 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long incrementAndGet() {
-            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, 1) + 1;
+        public long getAndSet(long newValue) {
+            return UNSAFE.getAndSetLong(this, VALUE_OFFSET, newValue);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public long getAndDecrement() {
-            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, -1);
+        public long getAndAdd(long delta) {
+            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, delta);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long addAndGet(long delta) {
+            return getAndAdd(delta) + delta;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long incrementAndGet() {
+            return addAndGet(1);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public long decrementAndGet() {
-            return UNSAFE.getAndAddLong(this, VALUE_OFFSET, -1) - 1;
+            return addAndGet(-1);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public long getAndDecrement() {
+            return getAndAdd(-1);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(long expected, long update) {
             return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected, update);
+        }
+    }
+
+    /**
+     * A {@link WordBase word} value that may be updated atomically. See the
+     * {@link java.util.concurrent.atomic} package specification for description of the properties
+     * of atomic variables.
+     *
+     * Similar to {@link AtomicReference}, but for {@link WordBase word} types. A dedicated
+     * implementation is necessary because Object and word types cannot be mixed.
+     */
+    public static class AtomicWord<T extends WordBase> {
+
+        /**
+         * For simplicity, we convert the word value to a long and delegate to existing atomic
+         * operations.
+         */
+        protected final AtomicLong value;
+
+        /**
+         * Creates a new AtomicWord with initial value {@link WordFactory#zero}.
+         */
+        public AtomicWord() {
+            value = new AtomicLong(0L);
+        }
+
+        /**
+         * Gets the current value.
+         *
+         * @return the current value
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public final T get() {
+            return WordFactory.unsigned(value.get());
+        }
+
+        /**
+         * Sets to the given value.
+         *
+         * @param newValue the new value
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public final void set(T newValue) {
+            value.set(newValue.rawValue());
+        }
+
+        /**
+         * Atomically sets to the given value and returns the old value.
+         *
+         * @param newValue the new value
+         * @return the previous value
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public final T getAndSet(T newValue) {
+            return WordFactory.unsigned(value.getAndSet(newValue.rawValue()));
+        }
+
+        /**
+         * Atomically sets the value to the given updated value if the current value {@code ==} the
+         * expected value.
+         *
+         * @param expect the expected value
+         * @param update the new value
+         * @return {@code true} if successful. False return indicates that the actual value was not
+         *         equal to the expected value.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public final boolean compareAndSet(T expect, T update) {
+            return value.compareAndSet(expect.rawValue(), update.rawValue());
+        }
+    }
+
+    /**
+     * A {@link UnsignedWord} value that may be updated atomically. See the
+     * {@link java.util.concurrent.atomic} package specification for description of the properties
+     * of atomic variables.
+     */
+    public static class AtomicUnsigned extends AtomicWord<UnsignedWord> {
+
+        /**
+         * Atomically adds the given value to the current value.
+         *
+         * @param delta the value to add
+         * @return the previous value
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public final UnsignedWord getAndAdd(UnsignedWord delta) {
+            return WordFactory.unsigned(value.getAndAdd(delta.rawValue()));
+        }
+
+        /**
+         * Atomically adds the given value to the current value.
+         *
+         * @param delta the value to add
+         * @return the updated value
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public final UnsignedWord addAndGet(UnsignedWord delta) {
+            return WordFactory.unsigned(value.addAndGet(delta.rawValue()));
+        }
+
+        /**
+         * Atomically subtracts the given value from the current value.
+         *
+         * @param delta the value to add
+         * @return the previous value
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public final UnsignedWord getAndSubtract(UnsignedWord delta) {
+            return WordFactory.unsigned(value.getAndAdd(-delta.rawValue()));
+        }
+
+        /**
+         * Atomically subtracts the given value from the current value.
+         *
+         * @param delta the value to add
+         * @return the updated value
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public final UnsignedWord subtractAndGet(UnsignedWord delta) {
+            return WordFactory.unsigned(value.addAndGet(-delta.rawValue()));
         }
     }
 
@@ -248,7 +386,7 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         // Checkstyle: stop
         public static int numberOfLeadingZeros(long i) {
-            // @formatter:off
+        // @formatter:off
             // HD, Figure 5-6
             if (i == 0)
                return 64;
@@ -272,7 +410,7 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("all")
         public static int numberOfLeadingZeros(int i) {
-            // @formatter:off
+        // @formatter:off
             // HD, Figure 5-6
             if (i == 0)
                 return 32;
@@ -290,7 +428,7 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("all")
         public static int highestOneBit(int i) {
-            // @formatter:off
+        // @formatter:off
             // HD, Figure 3-1
             i |= (i >>  1);
             i |= (i >>  2);

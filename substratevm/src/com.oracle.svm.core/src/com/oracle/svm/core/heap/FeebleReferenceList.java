@@ -36,7 +36,6 @@ import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 
 /** A feeble version of java.lang.ref.ReferenceQueue. */
@@ -47,12 +46,12 @@ public final class FeebleReferenceList<T> {
     private final UninterruptibleUtils.AtomicReference<FeebleReference<? extends T>> head;
 
     /**
-     * Notification of other threads that FeebleReferences might be available.
-     *
-     * I am re-using the VMThreads mutex, but using my own condition variable.
+     * This mutex is used by the GC and the application. The application must hold this mutex only
+     * in uninterruptible code to prevent the case that a safepoint can be initiated while the
+     * application holds the mutex. Otherwise, we risk deadlocks between the application and the GC.
      */
-    private static final VMMutex availableLock = VMThreads.THREAD_MUTEX;
-    private static final VMCondition availableCondition = new VMCondition(availableLock);
+    private static final VMMutex REF_MUTEX = new VMMutex();
+    private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
 
     /** A pre-allocated InterruptedException. */
     private static final InterruptedException preallocatedInterruptedException = new InterruptedException();
@@ -171,10 +170,26 @@ public final class FeebleReferenceList<T> {
                 return result;
             }
 
-            /* If I have been interrupted, throw an exception. */
+            /*-
+             * TODO: We have a potential race condition here, see GR-17276:
+             * - Thread A executes pop(), the queue is empty, null is returned.
+             * - Thread A gets blocked by a safepoint between pop() and the VMCondition.block()
+             * that is called somewhere in await().
+             * - The GC pushes elements to the queue and sends a notification that new elements
+             * were queued
+             * - Thread A executes VMCondition.block() and blocks even though new elements were
+             * queued in the meanwhile.
+             */
             if (Thread.interrupted()) {
                 throw preallocatedInterruptedException;
             }
+            /*-
+             * TODO: We have a potential race condition here, see GR-17276:
+             * - Thread A executes Thread.interrupted() - this returns false.
+             * - Thread B interrupts thread A. This sets the interrupted flag and wakes up all
+             * threads that are currently waiting for feeble references.
+             * - Thread A executes await() and gets blocked.
+             */
 
             /* Either wait forever or for however long is requested. */
             if (timeoutNanos == 0) {
@@ -202,23 +217,9 @@ public final class FeebleReferenceList<T> {
         return head.get();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean compareAndSetHead(FeebleReference<? extends T> expect, FeebleReference<? extends T> update) {
         return head.compareAndSet(expect, update);
-    }
-
-    /*
-     * Methods on the lock and condition variable, for {@link #remove(long)}.
-     */
-
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static void lock() {
-        availableLock.lockNoTransition();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static void unlock() {
-        availableLock.unlock();
     }
 
     /** Await with thread status change. */
@@ -300,16 +301,15 @@ public final class FeebleReferenceList<T> {
     @Uninterruptible(reason = "Must not stop while in native.")
     @NeverInline("Provide a return address for the Java frame anchor.")
     private static void awaitInNative() {
-        /* Lock the mutex. */
-        lock();
+        REF_MUTEX.lockNoTransition();
         try {
             /*
              * Wait until the condition is notified, unlocking the mutex. Do not transition back to
              * Java on return, because I do not want to stop in this method.
              */
-            availableCondition.blockNoTransition();
+            REF_CONDITION.blockNoTransition();
         } finally {
-            unlock();
+            REF_MUTEX.unlock();
         }
     }
 
@@ -317,44 +317,42 @@ public final class FeebleReferenceList<T> {
     @NeverInline("Provide a return address for the Java frame anchor.")
     private static long awaitInNative(long waitNanos) {
         long result = waitNanos;
-        /* Lock the mutex. */
-        lock();
+        REF_MUTEX.lockNoTransition();
         try {
             /*
              * Wait until the condition is notified, unlocking the mutex. Do not transition back to
              * Java on return, because I do not want to stop in this method.
              */
-            result = availableCondition.blockNoTransition(waitNanos);
+            result = REF_CONDITION.blockNoTransition(waitNanos);
         } finally {
-            unlock();
+            REF_MUTEX.unlock();
         }
         return result;
     }
 
-    public static void broadcast() {
-        guaranteeIsLocked();
-        availableCondition.broadcast();
+    @Uninterruptible(reason = "No GC is allowed while holding the lock - otherwise the application and the GC could deadlock.")
+    public static void interruptWaiters() {
+        REF_MUTEX.lockNoTransition();
+        try {
+            REF_CONDITION.broadcast();
+        } finally {
+            REF_MUTEX.unlock();
+        }
     }
 
-    /**
-     * Called by {@code Target_java_lang_Thread.interrupt0()} to notify waiters to check to see if
-     * they have been interrupted.
-     */
     public static void signalWaiters() {
-        broadcast();
+        assert VMOperation.isInProgressAtSafepoint() : "must only be called by the GC";
+        REF_MUTEX.lock();
+        try {
+            REF_CONDITION.broadcast();
+        } finally {
+            REF_MUTEX.unlock();
+        }
     }
-
-    /*
-     * Other methods.
-     */
 
     /** Clean the list state that is kept in a FeebleReference. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void clean(FeebleReference<?> fr) {
         fr.listRemove();
-    }
-
-    public static void guaranteeIsLocked() {
-        availableLock.guaranteeIsLocked("Should hold VMThreads lock when notifying waiters.");
     }
 }

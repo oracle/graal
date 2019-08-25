@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -40,14 +39,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
-
-    public LLVMPointerStoreNode() {
-        this(null);
-    }
-
-    public LLVMPointerStoreNode(LLVMSourceLocation sourceLocation) {
-        super(sourceLocation);
-    }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doAddress(long addr, Object value,

@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
@@ -55,7 +54,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
 
     private final int numberOfExplicitArguments;
-    private final LLVMSourceLocation source;
     @Child private VarargsAreaStackAllocationNode stackAllocationNode;
 
     @Child private LLVMStoreNode i64RegSaveAreaStore;
@@ -78,11 +76,8 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
 
     @Child private LLVMMemMoveNode memmove;
 
-    public LLVMX86_64VAStart(int numberOfExplicitArguments, LLVMSourceLocation source,
-                    VarargsAreaStackAllocationNode stackAllocationNode,
-                    LLVMMemMoveNode memmove) {
+    public LLVMX86_64VAStart(int numberOfExplicitArguments, VarargsAreaStackAllocationNode stackAllocationNode, LLVMMemMoveNode memmove) {
         this.numberOfExplicitArguments = numberOfExplicitArguments;
-        this.source = source;
         this.stackAllocationNode = stackAllocationNode;
 
         this.i64RegSaveAreaStore = LLVMI64StoreNodeGen.create(null, null);
@@ -272,11 +267,6 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         }
 
         return null;
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
     }
 
     private static int storeArgument(Object ptr, long offset, LLVMMemMoveNode memmove, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeI64Node,

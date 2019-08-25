@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,26 +33,17 @@ import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public class LLVMDebugTrapNode extends LLVMStatementNode {
 
-    private final LLVMSourceLocation location;
-
-    public LLVMDebugTrapNode(LLVMSourceLocation location) {
-        this.location = location;
+    public LLVMDebugTrapNode() {
     }
 
     @Override
     public void execute(VirtualFrame frame) {
         // this node only exists to tell an attached debugger to suspend the program, it is a noop
         // if no debugger is attached
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return location;
     }
 
     @Override

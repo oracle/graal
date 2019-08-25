@@ -1481,13 +1481,48 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         // Ensure phi is used by at most the comparison and the merge's frame state (if any)
         ValuePhiNode phi = (ValuePhiNode) singleUsage;
         NodeIterable<Node> phiUsages = phi.usages();
-        if (phiUsages.count() > 2) {
-            return false;
-        }
         for (Node usage : phiUsages) {
-            if (usage != compare && usage != merge.stateAfter()) {
-                return false;
+            if (usage == compare) {
+                continue;
             }
+            if (usage == merge.stateAfter()) {
+                continue;
+            }
+            // Checkstyle: stop
+            // @formatter:off
+            //
+            // We also want to allow the usage to be on the loop-proxy if one of the branches is a
+            // loop exit.
+            //
+            // This pattern:
+            //
+            //      if------->cond
+            //     /  \
+            // begin  begin
+            //   |      |
+            //  end    end        C1 V2
+            //     \  /            \ /
+            //     merge---------->phi<------    C1
+            //       |              ^        \  /
+            //       if-------------|-------->==
+            //      /  \            |
+            //     A    B<--------Proxy
+            //
+            // Must be simplified to:
+            //
+            //       if---------------------->cond
+            //      /  \
+            //     A    B<--------Proxy------>V2
+            //
+            // @formatter:on
+            // Checkstyle: resume
+            if (usage instanceof ValueProxyNode) {
+                ValueProxyNode proxy = (ValueProxyNode) usage;
+                if (proxy.proxyPoint() == trueSuccessor || proxy.proxyPoint() == falseSuccessor) {
+                    continue;
+                }
+            }
+            return false;
         }
 
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
@@ -1527,8 +1562,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         assert !ends.hasNext();
         assert falseEnds.size() + trueEnds.size() == xs.length;
 
-        connectEnds(falseEnds, phiValues, oldFalseSuccessor, merge, tool);
-        connectEnds(trueEnds, phiValues, oldTrueSuccessor, merge, tool);
+        connectEnds(falseEnds, phi, phiValues, oldFalseSuccessor, merge, tool);
+        connectEnds(trueEnds, phi, phiValues, oldTrueSuccessor, merge, tool);
 
         if (this.trueSuccessorProbability == 0.0) {
             for (AbstractEndNode endNode : trueEnds) {
@@ -1642,13 +1677,27 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * end. If {@code ends} is not empty, then {@code successor} is added to {@code tool}'s
      * {@linkplain SimplifierTool#addToWorkList(org.graalvm.compiler.graph.Node) work list}.
      *
-     * @param oldMerge the merge being removed
+     * @param phi the original single-usage phi of the preceding merge
      * @param phiValues the values of the phi at the merge, keyed by the merge ends
+     * @param oldMerge the merge being removed
      */
-    private void connectEnds(List<EndNode> ends, EconomicMap<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
+    private void connectEnds(List<EndNode> ends, ValuePhiNode phi, EconomicMap<AbstractEndNode, ValueNode> phiValues, AbstractBeginNode successor, AbstractMergeNode oldMerge, SimplifierTool tool) {
         if (!ends.isEmpty()) {
+            // If there was a value proxy usage, then the proxy needs a new value.
+            ValueProxyNode valueProxy = null;
+            if (successor instanceof LoopExitNode) {
+                for (Node usage : phi.usages()) {
+                    if (usage instanceof ValueProxyNode && ((ValueProxyNode) usage).proxyPoint() == successor) {
+                        valueProxy = (ValueProxyNode) usage;
+                    }
+                }
+            }
+            final ValueProxyNode proxy = valueProxy;
             if (ends.size() == 1) {
                 AbstractEndNode end = ends.get(0);
+                if (proxy != null) {
+                    phi.replaceAtUsages(phiValues.get(end), n -> n == proxy);
+                }
                 ((FixedWithNextNode) end.predecessor()).setNext(successor);
                 oldMerge.removeEnd(end);
                 GraphUtil.killCFG(end);
@@ -1659,6 +1708,10 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 AbstractMergeNode newMerge = graph().add(new MergeNode());
                 PhiNode oldPhi = (PhiNode) oldMerge.usages().first();
                 PhiNode newPhi = graph().addWithoutUnique(new ValuePhiNode(oldPhi.stamp(view), newMerge));
+
+                if (proxy != null) {
+                    phi.replaceAtUsages(newPhi, n -> n == proxy);
+                }
 
                 for (EndNode end : ends) {
                     newPhi.addInput(phiValues.get(end));

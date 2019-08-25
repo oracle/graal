@@ -54,11 +54,20 @@ public class DisallowedImageHeapObjectFeature implements Feature {
         access.registerObjectReplacer(this::replacer);
     }
 
+    private static final Class<?> CANCELLABLE_CLASS;
+    static {
+        try {
+            CANCELLABLE_CLASS = Class.forName("sun.nio.fs.Cancellable");
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     private Object replacer(Object original) {
         /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {
             final Thread asThread = (Thread) original;
-            if (asThread.getState() != Thread.State.NEW) {
+            if (asThread.getState() != Thread.State.NEW && asThread.getState() != Thread.State.TERMINATED) {
                 throw error("Detected a started Thread in the image heap. " +
                                 "Threads running in the image generator are no longer running at image run time. " +
                                 classInitialization.objectInstantiationTraceMessage(asThread, "Try avoiding to initialize the class that caused initialization of the Thread."));
@@ -100,11 +109,17 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                             classInitialization.objectInstantiationTraceMessage(original, "Try avoiding to initialize the class that caused initialization of the direct Buffer."));
         }
 
+        if (CANCELLABLE_CLASS.isInstance(original)) {
+            throw error("Detected an instance of a class that extends " + CANCELLABLE_CLASS.getTypeName() + ": " + original.getClass().getTypeName() + ". " +
+                            "It contains a pointer to unmanaged C memory, which is no longer available at image run time. " +
+                            classInitialization.objectInstantiationTraceMessage(original, "Try avoiding to initialize the class that caused initialization of the object."));
+        }
+
         return original;
     }
 
     private static RuntimeException error(String msg) {
-        throw new UnsupportedFeatureException(msg +
+        throw new UnsupportedFeatureException(msg + " " +
                         "The object was probably created by a class initializer and is reachable from a static field. " +
                         "You can request class initialization at image run time by using the option " +
                         SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<class-name>", "initialize-at-build-time") + ". " +

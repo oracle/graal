@@ -51,7 +51,7 @@ public class VMThreadLocalMTObjectReferenceWalker extends ObjectReferenceWalker 
 
     @Override
     public boolean walk(ObjectReferenceVisitor referenceVisitor) {
-        for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
+        for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             if (!InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) vmThread, NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding),
                             vmThreadReferenceMapIndex, referenceVisitor)) {
                 return false;

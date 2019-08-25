@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
@@ -102,7 +101,12 @@ public final class NativeLibrarySupport {
         String libname = System.mapLibraryName(name);
         if (paths == null) {
             String[] tokens = SubstrateUtil.split(System.getProperty("java.library.path", ""), File.pathSeparator);
-            paths = Arrays.stream(tokens).map(t -> t.isEmpty() ? "." : t).toArray(String[]::new);
+            for (int i = 0; i < tokens.length; i++) {
+                if (tokens[i].isEmpty()) {
+                    tokens[i] = ".";
+                }
+            }
+            paths = tokens;
         }
         for (String path : paths) {
             File libpath = new File(path, libname);

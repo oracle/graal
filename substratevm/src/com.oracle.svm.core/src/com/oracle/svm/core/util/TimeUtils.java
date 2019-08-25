@@ -45,19 +45,19 @@ public class TimeUtils {
     }
 
     /** Convert the given number of seconds to nanoseconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long secondsToNanos(long seconds) {
         return multiplyOrMaxValue(seconds, nanosPerSecond);
     }
 
     /** Convert the given number of milliseconds to nanoseconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long millisToNanos(long millis) {
         return multiplyOrMaxValue(millis, nanosPerMilli);
     }
 
     /** Convert the given number of microseconds to nanoseconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long microsToNanos(long micros) {
         return multiplyOrMaxValue(micros, microsPerNano);
     }
@@ -96,13 +96,13 @@ public class TimeUtils {
     }
 
     /** Return the number of seconds in the given number of nanoseconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long divideNanosToSeconds(long nanos) {
         return (nanos / nanosPerSecond);
     }
 
     /** Return the nanoseconds remaining after taking out all the seconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long remainderNanosToSeconds(long nanos) {
         return (nanos % nanosPerSecond);
     }
@@ -137,7 +137,7 @@ public class TimeUtils {
     }
 
     /** Add two long values, or return Long.MAX_VALUE if the sum overflows. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long addOrMaxValue(long x, long y) {
         /* Not using Math.addExact because it allocates. */
         long r = x + y;
@@ -149,7 +149,7 @@ public class TimeUtils {
     }
 
     /** Multiply two long values, or result Long.MAX_VALUE if the product overflows. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long multiplyOrMaxValue(long x, long y) {
         /* Not using Math.multiplyExact because it allocates. */
         long r = x * y;

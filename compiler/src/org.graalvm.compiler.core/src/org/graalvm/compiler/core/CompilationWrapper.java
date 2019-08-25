@@ -29,6 +29,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutA
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
 import static org.graalvm.compiler.core.GraalCompilerOptions.MaxCompilationProblemsPerAction;
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.debug.DebugContext.VERBOSE_LEVEL;
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
@@ -274,7 +275,8 @@ public abstract class CompilationWrapper<T> {
                 OptionValues retryOptions = new OptionValues(initialOptions,
                                 Dump, ":" + VERBOSE_LEVEL,
                                 MethodFilter, null,
-                                DumpPath, dumpPath.getPath());
+                                DumpPath, dumpPath.getPath(),
+                                TrackNodeSourcePosition, true);
 
                 ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
                 PrintStream ps = new PrintStream(logBaos);
