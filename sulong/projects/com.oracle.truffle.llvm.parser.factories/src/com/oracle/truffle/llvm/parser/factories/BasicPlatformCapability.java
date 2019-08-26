@@ -79,7 +79,11 @@ public class BasicPlatformCapability extends PlatformCapability {
 
     @Override
     public final LLVMSyscallOperationNode createSyscallNode(long index) {
-        return createSyscallNode(LLVMAMD64Syscall.getSyscall((int) index));
+        try {
+            return createSyscallNode(LLVMAMD64Syscall.getSyscall((int) index));
+        } catch (IllegalArgumentException e) {
+            return new LLVMAMD64UnknownSyscallNode(index);
+        }
     }
 
     protected LLVMSyscallOperationNode createSyscallNode(LLVMAMD64Syscall syscall) {
@@ -114,7 +118,7 @@ public class BasicPlatformCapability extends PlatformCapability {
             case SYS_clock_gettime:
                 return LLVMAMD64SyscallClockGetTimeNodeGen.create();
             default:
-                return new LLVMAMD64UnknownSyscallNode(syscall.value);
+                return new LLVMAMD64UnknownSyscallNode(syscall);
         }
     }
 }
