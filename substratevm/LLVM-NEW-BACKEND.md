@@ -25,12 +25,3 @@ This means that Graal needs an understanding of object file relocations for the 
 Emitting the data section with the code as LLVM bitcode is our next priority for the LLVM backend, so this should not be an issue for future targets.
 
 _(see `ELFMachine$ELFAArch64Relocations` for an example)_
-
-## Target-specific lowerings
-
-The Graal compiler currently lowers specific operations into optimized nodes for each target based on the capabilities of that target.
-These optimized nodes are then passed to LLVM which handles them according to its capabilities, usually as intrinsics.
-This is sub-optimal and requires each new target to define its own lowerings, most of which are very similar to the ones existing for other architectures.
-We plan to define LLVM-specific, target-independent lowerings, which will remove this requirement and enable as many LLVM optimizations as possible.
-
-_(We want a `LLVMGraphBuilderPlugins` class similar to the existing `AMD64GraphBuilderPlugins`)_

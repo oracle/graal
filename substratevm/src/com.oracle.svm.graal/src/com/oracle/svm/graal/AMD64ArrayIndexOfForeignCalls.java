@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -49,6 +50,11 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 @AutomaticFeature
 @Platforms(AMD64.class)
 class AMD64ArrayIndexOfForeignCallsFeature implements GraalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.CompilerBackend.getValue().equals("lir");
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl impl = (BeforeAnalysisAccessImpl) access;

@@ -1138,6 +1138,22 @@ suite = {
       "workingSets" : "Graal,Replacements",
     },
 
+    "org.graalvm.compiler.replacements.llvm" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.core.llvm",
+        "org.graalvm.compiler.replacements",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "annotationProcessors" : [
+        "GRAAL_NODEINFO_PROCESSOR",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
+      ],
+      "workingSets" : "Graal,Replacements,LLVM",
+    },
+
     "org.graalvm.compiler.replacements.aarch64" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1537,7 +1553,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core",
-        "org.graalvm.compiler.lir.aarch64",
         "LLVM_WRAPPER",
         "LLVM_PLATFORM_SPECIFIC",
       ],
@@ -2617,7 +2632,10 @@ suite = {
     "GRAAL_LLVM" : {
       "subDir" : "src",
       "description" : "LLVM compiler backend",
-      "dependencies" : ["org.graalvm.compiler.core.llvm"],
+      "dependencies" : [
+        "org.graalvm.compiler.core.llvm",
+        "org.graalvm.compiler.replacements.llvm",
+      ],
       "distDependencies" : [
         "GRAAL",
       ],
