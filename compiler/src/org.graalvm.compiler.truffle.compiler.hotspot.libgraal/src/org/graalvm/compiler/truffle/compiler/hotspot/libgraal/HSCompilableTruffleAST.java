@@ -26,30 +26,43 @@ package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsJavaConstant;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CancelInstalledTask;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateStringSupplier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallNodes;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFailedSpeculationsAddress;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetKnownCallSiteCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsSameOrSplit;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNonTrivialNodeCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.OnCompilationFailed;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callAsJavaConstant;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCancelInstalledTask;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCompilableToString;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCreateStringSupplier;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCompilableCallCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCallNodes;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCompilableName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetFailedSpeculationsAddress;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetKnownCallSiteCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetNonTrivialNodeCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callIsSameOrSplit;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callOnCompilationFailed;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.env;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HotSpotToSVMScope.scope;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.createString;
 
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JNIEnv;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObject;
+import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JObjectArray;
 import org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNI.JString;
 import org.graalvm.libgraal.LibGraal;
 
@@ -138,19 +151,31 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
         return res;
     }
 
+    @SVMToHotSpot(GetNonTrivialNodeCount)
     @Override
     public int getNonTrivialNodeCount() {
-        throw GraalError.unimplemented();
+        return callGetNonTrivialNodeCount(env(), getHandle());
     }
 
+    @SVMToHotSpot(GetCallNodes)
     @Override
     public TruffleCallNode[] getCallNodes() {
-        throw GraalError.unimplemented();
+        HotSpotToSVMScope scope = scope();
+        JNIEnv env = scope.getEnv();
+        JObjectArray peerArr = callGetCallNodes(env, getHandle());
+        int len = JNIUtil.GetArrayLength(env, peerArr);
+        TruffleCallNode[] res = new TruffleCallNode[len];
+        for (int i = 0; i < len; i++) {
+            JObject peerTruffleCallNode = JNIUtil.GetObjectArrayElement(env, peerArr, i);
+            res[i] = new HSTruffleCallNode(scope, peerTruffleCallNode);
+        }
+        return res;
     }
 
+    @SVMToHotSpot(GetCompilableCallCount)
     @Override
     public int getCallCount() {
-        throw GraalError.unimplemented();
+        return callGetCompilableCallCount(env(), getHandle());
     }
 
     private volatile String cachedString;
@@ -179,30 +204,30 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
 
     @Override
     public void invalidate() {
-        error();
+        throw error();
     }
 
     @Override
     public boolean isValid() {
-        error();
-        return false;
+        throw error();
     }
 
+    @SVMToHotSpot(CancelInstalledTask)
     @Override
     public void cancelInstalledTask() {
-        // TODO
-        throw GraalError.unimplemented();
+        callCancelInstalledTask(env(), getHandle());
     }
 
+    @SVMToHotSpot(IsSameOrSplit)
     @Override
     public boolean isSameOrSplit(CompilableTruffleAST ast) {
-        // TODO
-        throw GraalError.unimplemented();
+        JObject astHandle = ((HSCompilableTruffleAST) ast).getHandle();
+        return callIsSameOrSplit(env(), getHandle(), astHandle);
     }
 
+    @SVMToHotSpot(GetKnownCallSiteCount)
     @Override
     public int getKnownCallSiteCount() {
-        // TODO
-        throw GraalError.unimplemented();
+        return callGetKnownCallSiteCount(env(), getHandle());
     }
 }
