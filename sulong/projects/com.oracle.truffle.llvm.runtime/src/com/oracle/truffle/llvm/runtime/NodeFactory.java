@@ -55,8 +55,6 @@ import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -246,8 +244,4 @@ public interface NodeFactory extends InteropNodeFactory {
     ForeignToLLVM createForeignToLLVM(LLVMInteropType.Value type);
 
     ForeignToLLVM createForeignToLLVM(ForeignToLLVMType type);
-
-    LLVMObjectReadNode createGlobalContainerReadNode();
-
-    LLVMObjectWriteNode createGlobalContainerWriteNode();
 }
