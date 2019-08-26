@@ -78,6 +78,9 @@ sulong-gateTest80-linux: ${sulong-gateTest-linux} ${sulong-gateTest-default-tool
 
 sulong-gateTestLLVMorg-linux: ${sulong-gateTest-linux} {
     # nothing to do
+    environment: {
+        LD_LIBRARY_PATH: "$BUILD_DIR/main/sulong/mxbuild/SULONG_LLVM_ORG/lib:$LD_LIBRARY_PATH"
+    }
 }
 
 darwin-llvm: ${sulong-gateTest-default-tools} {
