@@ -51,15 +51,6 @@ default: $(REF_TARGETS) $(BC_TARGETS)
 
 include $(TOP)/Makefile.common
 
-ifeq ($(OS), darwin)
-BC_FILE=
-else
-BC_FILE=%/O0.bc.o
-
-%.bc.o: %.bc
-	$(QUIETLY) $(LLVM_OBJCOPY) -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
-endif
-
 %/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $^

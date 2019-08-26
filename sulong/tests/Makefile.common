@@ -67,11 +67,20 @@ CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++
 CPPFLAGS+= $(SUITE_CPPFLAGS)
 LDFLAGS+= $(SUITE_LDFLAGS)
 
-ifeq ($(OS), darwin)
+ifndef NO_FEMBED_BITCODE
+BC_FILE=
 EMBED_BC=-fembed-bitcode
-else
+else # NO_FEMBED_BITCODE it set
+ifeq ($(OS), darwin)
+BC_FILE=
+EMBED_BC=-fembed-bitcode
+else # not darwin
 EMBED_BC=
-endif
+BC_FILE=%/O0.bc.o
+%.bc.o: %.bc
+	$(QUIETLY) $(LLVM_OBJCOPY) -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
+endif # darwin
+endif # NO_FEMBED_BITCODE
 
 tool-info.txt:
 	@echo "Tools:" > $@
