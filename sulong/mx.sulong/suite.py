@@ -208,20 +208,6 @@ suite = {
       "jacoco" : "include",
     },
 
-    "com.oracle.truffle.llvm.nodes" : {
-      "subDir" : "projects",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.llvm.runtime",
-      ],
-      "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "javaCompliance" : "1.8+",
-      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle, LLVM",
-      "license" : "BSD-new",
-      "jacoco" : "include",
-    },
-
     "com.oracle.truffle.llvm.parser" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -339,7 +325,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.nodes",
+        "com.oracle.truffle.llvm.runtime",
         "truffle:ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
