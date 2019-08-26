@@ -618,11 +618,6 @@ suite = {
       "variants" : ["O0"],
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
-        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
-        "CLANGXX" : "<path:SULONG_LLVM_ORG>/bin/clang++",
-        "OPT" : "<path:SULONG_LLVM_ORG>/bin/opt",
-        "LLVM_AS" : "<path:SULONG_LLVM_ORG>/bin/llvm-as",
-        "LLVM_LINK" : "<path:SULONG_LLVM_ORG>/bin/llvm-link",
       },
       "dependencies" : [
         "SULONG_TEST_SUITES",
@@ -637,11 +632,6 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include -lm",
-        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
-        "CLANGXX" : "<path:SULONG_LLVM_ORG>/bin/clang++",
-        "OPT" : "<path:SULONG_LLVM_ORG>/bin/opt",
-        "LLVM_AS" : "<path:SULONG_LLVM_ORG>/bin/llvm-as",
-        "LLVM_LINK" : "<path:SULONG_LLVM_ORG>/bin/llvm-link",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -823,11 +813,6 @@ suite = {
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
         "SUITE_LDFLAGS" : "-lm -lgmp",
-        "CLANG" : "<path:SULONG_LLVM_ORG>/bin/clang",
-        "CLANGXX" : "<path:SULONG_LLVM_ORG>/bin/clang++",
-        "OPT" : "<path:SULONG_LLVM_ORG>/bin/opt",
-        "LLVM_AS" : "<path:SULONG_LLVM_ORG>/bin/llvm-as",
-        "LLVM_LINK" : "<path:SULONG_LLVM_ORG>/bin/llvm-link",
       },
       "dependencies" : [
         "SULONG_TEST",
