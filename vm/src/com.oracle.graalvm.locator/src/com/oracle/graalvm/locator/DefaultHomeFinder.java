@@ -90,6 +90,7 @@ public final class DefaultHomeFinder extends HomeFinder {
 
         // Save relative paths from the launcher's directory to other language homes of the form:
         // org.graalvm.launcher.relative.LANGUAGE_ID.home
+        // Meant to be only used for standalones, not for regular GraalVM.
         for (Object property : System.getProperties().keySet()) {
             if (property instanceof String) {
                 String name = ((String) property);
@@ -142,7 +143,7 @@ public final class DefaultHomeFinder extends HomeFinder {
                 System.err.println("LANGUAGE_HOME_RELATIVE_PATH: " + LANGUAGE_HOME_RELATIVE_PATH);
                 System.err.println("GRAAL_HOME_RELATIVE_PATH: " + GRAAL_HOME_RELATIVE_PATH);
                 for (Entry<String, Path> entry : LANGUAGE_RELATIVE_HOMES.entrySet()) {
-                    System.err.println("relative home of " + entry.getKey() + " from the launcher language home: " + entry.getValue());
+                    System.err.println("relative home of " + entry.getKey() + " from the launcher's directory: " + entry.getValue());
                 }
             }
             if (FORCE_GRAAL_HOME != null) {
