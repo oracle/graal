@@ -31,6 +31,8 @@ QUIETLY$(MX_VERBOSE)  = @
 
 .PHONY: default
 
+default: tool-info.txt
+
 ifdef CLANG_CC
   CLANG=$(CLANG_CC)
 else
@@ -77,10 +79,9 @@ tool-info.txt:
 	@echo "  CLANGXX: $(CLANGXX)" >> $@
 	@echo "  LLVM_AS: $(LLVM_AS)" >> $@
 	@echo "  LLVM_OPT: $(LLVM_OPT)" >> $@
+	@echo "  LLVM_OBJCOPY: $(LLVM_OBJCOPY)" >> $@
 	@echo "  FC: $(FC)" >> $@
 	@cat $@
-
-default: tool-info.txt
 
 %.c.dir/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)
