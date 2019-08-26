@@ -114,11 +114,6 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         if (!hasUsages()) {
             return;
         }
-        if (condition.isConstant()) {
-            // A constant condition always has 0.0 or 1.0 probability.
-            this.replaceAtUsagesAndDelete(condition);
-            return;
-        }
         if (probability.isConstant()) {
             double probabilityValue = probability.asJavaConstant().asDouble();
             if (probabilityValue < 0.0) {
