@@ -32,7 +32,6 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.DiscoverableReference;
 import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.FeebleReferenceList;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -143,7 +142,7 @@ public class DiscoverableReferenceProcessing {
             return false;
         }
         /* Read the header. */
-        final UnsignedWord header = ObjectHeader.readHeaderFromPointer(refPointer);
+        final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(refPointer);
         /* It might be a forwarding pointer. */
         if (ObjectHeaderImpl.getObjectHeaderImpl().isForwardedHeader(header)) {
             /* If the referent got forwarded, then update the referent. */

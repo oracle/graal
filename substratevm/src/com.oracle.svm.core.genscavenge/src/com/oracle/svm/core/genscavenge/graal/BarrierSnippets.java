@@ -30,8 +30,8 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -60,7 +60,6 @@ import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
@@ -95,7 +94,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         counters().postWriteBarrier.inc();
 
         final Object fixedObject = FixedValueAnchorNode.getObject(object);
-        final UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(fixedObject);
+        final UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
         final boolean needsBarrier = ObjectHeaderImpl.hasRememberedSet(objectHeader);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FREQUENT_PROBABILITY, !needsBarrier)) {
             // Most likely (?): expect that no barrier is needed.
