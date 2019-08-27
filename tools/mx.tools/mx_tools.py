@@ -32,8 +32,6 @@ import os
 from os.path import exists
 import re
 
-from argparse import ArgumentParser
-
 import mx
 
 from mx_unittest import unittest

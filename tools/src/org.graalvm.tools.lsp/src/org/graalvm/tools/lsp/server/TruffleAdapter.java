@@ -104,8 +104,8 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     public TruffleAdapter() {
     }
 
-    public void register(Env env, ContextAwareExecutor executor) {
-        this.env = env;
+    public void register(Env environment, ContextAwareExecutor executor) {
+        this.env = environment;
         this.contextAwareExecutor = executor;
     }
 
