@@ -226,7 +226,6 @@ public final class CallNode extends Node {
         assert ir != null && getParent() != null;
         final Invoke invoke = getInvoke();
         if (!invoke.isAlive()) {
-            // TODO: investigate more, how does this happen? when is the node optimized away?
             state = State.Removed;
             return;
         }
