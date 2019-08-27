@@ -70,7 +70,7 @@ import org.graalvm.polyglot.tck.LanguageProvider;
 
 final class TestContext implements Closeable {
     private static final Object contextCacheLock = new Object();
-    private static RefCountedReference<Context> contextCache;
+    private static RefCountedContextReference contextCache;
 
     private Map<String, LanguageProvider> providers;
     private final Map<String, Collection<? extends Snippet>> valueConstructors;
@@ -91,8 +91,12 @@ final class TestContext implements Closeable {
         this.statements = new HashMap<>();
         this.scripts = new HashMap<>();
         this.inlineScripts = new HashMap<>();
-        boolean verbose = Boolean.getBoolean("tck.verbose");
-        String propValue = System.getProperty(String.format("tck.%s.verbose", testClass.getSimpleName()));
+        boolean verbose = true;
+        String propValue = System.getProperty("tck.verbose");
+        if (propValue != null) {
+            verbose = Boolean.parseBoolean(propValue);
+        }
+        propValue = System.getProperty(String.format("tck.%s.verbose", testClass.getSimpleName()));
         if (propValue != null) {
             verbose = Boolean.parseBoolean(propValue);
         }
@@ -143,14 +147,18 @@ final class TestContext implements Closeable {
             synchronized (contextCacheLock) {
                 if (contextCache != null) {
                     this.context = contextCache.retain();
-                } else {
-                    final Context.Builder builder = Context.newBuilder().allowAllAccess(true);
-                    if (!printOutput) {
-                        builder.out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE);
+                    try {
+                        contextCache.out().setDelegate(printOutput ? System.out : NullOutputStream.INSTANCE);
+                        contextCache.err().setDelegate(printOutput ? System.err : NullOutputStream.INSTANCE);
+                    } catch (IOException ioe) {
+                        throw new RuntimeException("Failed to flush stdout, stderr.", ioe);
                     }
-                    this.context = builder.build();
+                } else {
+                    ProxyOutputStream out = new ProxyOutputStream(printOutput ? System.out : NullOutputStream.INSTANCE);
+                    ProxyOutputStream err = new ProxyOutputStream(printOutput ? System.err : NullOutputStream.INSTANCE);
+                    this.context = Context.newBuilder().allowAllAccess(true).out(out).err(err).build();
                     assert contextCache == null;
-                    contextCache = new RefCountedReference<>(context);
+                    contextCache = new RefCountedContextReference(context, out, err);
                 }
             }
             if (enableInlineVerifier) {
@@ -369,22 +377,74 @@ final class TestContext implements Closeable {
         }
     }
 
-    private static final class RefCountedReference<T> implements Closeable {
+    private static final class ProxyOutputStream extends OutputStream {
 
-        private T object;
-        private int refCount;
+        private OutputStream delegate;
 
-        RefCountedReference(T object) {
-            this.object = object;
-            this.refCount = 1;
+        ProxyOutputStream(OutputStream delegate) {
+            Objects.requireNonNull(delegate, "Delegate must be non null.");
+            this.delegate = delegate;
         }
 
-        T retain() {
+        void setDelegate(OutputStream newDelegate) throws IOException {
+            this.delegate.flush();
+            this.delegate = newDelegate;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            delegate.write(b);
+        }
+
+        @Override
+        public void write(byte[] b) throws IOException {
+            delegate.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            delegate.write(b, off, len);
+        }
+
+        @Override
+        public void flush() throws IOException {
+            delegate.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
+        }
+    }
+
+    private static final class RefCountedContextReference implements Closeable {
+
+        private final ProxyOutputStream out;
+        private final ProxyOutputStream err;
+        private Context context;
+        private int refCount;
+
+        RefCountedContextReference(Context context, ProxyOutputStream out, ProxyOutputStream err) {
+            this.context = context;
+            this.refCount = 1;
+            this.out = out;
+            this.err = err;
+        }
+
+        ProxyOutputStream out() {
+            return out;
+        }
+
+        ProxyOutputStream err() {
+            return err;
+        }
+
+        Context retain() {
             if (refCount == 0) {
                 throw new IllegalStateException("Released reference");
             }
             refCount++;
-            return object;
+            return context;
         }
 
         boolean isValid() {
@@ -398,7 +458,7 @@ final class TestContext implements Closeable {
             }
             refCount--;
             if (refCount == 0) {
-                object = null;
+                context = null;
             }
         }
     }
