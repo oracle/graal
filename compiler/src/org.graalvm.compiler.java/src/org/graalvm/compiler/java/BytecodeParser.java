@@ -2946,7 +2946,8 @@ public class BytecodeParser implements GraphBuilderContext {
                  * placeholder that later can be replaced with a MergeNode when we see this block
                  * again.
                  */
-                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && (currentBlock.loops & ~block.loops) == 0) {
+                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && (currentBlock.loops & ~block.loops) == 0 &&
+                                currentBlock.getJsrScope() == block.getJsrScope()) {
                     setFirstInstruction(block, lastInstr);
                     lastInstr = null;
                 } else {
