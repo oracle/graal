@@ -15,6 +15,15 @@ After the compilation:
 Note that the build dependencies of each component are specified in the README file of the corresponding repository.
 A common requirement is that the `JAVA_HOME` environment variable must point to the latest JVMCI-enabled JDK8 ([pre-built archives](https://github.com/graalvm/openjdk8-jvmci-builder/releases); [build instructions](https://github.com/graalvm/openjdk8-jvmci-builder)).
 
+### Showing what will be built
+
+In any of the build commands, replace `build` with `graalvm-show`:
+```bash
+mx ... graalvm-show
+```
+
+This will show a list of components, launchers and libraries to be built.
+It is recommended to verify this output before running `build`.
 
 ### Example: build the base GraalVM CE image
 The base GraalVM CE image includes:
@@ -81,6 +90,7 @@ Otherwise, it creates bash launchers for the languages and for `polyglot`, and d
 
 To override the default behavior, the `vm` suite defines the following `mx` arguments:
 ```
+  --native-images=...           Comma-separated list of launchers and libraries (syntax: lib:polyglot) to build with Native Image.
   --disable-libpolyglot         Disable the 'polyglot' library project
   --disable-polyglot            Disable the 'polyglot' launcher project
   --force-bash-launchers=...    Force the use of bash launchers instead of native images.
@@ -88,6 +98,7 @@ To override the default behavior, the `vm` suite defines the following `mx` argu
 ```
 And the following environment variables:
 ```
+  NATIVE_IMAGES                 Same as '--native-images'
   DISABLE_LIBPOLYGLOT           Same as '--disable-libpolyglot'
   DISABLE_POLYGLOT              Same as '--disable-polyglot'
   FORCE_BASH_LAUNCHERS          Same as '--force-bash-launchers'
@@ -106,23 +117,28 @@ builds the native SubstrateVM launchers for native-image, Graal.js, and Sulong, 
 
 ### Example: force bash launchers
 ```bash
-$ mx --force-bash-launchers=true --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs
+$ mx --force-bash-launchers=true --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs build
 ```
 builds the native SubstrateVM launcher for native-image, and creates bash launchers for Sulong, Graal.js, and `polyglot`
 
-
-### Example: create an env file that builds only the SubstrateVM, Graal.Python, and their dependencies (no `polyglot`; no `libpolyglot`)
+### Example: build only TruffleRuby with bash launchers
 ```bash
-$ echo "DYNAMIC_IMPORTS=/substratevm,graalpython" > mx.vm/python
-$ echo "DISABLE_LIBPOLYGLOT=true" >> mx.vm/python
-$ echo "DISABLE_POLYGLOT=true" >> mx.vm/python
-$ mx --env python build
-```
-Now, if you want to add Graal.js:
-```bash
-$ mx --env python --dynamicimports /graal-js build
+mx --dy truffleruby --components='TruffleRuby' build
 ```
 
+### Example: build only the TruffleRuby launcher
+```bash
+mx --dy truffleruby,/substratevm --components='TruffleRuby,Native Image' --native-images=truffleruby build
+```
+or as env file (e.g., in `mx.vm/ruby`):
+```
+DYNAMIC_IMPORTS=truffleruby,/substratevm
+COMPONENTS=TruffleRuby,Native Image
+NATIVE_IMAGES=truffleruby
+```
+```bash
+$ mx --env ruby build
+```
 
 ## Versioned dynamic imports
 Dynamic imports typically require the user to locate and clone the dynamically imported suites.

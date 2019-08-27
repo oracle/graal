@@ -1283,6 +1283,7 @@ _compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
     dir_name='graal',
     license_files=[],
     third_party_license_files=[],
+    dependencies=[],
     jar_distributions=[  # Dev jars (annotation processors)
         'compiler:GRAAL_PROCESSOR_COMMON',
         'compiler:GRAAL_OPTIONS_PROCESSOR',

@@ -163,6 +163,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     dir_name='chromeinspector',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['tools:CHROMEINSPECTOR'],
     support_distributions=['tools:CHROMEINSPECTOR_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -175,6 +176,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     dir_name='profiler',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['tools:TRUFFLE_PROFILER'],
     support_distributions=['tools:TRUFFLE_PROFILER_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -187,6 +189,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     dir_name='visualvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=[],
     support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
     provided_executables=['bin/<exe:jvisualvm>']
 ))
