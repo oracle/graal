@@ -93,6 +93,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(method(a, "java.nio.charset.Charset", "isSupported", String.class));
         JNIRuntimeAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes", String.class));
+        JNIRuntimeAccess.register(method(a, "java.lang.String", "concat", String.class));
 
         JNIRuntimeAccess.register(java.io.File.class);
         JNIRuntimeAccess.register(fields(a, "java.io.File", "path"));
