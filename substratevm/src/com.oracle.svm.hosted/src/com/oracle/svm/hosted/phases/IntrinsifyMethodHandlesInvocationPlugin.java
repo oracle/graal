@@ -376,7 +376,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * We do not care about the improved type information from Pi nodes, so we just delete
              * them to simplify our graph.
              */
-            for (PiNode pi : graph.getNodes(PiNode.TYPE)) {
+            for (PiNode pi : graph.getNodes().filter(PiNode.class)) {
                 pi.replaceAndDelete(pi.object());
             }
 

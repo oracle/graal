@@ -49,6 +49,7 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -90,7 +91,7 @@ import jdk.vm.ci.meta.TriState;
  * of a comparison.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_2, sizeRationale = "2 jmps")
-public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, SwitchFoldable {
+public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, IterableNodeType, SwitchFoldable {
     public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");

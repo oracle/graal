@@ -189,10 +189,18 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             } else if (nonConstant instanceof ConvertNode) {
                 ConvertNode convert = (ConvertNode) nonConstant;
                 boolean multiUsage = (convert.asNode().hasMoreThanOneUsage() && convert.getValue().hasExactlyOneUsage());
-                if ((convert instanceof ZeroExtendNode || convert instanceof SignExtendNode) && multiUsage) {
-                    // Do not perform for zero or sign extend if it could introduce
+                if (convert instanceof IntegerConvertNode && multiUsage) {
+                    // Do not perform for integer convers if it could introduce
                     // new live values.
                     return null;
+                }
+
+                if (convert instanceof NarrowNode) {
+                    NarrowNode narrowNode = (NarrowNode) convert;
+                    if (narrowNode.getInputBits() > 32 && !constant.isDefaultForKind()) {
+                        // Avoid large integer constants.
+                        return null;
+                    }
                 }
 
                 boolean supported = true;

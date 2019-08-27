@@ -343,7 +343,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         ResolvedJavaField resolvedField = getMetaAccess().lookupJavaField(field);
 
         int count = 0;
-        for (ReadNode readNode : graph.getNodes(ReadNode.TYPE)) {
+        for (ReadNode readNode : graph.getNodes().filter(ReadNode.class)) {
             LocationIdentity location = readNode.getLocationIdentity();
             if (location instanceof FieldLocationIdentity) {
                 if (((FieldLocationIdentity) location).getField().equals(resolvedField)) {

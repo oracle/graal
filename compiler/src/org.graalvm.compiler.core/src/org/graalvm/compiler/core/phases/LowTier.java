@@ -39,7 +39,6 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
 import org.graalvm.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
@@ -72,8 +71,6 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER));
-
-        appendPhase(new OptimizeDivPhase());
 
         appendPhase(new ExpandLogicPhase());
 

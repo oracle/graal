@@ -34,6 +34,7 @@ import java.util.Map;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -50,7 +51,7 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.code.BytecodeFrame;
 
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable, UncheckedInterfaceProvider {
+public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, IterableNodeType, MemoryCheckpoint.Single, LIRLowerable, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 
     private static final double EXCEPTION_PROBA = 1e-5;
