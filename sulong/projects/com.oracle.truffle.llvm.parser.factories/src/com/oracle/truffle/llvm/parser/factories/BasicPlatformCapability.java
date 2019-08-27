@@ -41,8 +41,11 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapability<S> {
 
     public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
-        if (LLVMInfo.SYSNAME.equals("Linux") && LLVMInfo.MACHINE.equals("x86_64")) {
+        if (LLVMInfo.SYSNAME.toLowerCase().equals("linux") && LLVMInfo.MACHINE.toLowerCase().equals("x86_64")) {
             return new LinuxAMD64PlatformCapability(loadCxxLibraries);
+        }
+        if (LLVMInfo.SYSNAME.toLowerCase().equals("mac os x") && LLVMInfo.MACHINE.toLowerCase().equals("x86_64")) {
+            return new DarwinAMD64PlatformCapability(loadCxxLibraries);
         }
         return new UnknownBasicPlatformCapability(loadCxxLibraries);
     }

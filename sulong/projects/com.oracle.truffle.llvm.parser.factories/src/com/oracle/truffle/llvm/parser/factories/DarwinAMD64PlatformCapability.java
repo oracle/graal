@@ -27,43 +27,38 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
+package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallExitNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetPpidNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetpidNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGettidNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.amd64.DarwinAMD64Syscall;
 
-public final class LLVMUnsupportedSyscallNode extends LLVMSyscallOperationNode {
+final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinAMD64Syscall> {
 
-    private final LLVMSyscallEntry syscall;
-    private final long nr;
-
-    public static LLVMUnsupportedSyscallNode create(long nr) {
-        return new LLVMUnsupportedSyscallNode(nr, null);
-    }
-
-    public static LLVMUnsupportedSyscallNode create(LLVMSyscallEntry syscall) {
-        return new LLVMUnsupportedSyscallNode(syscall.value(), syscall);
-    }
-
-    private LLVMUnsupportedSyscallNode(long nr, LLVMSyscallEntry syscall) {
-        this.nr = nr;
-        this.syscall = syscall;
+    DarwinAMD64PlatformCapability(boolean loadCxxLibraries) {
+        super(DarwinAMD64Syscall.class, loadCxxLibraries);
     }
 
     @Override
-    public String getName() {
-        if (syscall != null) {
-            return syscall.toString();
+    protected LLVMSyscallOperationNode createSyscallNode(DarwinAMD64Syscall syscall) {
+        switch (syscall) {
+            case SYS_mmap:
+                return LLVMAMD64SyscallMmapNodeGen.create();
+            case SYS_getpid:
+                return new LLVMAMD64SyscallGetpidNode();
+            case SYS_exit:
+                return new LLVMAMD64SyscallExitNode();
+            case SYS_getppid:
+                return new LLVMAMD64SyscallGetPpidNode();
+            case SYS_gettid:
+                return new LLVMAMD64SyscallGettidNode();
+            default:
+                return new LLVMAMD64UnknownSyscallNode(syscall);
         }
-        return "unsupported(" + nr + ")";
-    }
-
-    @Override
-    @CompilerDirectives.TruffleBoundary
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
-        String details = syscall != null ? syscall.toString() : "0x" + Long.toHexString(nr) + " (" + nr + ")";
-        throw new LLVMUnsupportedException(this, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_SYSCALL, details);
     }
 }

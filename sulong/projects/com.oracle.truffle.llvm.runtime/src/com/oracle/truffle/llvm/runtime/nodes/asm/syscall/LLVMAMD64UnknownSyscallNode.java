@@ -29,26 +29,26 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.amd64.LinuxAMD64Syscall;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 
 public class LLVMAMD64UnknownSyscallNode extends LLVMSyscallOperationNode {
 
     private final long nr;
-    private final LinuxAMD64Syscall syscallValue;
+    private final LLVMSyscallEntry syscallValue;
     @Child private LLVMAMD64PosixCallNode syscall;
 
     public LLVMAMD64UnknownSyscallNode(long nr) {
         this(nr, null);
     }
 
-    public LLVMAMD64UnknownSyscallNode(LinuxAMD64Syscall syscall) {
+    public LLVMAMD64UnknownSyscallNode(LLVMSyscallEntry syscall) {
         this(syscall.value(), syscall);
     }
 
-    private LLVMAMD64UnknownSyscallNode(long nr, LinuxAMD64Syscall syscallValue) {
+    private LLVMAMD64UnknownSyscallNode(long nr, LLVMSyscallEntry syscallValue) {
         this.nr = nr;
         this.syscallValue = syscallValue;
         this.syscall = LLVMAMD64PosixCallNodeGen.create("syscall", "(SINT64, POINTER, POINTER, POINTER, POINTER, POINTER, POINTER):SINT64");
