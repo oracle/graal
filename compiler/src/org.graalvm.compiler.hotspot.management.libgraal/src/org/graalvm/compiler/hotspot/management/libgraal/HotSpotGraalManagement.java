@@ -52,7 +52,7 @@ import org.graalvm.word.WordFactory;
 
 /**
  * Dynamically registers a {@link HotSpotGraalRuntimeMBean}s created in SVM heap into
- * {@link MBeanServer} in HotSPot heap. The instance is created by {@link HotSpotGraalRuntime} using
+ * {@link MBeanServer} in HotSpot heap. The instance is created by {@link HotSpotGraalRuntime} using
  * factory injected by {@code LibGraalFeature}.
  */
 @ServiceProvider(HotSpotGraalManagementRegistration.class)
