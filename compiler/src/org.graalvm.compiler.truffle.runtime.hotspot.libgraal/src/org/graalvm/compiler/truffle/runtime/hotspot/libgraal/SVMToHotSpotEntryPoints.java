@@ -29,6 +29,7 @@ import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsJavaConstant;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CallNodeHashCode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CancelInstalledTask;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.ConsumeOptimizedAssumptionDependency;
@@ -491,6 +492,21 @@ final class SVMToHotSpotEntryPoints {
         return callNode.getCallCount();
     }
 
+    @SVMToHotSpot(GetCurrentCallTarget)
+    static CompilableTruffleAST getCurrentCallTarget(TruffleCallNode truffleCallNode) {
+        return truffleCallNode.getCurrentCallTarget();
+    }
+
+    @SVMToHotSpot(IsInliningForced)
+    static boolean isInliningForced(TruffleCallNode truffleCallNode) {
+        return truffleCallNode.isInliningForced();
+    }
+
+    @SVMToHotSpot(CallNodeHashCode)
+    static int callNodeHashCode(TruffleCallNode truffleCallNode) {
+        return truffleCallNode.hashCode();
+    }
+
     @SVMToHotSpot(GetCompilableCallCount)
     static int getCompilableCallCount(CompilableTruffleAST compilableTruffleAST) {
         return compilableTruffleAST.getCallCount();
@@ -501,19 +517,9 @@ final class SVMToHotSpotEntryPoints {
         return compilableTruffleAST.getCallNodes();
     }
 
-    @SVMToHotSpot(GetCurrentCallTarget)
-    static CompilableTruffleAST getCurrentCallTarget(TruffleCallNode truffleCallNode) {
-        return truffleCallNode.getCurrentCallTarget();
-    }
-
     @SVMToHotSpot(GetKnownCallSiteCount)
     static int getKnownCallSiteCount(CompilableTruffleAST compilableTruffleAST) {
         return compilableTruffleAST.getKnownCallSiteCount();
-    }
-
-    @SVMToHotSpot(IsInliningForced)
-    static boolean isInliningForced(TruffleCallNode truffleCallNode) {
-        return truffleCallNode.isInliningForced();
     }
 
     @SVMToHotSpot(IsSameOrSplit)

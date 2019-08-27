@@ -67,6 +67,7 @@ public @interface SVMToHotSpot {
         // @formatter:off
         AsCompilableTruffleAST(CompilableTruffleAST.class, HotSpotTruffleCompilerRuntime.class, long.class),
         AsJavaConstant(long.class, CompilableTruffleAST.class),
+        CallNodeHashCode(int.class, TruffleCallNode.class),
         CancelInstalledTask(void.class, CompilableTruffleAST.class),
         CompilableToString(String.class, CompilableTruffleAST.class),
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, OptimizedAssumptionDependency.class),

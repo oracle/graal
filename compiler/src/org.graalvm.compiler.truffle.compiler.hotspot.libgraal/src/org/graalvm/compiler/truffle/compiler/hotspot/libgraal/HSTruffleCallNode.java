@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CallNodeHashCode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCurrentCallTarget;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsInliningForced;
 
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callCallNodeHashCode;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCurrentCallTarget;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callIsInliningForced;
@@ -67,5 +69,22 @@ final class HSTruffleCallNode extends HSObject implements TruffleCallNode {
     @Override
     public boolean isInliningForced() {
         return callIsInliningForced(env(), getHandle());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj.getClass() != HSTruffleCallNode.class) {
+            return false;
+        }
+        return JNIUtil.IsSameObject(env(), getHandle(), ((HSTruffleCallNode) obj).getHandle());
+    }
+
+    @SVMToHotSpot(CallNodeHashCode)
+    @Override
+    public int hashCode() {
+        return callCallNodeHashCode(env(), getHandle());
     }
 }
