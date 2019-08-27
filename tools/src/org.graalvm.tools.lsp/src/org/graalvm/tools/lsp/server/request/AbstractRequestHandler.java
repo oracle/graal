@@ -64,20 +64,22 @@ public abstract class AbstractRequestHandler {
     }
 
     public InstrumentableNode findNodeAtCaret(TextDocumentSurrogate surrogate, int line, int character, Class<?>... tag) {
-        SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
-        if (sourceWrapper.isParsingSuccessful()) {
-            Source source = sourceWrapper.getSource();
-            if (SourceUtils.isLineValid(line, source)) {
-                int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
-                NearestSections nearestSections = NearestSectionsFinder.findNearestSections(source, env, oneBasedLineNumber, character, true, tag);
-                if (nearestSections.getNextSourceSection() != null) {
-                    SourceSection nextNodeSection = nearestSections.getNextSourceSection();
-                    if (nextNodeSection.getStartLine() == oneBasedLineNumber && nextNodeSection.getStartColumn() == character + 1) {
-                        // nextNodeSection is directly before the caret, so we use that one
-                        return nearestSections.getInstrumentableNextNode();
+        if (surrogate != null) {
+            SourceWrapper sourceWrapper = surrogate.getSourceWrapper();
+            if (sourceWrapper.isParsingSuccessful()) {
+                Source source = sourceWrapper.getSource();
+                if (SourceUtils.isLineValid(line, source)) {
+                    int oneBasedLineNumber = SourceUtils.zeroBasedLineToOneBasedLine(line, source);
+                    NearestSections nearestSections = NearestSectionsFinder.findNearestSections(source, env, oneBasedLineNumber, character, true, tag);
+                    if (nearestSections.getNextSourceSection() != null) {
+                        SourceSection nextNodeSection = nearestSections.getNextSourceSection();
+                        if (nextNodeSection.getStartLine() == oneBasedLineNumber && nextNodeSection.getStartColumn() == character + 1) {
+                            // nextNodeSection is directly before the caret, so we use that one
+                            return nearestSections.getInstrumentableNextNode();
+                        }
                     }
+                    return nearestSections.getInstrumentableContainsNode();
                 }
-                return nearestSections.getInstrumentableContainsNode();
             }
         }
         return null;

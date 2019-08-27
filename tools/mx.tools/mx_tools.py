@@ -157,24 +157,6 @@ def _tools_gate_runner(args, tasks):
         if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--fail-fast'])
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
-def lsp(args):
-    parser = ArgumentParser(
-        prog="mx lsp",
-        add_help=False,
-        description="Launch the LSP server",
-        usage="mx lsp --languages [comma-separated dist names] [--] [arguments to LSP launcher]")
-    parser.add_argument("--languages", nargs="?", default="",
-                        help="Language distributions to add to the classpath")
-    parser.add_argument('remainder', nargs="*",
-                        help="argument to pass to launcher")
-    parsed_args = parser.parse_args(args)
-    dists = parsed_args.languages.split(",")
-    dists += ["LSP_LAUNCHER", "LSP"]
-    vm_args, server_args = mx.extract_VM_args(parsed_args.remainder, useDoubleDash=True, defaultAllVMArgs=False)
-    vm_args += mx.get_runtime_jvm_args(dists)
-    vm_args.append("org.graalvm.tools.lsp.launcher.GraalLanguageServerLauncher")
-    return mx.run_java(vm_args + server_args)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
@@ -183,7 +165,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='lsp',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=['tools:LSP', 'tools:LSP_API', 'tools:LSP_LAUNCHER'],
+    truffle_jars=['tools:LSP', 'tools:LSP_API'],
     support_distributions=['tools:LSP_GRAALVM_SUPPORT'],
     include_by_default=True,
 ))
@@ -262,5 +244,4 @@ for mode in ['jvm', 'native']:
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],
     'gate' : [mx_gate.gate, ''],
-    'lsp' : [lsp, ''],
 })

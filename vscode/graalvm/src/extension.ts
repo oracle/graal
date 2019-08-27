@@ -8,6 +8,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as cp from 'child_process';
+import * as utils from './utils';
+import { Socket } from 'net';
+import { LanguageClient, LanguageClientOptions, StreamInfo } from 'vscode-languageclient';
 import { installGraalVM, installGraalVMComponent, selectInstalledGraalVM } from './graalVMInstall';
 import { addNativeImageToPOM } from './graalVMNativeImage';
 
@@ -15,6 +19,11 @@ const OPEN_SETTINGS: string = 'Open Settings';
 const INSTALL_GRAALVM: string = 'Install GraalVM';
 const SELECT_GRAALVM: string = 'Select GraalVM';
 const INSTALL_GRAALVM_NATIVE_IMAGE_COMPONENT: string = 'Install GraalVM native-image Component';
+const POLYGLOT: string = "polyglot";
+const LSPORT: number = 8123;
+
+let client: LanguageClient;
+let serverProcess: cp.ChildProcess;
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', () => {
@@ -37,7 +46,13 @@ export function activate(context: vscode.ExtensionContext) {
 			config();
 		}
 	}));
-	if (!vscode.workspace.getConfiguration('graalvm').get('home')) {
+        context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+                if (e.affectsConfiguration('graalvm.home')) {
+                        startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string);
+                }
+        }));
+        const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
+	if (!graalVMHome) {
 		vscode.window.showInformationMessage('No path to GraalVM home specified.', SELECT_GRAALVM, INSTALL_GRAALVM, OPEN_SETTINGS).then(value => {
 			switch (value) {
 				case SELECT_GRAALVM:
@@ -53,10 +68,67 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 	} else {
 		config();
+		startLanguageServer(graalVMHome);
 	}
 }
 
-export function deactivate() { }
+export function deactivate(): Thenable<void> {
+	let promises: Thenable<void>[] = [];
+	if (client) {
+		promises.push(client.stop());
+	}
+	if (serverProcess) {
+		serverProcess.kill('SIGINT');
+		promises.push(Promise.resolve());
+	}
+	return Promise.all(promises).then(() => undefined);
+
+}
+
+function startLanguageServer(graalVMHome: string) {
+	const re = utils.findExecutable(POLYGLOT, graalVMHome);
+	if (re) {
+		serverProcess = cp.spawn(re, ['--lsp', '--experimental-options', '--shell']);
+		if (!serverProcess || !serverProcess.pid) {
+			vscode.window.showErrorMessage(`Launching server using command ${re} failed.`);
+		} else {
+			const connection = () => new Promise<StreamInfo>((resolve, reject) => {
+				const socket = new Socket();
+				socket.once('error', (e) => {
+					reject(e);
+				});
+				socket.connect(LSPORT, '127.0.0.1', () => {
+					resolve({
+						reader: socket,
+						writer: socket
+					});
+				});
+			});
+			let clientOptions: LanguageClientOptions = {
+				documentSelector: [
+					{ scheme: 'file', language: 'javascript' },
+					{ scheme: 'file', language: 'sl' },
+					{ scheme: 'file', language: 'python' },
+					{ scheme: 'file', language: 'r' },
+					{ scheme: 'file', language: 'ruby' }
+				]
+			};
+			client = new LanguageClient('GraalVM Language Client', connection, clientOptions);
+			serverProcess.stderr.on('data', data => client.outputChannel.append(data.toString('utf8')));
+			let prepareStatus = vscode.window.setStatusBarMessage("Graal Language Client: Connecting to GraalLS");
+			client.onReady().then(() => {
+				prepareStatus.dispose();
+				vscode.window.setStatusBarMessage('GraalLS is ready.', 3000);
+			}).catch(() => {
+				prepareStatus.dispose();
+				vscode.window.setStatusBarMessage('GraalLS failed to initialize.', 3000);
+			});
+			client.start();
+		}
+	} else {
+		vscode.window.showErrorMessage('Cannot find runtime ' + POLYGLOT + ' within your GraalVM installation.');
+	}
+}
 
 function config() {
 	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;

@@ -51,7 +51,6 @@ import org.graalvm.tools.lsp.server.types.SignatureHelp;
 import org.graalvm.tools.lsp.server.types.SymbolInformation;
 import org.graalvm.tools.lsp.server.types.TextDocumentContentChangeEvent;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
-import org.graalvm.tools.lsp.api.ContextAwareExecutorRegistry;
 import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.exceptions.UnknownLanguageException;
@@ -86,10 +85,10 @@ import com.oracle.truffle.api.source.Source;
  * entered a {@link org.graalvm.polyglot.Context}.
  *
  */
-public final class TruffleAdapter implements VirtualLanguageServerFileProvider, ContextAwareExecutorRegistry {
+public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     private static final TruffleLogger LOG = TruffleLogger.getLogger(LSPInstrument.ID, TruffleAdapter.class);
 
-    private final TruffleInstrument.Env env;
+    private TruffleInstrument.Env env;
     ContextAwareExecutor contextAwareExecutor;
     private SourceCodeEvaluator sourceCodeEvaluator;
     CompletionRequestHandler completionHandler;
@@ -102,12 +101,11 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider, 
     private HighlightRequestHandler highlightHandler;
     private TextDocumentSurrogateMap surrogateMap;
 
-    public TruffleAdapter(Env env) {
-        this.env = env;
+    public TruffleAdapter() {
     }
 
-    @Override
-    public void register(ContextAwareExecutor executor) {
+    public void register(Env env, ContextAwareExecutor executor) {
+        this.env = env;
         this.contextAwareExecutor = executor;
     }
 

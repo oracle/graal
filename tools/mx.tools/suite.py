@@ -168,6 +168,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.lsp.api",
+                "sdk:GRAAL_SDK",
                 "truffle:TRUFFLE_NFI",
                 "TruffleJSON"
             ],
@@ -176,25 +177,12 @@ suite = {
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "LSP",
         },
-        "org.graalvm.tools.lsp.launcher": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "org.graalvm.tools.lsp.api",
-                "sdk:GRAAL_SDK",
-                "sdk:LAUNCHER_COMMON",
-            ],
-            "checkstyle": "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance": "1.8",
-            "workingSets": "LSP"
-        },
         "org.graalvm.tools.lsp.test": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.lsp.api",
                 "org.graalvm.tools.lsp",
-                "org.graalvm.tools.lsp.launcher",
                 "truffle:TRUFFLE_SL",
                 "mx:JUNIT"
             ],
@@ -425,24 +413,15 @@ suite = {
             "dependencies": ["org.graalvm.tools.lsp"],
             "distDependencies" : [
                 "LSP_API",
+                "sdk:GRAAL_SDK",
                 "truffle:TRUFFLE_NFI"
             ],
             "description" : "Language Server Protocol backend implementation.",
-        },
-        "LSP_LAUNCHER": {
-            "dependencies": ["org.graalvm.tools.lsp.launcher"],
-            "distDependencies" : [
-                "LSP_API",
-                "sdk:GRAAL_SDK",
-                "sdk:LAUNCHER_COMMON",
-            ],
         },
         "LSP_TEST": {
             "dependencies": ["org.graalvm.tools.lsp.test"],
             "distDependencies" : [
                 "LSP",
-                "LSP_LAUNCHER",
-                "sdk:LAUNCHER_COMMON",
                 "truffle:TRUFFLE_SL",
             ],
         },

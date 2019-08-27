@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.tools.lsp.launcher.filesystem;
+package org.graalvm.tools.lsp.instrument;
 
 import java.io.IOException;
 import java.net.URI;

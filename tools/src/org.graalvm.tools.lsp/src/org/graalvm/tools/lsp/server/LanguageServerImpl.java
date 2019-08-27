@@ -461,7 +461,7 @@ public final class LanguageServerImpl extends LanguageServer {
         return resultOnError;
     }
 
-    public Future<?> start(final ServerSocket serverSocket) {
+    public CompletableFuture<?> start(final ServerSocket serverSocket) {
         clientConnectionExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
 
             @Override
@@ -471,7 +471,7 @@ public final class LanguageServerImpl extends LanguageServer {
                 return thread;
             }
         });
-        Future<?> future = clientConnectionExecutor.submit(new Runnable() {
+        CompletableFuture<?> future = CompletableFuture.runAsync(new Runnable() {
 
             @Override
             public void run() {
@@ -508,7 +508,7 @@ public final class LanguageServerImpl extends LanguageServer {
                     err.println("[Graal LSP] Error while connecting to client: " + e.getLocalizedMessage());
                 }
             }
-        }, Boolean.TRUE);
+        }, clientConnectionExecutor);
         return future;
     }
 }

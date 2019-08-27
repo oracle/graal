@@ -35,10 +35,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.tools.lsp.api.ContextAwareExecutor;
-import org.graalvm.tools.lsp.api.ContextAwareExecutorRegistry;
-import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
-import org.graalvm.tools.lsp.launcher.filesystem.LSPFileSystem;
+import org.graalvm.tools.lsp.instrument.EnvironmentProvider;
+import org.graalvm.tools.lsp.instrument.LSPFileSystem;
 import org.graalvm.tools.lsp.server.TruffleAdapter;
 import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.polyglot.Engine;
@@ -90,18 +89,19 @@ public abstract class TruffleLSPTest {
 
     @Before
     public void setup() {
-        engine = Engine.newBuilder().option("lsp", "").option("lsp.DeveloperMode", "true").allowExperimentalOptions(true).build();
+        engine = Engine.newBuilder().option("lsp.DeveloperMode", "true").allowExperimentalOptions(true).build();
         Instrument instrument = engine.getInstruments().get("lsp");
-        VirtualLanguageServerFileProvider lspFileProvider = instrument.lookup(VirtualLanguageServerFileProvider.class);
+        EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
+
+        truffleAdapter = new TruffleAdapter();
 
         Builder contextBuilder = Context.newBuilder();
         contextBuilder.allowAllAccess(true);
-        contextBuilder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(Paths.get("."), lspFileProvider));
+        contextBuilder.fileSystem(LSPFileSystem.newReadOnlyFileSystem(Paths.get("."), truffleAdapter));
         contextBuilder.engine(engine);
         context = contextBuilder.build();
         context.enter();
 
-        ContextAwareExecutorRegistry registry = instrument.lookup(ContextAwareExecutorRegistry.class);
         ContextAwareExecutor executorWrapper = new ContextAwareExecutor() {
 
             @Override
@@ -139,9 +139,8 @@ public abstract class TruffleLSPTest {
             public void resetContextCache() {
             }
         };
-        registry.register(executorWrapper);
 
-        truffleAdapter = (TruffleAdapter) registry;
+        truffleAdapter.register(envProvider.getEnvironment(), executorWrapper);
         truffleAdapter.initialize();
     }
 

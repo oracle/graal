@@ -22,21 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.tools.lsp.api;
+package org.graalvm.tools.lsp.instrument;
 
-import java.util.concurrent.Future;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
-/**
- * This service interface is used to provide a callback for the launcher, to be able to explicitly
- * start the language server after having set-up a custom file system etc.
- *
- */
-public interface LanguageServerBootstrapper {
+public interface EnvironmentProvider {
 
-    /**
-     * Gives the kick-off signal, to start the actual LSP language server.
-     *
-     * @return a {@link Future} to await the shutdown of the server.
-     */
-    Future<?> startServer();
+    TruffleInstrument.Env getEnvironment();
 }
