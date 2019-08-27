@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <stdint.h>
-#include "exit.h"
 
-#define ABORT_STATUS 134
+#ifndef _EXIT_H_
+#define _EXIT_H_
 
-void __sulong_print_stacktrace();
-int __sulong_should_print_stacktrace_on_abort();
+#include <unistd.h>
+#include <sys/syscall.h>
+#ifdef __linux__
+#define _EXIT(x) syscall(SYS_exit_group, x)
+#else
+#define _EXIT(x) syscall(SYS_exit, x)
+#endif
 
-void abort() {
-  if (__sulong_should_print_stacktrace_on_abort()) {
-    fprintf(stderr, "abort()\n\n");
-    __sulong_print_stacktrace();
-  }
-  _EXIT(ABORT_STATUS);
-  for (;;) {
-    _EXIT(ABORT_STATUS);
-  }
-}
+#endif // _EXIT_H_

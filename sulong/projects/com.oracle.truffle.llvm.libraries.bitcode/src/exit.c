@@ -30,11 +30,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <sys/syscall.h>
-
-#ifndef __linux__
-#define SYS_exit_group 231
-#endif
+#include "exit.h"
 
 struct entry {
   struct entry *next;
@@ -92,16 +88,16 @@ void __sulong_destructor_functions();
 void exit(int status) {
   __sulong_funcs_on_exit();
   __sulong_destructor_functions();
-  syscall(SYS_exit_group, status);
+  _EXIT(status);
   for (;;) { // this should never be executed
-    syscall(SYS_exit_group, status);
+    _EXIT(status);
   }
 }
 
 void _exit(int status) {
-  syscall(SYS_exit_group, status);
+  _EXIT(status);
   for (;;) { // this should never be executed
-    syscall(SYS_exit_group, status);
+    _EXIT(status);
   }
 }
 
