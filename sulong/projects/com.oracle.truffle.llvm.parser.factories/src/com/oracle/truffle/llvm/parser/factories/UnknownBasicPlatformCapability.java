@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,48 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.except.LLVMException;
+import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
 
-public final class LLVMUnsupportedException extends LLVMException {
+/**
+ * Fallback implementation for unknown platforms.
+ */
+final class UnknownBasicPlatformCapability extends BasicPlatformCapability<UnknownBasicPlatformCapability.UnknownSyscalls> {
 
-    private static final long serialVersionUID = 1L;
-
-    public enum UnsupportedReason {
-        /**
-         * Inline assembler calls.
-         */
-        INLINE_ASSEMBLER("inline assembler"),
-        /**
-         * setjmp and longjmp intrinsic.
-         */
-        SET_JMP_LONG_JMP("setjmp/longjmp"),
-        PARSER_ERROR_VOID_SLOT("parser error void slot"),
-        UNSUPPORTED_SYSCALL("unsupported syscall");
-
-        private final String description;
-
-        UnsupportedReason(String description) {
-            this.description = description;
-        }
-
-        public String getDescription() {
-            return description;
+    /**
+     * We don't know anything about this platform.
+     */
+    enum UnknownSyscalls implements LLVMSyscallEntry {
+        /* DUMMY */;
+        @Override
+        public int value() {
+            throw new UnsupportedOperationException();
         }
     }
 
-    public LLVMUnsupportedException(Node location, UnsupportedReason reason) {
-        super(location, reason.getDescription());
+    UnknownBasicPlatformCapability(boolean loadCxxLibraries) {
+        super(UnknownSyscalls.class, loadCxxLibraries);
     }
 
-    public LLVMUnsupportedException(Node location, UnsupportedReason reason, String details) {
-        super(location, reason.getDescription() + ": " + details);
+    @Override
+    public LLVMSyscallOperationNode createSyscallNode(long index) {
+        return LLVMUnsupportedSyscallNode.create(index);
     }
 
-    public LLVMUnsupportedException(Node location, UnsupportedReason reason, Throwable cause) {
-        super(location, reason.getDescription(), cause);
+    @Override
+    protected LLVMSyscallOperationNode createSyscallNode(UnknownSyscalls syscall) {
+        throw new UnsupportedOperationException("Should not reach.");
     }
-
 }

@@ -36,11 +36,15 @@ import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 
 public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapability<S> {
 
-    public static BasicPlatformCapability create(boolean loadCxxLibraries) {
-        return new LinuxAMD64PlatformCapability(loadCxxLibraries);
+    public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
+        if (LLVMInfo.SYSNAME.equals("Linux") && LLVMInfo.MACHINE.equals("x86_64")) {
+            return new LinuxAMD64PlatformCapability(loadCxxLibraries);
+        }
+        return new UnknownBasicPlatformCapability(loadCxxLibraries);
     }
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");

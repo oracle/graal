@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,48 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.except.LLVMException;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public final class LLVMUnsupportedException extends LLVMException {
+public class LLVMUnsupportedSyscallNode extends LLVMSyscallOperationNode {
 
-    private static final long serialVersionUID = 1L;
+    private final long nr;
 
-    public enum UnsupportedReason {
-        /**
-         * Inline assembler calls.
-         */
-        INLINE_ASSEMBLER("inline assembler"),
-        /**
-         * setjmp and longjmp intrinsic.
-         */
-        SET_JMP_LONG_JMP("setjmp/longjmp"),
-        PARSER_ERROR_VOID_SLOT("parser error void slot"),
-        UNSUPPORTED_SYSCALL("unsupported syscall");
-
-        private final String description;
-
-        UnsupportedReason(String description) {
-            this.description = description;
-        }
-
-        public String getDescription() {
-            return description;
-        }
+    public static LLVMUnsupportedSyscallNode create(long nr) {
+        return new LLVMUnsupportedSyscallNode(nr);
     }
 
-    public LLVMUnsupportedException(Node location, UnsupportedReason reason) {
-        super(location, reason.getDescription());
+    private LLVMUnsupportedSyscallNode(long nr) {
+        this.nr = nr;
     }
 
-    public LLVMUnsupportedException(Node location, UnsupportedReason reason, String details) {
-        super(location, reason.getDescription() + ": " + details);
+    @Override
+    public final String getName() {
+        return "unsupported(" + nr + ")";
     }
 
-    public LLVMUnsupportedException(Node location, UnsupportedReason reason, Throwable cause) {
-        super(location, reason.getDescription(), cause);
+    @Override
+    @CompilerDirectives.TruffleBoundary
+    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+        throw new LLVMUnsupportedException(this, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_SYSCALL, "0x" + Long.toHexString(nr) + " (" + nr + ")");
     }
-
 }
