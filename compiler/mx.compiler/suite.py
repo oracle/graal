@@ -1718,7 +1718,8 @@ suite = {
       ],
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.hotspot"
+          "jdk.vm.ci.hotspot",
+          "jdk.vm.ci.services"
         ]
       },
       "checkstyle" : "org.graalvm.compiler.graph",

@@ -77,6 +77,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.ModuleSupport;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
@@ -99,6 +100,7 @@ import jdk.vm.ci.meta.Value;
  * global invariants such as using {@link Object#equals(Object)} to compare certain types instead of
  * identity comparisons.
  */
+@AddExports("jdk.internal.vm.ci/*=jdk.aot")
 public class CheckGraalInvariants extends GraalCompilerTest {
 
     /**
