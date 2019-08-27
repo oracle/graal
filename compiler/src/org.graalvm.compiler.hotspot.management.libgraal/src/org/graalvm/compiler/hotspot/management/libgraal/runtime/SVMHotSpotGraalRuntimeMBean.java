@@ -68,6 +68,8 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
 
+    private static volatile Factory factory;
+
     private final long handle;
 
     SVMHotSpotGraalRuntimeMBean(long handle) {
@@ -232,15 +234,24 @@ class SVMHotSpotGraalRuntimeMBean implements DynamicMBean {
     }
 
     /**
-     * Starts a factory thread registering the {@link SVMHotSpotGraalRuntimeMBean} instances into
-     * {@link MBeanServer}.
+     * Returns a factory thread registering the {@link SVMHotSpotGraalRuntimeMBean} instances into
+     * {@link MBeanServer}. If the factory thread does not exist it's created and started.
      *
      * @return the started factory thread instance.
      */
-    static Factory startFactory() {
-        Factory factory = new Factory();
-        factory.start();
-        return factory;
+    static Factory getFactory() {
+        Factory res = factory;
+        if (res == null) {
+            synchronized (SVMHotSpotGraalRuntimeMBean.class) {
+                res = factory;
+                if (res == null) {
+                    res = new Factory();
+                    res.start();
+                    factory = res;
+                }
+            }
+        }
+        return res;
     }
 
     /**

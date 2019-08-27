@@ -40,8 +40,8 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 final class SVMToHotSpotCalls {
 
     private static final String CLASS_SERVICES = "jdk/vm/ci/services/Services";
-    private static final String[] METHOD_CREATE = {
-                    "createFactory",
+    private static final String[] METHOD_GET_FACTORY = {
+                    "getFactory",
                     "()Lorg/graalvm/compiler/hotspot/management/libgraal/runtime/SVMHotSpotGraalRuntimeMBean$Factory;"
     };
     private static final String[] METHOD_SIGNAL = {
@@ -68,8 +68,8 @@ final class SVMToHotSpotCalls {
         return env.getFunctions().getCallStaticObjectMethodA().call(env, servicesClass, getJVMCIClassLoaderId, nullPointer());
     }
 
-    static JNI.JObject createFactory(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass) {
-        JNI.JMethodID createId = findMethod(env, svmToHotSpotEntryPointsClass, METHOD_CREATE);
+    static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass svmToHotSpotEntryPointsClass) {
+        JNI.JMethodID createId = findMethod(env, svmToHotSpotEntryPointsClass, METHOD_GET_FACTORY);
         return env.getFunctions().getCallStaticObjectMethodA().call(env, svmToHotSpotEntryPointsClass, createId, nullPointer());
     }
 

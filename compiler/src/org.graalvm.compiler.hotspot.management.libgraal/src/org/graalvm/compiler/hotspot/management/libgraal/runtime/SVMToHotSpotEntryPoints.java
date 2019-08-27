@@ -38,10 +38,10 @@ final class SVMToHotSpotEntryPoints {
     }
 
     /**
-     * @see SVMHotSpotGraalRuntimeMBean#startFactory()
+     * @see SVMHotSpotGraalRuntimeMBean#getFactory()
      */
-    static Factory createFactory() {
-        Factory factory = SVMHotSpotGraalRuntimeMBean.startFactory();
+    static Factory getFactory() {
+        Factory factory = SVMHotSpotGraalRuntimeMBean.getFactory();
         return factory;
     }
 

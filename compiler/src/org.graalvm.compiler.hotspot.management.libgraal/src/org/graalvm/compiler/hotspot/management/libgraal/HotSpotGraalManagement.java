@@ -71,7 +71,6 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
     private static final byte[] SVM_HS_ENTRYPOINTS_CLASS = null;
 
     // JNI Globals
-    private static volatile JNI.JObject factoryInstance;
     private static JNI.JClass svmToHotSpotEntryPoints;
 
     /**
@@ -107,18 +106,14 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
      */
     @Override
     public void initialize(HotSpotGraalRuntime runtime, GraalHotSpotVMConfig config) {
-        JNI.JObject factory = factoryInstance;
-        if (factory.isNull()) {
+        if (jniEnvOffset == 0) {
             synchronized (HotSpotGraalManagement.class) {
-                factory = factoryInstance;
-                if (factory.isNull()) {
+                if (jniEnvOffset == 0) {
                     jniEnvOffset = config.jniEnvironmentOffset;
-                    factory = initializeHotSpotMXBean(getCurrentJNIEnv());
-                    factoryInstance = factory;
+                    defineClassesInHotSpot(getCurrentJNIEnv());
                 }
             }
         }
-
         if (bean == null) {
             if (runtime.getManagement() != this) {
                 throw new IllegalArgumentException("Cannot initialize a second management object for runtime " + runtime.getName());
@@ -127,7 +122,7 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
                 name = runtime.getName().replace(':', '_');
                 bean = new HotSpotGraalRuntimeMBean(new ObjectName("org.graalvm.compiler.hotspot:type=" + name), runtime);
                 Factory.enqueue(this);
-                signal(getCurrentJNIEnv(), svmToHotSpotEntryPoints, factory);
+                signal(getCurrentJNIEnv(), svmToHotSpotEntryPoints, getFactory(getCurrentJNIEnv(), svmToHotSpotEntryPoints));
             } catch (MalformedObjectNameException err) {
                 err.printStackTrace(TTY.out);
             }
@@ -166,10 +161,10 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
     }
 
     /**
-     * Uses JNI to define the classes in HotSpot heap and to stars the factory thread.
+     * Uses JNI to define the classes in HotSpot heap.
      */
     @SuppressWarnings("try")
-    private static JNI.JObject initializeHotSpotMXBean(JNI.JNIEnv env) {
+    private static void defineClassesInHotSpot(JNI.JNIEnv env) {
         try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.DefineClasses, env)) {
             JNI.JObject classLoader = SVMToHotSpotCalls.getJVMCIClassLoader(env);
 
@@ -194,11 +189,6 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
                 throw throwDefineClassError(SVM_HS_ENTRYPOINTS_CLASS_NAME);
             }
             svmToHotSpotEntryPoints = JNIUtil.NewGlobalRef(env, svmHsEntryPoints, "Class<" + SVM_HS_ENTRYPOINTS_CLASS_NAME + ">");
-            JNI.JObject factory = SVMToHotSpotCalls.createFactory(env, svmHsEntryPoints);
-            if (factory.isNull()) {
-                throw new InternalError("Failed to instantiate MBean factory on HotSpot side.");
-            }
-            return JNIUtil.NewGlobalRef(env, factory, HS_BEAN_FACTORY_CLASS_NAME);
         }
     }
 
@@ -224,6 +214,20 @@ public final class HotSpotGraalManagement implements HotSpotGraalManagementRegis
                             clazz.length);
         } finally {
             UnmanagedMemory.free(classData);
+        }
+    }
+
+    /**
+     * Gets a reference to factory thread running in HotSpot heap.
+     */
+    @SuppressWarnings("try")
+    private static JNI.JObject getFactory(JNI.JNIEnv env, JNI.JClass svmHsEntryPoints) {
+        try (HotSpotToSVMScope<Id> s = new HotSpotToSVMScope<>(Id.GetFactory, env)) {
+            JNI.JObject factory = SVMToHotSpotCalls.getFactory(env, svmHsEntryPoints);
+            if (factory.isNull()) {
+                throw new InternalError("Failed to instantiate MBean factory on HotSpot side.");
+            }
+            return factory;
         }
     }
 

@@ -285,6 +285,7 @@ enum Id {
     DefineClasses,
     FinishRegistration,
     GetAttributes,
+    GetFactory,
     GetMBeanInfo,
     GetRegistrationName,
     Invoke,
