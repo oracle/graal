@@ -76,7 +76,7 @@ final class HSTruffleCallNode extends HSObject implements TruffleCallNode {
         if (obj == this) {
             return true;
         }
-        if (obj.getClass() != HSTruffleCallNode.class) {
+        if (obj == null || obj.getClass() != HSTruffleCallNode.class) {
             return false;
         }
         return JNIUtil.IsSameObject(env(), getHandle(), ((HSTruffleCallNode) obj).getHandle());
