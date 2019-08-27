@@ -1142,17 +1142,19 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     }
 
     private final SchedulePhase schedulePhase;
-    private final List<String> exclusions;
+    private final List<String> list;
+    private final boolean listWhitelist;
     private final NodeView view;
 
-    public IsomorphicPackingPhase(SchedulePhase schedulePhase, List<String> exclusions) {
-        this(schedulePhase, exclusions, NodeView.DEFAULT);
+    public IsomorphicPackingPhase(SchedulePhase schedulePhase, List<String> list, boolean listWhitelist) {
+        this(schedulePhase, list, NodeView.DEFAULT, listWhitelist);
     }
 
-    public IsomorphicPackingPhase(SchedulePhase schedulePhase, List<String> exclusions, NodeView view) {
+    public IsomorphicPackingPhase(SchedulePhase schedulePhase, List<String> list, NodeView view, boolean listWhitelist) {
         this.schedulePhase = schedulePhase;
-        this.exclusions = exclusions;
+        this.list = list;
         this.view = view;
+        this.listWhitelist = listWhitelist;
     }
 
     @Override
@@ -1166,8 +1168,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         final ResolvedJavaMethod method = graph.method();
         if (method != null) {
             final String name = String.format("%s.%s", method.getDeclaringClass().toJavaName(), method.getName());
-            if (exclusions.stream().anyMatch(name::contains)) {
-                debug.log(DebugContext.VERBOSE_LEVEL, String.format("Skipping compilation of excluded %s", name));
+            // In first order logic:
+            // ¬listWhitelist ->  anyMatch  <=>   listWhitelist v  anyMatch
+            //  listWhitelist -> noneMatch  <=>  ¬listWhitelist v noneMatch
+            if ((listWhitelist || list.stream().anyMatch(name::contains)) && (!listWhitelist || list.stream().noneMatch(name::contains))) {
+                debug.log(DebugContext.VERBOSE_LEVEL, String.format("Skipping IPP for %s", name));
                 return;
             }
         }

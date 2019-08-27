@@ -63,8 +63,11 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         @Option(help = "Enable autovectorization", type = OptionType.Expert)
         public static final OptionKey<Boolean> Autovectorize = new OptionKey<>(true);
 
-        @Option(help = "Substring of methods and/or classes that should be excluded", type = OptionType.Debug)
-        public static final OptionKey<String> AVExclusions = new OptionKey<>("");
+        @Option(help = "Substring of methods and/or classes that should be ex/included", type = OptionType.Debug)
+        public static final OptionKey<String> AVList = new OptionKey<>("");
+
+        @Option(help = "Whether AVList should be a blacklist or a whitelist", type = OptionType.Debug)
+        public static final OptionKey<Boolean> AVWhitelist = new OptionKey<>(false); // Blacklist by default
         // @formatter:on
 
     }
@@ -96,12 +99,12 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new UseTrappingNullChecksPhase());
 
         if (Options.Autovectorize.getValue(options)) {
-            final String exclusionsValue = Options.AVExclusions.getValue(options).trim();
-            List<String> exclusions = new ArrayList<>();
-            if (!exclusionsValue.isEmpty()) {
-                exclusions = Arrays.asList(exclusionsValue.split(","));
+            final String listValue = Options.AVList.getValue(options).trim();
+            List<String> list = new ArrayList<>();
+            if (!listValue.isEmpty()) {
+                list = Arrays.asList(listValue.split(","));
             }
-            appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST), exclusions));
+            appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST), list, Options.AVWhitelist.getValue(options)));
         }
 
         appendPhase(canonicalizer);
