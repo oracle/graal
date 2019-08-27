@@ -344,7 +344,8 @@ GraalTags = Tags([
     'js',
     'build',
     'benchmarktest',
-    'truffletck'
+    'truffletck',
+    'relocations'
 ])
 
 
@@ -474,6 +475,43 @@ def svm_gate_body(args, tasks):
                     mx.run([tests_image, '-Dtck.inlineVerifierInstrument=false'] + test_classes)
                 finally:
                     remove_tree(junit_tmp_dir)
+
+        with Task('Relocations in generated object file on Linux', tasks, tags=[GraalTags.relocations]) as t:
+            if t:
+                if mx.get_os() == 'linux':
+                    reloc_test_path = join(svmbuild_dir(), 'reloctest')
+                    mkpath(reloc_test_path)
+                    try:
+                        def reloctest(arguments):
+                            temp_dir = join(reloc_test_path, '__build_tmp')
+                            if exists(temp_dir):
+                                remove_tree(temp_dir)
+                            mkpath(temp_dir)
+                            helloworld(['--output-path', reloc_test_path, '-H:TempDirectory=' + temp_dir] + arguments)
+                            files = [f for f in os.listdir(temp_dir) if re.match(r'SVM-*', f)]
+                            if len(files) != 1:
+                                raise Exception('Expected 1 SVM temporary directory. Found: ' + str(len(files)) + '. Perhaps the temporary directory name pattern has changed?')
+
+                            svm_temp_dir = join(temp_dir, files[0])
+                            obj_file = join(svm_temp_dir, 'helloworld.o')
+                            lib_output = join(svm_temp_dir, 'libhello.so')
+                            if not os.path.isfile(obj_file):
+                                raise Exception('Expected helloworld.o output file from HelloWorld image. Has the helloworld native image function changed?')
+                            mx.run(["cc", "--shared", obj_file, "-o", lib_output])
+
+                            def procOutput(output):
+                                if '(TEXTREL)' in output:
+                                    mx.log_error('Detected TEXTREL in the output object file after native-image generation. This means that a change has introduced relocations in a read-only section.')
+                                    mx.log_error('Arguments to the native-image which caused the error: ' + ','.join(arguments))
+                                    raise Exception()
+                            mx.run(["readelf", "--dynamic", lib_output], out=procOutput)
+
+                        reloctest(['-H:+SpawnIsolates', '-H:+UseOnlyWritableBootImageHeap'])
+                        reloctest(['-H:-SpawnIsolates', '-H:+UseOnlyWritableBootImageHeap'])
+                    finally:
+                        remove_tree(reloc_test_path)
+                else:
+                    mx.log('Skipping relocations test. Reason: Only tested on Linux.')
 
     with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
         if t:

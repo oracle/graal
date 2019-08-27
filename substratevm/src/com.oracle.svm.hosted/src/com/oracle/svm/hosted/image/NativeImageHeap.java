@@ -479,9 +479,9 @@ public final class NativeImageHeap {
 
     private HeapPartition choosePartition(Object object, boolean immutable, boolean references, boolean relocatable) {
         if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
-            assert !spawnIsolates();
-            // Emergency use only! Alarms will sound!
-            return writableReference;
+            if (!spawnIsolates()) {
+                return writableReference;
+            }
         }
 
         if (relocatable && !isKnownImmutable(object)) {
