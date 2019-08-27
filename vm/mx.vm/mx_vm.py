@@ -27,27 +27,25 @@
 # ----------------------------------------------------------------------------------------------------
 from __future__ import print_function
 
-import os
-import io
-import pprint
-import json
-import re
-import subprocess
-
 from abc import ABCMeta
 from argparse import ArgumentParser
-from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath
 from copy import deepcopy
+import io
+import json
+import os
+from os.path import relpath, join, dirname, basename, exists, isfile, normpath, abspath, isdir
+import pprint
+import re
+import subprocess
 
 import mx
 import mx_gate
 import mx_sdk
 import mx_subst
-import mx_vm_gate
 import mx_vm_benchmark
+import mx_vm_gate
 
 import sys
-
 if sys.version_info[0] < 3:
     _unicode = unicode # pylint: disable=undefined-variable
     def _decode(x):
@@ -158,6 +156,28 @@ def _get_component_type_base(c, apply_substitutions=False):
         result = get_final_graalvm_distribution().path_substitutions.substitute(result)
     return result
 
+def _get_jdk_base(jdk):
+    jdk_dir = jdk.home
+    if jdk_dir.endswith(os.path.sep):
+        jdk_dir = jdk_dir[:-len(os.path.sep)]
+    if jdk_dir.endswith('/Contents/Home'):
+        jdk_base = 'Contents/Home'
+        jdk_dir = jdk_dir[:-len('/Contents/Home')]
+    else:
+        jdk_base = '.'
+    return jdk_dir, jdk_base
+
+_src_jdk = mx.get_jdk(tag='default')
+_src_jdk_version = _src_jdk.javaCompliance.value
+
+# Example:
+#   macOS:
+#     _src_jdk_dir  = /Library/Java/JavaVirtualMachines/oraclejdk1.8.0_221-jvmci-19.2-b02
+#     _src_jdk_base = Contents/Home
+#   Others:
+#     _src_jdk_dir  = $JAVA_HOME (e.g. /usr/lib/jvm/oraclejdk1.8.0_212-jvmci-19.2-b01)
+#     _src_jdk_base = .
+_src_jdk_dir, _src_jdk_base = _get_jdk_base(_src_jdk)
 
 class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistribution)):
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution,
@@ -170,19 +190,16 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components
+        src_jdk_base = _src_jdk_base if add_jdk_base else '.'
+        assert src_jdk_base
         base_dir = base_dir or '.'
-        _src_jdk = _get_jdk()
-        _src_jdk_base, _jdk_dir = _get_jdk_dir()
-        _src_jdk_base = _src_jdk_base if add_jdk_base else '.'
-
-        _src_jdk_has_jre = not _src_jdk.version.parts[0] >= 11
 
         if base_dir != '.':
-            self.jdk_base = '/'.join([base_dir, _src_jdk_base]) if _src_jdk_base and _src_jdk_base != '.' else base_dir
+            self.jdk_base = '/'.join([base_dir, src_jdk_base]) if src_jdk_base != '.' else base_dir
         else:
-            self.jdk_base = _src_jdk_base
+            self.jdk_base = src_jdk_base
 
-        if _src_jdk_has_jre:
+        if _src_jdk_version == 8:
             self.jre_base = '/'.join((self.jdk_base, 'jre'))
         else:
             self.jre_base = self.jdk_base
@@ -244,7 +261,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             """
             :rtype: list[(str, source_dict)], list[str]
             """
-            orig_info_plist = join(_jdk_dir, 'Contents', 'Info.plist')
+            orig_info_plist = join(_src_jdk_dir, 'Contents', 'Info.plist')
             if exists(orig_info_plist):
                 from mx import etreeParse
                 root = etreeParse(orig_info_plist)
@@ -305,13 +322,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
                 # 2. we don't need to check if the base JDK is JVMCI-enabled, since JVMCIVersionCheck takes care of that when the GraalVM compiler is a registered component
-                check_versions(join(_jdk_dir, _src_jdk_base), graalvm_version_regex=graalvm_version_regex, expect_graalvm=False, check_jvmci=False)
+                check_versions(_src_jdk, graalvm_version_regex=graalvm_version_regex, expect_graalvm=False, check_jvmci=False)
 
             # Add base JDK
-            exclude_base = _jdk_dir
+            exclude_base = _src_jdk_dir
             exclusion_list = []
-            if _src_jdk_base != '.':
-                exclude_base = join(exclude_base, _src_jdk_base)
+            if src_jdk_base != '.':
+                exclude_base = join(exclude_base, src_jdk_base)
             if mx.get_os() == 'darwin':
                 hsdis = '/jre/lib/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
                 incl_list, excl_list = _patch_darwin_jdk()
@@ -320,29 +337,37 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 exclusion_list += excl_list
             else:
                 hsdis = '/jre/lib/' + mx.get_arch() + '/' + mx.add_lib_suffix('hsdis-' + mx.get_arch())
-            _add(layout, base_dir, {
-                'source_type': 'file',
-                'path': _jdk_dir,
-                'exclude': exclusion_list + [
-                    exclude_base + '/COPYRIGHT',
-                    exclude_base + '/LICENSE',
-                    exclude_base + '/README.html',
-                    exclude_base + '/THIRDPARTYLICENSEREADME.txt',
-                    exclude_base + '/THIRDPARTYLICENSEREADME-JAVAFX.txt',
-                    exclude_base + '/release',
-                    exclude_base + '/bin/jvisualvm',
-                    exclude_base + '/bin/jvisualvm.exe',
-                    exclude_base + '/lib/visualvm',
-                    exclude_base + hsdis,
-                ] + ([
-                    exclude_base + '/bin/jmc',
-                    exclude_base + '/lib/missioncontrol',
-                ] if mx.get_os() == 'darwin' else [])
-            })
+            if _src_jdk_version == 8:
+                _add(layout, base_dir, {
+                    'source_type': 'file',
+                    'path': _src_jdk_dir,
+                    'exclude': exclusion_list + [
+                        exclude_base + '/COPYRIGHT',
+                        exclude_base + '/LICENSE',
+                        exclude_base + '/README.html',
+                        exclude_base + '/THIRDPARTYLICENSEREADME.txt',
+                        exclude_base + '/THIRDPARTYLICENSEREADME-JAVAFX.txt',
+                        exclude_base + '/release',
+                        exclude_base + '/bin/jvisualvm',
+                        exclude_base + '/bin/jvisualvm.exe',
+                        exclude_base + '/lib/visualvm',
+                        exclude_base + hsdis,
+                    ] + ([
+                        exclude_base + '/bin/jmc',
+                        exclude_base + '/lib/missioncontrol',
+                    ] if mx.get_os() == 'darwin' else [])
+                })
+            else:
+                # TODO(GR-8329): add exclusions
+                _add(layout, self.jdk_base + '/', {
+                    'source_type': 'dependency',
+                    'dependency': 'graalvm-jimage',
+                    'path': '*',
+                })
 
             # Add vm.properties
             # Add TRUFFLE_NFI_NATIVE (TODO: should be part of an other component?)
-            vm_name = graalvm_vm_name(self, join(_jdk_dir, _src_jdk_base))
+            vm_name = graalvm_vm_name(self, _src_jdk)
             if mx.get_os() == 'darwin':
                 # on macOS the <arch> directory is not used
                 _add(layout, "<jre_base>/lib/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
@@ -359,7 +384,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 polyglot_launcher_project = get_polyglot_launcher_project()
                 if not stage1:
                     _add(layout, "<jre_base>/bin/<exe:polyglot>", "dependency:" + polyglot_launcher_project.name)
-                    if _src_jdk_has_jre:
+                    if _src_jdk_version == 8:
                         _add_link("<jdk_base>/bin/", "<jre_base>/bin/" + mx.exe_suffix('polyglot'))
                 _add_native_image_macro(polyglot_launcher_project.native_image_config)
 
@@ -380,13 +405,18 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _metadata = self._get_metadata(_sorted_suites)
             _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
 
-            # Add graal-sdk into either lib/boot/ or lib/jvmci/
-            if _src_jdk_has_jre:
+            if _src_jdk_version == 8:
                 _add(layout, '<jre_base>/lib/boot/', "dependency:sdk:GRAAL_SDK")
                 _add(layout, '<jre_base>/lib/boot/', "dependency:sdk:GRAAL_SDK/*.src.zip")
+                _add(layout, '<jre_base>/lib/truffle/', "dependency:truffle:TRUFFLE_API")
+                _add(layout, '<jre_base>/lib/truffle/', "dependency:truffle:TRUFFLE_API/*.src.zip")
+                _add(layout, '<jre_base>/lib/truffle/', "dependency:LOCATOR")
+                _add(layout, '<jre_base>/lib/truffle/', "dependency:LOCATOR/*.src.zip")
+                _add(layout, "<jre_base>/lib/jvmci/parentClassLoader.classpath",
+                            ["string:" + _platform_classpath("../truffle/truffle-api.jar:../truffle/locator.jar")])
             else:
-                _add(layout, '<jre_base>/lib/jvmci/', "dependency:sdk:GRAAL_SDK")
-                _add(layout, '<jre_base>/lib/jvmci/', "dependency:sdk:GRAAL_SDK/*.src.zip")
+                # GRAAL_SDK, TRUFFLE_API and LOCATOR are modules in the jimage
+                pass
 
         # Add the rest of the GraalVM
 
@@ -408,7 +438,8 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 _component_base = _component_type_base
 
-            _add(layout, '<jre_base>/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
+            if _src_jdk_version == 8:
+                _add(layout, '<jre_base>/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
             _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions], _component, with_sources=True)
             _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component, with_sources=True)
             _add(layout, _component_base, [{
@@ -417,7 +448,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 'exclude': _component.license_files if mx.get_opts().no_licenses else [],
                 'path': None,
             } for d in _component.support_distributions], _component)
-            if isinstance(_component, mx_sdk.GraalVmJvmciComponent):
+            if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _src_jdk_version == 8:
                 _add(layout, '<jre_base>/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component, with_sources=True)
 
             if isinstance(_component, mx_sdk.GraalVmJdkComponent):
@@ -485,7 +516,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                     _jre_bin_names.append(basename(_link_path))
 
-            if _src_jdk_has_jre and 'jre' in _jdk_jre_bin:
+            if _src_jdk_version == 8 and 'jre' in _jdk_jre_bin:
                 # Add jdk to jre links
                 for _name in _jre_bin_names:
                     _add_link('<jdk_base>/bin/', '<jre_base>/bin/' + _name, _component)
@@ -734,23 +765,6 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                         self.layout[dep.native_image_name + '-sources/'] = source_type + ':{}:{}/sources'.format(dep.suite.name, dep.name)
             self._layout_initialized = True
         return super(DebuginfoDistribution, self)._walk_layout()
-
-
-def _get_jdk():
-    return mx.get_jdk(tag='default')
-
-
-def _get_jdk_dir():
-    java_home = _get_jdk().home
-    jdk_dir = java_home
-    if jdk_dir.endswith(os.path.sep):
-        jdk_dir = jdk_dir[:-len(os.path.sep)]
-    if jdk_dir.endswith('/Contents/Home'):
-        jdk_base = 'Contents/Home'
-        jdk_dir = jdk_dir[:-len('/Contents/Home')]
-    else:
-        jdk_base = '.'
-    return jdk_base, jdk_dir
 
 
 def get_graalvm_os():
@@ -1108,6 +1122,67 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         if exists(self.subject.polyglot_config_output_file()):
             os.unlink(self.subject.polyglot_config_output_file())
 
+class GraalVmJImage(mx.Project):
+    """
+    A GraalVmJImage produces the lib/modules jimage in a JDK9+ based GraalVM.
+    """
+    __metaclass__ = ABCMeta
+
+    def __init__(self, suite, jimage_jars, workingSets, theLicense=None, **kw_args):
+        super(GraalVmJImage, self).__init__(suite=suite, name='graalvm-jimage', subDir=None, srcDirs=[], deps=jimage_jars,
+                                            workingSets=workingSets, d=_suite.dir, theLicense=theLicense,
+                                            **kw_args)
+
+    def isPlatformDependent(self):
+        return True
+
+    def getBuildTask(self, args):
+        return GraalVmJImageBuildTask(self, args)
+
+    def output_directory(self):
+        return join(self.get_output_base(), self.name)
+
+    def output_witness(self):
+        return join(self.output_directory(), 'lib', 'modules')
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        if single:
+            raise ValueError("{} only produces multiple output".format(self))
+        out_dir = self.output_directory()
+        if exists(out_dir):
+            logical_root = out_dir
+            for root, _, files in os.walk(out_dir):
+                for name in files:
+                    yield join(root, name), join(relpath(root, logical_root), name)
+
+class GraalVmJImageBuildTask(mx.ProjectBuildTask):
+    def __init__(self, subject, args):
+        super(GraalVmJImageBuildTask, self).__init__(args, 1, subject)
+
+    def build(self):
+        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps)
+
+    def needsBuild(self, newestInput):
+        sup = super(GraalVmJImageBuildTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+        out_file = self.newestOutput()
+        if not out_file.exists():
+            return True, '{} does not exist'.format(out_file.path)
+        if newestInput and out_file.isOlderThan(newestInput):
+            return True, '{} is older than {}'.format(out_file, newestInput)
+        return False, None
+
+    def newestOutput(self):
+        return mx.TimeStampFile(self.subject.output_witness())
+
+    def clean(self, forBuild=False):
+        out_dir = self.subject.output_directory()
+        if exists(out_dir):
+            mx.rmtree(out_dir)
+
+    def __str__(self):
+        return 'Building {}'.format(self.subject.name)
 
 class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
     def __init__(self, component, name, deps, native_image_config, **kw_args): # pylint: disable=super-init-not-called
@@ -1319,18 +1394,10 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
 
     def _template_file(self):
         ext = 'cmd' if mx.get_os() == 'windows' else 'sh'
-        jdk = _get_jdk()
         _custom_launcher = self.subject.native_image_config.custom_bash_launcher
         if _custom_launcher:
-            if jdk.version.parts[0] >= 11:
-                tmpl = join(self.subject.get_origin_suite().dir, _custom_launcher + "_modules." + ext)
-                if os.path.isfile(tmpl):
-                    return tmpl
             return join(self.subject.suite.dir, _custom_launcher + "." + ext)
-        if jdk.version.parts[0] >= 11:
-            return join(_suite.mxDir, 'launcher_template_modules.' + ext)
-        else:
-            return join(_suite.mxDir, 'launcher_template.' + ext)
+        return join(_suite.mxDir, 'launcher_template.' + ext)
 
     def native_image_needs_build(self, out_file):
         sup = super(GraalVmBashLauncherBuildTask, self).native_image_needs_build(out_file)
@@ -1345,8 +1412,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         mx.ensure_dir_exists(dirname(output_file))
         graal_vm = self.subject.get_containing_graalvm()
         script_destination_directory = dirname(graal_vm.find_single_source_location('dependency:' + self.subject.name))
-        jdk = _get_jdk()
-        if jdk.version.parts[0] >= 11:
+        if _src_jdk_version >= 9:
             jre_bin = _get_graalvm_archive_path('bin', graal_vm=graal_vm)
         else:
             jre_bin = _get_graalvm_archive_path('jre/bin', graal_vm=graal_vm)
@@ -1361,34 +1427,14 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         def _get_main_class():
             return self.subject.native_image_config.main_class
 
+        def _get_extra_jvm_args():
+            return ' '.join(self.subject.native_image_config.extra_jvm_args)
+
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)
-
-        if jdk.version.parts[0] >= 11:
-            start = script_destination_directory
-
-            module_path = [
-                relpath(graal_vm.find_single_source_location('dependency:sdk:GRAAL_SDK'), start),
-                relpath(graal_vm.find_single_source_location('dependency:truffle:TRUFFLE_API'), start),
-            ]
-            upgrade_module_path = []
-            graal_jar = graal_vm.find_single_source_location('dependency:compiler:GRAAL', fatal_if_missing=False)
-            if graal_jar:
-                upgrade_module_path.append(relpath(graal_jar, start))
-            graal_management_jar = graal_vm.find_single_source_location('dependency:compiler:GRAAL_MANAGEMENT', fatal_if_missing=False)
-            if graal_management_jar:
-                upgrade_module_path.append(relpath(graal_management_jar, start))
-
-            def _get_module_path():
-                return os.pathsep.join(module_path)
-
-            def _get_upgrade_module_path():
-                return os.pathsep.join(upgrade_module_path)
-
-            _template_subst.register_no_arg('module_path', _get_module_path)
-            _template_subst.register_no_arg('upgrade_module_path', _get_upgrade_module_path)
+        _template_subst.register_no_arg('extra_jvm_args', _get_extra_jvm_args)
 
         with open(self._template_file(), 'r') as template, mx.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
             for line in template:
@@ -1437,10 +1483,14 @@ def graalvm_home_relative_classpath(dependencies, start=None, with_boot_jars=Fal
         assert not graal_vm.jdk_base.endswith('/')
         boot_jars_directory = graal_vm.jdk_base + "/" + boot_jars_directory
     _cp = set()
+    jimage = mx.project('graalvm-jimage', fatalIfMissing=False)
+    jimage_deps = jimage.deps if jimage else None
     mx.logv("Composing classpath for " + str(dependencies) + ". Entries:\n" + '\n'.join(('- {}:{}'.format(d.suite, d.name) for d in mx.classpath_entries(dependencies))))
     for _cp_entry in mx.classpath_entries(dependencies):
+        if jimage_deps and _cp_entry in jimage_deps:
+            continue
         if _cp_entry.isJdkLibrary() or _cp_entry.isJreLibrary():
-            jdk = _get_jdk()
+            jdk = _src_jdk
             if hasattr(_cp_entry, 'jdkStandardizedSince') and jdk.javaCompliance >= _cp_entry.jdkStandardizedSince:
                 continue
             jdk_location = relpath(_cp_entry.classpath_repr(jdk), jdk.home)
@@ -1743,21 +1793,13 @@ _base_graalvm_layout = {
         "dependency:sdk:LAUNCHER_COMMON",
         "dependency:sdk:LAUNCHER_COMMON/*.src.zip",
     ],
-    "<jre_base>/lib/jvmci/parentClassLoader.classpath": [
-        "string:" + _platform_classpath("../truffle/truffle-api.jar:../truffle/locator.jar"),
-    ],
     "<jre_base>/lib/truffle/": [
-        "dependency:truffle:TRUFFLE_API",
-        "dependency:truffle:TRUFFLE_API/*.src.zip",
         "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
         "dependency:truffle:TRUFFLE_DSL_PROCESSOR/*.src.zip",
         "dependency:truffle:TRUFFLE_TCK",
         "dependency:truffle:TRUFFLE_TCK/*.src.zip",
-        "dependency:LOCATOR",
-        "dependency:LOCATOR/*.src.zip",
     ],
 }
-
 
 def get_stage1_graalvm_distribution_name():
     name, _, _, _, _ = _get_graalvm_configuration('GraalVM', True)
@@ -1941,6 +1983,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     short_names = set()
     needs_stage1 = False
     installables = {}
+
     for component in registered_graalvm_components(stage1=False):
         if component.name in names:
             mx.abort("Two components are named '{}'. The name should be unique".format(component.name))
@@ -1994,6 +2037,19 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             register_project(polyglot_launcher_project)
             if with_svm:
                 register_project(GraalVmNativeProperties(None, polyglot_launcher_project.native_image_config))
+
+        if _src_jdk.javaCompliance >= '9':
+            jimage_jars = ['vm:LOCATOR']
+            for component in registered_graalvm_components(stage1=False):
+                jimage_jars.extend(component.boot_jars)
+                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
+                    jimage_jars.extend(component.jvmci_jars)
+
+            register_project(GraalVmJImage(
+                suite=_suite,
+                jimage_jars=jimage_jars,
+                workingSets=None,
+            ))
 
     if needs_stage1:
         if register_project:
@@ -2230,51 +2286,51 @@ def _str_to_bool(val):
     return val
 
 
-def check_versions(jdk_dir, graalvm_version_regex, expect_graalvm, check_jvmci):
+def check_versions(jdk, graalvm_version_regex, expect_graalvm, check_jvmci):
     """
-    :type jdk_dir: str
+    :type jdk: mx.JDKConfig | str
     :type graalvm_version_regex: typing.Pattern
     :type expect_graalvm: bool
     :type check_jvmci: bool
     """
     check_env = "Please check the value of the 'JAVA_HOME' environment variable, your mx 'env' files, and the documentation of this suite"
 
+    if isinstance(jdk, str):
+        assert isdir(jdk), 'Not a directory: ' + jdk
+        jdk = mx.JDKConfig(jdk)
     out = mx.OutputCapture()
-    java = join(jdk_dir, 'bin', 'java')
-    if check_jvmci and mx.run([java, '-XX:+JVMCIPrintProperties'], nonZeroIsFatal=False, out=out, err=out):
+    if check_jvmci and mx.run([jdk.java, '-XX:+JVMCIPrintProperties'], nonZeroIsFatal=False, out=out, err=out):
         mx.log_error(out.data)
-        mx.abort("'{}' is not a JVMCI-enabled JDK ('java -XX:+JVMCIPrintProperties' fails).\n{}.".format(jdk_dir, check_env))
+        mx.abort("'{}' is not a JVMCI-enabled JDK ('java -XX:+JVMCIPrintProperties' fails).\n{}.".format(jdk.home, check_env))
 
-    out = _decode(subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT)).rstrip()
+    out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
 
-    jdk_version = mx.JDKConfig(jdk_dir).version
+    jdk_version = jdk.version
     if jdk_version < mx.VersionSpec('1.8') or mx.VersionSpec('9') <= jdk_version < mx.VersionSpec('11'):
-        mx.abort("GraalVM requires JDK8 or >=JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n\n{}.".format(jdk_dir, jdk_version, out, check_env))
+        mx.abort("GraalVM requires JDK8 or >=JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n\n{}.".format(jdk.home, jdk_version, out, check_env))
 
     match = graalvm_version_regex.match(out)
     if expect_graalvm and match is None:
-        mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}".format(jdk_dir, out, graalvm_version_regex.pattern))
+        mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}".format(jdk.home, out, graalvm_version_regex.pattern))
     elif expect_graalvm and match.group('graalvm_version') != _suite.release_version():
-        mx.abort("'{}' has a wrong GraalVM version:\n{}\nexpected:\n{}".format(jdk_dir, match.group('graalvm_version'), _suite.release_version()))
+        mx.abort("'{}' has a wrong GraalVM version:\n{}\nexpected:\n{}".format(jdk.home, match.group('graalvm_version'), _suite.release_version()))
     elif not expect_graalvm and match:
-        mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk_dir, check_env))
+        mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk.home, check_env))
 
 
 def log_graalvm_vm_name(args):
     """Print the VM name of GraalVM"""
     parser = ArgumentParser(prog='mx graalvm-vm-name', description='Print the VM name of GraalVM')
     _ = parser.parse_args(args)
-    jdk_base, jdk_dir = _get_jdk_dir()
-    mx.log(graalvm_vm_name(get_final_graalvm_distribution(), join(jdk_dir, jdk_base)))
+    mx.log(graalvm_vm_name(get_final_graalvm_distribution(), _src_jdk))
 
 
-def graalvm_vm_name(graalvm_dist, jdk_home):
+def graalvm_vm_name(graalvm_dist, jdk):
     """
     :type jdk_home: str
     :rtype str:
     """
-    java = join(jdk_home, 'bin', 'java')
-    out = _decode(subprocess.check_output([java, '-version'], stderr=subprocess.STDOUT)).rstrip()
+    out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
     match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit )Server VM', out.split('\n')[-1])
     vm_name = match.group('base_vm_name') if match else ''
     vm_name += '{} {}'.format(graalvm_dist.base_name, graalvm_dist.vm_config_name.upper()) if graalvm_dist.vm_config_name else graalvm_dist.base_name

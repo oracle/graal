@@ -88,6 +88,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -565,7 +566,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         if (capability == TVMCI.class) {
             return capability.cast(tvmci);
         } else if (capability == LayoutFactory.class) {
-            return capability.cast(loadObjectLayoutFactory());
+            LayoutFactory layoutFactory = loadObjectLayoutFactory();
+            TruffleJDKServices.exportTo(layoutFactory.getClass());
+            return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
             return capability.cast(getTestTvmci());
         }
@@ -576,7 +579,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
             return null;
         } catch (ServiceConfigurationError e) {
-            // Happens on JDK9 when a service type has not been exported to Graal
+            // Happens on JDK 9 when a service type has not been exported to Graal
             // or Graal's module descriptor does not declare a use of capability.
             return null;
         }
@@ -863,14 +866,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return profilingEnabled;
     }
 
-    private static Object loadObjectLayoutFactory() {
+    private static LayoutFactory loadObjectLayoutFactory() {
         ServiceLoader<LayoutFactory> graalLoader = ServiceLoader.load(LayoutFactory.class, GraalTruffleRuntime.class.getClassLoader());
         if (Java8OrEarlier) {
             return selectObjectLayoutFactory(Collections.singleton(graalLoader));
         } else {
             /*
              * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
-             * loader on JDK 9. Its module dependencies such as Truffle are supplied via
+             * loader on JDK 9+. Its module dependencies such as Truffle are supplied via
              * --module-path which means they are loaded by the app class loader. As such, we need
              * to search the app class loader path as well.
              */

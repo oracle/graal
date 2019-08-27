@@ -58,7 +58,7 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
                 loadedClass = (Class<?>) defineClass.invoke(lookUp, gen);
             }
         } catch (Exception e) {
-            throw new ClassNotFoundException();
+            throw new ClassNotFoundException(className, e);
         }
         return loadedClass;
     }

@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.replacements.test.ReplacementsTest;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assert;
 import org.junit.Test;
@@ -116,6 +117,7 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
         } else {
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
             vmArgs.add("-D" + recursionPropName + "=true");
+            vmArgs.addAll(SubprocessUtil.getPackageOpeningOptions());
             vmArgs.add("-Djdk.attach.allowAttachSelf=true");
             Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
             if (proc.exitCode != 0) {

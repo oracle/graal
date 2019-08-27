@@ -25,12 +25,11 @@
 package org.graalvm.compiler.hotspot.test;
 
 import java.io.IOException;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
-
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -73,6 +72,7 @@ public class ReservedStackAccessTest extends HotSpotGraalCompilerTest {
         vmArgs.add("-XX:+UseJVMCICompiler");
         vmArgs.add("-Dgraal.Inline=false");
         vmArgs.add("-XX:CompileCommand=exclude,java/util/concurrent/locks/AbstractOwnableSynchronizer.setExclusiveOwnerThread");
+        vmArgs.addAll(SubprocessUtil.getPackageOpeningOptions());
 
         // Avoid SOE in HotSpotJVMCIRuntime.adjustCompilationLevel
         vmArgs.add("-Dgraal.CompileGraalWithC1Only=false");

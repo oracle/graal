@@ -95,6 +95,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.test.ModuleSupport;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.OptionsEncoder;
@@ -115,6 +116,10 @@ import sun.misc.Unsafe;
  * This class implements compile-the-world functionality with JVMCI.
  */
 public final class CompileTheWorld {
+
+    static {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
+    }
 
     /**
      * Magic token to denote that JDK classes are to be compiled. For JDK 8, the classes in
@@ -383,7 +388,7 @@ public final class CompileTheWorld {
                         Options.MaxClasses.getValue(harnessOptions),
                         Options.MethodFilter.getValue(harnessOptions),
                         Options.ExcludeMethodFilter.getValue(harnessOptions),
-                        Options.Verbose.getValue(harnessOptions),
+                        Options.Verbose.hasBeenSet(harnessOptions) ? Options.Verbose.getValue(harnessOptions) : !Options.MultiThreaded.getValue(harnessOptions),
                         harnessOptions,
                         new OptionValues(compilerOptions, parseOptions(Options.Config.getValue(harnessOptions))));
     }
@@ -1053,7 +1058,7 @@ public final class CompileTheWorld {
         static final ReflectionOptionDescriptors DESCRIPTORS = new ReflectionOptionDescriptors(Options.class,
                            "Help", "List options and their help messages and then exit.",
                       "Classpath", "Class path denoting methods to compile. Default is to compile boot classes.",
-                        "Verbose", "Verbose operation.",
+                        "Verbose", "Verbose operation. Default is !MultiThreaded.",
                    "LimitModules", "Comma separated list of module names to which compilation should be limited. " +
                                    "Module names can be prefixed with \"~\" to exclude the named module.",
                      "Iterations", "The number of iterations to perform.",

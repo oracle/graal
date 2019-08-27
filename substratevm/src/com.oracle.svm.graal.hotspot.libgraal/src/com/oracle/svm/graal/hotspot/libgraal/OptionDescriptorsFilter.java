@@ -35,6 +35,7 @@ import com.oracle.svm.hosted.NativeImageGenerator;
  * {@link OptionDescriptors}.
  */
 public class OptionDescriptorsFilter {
+
     public static boolean shouldIncludeDescriptors(Class<? extends OptionDescriptors> clazz) {
         if (clazz.getName().contains("SVMJUnitRunner")) {
             // Avoids trying to include com/oracle/mxtool/junit/MxJUnitRequest$Builder
