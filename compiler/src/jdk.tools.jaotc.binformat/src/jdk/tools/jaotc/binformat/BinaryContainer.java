@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -203,6 +203,8 @@ public final class BinaryContainer implements SymbolTable {
         {"StubRoutines::_aescrypt_decryptBlock", "_aot_stub_routines_aescrypt_decryptBlock"},
         {"StubRoutines::_cipherBlockChaining_encryptAESCrypt", "_aot_stub_routines_cipherBlockChaining_encryptAESCrypt"},
         {"StubRoutines::_cipherBlockChaining_decryptAESCrypt", "_aot_stub_routines_cipherBlockChaining_decryptAESCrypt"},
+        {"StubRoutines::_electronicCodeBook_encryptAESCrypt", "_aot_stub_routines_electronicCodeBook_encryptAESCrypt"},
+        {"StubRoutines::_electronicCodeBook_decryptAESCrypt", "_aot_stub_routines_electronicCodeBook_decryptAESCrypt"},
         {"StubRoutines::_updateBytesCRC32", "_aot_stub_routines_update_bytes_crc32"},
         {"StubRoutines::_crc_table_adr", "_aot_stub_routines_crc_table_adr"},
 
