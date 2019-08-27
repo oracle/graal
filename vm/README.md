@@ -40,17 +40,17 @@ To start the build, you can either run:
 
 1.
 ```bash
-$ mx --dynamicimports /substratevm,/tools,sulong,/graal-nodejs build
+$ mx --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs build
 ```
 
 2.
 ```bash
-$ export DEFAULT_DYNAMIC_IMPORTS=/substratevm,/tools,sulong,/graal-nodejs
+$ export DEFAULT_DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
 $ mx build
 ```
 or:
 ```bash
-$ export DYNAMIC_IMPORTS=/substratevm,/tools,sulong,/graal-nodejs
+$ export DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs
 $ mx build
 ```
 Note that the suites listed in:
@@ -99,14 +99,14 @@ Note that when the shared polyglot library is not built, Graal.nodejs can only w
 ### Example: avoid building the polyglot image and the polyglot shared library
 
 ```bash
-$ mx --disable-polyglot --disable-libpolyglot --dynamicimports /substratevm,/tools,sulong,/graal-js build
+$ mx --disable-polyglot --disable-libpolyglot --dynamicimports /substratevm,/tools,/sulong,/graal-js build
 ```
 builds the native SubstrateVM launchers for native-image, Graal.js, and Sulong, but no polyglot launcher and polyglot library.
 
 
 ### Example: force bash launchers
 ```bash
-$ mx --force-bash-launchers=true --dynamicimports /substratevm,/tools,sulong,/graal-nodejs
+$ mx --force-bash-launchers=true --dynamicimports /substratevm,/tools,/sulong,/graal-nodejs
 ```
 builds the native SubstrateVM launcher for native-image, and creates bash launchers for Sulong, Graal.js, and `polyglot`
 
