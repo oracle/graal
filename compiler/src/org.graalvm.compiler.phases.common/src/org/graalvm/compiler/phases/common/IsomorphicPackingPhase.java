@@ -46,6 +46,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -60,9 +61,11 @@ import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.FloatDivNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.OrNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
@@ -111,6 +114,39 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         public static Stamp getStamp(ValueNode node, NodeView view) {
             return (node instanceof WriteNode ? ((WriteNode) node).value() : node).stamp(view);
+        }
+
+        public static Set<Node> getInductionVariables(AddressNode address) {
+            final Set<Node> ivs = new HashSet<>();
+            final Deque<Node> bfs = new ArrayDeque<>();
+            bfs.add(address);
+
+            while (!bfs.isEmpty()) {
+                final Node node = bfs.remove();
+                if (node instanceof AddressNode) {
+                    final AddressNode addressNode = (AddressNode) node;
+                    if (addressNode.getIndex() != null) {
+                        bfs.add(addressNode.getIndex());
+                    }
+                } else if (node instanceof AddNode) {
+                    final AddNode addNode = (AddNode) node;
+                    bfs.add(addNode.getX());
+                    bfs.add(addNode.getY());
+                } else if (node instanceof LeftShiftNode) {
+                    final LeftShiftNode leftShiftNode = (LeftShiftNode) node;
+                    bfs.add(leftShiftNode.getX());
+                    bfs.add(leftShiftNode.getY());
+                } else if (node instanceof SignExtendNode) {
+                    final SignExtendNode signExtendNode = (SignExtendNode) node;
+                    bfs.add(signExtendNode.getValue());
+                } else if (node instanceof ConstantNode) {
+                    // constant nodes are leaf nodes
+                } else {
+                    ivs.add(node);
+                }
+            }
+
+            return ivs;
         }
     }
 
@@ -429,8 +465,12 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // Only use superword on types that are comparable
-            // TODO: Evaluate whether graph guarantees that pointers for same collection have same base
             if (s1a.getBase() != null && s2a.getBase() != null && !s1a.getBase().equals(s2a.getBase())) {
+                return false;
+            }
+
+            // Ensure induction variables are the same
+            if (!Util.getInductionVariables(s1a).equals(Util.getInductionVariables(s2a))) {
                 return false;
             }
 
