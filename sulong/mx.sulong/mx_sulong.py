@@ -90,6 +90,8 @@ supportedLLVMVersions = [
     '8.0'
 ]
 
+toolchainLLVMVersion = "8.0"
+
 # the basic LLVM dependencies for running the test cases and executing the mx commands
 basicLLVMDependencies = [
     mx_buildtools.ClangCompiler.CLANG,
@@ -513,7 +515,7 @@ def pullsuite(suiteDir, urls):
 def isSupportedLLVMVersion(llvmProgram, supportedVersions=None):
     """returns if the LLVM program bases on a supported LLVM version"""
     assert llvmProgram is not None
-    llvmVersion = getLLVMVersion(llvmProgram)
+    llvmVersion = getLLVMMajorVersion(llvmProgram)
     if supportedVersions is None:
         return llvmVersion in supportedLLVMVersions
     else:
@@ -538,14 +540,19 @@ def getVersion(program):
         versionString = _decode(e.output)
     return versionString
 
-def getLLVMVersion(llvmProgram):
+def getLLVMMajorVersion(llvmProgram):
     """executes the program with --version and extracts the LLVM version string"""
-    versionString = getVersion(llvmProgram)
-    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((\d)\.\d)(\.\d)?', versionString, re.IGNORECASE)
-    if printLLVMVersion is None:
-        return None
-    else:
-        return printLLVMVersion.group(3)
+    try:
+        versionString = getVersion(llvmProgram)
+        printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((\d)\.\d)(\.\d)?', versionString, re.IGNORECASE)
+        if printLLVMVersion is None:
+            return None
+        else:
+            return printLLVMVersion.group(3)
+    except OSError:
+        # clang/llvm not found -> assume we will be using the toolchain
+        return toolchainLLVMVersion.split('.')[0]
+
 
 # the makefiles do not check which version of clang they invoke
 versions_dont_have_optnone = ['3', '4']
@@ -557,7 +564,7 @@ def getLLVMExplicitArgs(mainLLVMVersion):
     return ["-Xclang", "-disable-O0-optnone"]
 
 def getClangImplicitArgs():
-    mainLLVMVersion = getLLVMVersion(mx_buildtools.ClangCompiler.CLANG)
+    mainLLVMVersion = getLLVMMajorVersion(mx_buildtools.ClangCompiler.CLANG)
     return " ".join(getLLVMExplicitArgs(mainLLVMVersion))
 
 mx_subst.path_substitutions.register_no_arg('clangImplicitArgs', getClangImplicitArgs)
