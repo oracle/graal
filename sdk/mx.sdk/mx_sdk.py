@@ -336,6 +336,9 @@ def register_graalvm_component(component):
         mx.logv('Suites \'{}\' and \'{}\' are registering a component with the same short name (\'{}\'), with priority \'{}\' and \'{}\' respectively.'.format(kept.suite.name, ignored.suite.name, kept.short_name, kept.priority, ignored.priority))
         mx.logv('Ignoring the one from suite \'{}\'.'.format(ignored.suite.name))
 
+    assert ',' not in component.short_name, component.short_name
+    assert ',' not in component.name, component.name
+
     _prev = _graalvm_components.get(component.short_name, None)
     if _prev:
         if _prev.priority == component.priority:
