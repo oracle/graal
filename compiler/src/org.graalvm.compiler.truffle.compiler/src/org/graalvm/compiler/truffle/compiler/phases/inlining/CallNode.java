@@ -56,6 +56,8 @@ public final class CallNode extends Node {
     private State state;
     @Successor private NodeSuccessorList<CallNode> children;
     private int recursionDepth;
+    private int depth;
+
     /*
      * The ir field and the childInvokes fields are initially null and empty collection, and
      * populated once the node is partially evaluated;
@@ -64,7 +66,7 @@ public final class CallNode extends Node {
     private EconomicMap<CallNode, Invoke> childInvokes;
 
     // Needs to be protected because of the @NodeInfo annotation
-    protected CallNode(TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency) {
+    protected CallNode(TruffleCallNode truffleCallNode, CompilableTruffleAST truffleAST, StructuredGraph ir, double rootRelativeFrequency, int depth) {
         super(TYPE);
         this.state = State.Cutoff;
         this.recursionDepth = -1;
@@ -75,10 +77,7 @@ public final class CallNode extends Node {
         this.ir = ir;
         this.childInvokes = EconomicMap.create();
         this.children = new NodeSuccessorList<>(this, 0);
-    }
-
-    public InliningPolicy getPolicy() {
-        return getCallTree().getPolicy();
+        this.depth = depth;
     }
 
     /**
@@ -88,7 +87,7 @@ public final class CallNode extends Node {
         Objects.requireNonNull(callTree);
         Objects.requireNonNull(truffleAST);
         Objects.requireNonNull(ir);
-        final CallNode root = new CallNode(null, truffleAST, ir, 1);
+        final CallNode root = new CallNode(null, truffleAST, ir, 1, 0);
         callTree.add(root);
         root.data = callTree.getPolicy().newCallNodeData(root);
         assert root.state == State.Cutoff : "Cannot expand a non-cutoff node. State is " + root.state;
@@ -98,12 +97,17 @@ public final class CallNode extends Node {
         return root;
     }
 
+    private static double calculateFrequency(CompilableTruffleAST target, TruffleCallNode callNode) {
+        return (double) Math.max(1, callNode.getCallCount()) / (double) Math.max(1, target.getCallCount());
+    }
+
     void putProperties(Map<Object, Object> properties) {
         properties.put("Frequency", rootRelativeFrequency);
         properties.put("Recursion Depth", getRecursionDepth());
         properties.put("IR Nodes", ir == null ? 0 : ir.getNodeCount());
         properties.put("Truffle Callees", truffleCallees.length);
         properties.put("Explore/inline ratio", exploreInlineRatio());
+        properties.put("Depth", depth);
         getPolicy().putProperties(this, properties);
     }
 
@@ -140,7 +144,7 @@ public final class CallNode extends Node {
         for (TruffleCallNode childCallNode : truffleCallees) {
             final double relativeFrequency = calculateFrequency(truffleAST, childCallNode);
             final double childFrequency = relativeFrequency * this.rootRelativeFrequency;
-            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), null, childFrequency);
+            CallNode callNode = new CallNode(childCallNode, childCallNode.getCurrentCallTarget(), null, childFrequency, this.depth + 1);
             getCallTree().add(callNode);
             this.children.add(callNode);
             callNode.data = getPolicy().newCallNodeData(callNode);
@@ -148,8 +152,12 @@ public final class CallNode extends Node {
         getPolicy().afterAddChildren(this);
     }
 
-    private static double calculateFrequency(CompilableTruffleAST target, TruffleCallNode callNode) {
-        return (double) Math.max(1, callNode.getCallCount()) / (double) Math.max(1, target.getCallCount());
+    public int getDepth() {
+        return depth;
+    }
+
+    public InliningPolicy getPolicy() {
+        return getCallTree().getPolicy();
     }
 
     private void partiallyEvaluateRoot() {

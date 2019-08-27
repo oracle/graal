@@ -28,10 +28,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
 final class DefaultPolicy implements InliningPolicy {
 
+    private static final int MAX_DEPTH = 15;
     private final OptionValues optionValues;
     private int expandedCount = 0;
 
@@ -48,19 +50,20 @@ final class DefaultPolicy implements InliningPolicy {
     public void run(CallTree tree) {
         while (expandedCount <= TruffleCompilerOptions.TruffleInliningExpansionBudget.getValue(optionValues)) {
             final CallNode highestFrequencyNode = getNodeToExpand(tree);
-            if (highestFrequencyNode != null) {
-                highestFrequencyNode.expand();
-            } else {
+            if (highestFrequencyNode == null) {
                 break;
+            }
+            final Integer maximumRecursiveInliningValue = SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue(optionValues);
+            if (highestFrequencyNode.getRecursionDepth() <= maximumRecursiveInliningValue && highestFrequencyNode.getDepth() < MAX_DEPTH) {
+                highestFrequencyNode.expand();
             }
         }
         while (tree.getRoot().getIR().getNodeCount() <= TruffleCompilerOptions.TruffleInliningInliningBudget.getValue(optionValues)) {
             final CallNode highestFrequencyNode = getNodeToInline(tree);
-            if (highestFrequencyNode != null) {
-                highestFrequencyNode.inline();
-            } else {
+            if (highestFrequencyNode == null) {
                 break;
             }
+            highestFrequencyNode.inline();
         }
     }
 
