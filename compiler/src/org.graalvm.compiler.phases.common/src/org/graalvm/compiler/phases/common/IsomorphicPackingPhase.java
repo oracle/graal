@@ -1118,19 +1118,19 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return;
             }
 
-            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", currentBlock.toString(), packSet.size());
+            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d - %s", currentBlock.toString(), packSet.size(), packSet);
 
             extendPacklist(packSet);
             if (packSet.isEmpty()) {
                 return;
             }
 
-            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", currentBlock.toString(), packSet.size());
+            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d - %s", currentBlock.toString(), packSet.size(), packSet);
 
             // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
 
-            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", currentBlock.toString(), combinedPackSet.size());
+            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d - %s", currentBlock.toString(), combinedPackSet.size(), combinedPackSet);
 
             try (DebugContext.Scope s = debug.scope("schedule")) {
                 schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), combinedPackSet);
