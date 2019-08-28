@@ -813,6 +813,15 @@ mx_subst.path_substitutions.register_with_arg('toolchainGetIdentifier',
                                               lambda name: _get_toolchain(name).get_toolchain_subdir())
 
 
+def create_toolchain_root_provider(name, dist):
+    def provider():
+        bootstrap_graalvm = mx.get_env('SULONG_BOOTSTRAP_GRAALVM')
+        if bootstrap_graalvm:
+            return os.path.join(bootstrap_graalvm, 'jre', 'languages', 'llvm', name)
+        return mx.distribution(dist).get_output()
+    return provider
+
+
 class ToolchainConfig(object):
     _tool_map = {
         "CC": ["graalvm-{name}-clang", "graalvm-clang", "clang", "cc", "gcc"],
@@ -822,7 +831,7 @@ class ToolchainConfig(object):
     def __init__(self, name, dist, bootstrap_dist, tools, suite):
         self.name = name
         self.dist = dist
-        self.bootstrap_dist = bootstrap_dist
+        self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
         self.tools = tools
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
@@ -832,6 +841,8 @@ class ToolchainConfig(object):
         mx.update_commands(_suite, {
             self.mx_command: [self._toolchain_helper, 'launch {} toolchain commands'.format(self.name)],
         })
+        # register bootstrap toolchain substitution
+        mx_subst.path_substitutions.register_no_arg(name + 'ToolchainRoot', self.bootstrap_provider)
         if self.name in _toolchains:
             mx.abort("Toolchain '{}' registered twice".format(self.name))
         _toolchains[self.name] = self
@@ -869,7 +880,7 @@ class ToolchainConfig(object):
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist, tool))
 
     def get_toolchain_tool(self, tool):
-        return os.path.join(mx.distribution(self.bootstrap_dist).get_output(), 'bin', self._tool_to_exe(tool))
+        return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
 
     def get_toolchain_subdir(self):
         return self.name
