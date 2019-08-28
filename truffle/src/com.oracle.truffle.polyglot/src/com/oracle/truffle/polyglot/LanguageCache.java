@@ -491,11 +491,13 @@ final class LanguageCache implements Comparable<LanguageCache> {
             synchronized (this) {
                 if (languageClass == null) {
                     try {
-                        // In JDK 9+, the Truffle API packages must be dynamically exported to
-                        // a Truffle language since the Truffle API module descriptor only
-                        // exports the packages to modules known at build time (such as the
-                        // Graal module).
-                        TruffleJDKServices.exportTo(loader, null);
+                        if (!TruffleOptions.AOT) {
+                            // In JDK 9+, the Truffle API packages must be dynamically exported to
+                            // a Truffle language since the Truffle API module descriptor only
+                            // exports the packages to modules known at build time (such as the
+                            // Graal module).
+                            TruffleJDKServices.exportTo(loader, null);
+                        }
 
                         Class<?> loadedClass = Class.forName(className, true, loader);
                         Registration reg = loadedClass.getAnnotation(Registration.class);

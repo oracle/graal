@@ -244,11 +244,13 @@ final class InstrumentCache {
 
     private void initializeInstrumentClass() {
         try {
-            // In JDK 9+, the Truffle API packages must be dynamically exported to
-            // a Truffle instrument since the Truffle API module descriptor only
-            // exports the packages to modules known at build time (such as the
-            // Graal module).
-            TruffleJDKServices.exportTo(loader, null);
+            if (!TruffleOptions.AOT) {
+                // In JDK 9+, the Truffle API packages must be dynamically exported to
+                // a Truffle instrument since the Truffle API module descriptor only
+                // exports the packages to modules known at build time (such as the
+                // Graal module).
+                TruffleJDKServices.exportTo(loader, null);
+            }
             instrumentClass = Class.forName(className, true, loader).asSubclass(TruffleInstrument.class);
         } catch (Exception ex) {
             throw new IllegalStateException("Cannot initialize " + getName() + " instrument with implementation " + className, ex);

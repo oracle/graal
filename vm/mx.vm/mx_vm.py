@@ -2074,15 +2074,15 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 register_project(GraalVmNativeProperties(None, polyglot_launcher_project.native_image_config))
 
         if _src_jdk.javaCompliance >= '9':
-            jimage_jars = ['vm:LOCATOR']
+            jimage_jars = set(['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API', 'vm:LOCATOR'])
             for component in registered_graalvm_components(stage1=False):
-                jimage_jars.extend(component.boot_jars)
+                jimage_jars.update(component.boot_jars)
                 if isinstance(component, mx_sdk.GraalVmJvmciComponent):
-                    jimage_jars.extend(component.jvmci_jars)
+                    jimage_jars.update(component.jvmci_jars)
 
             register_project(GraalVmJImage(
                 suite=_suite,
-                jimage_jars=jimage_jars,
+                jimage_jars=list(jimage_jars),
                 workingSets=None,
             ))
 
