@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -36,9 +37,12 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
 
+import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 
@@ -63,8 +67,9 @@ public class RemoveUnwindPhase extends Phase {
         }
 
         List<InvokeWithExceptionNode> invocations = new ArrayList<>();
+        List<BytecodeExceptionNode> bytecodeExceptionNodes = new ArrayList<>();
         for (UnwindNode node : graph.getNodes().filter(UnwindNode.class)) {
-            walkBack(node.predecessor(), node, invocations);
+            walkBack(node.predecessor(), node, invocations, bytecodeExceptionNodes);
         }
 
         /*
@@ -72,7 +77,14 @@ public class RemoveUnwindPhase extends Phase {
          * deleted nodes during graph traversal.
          */
         for (InvokeWithExceptionNode node : invocations) {
-            node.replaceWithInvoke();
+            if (node.isAlive()) {
+                node.replaceWithInvoke();
+            }
+        }
+        for (BytecodeExceptionNode bytecodeExceptionNode : bytecodeExceptionNodes) {
+            if (bytecodeExceptionNode.isAlive()) {
+                convertToThrow(bytecodeExceptionNode);
+            }
         }
     }
 
@@ -83,21 +95,37 @@ public class RemoveUnwindPhase extends Phase {
      * rewritten to a plain {@link InvokeNode}, i.e., no exception handler entry is created for such
      * invokes.
      */
-    protected void walkBack(Node n, Node successor, List<InvokeWithExceptionNode> invocations) {
+    private static void walkBack(Node n, Node successor, List<InvokeWithExceptionNode> invocations, List<BytecodeExceptionNode> bytecodeExceptionNodes) {
         if (n instanceof InvokeWithExceptionNode) {
             InvokeWithExceptionNode node = (InvokeWithExceptionNode) n;
             if (node.exceptionEdge() == successor) {
                 invocations.add(node);
             }
 
+        } else if (n instanceof BytecodeExceptionNode) {
+            BytecodeExceptionNode node = (BytecodeExceptionNode) n;
+            bytecodeExceptionNodes.add(node);
+
         } else if (n instanceof MergeNode) {
             MergeNode node = (MergeNode) n;
             for (ValueNode predecessor : node.cfgPredecessors()) {
-                walkBack(predecessor, node, invocations);
+                walkBack(predecessor, node, invocations, bytecodeExceptionNodes);
             }
 
         } else if (n instanceof EndNode || n instanceof LoopExitNode || n instanceof ExceptionObjectNode) {
-            walkBack(n.predecessor(), n, invocations);
+            walkBack(n.predecessor(), n, invocations, bytecodeExceptionNodes);
         }
+    }
+
+    private static void convertToThrow(BytecodeExceptionNode bytecodeExceptionNode) {
+        StructuredGraph graph = bytecodeExceptionNode.graph();
+
+        ThrowBytecodeExceptionNode throwNode = graph.add(new ThrowBytecodeExceptionNode(bytecodeExceptionNode.getExceptionKind(), bytecodeExceptionNode.getArguments()));
+        throwNode.setStateBefore(bytecodeExceptionNode.stateAfter());
+
+        FixedWithNextNode predecessor = (FixedWithNextNode) bytecodeExceptionNode.predecessor();
+        GraphUtil.killCFG(bytecodeExceptionNode);
+        assert predecessor.next() == null : "must be killed now";
+        predecessor.setNext(throwNode);
     }
 }
