@@ -32,7 +32,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.tools.lsp.api.ContextAwareExecutor;
+import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.types.SymbolInformation;
 import org.graalvm.tools.lsp.server.types.SymbolKind;

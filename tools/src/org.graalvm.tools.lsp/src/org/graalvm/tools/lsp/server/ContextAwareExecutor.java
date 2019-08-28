@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.tools.lsp.api;
+package org.graalvm.tools.lsp.server;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;

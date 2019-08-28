@@ -30,7 +30,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.graalvm.tools.lsp.api.ContextAwareExecutor;
+import org.graalvm.tools.lsp.server.ContextAwareExecutor;
 import org.graalvm.tools.lsp.server.types.DocumentHighlight;
 import org.graalvm.tools.lsp.server.types.DocumentHighlightKind;
 import org.graalvm.tools.lsp.server.types.Range;

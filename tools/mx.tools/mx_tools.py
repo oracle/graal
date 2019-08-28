@@ -163,7 +163,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     dir_name='lsp',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=['tools:LSP', 'tools:LSP_API'],
+    truffle_jars=['tools:LSP'],
     support_distributions=['tools:LSP_GRAALVM_SUPPORT'],
     include_by_default=True,
 ))

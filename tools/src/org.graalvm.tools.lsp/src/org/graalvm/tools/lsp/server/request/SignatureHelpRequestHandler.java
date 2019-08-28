@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import org.graalvm.tools.lsp.api.ContextAwareExecutor;
-import org.graalvm.tools.lsp.api.interop.LSPLibrary;
+import org.graalvm.tools.lsp.server.ContextAwareExecutor;
+import org.graalvm.tools.lsp.interop.LSPLibrary;
 import org.graalvm.tools.lsp.exceptions.DiagnosticsNotification;
 import org.graalvm.tools.lsp.instrument.LSPInstrument;
 import org.graalvm.tools.lsp.server.types.ParameterInformation;

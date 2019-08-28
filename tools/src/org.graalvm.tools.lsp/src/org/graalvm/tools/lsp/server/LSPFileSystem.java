@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.tools.lsp.instrument;
+package org.graalvm.tools.lsp.server;
 
 import java.io.IOException;
 import java.net.URI;
@@ -45,7 +45,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.tools.lsp.api.VirtualLanguageServerFileProvider;
 
 /**
  * A custom, read-only file system, to create a sandbox to avoid unwanted side-effects. A
