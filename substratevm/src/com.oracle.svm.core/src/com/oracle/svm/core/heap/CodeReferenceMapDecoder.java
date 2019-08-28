@@ -27,12 +27,14 @@ package com.oracle.svm.core.heap;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -125,8 +127,12 @@ public class CodeReferenceMapDecoder {
                  * the derived reference point to.
                  */
                 Pointer basePtr = baseAddress.isNull() ? objRef : objRef.readWord(0);
+                boolean actualCompressed = compressed;
+                if (baseAddress.isNonNull()) {
+                    actualCompressed = CompressionModifier.get().actualCompression(objRef, compressed);
+                }
 
-                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, actualCompressed);
                 if (!visitResult) {
                     return false;
                 }
@@ -158,7 +164,7 @@ public class CodeReferenceMapDecoder {
                     Pointer derivedPtr = baseAddress.isNull() ? derivedRef : derivedRef.readWord(0);
                     int innerOffset = NumUtil.safeToInt(derivedPtr.subtract(basePtr).rawValue());
 
-                    final boolean derivedVisitResult = visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed);
+                    final boolean derivedVisitResult = visitor.visitObjectReferenceInline(derivedRef, innerOffset, actualCompressed);
                     if (!derivedVisitResult) {
                         return false;
                     }
@@ -166,7 +172,11 @@ public class CodeReferenceMapDecoder {
                 objRef = objRef.add(refSize);
             } else {
                 for (long c = 0; c < count; c += 1) {
-                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed);
+                    boolean actualCompressed = compressed;
+                    if (baseAddress.isNonNull()) {
+                        actualCompressed = CompressionModifier.get().actualCompression(objRef, compressed);
+                    }
+                    final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, actualCompressed);
                     if (!visitResult) {
                         return false;
                     }
@@ -175,5 +185,42 @@ public class CodeReferenceMapDecoder {
             }
         }
         return true;
+    }
+
+    public interface CompressionModifier {
+
+        static CompressionModifier get() {
+            return ImageSingletons.lookup(CompressionModifier.class);
+        }
+
+        boolean actualCompression(Pointer objRef, boolean compressed);
+    }
+
+    public static class TrustingCompressionModifier implements CompressionModifier {
+
+        @Override
+        public boolean actualCompression(Pointer objRef, boolean compressed) {
+            return compressed;
+        }
+    }
+
+    public static class IntrospectiveCompressionModifier implements CompressionModifier {
+
+        private long heapSize = -1;
+
+        @Override
+        public boolean actualCompression(Pointer objRef, boolean compressed) {
+            if (heapSize == -1) {
+                heapSize = Isolates.IMAGE_HEAP_END.get().rawValue() - Isolates.IMAGE_HEAP_BEGIN.get().rawValue();
+            }
+            if (objRef.isNull()) {
+                return false;
+            }
+            long value = objRef.readLong(0);
+            if (value == 0) {
+                return false;
+            }
+            return value < heapSize;
+        }
     }
 }

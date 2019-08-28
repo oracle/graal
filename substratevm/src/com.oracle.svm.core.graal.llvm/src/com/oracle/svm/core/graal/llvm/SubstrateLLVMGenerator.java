@@ -31,6 +31,8 @@ import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
@@ -42,6 +44,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
@@ -52,6 +55,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -63,6 +67,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -174,6 +179,60 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     @Override
     protected ResolvedJavaMethod findForeignCallTarget(ForeignCallDescriptor descriptor) {
         return ((SnippetRuntime.SubstrateForeignCallDescriptor) descriptor).findMethod(getMetaAccess());
+    }
+
+    @Override
+    public Value emitConstant(LIRKind kind, Constant constant) {
+        Value rawConstant = super.emitConstant(kind, constant);
+        if (SubstrateOptions.SpawnIsolates.getValue() && kind.isReference(0) && !kind.isCompressedReference(0)) {
+            return emitUncompress(rawConstant, ReferenceAccess.singleton().getCompressEncoding(), false);
+        }
+        return rawConstant;
+    }
+
+    @Override
+    public AllocatableValue emitLoadConstant(ValueKind<?> kind, Constant constant) {
+        AllocatableValue rawConstant = super.emitLoadConstant(kind, constant);
+        if (SubstrateOptions.SpawnIsolates.getValue() && ((LIRKind) kind).isReference(0) && !((LIRKind) kind).isCompressedReference(0)) {
+            return (AllocatableValue) emitUncompress(rawConstant, ReferenceAccess.singleton().getCompressEncoding(), false);
+        }
+        return rawConstant;
+    }
+
+    @Override
+    public Value emitCompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
+        LLVMValueRef uncompressed = builder.buildPtrToInt(getVal(pointer), builder.longType());
+        LLVMValueRef heapBase = getSpecialRegister(LLVMFeature.HEAP_BASE_INDEX);
+        LLVMValueRef compressed = builder.buildSub(uncompressed, heapBase);
+
+        if (!nonNull) {
+            LLVMValueRef isNull = builder.buildIsNull(uncompressed);
+            compressed = builder.buildSelect(isNull, uncompressed, compressed);
+        }
+
+        if (encoding.hasShift()) {
+            compressed = builder.buildShr(compressed, builder.constantInt(encoding.getShift()));
+        }
+
+        return new LLVMVariable(builder.buildRegisterObject(builder.buildIntToPtr(compressed, builder.rawPointerType())));
+    }
+
+    @Override
+    public Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull) {
+        LLVMValueRef compressed = builder.buildPtrToInt(getVal(pointer), builder.longType());
+
+        if (encoding.hasShift()) {
+            compressed = builder.buildShl(compressed, builder.constantInt(encoding.getShift()));
+        }
+
+        LLVMValueRef heapBase = getSpecialRegister(LLVMFeature.HEAP_BASE_INDEX);
+        LLVMValueRef uncompressed = builder.buildAdd(compressed, heapBase);
+        if (!nonNull) {
+            LLVMValueRef isNull = builder.buildIsNull(compressed);
+            uncompressed = builder.buildSelect(isNull, compressed, uncompressed);
+        }
+
+        return new LLVMVariable(builder.buildRegisterObject(builder.buildIntToPtr(uncompressed, builder.rawPointerType())));
     }
 
     @Override

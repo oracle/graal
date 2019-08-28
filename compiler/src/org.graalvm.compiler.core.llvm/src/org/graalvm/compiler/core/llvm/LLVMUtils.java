@@ -379,7 +379,7 @@ public class LLVMUtils {
 
         @Override
         public LIRKind getNarrowOopKind() {
-            throw unimplemented();
+            return LIRKind.compressedReference(new LLVMKind(LLVM.LLVMPointerType(LLVM.LLVMInt8TypeInContext(context), TRACKED_POINTER_ADDRESS_SPACE)));
         }
 
         @Override
