@@ -110,8 +110,6 @@ public class HostedGraphKit extends SubstrateGraphKit {
             throwInvocationTargetException();
 
             endInvokeWithException();
-
-            mergeUnwinds();
         }
     }
 
@@ -131,7 +129,6 @@ public class HostedGraphKit extends SubstrateGraphKit {
         createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, exception);
 
         append(new UnwindNode(ite));
-        mergeUnwinds();
     }
 
 }

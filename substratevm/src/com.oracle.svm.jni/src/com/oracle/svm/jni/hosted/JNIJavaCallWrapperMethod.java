@@ -251,8 +251,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
         kit.createReturn(returnValue, returnKind);
 
-        assert graph.verify();
-        return graph;
+        return kit.finalizeGraph();
     }
 
     private static ValueNode createInvoke(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
