@@ -48,22 +48,32 @@ final class DefaultPolicy implements InliningPolicy {
 
     @Override
     public void run(CallTree tree) {
-        while (expandedCount <= TruffleCompilerOptions.TruffleInliningExpansionBudget.getValue(optionValues)) {
-            final CallNode highestFrequencyNode = getNodeToExpand(tree);
-            if (highestFrequencyNode == null) {
+        final int expansionBudget = TruffleCompilerOptions.TruffleInliningExpansionBudget.getValue(optionValues);
+        CallNode candidate;
+        while ((candidate = getNodeToExpand(tree)) != null) {
+            if (candidate.isForced()) {
+                candidate.expand();
+                continue;
+            }
+            if (expandedCount > expansionBudget) {
                 break;
             }
             final Integer maximumRecursiveInliningValue = SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue(optionValues);
-            if (highestFrequencyNode.getRecursionDepth() <= maximumRecursiveInliningValue && highestFrequencyNode.getDepth() < MAX_DEPTH) {
-                highestFrequencyNode.expand();
-            }
-        }
-        while (tree.getRoot().getIR().getNodeCount() <= TruffleCompilerOptions.TruffleInliningInliningBudget.getValue(optionValues)) {
-            final CallNode highestFrequencyNode = getNodeToInline(tree);
-            if (highestFrequencyNode == null) {
+            if (candidate.getRecursionDepth() > maximumRecursiveInliningValue && candidate.getDepth() > MAX_DEPTH) {
                 break;
             }
-            highestFrequencyNode.inline();
+            candidate.expand();
+        }
+        final int inliningBudget = TruffleCompilerOptions.TruffleInliningInliningBudget.getValue(optionValues);
+        while ((candidate = getNodeToInline(tree)) != null) {
+            if (candidate.isForced()) {
+                candidate.inline();
+                continue;
+            }
+            if (tree.getRoot().getIR().getNodeCount() + candidate.getIR().getNodeCount() > inliningBudget) {
+                break;
+            }
+            candidate.inline();
         }
     }
 
