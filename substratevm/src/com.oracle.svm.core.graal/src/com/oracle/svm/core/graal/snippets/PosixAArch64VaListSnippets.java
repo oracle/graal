@@ -186,10 +186,10 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {
 
-        private final SnippetInfo vaArgDouble = snippet(PosixAMD64VaListSnippets.class, "vaArgDoubleSnippet");
-        private final SnippetInfo vaArgFloat = snippet(PosixAMD64VaListSnippets.class, "vaArgFloatSnippet");
-        private final SnippetInfo vaArgLong = snippet(PosixAMD64VaListSnippets.class, "vaArgLongSnippet");
-        private final SnippetInfo vaArgInt = snippet(PosixAMD64VaListSnippets.class, "vaArgIntSnippet");
+        private final SnippetInfo vaArgDouble = snippet(PosixAArch64VaListSnippets.class, "vaArgDoubleSnippet");
+        private final SnippetInfo vaArgFloat = snippet(PosixAArch64VaListSnippets.class, "vaArgFloatSnippet");
+        private final SnippetInfo vaArgLong = snippet(PosixAArch64VaListSnippets.class, "vaArgLongSnippet");
+        private final SnippetInfo vaArgInt = snippet(PosixAArch64VaListSnippets.class, "vaArgIntSnippet");
 
         @Override
         public void lower(VaListNextArgNode node, LoweringTool tool) {
