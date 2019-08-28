@@ -66,7 +66,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -91,7 +90,6 @@ import com.oracle.svm.core.graal.nodes.SubstrateNewArrayNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewInstanceNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
@@ -378,8 +376,8 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
         Object thatObject = null;
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, memory.isNonNull())) {
-            WordBase header = ObjectHeaderImpl.getObjectHeaderImpl().formatHub(hub, false, false);
-            ObjectHeader.initializeHeaderOfNewObject(memory, header);
+            ObjectHeaderImpl objectHeader = ObjectHeaderImpl.getObjectHeaderImpl();
+            objectHeader.initializeHeaderOfNewObject(memory, hub, false, false);
             /*
              * For arrays the length initialization is handled by doCloneUninterruptibly since the
              * array length offset is the same as the first field offset.
@@ -433,8 +431,8 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
             emitPrefetchAllocate(memory, false);
         }
 
-        WordBase header = ObjectHeaderImpl.getObjectHeaderImpl().formatHub(hub, rememberedSet, false);
-        ObjectHeaderImpl.initializeHeaderOfNewObject(memory, header);
+        ObjectHeaderImpl objectHeader = ObjectHeaderImpl.getObjectHeaderImpl();
+        objectHeader.initializeHeaderOfNewObject(memory, hub, rememberedSet, false);
         if (fillContents) {
             int wordSize = ConfigurationValues.getTarget().wordSize;
             UnsignedWord offset = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getFirstFieldOffset());
@@ -473,8 +471,8 @@ public final class AllocationSnippets extends SubstrateTemplates implements Snip
 
     @Uninterruptible(reason = "Manipulates Objects via Pointers", callerMustBe = true)
     private static Object formatArrayImpl(Pointer memory, DynamicHub hub, int length, int layoutEncoding, UnsignedWord size, boolean fillContents, boolean rememberedSet, boolean unaligned) {
-        WordBase header = ObjectHeaderImpl.getObjectHeaderImpl().formatHub(hub, rememberedSet, unaligned);
-        ObjectHeader.initializeHeaderOfNewObject(memory, header);
+        ObjectHeaderImpl objectHeader = ObjectHeaderImpl.getObjectHeaderImpl();
+        objectHeader.initializeHeaderOfNewObject(memory, hub, rememberedSet, unaligned);
         memory.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length, LocationIdentity.INIT_LOCATION);
         if (fillContents) {
             UnsignedWord offset = LayoutEncoding.getArrayBaseOffset(layoutEncoding);

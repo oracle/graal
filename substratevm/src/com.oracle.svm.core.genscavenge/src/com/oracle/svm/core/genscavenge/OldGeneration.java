@@ -31,7 +31,6 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -93,11 +92,11 @@ public class OldGeneration extends Generation {
         Object result;
         /* Choose between object copying and chunk motion. */
         if (ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original)) {
-            trace.string("  aligned header: ").hex(ObjectHeader.readHeaderFromObject(original)).newline();
+            trace.string("  aligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
             /* Promote by Object copying to the old generation. */
             result = promoteAlignedObject(original);
         } else {
-            trace.string("  unaligned header: ").hex(ObjectHeader.readHeaderFromObject(original)).newline();
+            trace.string("  unaligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
             /* Promote by HeapChunk motion to the old generation. */
             result = promoteUnalignedObjectChunk(original);
         }

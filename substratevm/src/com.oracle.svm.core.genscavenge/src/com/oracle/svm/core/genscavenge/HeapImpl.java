@@ -133,6 +133,12 @@ public class HeapImpl extends Heap {
         return (HeapImpl) heap;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public boolean isInImageHeap(Object object) {
+        return objectHeaderImpl.isNonHeapAllocated(object);
+    }
+
     @Override
     public void suspendAllocation() {
         ThreadLocalAllocation.suspendThreadLocalAllocation();
@@ -331,9 +337,8 @@ public class HeapImpl extends Heap {
 
     public boolean isPinned(Object instance) {
         final ObjectHeaderImpl ohi = getObjectHeaderImpl();
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObject(instance);
         /* The instance is pinned if it is in the image heap. */
-        if (ohi.isBootImageHeaderBits(headerBits)) {
+        if (ohi.isBootImage(instance)) {
             return true;
         }
         /* Look down the list of individually pinned objects. */

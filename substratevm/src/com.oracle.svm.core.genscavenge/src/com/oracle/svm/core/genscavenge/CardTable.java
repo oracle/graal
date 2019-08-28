@@ -30,7 +30,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -448,7 +447,7 @@ public final class CardTable {
             final boolean paranoid = true;
             if (paranoid) {
                 /* Carefully check out the object. */
-                final UnsignedWord header = ObjectHeader.readHeaderFromPointer(p);
+                final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
                 /* It should *not* be a zapped value. */
                 if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
                     final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");
