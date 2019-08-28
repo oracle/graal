@@ -1099,10 +1099,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                         '-H:-ParseRuntimeOptions',
                         '-Dorg.graalvm.launcher.classpath=' + ':'.join(graalvm_home_relative_classpath(image_config.jar_distributions, graalvm_home).split(os.pathsep)),
                     ]
-                if isinstance(image_config, mx_sdk.LanguageLauncherConfig):
-                    build_args += ['-Dorg.graalvm.launcher.relative.language.home=' + image_config.destination.replace('/', os.path.sep)]
-                else:
-                    build_args += ['-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)]
+
+                build_args += ['-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)]
 
                 for language, path in image_config.relative_home_paths.items():
                     build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]

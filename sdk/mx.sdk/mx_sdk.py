@@ -49,7 +49,7 @@ import datetime
 import os
 import shutil
 
-from os.path import join, exists, isfile, isdir, basename
+from os.path import join, exists, isfile, isdir, dirname, basename, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from mx_gate import Task
@@ -183,6 +183,9 @@ class LanguageLauncherConfig(LauncherConfig):
         super(LanguageLauncherConfig, self).__init__(destination, jar_distributions, main_class, build_args,
                                                      is_sdk_launcher=is_sdk_launcher, is_polyglot=False, **kwargs)
         self.language = language
+
+        # Ensure the language launcher can always find the language home
+        self.add_relative_home_path(language, relpath('.', dirname(destination)))
 
 
 class LibraryConfig(AbstractNativeImageConfig):
