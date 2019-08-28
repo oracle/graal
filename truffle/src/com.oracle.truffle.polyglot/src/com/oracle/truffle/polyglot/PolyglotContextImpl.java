@@ -90,17 +90,27 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         private final ContextThreadLocal contextThreadLocal = new ContextThreadLocal();
         private final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Single Context");
         @CompilationFinal private volatile PolyglotContextImpl singleContext;
+
+        /** Copy constructor that keeps the previous state. */
+        SingleContextState() {
+            this(singleContextState.singleContext);
+            // called by TruffleFeature
+        }
+
+        SingleContextState(PolyglotContextImpl context) {
+            this.singleContext = context;
+        }
     }
 
-    @CompilationFinal private static SingleContextState singleContextState = new SingleContextState();
+    @CompilationFinal private static SingleContextState singleContextState = new SingleContextState(null);
 
     /*
      * Used from testing using reflection. Its invalid to call it anywhere else than testing. Used
      * in ContextLookupCompilationTest and EngineAPITest.
      */
-    static Object resetSingleContextState() {
+    static Object resetSingleContextState(boolean reuse) {
         SingleContextState prev = singleContextState;
-        singleContextState = new SingleContextState();
+        singleContextState = new SingleContextState(reuse ? prev.singleContext : null);
         return prev;
     }
 
