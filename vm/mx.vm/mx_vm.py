@@ -1858,29 +1858,21 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
             home_paths[component.installable_id] = base_dir + dependency_path
 
         def is_jar_distribution(val):
-            def _is_jar_distribution(val):
-                return isinstance(mx.dependency(val, fatalIfMissing=False), mx.JARDistribution)
-
-            if isinstance(val, str):
-                return val.startswith('dependency:') and _is_jar_distribution(val.split(':', 1)[1])
-            if isinstance(val, dict):
-                return val['source_type'] == 'dependency' and _is_jar_distribution(val['dependency'])
-            return False
+            return val['source_type'] == 'dependency' and isinstance(mx.dependency(val['dependency'], fatalIfMissing=False), mx.JARDistribution)
 
         def add_files_from_installable(installable, path_prefix, excluded_paths):
             component = installable.main_component
-            component_base_dir = _get_component_type_base(component)
+            component_base_dir = installable.path_substitutions.substitute(_get_component_type_base(component))
             support_dir_pattern = component_base_dir + component.dir_name + '/'
             launcher_configs = _get_launcher_configs(component)
 
-            for path, dists in installable.layout.items():
+            for path, source in installable._walk_layout():
                 if path.startswith(support_dir_pattern):
                     path_from_home = path.split(support_dir_pattern, 1)[1]
                     # take only the distributions that are not JAR distributions
-                    new_dists = [v for v in dists if not is_jar_distribution(v) and path_from_home not in excluded_paths]
-                    if new_dists:
+                    if not is_jar_distribution(source) and path_from_home not in excluded_paths:
                         new_path = path_prefix + path_from_home
-                        layout[new_path] = new_dists
+                        layout.setdefault(new_path, []).append(source)
 
             for launcher_config in launcher_configs:
                 destination = path_prefix + launcher_config.destination
