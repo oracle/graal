@@ -28,7 +28,7 @@
 
 from __future__ import print_function
 import os
-from os.path import join, exists, getmtime, basename, isdir
+from os.path import join, exists, getmtime, basename, dirname, isdir
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import re
 import stat
@@ -1121,105 +1121,134 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         return dst_jdk_dir, False
 
     mx.log('Updating/creating {} from {} since {}'.format(dst_jdk_dir, src_jdk.home, update_reason))
-    def _update_file(src, dst):
-        if mx.TimeStampFile(dst).isOlderThan(mx.TimeStampFile(src)):
+
+    # The GraalJDK is created in a temporary directory since multiple processes
+    # may be racing to do the creation.
+    tmp_dir = tempfile.mkdtemp(prefix=basename(dst_jdk_dir), dir=dirname(dst_jdk_dir))
+    tmp_dst_jdk_dir = join(tmp_dir, 'jdk')
+    dst_jdk_dir_timestamp = mx.TimeStampFile(dst_jdk_dir)
+    try:
+
+        def _copy_file(src, dst):
             mx.log('Copying {} to {}'.format(src, dst))
             shutil.copyfile(src, dst)
 
-    if isJDK8:
-        jre_dir = join(dst_jdk_dir, 'jre')
-        if not exists(dst_jdk_dir):
-            shutil.copytree(src_jdk.home, dst_jdk_dir)
+        if isJDK8:
+            jre_dir = join(tmp_dst_jdk_dir, 'jre')
+            shutil.copytree(src_jdk.home, tmp_dst_jdk_dir)
 
-        boot_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'boot'))
-        jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
+            boot_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'boot'))
+            jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
 
-        for src_jar in _graal_config().jvmci_jars:
-            _update_file(src_jar, join(jvmci_dir, basename(src_jar)))
+            for src_jar in _graal_config().jvmci_jars:
+                _copy_file(src_jar, join(jvmci_dir, basename(src_jar)))
 
-        boot_jars = _graal_config().boot_jars
-        if not export_truffle:
-            truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
-            for src_jar in _graal_config().truffle_jars:
-                _update_file(src_jar, join(truffle_dir, basename(src_jar)))
-                with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
-                    fp.write(join('..', 'truffle', basename(src_jar)))
+            boot_jars = _graal_config().boot_jars
+            if not export_truffle:
+                truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
+                for src_jar in _graal_config().truffle_jars:
+                    _copy_file(src_jar, join(truffle_dir, basename(src_jar)))
+                    with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
+                        fp.write(join('..', 'truffle', basename(src_jar)))
+            else:
+                boot_jars += _graal_config().truffle_jars
+
+            for src_jar in boot_jars:
+                _copy_file(src_jar, join(boot_dir, basename(src_jar)))
+
         else:
-            boot_jars += _graal_config().truffle_jars
+            module_dists = _graal_config().dists
+            _check_using_latest_jars(module_dists)
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names)
+            jre_dir = tmp_dst_jdk_dir
+            jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
+            if export_truffle:
+                jmd = as_java_module(_graal_config().dists_dict['truffle:TRUFFLE_API'], jdk)
+                add_exports = []
+                for package in jmd.packages:
+                    if package == 'com.oracle.truffle.api.impl':
+                        # The impl package should remain private
+                        continue
+                    if jmd.get_package_visibility(package, "<unnamed>") == 'concealed':
+                        add_exports.append('--add-exports={}/{}=ALL-UNNAMED'.format(jmd.name, package))
+                if add_exports:
+                    with open(join(tmp_dst_jdk_dir, '.add_exports'), 'w') as fp:
+                        fp.write(os.linesep.join(add_exports))
 
-        for src_jar in boot_jars:
-            _update_file(src_jar, join(boot_dir, basename(src_jar)))
+        if with_compiler_name_file:
+            with open(join(jvmci_dir, 'compiler-name'), 'w') as fp:
+                print('graal', file=fp)
 
-    else:
-        module_dists = _graal_config().dists
-        _check_using_latest_jars(module_dists)
-        if exists(dst_jdk_dir):
-            shutil.rmtree(dst_jdk_dir)
-        jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names)
-        jre_dir = dst_jdk_dir
-        jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
-        if export_truffle:
-            jmd = as_java_module(_graal_config().dists_dict['truffle:TRUFFLE_API'], jdk)
-            add_exports = []
-            for package in jmd.packages:
-                if package == 'com.oracle.truffle.api.impl':
-                    # The impl package should remain private
-                    continue
-                if jmd.get_package_visibility(package, "<unnamed>") == 'concealed':
-                    add_exports.append('--add-exports={}/{}=ALL-UNNAMED'.format(jmd.name, package))
-            if add_exports:
-                with open(join(dst_jdk_dir, '.add_exports'), 'w') as fp:
-                    fp.write(os.linesep.join(add_exports))
+        if jdk.javaCompliance < '9' and mx.get_os() not in ['darwin', 'windows']:
+            # On JDK 8, the server directory containing the JVM library is
+            # in an architecture specific directory (except for Darwin and Windows).
+            libjvm_dir = join(jre_dir, 'lib', mx.get_arch(), 'server')
+        elif mx.get_os() == 'windows':
+            libjvm_dir = join(jre_dir, 'bin', 'server')
+        else:
+            libjvm_dir = join(jre_dir, 'lib', 'server')
+        mx.ensure_dir_exists(libjvm_dir)
+        jvmlib = join(libjvm_dir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
 
-    if with_compiler_name_file:
-        with open(join(jvmci_dir, 'compiler-name'), 'w') as fp:
-            print('graal', file=fp)
+        vm_name = 'Graal'
+        with open(join(tmp_dst_jdk_dir, 'release.jvmci'), 'w') as fp:
+            for d in _graal_config().jvmci_dists:
+                s = d.suite
+                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
+                vm_name = vm_name + ':' + s.name + '_' + s.version()
+            for d in _graal_config().boot_dists + _graal_config().truffle_dists:
+                s = d.suite
+                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
 
-    if jdk.javaCompliance < '9' and mx.get_os() not in ['darwin', 'windows']:
-        # On JDK 8, the server directory containing the JVM library is
-        # in an architecture specific directory (except for Darwin and Windows).
-        libjvm_dir = join(jre_dir, 'lib', mx.get_arch(), 'server')
-    elif mx.get_os() == 'windows':
-        libjvm_dir = join(jre_dir, 'bin', 'server')
-    else:
-        libjvm_dir = join(jre_dir, 'lib', 'server')
-    mx.ensure_dir_exists(libjvm_dir)
-    jvmlib = join(libjvm_dir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
+        assert exists(jvmlib), jvmlib + ' does not exist'
+        out = mx.LinesOutputCapture()
+        mx.run([jdk.java, '-version'], err=out)
+        line = None
+        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\(build.*')
+        for line in out.lines:
+            m = pattern.match(line)
+            if m:
+                with open(join(libjvm_dir, 'vm.properties'), 'wb') as fp:
+                    # Modify VM name in `java -version` to be Graal along
+                    # with a suffix denoting the commit of each Graal jar.
+                    # For example:
+                    # Java HotSpot(TM) 64-Bit Graal:compiler_88847fb25d1a62977a178331a5e78fa5f8fcbb1a (build 25.71-b01-internal-jvmci-0.34, mixed mode)
+                    print('name=' + m.group(1) + vm_name, file=fp)
+                line = True
+                break
+        if line is not True:
+            mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
-    vm_name = 'Graal'
-    with open(jvmci_release_file.path, 'w') as fp:
-        for d in _graal_config().jvmci_dists:
-            s = d.suite
-            print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
-            vm_name = vm_name + ':' + s.name + '_' + s.version()
-        for d in _graal_config().boot_dists + _graal_config().truffle_dists:
-            s = d.suite
-            print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
+        unstrip_map = mx.make_unstrip_map(_graal_config().dists)
+        if unstrip_map:
+            with open(tmp_dst_jdk_dir + '.map', 'w') as fp:
+                fp.write(unstrip_map)
 
-    assert exists(jvmlib), jvmlib + ' does not exist'
-    out = mx.LinesOutputCapture()
-    mx.run([jdk.java, '-version'], err=out)
-    line = None
-    pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\(build.*')
-    for line in out.lines:
-        m = pattern.match(line)
-        if m:
-            with open(join(libjvm_dir, 'vm.properties'), 'wb') as fp:
-                # Modify VM name in `java -version` to be Graal along
-                # with a suffix denoting the commit of each Graal jar.
-                # For example:
-                # Java HotSpot(TM) 64-Bit Graal:compiler_88847fb25d1a62977a178331a5e78fa5f8fcbb1a (build 25.71-b01-internal-jvmci-0.34, mixed mode)
-                print('name=' + m.group(1) + vm_name, file=fp)
-            line = True
-            break
-    if line is not True:
-        mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
+    except:
+        shutil.rmtree(tmp_dir)
+        raise
 
-    unstrip_map = mx.make_unstrip_map(_graal_config().dists)
-    if unstrip_map:
-        with open(dst_jdk_dir + '.map', 'w') as fp:
-            fp.write(unstrip_map)
+    # Try delete the current dst_jdk_dir if it existed prior to creating
+    # tmp_dst_jdk_dir and has not be modified in between.
+    if dst_jdk_dir_timestamp.timestamp is not None and dst_jdk_dir_timestamp.timestamp == mx.TimeStampFile(dst_jdk_dir).timestamp:
+        old_dst_jdk_dir = join(tmp_dir, 'old_jdk')
+        try:
+            os.rename(dst_jdk_dir, old_dst_jdk_dir)
+        except:
+            # Silently assume another process won the race to rename dst_jdk_dir
+            pass
 
+    # Try atomically move tmp_dst_jdk_dir to dst_jdk_dir
+    try:
+        os.rename(tmp_dst_jdk_dir, dst_jdk_dir)
+    except:
+        if not exists(dst_jdk_dir):
+            raise
+        else:
+            # Silently assume another process won the race to create dst_jdk_dir
+            pass
+
+    shutil.rmtree(tmp_dir)
     return dst_jdk_dir, True
 
 #: The Graal compiler components
