@@ -70,6 +70,10 @@ class Linux64Suffix {
         @Substitute
         @CFunction("readdir64_r")
         private static native int readdir_r(DIR dirp, dirent entry, direntPointer result);
+
+        @Substitute
+        @CFunction(value = "readdir64_r", transition = CFunction.Transition.NO_TRANSITION)
+        private static native int readdir_r_no_transition(DIR dirp, dirent entry, direntPointer result);
     }
 
     @TargetClass(com.oracle.svm.core.posix.headers.Fcntl.flock.class)
