@@ -80,13 +80,59 @@ public final class GraalServices {
      * @throws SecurityException if on JDK8 and a security manager is present and it denies
      *             {@link JVMCIPermission}
      */
+    @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
+        if (IS_IN_NATIVE_IMAGE || IS_BUILDING_NATIVE_IMAGE) {
+            List<?> list = servicesCache.get(service);
+            if (list != null) {
+                return (Iterable<S>) list;
+            }
+            if (IS_IN_NATIVE_IMAGE) {
+                throw new InternalError(String.format("No %s providers found when building native image", service.getName()));
+            }
+        }
+
+        Iterable<S> providers = load0(service);
+
+        if (IS_BUILDING_NATIVE_IMAGE) {
+            synchronized (servicesCache) {
+                ArrayList<S> providersList = new ArrayList<>();
+                for (S provider : providers) {
+                    Module module = provider.getClass().getModule();
+                    if (isHotSpotGraalModule(module.getName())) {
+                        providersList.add(provider);
+                    }
+                }
+                providers = providersList;
+                servicesCache.put(service, providersList);
+                return providers;
+            }
+        }
+
+        return providers;
+    }
+
+    /**
+     * Determines if the module named by {@code name} is part of Graal when it is configured as a
+     * HotSpot JIT compiler.
+     */
+    private static boolean isHotSpotGraalModule(String name) {
+        if (name != null) {
+            return name.equals("jdk.internal.vm.compiler") ||
+                            name.equals("jdk.internal.vm.compiler.management") ||
+                            name.equals("com.oracle.graal.graal_enterprise");
+        }
+        return false;
+    }
+
+    protected static <S> Iterable<S> load0(Class<S> service) {
         Module module = GraalServices.class.getModule();
         // Graal cannot know all the services used by another module
         // (e.g. enterprise) so dynamically register the service use now.
         if (!module.canUse(service)) {
             module.addUses(service);
         }
+
         ModuleLayer layer = module.getLayer();
         Iterable<S> iterable = ServiceLoader.load(layer, service);
         return new Iterable<>() {
