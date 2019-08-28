@@ -107,16 +107,6 @@ public final class TruffleOptions {
     public static final NodeCost TraceRewritesFilterToCost;
 
     /**
-     * Enables the dumping of Node creations and AST rewrites in JSON format.
-     * <p>
-     * Can be set with {@code -Dtruffle.TraceASTJSON=true}.
-     *
-     * @since 0.8 or earlier
-     * @deprecated to be removed without replacement
-     */
-    @Deprecated public static final boolean TraceASTJSON;
-
-    /**
      * Forces ahead-of-time initialization.
      *
      * @since 0.8 or earlier
@@ -132,9 +122,6 @@ public final class TruffleOptions {
     }
 
     static {
-        final boolean[] values = new boolean[4];
-        final Object[] objs = new Object[3];
-
         /*
          * Ensure TruffleRuntime gets initialized before TruffleOptions are set. This allows a
          * specific TruffleRuntime to effect the system properties that are used to determine the
@@ -142,24 +129,33 @@ public final class TruffleOptions {
          */
         Truffle.getRuntime();
 
-        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+        class GetOptions implements PrivilegedAction<Void> {
+            boolean aot;
+            boolean traceRewrites;
+            boolean detailedRewriteReasons;
+            String traceRewritesFilterClass;
+            NodeCost traceRewritesFilterFromCost;
+            NodeCost traceRewritesFilterToCost;
+
+            @Override
             public Void run() {
-                values[0] = Boolean.getBoolean("truffle.TraceRewrites");
-                objs[0] = System.getProperty("truffle.TraceRewritesFilterClass");
-                objs[1] = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterFromCost"));
-                objs[2] = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
-                values[1] = Boolean.getBoolean("truffle.DetailedRewriteReasons");
-                values[2] = Boolean.getBoolean("truffle.TraceASTJSON");
-                values[3] = Boolean.getBoolean("com.oracle.graalvm.isaot");
+                aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
+                traceRewrites = Boolean.getBoolean("truffle.TraceRewrites");
+                detailedRewriteReasons = Boolean.getBoolean("truffle.DetailedRewriteReasons");
+                traceRewritesFilterClass = System.getProperty("truffle.TraceRewritesFilterClass");
+                traceRewritesFilterFromCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterFromCost"));
+                traceRewritesFilterToCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
                 return null;
             }
-        });
-        TraceRewrites = values[0];
-        DetailedRewriteReasons = values[1];
-        TraceASTJSON = values[2];
-        AOT = values[3];
-        TraceRewritesFilterClass = (String) objs[0];
-        TraceRewritesFilterFromCost = (NodeCost) objs[1];
-        TraceRewritesFilterToCost = (NodeCost) objs[2];
+        }
+
+        GetOptions options = new GetOptions();
+        AccessController.doPrivileged(options);
+        TraceRewrites = options.traceRewrites;
+        DetailedRewriteReasons = options.detailedRewriteReasons;
+        AOT = options.aot;
+        TraceRewritesFilterClass = options.traceRewritesFilterClass;
+        TraceRewritesFilterFromCost = options.traceRewritesFilterFromCost;
+        TraceRewritesFilterToCost = options.traceRewritesFilterToCost;
     }
 }

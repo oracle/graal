@@ -45,10 +45,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-
 /**
  * Helper function that allows to dump the AST during creation to a JSON format.
  *
@@ -57,55 +53,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 public final class JSONHelper {
 
     private JSONHelper() {
-    }
-
-    private static StringBuilder AstJsonDumpBuilder = new StringBuilder();
-
-    /** @since 0.8 or earlier */
-    @Deprecated
-    public static void dumpNewChild(Node parentNode, Node childNode) {
-        if (AstJsonDumpBuilder != null) {
-            AstJsonDumpBuilder.append("{ \"action\": \"insertNode\", \"parentId\": \"" + getID(parentNode) + "\", \"newId\": \"" + getID(childNode) + "\" },\n");
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    @Deprecated
-    public static void dumpReplaceChild(Node oldNode, Node newNode, CharSequence reason) {
-        if (AstJsonDumpBuilder != null) {
-            AstJsonDumpBuilder.append("{ \"action\": \"replaceNode\", \"oldId\": \"" + getID(oldNode) + "\", \"newId\": \"" + getID(newNode) + "\", \"reason\": " + quote(reason) + " },\n");
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    @Deprecated
-    public static void dumpNewNode(Node newNode) {
-        if (AstJsonDumpBuilder != null) {
-            String language = "";
-            RootNode root = newNode.getRootNode();
-            if (root != null) {
-                LanguageInfo clazz = root.getLanguageInfo();
-                if (clazz != null) {
-                    language = clazz.getId();
-                }
-            }
-            AstJsonDumpBuilder.append("{ \"action\": \"createNode\", \"newId\": \"" + getID(newNode) + "\", \"type\": \"" + getType(newNode) + "\", \"description\": \"" + newNode.getDescription() +
-                            "\", \"language\": \"" + language + "\"" + " },\n");
-        }
-    }
-
-    /** @since 0.8 or earlier */
-    @Deprecated
-    public static String getResult() {
-        return AstJsonDumpBuilder.toString();
-    }
-
-    private static String getID(Node newChild) {
-        return String.valueOf(newChild.hashCode());
-    }
-
-    private static String getType(Node node) {
-        return node.getClass().getSimpleName();
     }
 
     private static String quote(CharSequence value) {
@@ -148,12 +95,6 @@ public final class JSONHelper {
         }
         builder.append('"');
         return builder.toString();
-    }
-
-    /** @since 0.8 or earlier */
-    @Deprecated
-    public static void restart() {
-        AstJsonDumpBuilder = new StringBuilder();
     }
 
     /** @since 0.8 or earlier */

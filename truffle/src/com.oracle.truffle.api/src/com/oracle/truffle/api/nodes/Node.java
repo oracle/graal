@@ -63,7 +63,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.ExecutableNode.ReferenceCache;
 import com.oracle.truffle.api.source.Source;
@@ -107,9 +106,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     protected Node() {
         CompilerAsserts.neverPartOfCompilation("do not create a Node from compiled code");
         assert NodeClass.get(getClass()) != null; // ensure NodeClass constructor does not throw
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, null, null);
-        }
     }
 
     NodeClass getNodeClass() {
@@ -277,9 +273,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChild.isAdoptable()) {
             assert checkSameLanguages(newChild);
             newChild.parent = this;
-            if (TruffleOptions.TraceASTJSON) {
-                dump(this, newChild, null);
-            }
             NodeUtil.adoptChildrenHelper(newChild);
         }
     }
@@ -299,9 +292,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChild.isAdoptable()) {
             assert checkSameLanguages(newChild);
             newChild.parent = this;
-            if (TruffleOptions.TraceASTJSON) {
-                dump(this, newChild, null);
-            }
             count += NodeUtil.adoptChildrenAndCountHelper(newChild);
         }
         return count;
@@ -448,18 +438,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         if (TruffleOptions.TraceRewrites) {
             NodeUtil.traceRewrite(this, newNode, reason);
-        }
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, newNode, reason);
-        }
-    }
-
-    private static void dump(Node node, Node newChild, CharSequence reason) {
-        if (NodeAccessor.ACCESSOR != null) {
-            Accessor.DumpSupport dumpSupport = NodeAccessor.ACCESSOR.dumpSupport();
-            if (dumpSupport != null) {
-                dumpSupport.dump(node, newChild, reason);
-            }
         }
     }
 
