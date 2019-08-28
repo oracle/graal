@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
@@ -34,6 +34,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 final class DefaultPolicy implements InliningPolicy {
 
     private static final int MAX_DEPTH = 15;
+    private static final Comparator<CallNode> CALL_NODE_COMPARATOR = (o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency());
     private final OptionValues optionValues;
     private int expandedCount = 0;
 
@@ -41,64 +42,73 @@ final class DefaultPolicy implements InliningPolicy {
         this.optionValues = optionValues;
     }
 
-    @Override
-    public void afterExpand(CallNode callNode) {
-        expandedCount += callNode.getIR().getNodeCount();
+    private static PriorityQueue<CallNode> getQueue(CallTree tree, CallNode.State state) {
+        PriorityQueue<CallNode> queue = new PriorityQueue<>(CALL_NODE_COMPARATOR);
+        for (CallNode child : tree.getRoot().getChildren()) {
+            if (child.getState() == state) {
+                queue.add(child);
+            }
+        }
+        return queue;
+    }
+
+    private static void doInline(CallNode candidate, PriorityQueue<CallNode> inlineQueue) {
+        candidate.inline();
+        for (CallNode child : candidate.getChildren()) {
+            if (child.getState() == CallNode.State.Expanded) {
+                inlineQueue.add(child);
+            }
+        }
     }
 
     @Override
     public void run(CallTree tree) {
-        final int expansionBudget = TruffleCompilerOptions.TruffleInliningExpansionBudget.getValue(optionValues);
+        expand(tree);
+        inline(tree);
+    }
+
+    private void inline(CallTree tree) {
+        final int inliningBudget = TruffleCompilerOptions.TruffleInliningInliningBudget.getValue(optionValues);
+        final PriorityQueue<CallNode> inlineQueue = getQueue(tree, CallNode.State.Expanded);
         CallNode candidate;
-        while ((candidate = getNodeToExpand(tree)) != null) {
+        while ((candidate = inlineQueue.poll()) != null) {
             if (candidate.isForced()) {
-                candidate.expand();
+                doInline(candidate, inlineQueue);
+                continue;
+            }
+            if (tree.getRoot().getIR().getNodeCount() + candidate.getIR().getNodeCount() > inliningBudget) {
+                break;
+            }
+            doInline(candidate, inlineQueue);
+        }
+    }
+
+    private void expand(CallTree tree) {
+        final int expansionBudget = TruffleCompilerOptions.TruffleInliningExpansionBudget.getValue(optionValues);
+        final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
+        CallNode candidate;
+        while ((candidate = expandQueue.poll()) != null) {
+            if (candidate.isForced()) {
+                doExpand(candidate, expandQueue);
                 continue;
             }
             if (expandedCount > expansionBudget) {
                 break;
             }
             final Integer maximumRecursiveInliningValue = SharedTruffleCompilerOptions.TruffleMaximumRecursiveInlining.getValue(optionValues);
-            if (candidate.getRecursionDepth() > maximumRecursiveInliningValue && candidate.getDepth() > MAX_DEPTH) {
-                break;
-            }
-            candidate.expand();
-        }
-        final int inliningBudget = TruffleCompilerOptions.TruffleInliningInliningBudget.getValue(optionValues);
-        while ((candidate = getNodeToInline(tree)) != null) {
-            if (candidate.isForced()) {
-                candidate.inline();
+            if (candidate.getRecursionDepth() > maximumRecursiveInliningValue || candidate.getDepth() > MAX_DEPTH) {
                 continue;
             }
-            if (tree.getRoot().getIR().getNodeCount() + candidate.getIR().getNodeCount() > inliningBudget) {
-                break;
-            }
-            candidate.inline();
+            doExpand(candidate, expandQueue);
         }
     }
 
-    private CallNode getNodeToInline(CallTree tree) {
-        List<CallNode> edge = new ArrayList<>();
-        gatherEdge(tree.getRoot(), edge, CallNode.State.Expanded, CallNode.State.Inlined, null);
-        edge.sort((o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency()));
-        return edge.size() > 0 ? edge.get(0) : null;
-    }
-
-    private CallNode getNodeToExpand(CallTree tree) {
-        List<CallNode> edge = new ArrayList<>();
-        gatherEdge(tree.getRoot(), edge, CallNode.State.Cutoff, CallNode.State.Expanded, CallNode.State.Inlined);
-        edge.sort((o1, o2) -> Double.compare(o2.getRootRelativeFrequency(), o1.getRootRelativeFrequency()));
-        return edge.size() > 0 ? edge.get(0) : null;
-    }
-
-    private void gatherEdge(CallNode node, List<CallNode> edge, CallNode.State state, CallNode.State continueState1, CallNode.State continueState2) {
-        if (node.getState() == state) {
-            edge.add(node);
-            return;
-        }
-        if (node.getState() == continueState1 || node.getState() == continueState2) {
-            for (CallNode child : node.getChildren()) {
-                gatherEdge(child, edge, state, continueState1, continueState2);
+    private void doExpand(CallNode candidate, PriorityQueue<CallNode> expandQueue) {
+        candidate.expand();
+        expandedCount += candidate.getIR().getNodeCount();
+        for (CallNode child : candidate.getChildren()) {
+            if (child.getState() == CallNode.State.Cutoff) {
+                expandQueue.add(child);
             }
         }
     }
