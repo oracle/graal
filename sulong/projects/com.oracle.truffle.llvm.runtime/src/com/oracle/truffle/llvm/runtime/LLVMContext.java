@@ -254,7 +254,7 @@ public final class LLVMContext {
             ext.initialize();
         }
         if (languageHome != null) {
-            PlatformCapability sysContextExt = language.getCapability(PlatformCapability.class);
+            PlatformCapability<?> sysContextExt = language.getCapability(PlatformCapability.class);
             internalLibraryPath = Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath());
             // add internal library location also to the external library lookup path
             addLibraryPath(internalLibraryPath.toString());

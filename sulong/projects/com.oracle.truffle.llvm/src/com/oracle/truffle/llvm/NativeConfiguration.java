@@ -57,12 +57,12 @@ public final class NativeConfiguration implements Configuration {
 
     private final Loader loader;
     private final LLVMIntrinsicProvider intrinsicProvider;
-    private final PlatformCapability platformCapability;
+    private final PlatformCapability<?> platformCapability;
 
     NativeConfiguration(LLVMLanguage language, Key key) {
         loader = new DefaultLoader();
         intrinsicProvider = new BasicIntrinsicsProvider(language);
-        platformCapability = new BasicPlatformCapability(key.loadCxxLibraries);
+        platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
     }
 
     @Override

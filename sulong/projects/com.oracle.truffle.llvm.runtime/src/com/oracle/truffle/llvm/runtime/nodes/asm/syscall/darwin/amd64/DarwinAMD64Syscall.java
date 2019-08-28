@@ -27,22 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <stdint.h>
-#include "exit.h"
+package com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.amd64;
 
-#define ABORT_STATUS 134
+import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 
-void __sulong_print_stacktrace();
-int __sulong_should_print_stacktrace_on_abort();
+public enum DarwinAMD64Syscall implements LLVMSyscallEntry {
 
-void abort() {
-  if (__sulong_should_print_stacktrace_on_abort()) {
-    fprintf(stderr, "abort()\n\n");
-    __sulong_print_stacktrace();
-  }
-  _EXIT(ABORT_STATUS);
-  for (;;) {
-    _EXIT(ABORT_STATUS);
-  }
+    SYS_exit(1),
+    SYS_getpid(20),
+    SYS_getppid(39),
+    SYS_mmap(197),
+    SYS_gettid(286);
+
+    private final int value;
+
+    DarwinAMD64Syscall(int value) {
+        this.value = value;
+    }
+
+    @Override
+    public int value() {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + " 0x" + Long.toHexString(value) + " (" + value + ")";
+    }
+
 }

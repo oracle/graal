@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,8 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <stdint.h>
-#include "exit.h"
+package com.oracle.truffle.llvm.runtime;
 
-#define ABORT_STATUS 134
-
-void __sulong_print_stacktrace();
-int __sulong_should_print_stacktrace_on_abort();
-
-void abort() {
-  if (__sulong_should_print_stacktrace_on_abort()) {
-    fprintf(stderr, "abort()\n\n");
-    __sulong_print_stacktrace();
-  }
-  _EXIT(ABORT_STATUS);
-  for (;;) {
-    _EXIT(ABORT_STATUS);
-  }
+public interface LLVMSyscallEntry {
+    int value();
 }
