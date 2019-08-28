@@ -549,7 +549,7 @@ public class AArch64Move {
         try (ScratchRegister addrReg = masm.getScratchRegister()) {
             StackSlot slot = (StackSlot) result;
             AArch64Address resultAddress = loadStackSlotAddress(crb, masm, slot, addrReg.getRegister());
-            if (constant.isDefaultForKind() || constant.isNull()) {
+            if (constant.isNull() && !crb.mustReplaceWithUncompressedNullRegister(constant)) {
                 emitStore(crb, masm, (AArch64Kind) result.getPlatformKind(), resultAddress, zr.asValue(LIRKind.combine(result)));
             } else {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
