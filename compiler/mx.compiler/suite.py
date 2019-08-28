@@ -467,7 +467,10 @@ suite = {
           "JVMCI_HOTSPOT",
       ],
       "requiresConcealed" : {
-        "jdk.internal.vm.ci" : ["jdk.vm.ci.hotspot"],
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.services",
+          "jdk.vm.ci.hotspot"
+        ],
       },
       "overlayTarget" : "org.graalvm.libgraal",
       "multiReleaseJarVersion" : "11",
@@ -617,6 +620,8 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.hotspot",
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.services",
         ],
       },
       "overlayTarget" : "org.graalvm.compiler.hotspot",
@@ -633,6 +638,8 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.hotspot",
+          "jdk.vm.ci.services",
+          "jdk.vm.ci.meta",
         ],
       },
       "overlayTarget" : "org.graalvm.compiler.hotspot",
@@ -649,6 +656,7 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.hotspot",
+          "jdk.vm.ci.meta"
         ],
       },
       "overlayTarget" : "org.graalvm.compiler.hotspot",
@@ -2022,6 +2030,7 @@ suite = {
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
+          "jdk.vm.ci.hotspot",
         ],
       },
       "checkPackagePrefix" : "false",
