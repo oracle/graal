@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,18 @@
 package org.graalvm.compiler.serviceprovider;
 
 import static java.lang.Thread.currentThread;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,9 +49,26 @@ import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
 
 /**
- * JDK 9+ version of {@link GraalServices}.
+ * LabsJDK 11 version of {@link GraalServices}.
  */
 public final class GraalServices {
+
+    private static final Map<Class<?>, List<?>> servicesCache = IS_BUILDING_NATIVE_IMAGE ? new HashMap<>() : null;
+
+    private static final Constructor<? extends SpeculationReason> encodedSpeculationReasonConstructor;
+
+    static {
+        Constructor<? extends SpeculationReason> constructor = null;
+        try {
+            @SuppressWarnings("unchecked")
+            Class<? extends SpeculationReason> theClass = (Class<? extends SpeculationReason>) Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
+            constructor = theClass.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class);
+        } catch (ClassNotFoundException e) {
+        } catch (NoSuchMethodException e) {
+            throw new InternalError("EncodedSpeculationReason exists but constructor is missing", e);
+        }
+        encodedSpeculationReasonConstructor = constructor;
+    }
 
     private GraalServices() {
     }
@@ -56,13 +79,59 @@ public final class GraalServices {
      * @throws SecurityException if on JDK8 and a security manager is present and it denies
      *             {@link JVMCIPermission}
      */
+    @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
+        if (IS_IN_NATIVE_IMAGE || IS_BUILDING_NATIVE_IMAGE) {
+            List<?> list = servicesCache.get(service);
+            if (list != null) {
+                return (Iterable<S>) list;
+            }
+            if (IS_IN_NATIVE_IMAGE) {
+                throw new InternalError(String.format("No %s providers found when building native image", service.getName()));
+            }
+        }
+
+        Iterable<S> providers = load0(service);
+
+        if (IS_BUILDING_NATIVE_IMAGE) {
+            synchronized (servicesCache) {
+                ArrayList<S> providersList = new ArrayList<>();
+                for (S provider : providers) {
+                    Module module = provider.getClass().getModule();
+                    if (isHotSpotGraalModule(module.getName())) {
+                        providersList.add(provider);
+                    }
+                }
+                providers = providersList;
+                servicesCache.put(service, providersList);
+                return providers;
+            }
+        }
+
+        return providers;
+    }
+
+    /**
+     * Determines if the module named by {@code name} is part of Graal when it is configured as a
+     * HotSpot JIT compiler.
+     */
+    private static boolean isHotSpotGraalModule(String name) {
+        if (name != null) {
+            return name.equals("jdk.internal.vm.compiler") ||
+                            name.equals("jdk.internal.vm.compiler.management") ||
+                            name.equals("com.oracle.graal.graal_enterprise");
+        }
+        return false;
+    }
+
+    protected static <S> Iterable<S> load0(Class<S> service) {
         Module module = GraalServices.class.getModule();
         // Graal cannot know all the services used by another module
         // (e.g. enterprise) so dynamically register the service use now.
         if (!module.canUse(service)) {
             module.addUses(service);
         }
+
         ModuleLayer layer = module.getLayer();
         Iterable<S> iterable = ServiceLoader.load(layer, service);
         return new Iterable<>() {
@@ -99,6 +168,10 @@ public final class GraalServices {
      * @param other all JVMCI packages will be opened to the module defining this class
      */
     static void openJVMCITo(Class<?> other) {
+        if (IS_IN_NATIVE_IMAGE) {
+            return;
+        }
+
         Module jvmciModule = JVMCI_MODULE;
         Module otherModule = other.getModule();
         if (jvmciModule != otherModule) {
@@ -107,7 +180,7 @@ public final class GraalServices {
                     // JVMCI initialization opens all JVMCI packages
                     // to Graal which is a prerequisite for Graal to
                     // open JVMCI packages to other modules.
-                    JVMCI.initialize();
+                    JVMCI.getRuntime();
 
                     jvmciModule.addOpens(pkg, otherModule);
                 }
@@ -171,6 +244,10 @@ public final class GraalServices {
      * trusted code.
      */
     public static boolean isToStringTrusted(Class<?> c) {
+        if (IS_IN_NATIVE_IMAGE) {
+            return true;
+        }
+
         Module module = c.getModule();
         Module jvmciModule = JVMCI_MODULE;
         assert jvmciModule.getPackages().contains("jdk.vm.ci.runtime");
@@ -181,42 +258,17 @@ public final class GraalServices {
         return false;
     }
 
-    /**
-     * An implementation of {@link SpeculationReason} based on direct, unencoded values.
-     */
-    static final class DirectSpeculationReason implements SpeculationReason {
-        final int groupId;
-        final String groupName;
-        final Object[] context;
-
-        DirectSpeculationReason(int groupId, String groupName, Object[] context) {
-            this.groupId = groupId;
-            this.groupName = groupName;
-            this.context = context;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof DirectSpeculationReason) {
-                DirectSpeculationReason that = (DirectSpeculationReason) obj;
-                return this.groupId == that.groupId && Arrays.equals(this.context, that.context);
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return groupId + Arrays.hashCode(this.context);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s@%d%s", groupName, groupId, Arrays.toString(context));
-        }
-    }
-
     static SpeculationReason createSpeculationReason(int groupId, String groupName, Object... context) {
-        return new DirectSpeculationReason(groupId, groupName, context);
+        if (encodedSpeculationReasonConstructor != null) {
+            SpeculationEncodingAdapter adapter = new SpeculationEncodingAdapter();
+            try {
+                Object[] flattened = adapter.flatten(context);
+                return encodedSpeculationReasonConstructor.newInstance(groupId, groupName, flattened);
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        return new UnencodedSpeculationReason(groupId, groupName, context);
     }
 
     /**
@@ -364,8 +416,26 @@ public final class GraalServices {
         return Math.fma(a, b, c);
     }
 
-    @SuppressWarnings("unused")
+    static final Method virtualObjectGetMethod;
+
+    static {
+        Method virtualObjectGet = null;
+        try {
+            virtualObjectGet = VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE);
+        } catch (Exception e) {
+            // VirtualObject.get that understands autobox isn't available
+        }
+        virtualObjectGetMethod = virtualObjectGet;
+    }
+
     public static VirtualObject createVirtualObject(ResolvedJavaType type, int id, boolean isAutoBox) {
+        if (virtualObjectGetMethod != null) {
+            try {
+                return (VirtualObject) virtualObjectGetMethod.invoke(null, type, id, isAutoBox);
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
         return VirtualObject.get(type, id);
     }
 }

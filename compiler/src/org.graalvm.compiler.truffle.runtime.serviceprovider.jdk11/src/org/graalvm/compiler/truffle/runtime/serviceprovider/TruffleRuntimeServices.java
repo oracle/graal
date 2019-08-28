@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.runtime.serviceprovider;
 import java.util.ServiceLoader;
 
 /**
- * JDK 9+ version of {@link TruffleRuntimeServices}.
+ * JDK 11+ version of {@link TruffleRuntimeServices}.
  */
 public final class TruffleRuntimeServices {
     /**

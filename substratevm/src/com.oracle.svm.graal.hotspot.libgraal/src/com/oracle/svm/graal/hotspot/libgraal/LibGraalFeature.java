@@ -74,6 +74,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.libgraal.LibGraal;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -120,6 +121,14 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
+    }
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        if (!LibGraal.isSupported()) {
+            throw new InternalError("LibGraalFeature is not supported by the current JDK");
+        }
+        return true;
     }
 
     @Override
@@ -624,7 +633,7 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute()
     void beforeRun() {
         GraalServiceThread thread = KnownIntrinsics.convertUnknownValue(this, GraalServiceThread.class);
-        if (!HotSpotJVMCIRuntime.runtime().attachCurrentThread(thread.isDaemon())) {
+        if (!LibGraal.attachCurrentThread(HotSpotJVMCIRuntime.runtime(), thread.isDaemon())) {
             throw new InternalError("Couldn't attach to HotSpot runtime");
         }
     }
@@ -632,6 +641,6 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute
     @SuppressWarnings("static-method")
     void afterRun() {
-        HotSpotJVMCIRuntime.runtime().detachCurrentThread();
+        LibGraal.detachCurrentThread(HotSpotJVMCIRuntime.runtime());
     }
 }

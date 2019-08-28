@@ -704,7 +704,7 @@ suite = {
                 "compiler:GRAAL"
             ],
             "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance": "8,13+",
+            "javaCompliance": "8,11+",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
                 "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
@@ -874,7 +874,7 @@ suite = {
         "GRAAL_HOTSPOT_LIBRARY": {
             "subDir": "src",
             "description" : "SubstrateVM HotSpot Graal library support",
-            "javaCompliance": "8,13+",
+            "javaCompliance": "8,11+",
             "dependencies": [
                 "com.oracle.svm.graal.hotspot.libgraal",
             ],

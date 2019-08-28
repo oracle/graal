@@ -22,25 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime.hotspot;
+package org.graalvm.compiler.serviceprovider;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import java.util.Arrays;
 
-import jdk.vm.ci.meta.SpeculationLog;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 /**
- * JDK 9+ version of {@link HotSpotTruffleRuntimeServices}.
+ * An implementation of {@link SpeculationReason} based on direct, unencoded values.
  */
-class HotSpotTruffleRuntimeServices {
+public final class UnencodedSpeculationReason implements SpeculationReason {
+    final int groupId;
+    final String groupName;
+    final Object[] context;
 
-    /**
-     * Gets a speculation log to be used for compiling {@code callTarget}.
-     */
-    public static SpeculationLog getCompilationSpeculationLog(OptimizedCallTarget callTarget) {
-        SpeculationLog log = callTarget.getSpeculationLog();
-        if (log != null) {
-            log.collectFailedSpeculations();
+    UnencodedSpeculationReason(int groupId, String groupName, Object[] context) {
+        this.groupId = groupId;
+        this.groupName = groupName;
+        this.context = context;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof UnencodedSpeculationReason) {
+            UnencodedSpeculationReason that = (UnencodedSpeculationReason) obj;
+            return this.groupId == that.groupId && Arrays.equals(this.context, that.context);
         }
-        return log;
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return groupId + Arrays.hashCode(this.context);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s@%d%s", groupName, groupId, Arrays.toString(context));
     }
 }
