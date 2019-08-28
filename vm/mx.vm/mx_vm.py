@@ -2397,6 +2397,7 @@ register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', '
 register_vm_config('ce-no_native', ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bnative-image', 'bnative-image-configure', 'bpolyglot',
                                     'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'snative-image-agent', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
 register_vm_config('libgraal', ['bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svml', 'tfl', 'bpolyglot'])
+register_vm_config('toolchain-only', ['tfl', 'gu', 'svm', 'gvm', 'rgx', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'blli', 'slg', 'cmp'])
 
 if mx.get_os() == 'windows':
     register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'poly', 'polynative', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl'], env_file=False)
