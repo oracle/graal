@@ -183,13 +183,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     private static void registerPlainDatagramSocketImplInit(DuringAnalysisAccess a) {
         /* See java.net.DatagramSocket.checkOldImpl */
-        a.registerMethodOverrideReachabilityHandler((access, method) -> {
-            // Checkstyle: stop
-            if (!java.lang.reflect.Modifier.isAbstract(method.getModifiers())) {
-                // Checkstyle: resume
-                RuntimeReflection.register(method);
-            }
-        }, method(a, "java.net.DatagramSocketImpl", "peekData", DatagramPacket.class));
+        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketImplPeekData,
+                        method(a, "java.net.DatagramSocket", "checkOldImpl"));
 
         JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainDatagramSocketImpl", "timeout", "trafficClass", "connected", "connectedAddress", "connectedPort"));
         JNIRuntimeAccess.register(fields(a, "java.net.DatagramSocketImpl", "fd", "localPort"));
@@ -198,6 +193,16 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             JNIRuntimeAccess.register(clazz(a, "java.net.DualStackPlainDatagramSocketImpl"));
             JNIRuntimeAccess.register(fields(a, "java.net.TwoStacksPlainDatagramSocketImpl", "fd1", "fduse", "lastfd"));
         }
+    }
+
+    private static void registerDatagramSocketImplPeekData(DuringAnalysisAccess a) {
+        a.registerSubtypeReachabilityHandler((access, clazz) -> {
+            // Checkstyle: stop
+            if (!java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
+                // Checkstyle: resume
+                RuntimeReflection.register(method(access, clazz.getName(), "peekData", DatagramPacket.class));
+            }
+        }, clazz(a, "java.net.DatagramSocketImpl"));
     }
 
     private static void registerPlainSocketImplInitProto(DuringAnalysisAccess a) {
