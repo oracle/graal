@@ -98,8 +98,6 @@ import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
@@ -179,8 +177,6 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMTypeIdForExceptionNode;
-import com.oracle.truffle.llvm.runtime.nodes.globals.LLVMGlobalContainerReadNode;
-import com.oracle.truffle.llvm.runtime.nodes.globals.LLVMGlobalContainerWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsVectorNodeGen;
@@ -2583,16 +2579,6 @@ public class BasicNodeFactory implements NodeFactory {
             default:
                 throw new IllegalStateException("unexpected interop kind " + type.getKind());
         }
-    }
-
-    @Override
-    public LLVMObjectReadNode createGlobalContainerReadNode() {
-        return new LLVMGlobalContainerReadNode();
-    }
-
-    @Override
-    public LLVMObjectWriteNode createGlobalContainerWriteNode() {
-        return new LLVMGlobalContainerWriteNode();
     }
 
     private static AssertionError unsupportedCast(Type targetType) {

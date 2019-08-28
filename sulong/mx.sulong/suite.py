@@ -855,6 +855,7 @@ suite = {
       "subDir" : "projects",
       "dependencies" : [
         "com.oracle.truffle.llvm.api",
+        "com.oracle.truffle.llvm.spi",
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",

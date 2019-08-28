@@ -29,34 +29,28 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI16StoreNode extends LLVMStoreNodeCommon {
-
-    @Specialization
-    protected void doOp(LLVMVirtualAllocationAddress address, short value,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        address.writeI16(memory, value);
-    }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected void doOp(LLVMNativePointer addr, short value) {
         getLLVMMemoryCached().putI16(addr, value);
     }
 
-    @Specialization
-    protected void doOpManaged(LLVMManagedPointer address, short value) {
-        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.I16);
+    @Specialization(limit = "3")
+    protected void doOpManaged(LLVMManagedPointer address, short value,
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+        nativeWrite.writeI16(address.getObject(), address.getOffset(), value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected void doOpDerefHandle(LLVMNativePointer addr, short value) {
-        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandle(LLVMNativePointer addr, short value,
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value, nativeWrite);
     }
 }

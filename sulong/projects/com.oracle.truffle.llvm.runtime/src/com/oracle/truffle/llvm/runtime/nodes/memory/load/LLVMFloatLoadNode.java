@@ -29,12 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -42,24 +40,20 @@ public abstract class LLVMFloatLoadNode extends LLVMAbstractLoadNode {
 
     private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
 
-    @Specialization
-    protected float doFloat(LLVMVirtualAllocationAddress address,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        return address.getFloat(memory);
-    }
-
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected float doFloatNative(LLVMNativePointer addr) {
         return profile.profile(getLLVMMemoryCached().getFloat(addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected float doFloatDerefHandle(LLVMNativePointer addr) {
-        return doFloatManaged(getDerefHandleGetReceiverNode().execute(addr));
+    protected float doFloatDerefHandle(LLVMNativePointer addr,
+                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+        return doFloatManaged(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
     }
 
-    @Specialization
-    protected float doFloatManaged(LLVMManagedPointer addr) {
-        return (float) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.FLOAT);
+    @Specialization(limit = "3")
+    protected float doFloatManaged(LLVMManagedPointer addr,
+                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+        return nativeRead.readFloat(addr.getObject(), addr.getOffset());
     }
 }

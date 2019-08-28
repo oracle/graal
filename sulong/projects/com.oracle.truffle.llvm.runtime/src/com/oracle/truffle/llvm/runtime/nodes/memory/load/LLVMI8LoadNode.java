@@ -29,12 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -48,18 +46,14 @@ public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected byte doI8DerefHandle(LLVMNativePointer addr) {
-        return doI8Managed(getDerefHandleGetReceiverNode().execute(addr));
+    protected byte doI8DerefHandle(LLVMNativePointer addr,
+                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+        return doI8Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
     }
 
-    @Specialization
-    protected byte doI8(LLVMVirtualAllocationAddress address,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        return address.getI8(memory);
-    }
-
-    @Specialization
-    protected byte doI8Managed(LLVMManagedPointer addr) {
-        return (byte) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I8);
+    @Specialization(limit = "3")
+    protected byte doI8Managed(LLVMManagedPointer addr,
+                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+        return nativeRead.readI8(addr.getObject(), addr.getOffset());
     }
 }

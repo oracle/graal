@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMDoubleDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMI16DataEscapeNodeGen;
@@ -46,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMPoi
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMVoidDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
@@ -309,11 +308,6 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         @Specialization
         static LLVMPointer escapingPrimitive(double escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return LLVMNativePointer.create(Double.doubleToRawLongBits(escapingValue)).export(type);
-        }
-
-        @Specialization
-        protected static TruffleObject escapingJavaByteArray(LLVMVirtualAllocationAddress address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-            return address.copy();
         }
     }
 

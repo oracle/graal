@@ -31,9 +31,8 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -46,8 +45,15 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected void doOpDerefHandle(LLVMNativePointer addr, Object value) {
-        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandleI64(LLVMNativePointer addr, long value,
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+        doOpManagedI64(getDerefHandleGetReceiverNode().execute(addr), value, nativeWrite);
+    }
+
+    @Specialization(guards = "isAutoDerefHandle(addr)", replaces = "doOpDerefHandleI64")
+    protected void doOpDerefHandle(LLVMNativePointer addr, Object value,
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value, nativeWrite);
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
@@ -61,14 +67,15 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
         getLLVMMemoryCached().putI64(addr, toAddress.executeWithTarget(value).asNative());
     }
 
-    @Specialization
-    protected void doOp(LLVMVirtualAllocationAddress address, long value,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        address.writeI64(memory, value);
+    @Specialization(limit = "3")
+    protected void doOpManagedI64(LLVMManagedPointer address, long value,
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+        nativeWrite.writeI64(address.getObject(), address.getOffset(), value);
     }
 
-    @Specialization
-    protected void doOpManaged(LLVMManagedPointer address, Object value) {
-        getForeignWriteNode().executeWrite(address.getObject(), address.getOffset(), value, ForeignToLLVMType.I64);
+    @Specialization(limit = "3", replaces = "doOpManagedI64")
+    protected void doOpManaged(LLVMManagedPointer address, Object value,
+                    @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+        nativeWrite.writeGenericI64(address.getObject(), address.getOffset(), value);
     }
 }

@@ -29,21 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
-
-    @Specialization
-    protected boolean doI1(LLVMVirtualAllocationAddress address,
-                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        return address.getI1(memory);
-    }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
     protected boolean doI1Native(LLVMNativePointer addr) {
@@ -51,12 +43,14 @@ public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected boolean doI1DerefHandle(LLVMNativePointer addr) {
-        return doI1Managed(getDerefHandleGetReceiverNode().execute(addr));
+    protected boolean doI1DerefHandle(LLVMNativePointer addr,
+                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+        return doI1Managed(getDerefHandleGetReceiverNode().execute(addr), nativeRead);
     }
 
-    @Specialization
-    protected boolean doI1Managed(LLVMManagedPointer addr) {
-        return (boolean) getForeignReadNode().executeRead(addr.getObject(), addr.getOffset(), ForeignToLLVMType.I1);
+    @Specialization(limit = "3")
+    protected boolean doI1Managed(LLVMManagedPointer addr,
+                    @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+        return nativeRead.readI8(addr.getObject(), addr.getOffset()) != 0;
     }
 }

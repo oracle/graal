@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.library;
+package com.oracle.truffle.llvm.runtime.library.internal;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -35,8 +35,9 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibraryDefaults.DefaultLibrary;
-import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibraryDefaults.LongLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibraryDefaults.ArrayLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibraryDefaults.DefaultLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibraryDefaults.LongLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 /**
@@ -47,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
  */
 @GenerateLibrary
 @DefaultExport(LongLibrary.class)
+@DefaultExport(ArrayLibrary.class)
 @DefaultExport(DefaultLibrary.class)
 @SuppressWarnings("unused")
 public abstract class LLVMNativeLibrary extends Library {
