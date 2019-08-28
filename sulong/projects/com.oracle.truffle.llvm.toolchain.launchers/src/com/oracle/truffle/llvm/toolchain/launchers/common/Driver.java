@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.common;
 
-import org.graalvm.polyglot.Engine;
+import org.graalvm.home.HomeFinder;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -79,7 +79,10 @@ public class Driver {
     private static boolean hasJreDir = System.getProperty("java.specification.version").startsWith("1.");
 
     private static Path getRuntimeDir() {
-        Path runtimeDir = Engine.findHome();
+        Path runtimeDir = HomeFinder.getInstance().getHomeFolder();
+        if (runtimeDir == null) {
+            throw new IllegalStateException("Could not find GraalVM home");
+        }
         if (hasJreDir) {
             runtimeDir = runtimeDir.resolve("jre");
         }
@@ -87,19 +90,33 @@ public class Driver {
     }
 
     public Path getLLVMBinDir() {
-        String llvmDir = System.getProperty("llvm.bin.dir");
-        if (llvmDir == null) {
-            return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
+        final String property = System.getProperty("llvm.bin.dir");
+        if (property != null) {
+            return Paths.get(property);
         }
-        return Paths.get(llvmDir);
+
+        // TODO (GR-18389): Set only for standalones currently
+        Path toolchainHome = HomeFinder.getInstance().getLanguageHomes().get("llvm-toolchain");
+        if (toolchainHome != null) {
+            return toolchainHome.resolve("bin");
+        }
+
+        return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
     }
 
     public Path getSulongHome() {
-        String llvmDir = System.getProperty("llvm.home");
-        if (llvmDir == null) {
-            return getRuntimeDir().resolve("languages").resolve("llvm");
+        // TODO (GR-18389): Unify system properties and HomeFinder
+        String property = System.getProperty("llvm.home");
+        if (property != null) {
+            return Paths.get(property);
         }
-        return Paths.get(llvmDir);
+
+        final Path sulongHome = HomeFinder.getInstance().getLanguageHomes().get("llvm");
+        if (sulongHome != null) {
+            return sulongHome;
+        }
+
+        throw new IllegalStateException("Could not find the llvm home");
     }
 
     private static String getVersion() {

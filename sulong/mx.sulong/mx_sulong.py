@@ -897,7 +897,6 @@ class ToolchainConfig(object):
                 jar_distributions=[self.suite.name + ":" + self.dist],
                 main_class=self._tool_to_main(tool),
                 build_args=[
-                    '--macro:truffle',  # we need tool:truffle so that Engine.findHome works
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
                 ],
                 is_main_launcher=False,
