@@ -38,54 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.impl;
+package org.graalvm.home.impl;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleOptions;
-import java.nio.file.Path;
-import java.util.Map;
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-public abstract class HomeFinder {
+final class VmLocatorSymbol {
 
-    private static HomeFinder nativeImageHomeFinder;   // effectively final after native image
-                                                       // compilation
+    static final CEntryPointLiteral<CFunctionPointer> SYMBOL = CEntryPointLiteral.create(VmLocatorSymbol.class, "vmLocatorSymbol", IsolateThread.class);
 
-    public abstract Path getHomeFolder();
-
-    public abstract String getVersion();
-
-    public abstract Map<String, Path> getLanguageHomes();
-
-    public abstract Map<String, Path> getToolHomes();
-
-    public static HomeFinder getInstance() {
-        if (TruffleOptions.AOT) {
-            return nativeImageHomeFinder;
-        }
-        return Truffle.getRuntime().getCapability(HomeFinder.class);
+    private VmLocatorSymbol() {
+        throw new IllegalStateException("No instance allowed");
     }
 
-    /**
-     * Looks up the {@link HomeFinder} instance.
-     *
-     * NOTE: this method is called reflectively by downstream projects.
-     *
-     */
+    @CEntryPoint(name = "vmLocatorSymbol")
     @SuppressWarnings("unused")
-    private static void initializeNativeImageState() {
-        assert TruffleOptions.AOT : "Only supported during image generation";
-        nativeImageHomeFinder = Truffle.getRuntime().getCapability(HomeFinder.class);
-    }
-
-    /**
-     * Cleans the {@link HomeFinder} instance.
-     *
-     * NOTE: this method is called reflectively by downstream projects.
-     *
-     */
-    @SuppressWarnings("unused")
-    private static void resetNativeImageState() {
-        assert TruffleOptions.AOT : "Only supported during image generation";
-        nativeImageHomeFinder = null;
+    private static void vmLocatorSymbol(IsolateThread thread) {
     }
 }

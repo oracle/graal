@@ -25,7 +25,7 @@
 package com.oracle.graalvm.locator;
 
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.impl.HomeFinder;
+import org.graalvm.home.HomeFinder;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;

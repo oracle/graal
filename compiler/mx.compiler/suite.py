@@ -2499,7 +2499,7 @@ suite = {
           "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
           "org.graalvm.compiler.truffle.runtime.LoopNodeFactory",
           "org.graalvm.compiler.truffle.runtime.TruffleTypes",
-          "com.oracle.truffle.api.impl.HomeFinder",
+          "org.graalvm.home.HomeFinder",
         ],
         "requiresConcealed" : {
           "jdk.internal.vm.ci" : "*"

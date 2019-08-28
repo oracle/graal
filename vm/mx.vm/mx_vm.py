@@ -1100,7 +1100,10 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                         '-Dorg.graalvm.launcher.classpath=' + ':'.join(graalvm_home_relative_classpath(image_config.jar_distributions, graalvm_home).split(os.pathsep)),
                     ]
 
-                build_args += ['-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)]
+                build_args += [
+                    '--features=org.graalvm.home.HomeFinderFeature',
+                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)
+                ]
 
                 for language, path in image_config.relative_home_paths.items():
                     build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]

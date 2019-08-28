@@ -154,7 +154,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param str main_class
         :param bool is_main_launcher
         :param bool default_symlinks
-        :param bool is_sdk_launcher
+        :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
         :param str custom_bash_launcher: Uses custom bash launcher, unless compiled as native image
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
