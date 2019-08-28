@@ -64,6 +64,6 @@ public final class LLVMUnsupportedSyscallNode extends LLVMSyscallOperationNode {
     @CompilerDirectives.TruffleBoundary
     public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         String details = syscall != null ? syscall.toString() : "0x" + Long.toHexString(nr) + " (" + nr + ")";
-        throw new LLVMUnsupportedException(this, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_SYSCALL, details);
+        throw new LLVMUnsupportedException(this, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_SYSCALL, String.format("%s (%s %s)", details, LLVMInfo.SYSNAME, LLVMInfo.MACHINE));
     }
 }
