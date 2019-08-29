@@ -62,8 +62,6 @@ public final class TruffleJDKServices {
      * @param loader the loader used to load the classes of the client
      * @param moduleName the name of the module containing the client. This will be {@code null} if
      *            the client is not deployed as a module.
-     *
-     * @since 19.3
      */
     public static void exportTo(ClassLoader loader, String moduleName) {
         throw shouldNotReachHere();
@@ -73,8 +71,6 @@ public final class TruffleJDKServices {
      * Exports all Truffle packages to the module containing {@code client}.
      *
      * @param client class in a module that requires access to Truffle
-     *
-     * @since 19.3
      */
     public static void exportTo(Class<?> client) {
         throw shouldNotReachHere();
