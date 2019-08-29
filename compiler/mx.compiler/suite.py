@@ -1789,6 +1789,10 @@ suite = {
         "org.graalvm.compiler.core",
         "org.graalvm.compiler.replacements",
       ],
+      "uses" : [
+        "org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider",
+        "org.graalvm.compiler.truffle.compiler.phases.inlining.InliningPolicyProvider"
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "TRUFFLE_COMMON_PROCESSOR",

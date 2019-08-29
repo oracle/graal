@@ -345,7 +345,7 @@ public class SymbolicSnippetEncoder {
                         IntrinsicContext.CompilationContext context, EncodedGraph encodedGraph) {
             super(providers.getCodeCache().getTarget().arch, result, providers, null,
                             replacements.getGraphBuilderPlugins().getInvocationPlugins(), new InlineInvokePlugin[0], parameterPlugin,
-                            null, null, null);
+                            null, null, null, null);
             this.method = method;
             this.encodedGraph = encodedGraph;
             intrinsic = new IntrinsicContext(method, null, replacements.getDefaultReplacementBytecodeProvider(), context, false);

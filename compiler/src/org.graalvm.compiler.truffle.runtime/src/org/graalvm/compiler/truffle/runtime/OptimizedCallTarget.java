@@ -39,6 +39,7 @@ import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode.OSRRootNode;
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -272,6 +273,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert keepAlive(location);
         }
+    }
+
+    // Note: {@code PartialEvaluator} looks up this method by name and signature.
+    public final Object callInlinedAgnostic(Object... arguments) {
+        getCompilationProfile().profileInlinedCall();
+        return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
@@ -518,6 +525,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         throw (E) ex;
     }
 
+    @Override
+    public void cancelInstalledTask() {
+        runtime().cancelInstalledTask(this, null, "got inlined. callsite count: " + getKnownCallSiteCount());
+    }
+
+    @Override
+    public boolean isSameOrSplit(CompilableTruffleAST ast) {
+        if (!(ast instanceof OptimizedCallTarget)) {
+            return false;
+        }
+        OptimizedCallTarget other = (OptimizedCallTarget) ast;
+        return this == other || this == other.sourceCallTarget || other == this.sourceCallTarget ||
+                        (this.sourceCallTarget != null && other.sourceCallTarget != null && this.sourceCallTarget == other.sourceCallTarget);
+    }
+
     boolean cancelInstalledTask(Node source, CharSequence reason) {
         return runtime().cancelInstalledTask(this, source, reason);
     }
@@ -554,7 +576,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         runtime().log(message);
     }
 
-    final int getKnownCallSiteCount() {
+    @Override
+    public final int getKnownCallSiteCount() {
         return callSitesKnown;
     }
 
@@ -669,11 +692,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return iterator;
     }
 
+    @Override
     public final int getNonTrivialNodeCount() {
         if (cachedNonTrivialNodeCount == -1) {
             cachedNonTrivialNodeCount = calculateNonTrivialNodes(getRootNode());
         }
         return cachedNonTrivialNodeCount;
+    }
+
+    @Override
+    public int getCallCount() {
+        OptimizedCompilationProfile profile = compilationProfile;
+        return profile == null ? 0 : profile.getCallCount();
     }
 
     public static int calculateNonTrivialNodes(Node node) {
@@ -687,6 +717,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         GraalTruffleRuntimeListener.addASTSizeProperty(this, inlining, properties);
         properties.putAll(getCompilationProfile().getDebugProperties());
         return properties;
+    }
+
+    @Override
+    public TruffleCallNode[] getCallNodes() {
+        final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
+        getRootNode().accept(new NodeVisitor() {
+            @Override
+            public boolean visit(Node node) {
+                if (node instanceof OptimizedDirectCallNode) {
+                    callNodes.add((OptimizedDirectCallNode) node);
+                }
+                return true;
+            }
+        });
+        return callNodes.toArray(new TruffleCallNode[0]);
     }
 
     public CompilerOptions getCompilerOptions() {

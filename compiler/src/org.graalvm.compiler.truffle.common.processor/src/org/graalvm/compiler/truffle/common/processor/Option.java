@@ -105,6 +105,12 @@ public class Option {
             .help("Enable automatic inlining of call targets")
             .deprecatedBy("Inlining"), // COMPILER
 
+        option("TruffleLanguageAgnosticInlining")
+            .type("Boolean")
+            .category("EXPERT")
+            .def("false")
+            .help("Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental)."),
+
         option("TruffleInliningMaxCallerSize")
             .type("Integer")
             .category("EXPERT")
