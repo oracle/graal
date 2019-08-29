@@ -79,6 +79,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
     static final String CALL_BOUNDARY_METHOD_NAME = "callProxy";
+    static final String CALL_INLINED_METHOD_NAME = "call";
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
