@@ -391,11 +391,18 @@ public abstract class NativeBootImage extends AbstractBootImage {
             final String textSectionName = SectionName.TEXT.getFormatDependentName(objectFile.getFormat());
             textSection = objectFile.newProgbitsSection(textSectionName, objectFile.getPageSize(), false, true, textImpl);
 
-            // Read-only data section
+            /*
+             * Read-only data section
+             *
+             * The reason for making the read-only data section writable is for a workaround in
+             * order to use Graal on some platforms where you can't have relocations in a read-only
+             * section (eg. Android).
+             */
+            boolean roDataWritable = !SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseOnlyWritableBootImageHeap.getValue();
             final RelocatableBuffer roDataBuffer = RelocatableBuffer.factory("roData", roSectionSize, objectFile.getByteOrder());
             final ProgbitsSectionImpl roDataImpl = new BasicProgbitsSectionImpl(roDataBuffer.getBytes());
             final String roDataSectionName = SectionName.RODATA.getFormatDependentName(objectFile.getFormat());
-            roDataSection = objectFile.newProgbitsSection(roDataSectionName, objectFile.getPageSize(), false, false, roDataImpl);
+            roDataSection = objectFile.newProgbitsSection(roDataSectionName, objectFile.getPageSize(), roDataWritable, false, roDataImpl);
 
             // Read-write data section
             final RelocatableBuffer rwDataBuffer = RelocatableBuffer.factory("rwData", rwSectionSize, objectFile.getByteOrder());
@@ -416,7 +423,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             final RelocatableBuffer heapSectionBuffer;
             final ProgbitsSectionImpl heapSectionImpl;
             if (SubstrateOptions.SpawnIsolates.getValue()) {
-                boolean writable = !SubstrateOptions.SpawnIsolates.getValue();
+                boolean writable = SubstrateOptions.UseOnlyWritableBootImageHeap.getValue();
                 final long heapSize = heap.getReadOnlySectionSize() + heap.getWritableSectionSize();
 
                 heapSectionBuffer = RelocatableBuffer.factory("heap", heapSize, objectFile.getByteOrder());
