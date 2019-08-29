@@ -75,6 +75,8 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 
@@ -103,6 +105,7 @@ public final class NonSnippetLowerings {
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
         lowerings.put(BytecodeExceptionNode.class, new BytecodeExceptionLowering());
+        lowerings.put(ThrowBytecodeExceptionNode.class, new ThrowBytecodeExceptionLowering());
         lowerings.put(GetClassNode.class, new GetClassLowering());
         lowerings.put(InvokeNode.class, new InvokeLowering());
         lowerings.put(InvokeWithExceptionNode.class, new InvokeLowering());
@@ -111,6 +114,8 @@ public final class NonSnippetLowerings {
 
     private static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> getCachedExceptionDescriptors;
     private static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> createExceptionDescriptors;
+    private static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> throwCachedExceptionDescriptors;
+    private static final EnumMap<BytecodeExceptionKind, ForeignCallDescriptor> throwNewExceptionDescriptors;
 
     static {
         getCachedExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
@@ -126,6 +131,20 @@ public final class NonSnippetLowerings {
         createExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.CREATE_CLASS_CAST_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.CREATE_ARRAY_STORE_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CREATE_DIVISION_BY_ZERO_EXCEPTION);
+
+        throwCachedExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_CACHED_NULL_POINTER_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.THROW_CACHED_CLASS_CAST_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.THROW_CACHED_ARRAY_STORE_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
+
+        throwNewExceptionDescriptors = new EnumMap<>(BytecodeExceptionKind.class);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.NULL_POINTER, ImplicitExceptions.THROW_NEW_NULL_POINTER_EXCEPTION);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.OUT_OF_BOUNDS, ImplicitExceptions.THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.CLASS_CAST, ImplicitExceptions.THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.THROW_NEW_DIVISION_BY_ZERO_EXCEPTION);
     }
 
     private class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
@@ -146,6 +165,30 @@ public final class NonSnippetLowerings {
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), arguments));
             foreignCallNode.setStateAfter(node.stateAfter());
             graph.replaceFixedWithFixed(node, foreignCallNode);
+        }
+    }
+
+    private class ThrowBytecodeExceptionLowering implements NodeLoweringProvider<ThrowBytecodeExceptionNode> {
+        @Override
+        public void lower(ThrowBytecodeExceptionNode node, LoweringTool tool) {
+            ForeignCallDescriptor descriptor;
+            List<ValueNode> arguments;
+            if (mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(node.graph().method())) {
+                descriptor = throwCachedExceptionDescriptors.get(node.getExceptionKind());
+                arguments = Collections.emptyList();
+            } else {
+                descriptor = throwNewExceptionDescriptors.get(node.getExceptionKind());
+                arguments = node.getArguments();
+            }
+            assert descriptor != null && descriptor.getArgumentTypes().length == arguments.size();
+
+            StructuredGraph graph = node.graph();
+            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(runtimeConfig.getProviders().getForeignCalls(), descriptor, node.stamp(NodeView.DEFAULT), arguments));
+            foreignCallNode.setStateDuring(node.stateBefore());
+            node.replaceAndDelete(foreignCallNode);
+
+            DeadEndNode deadEnd = graph.add(new DeadEndNode());
+            foreignCallNode.setNext(deadEnd);
         }
     }
 
