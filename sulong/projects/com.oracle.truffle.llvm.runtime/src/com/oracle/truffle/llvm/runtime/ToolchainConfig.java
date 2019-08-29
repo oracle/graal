@@ -42,4 +42,9 @@ public interface ToolchainConfig extends LLVMCapability {
      * Relative toolchain path.
      */
     String getToolchainSubdir();
+
+    /**
+     * Returns true if C++ support is enabled.
+     */
+    boolean enableCXX();
 }
