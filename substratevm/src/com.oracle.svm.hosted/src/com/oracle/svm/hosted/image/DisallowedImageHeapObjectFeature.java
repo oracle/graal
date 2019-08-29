@@ -39,6 +39,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.WorkerThreadMarker;
 
 /**
  * Complain if there are types that can not move from the image generator heap to the image heap.
@@ -67,6 +68,9 @@ public class DisallowedImageHeapObjectFeature implements Feature {
         /* Started Threads can not be in the image heap. */
         if (original instanceof Thread) {
             final Thread asThread = (Thread) original;
+            if (asThread instanceof WorkerThreadMarker) {
+                return ((WorkerThreadMarker) asThread).asTerminated();
+            }
             if (asThread.getState() != Thread.State.NEW && asThread.getState() != Thread.State.TERMINATED) {
                 throw error("Detected a started Thread in the image heap. " +
                                 "Threads running in the image generator are no longer running at image run time. " +
