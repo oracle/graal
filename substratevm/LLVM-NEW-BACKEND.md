@@ -16,7 +16,7 @@ This means that, unless a significant effort is put together by the LLVM communi
 As most of the statepoint logic is handled at the bitcode level, i.e. at a target-independent stage, this is mostly a matter of emitting the right type of calls to lower the statepoint intrinsics.
 Our AArch64 implementation of statepoints consists of less than 100 lines of code.
 
-_([Implementation of statepoints for AArch64](https://reviews.llvm.org/D66012)_
+_([Implementation of statepoints for AArch64](https://reviews.llvm.org/D66012))_
 
 ## Object file support
 
