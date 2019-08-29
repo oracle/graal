@@ -234,6 +234,12 @@ public class SymbolTable {
         return (byte) typeData[typeOffset + 2 + i];
     }
 
+    public byte getFunctionTypeReturnTypeAt(int typeIndex, int i) {
+        int typeOffset = offsets[typeIndex];
+        int numArgs = typeData[typeOffset];
+        return (byte) typeData[typeOffset + 2 + numArgs + i];
+    }
+
     public ByteArrayList getFunctionTypeArgumentTypes(int typeIndex) {
         ByteArrayList types = new ByteArrayList();
         for (int i = 0; i != getFunctionTypeNumArguments(typeIndex); ++i) {

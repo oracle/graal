@@ -35,6 +35,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BR_IF;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.CALL;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.CALL_INDIRECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.DROP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.ELSE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.END;
@@ -203,6 +204,8 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
@@ -219,7 +222,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialNumericLiteralOffset;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children WasmNode[] nestedControlTable;
-    @Children DirectCallNode[] callNodeTable;
+    @Children Node[] callNodeTable;
 
     public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int initialIntConstantOffset, int initialNumericLiteralOffset) {
         super(wasmModule, codeEntry, -1, -1, -1);
@@ -365,7 +368,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte returnType = function.returnType();
                     int numArgs = function.numArguments();
 
-                    DirectCallNode callNode = callNodeTable[callNodeOffset];
+                    DirectCallNode callNode = (DirectCallNode) callNodeTable[callNodeOffset];
                     callNodeOffset++;
 
                     Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
@@ -399,6 +402,93 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             // Void return type - do nothing.
                             break;
                         }
+                    }
+
+                    break;
+                }
+                case CALL_INDIRECT: {
+                    // Extract the function object.
+                    stackPointer--;
+                    int tableIndex = popInt(frame, stackPointer);
+                    if (!wasmModule().table().validateIndex(tableIndex)) {
+                        throw new WasmTrap("CALL_INDIRECT: Invalid table index", this);
+                    }
+                    int functionIndex = wasmModule().table().functionIndex(tableIndex);
+                    WasmFunction function = wasmModule().symbolTable().function(functionIndex);
+
+                    // Extract the function type index.
+                    int expectedFunctionTypeIndex = codeEntry().numericLiteralAsInt(numericLiteralOffset);
+                    numericLiteralOffset++;
+                    byte constantLength = codeEntry().byteConstant(byteConstantOffset);
+                    byteConstantOffset++;
+                    offset += constantLength;
+                    offset += 1;  // For the 0x00 constant at the end of the CALL_INDIRECT instruction.
+
+                    // Validate that the function type matches the expected type.
+                    int expectedNumArgs = wasmModule().symbolTable().getFunctionTypeNumArguments(expectedFunctionTypeIndex);
+                    int expectedReturnLength = wasmModule().symbolTable().getFunctionTypeReturnTypeLength(expectedFunctionTypeIndex);
+
+                    boolean valid = true;
+                    valid = valid && (expectedNumArgs == function.numArguments());
+                    valid = valid && (expectedReturnLength == function.returnTypeLength());
+
+                    if (!valid) {
+                        throw new WasmTrap("CALL_INDIRECT: Actual and expected function types differ", this);
+                    }
+                    // At this point, the expected and actual number of arguments and return length match.
+
+                    // Validate the argument types.
+                    for (int i = 0; i != expectedNumArgs; ++i) {
+                        byte actualType = function.argumentTypeAt(i);
+                        byte expectedType = wasmModule().symbolTable().getFunctionTypeArgumentTypeAt(expectedFunctionTypeIndex, i);
+                        valid = valid && (actualType == expectedType);
+                    }
+
+                    // Validate the return types.
+                    for (int i = 0; i != expectedReturnLength; ++i) {
+                        byte actualType = function.returnTypeAt(i);
+                        byte expectedType = wasmModule().symbolTable().getFunctionTypeReturnTypeAt(expectedFunctionTypeIndex, i);
+                        valid = valid && (actualType == expectedType);
+                    }
+
+                    if (!valid) {
+                        throw new WasmTrap("CALL_INDIRECT: Actual and expected function types differ", this);
+                    }
+
+                    // Invoke the resolved function.
+                    IndirectCallNode callNode = (IndirectCallNode) callNodeTable[callNodeOffset];
+                    callNodeOffset++;
+
+                    Object[] args = createArgumentsForCall(frame, function, function.numArguments(), stackPointer);
+                    stackPointer -= args.length;
+
+                    Object result = callNode.call(function.getCallTarget(), args);
+                    // At the moment, WebAssembly functions may return up to one value.
+                    // As per the WebAssembly specification, this restriction may be lifted in the future.
+                    switch (function.returnType()) {
+                        case ValueTypes.I32_TYPE: {
+                            pushInt(frame, stackPointer, (int) result);
+                            stackPointer++;
+                            break;
+                        }
+                        case ValueTypes.I64_TYPE: {
+                            push(frame, stackPointer, (long) result);
+                            stackPointer++;
+                            break;
+                        }
+                        case ValueTypes.F32_TYPE: {
+                            pushFloat(frame, stackPointer, (float) result);
+                            stackPointer++;
+                            break;
+                        }
+                        case ValueTypes.F64_TYPE: {
+                            pushDouble(frame, stackPointer, (double) result);
+                            stackPointer++;
+                            break;
+                        }
+                        default:
+                            // Void return type - do nothing.
+                            break;
                     }
 
                     break;

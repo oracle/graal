@@ -44,11 +44,13 @@ public class WasmModule implements TruffleObject {
     @CompilationFinal private final String name;
     @CompilationFinal private final SymbolTable symbolTable;
     @CompilationFinal private final ModuleGlobals globals;
+    @CompilationFinal private final ModuleTable table;
 
     public WasmModule(String name) {
         this.name = name;
         this.symbolTable = new SymbolTable(this);
         this.globals = new ModuleGlobals();
+        this.table = new ModuleTable();
     }
 
     static final class ModuleGlobals {
@@ -134,6 +136,44 @@ public class WasmModule implements TruffleObject {
         }
     }
 
+    static final class ModuleTable {
+        /**
+         * A table is an array of u32 values, indexing the module functions (imported or defined).
+         */
+        @CompilationFinal(dimensions = 1) private int[] functionIndices;
+        private int maxSize;
+        private boolean initialized = false;
+
+        private ModuleTable() {
+        }
+
+        public void initialize(int initSize) {
+            this.initialize(initSize, Integer.MAX_VALUE);
+        }
+
+        public void initialize(int initSize, int maxSize) {
+            if (initialized) {
+                throw new RuntimeException("ModuleTable has already been initialized.");
+            }
+            this.functionIndices = new int[initSize];
+            this.maxSize = maxSize;
+            initialized = true;
+        }
+
+        public boolean validateIndex(int index) {
+            // TODO: Ensure index is initialized.
+            return index < functionIndices.length;
+        }
+
+        public void initializeContents(int offset, int[] contents) {
+            System.arraycopy(contents, 0, functionIndices, offset, contents.length);
+        }
+
+        public int functionIndex(int index) {
+            return functionIndices[index];
+        }
+    }
+
     public SymbolTable symbolTable() {
         return symbolTable;
     }
@@ -144,6 +184,10 @@ public class WasmModule implements TruffleObject {
 
     public ModuleGlobals globals() {
         return globals;
+    }
+
+    public ModuleTable table() {
+        return table;
     }
 
     @ExportMessage
