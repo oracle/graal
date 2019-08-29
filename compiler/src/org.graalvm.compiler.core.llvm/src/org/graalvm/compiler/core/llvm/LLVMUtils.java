@@ -69,6 +69,38 @@ public class LLVMUtils {
         public static final int NODE = 3;
     }
 
+    public enum LLVMIntrinsicOperation {
+        LOG(1),
+        LOG10(1),
+        EXP(1),
+        POW(2),
+        SIN(1),
+        COS(1),
+        SQRT(1),
+        ABS(1),
+        ROUND(1),
+        RINT(1),
+        CEIL(1),
+        FLOOR(1),
+        MIN(2),
+        MAX(2),
+        COPYSIGN(2),
+        FMA(3),
+        CTLZ(1),
+        CTTZ(1),
+        CTPOP(1);
+
+        private int argCount;
+
+        LLVMIntrinsicOperation(int argCount) {
+            this.argCount = argCount;
+        }
+
+        public int argCount() {
+            return argCount;
+        }
+    }
+
     /**
      * LLVM target-specific inline assembly snippets and information.
      */

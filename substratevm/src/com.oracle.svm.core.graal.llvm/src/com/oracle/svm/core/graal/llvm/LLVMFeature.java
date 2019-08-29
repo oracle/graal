@@ -46,6 +46,8 @@ import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
+import org.graalvm.compiler.replacements.llvm.LLVMGraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -131,6 +133,8 @@ public class LLVMFeature implements Feature, GraalFeature {
                 LLVMPersonalityFunction.raiseException();
             }
         });
+
+        ImageSingletons.add(TargetGraphBuilderPlugins.class, new LLVMGraphBuilderPlugins());
     }
 
     @Override
