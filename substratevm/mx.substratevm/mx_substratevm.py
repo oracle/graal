@@ -929,7 +929,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     dir_name='polyglot',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['SubstrateVM'],
+    dependencies=['SubstrateVM', 'Truffle Macro'],
     jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
     support_distributions=[
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",

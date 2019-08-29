@@ -1298,13 +1298,6 @@ def _jvmci_jars():
             'compiler:GRAAL_MANAGEMENT',
         ]
 
-def _boot_jars():
-    if not isJDK8:
-        return ['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API']
-    else:
-        # In JDK 8, Truffle is not a boot jar and is added separately to GraalVM
-        return ['sdk:GRAAL_SDK']
-
 # The community compiler component
 _compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
@@ -1323,7 +1316,6 @@ _compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
         'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
     ],
     jvmci_jars=_jvmci_jars(),
-    boot_jars=_boot_jars(),
     graal_compiler='graal',
 ))
 

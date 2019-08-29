@@ -758,14 +758,32 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=[],
+    dependencies=['Graal SDK'],
+    jar_distributions=[
+        'truffle:TRUFFLE_DSL_PROCESSOR',
+        'truffle:TRUFFLE_TCK',
+    ],
+    jvmci_parent_jars=[
+        'truffle:TRUFFLE_API',
+    ],
+))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
+    suite=_suite,
+    name='Truffle Macro',
+    short_name='tflm',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
 
@@ -779,7 +797,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     third_party_license_files=[],
     dependencies=['Truffle'],
     truffle_jars=['truffle:TRUFFLE_NFI'],
-    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT']
+    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
+    support_headers_distributions=['truffle:TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT']
 ))
 
 
