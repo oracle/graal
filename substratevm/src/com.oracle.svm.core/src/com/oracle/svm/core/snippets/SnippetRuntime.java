@@ -68,8 +68,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
 
-    public static final SubstrateForeignCallDescriptor UNREACHED_CODE = findForeignCall(SnippetRuntime.class, "unreachedCode", true, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor UNRESOLVED = findForeignCall(SnippetRuntime.class, "unresolved", true, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", true, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION = findForeignCall(SnippetRuntime.class, "unwindException", true, LocationIdentity.any());
 
@@ -192,16 +191,10 @@ public class SnippetRuntime {
         }
     }
 
-    /** Foreign call: {@link #UNREACHED_CODE}. */
+    /** Foreign call: {@link #UNSUPPORTED_FEATURE}. */
     @SubstrateForeignCallTarget
-    private static void unreachedCode() {
-        throw VMError.unsupportedFeature("Code that was considered unreachable by closed-world analysis was reached");
-    }
-
-    /** Foreign call: {@link #UNRESOLVED}. */
-    @SubstrateForeignCallTarget
-    private static void unresolved(String sourcePosition) {
-        throw VMError.unsupportedFeature("Unresolved element found " + (sourcePosition != null ? sourcePosition : ""));
+    private static void unsupportedFeature(String msg) {
+        throw VMError.unsupportedFeature(msg);
     }
 
     /*
