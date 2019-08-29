@@ -93,8 +93,8 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
         HostedGraphKit kit = new JNIGraphKit(debug, providers, method);
         kit.append(new UnreachableNode());
         kit.append(new DeadEndNode());
-        assert kit.getGraph().verify();
-        return kit.getGraph();
+
+        return kit.finalizeGraph();
     }
 
     public ParseFunction createCustomParseFunction() {
