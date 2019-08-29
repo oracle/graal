@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,7 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
 
     public static void emitEnsureClassInitialized(GraphBuilderContext builder, JavaConstant hubConstant) {
         ValueNode[] args = {ConstantNode.forConstant(hubConstant, builder.getMetaAccess(), builder.getGraph())};
-        builder.handleReplacedInvoke(InvokeKind.Special, builder.getMetaAccess().lookupJavaMethod(ENSURE_INITIALIZED_METHOD), args, false);
+        builder.handleReplacedInvoke(InvokeKind.Special, builder.getMetaAccess().lookupJavaMethod(ENSURE_INITIALIZED_METHOD), args);
     }
 
     /**

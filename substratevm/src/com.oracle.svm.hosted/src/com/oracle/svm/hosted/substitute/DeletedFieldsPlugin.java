@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,7 +68,7 @@ public final class DeletedFieldsPlugin implements NodePlugin {
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(field, deleteAnnotation, false);
         ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), b.getMetaAccess(), b.getGraph());
         ResolvedJavaMethod reportErrorMethod = b.getMetaAccess().lookupJavaMethod(DeletedMethod.reportErrorMethod);
-        b.handleReplacedInvoke(InvokeKind.Static, reportErrorMethod, new ValueNode[]{msgNode}, false);
+        b.handleReplacedInvoke(InvokeKind.Static, reportErrorMethod, new ValueNode[]{msgNode});
 
         JavaKind returnKind = reportErrorMethod.getSignature().getReturnKind();
         if (returnKind != JavaKind.Void) {

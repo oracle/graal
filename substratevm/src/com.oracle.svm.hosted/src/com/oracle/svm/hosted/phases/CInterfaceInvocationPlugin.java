@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -143,7 +143,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 stub = hMetaAccess.getUniverse().lookup(stub);
             }
             assert !b.getMethod().equals(stub) : "Plugin should not be called for the invoke in the stub itself";
-            b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
+            b.handleReplacedInvoke(InvokeKind.Static, stub, args);
             return true;
         } else {
             return false;
@@ -509,7 +509,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         if (hosted) {
             stub = ((HostedMetaAccess) b.getMetaAccess()).getUniverse().lookup(stub);
         }
-        b.handleReplacedInvoke(InvokeKind.Static, stub, args, false);
+        b.handleReplacedInvoke(InvokeKind.Static, stub, args);
         return true;
     }
 

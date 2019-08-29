@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -353,7 +353,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         graphBuilderPlugins.prependParameterPlugin(new MethodHandlesParameterPlugin(methodHandleArguments));
         graphBuilderPlugins.clearInlineInvokePlugins();
         graphBuilderPlugins.prependInlineInvokePlugin(new MethodHandlesInlineInvokePlugin());
-        graphBuilderPlugins.prependNodePlugin(new MethodHandlePlugin(originalProviders.getConstantReflection().getMethodHandleAccess(), false));
+        graphBuilderPlugins.prependNodePlugin(new MethodHandlePlugin(originalProviders.getConstantReflection().getMethodHandleAccess()));
 
         /* We do all the word type rewriting because parameters to the lambda can be word types. */
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
@@ -481,7 +481,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 for (int i = 0; i < replacedArguments.length; i++) {
                     replacedArguments[i] = lookup(b, methodHandleArguments, singleCallTarget.arguments().get(i));
                 }
-                b.handleReplacedInvoke(singleCallTarget.invokeKind(), resolvedTarget, replacedArguments, false);
+                b.handleReplacedInvoke(singleCallTarget.invokeKind(), resolvedTarget, replacedArguments);
 
                 JavaKind invokeResultKind = singleInvoke.asNode().getStackKind();
                 if (invokeResultKind != JavaKind.Void) {

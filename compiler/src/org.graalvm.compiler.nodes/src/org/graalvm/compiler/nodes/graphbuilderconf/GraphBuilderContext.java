@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,10 +144,8 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * @param invokeKind the kind of the replacement invocation
      * @param targetMethod the target of the replacement invocation
      * @param args the arguments to the replacement invocation
-     * @param forceInlineEverything specifies if all invocations encountered in the scope of
-     *            handling the replaced invoke are to be force inlined
      */
-    Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything);
+    Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args);
 
     void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType);
 

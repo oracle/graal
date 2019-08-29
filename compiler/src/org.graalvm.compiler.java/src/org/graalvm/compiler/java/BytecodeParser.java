@@ -1732,17 +1732,9 @@ public class BytecodeParser implements GraphBuilderContext {
         return currentInvoke == null ? null : currentInvoke.returnType;
     }
 
-    private boolean forceInliningEverything;
-
     @Override
-    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
-        boolean previous = forceInliningEverything;
-        forceInliningEverything = previous || inlineEverything;
-        try {
-            return appendInvoke(invokeKind, targetMethod, args);
-        } finally {
-            forceInliningEverything = previous;
-        }
+    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args) {
+        return appendInvoke(invokeKind, targetMethod, args);
     }
 
     @Override
@@ -2117,17 +2109,9 @@ public class BytecodeParser implements GraphBuilderContext {
      * {@code null} if there is no {@link InlineInfo} for this method.
      */
     private InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
-        boolean canBeInlined = forceInliningEverything || parsingIntrinsic() || targetMethod.canBeInlined();
+        boolean canBeInlined = parsingIntrinsic() || targetMethod.canBeInlined();
         if (!canBeInlined) {
             return null;
-        }
-
-        if (forceInliningEverything) {
-            if (inline(targetMethod, targetMethod, null, args)) {
-                return SUCCESSFULLY_INLINED;
-            } else {
-                return null;
-            }
         }
 
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
