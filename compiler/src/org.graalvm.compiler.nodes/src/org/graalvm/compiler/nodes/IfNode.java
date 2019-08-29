@@ -1536,7 +1536,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
 
         // Sanity check that both ends are not followed by a merge without frame state.
-        if (!checkFrameState(trueSuccessor()) && !checkFrameState(falseSuccessor())) {
+        assert !graph().getGuardsStage().allowsFloatingGuards() || (checkFrameState(trueSuccessor()) && checkFrameState(falseSuccessor())) : graph().getGuardsStage();
+
+        // Only allow this optimization in later stages when the merge node doesn't have a frame
+        // state. There is a small intermediate window between fixing guards and assigning frame
+        // states where some merges may have a frame state and others do not. We must not remove a
+        // merge with a frame state that is a dominator to a merge without a frame state.
+        if (!graph().getGuardsStage().allowsFloatingGuards() && merge.stateAfter() != null) {
             return false;
         }
 
@@ -1668,6 +1674,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             } else if (node instanceof ControlSinkNode) {
                 return true;
             } else {
+                assert false : "unexpected node";
                 return false;
             }
         }
