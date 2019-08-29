@@ -561,10 +561,6 @@ public abstract class BigBang {
 
             universe.setAnalysisDataValid(this, true);
 
-            if (PointstoOptions.ReportUnsupportedFeaturesDuringAnalysis.getValue(options)) {
-                unsupportedFeatures.report(this);
-            }
-
             return didSomeWork;
         }
     }
