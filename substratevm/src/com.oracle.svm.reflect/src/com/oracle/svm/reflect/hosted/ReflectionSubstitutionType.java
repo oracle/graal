@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
@@ -333,10 +332,9 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                 }
                 break;
             case Short:
-                assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
-                return graphKit.append(NarrowNode.create(value, to.getBitCount(), NodeView.DEFAULT));
             case Int:
                 assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
+                /* All values smaller than 32 bit always have a 32-bit stamp. */
                 return value;
             case Long:
                 assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
