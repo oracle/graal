@@ -52,13 +52,14 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPSHUFD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTF128;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTI128;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRB;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRW;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTF128;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTI128;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
@@ -490,7 +491,13 @@ public class AMD64VectorShuffle {
                 if (selector == 0) {
                     VMOVSD.emitReverse(masm, XMM, asRegister(result), asRegister(vector));
                 } else {
-                    VPEXTRQ.emit(masm, XMM, asRegister(result), asRegister(vector), selector);
+                    final Register resultRegister = asRegister(result);
+                    // VPEXTRQ does not support xmm result registers
+                    if (resultRegister.getRegisterCategory().equals(AMD64.XMM)) {
+                        VPSHUFD.emit(masm, XMM, resultRegister, asRegister(vector), selector);
+                    } else {
+                        VPEXTRQ.emit(masm, XMM, asRegister(result), asRegister(vector), selector);
+                    }
                 }
             } else {
                 assert isStackSlot(result);
