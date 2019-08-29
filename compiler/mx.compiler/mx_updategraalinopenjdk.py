@@ -42,6 +42,9 @@ def _read_sibling_file(basename):
         return fp.read()
 
 def _find_version_base_project(versioned_project):
+    base_project_name = getattr(versioned_project, 'overlayTarget', None)
+    if base_project_name:
+        return mx.dependency(base_project_name, context=versioned_project)
     extended_packages = versioned_project.extended_java_packages()
     if not extended_packages:
         mx.abort('Project with a multiReleaseJarVersion attribute must have sources in a package defined by project without multiReleaseJarVersion attribute', context=versioned_project)
