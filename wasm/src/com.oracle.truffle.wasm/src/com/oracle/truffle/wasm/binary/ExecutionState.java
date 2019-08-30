@@ -30,6 +30,7 @@
 package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.wasm.collection.ByteArrayList;
+import com.oracle.truffle.wasm.collection.IntArrayArrayList;
 import com.oracle.truffle.wasm.collection.IntArrayList;
 import com.oracle.truffle.wasm.collection.LongArrayList;
 
@@ -40,6 +41,7 @@ public class ExecutionState {
     private IntArrayList intConstants;
     private IntArrayList stackStates;
     private LongArrayList numericLiterals;
+    private IntArrayArrayList branchTables;
 
     public ExecutionState() {
         this.stackSize = 0;
@@ -48,6 +50,7 @@ public class ExecutionState {
         this.intConstants = new IntArrayList();
         this.stackStates = new IntArrayList();
         this.numericLiterals = new LongArrayList();
+        this.branchTables = new IntArrayArrayList();
     }
 
     public void push() {
@@ -122,5 +125,17 @@ public class ExecutionState {
 
     public long[] numericLiterals() {
         return numericLiterals.toArray();
+    }
+
+    public void saveBranchTable(int[] branchTable) {
+        branchTables.add(branchTable);
+    }
+
+    public int branchTableOffset() {
+        return branchTables.size();
+    }
+
+    public int[][] branchTables() {
+        return branchTables.toArray();
     }
 }

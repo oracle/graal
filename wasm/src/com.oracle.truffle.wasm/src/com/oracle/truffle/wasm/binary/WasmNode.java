@@ -59,6 +59,11 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      */
     @CompilationFinal private int numericLiteralLength;
 
+    /**
+     * The number of branch tables used by this node.
+     */
+    @CompilationFinal private int branchTableLength;
+
     public WasmNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int byteLength, int byteConstantLength, int numericLiteralLength) {
         this.wasmModule = wasmModule;
         this.codeEntry = codeEntry;
@@ -127,5 +132,13 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
 
     public void setNumericLiteralLength(int numericLiteralLength) {
         this.numericLiteralLength = numericLiteralLength;
+    }
+
+    public int branchTableLength() {
+        return branchTableLength;
+    }
+
+    public void setBranchTableLength(int branchTableLength) {
+        this.branchTableLength = branchTableLength;
     }
 }

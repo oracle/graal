@@ -34,6 +34,7 @@ import static com.oracle.truffle.wasm.binary.Assert.format;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BR_IF;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.BR_TABLE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.CALL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.CALL_INDIRECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.DROP;
@@ -220,11 +221,13 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialByteConstantOffset;
     @CompilationFinal private final int initialIntConstantOffset;
     @CompilationFinal private final int initialNumericLiteralOffset;
+    @CompilationFinal private final int initialBranchTableOffset;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children WasmNode[] nestedControlTable;
     @Children Node[] callNodeTable;
 
-    public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer, int initialByteConstantOffset, int initialIntConstantOffset, int initialNumericLiteralOffset) {
+    public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, int initialStackPointer,
+                         int initialByteConstantOffset, int initialIntConstantOffset, int initialNumericLiteralOffset, int initialBranchTableOffset) {
         super(wasmModule, codeEntry, -1, -1, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
@@ -232,6 +235,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         this.initialByteConstantOffset = initialByteConstantOffset;
         this.initialIntConstantOffset = initialIntConstantOffset;
         this.initialNumericLiteralOffset = initialNumericLiteralOffset;
+        this.initialBranchTableOffset = initialBranchTableOffset;
         this.nestedControlTable = null;
         this.callNodeTable = null;
     }
@@ -250,6 +254,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         int byteConstantOffset = initialByteConstantOffset;
         int intConstantOffset = initialIntConstantOffset;
         int numericLiteralOffset = initialNumericLiteralOffset;
+        int branchTableOffset = initialBranchTableOffset;
         int stackPointer = initialStackPointer;
         int offset = startOffset;
         while (offset < startOffset + byteLength()) {
@@ -276,6 +281,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset += block.byteConstantLength();
                     intConstantOffset += block.intConstantLength();
                     numericLiteralOffset += block.numericLiteralLength();
+                    branchTableOffset += block.branchTableLength();
                     break;
                 }
                 case LOOP: {
@@ -301,6 +307,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset += loopNode.byteConstantLength();
                     intConstantOffset += loopNode.intConstantLength();
                     numericLiteralOffset += loopNode.numericLiteralLength();
+                    branchTableOffset += loopNode.branchTableLength();
                     break;
                 }
                 case IF: {
@@ -316,6 +323,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset += ifNode.byteConstantLength();
                     intConstantOffset += ifNode.intConstantLength();
                     numericLiteralOffset += ifNode.numericLiteralLength();
+                    branchTableOffset += ifNode.branchTableLength();
                     break;
                 }
                 case ELSE:
@@ -356,6 +364,20 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += constantLength;
                     break;
+                }
+                case BR_TABLE: {
+                    stackPointer--;
+                    int index = popInt(frame, stackPointer);
+                    int[] table = codeEntry().branchTable(branchTableOffset);
+                    int[] continuationStackPointers = codeEntry().branchTable(branchTableOffset + 1);
+                    index = index >= table.length ? table.length - 1 : index;
+                    // Technically, we should increment the branchTableOffset at this point,
+                    // but since we are returning, it does not really matter.
+
+                    // Populate the stack with the return values of the current block (the one we are escaping from).
+                    unwindStack(frame, stackPointer, continuationStackPointers[index]);
+
+                    return table[index];
                 }
                 case CALL: {
                     int functionIndex = codeEntry().numericLiteralAsInt(numericLiteralOffset);

@@ -33,6 +33,7 @@ package com.oracle.truffle.wasm.binary;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BR_IF;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.BR_TABLE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.CALL;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.CALL_INDIRECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.DROP;
@@ -425,6 +426,7 @@ public class BinaryReader extends BinaryStreamReader {
         rootNode.codeEntry().setByteConstants(state.byteConstants());
         rootNode.codeEntry().setIntConstants(state.intConstants());
         rootNode.codeEntry().setNumericLiterals(state.numericLiterals());
+        rootNode.codeEntry().setBranchTables(state.branchTables());
         rootNode.codeEntry().initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
     }
 
@@ -476,7 +478,8 @@ public class BinaryReader extends BinaryStreamReader {
         int startByteConstantOffset = state.byteConstantOffset();
         int startIntConstantOffset = state.intConstantOffset();
         int startNumericLiteralOffset = state.numericLiteralOffset();
-        WasmBlockNode currentBlock = new WasmBlockNode(wasmModule, codeEntry, startOffset, returnTypeId, startStackSize, startByteConstantOffset, startIntConstantOffset, startNumericLiteralOffset);
+        int startBranchTableOffset = state.branchTableOffset();
+        WasmBlockNode currentBlock = new WasmBlockNode(wasmModule, codeEntry, startOffset, returnTypeId, startStackSize, startByteConstantOffset, startIntConstantOffset, startNumericLiteralOffset, startBranchTableOffset);
         int opcode;
         do {
             opcode = read1() & 0xFF;
@@ -523,7 +526,7 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 }
                 case BR_IF: {
-                    state.pop();
+                    state.pop();  // The branch condition.
                     // TODO: restore check
                     // This check was here to validate the stack size before branching and make sure that the block that
                     // is currently executing produced as many values as it was meant to before branching.
@@ -534,6 +537,25 @@ public class BinaryReader extends BinaryStreamReader {
                     state.saveNumericLiteral(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
                     state.useIntConstant(state.getStackState(unwindLevel));
+                    break;
+                }
+                case BR_TABLE: {
+                    int instructionStartOffset = offset();
+                    int numLabels = readVectorLength();
+                    // We need to save two tables here, to maintain the mapping target -> state mapping:
+                    // - a table containing the branch targets for the instruction
+                    // - a table containing the stack state for each corresponding branch target
+                    int[] branchTable = new int[numLabels + 1];
+                    int[] stackStates = new int[numLabels + 1];
+                    // The BR_TABLE instruction behaves like a 'switch' statement.
+                    // There is one extra label for the 'default' case.
+                    for (int i = 0; i != numLabels + 1; ++i) {
+                        branchTable[i] = readLabelIndex(bytesConsumed);
+                        stackStates[i] = state.getStackState(branchTable[i]);
+                    }
+                    state.pop();  // The offset to the branch table.
+                    state.saveBranchTable(branchTable);
+                    state.saveBranchTable(stackStates);
                     break;
                 }
                 case CALL: {
@@ -883,6 +905,7 @@ public class BinaryReader extends BinaryStreamReader {
         currentBlock.setByteConstantLength(state.byteConstantOffset() - startByteConstantOffset);
         currentBlock.setIntConstantLength(state.intConstantOffset() - startIntConstantOffset);
         currentBlock.setNumericLiteralLength(state.numericLiteralOffset() - startNumericLiteralOffset);
+        currentBlock.setBranchTableLength(state.branchTableOffset() - startBranchTableOffset);
         checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
         return currentBlock;
     }

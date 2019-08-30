@@ -43,6 +43,7 @@ public class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private byte[] byteConstants;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
     @CompilationFinal(dimensions = 1) private long[] numericLiterals;
+    @CompilationFinal(dimensions = 2) private int[][] branchTables;
 
     public WasmCodeEntry(int functionIndex, byte[] data) {
         this.functionIndex = functionIndex;
@@ -141,6 +142,14 @@ public class WasmCodeEntry {
 
     public void setNumericLiterals(long[] numericLiterals) {
         this.numericLiterals = numericLiterals;
+    }
+
+    public int[] branchTable(int index) {
+        return branchTables[index];
+    }
+
+    public void setBranchTables(int[][] branchTables) {
+        this.branchTables = branchTables;
     }
 
     public int numLocals() {
