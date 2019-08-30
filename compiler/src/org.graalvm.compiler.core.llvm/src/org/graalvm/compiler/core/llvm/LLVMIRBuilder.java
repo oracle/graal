@@ -958,11 +958,11 @@ public class LLVMIRBuilder {
     }
 
     LLVMValueRef buildCtlz(LLVMValueRef a) {
-        return buildIntrinsicOp("ctlz", a, constantBoolean(true));
+        return buildIntrinsicOp("ctlz", a, constantBoolean(false));
     }
 
     LLVMValueRef buildCttz(LLVMValueRef a) {
-        return buildIntrinsicOp("cttz", a, constantBoolean(true));
+        return buildIntrinsicOp("cttz", a, constantBoolean(false));
     }
 
     LLVMValueRef buildCtpop(LLVMValueRef a) {
