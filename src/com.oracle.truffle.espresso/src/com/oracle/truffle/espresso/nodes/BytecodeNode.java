@@ -399,6 +399,9 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         return (StaticObject) result;
     }
 
+    /**
+     * Read and clear the operand stack slot.
+     */
     StaticObject peekAndReleaseObject(VirtualFrame frame, int slot) {
         Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
         // nulls-out the slot, use peekObject to read only
@@ -424,12 +427,9 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         return Double.longBitsToDouble(FrameUtil.getLongSafe(frame, stackSlots[slot]));
     }
 
-    private Object peekReturnAddressOrObject(VirtualFrame frame, int slot) {
-        Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
-        assert result instanceof StaticObject || result instanceof ReturnAddress;
-        return result;
-    }
-
+    /**
+     * Read and clear the operand stack slot.
+     */
     private Object peekAndReleaseReturnAddressOrObject(VirtualFrame frame, int slot) {
         Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
         putObjectOrReturnAddress(frame, slot, null);
@@ -616,7 +616,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         case LSTORE: setLocalLong(frame, bs.readLocalIndex(curBCI), peekLong(frame, top - 1)); break;
                         case FSTORE: setLocalFloat(frame, bs.readLocalIndex(curBCI), peekFloat(frame, top - 1)); break;
                         case DSTORE: setLocalDouble(frame, bs.readLocalIndex(curBCI), peekDouble(frame, top - 1)); break;
-                        case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), peekReturnAddressOrObject(frame, top - 1)); break;
+                        case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex(curBCI), peekAndReleaseReturnAddressOrObject(frame, top - 1)); break;
 
                         case ISTORE_0: // fall through
                         case ISTORE_1: // fall through
@@ -637,7 +637,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         case ASTORE_0: // fall through
                         case ASTORE_1: // fall through
                         case ASTORE_2: // fall through
-                        case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, peekReturnAddressOrObject(frame, top - 1)); break;
+                        case ASTORE_3: setLocalObjectOrReturnAddress(frame, curOpcode - ASTORE_0, peekAndReleaseReturnAddressOrObject(frame, top - 1)); break;
 
                         case IASTORE: getInterpreterToVM().setArrayInt(peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
                         case LASTORE: getInterpreterToVM().setArrayLong(peekLong(frame, top - 1), peekInt(frame, top - 3), nullCheck(peekAndReleaseObject(frame, top - 4))); break;
@@ -1992,7 +1992,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             argAt -= kind.getSlotCount();
         }
         if (hasReceiver) {
-            args[0] = peekReturnAddressOrObject(frame, argAt);
+            args[0] = peekAndReleaseObject(frame, argAt);
         }
         return args;
     }
