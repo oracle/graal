@@ -32,6 +32,7 @@ import java.security.AccessControlException;
 import java.security.DomainCombiner;
 import java.security.Permission;
 import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.SecureRandom;
@@ -64,43 +65,75 @@ import com.oracle.svm.core.util.VMError;
 final class Target_java_security_AccessController {
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action) {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedAction<T> action) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedAction<T> action) {
-        return action.run();
+    private static <T> T doPrivilegedWithCombiner(PrivilegedAction<T> action) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context, Permission... perms) {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context, Permission... perms) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Exception {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action) throws Exception {
-        return action.run();
+    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action, AccessControlContext context, Permission... perms) throws Exception {
-        return action.run();
+    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action, AccessControlContext context, Permission... perms) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Exception {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
@@ -121,6 +154,17 @@ final class Target_java_security_AccessController {
         AccessControlContext result = new AccessControlContext(new ProtectionDomain[0]);
         SubstrateUtil.cast(result, Target_java_security_AccessControlContext.class).isPrivileged = true;
         return result;
+    }
+}
+
+@InternalVMMethod
+class AccessControllerUtil {
+    static Throwable wrapCheckedException(Throwable ex) {
+        if (ex instanceof Exception && !(ex instanceof RuntimeException)) {
+            return new PrivilegedActionException((Exception) ex);
+        } else {
+            return ex;
+        }
     }
 }
 
