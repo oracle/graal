@@ -39,7 +39,7 @@ public class MethodHandleInvokeNode extends QuickNode {
         if (hasReceiver) {
             args[0] = nullCheck(root.peekReceiver(frame, top, method));
         }
-        root.peekBasicArgumentsWithArray(frame, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
+        root.peekAndReleaseBasicArgumentsWithArray(frame, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
         Object result = unbasic(callNode.call(args), rKind);
         int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());

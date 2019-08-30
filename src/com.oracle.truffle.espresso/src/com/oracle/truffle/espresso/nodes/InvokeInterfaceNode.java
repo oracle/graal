@@ -87,7 +87,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         // TODO(peterssen): IsNull Node?.
         final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
         assert receiver != null;
-        final Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
+        final Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeInterface(receiver, args);
         int resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver

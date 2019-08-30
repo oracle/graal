@@ -40,8 +40,9 @@ public final class InvokeSpecialNode extends QuickNode {
     public int invoke(final VirtualFrame frame, int top) {
         BytecodeNode root = (BytecodeNode) getParent();
         // TODO(peterssen): IsNull Node?
-        nullCheck(root.peekReceiver(frame, top, method));
-        Object[] args = root.peekArguments(frame, top, true, method.getParsedSignature());
+        Object receiver = nullCheck(root.peekReceiver(frame, top, method));
+        Object[] args = root.peekAndReleaseArguments(frame, top, true, method.getParsedSignature());
+        assert receiver == args[0] : "receiver must be the first argument";
         Object result = directCallNode.call(args);
         int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
