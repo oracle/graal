@@ -28,14 +28,15 @@ download-hsdis : {
   ]
 }
 
-oraclejdk8 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
-oraclejdk8Debug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+oraclejdk8 :        { downloads : { JAVA_HOME : ${jdks.oraclejdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
+oraclejdk8Only :    { downloads : { JAVA_HOME : ${jdks.oraclejdk8} }}
+oraclejdk8Debug :   { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk11} ]} }}
 
-openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
+openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
-oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
-openjdk11 :       { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
-labsjdk11 :       { downloads : { JAVA_HOME : ${jdks.labsjdk11} }}
+oraclejdk11 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
+openjdk11 :         { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
+labsjdk11 :         { downloads : { JAVA_HOME : ${jdks.labsjdk11} }}
 
 common : ${mx} {
   timelimit : "30:00"
