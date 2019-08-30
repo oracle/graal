@@ -2131,9 +2131,9 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
 
         if _src_jdk.javaCompliance >= '9':
-            jimage_jars = set(['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API', 'vm:LOCATOR'])
+            jimage_jars = set()
             for component in registered_graalvm_components(stage1=False):
-                jimage_jars.update(component.boot_jars)
+                jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
                 if isinstance(component, mx_sdk.GraalVmJvmciComponent):
                     jimage_jars.update(component.jvmci_jars)
 
