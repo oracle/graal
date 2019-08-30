@@ -756,11 +756,6 @@ public class Socket {
     @Platforms(Platform.LINUX.class)
     public static native int SIOCATMARK();
 
-    /** Get stamp (timeval) */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int SIOCGSTAMP();
-
     @CConstant
     public static native long SIOCGIFCONF();
 
