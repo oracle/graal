@@ -646,8 +646,13 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         case CASTORE: getInterpreterToVM().setArrayChar((char) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
                         case SASTORE: getInterpreterToVM().setArrayShort((short) peekInt(frame, top - 1), peekInt(frame, top - 2), nullCheck(peekAndReleaseObject(frame, top - 3))); break;
 
-                        case POP: // fall through
-                        case POP2: break;
+                        case POP2:
+                            putObject(frame, top - 1, null);
+                            putObject(frame, top - 2, null);
+                            break;
+                        case POP:
+                            putObject(frame, top - 1, null);
+                            break;
 
                         // TODO(peterssen): Stack shuffling is expensive.
                         case DUP: dup1(frame, top); break;
