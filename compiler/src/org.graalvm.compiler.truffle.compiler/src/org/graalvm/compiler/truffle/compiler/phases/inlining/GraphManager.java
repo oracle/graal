@@ -38,15 +38,12 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -86,7 +83,7 @@ final class GraphManager {
             DebugContext debug = rootIR.getDebug();
             StructuredGraph.AllowAssumptions allowAssumptions = rootIR.getAssumptions() != null ? StructuredGraph.AllowAssumptions.YES : StructuredGraph.AllowAssumptions.NO;
             CompilationIdentifier id = rootIR.compilationId();
-            final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(partialEvaluator.getProviders(), callNodeProvider);
+            final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(callNodeProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary());
             StructuredGraph graph = partialEvaluator.createGraphForInlining(debug, truffleAST, callNodeProvider, plugin, allowAssumptions, id, log, cancellable,
                             graphCacheForInlining);
             final EconomicMap<TruffleCallNode, Invoke> truffleCallNodeToInvoke = plugin.getTruffleCallNodeToInvoke();
@@ -97,7 +94,7 @@ final class GraphManager {
     }
 
     EconomicMap<TruffleCallNode, Invoke> peRoot(CompilableTruffleAST truffleAST) {
-        final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(partialEvaluator.getProviders(), callNodeProvider);
+        final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(callNodeProvider, partialEvaluator.getCallDirectMethod(), partialEvaluator.getCallBoundary());
         partialEvaluator.parseRootGraphForInlining(truffleAST, rootIR, callNodeProvider, plugin, graphCacheForInlining);
         return plugin.getTruffleCallNodeToInvoke();
     }
@@ -128,16 +125,11 @@ final class GraphManager {
         private final ResolvedJavaMethod callBoundary;
         private JavaConstant lastDirectCallNode;
 
-        PEAgnosticInlineInvokePlugin(Providers providers, CallNodeProvider callNodeProvider) {
+        PEAgnosticInlineInvokePlugin(CallNodeProvider callNodeProvider, ResolvedJavaMethod callTargetCallDirect, ResolvedJavaMethod callBoundary) {
+            this.callTargetCallDirect = callTargetCallDirect;
+            this.callBoundary = callBoundary;
             this.truffleCallNodeToInvoke = EconomicMap.create();
             this.callNodeProvider = callNodeProvider;
-            TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-            MetaAccessProvider metaAccess = providers.getMetaAccess();
-            ResolvedJavaType callTargetType = runtime.resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
-            this.callTargetCallDirect = findRequiredMethod(callTargetType, callTargetType.getDeclaredMethods(), "callDirect",
-                            "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
-            this.callBoundary = findRequiredMethod(callTargetType, callTargetType.getDeclaredMethods(), "callBoundary",
-                            "([Ljava/lang/Object;)Ljava/lang/Object;");
 
         }
 
