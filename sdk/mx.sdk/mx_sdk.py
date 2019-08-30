@@ -80,7 +80,9 @@ _suite = mx.suite('sdk')
 
 graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
-    ('native', [], ['--native'], 100)
+    ('jvm-la-inline', [], ['--jvm', '--vm.Dgraal.TruffleLanguageAgnosticInlining=true'], 30),
+    ('native', [], ['--native'], 100),
+    ('native-la-inline', [], ['--native', '--vm.Dgraal.TruffleLanguageAgnosticInlining=true'], 40)
 ]
 
 
