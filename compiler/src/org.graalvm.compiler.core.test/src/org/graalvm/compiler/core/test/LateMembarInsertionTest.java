@@ -24,17 +24,13 @@
  * questions.
  */
 
-package org.graalvm.compiler.hotspot.test;
+package org.graalvm.compiler.core.test;
 
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.runtime.JVMCIBackend;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -57,6 +53,11 @@ import java.util.stream.Collectors;
 import static org.graalvm.compiler.core.common.GraalOptions.StressTestEarlyReads;
 
 public class LateMembarInsertionTest extends GraalCompilerTest {
+
+    private final ResolvedJavaType volatileAccessType = getMetaAccess().lookupJavaType(VolatileAccess.class);
+    private final ResolvedJavaType regularAccessField = getMetaAccess().lookupJavaType(RegularAccess.class);
+    private final ResolvedJavaType volatileAccess2Type = getMetaAccess().lookupJavaType(VolatileAccess2.class);
+
     static class VolatileAccess {
         static volatile int field;
     }
@@ -80,8 +81,8 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         List<TypePair> accesses = compile("volatileFieldLoadFieldLoad", stressTestEarlyReads());
 
         Assert.assertEquals(accesses.size(), 2);
-        Assert.assertEquals(accesses.get(0).getType(), VolatileAccess.class);
-        Assert.assertEquals(accesses.get(1).getType(), RegularAccess.class);
+        Assert.assertEquals(accesses.get(0).getType(), volatileAccessType);
+        Assert.assertEquals(accesses.get(1).getType(), regularAccessField);
         Assert.assertTrue(accesses.get(0).isRead());
         Assert.assertTrue(accesses.get(1).isRead());
     }
@@ -97,8 +98,8 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         List<TypePair> accesses = compile("volatileFieldLoadVolatileFieldLoad", stressTestEarlyReads());
 
         Assert.assertEquals(accesses.size(), 2);
-        Assert.assertEquals(accesses.get(0).getType(), VolatileAccess.class);
-        Assert.assertEquals(accesses.get(1).getType(), VolatileAccess2.class);
+        Assert.assertEquals(accesses.get(0).getType(), volatileAccessType);
+        Assert.assertEquals(accesses.get(1).getType(), volatileAccess2Type);
         Assert.assertTrue(accesses.get(0).isRead());
         Assert.assertTrue(accesses.get(1).isRead());
     }
@@ -114,8 +115,8 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         List<TypePair> accesses = compile("volatileFieldLoadVolatileFieldStore");
 
         Assert.assertEquals(accesses.size(), 2);
-        Assert.assertEquals(accesses.get(0).getType(), VolatileAccess.class);
-        Assert.assertEquals(accesses.get(1).getType(), VolatileAccess2.class);
+        Assert.assertEquals(accesses.get(0).getType(), volatileAccessType);
+        Assert.assertEquals(accesses.get(1).getType(), volatileAccess2Type);
         Assert.assertTrue(accesses.get(0).isRead());
         Assert.assertTrue(accesses.get(1).isWrite());
     }
@@ -130,8 +131,8 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         List<TypePair> accesses = compile("volatileFieldStoreVolatileFieldLoad", stressTestEarlyReads());
 
         Assert.assertEquals(accesses.size(), 2);
-        Assert.assertEquals(accesses.get(0).getType(), VolatileAccess.class);
-        Assert.assertEquals(accesses.get(1).getType(), VolatileAccess2.class);
+        Assert.assertEquals(accesses.get(0).getType(), volatileAccessType);
+        Assert.assertEquals(accesses.get(1).getType(), volatileAccess2Type);
         Assert.assertTrue(accesses.get(0).isWrite());
         Assert.assertTrue(accesses.get(1).isRead());
     }
@@ -147,8 +148,8 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         List<TypePair> accesses = compile("fieldLoadVolatileFieldStore");
 
         Assert.assertEquals(accesses.size(), 2);
-        Assert.assertEquals(accesses.get(0).getType(), RegularAccess.class);
-        Assert.assertEquals(accesses.get(1).getType(), VolatileAccess2.class);
+        Assert.assertEquals(accesses.get(0).getType(), regularAccessField);
+        Assert.assertEquals(accesses.get(1).getType(), volatileAccess2Type);
         Assert.assertTrue(accesses.get(0).isRead());
         Assert.assertTrue(accesses.get(1).isWrite());
     }
@@ -163,8 +164,8 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         List<TypePair> accesses = compile("volatileFieldStoreVolatileFieldStore");
 
         Assert.assertEquals(accesses.size(), 2);
-        Assert.assertEquals(accesses.get(0).getType(), VolatileAccess.class);
-        Assert.assertEquals(accesses.get(1).getType(), VolatileAccess2.class);
+        Assert.assertEquals(accesses.get(0).getType(), volatileAccessType);
+        Assert.assertEquals(accesses.get(1).getType(), volatileAccess2Type);
         Assert.assertTrue(accesses.get(0).isWrite());
         Assert.assertTrue(accesses.get(1).isWrite());
     }
@@ -177,9 +178,9 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
 
     static class TypePair {
         private boolean isRead;
-        private Class<?> type;
+        private ResolvedJavaType type;
 
-        TypePair(boolean isRead, Class<?> type) {
+        TypePair(boolean isRead, ResolvedJavaType type) {
             this.isRead = isRead;
             this.type = type;
         }
@@ -192,7 +193,7 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
             return !isRead;
         }
 
-        public Class<?> getType() {
+        public ResolvedJavaType getType() {
             return type;
         }
     }
@@ -202,7 +203,7 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         return getAccesses(graph);
     }
 
-    private static List<TypePair> getAccesses(StructuredGraph graph) {
+    private List<TypePair> getAccesses(StructuredGraph graph) {
         StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
         ControlFlowGraph cfg = schedule.getCFG();
         Block[] blocks = cfg.getBlocks();
@@ -216,20 +217,17 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         return getAccesses(graph);
     }
 
-    private static Class<?> classForAccess(FixedAccessNode n) {
+    private ResolvedJavaType classForAccess(FixedAccessNode n) {
         AddressNode address = n.getAddress();
         ValueNode base = address.getBase();
         Stamp stamp = base.stamp(NodeView.DEFAULT);
-        JVMCIBackend providers = JVMCI.getRuntime().getHostJVMCIBackend();
-        MetaAccessProvider metaAccess = providers.getMetaAccess();
+        MetaAccessProvider metaAccess = getMetaAccess();
         ResolvedJavaType javaType = stamp.javaType(metaAccess);
-        Class<?> mirror = ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getMirror(javaType);
-        if (mirror == Class.class && base instanceof ConstantNode) {
-            ConstantReflectionProvider constantReflection = providers.getConstantReflection();
+        if (javaType == metaAccess.lookupJavaType(Class.class) && base instanceof ConstantNode) {
+            ConstantReflectionProvider constantReflection = getConstantReflection();
             javaType = constantReflection.asJavaType(base.asConstant());
-            mirror = ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getMirror(javaType);
         }
-        return mirror;
+        return javaType;
     }
 
 }
