@@ -39,6 +39,7 @@ import tempfile
 import shutil
 import sys
 import hashlib
+import io
 
 import mx_truffle
 import mx_sdk
@@ -1208,12 +1209,12 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         for line in out.lines:
             m = pattern.match(line)
             if m:
-                with open(join(libjvm_dir, 'vm.properties'), 'wb') as fp:
+                with io.open(join(libjvm_dir, 'vm.properties'), 'w', newline='') as fp:
                     # Modify VM name in `java -version` to be Graal along
                     # with a suffix denoting the commit of each Graal jar.
                     # For example:
                     # Java HotSpot(TM) 64-Bit Graal:compiler_88847fb25d1a62977a178331a5e78fa5f8fcbb1a (build 25.71-b01-internal-jvmci-0.34, mixed mode)
-                    print('name=' + m.group(1) + vm_name, file=fp)
+                    print(u'name=' + m.group(1) + vm_name, file=fp)
                 line = True
                 break
         if line is not True:
