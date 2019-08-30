@@ -89,11 +89,14 @@ import org.graalvm.compiler.word.WordOperationPlugin;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -153,6 +156,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final ResolvedJavaType varHandleType;
     private final Field varHandleVFormField;
     private final Method varFormInitMethod;
+
+    private static final Method unsupportedFeatureMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
 
     public IntrinsifyMethodHandlesInvocationPlugin(Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
         this.aUniverse = aUniverse;
@@ -459,7 +464,26 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     singleReturn = (ReturnNode) node;
                     continue;
                 }
-                throw new UnsupportedFeatureException("Invoke with MethodHandle argument could not be reduced to at most a single call: " + methodHandleMethod.format("%H.%n(%p)"));
+
+                String message = "Invoke with MethodHandle argument could not be reduced to at most a single call: " + methodHandleMethod.format("%H.%n(%p)");
+
+                if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+                    /*
+                     * Ensure that we have space on the expression stack for the (unused) return
+                     * value of the invoke.
+                     */
+                    ((BytecodeParser) b).getFrameStateBuilder().clearStack();
+                    b.handleReplacedInvoke(InvokeKind.Static, b.getMetaAccess().lookupJavaMethod(unsupportedFeatureMethod),
+                                    new ValueNode[]{ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph())}, false);
+                    /* The invoked method throws an exception and therefore never returns. */
+                    b.append(new DeadEndNode());
+                    return;
+
+                } else {
+                    throw new UnsupportedFeatureException(message + System.lineSeparator() + "To diagnose the issue, you can add the option " +
+                                    SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") +
+                                    ". The error is then reported at run time when the invoke is executed.");
+                }
             }
 
             JavaKind returnResultKind = b.getInvokeReturnType().getJavaKind().getStackKind();
@@ -508,7 +532,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 b.add(new StoreFieldNode(lookup(b, methodHandleArguments, fieldStore.object()), resolvedTarget, lookup(b, methodHandleArguments, fieldStore.value())));
 
             } else if (singleFunctionality != null) {
-                VMError.shouldNotReachHere("Unexpected singleFunctionality: " + singleFunctionality);
+                throw VMError.shouldNotReachHere("Unexpected singleFunctionality: " + singleFunctionality);
             }
 
             if (returnResultKind != JavaKind.Void) {
