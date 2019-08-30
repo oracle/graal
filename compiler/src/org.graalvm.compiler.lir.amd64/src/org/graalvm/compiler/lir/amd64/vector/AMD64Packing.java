@@ -51,9 +51,7 @@ import static java.lang.Float.floatToRawIntBits;
 
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
-import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.DWORD;
-import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.QWORD;
-import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
+import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.*;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
@@ -358,7 +356,7 @@ public final class AMD64Packing {
             // If we can fill an entire YMM register, we can just perform a single move and skip
             // more complicated packing logic.
             // TODO: support XMM-only platforms
-            if (sizeInBytes == YMM.getBytes()) {
+            if (sizeInBytes == YMM.getBytes() || sizeInBytes == XMM.getBytes()) {
                 masm.vmovdqu(asRegister(result), input.toAddress());
             } else {
                 final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
@@ -419,7 +417,7 @@ public final class AMD64Packing {
             // If we can fill an entire YMM register, we can just perform a single move and skip
             // more complicated packing logic.
             // TODO: support XMM-only platforms
-            if (sizeInBytes == YMM.getBytes()) {
+            if (sizeInBytes == YMM.getBytes() || sizeInBytes == XMM.getBytes()) {
                 masm.vmovdqu(result.toAddress(), asRegister(input));
             } else {
                 final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);

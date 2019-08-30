@@ -132,7 +132,6 @@ public final class VectorSupport {
             // All inputs need to refer to the same vector
             // All inputs need to be in increasing order, starting at 0
             // TODO: Input count needs to be the same as the type of the vector.
-            //       there isn't yet a way to express this.
 
             // Obtain the vector value
             if (!(inputs().first() instanceof VectorExtractNode)) {
@@ -202,7 +201,6 @@ public final class VectorSupport {
                 value.serialize(byteBuffer);
             }
 
-            // TODO: don't hardcode for vector size
             gen.setResult(this, gen.getLIRGeneratorTool().emitPackConst(kind, byteBuffer));
         }
 
