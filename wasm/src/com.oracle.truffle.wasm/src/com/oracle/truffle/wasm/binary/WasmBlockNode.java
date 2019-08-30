@@ -198,6 +198,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_SET;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_TEE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.RETURN;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 
@@ -378,6 +379,12 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     unwindStack(frame, stackPointer, continuationStackPointers[index]);
 
                     return table[index];
+                }
+                case RETURN: {
+                    // A return statement causes the termination of the current function, i.e. causes the execution
+                    // to resume after the instruction that invoked the current frame.
+                    unwindStack(frame, stackPointer, 0);
+                    return Integer.MAX_VALUE;
                 }
                 case CALL: {
                     int functionIndex = codeEntry().numericLiteralAsInt(numericLiteralOffset);

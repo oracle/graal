@@ -198,6 +198,7 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.LOOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.MEMORY_GROW;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.MEMORY_SIZE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.RETURN;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 import static com.oracle.truffle.wasm.binary.constants.Sections.CODE;
@@ -556,6 +557,9 @@ public class BinaryReader extends BinaryStreamReader {
                     state.pop();  // The offset to the branch table.
                     state.saveBranchTable(branchTable);
                     state.saveBranchTable(stackStates);
+                    break;
+                }
+                case RETURN: {
                     break;
                 }
                 case CALL: {
