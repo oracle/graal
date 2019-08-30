@@ -198,19 +198,20 @@ def updategraalinopenjdk(args):
                         if new_project_name.startswith(old_name):
                             new_project_name = new_project_name.replace(old_name, new_name)
 
-                    source_dir = p.source_dirs()[0]
-                    target_dir = join(classes_dir, new_project_name, 'src')
-                    copied_source_dirs.append(source_dir)
-
-                    workitem = (version, p, source_dir, target_dir)
+                    workitem = (version, p, new_project_name)
                     worklist.append(workitem)
 
             # Ensure versioned resources are copied in the right order
             # such that higher versions override lower versions.
             worklist = sorted(worklist)
 
-            for version, p, source_dir, target_dir in worklist:
+            for version, p, new_project_name in worklist:
                 first_file = True
+
+                source_dir = p.source_dirs()[0]
+                target_dir = join(classes_dir, new_project_name, 'src')
+                copied_source_dirs.append(source_dir)
+
                 for dirpath, _, filenames in os.walk(source_dir):
                     for filename in filenames:
                         src_file = join(dirpath, filename)
@@ -256,12 +257,7 @@ def updategraalinopenjdk(args):
                             mx.log('  copying: ' + source_dir)
                             mx.log('       to: ' + target_dir)
                             if p.testProject or p.definedAnnotationProcessors:
-                                to_exclude = p.name
-                                for old_name, new_name in package_renamings.items():
-                                    if to_exclude.startswith(old_name):
-                                        sfx = '' if to_exclude == old_name else to_exclude[len(old_name):]
-                                        to_exclude = new_name + sfx
-                                        break
+                                to_exclude = new_project_name
                                 jdk_internal_vm_compiler_EXCLUDES.add(to_exclude)
                                 if p.testProject:
                                     jdk_internal_vm_compiler_test_SRC.add(to_exclude)
