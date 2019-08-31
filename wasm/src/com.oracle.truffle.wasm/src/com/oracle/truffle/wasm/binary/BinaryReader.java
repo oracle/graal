@@ -541,7 +541,6 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 }
                 case BR_TABLE: {
-                    int instructionStartOffset = offset();
                     int numLabels = readVectorLength();
                     // We need to save two tables here, to maintain the mapping target -> state mapping:
                     // - a table containing the branch targets for the instruction
@@ -551,7 +550,7 @@ public class BinaryReader extends BinaryStreamReader {
                     // The BR_TABLE instruction behaves like a 'switch' statement.
                     // There is one extra label for the 'default' case.
                     for (int i = 0; i != numLabels + 1; ++i) {
-                        branchTable[i] = readLabelIndex(bytesConsumed);
+                        branchTable[i] = readLabelIndex();
                         stackStates[i] = state.getStackState(branchTable[i]);
                     }
                     state.pop();  // The offset to the branch table.
