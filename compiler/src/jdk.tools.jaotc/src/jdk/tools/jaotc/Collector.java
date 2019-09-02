@@ -40,6 +40,7 @@ import jdk.tools.jaotc.collect.classname.ClassNameSourceProvider;
 import jdk.tools.jaotc.collect.directory.DirectorySourceProvider;
 import jdk.tools.jaotc.collect.jar.JarSourceProvider;
 import jdk.tools.jaotc.collect.module.ModuleSourceProvider;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -92,6 +93,7 @@ final class Collector {
         if (!main.filters.shouldCompileMethod(method)) {
             return;
         }
+        assert ((HotSpotResolvedObjectType) method.getDeclaringClass()).getFingerprint() != 0 : "no fingerprint for " + method.getDeclaringClass().getName();
 
         aotClass.addMethod(method);
         main.printer.printlnVerbose("  added " + method.getName() + method.getSignature().toMethodDescriptor());
