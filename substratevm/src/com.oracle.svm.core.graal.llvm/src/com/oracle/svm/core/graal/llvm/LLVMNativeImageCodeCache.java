@@ -169,6 +169,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
 
         LLVM.LLVMDisposeSectionIterator(sectionIterator);
+        LLVM.LLVMDisposeObjectFile(objectFile);
 
         return result;
     }

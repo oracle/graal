@@ -93,7 +93,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend implements LLVMGenera
         builder.buildInlineJump(jumpAddress);
         builder.buildUnreachable();
 
-        genResult.setModule(generator.getBuilder().getModule());
+        genResult.setBitcode(generator.getBuilder().getBitcode());
 
         byte[] bitcode = genResult.getBitcode();
         result.setTargetCode(bitcode, bitcode.length);
