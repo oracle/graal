@@ -998,10 +998,27 @@ def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
 
+def create_debugexpr_parser(args=None, out=None):
+    """create the inline assembly parser using antlr"""
+    mx.suite("truffle").extensions.create_parser(grammar_project="com.oracle.truffle.llvm.runtime",
+                                                 grammar_package="com.oracle.truffle.llvm.runtime.debug.debugexpr.parser",
+                                                 grammar_name="DebugExpression",
+                                                 copyright_template=COPYRIGHT_HEADER_BSD, args=args, out=out)
+
+def create_parsers(args=None, out=None):
+    create_asm_parser(args, out)
+    create_debugexpr_parser(args, out)
+
+def create_parsers(args=None, out=None):
+    create_asm_parser(args, out)
+    create_debugexpr_parser(args, out)
+
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],
     'test-llvm-image' : [_test_llvm_image, 'test a pre-built LLVM image'],
     'create-asm-parser' : [create_asm_parser, 'create the inline assembly parser using antlr'],
+    'create-debugexpr-parser' : [create_debugexpr_parser, 'create the debug expression  parser using antlr'],
+    'create-parsers' : [create_parsers, 'create the debug expression  parser using antlr'],
     'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
     'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
     'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],
