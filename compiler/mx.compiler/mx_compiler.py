@@ -1207,7 +1207,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         out = mx.LinesOutputCapture()
         mx.run([jdk.java, '-version'], err=out)
         line = None
-        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\(build.*')
+        pattern = re.compile(r'(.* )(?:Server|Graal) VM (?:\d+\.\d+ )?\((?:[a-zA-Z]+ )?build.*')
         for line in out.lines:
             m = pattern.match(line)
             if m:
