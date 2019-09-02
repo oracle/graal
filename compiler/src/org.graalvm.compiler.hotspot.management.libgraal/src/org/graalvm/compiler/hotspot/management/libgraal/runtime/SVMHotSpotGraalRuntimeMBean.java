@@ -57,9 +57,9 @@ import org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration;
 import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
-import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.util.OptionsEncoder;
 
 /**
  * Encapsulates a handle to a {@link HotSpotGraalRuntimeMBean} object in the SVM heap. Implements

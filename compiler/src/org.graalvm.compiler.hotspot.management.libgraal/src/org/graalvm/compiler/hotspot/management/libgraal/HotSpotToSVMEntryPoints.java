@@ -36,7 +36,6 @@ import javax.management.MBeanOperationInfo;
 import javax.management.MBeanParameterInfo;
 import javax.management.ReflectionException;
 import org.graalvm.compiler.hotspot.management.HotSpotGraalRuntimeMBean;
-import org.graalvm.libgraal.OptionsEncoder;
 import org.graalvm.libgraal.jni.HotSpotToSVMScope;
 import org.graalvm.libgraal.jni.JNI;
 import org.graalvm.libgraal.jni.JNIUtil;
@@ -45,6 +44,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.util.OptionsEncoder;
 import org.graalvm.word.WordFactory;
 
 /**

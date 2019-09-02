@@ -437,6 +437,7 @@ suite = {
       "dependencies" : [
           "sdk:GRAAL_SDK",
           "JVMCI_HOTSPOT",
+          "org.graalvm.util",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -2314,6 +2315,7 @@ suite = {
       "distDependencies" : [
         "sdk:GRAAL_SDK",
         "JVMCI_HOTSPOT",
+        "GRAAL_API",
       ],
       "maven": False,
     },
