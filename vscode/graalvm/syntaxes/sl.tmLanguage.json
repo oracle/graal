@@ -14,7 +14,7 @@
 			},
 			"end": "(?<=\\})",
 			"patterns": [
-				{ "include": "#comment" },
+				{ "include": "#comment"},
 				{ "include": "#function-parameters" },
 				{ "include": "#block" }
 			]
@@ -83,7 +83,7 @@
 			"begin": "(?=\\bwhile\\b\\s*(\\(([^\\(\\)]|(\\([^\\(\\)]*\\)))*\\))\\s*(?!\\{))",
 			"end": "(?=;|$|\\})",
 			"patterns": [
-				{ "include": "#comment"	},
+				{ "include": "#comment" },
 				{
 					"begin": "\\b(while)\\b\\s*(\\()",
 					"beginCaptures": {
@@ -131,7 +131,7 @@
 					"name": "variable.other.readwrite.sl",
 					"match": "[_$[:alpha:]][_$[:alnum:]]*"
 				},
-				{ "include": "#array-literal" },
+				{ "include": "#array-literal"},
 				{ "include": "#string-literal" },
 				{ "include": "#numeric-literal" },
 				{ "include": "#paren-expression"},
@@ -140,7 +140,7 @@
 		},
 		"member-expression": {
 			"patterns": [
-				{ "include": "#comment"	},
+				{ "include": "#comment" },
 				{
 					"name": "meta.function-call.sl",
 					"begin": "([_$[:alpha:]][_$[:alnum:]]*)?\\s*(\\()",

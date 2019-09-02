@@ -40,7 +40,7 @@
 #
 import mx
 import os
-from os.path import join, exists
+from os.path import join, isfile, exists
 from shutil import rmtree
 
 _suite = mx.suite('vscode')
@@ -75,7 +75,10 @@ class VSCodeExtensionBuildTask(mx.ArchivableBuildTask):
         return 'Building VS Code Extension for {}'.format(self.subject)
 
     def newestInput(self):
-        inputPaths = [join(self.subject.dir, m) for m in ['.', 'images', 'snippets', 'src', 'syntaxes']]
+        inputPaths = []
+        for path in [join(self.subject.dir, m) for m in ['', 'images', 'snippets', 'src', 'syntaxes']]:
+            if exists(path):
+                inputPaths.extend(join(path, f) for f in os.listdir(path) if isfile(join(path, f)))
         return mx.TimeStampFile.newest(inputPaths)
 
     def needsBuild(self, newestInput):
