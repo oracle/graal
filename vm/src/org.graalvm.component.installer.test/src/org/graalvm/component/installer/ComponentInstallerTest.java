@@ -266,32 +266,8 @@ public class ComponentInstallerTest extends CommandTestBase {
         Set<String> coveredOptions = new HashSet<>();
         for (int i = 0; i < optionLines.size(); i++) {
             String l = optionLines.get(i);
-            if (l.startsWith("--")) {
-                String longOption = l.substring(2).trim();
-
-                if (longOption.length() < 2) {
-                    errors.add("Command " + currentCmd + ": Long option too short: " + longOption);
-                } else {
-                    coveredOptions.add(longOption);
-                }
-                String shopt = cmdOpts.get(longOption);
-                if (shopt == null) {
-                    shopt = ComponentInstaller.globalOptions.get(longOption);
-                }
-                if (shopt == null) {
-                    errors.add("Command " + currentCmd + ": Long option not found: " + longOption);
-                } else if (!(cmdOpts.containsKey(shopt) || ComponentInstaller.globalOptions.containsKey(shopt))) {
-                    errors.add("Command " + currentCmd + ": Long option mapped to bad char: " + longOption);
-                } else if (i >= optionLines.size() - 1) {
-                    errors.add("Command " + currentCmd + ": Long option not followed by short: " + longOption);
-                } else {
-                    String shoptline = optionLines.get(i + 1);
-                    if (!shoptline.startsWith("-" + shopt)) {
-                        errors.add("Command " + currentCmd + ": Long option with bad short option: " + longOption);
-                    }
-                }
-            } else if (l.startsWith("-")) {
-                String[] spl = l.split("\\p{Blank}");
+            if (l.startsWith("-")) {
+                String[] spl = l.split(",?\\p{Blank}");
                 String shOpt = spl[0].trim().substring(1);
                 if (shOpt.length() != 1) {
                     errors.add("Command " + currentCmd + ": Invalid short option: " + shOpt);
@@ -307,6 +283,38 @@ public class ComponentInstallerTest extends CommandTestBase {
                 } else if (deprecatedOptions.contains(shOpt) || def.startsWith("=")) {
                     errors.add("Command " + currentCmd + ": Deperecated option: " + shOpt);
                     continue;
+                }
+
+                if (spl.length == 1) {
+                    errors.add("Command " + currentCmd + ": No explanation for: " + shOpt);
+                    continue;
+                }
+                shOpt = spl[1].trim();
+                if (shOpt.startsWith("--")) {
+                    if (spl.length == 2) {
+                        errors.add("Command " + currentCmd + ": No explanation for: " + shOpt);
+                        continue;
+                    }
+                    String longOption = shOpt.substring(2);
+                    if (longOption.length() < 2) {
+                        errors.add("Command " + currentCmd + ": Long option too short: " + longOption);
+                    } else {
+                        coveredOptions.add(longOption);
+                    }
+                    String shopt = cmdOpts.get(longOption);
+                    if (shopt == null) {
+                        shopt = ComponentInstaller.globalOptions.get(longOption);
+                    }
+                    if (shopt == null) {
+                        errors.add("Command " + currentCmd + ": Long option not found: " + longOption);
+                    } else if (!(cmdOpts.containsKey(shopt) || ComponentInstaller.globalOptions.containsKey(shopt))) {
+                        errors.add("Command " + currentCmd + ": Long option mapped to bad char: " + longOption);
+                    } else {
+                        String shoptline = optionLines.get(i);
+                        if (!shoptline.startsWith("-" + shopt)) {
+                            errors.add("Command " + currentCmd + ": Long option with bad short option: " + longOption);
+                        }
+                    }
                 }
             }
         }
