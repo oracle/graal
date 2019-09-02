@@ -24,16 +24,15 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import java.util.ArrayList;
-import java.util.stream.Collectors;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Groups are the top-most elements of regular expression ASTs.

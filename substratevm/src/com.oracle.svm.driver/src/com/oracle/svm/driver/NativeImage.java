@@ -85,8 +85,11 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
+
+    private static final String DEFAULT_GENERATOR_CLASS_NAME = "com.oracle.svm.hosted.NativeImageGeneratorRunner";
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
@@ -209,6 +212,13 @@ public class NativeImage {
     public static final String nativeImageMetaInf = "META-INF/native-image";
 
     public interface BuildConfiguration {
+        /**
+         * @return the name of the image generator main class.
+         */
+        default String getGeneratorMainClass() {
+            return DEFAULT_GENERATOR_CLASS_NAME;
+        }
+
         /**
          * @return relative path usage get resolved against this path (also default path for image
          *         building)
@@ -378,13 +388,15 @@ public class NativeImage {
         private final Path workDir;
         private final Path rootDir;
         private final List<String> args;
+        private final String generatorClassName;
 
-        DefaultBuildConfiguration(List<String> args) {
-            this(null, null, args);
+        DefaultBuildConfiguration(String generatorClassName, List<String> args) {
+            this(generatorClassName, null, null, args);
         }
 
         @SuppressWarnings("deprecation")
-        DefaultBuildConfiguration(Path rootDir, Path workDir, List<String> args) {
+        DefaultBuildConfiguration(String generatorClassName, Path rootDir, Path workDir, List<String> args) {
+            this.generatorClassName = generatorClassName;
             this.args = args;
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
@@ -411,6 +423,11 @@ public class NativeImage {
                     this.rootDir = Paths.get(rootDirString);
                 }
             }
+        }
+
+        @Override
+        public String getGeneratorMainClass() {
+            return generatorClassName;
         }
 
         @Override
@@ -677,11 +694,15 @@ public class NativeImage {
             String modulePath = config.getBuilderModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
-            addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
+            if (!modulePath.isEmpty()) {
+                addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
+            }
             String upgradeModulePath = config.getBuilderUpgradeModulePath().stream()
                             .map(p -> canonicalize(p).toString())
                             .collect(Collectors.joining(File.pathSeparator));
-            addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
+            if (!upgradeModulePath.isEmpty()) {
+                addImageBuilderJavaArgs(Arrays.asList("--upgrade-module-path", upgradeModulePath));
+            }
         } else {
             config.getBuilderJVMCIClasspath().forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
             if (!config.getBuilderJVMCIClasspathAppend().isEmpty()) {
@@ -1112,7 +1133,7 @@ public class NativeImage {
         }
 
         command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
-        command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
+        command.add(config.getGeneratorMainClass());
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
@@ -1142,8 +1163,12 @@ public class NativeImage {
 
     private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
 
+    private static void main(String[] args, String generatorClassName) {
+        performBuild(new DefaultBuildConfiguration(generatorClassName, Arrays.asList(args)), defaultNativeImageProvider);
+    }
+
     public static void main(String[] args) {
-        performBuild(new DefaultBuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);
+        main(args, DEFAULT_GENERATOR_CLASS_NAME);
     }
 
     public static void build(BuildConfiguration config) {
@@ -1151,7 +1176,7 @@ public class NativeImage {
     }
 
     public static void agentBuild(Path javaHome, Path workDir, List<String> buildArgs) {
-        performBuild(new DefaultBuildConfiguration(javaHome, workDir, buildArgs), NativeImage::new);
+        performBuild(new DefaultBuildConfiguration(DEFAULT_GENERATOR_CLASS_NAME, javaHome, workDir, buildArgs), NativeImage::new);
     }
 
     public static Map<Path, List<String>> extractEmbeddedImageArgs(Path workDir, String[] imageClasspath) {
@@ -1604,6 +1629,28 @@ public class NativeImage {
                 showMessage("Could not recursively delete path: " + toDelete);
                 e.printStackTrace();
             }
+        }
+    }
+
+    /**
+     * Command line entry point when running on JDK9+. This is required to dynamically export Graal
+     * to SVM and it requires {@code --add-exports=java.base/jdk.internal.module=ALL-UNNAMED} to be
+     * on the VM command line.
+     *
+     * Note: This is a workaround until GR-16855 is resolved.
+     */
+    public static class JDK9Plus {
+
+        // Must be distinct from NativeImage.IS_AOT since the module
+        // exporting must be executed prior to NativeImage being loaded.
+        private static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
+
+        public static void main(String[] args) {
+            if (!IS_AOT) {
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+                ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+            }
+            NativeImage.main(args, DEFAULT_GENERATOR_CLASS_NAME + "$JDK9Plus");
         }
     }
 }

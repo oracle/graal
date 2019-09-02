@@ -1117,6 +1117,7 @@ public class CompileQueue {
                             className.contains("com/oracle/svm/core/thread/JavaThreads") ||
                             className.contains("com/oracle/svm/core/heap/") ||
                             className.contains("com/oracle/svm/core/genscavenge/") ||
+                            className.contains("com/oracle/svm/core/thread/VMOperationControl") ||
                             className.contains("debug/internal/DebugValueMap") && method.getName().equals("registerTopLevel")) {
                 return false;
             }

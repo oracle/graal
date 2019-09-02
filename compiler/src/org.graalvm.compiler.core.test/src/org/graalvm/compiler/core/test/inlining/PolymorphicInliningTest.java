@@ -75,6 +75,7 @@ public class PolymorphicInliningTest extends GraalCompilerTest {
             NotInlinableSubClass.class.getCanonicalName();
             vmArgs.add("-XX:CompileCommand=dontinline,org/graalvm/compiler/core/test/inlining/PolymorphicInliningTest$NotInlinableSubClass.publicOverriddenMethod");
             vmArgs.add("-D" + recursionPropName + "=true");
+            vmArgs.addAll(SubprocessUtil.getPackageOpeningOptions());
             SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
             if (proc.exitCode != 0) {
                 Assert.fail(String.format("non-zero exit code %d for command:%n%s", proc.exitCode, proc));

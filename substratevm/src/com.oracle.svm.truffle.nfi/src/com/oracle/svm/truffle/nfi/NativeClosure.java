@@ -119,6 +119,9 @@ final class NativeClosure {
             } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_ObjectType.class.isInstance(type)) {
                 WordPointer argPtr = argPointers.read(i);
                 args[argIdx++] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
+            } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_NullableType.class.isInstance(type)) {
+                WordPointer argPtr = argPointers.read(i);
+                args[argIdx++] = ImageSingletons.lookup(TruffleNFISupport.class).resolveHandle(argPtr.read());
             } else if (Target_com_oracle_truffle_nfi_impl_LibFFIType_EnvType.class.isInstance(type)) {
                 // skip
             } else {

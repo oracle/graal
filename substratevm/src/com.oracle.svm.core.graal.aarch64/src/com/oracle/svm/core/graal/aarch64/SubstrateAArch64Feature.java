@@ -27,6 +27,8 @@ package com.oracle.svm.core.graal.aarch64;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
+import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
+import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -72,6 +74,8 @@ class SubstrateAArch64Feature implements Feature {
                     return new SubstrateAArch64LoweringProvider(metaAccess, foreignCalls, target);
                 }
             });
+
+            ImageSingletons.add(TargetGraphBuilderPlugins.class, new AArch64GraphBuilderPlugins());
         }
     }
 }

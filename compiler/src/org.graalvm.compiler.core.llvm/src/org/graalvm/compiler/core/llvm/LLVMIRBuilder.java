@@ -739,7 +739,7 @@ public class LLVMIRBuilder {
         }
     }
 
-    LLVMValueRef buildICmp(Condition cond, LLVMValueRef a, LLVMValueRef b) {
+    public LLVMValueRef buildICmp(Condition cond, LLVMValueRef a, LLVMValueRef b) {
         return LLVM.LLVMBuildICmp(builder, getLLVMIntCond(cond), a, b, DEFAULT_INSTR_NAME);
     }
 
@@ -858,11 +858,54 @@ public class LLVMIRBuilder {
     }
 
     LLVMValueRef buildPow(LLVMValueRef a, LLVMValueRef b) {
-        LLVMTypeRef aType = LLVM.LLVMTypeOf(a);
-        LLVMTypeRef bType = LLVM.LLVMTypeOf(b);
-        assert compatibleTypes(aType, bType) : dumpValues("invalid pow arguments", a, b);
-
         return buildIntrinsicOp("pow", a, b);
+    }
+
+    public LLVMValueRef buildRound(LLVMValueRef a) {
+        LLVMTypeRef type = LLVM.LLVMTypeOf(a);
+        LLVMTypeRef returnType;
+        String intrinsicName;
+        if (isFloatType(type)) {
+            returnType = intType();
+            intrinsicName = "llvm.lround";
+        } else if (isDoubleType(type)) {
+            returnType = longType();
+            intrinsicName = "llvm.llround";
+        } else {
+            throw shouldNotReachHere();
+        }
+
+        intrinsicName = intrinsicName + "." + intrinsicType(returnType) + "." + intrinsicType(type);
+        LLVMTypeRef intrinsicType = functionType(returnType, type);
+        return buildIntrinsicCall(intrinsicName, intrinsicType, a);
+    }
+
+    public LLVMValueRef buildRint(LLVMValueRef a) {
+        return buildIntrinsicOp("round", a);
+    }
+
+    public LLVMValueRef buildCeil(LLVMValueRef a) {
+        return buildIntrinsicOp("ceil", a);
+    }
+
+    public LLVMValueRef buildFloor(LLVMValueRef a) {
+        return buildIntrinsicOp("floor", a);
+    }
+
+    public LLVMValueRef buildMin(LLVMValueRef a, LLVMValueRef b) {
+        return buildIntrinsicOp("minimum", a, b);
+    }
+
+    public LLVMValueRef buildMax(LLVMValueRef a, LLVMValueRef b) {
+        return buildIntrinsicOp("maximum", a, b);
+    }
+
+    public LLVMValueRef buildCopysign(LLVMValueRef a, LLVMValueRef b) {
+        return buildIntrinsicOp("copysign", a, b);
+    }
+
+    public LLVMValueRef buildFma(LLVMValueRef a, LLVMValueRef b, LLVMValueRef c) {
+        return buildIntrinsicOp("fma", a, b, c);
     }
 
     LLVMValueRef buildBswap(LLVMValueRef a) {
@@ -915,11 +958,11 @@ public class LLVMIRBuilder {
     }
 
     LLVMValueRef buildCtlz(LLVMValueRef a) {
-        return buildIntrinsicOp("ctlz", a, constantBoolean(true));
+        return buildIntrinsicOp("ctlz", a, constantBoolean(false));
     }
 
     LLVMValueRef buildCttz(LLVMValueRef a) {
-        return buildIntrinsicOp("cttz", a, constantBoolean(true));
+        return buildIntrinsicOp("cttz", a, constantBoolean(false));
     }
 
     LLVMValueRef buildCtpop(LLVMValueRef a) {

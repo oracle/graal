@@ -702,8 +702,10 @@ public class InvocationPlugins {
                 }
                 if (res != null) {
                     // A decorator plugin is trusted since it does not replace
-                    // the method it intrinsifies.
-                    if (res.isDecorator() || canBeIntrinsified(declaringClass)) {
+                    // the method it intrinsifies. A GeneratedInvocationPlugin
+                    // is trusted since it only exists for @NodeIntrinsics and
+                    // @Fold annotated methods (i.e., trusted Graal code).
+                    if (res.isDecorator() || res instanceof GeneratedInvocationPlugin || canBeIntrinsified(declaringClass)) {
                         return res;
                     }
                 }

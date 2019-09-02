@@ -165,6 +165,7 @@ public class LLVMForeignCallNode extends RootNode {
         this.returnBaseType = getReturnBaseType(interopType);
         this.getStack = LLVMGetStackNode.create();
         this.callNode = DirectCallNode.create(getCallTarget(function));
+        this.callNode.forceInlining();
         this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getType().getReturnType());
         this.packArguments = PackForeignArgumentsNodeGen.create(function.getType().getArgumentTypes(), interopType);
     }

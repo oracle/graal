@@ -48,6 +48,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.heap.ObjectHeader.HeapKind;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -90,8 +91,7 @@ public final class NonmovableArrays {
         assert LayoutEncoding.isArray(hub.getLayoutEncoding());
         UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
         Pointer array = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
-        WordBase header = Heap.getHeap().getObjectHeader().formatHubRaw(hub);
-        ObjectHeader.initializeHeaderOfNewObject(array, header);
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(array, hub, HeapKind.Unmanaged);
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()
         assert runtimeArraysInExistence.incrementAndGet() > 0 : "overflow";
@@ -100,8 +100,8 @@ public final class NonmovableArrays {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static DynamicHub readHub(NonmovableArray<?> array) {
-        UnsignedWord header = ObjectHeader.readHeaderFromPointer((Pointer) array);
-        return ObjectHeader.dynamicHubFromObjectHeader(header);
+        ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
+        return objectHeader.readDynamicHubFromPointer((Pointer) array);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -243,7 +243,7 @@ public final class NonmovableArrays {
             VMError.guarantee(array.getClass().getComponentType().isPrimitive(), "Must call the method for Object[]");
             return new HostedNonmovableArray<>(array);
         }
-        assert array == null || Heap.getHeap().getObjectHeader().isNonHeapAllocatedHeader(ObjectHeader.readHeaderFromObject(array));
+        assert array == null || Heap.getHeap().isInImageHeap(array);
         return (array != null) ? (NonmovableArray<T>) Word.objectToUntrackedPointer(array) : WordFactory.nullPointer();
     }
 

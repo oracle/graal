@@ -65,6 +65,7 @@ import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -78,6 +79,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.RingBuffer;
@@ -272,7 +274,7 @@ public final class Deoptimizer {
     @NeverInline("deoptimize must have a separate stack frame")
     public static void deoptimizeInRange(CodePointer fromIp, CodePointer toIp, boolean deoptAll) {
         /* Captures "fromIp", "toIp", and "deoptAll" for the VMOperation. */
-        VMOperation.enqueueBlockingSafepoint("Deoptimizer.deoptimizeInRange", () -> {
+        JavaVMOperation.enqueueBlockingSafepoint("Deoptimizer.deoptimizeInRange", () -> {
             deoptimizeInRangeOperation(fromIp, toIp, deoptAll);
         });
     }
@@ -289,7 +291,7 @@ public final class Deoptimizer {
         JavaStackWalker.walkCurrentThread(sp, currentThreadDeoptVisitor);
         /* If I am multi-threaded, deoptimize this method on all the other stacks. */
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
+            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                 if (vmThread == CurrentIsolate.getCurrentThread()) {
                     continue;
                 }
@@ -298,7 +300,7 @@ public final class Deoptimizer {
             }
         }
         if (testGCinDeoptimizer) {
-            Heap.getHeap().getGC().collect("from Deoptimizer.deoptimizeInRange because of testGCinDeoptimizer");
+            Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
         }
     }
 
@@ -329,7 +331,7 @@ public final class Deoptimizer {
             return;
         }
         IsolateThread currentThread = CurrentIsolate.getCurrentThread();
-        VMOperation.enqueueBlockingSafepoint("DeoptimizeFrame", () -> Deoptimizer.deoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, currentThread));
+        JavaVMOperation.enqueueBlockingSafepoint("DeoptimizeFrame", () -> Deoptimizer.deoptimizeFrameOperation(sourceSp, ignoreNonDeoptimizable, speculation, currentThread));
     }
 
     private static void deoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread currentThread) {
@@ -582,7 +584,7 @@ public final class Deoptimizer {
     }
 
     /** A VMOperation to encapsulate deoptSourceFrame. */
-    private static final class DeoptSourceFrameOperation extends VMOperation {
+    private static final class DeoptSourceFrameOperation extends JavaVMOperation {
 
         private final Deoptimizer receiver;
         private final CodePointer pc;
@@ -591,7 +593,7 @@ public final class Deoptimizer {
         private IsolateThread thread;
 
         DeoptSourceFrameOperation(Deoptimizer receiver, CodePointer pc, boolean ignoreNonDeoptimizable, IsolateThread thread) {
-            super("DeoptSourceFrameOperation", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
+            super("DeoptSourceFrameOperation", SystemEffect.SAFEPOINT);
             this.receiver = receiver;
             this.pc = pc;
             this.ignoreNonDeoptimizable = ignoreNonDeoptimizable;
@@ -935,7 +937,7 @@ public final class Deoptimizer {
 
         materializedObjects[virtualObjectId] = obj;
         if (testGCinDeoptimizer) {
-            Heap.getHeap().getGC().collect("from Deoptimizer.materializeObject because of testGCinDeoptimizer");
+            Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
         }
 
         while (curIdx < encodings.length) {

@@ -67,6 +67,7 @@ import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import com.oracle.svm.core.posix.headers.Wait;
 import com.oracle.svm.core.util.VMError;
 
@@ -519,7 +520,7 @@ public class PosixUtils {
         int readBytes = -1;
         if (readOffset < bufferLen) {
             do {
-                readBytes = (int) Unistd.NoTransitions.read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
+                readBytes = (int) UnistdNoTransitions.read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
             } while (readBytes == -1 && errno() == Errno.EINTR());
         }
         return readBytes;

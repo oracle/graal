@@ -202,8 +202,8 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
 
         kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
         kit.createReturn(result, (result != null) ? result.getStackKind() : JavaKind.Void);
-        assert graph.verify();
-        return graph;
+
+        return kit.finalizeGraph();
     }
 
     private ValueNode newArray(HostedProviders providers, JNIGraphKit kit, List<ValueNode> arguments) {

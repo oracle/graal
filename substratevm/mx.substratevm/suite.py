@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.223.0",
+    "mxversion": "5.231.0",
     "name": "substratevm",
     "version" : "19.3.0",
     "release" : False,
@@ -78,9 +78,10 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.util",
             ],
-            "imports" : [
-                "jdk.internal.module",
-            ],
+            "requires" : ["java.instrument"],
+            "requiresConcealed" : {
+                "java.base" : ["jdk.internal.module"],
+            },
             "javaCompliance": "11+",
             "multiReleaseJarVersion": "11",
             "overlayTarget" : "com.oracle.svm.util",
@@ -126,10 +127,20 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": ["com.oracle.svm.core"],
-            "imports" : [
-                "jdk.internal.misc",
-                "jdk.internal.perf",
+            "requires" : [
+                "java.logging",
+                "jdk.unsupported"
             ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.module",
+                    "jdk.internal.misc",
+                    "jdk.internal.logger",
+                    "sun.util.resources",
+                    "jdk.internal.perf",
+                    "sun.util.locale.provider"
+                ],
+            },
             "javaCompliance": "11+",
             "overlayTarget" : "com.oracle.svm.core",
             "multiReleaseJarVersion": "11",
@@ -143,11 +154,13 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core.jdk11",
                 "com.oracle.svm.core.posix"
-                ],
-            "imports" : [
-                "jdk.internal.misc",
-                "jdk.internal.perf",
             ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.perf",
+                    "jdk.internal.misc"
+                ],
+            },
             "javaCompliance": "11+",
             "overlayTarget" : "com.oracle.svm.core.posix",
             "multiReleaseJarVersion": "11",
@@ -691,7 +704,7 @@ suite = {
                 "compiler:GRAAL"
             ],
             "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance": "8,13+",
+            "javaCompliance": "8,11+",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
                 "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
@@ -861,7 +874,7 @@ suite = {
         "GRAAL_HOTSPOT_LIBRARY": {
             "subDir": "src",
             "description" : "SubstrateVM HotSpot Graal library support",
-            "javaCompliance": "8,13+",
+            "javaCompliance": "8,11+",
             "dependencies": [
                 "com.oracle.svm.graal.hotspot.libgraal",
             ],

@@ -602,7 +602,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
             if (node instanceof SafepointCheckNode) {
                 append(new AMD64DecrementingSafepointCheckOp());
-                append(new BranchOp(ConditionFlag.Zero, trueSuccessor, falseSuccessor, trueSuccessorProbability));
+                append(new BranchOp(ConditionFlag.LessEqual, trueSuccessor, falseSuccessor, trueSuccessorProbability));
             } else {
                 super.emitBranch(node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
             }

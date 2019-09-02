@@ -72,22 +72,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
          * unconditional registration is cheap because the exception classes have no dependency on
          * the actual network implementation. Therefore, we register them unconditionally.
          */
-        JNIRuntimeAccess.register(clazz(a, "java.net.SocketException"));
-        JNIRuntimeAccess.register(constructor(a, "java.net.SocketException", String.class));
-        JNIRuntimeAccess.register(clazz(a, "java.net.ConnectException"));
-        JNIRuntimeAccess.register(constructor(a, "java.net.ConnectException", String.class));
-        JNIRuntimeAccess.register(clazz(a, "java.net.BindException"));
-        JNIRuntimeAccess.register(constructor(a, "java.net.BindException", String.class));
-        JNIRuntimeAccess.register(clazz(a, "java.net.UnknownHostException"));
-        JNIRuntimeAccess.register(constructor(a, "java.net.UnknownHostException", String.class));
-
-        /* Unconditional Integer and Boolean JNI registration (cheap) */
-        JNIRuntimeAccess.register(clazz(a, "java.lang.Integer"));
-        JNIRuntimeAccess.register(constructor(a, "java.lang.Integer", int.class));
-        JNIRuntimeAccess.register(fields(a, "java.lang.Integer", "value"));
-        JNIRuntimeAccess.register(clazz(a, "java.lang.Boolean"));
-        JNIRuntimeAccess.register(constructor(a, "java.lang.Boolean", boolean.class));
-        JNIRuntimeAccess.register(method(a, "java.lang.Boolean", "getBoolean", String.class));
+        registerForThrowNew(a, "java.net.SocketException", "java.net.ConnectException", "java.net.BindException", "java.net.UnknownHostException",
+                        "java.net.SocketTimeoutException", "java.net.PortUnreachableException", "sun.net.ConnectionResetException");
 
         /* Reuse same lambda for registerInitInetAddressIDs to ensure it only gets called once */
         Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
@@ -197,13 +183,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     private static void registerPlainDatagramSocketImplInit(DuringAnalysisAccess a) {
         /* See java.net.DatagramSocket.checkOldImpl */
-        a.registerMethodOverrideReachabilityHandler((access, method) -> {
-            // Checkstyle: stop
-            if (!java.lang.reflect.Modifier.isAbstract(method.getModifiers())) {
-                // Checkstyle: resume
-                RuntimeReflection.register(method);
-            }
-        }, method(a, "java.net.DatagramSocketImpl", "peekData", DatagramPacket.class));
+        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketImplPeekData,
+                        method(a, "java.net.DatagramSocket", "checkOldImpl"));
 
         JNIRuntimeAccess.register(fields(a, "java.net.AbstractPlainDatagramSocketImpl", "timeout", "trafficClass", "connected", "connectedAddress", "connectedPort"));
         JNIRuntimeAccess.register(fields(a, "java.net.DatagramSocketImpl", "fd", "localPort"));
@@ -212,6 +193,16 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             JNIRuntimeAccess.register(clazz(a, "java.net.DualStackPlainDatagramSocketImpl"));
             JNIRuntimeAccess.register(fields(a, "java.net.TwoStacksPlainDatagramSocketImpl", "fd1", "fduse", "lastfd"));
         }
+    }
+
+    private static void registerDatagramSocketImplPeekData(DuringAnalysisAccess a) {
+        a.registerSubtypeReachabilityHandler((access, clazz) -> {
+            // Checkstyle: stop
+            if (!java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
+                // Checkstyle: resume
+                RuntimeReflection.register(method(access, clazz.getName(), "peekData", DatagramPacket.class));
+            }
+        }, clazz(a, "java.net.DatagramSocketImpl"));
     }
 
     private static void registerPlainSocketImplInitProto(DuringAnalysisAccess a) {

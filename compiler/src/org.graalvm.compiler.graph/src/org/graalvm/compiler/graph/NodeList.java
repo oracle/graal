@@ -108,6 +108,20 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         }
     }
 
+    /**
+     * Removes null values from the list.
+     */
+    public void trim() {
+        int newSize = 0;
+        for (int i = 0; i < nodes.length; ++i) {
+            if (nodes[i] != null) {
+                nodes[newSize] = nodes[i];
+                newSize++;
+            }
+        }
+        size = newSize;
+    }
+
     public boolean isList() {
         return true;
     }

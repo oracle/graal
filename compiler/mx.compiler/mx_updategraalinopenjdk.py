@@ -42,6 +42,9 @@ def _read_sibling_file(basename):
         return fp.read()
 
 def _find_version_base_project(versioned_project):
+    base_project_name = getattr(versioned_project, 'overlayTarget', None)
+    if base_project_name:
+        return mx.dependency(base_project_name, context=versioned_project)
     extended_packages = versioned_project.extended_java_packages()
     if not extended_packages:
         mx.abort('Project with a multiReleaseJarVersion attribute must have sources in a package defined by project without multiReleaseJarVersion attribute', context=versioned_project)
@@ -65,6 +68,27 @@ def _is_git_repo(jdkrepo):
     git_dir = join(jdkrepo, '.git')
     return exists(git_dir)
 
+def rename_packages(filepath, verbose=False):
+    with open(filepath) as fp:
+        contents = fp.read()
+    new_contents = contents
+    for old_name, new_name in package_renamings.items():
+        new_contents = new_contents.replace(old_name, new_name)
+        if new_contents != contents:
+            with open(filepath, 'w') as fp:
+                fp.write(new_contents)
+                if verbose:
+                    mx.log('  updated ' + filepath)
+
+# Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
+# as is on the class path and not clash with packages in the jdk.internal.vm.compiler module.
+# Also used by other script.
+package_renamings = {
+    'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
+    'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
+    'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal'
+}
+
 SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
 GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
 
@@ -84,8 +108,8 @@ def updategraalinopenjdk(args):
         # JDK module jdk.internal.vm.compiler is composed of sources from:
         GraalJDKModule('jdk.internal.vm.compiler',
             # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
-            #    or projects whose names include "truffle", "management" or "core.llvm"
-            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm']),
+            #    or projects whose names include "truffle", "management", "core.llvm" or "replacements.llvm"
+            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'replacements.llvm']),
             # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
              SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
         # JDK module jdk.internal.vm.compiler.management is composed of sources from:
@@ -97,14 +121,6 @@ def updategraalinopenjdk(args):
             # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
             [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
     ]
-
-    # Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
-    # as it on the class path and not clash with packages in the jdk.internal.vm.compiler module.
-    package_renamings = {
-        'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
-        'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
-        'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal'
-    }
 
     # Strings to be replaced in files copied to OpenJDK.
     replacements = {
@@ -141,16 +157,7 @@ def updategraalinopenjdk(args):
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:
             if filename.endswith('.gmk'):
-                filepath = join(dirpath, filename)
-                with open(filepath) as fp:
-                    contents = fp.read()
-                new_contents = contents
-                for old_name, new_name in package_renamings.items():
-                    new_contents = new_contents.replace(old_name, new_name)
-                if new_contents != contents:
-                    with open(filepath, 'w') as fp:
-                        fp.write(new_contents)
-                        mx.log('  updated ' + filepath)
+                rename_packages(join(dirpath, filename), True)
 
     java_package_re = re.compile(r"^\s*package\s+(?P<package>[a-zA-Z_][\w\.]*)\s*;$", re.MULTILINE)
 

@@ -90,6 +90,8 @@ supportedLLVMVersions = [
     '8.0'
 ]
 
+toolchainLLVMVersion = "8.0"
+
 # the basic LLVM dependencies for running the test cases and executing the mx commands
 basicLLVMDependencies = [
     mx_buildtools.ClangCompiler.CLANG,
@@ -515,7 +517,7 @@ def pullsuite(suiteDir, urls):
 def isSupportedLLVMVersion(llvmProgram, supportedVersions=None):
     """returns if the LLVM program bases on a supported LLVM version"""
     assert llvmProgram is not None
-    llvmVersion = getLLVMVersion(llvmProgram)
+    llvmVersion = getLLVMMajorVersion(llvmProgram)
     if supportedVersions is None:
         return llvmVersion in supportedLLVMVersions
     else:
@@ -540,14 +542,19 @@ def getVersion(program):
         versionString = _decode(e.output)
     return versionString
 
-def getLLVMVersion(llvmProgram):
+def getLLVMMajorVersion(llvmProgram):
     """executes the program with --version and extracts the LLVM version string"""
-    versionString = getVersion(llvmProgram)
-    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((\d)\.\d)(\.\d)?', versionString, re.IGNORECASE)
-    if printLLVMVersion is None:
-        return None
-    else:
-        return printLLVMVersion.group(3)
+    try:
+        versionString = getVersion(llvmProgram)
+        printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((\d)\.\d)(\.\d)?', versionString, re.IGNORECASE)
+        if printLLVMVersion is None:
+            return None
+        else:
+            return printLLVMVersion.group(3)
+    except OSError:
+        # clang/llvm not found -> assume we will be using the toolchain
+        return toolchainLLVMVersion.split('.')[0]
+
 
 # the makefiles do not check which version of clang they invoke
 versions_dont_have_optnone = ['3', '4']
@@ -559,7 +566,7 @@ def getLLVMExplicitArgs(mainLLVMVersion):
     return ["-Xclang", "-disable-O0-optnone"]
 
 def getClangImplicitArgs():
-    mainLLVMVersion = getLLVMVersion(mx_buildtools.ClangCompiler.CLANG)
+    mainLLVMVersion = getLLVMMajorVersion(mx_buildtools.ClangCompiler.CLANG)
     return " ".join(getLLVMExplicitArgs(mainLLVMVersion))
 
 mx_subst.path_substitutions.register_no_arg('clangImplicitArgs', getClangImplicitArgs)
@@ -881,7 +888,7 @@ class ToolchainConfig(object):
                 ],
                 is_main_launcher=False,
                 default_symlinks=False,
-                links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)],
+                links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)[1:]],
             ) for tool in self._supported_tools()
         ]
 
@@ -921,6 +928,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle', 'Truffle NFI', 'LLVM.org toolchain'],
     truffle_jars=['sulong:SULONG', 'sulong:SULONG_API'],
     support_distributions=[
         'sulong:SULONG_HOME',
@@ -937,15 +945,16 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ] + _suite.toolchain.get_launcher_configs()
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=_suite,
     name='LLVM.org toolchain',
     short_name='llp',
     installable=True,
     installable_id='llvm-toolchain',
-    dir_name='jre/lib/llvm',
+    dir_name='llvm',
     license_files=[],
     third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
+    dependencies=[],
     support_distributions=['sulong:SULONG_LLVM_ORG']
 ))
 

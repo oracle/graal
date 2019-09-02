@@ -69,7 +69,6 @@ import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -104,8 +103,7 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
-import org.graalvm.compiler.replacements.aarch64.AArch64GraphBuilderPlugins;
-import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
+import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
@@ -152,6 +150,7 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
+import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
@@ -265,7 +264,6 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.TargetDescription;
@@ -479,7 +477,7 @@ public class NativeImageGenerator {
 
     private static void setSystemPropertiesForImageLate(NativeImageKind imageKind) {
         VMError.guarantee(ImageInfo.inImageBuildtimeCode(), "System property to indicate image build time is set earlier, before listing classes");
-        if (imageKind.executable) {
+        if (imageKind.isExecutable) {
             System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
         } else {
             System.setProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY, ImageInfo.PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY);
@@ -532,7 +530,6 @@ public class NativeImageGenerator {
             }
 
             NativeImageHeap heap;
-            HostedMethod mainEntryPointHostedStub;
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
             try (StopTimer t = new Timer(imageName, "universe").start()) {
@@ -559,14 +556,6 @@ public class NativeImageGenerator {
                         assert found != null;
                         hostedEntryPoints.add(found);
                     }
-                }
-                /* Find main entry point */
-                if (!Pair.<Method, CEntryPointData> empty().equals(mainEntryPoint)) {
-                    AnalysisMethod analysisStub = CEntryPointCallStubSupport.singleton().getStubForMethod(mainEntryPoint.getLeft());
-                    mainEntryPointHostedStub = (HostedMethod) hMetaAccess.getUniverse().lookup(analysisStub);
-                    assert hostedEntryPoints.contains(mainEntryPointHostedStub);
-                } else {
-                    mainEntryPointHostedStub = null;
                 }
                 if (hostedEntryPoints.size() == 0) {
                     throw UserError.abort("Warning: no entry points found, i.e., no method annotated with @" + CEntryPoint.class.getSimpleName());
@@ -629,7 +618,7 @@ public class NativeImageGenerator {
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
-                        this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, mainEntryPointHostedStub, loader.getClassLoader());
+                        this.image = AbstractBootImage.create(k, hUniverse, hMetaAccess, nativeLibraries, heap, codeCache, hostedEntryPoints, loader.getClassLoader());
                         image.build(debug);
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
@@ -657,7 +646,11 @@ public class NativeImageGenerator {
                  * not is an implementation detail of the image.
                  */
                 Path tmpDir = tempDirectory();
-                Path imagePath = image.write(debug, generatedFiles(HostedOptionValues.singleton()), tmpDir, imageName, beforeConfig).getOutputFile();
+                LinkerInvocation inv = image.write(debug, generatedFiles(HostedOptionValues.singleton()), tmpDir, imageName, beforeConfig);
+                if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+                    return;
+                }
+                Path imagePath = inv.getOutputFile();
 
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, imagePath, tmpDir, image.getBootImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
@@ -1151,16 +1144,10 @@ public class NativeImageGenerator {
         registerInvocationPlugins(providers.getMetaAccess(), providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacementBytecodeProvider, !hosted, explicitUnsafeNullChecks);
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
-        if (architecture instanceof AMD64) {
-            AMD64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, (AMD64) architecture, explicitUnsafeNullChecks,
-                            SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPEC >= 11,
-                            ((AMD64) architecture).getFeatures().contains(CPUFeature.FMA) && JavaVersionUtil.JAVA_SPEC >= 11);
-        } else if (architecture instanceof AArch64) {
-            AArch64GraphBuilderPlugins.register(plugins, replacementBytecodeProvider, explicitUnsafeNullChecks, //
-                            /* registerMathPlugins */false, SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPEC >= 11);
-        } else {
-            throw GraalError.shouldNotReachHere("Unimplemented GraphBuilderPlugin for architecture " + architecture);
-        }
+        ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacementBytecodeProvider, architecture,
+                        explicitUnsafeNullChecks, /* registerMathPlugins */false,
+                        SubstrateOptions.EmitStringEncodingSubstitutions.getValue() && JavaVersionUtil.JAVA_SPEC >= 11,
+                        JavaVersionUtil.JAVA_SPEC >= 11);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we

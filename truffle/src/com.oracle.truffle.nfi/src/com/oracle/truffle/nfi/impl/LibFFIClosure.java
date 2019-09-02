@@ -85,6 +85,10 @@ final class LibFFIClosure implements TruffleObject {
             // shortcut for simple object return values
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new ObjectRetClosureRootNode(signature, executable));
             this.nativePointer = context.allocateClosureObjectRet(signature, executeCallTarget);
+        } else if (retType instanceof LibFFIType.NullableType) {
+            // shortcut for simple object return values
+            CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new NullableRetClosureRootNode(signature, executable));
+            this.nativePointer = context.allocateClosureObjectRet(signature, executeCallTarget);
         } else if (retType instanceof LibFFIType.StringType) {
             // shortcut for simple string return values
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new StringRetClosureRootNode(signature, executable));
@@ -224,6 +228,27 @@ final class LibFFIClosure implements TruffleObject {
         @Override
         public Object execute(VirtualFrame frame) {
             return callClosure.execute(frame.getArguments());
+        }
+    }
+
+    private static final class NullableRetClosureRootNode extends RootNode {
+
+        @Child private CallClosureNode callClosure;
+        @Child private InteropLibrary interopLibrary;
+
+        private NullableRetClosureRootNode(LibFFISignature signature, Object receiver) {
+            super(null);
+            callClosure = new CallClosureNode(signature, receiver);
+            interopLibrary = InteropLibrary.getFactory().createDispatched(4);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object ret = callClosure.execute(frame.getArguments());
+            if (interopLibrary.isNull(ret)) {
+                return null;
+            }
+            return ret;
         }
     }
 

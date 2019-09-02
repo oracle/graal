@@ -159,7 +159,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
     @Option(help = "Trace VMOperation execution.")//
-    public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
 
     @Option(help = "Instrument code to trace and report class initialization.")//
     public static final HostedOptionKey<Boolean> TraceClassInitialization = new HostedOptionKey<>(false);
@@ -303,6 +303,9 @@ public class SubstrateOptions {
 
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);
+
+    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Predicate<String> makeFilter(String[] definedFilters) {

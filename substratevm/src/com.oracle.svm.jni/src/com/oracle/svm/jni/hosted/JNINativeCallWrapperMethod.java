@@ -193,10 +193,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         }
         kit.createReturn(returnValue, javaReturnType.getJavaKind());
 
-        kit.mergeUnwinds();
-
-        assert graph.verify();
-        return graph;
+        return kit.finalizeGraph();
     }
 
     private static ValueNode castObject(JNIGraphKit kit, ValueNode object, ResolvedJavaType type, Purpose purpose) {

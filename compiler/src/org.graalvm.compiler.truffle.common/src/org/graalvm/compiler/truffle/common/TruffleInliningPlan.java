@@ -30,7 +30,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * A plan to be consulted when partial evaluating or compiling a Truffle AST as to whether a given
  * call should be inlined.
  */
-public interface TruffleInliningPlan {
+public interface TruffleInliningPlan extends CallNodeProvider {
 
     /**
      * Gets the decision of whether or not to inline the Truffle AST called by {@code callNode}.

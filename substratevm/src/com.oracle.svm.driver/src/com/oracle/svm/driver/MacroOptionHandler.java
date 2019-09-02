@@ -76,7 +76,9 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return;
         }
 
-        enabledOption.forEachPropertyValue("ImageBuilderBootClasspath", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        if (!nativeImage.config.useJavaModules()) {
+            enabledOption.forEachPropertyValue("ImageBuilderBootClasspath8", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        }
 
         if (!enabledOption.forEachPropertyValue("ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
             Path builderJarsDirectory = imageJarsDirectory.resolve("builder");

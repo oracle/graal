@@ -295,6 +295,8 @@ jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject c
             data->argTypes[i] = ARG_STRING;
         } else if ((*env)->IsInstanceOf(env, argType, ctx->LibFFIType_ObjectType)) {
             data->argTypes[i] = ARG_OBJECT;
+        } else if ((*env)->IsInstanceOf(env, argType, ctx->LibFFIType_NullableType)) {
+            data->argTypes[i] = ARG_OBJECT;            
         } else if ((*env)->IsInstanceOf(env, argType, ctx->LibFFIType_EnvType)) {
             data->argTypes[i] = ARG_SKIP;
             data->skippedArgCount++;

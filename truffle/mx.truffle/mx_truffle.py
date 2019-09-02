@@ -189,7 +189,11 @@ def _unittest_config_participant(config):
         # This is required for the call to setAccessible in
         # TruffleTCK.testValueWithSource to work.
         vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
-    return (vmArgs, mainClass, mainClassArgs)
+
+    config = (vmArgs, mainClass, mainClassArgs)
+    if _shouldRunTCKParticipant:
+        config = _unittest_config_participant_tck(config)
+    return config
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
@@ -405,9 +409,6 @@ class TruffleArchiveParticipant:
             self.arc.zf.writestr(arcname, content + os.linesep)
 
 def mx_post_parse_cmd_line(opts):
-
-    if _shouldRunTCKParticipant:
-        mx_unittest.add_config_participant(_unittest_config_participant_tck)
 
     def _uses_truffle_dsl_processor(dist):
         for dep in dist.deps:
@@ -764,6 +765,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
+    dependencies=[],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
 
@@ -775,6 +777,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     dir_name='nfi',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['truffle:TRUFFLE_NFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT']
 ))

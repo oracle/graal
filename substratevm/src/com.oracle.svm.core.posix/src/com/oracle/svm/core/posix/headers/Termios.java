@@ -41,7 +41,6 @@ public class Termios {
     @CStruct(addStructKeyword = true)
     public interface termios extends PointerBase {
 
-        //
         // typedef unsigned int tcflag_t;
         // struct termios {
         // ...
@@ -65,11 +64,9 @@ public class Termios {
     @CConstant
     public static native int TCSANOW();
 
-    /** Get the terminal attributes. */
     @CFunction
     public static native int tcgetattr(int fd, Termios.termios termios_p);
 
-    /** Set the terminal attributes. */
     @CFunction
     public static native int tcsetattr(int fd, int optional_actions, Termios.termios termios_p);
 

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.headers;
 
-import com.oracle.svm.core.ErrnoDirectives;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -34,6 +33,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.ErrnoDirectives;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 //Checkstyle: stop
@@ -44,10 +44,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 @CContext(ErrnoDirectives.class)
 public class Errno {
 
-    // /** Operation failed. */
-    // @CConstant
-    // public static native int OS_ERR();
-    //
     /** Operation not permitted. */
     @CConstant
     public static native int EPERM();
@@ -231,138 +227,6 @@ public class Errno {
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EIDRM();
 
-    /** Channel number out of range */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ECHRNG();
-
-    /** Level 2 not synchronized */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EL2NSYNC();
-
-    /** Level 3 halted */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EL3HLT();
-
-    /** Level 3 reset */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EL3RST();
-
-    /** Link number out of range */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ELNRNG();
-
-    /** Protocol driver not attached */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EUNATCH();
-
-    /** No CSI structure available */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOCSI();
-
-    /** Level 2 halted */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EL2HLT();
-
-    /** Invalid exchange */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EBADE();
-
-    /** Invalid request descriptor */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EBADR();
-
-    /** Exchange full */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EXFULL();
-
-    /** No anode */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOANO();
-
-    /** Invalid request code */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EBADRQC();
-
-    /** Invalid slot */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EBADSLT();
-
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EDEADLOCK();
-
-    /** Bad font file format */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EBFONT();
-
-    /** Device not a stream */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOSTR();
-
-    /** No data available */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENODATA();
-
-    /** Timer expired */
-    @CConstant
-    public static native int ETIME();
-
-    /** Out of streams resources */
-    @CConstant
-    public static native int ENOSR();
-
-    /** Machine is not on the network */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENONET();
-
-    /** Package not installed */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOPKG();
-
-    /** Object is remote */
-    @CConstant
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
-    public static native int EREMOTE();
-
-    /** Link has been severed */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOLINK();
-
-    /** Advertise error */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EADV();
-
-    /** Srmount error */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ESRMNT();
-
-    /** Communication error on send */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ECOMM();
-
     /** Protocol error */
     @CConstant
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
@@ -373,11 +237,6 @@ public class Errno {
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EMULTIHOP();
 
-    /** RFS specific error */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EDOTDOT();
-
     /** Not a data message */
     @CConstant
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
@@ -387,60 +246,6 @@ public class Errno {
     @CConstant
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EOVERFLOW();
-
-    /** Name not unique on network */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOTUNIQ();
-
-    /** File descriptor in bad state */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EBADFD();
-
-    /** Remote address changed */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EREMCHG();
-
-    /** Can not access a needed shared library */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ELIBACC();
-
-    /** Accessing a corrupted shared library */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ELIBBAD();
-
-    /** .lib section in a.out corrupted */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ELIBSCN();
-
-    /** Attempting to link in too many shared libraries */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ELIBMAX();
-
-    /** Cannot exec a shared library directly */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ELIBEXEC();
-
-    /** Illegal byte sequence */
-    @CConstant
-    public static native int EILSEQ();
-
-    /** Interrupted system call should be restarted */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ERESTART();
-
-    /** Streams pipe error */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ESTRPIPE();
 
     /** Too many users */
     @CConstant
@@ -592,70 +397,15 @@ public class Errno {
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ESTALE();
 
-    /** Structure needs cleaning */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EUCLEAN();
-
-    /** Not a XENIX named type file */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOTNAM();
-
-    /** No XENIX semaphores available */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENAVAIL();
-
-    /** Is a named type file */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EISNAM();
-
-    /** Remote I/O error */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EREMOTEIO();
-
     /** Quota exceeded */
     @CConstant
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int EDQUOT();
 
-    /** No medium found */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOMEDIUM();
-
-    /** Wrong medium type */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EMEDIUMTYPE();
-
     /** Operation Canceled */
     @CConstant
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ECANCELED();
-
-    /** Required key not available */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ENOKEY();
-
-    /** Key has expired */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EKEYEXPIRED();
-
-    /** Key has been revoked */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EKEYREVOKED();
-
-    /** Key was rejected by service */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int EKEYREJECTED();
 
     /* for robust mutexes */
     /** Owner died */
@@ -667,16 +417,6 @@ public class Errno {
     @CConstant
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native int ENOTRECOVERABLE();
-
-    /** Operation not possible due to RF-kill */
-    @CConstant
-    @Platforms(Platform.LINUX.class)
-    public static native int ERFKILL();
-
-    // [not present on old Linux systems]
-    // /** Memory page has hardware error */
-    // @CConstant
-    // public static native int EHWPOISON();
 
     /*
      * errno is defined as a macro, with different functions being called in different libc
@@ -701,9 +441,4 @@ public class Errno {
     @CFunction
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class, InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
     public static native CCharPointer strerror_r(int errnum, CCharPointer buf, UnsignedWord buflen);
-
-    @CFunction
-    @Platforms(Platform.WINDOWS.class)
-    public static native CCharPointer strerror_s(CCharPointer buf, UnsignedWord buflen, int errnum);
-
 }

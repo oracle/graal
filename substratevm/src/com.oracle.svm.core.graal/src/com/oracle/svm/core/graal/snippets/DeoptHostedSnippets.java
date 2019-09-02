@@ -53,6 +53,7 @@ import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -61,7 +62,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class DeoptHostedSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
-    protected static void deoptSnippet(@ConstantParameter DeoptimizationReason reason, @ConstantParameter Boolean mustNotAllocate, String sourcePosition) {
+    protected static void deoptSnippet(@ConstantParameter DeoptimizationReason reason, @ConstantParameter Boolean mustNotAllocate, String message) {
         /*
          * The snippet cannot (yet) simplify a switch of an Enum, so we use an if-cascade here.
          * Because of the constant parameter, only one branch remains anyway.
@@ -96,15 +97,17 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             } else {
                 runtimeCall(ImplicitExceptions.THROW_NEW_ARITHMETIC_EXCEPTION);
             }
-        } else if (reason == DeoptimizationReason.UnreachedCode || reason == DeoptimizationReason.TypeCheckedInliningViolated || reason == DeoptimizationReason.NotCompiledExceptionHandler) {
-            runtimeCall(SnippetRuntime.UNREACHED_CODE);
+        } else if (reason == DeoptimizationReason.UnreachedCode ||
+                        reason == DeoptimizationReason.TypeCheckedInliningViolated ||
+                        reason == DeoptimizationReason.NotCompiledExceptionHandler ||
+                        reason == DeoptimizationReason.Unresolved ||
+                        reason == DeoptimizationReason.JavaSubroutineMismatch) {
+            runtimeCall(SnippetRuntime.UNSUPPORTED_FEATURE, message);
         } else if (reason == DeoptimizationReason.TransferToInterpreter) {
             if (DeoptimizationSupport.enabled()) {
                 /* We use this reason in TestDeoptimizeNode for deoptimization testing. */
                 runtimeCall(DeoptimizationRuntime.DEOPTIMIZE, Deoptimizer.encodeDeoptActionAndReasonToLong(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter, 0), null);
             }
-        } else if (reason == DeoptimizationReason.Unresolved) {
-            runtimeCall(SnippetRuntime.UNRESOLVED, sourcePosition);
         }
 
         throw UnreachableNode.unreachable();
@@ -143,18 +146,33 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
                 return;
             }
 
+            String message;
             switch (node.getReason()) {
                 case NullCheckException:
                 case BoundsCheckException:
                 case ClassCastException:
                 case ArrayStoreException:
                 case ArithmeticException:
+                    message = null;
+                    break;
                 case UnreachedCode:
                 case TypeCheckedInliningViolated:
                 case NotCompiledExceptionHandler:
-                case TransferToInterpreter:
-                case Unresolved:
+                    message = "Code that was considered unreachable by closed-world analysis was reached";
                     break;
+                case Unresolved:
+                    message = "Unresolved element found " + (node.getNodeSourcePosition() != null ? node.getNodeSourcePosition().toString() : "");
+                    break;
+                case JavaSubroutineMismatch:
+                    message = "A JSR/RET structure that could not be simplified by the compiler was reached. The JSR bytecode is unused and deprecated since Java 6. Please recompile your application with a newer Java compiler.";
+                    break;
+                case TransferToInterpreter:
+                    message = null;
+                    if (!DeoptimizationSupport.enabled()) {
+                        throw VMError.shouldNotReachHere("TransferToInterpreter is only intended for deoptimization testing when the DeoptimizationFeature is enabled");
+                    }
+                    break;
+
                 default:
                     throw shouldNotReachHere("Unexpected reason: " + node.getReason());
             }
@@ -163,7 +181,7 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             Arguments args = new Arguments(deopt, graph.getGuardsStage(), loweringStage);
             args.addConst("reason", node.getReason());
             args.addConst("mustNotAllocate", mustNotAllocate(graph.method()));
-            args.add("sourcePosition", node.getNodeSourcePosition() != null ? node.getNodeSourcePosition().toString() : null);
+            args.add("message", message);
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }

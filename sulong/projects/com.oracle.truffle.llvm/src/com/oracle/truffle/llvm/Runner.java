@@ -62,8 +62,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
-import com.oracle.truffle.llvm.nodes.others.LLVMStatementRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMStatementRootNode;
 import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -909,10 +909,10 @@ final class Runner {
             final LLVMExpressionNode globalVarAddress = language.getNodeFactory().createLiteral(globalDescriptor, new PointerType(global.getType()));
             if (size != 0) {
                 if (type instanceof ArrayType || type instanceof StructureType) {
-                    return language.getNodeFactory().createStore(globalVarAddress, constant, type, null);
+                    return language.getNodeFactory().createStore(globalVarAddress, constant, type);
                 } else {
                     Type t = global.getValue().getType();
-                    return language.getNodeFactory().createStore(globalVarAddress, constant, t, null);
+                    return language.getNodeFactory().createStore(globalVarAddress, constant, t);
                 }
             }
         }
@@ -972,7 +972,7 @@ final class Runner {
             final LLVMExpressionNode loadedFunction = language.getNodeFactory().createLoad(functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
                             language.getNodeFactory().createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
-            final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(language.getNodeFactory().createFunctionCall(loadedFunction, argNodes, functionType, null));
+            final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(language.getNodeFactory().createFunctionCall(loadedFunction, argNodes, functionType));
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
             final SymbolImpl prioritySymbol = structorDefinition.getElement(0);

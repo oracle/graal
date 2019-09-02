@@ -38,25 +38,8 @@ import org.graalvm.word.PointerBase;
 public class Ioctl {
 
     @CConstant
-    public static native long FIOCLEX();
-
-    @CConstant
-    public static native long FIONCLEX();
-
-    @CConstant
     public static native long FIONREAD();
 
-    @CConstant
-    public static native long FIONBIO();
-
-    @CConstant
-    public static native long FIOASYNC();
-
-    /**
-     * Perform the I/O control operation specified by REQUEST on FD. One argument may follow; its
-     * presence and type depend on REQUEST. Return value depends on REQUEST. Usually -1 indicates
-     * error.
-     */
     @CFunction
     public static native int ioctl(int fd, /* unsigned */long request, PointerBase argp);
 }

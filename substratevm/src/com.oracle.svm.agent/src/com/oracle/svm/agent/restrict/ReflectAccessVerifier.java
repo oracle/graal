@@ -41,11 +41,11 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.agent.Support;
-import com.oracle.svm.agent.Support.WordPredicate;
 import com.oracle.svm.agent.Support.WordSupplier;
 import com.oracle.svm.agent.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.trace.AccessAdvisor;
+import com.oracle.svm.core.util.WordPredicate;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;

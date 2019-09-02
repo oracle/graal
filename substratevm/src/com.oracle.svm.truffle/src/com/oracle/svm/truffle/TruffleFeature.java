@@ -497,8 +497,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public void duringAnalysis(DuringAnalysisAccess access) {
         if (firstAnalysisRun) {
             firstAnalysisRun = false;
+            Object keep = invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "resetSingleContextState", Collections.singleton(boolean.class), false);
             invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine", Collections.emptyList());
             access.requireAnalysisIteration();
+            invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "restoreSingleContextState", Collections.singleton(Object.class), keep);
         }
 
         /*
@@ -797,6 +799,16 @@ final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
      */
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", isFinal = true) //
     static Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState singleContextState;
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.ContextThreadLocal", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_ContextThreadLocal {
+
+    /**
+     * Don't store any threads in the image.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Thread firstThread;
 }
 
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)

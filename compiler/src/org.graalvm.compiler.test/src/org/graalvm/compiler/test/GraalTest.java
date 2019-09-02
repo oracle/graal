@@ -35,8 +35,10 @@ import java.lang.reflect.Method;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileAttribute;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -458,7 +460,7 @@ public class GraalTest {
         Runtime.getRuntime().addShutdownHook(new Thread("GlobalMetricsPrinter") {
             @Override
             public void run() {
-                globalMetrics.print(new OptionValues(OptionValues.newOptionMap()));
+                // globalMetrics.print(new OptionValues(OptionValues.newOptionMap()));
             }
         });
     }
@@ -504,6 +506,30 @@ public class GraalTest {
      */
     public static TestRule createTimeoutMillis(long milliseconds) {
         return createTimeout(milliseconds, TimeUnit.MILLISECONDS);
+    }
+
+    public static class TemporaryDirectory implements AutoCloseable {
+
+        public final Path path;
+        private IOException closeException;
+
+        public TemporaryDirectory(Path dir, String prefix, FileAttribute<?>... attrs) throws IOException {
+            path = Files.createTempDirectory(dir == null ? Paths.get(".") : dir, prefix, attrs);
+        }
+
+        @Override
+        public void close() {
+            closeException = removeDirectory(path);
+        }
+
+        public IOException getCloseException() {
+            return closeException;
+        }
+
+        @Override
+        public String toString() {
+            return path.toString();
+        }
     }
 
     /**

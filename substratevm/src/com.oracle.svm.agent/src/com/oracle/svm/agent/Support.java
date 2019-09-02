@@ -386,10 +386,6 @@ public final class Support {
         guarantee(resultCode == JNIErrors.JNI_OK());
     }
 
-    public interface WordPredicate<T extends WordBase> {
-        boolean test(T t);
-    }
-
     public interface WordSupplier<T extends WordBase> {
         T get();
     }

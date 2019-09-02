@@ -26,12 +26,12 @@ package com.oracle.svm.core.windows;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -138,6 +138,7 @@ public final class WindowsVMLockSupport {
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
     public static void initialize() {
         for (WindowsVMMutex mutex : ImageSingletons.lookup(WindowsVMLockSupport.class).mutexes) {
+            // critical sections on windows always support recursive locking
             Process.InitializeCriticalSection(mutex.getStructPointer());
         }
         for (WindowsVMCondition condition : ImageSingletons.lookup(WindowsVMLockSupport.class).conditions) {
@@ -165,7 +166,7 @@ final class WindowsVMMutex extends VMMutex {
     UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    WindowsVMMutex() {
+    protected WindowsVMMutex() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
@@ -175,29 +176,44 @@ final class WindowsVMMutex extends VMMutex {
 
     @Override
     public VMMutex lock() {
+        assertNotOwner("Recursive locking is not supported");
         Process.EnterCriticalSection(getStructPointer());
-        locked = true;
+        setOwnerToCurrentThread();
         return this;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public VMMutex lockNoTransition() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void lockNoTransition() {
+        assertNotOwner("Recursive locking is not supported");
         Process.EnterCriticalSectionNoTrans(getStructPointer());
-        locked = true;
-        return this;
+        setOwnerToCurrentThread();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void lockNoTransitionUnspecifiedOwner() {
+        Process.EnterCriticalSectionNoTrans(getStructPointer());
+        setOwnerToUnspecified();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void unlock() {
-        locked = false;
+        clearCurrentThreadOwner();
+        Process.LeaveCriticalSection(getStructPointer());
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void unlockNoTransitionUnspecifiedOwner() {
+        clearUnspecifiedOwner();
         Process.LeaveCriticalSection(getStructPointer());
     }
 
     @Override
     public void unlockWithoutChecks() {
-        locked = false;
+        clearCurrentThreadOwner();
         Process.LeaveCriticalSectionNoTrans(getStructPointer());
     }
 }
@@ -218,11 +234,13 @@ final class WindowsVMCondition extends VMCondition {
 
     @Override
     public void block() {
+        mutex.clearCurrentThreadOwner();
         WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()), "SleepConditionVariableCS");
+        mutex.setOwnerToCurrentThread();
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransition() {
         WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
@@ -233,9 +251,11 @@ final class WindowsVMCondition extends VMCondition {
         assert waitNanos >= 0;
         long startTimeInNanos = System.nanoTime();
         long endTimeInNanos = startTimeInNanos + waitNanos;
-
         int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
+
+        mutex.clearCurrentThreadOwner();
         final int timedwaitResult = Process.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
+        mutex.setOwnerToCurrentThread();
 
         /* If the timed wait timed out, then I am done blocking. */
         if (timedwaitResult == 0 && WinBase.GetLastError() == WinBase.ERROR_TIMEOUT()) {
@@ -250,14 +270,16 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public long blockNoTransition(long waitNanos) {
         assert waitNanos >= 0;
         long startTimeInNanos = System.nanoTime();
         long endTimeInNanos = startTimeInNanos + waitNanos;
-
         int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
+
+        mutex.clearCurrentThreadOwner();
         final int timedwaitResult = Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
+        mutex.setOwnerToCurrentThread();
 
         /* If the timed wait timed out, then I am done blocking. */
         if (timedwaitResult == 0 && WinBase.GetLastError() == WinBase.ERROR_TIMEOUT()) {

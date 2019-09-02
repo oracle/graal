@@ -37,11 +37,7 @@ import com.oracle.svm.core.posix.headers.PosixDirectives;
 @CContext(PosixDirectives.class)
 @Platforms({Platform.LINUX.class})
 public class LinuxSched {
-
     // Checkstyle: stop
-
-    @CFunction
-    public static native int sched_setaffinity(int pid, int cpu_set_size, cpu_set_t set_ptr);
 
     @CFunction
     public static native int sched_getaffinity(int pid, int cpu_set_size, cpu_set_t set_ptr);

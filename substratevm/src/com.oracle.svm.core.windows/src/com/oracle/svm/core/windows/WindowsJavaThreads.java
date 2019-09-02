@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.windows;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;
@@ -40,6 +39,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
@@ -61,7 +61,6 @@ import com.oracle.svm.core.windows.headers.WinBase;
 
 @Platforms(Platform.WINDOWS.class)
 public final class WindowsJavaThreads extends JavaThreads {
-
     @Platforms(HOSTED_ONLY.class)
     WindowsJavaThreads() {
     }
@@ -136,9 +135,13 @@ public final class WindowsJavaThreads extends JavaThreads {
         try {
             threadStartRoutine(threadHandle);
         } finally {
+            /*
+             * Note that there is another handle to the thread stored in VMThreads.OSThreadHandleTL.
+             * This is necessary to ensure that the operating system does not release the thread
+             * resources too early.
+             */
             WinBase.CloseHandle(osThreadHandle);
         }
-
         return WordFactory.nullPointer();
     }
 }

@@ -102,6 +102,26 @@ public final class SubprocessUtil {
     }
 
     /**
+     * Gets the command line options to do the same package opening and exporting specified by the
+     * {@code --open-packages} option to the {@code mx unittest} command.
+     *
+     * Properties defined in {@code com.oracle.mxtool.junit.MxJUnitWrapper}.
+     */
+    public static List<String> getPackageOpeningOptions() {
+        List<String> result = new ArrayList<>();
+        String[] actions = {"opens", "exports"};
+        for (String action : actions) {
+            String opens = System.getProperty("com.oracle.mxtool.junit." + action);
+            if (opens != null && !opens.isEmpty()) {
+                for (String value : opens.split(System.lineSeparator())) {
+                    result.add("--add-" + action + "=" + value);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * Gets the command line used to start the current Java VM, including all VM arguments, but not
      * including the main class or any Java arguments. This can be used to spawn an identical VM,
      * but running different Java code.
@@ -278,7 +298,11 @@ public final class SubprocessUtil {
         while (i < commandLine.size()) {
             String s = commandLine.get(i);
             if (s.charAt(0) != '-') {
-                return i;
+                // https://bugs.openjdk.java.net/browse/JDK-8027634
+                if (isJava8OrEarlier || s.charAt(0) != '@') {
+                    return i;
+                }
+                i++;
             } else if (hasArg(s)) {
                 i += 2;
             } else {

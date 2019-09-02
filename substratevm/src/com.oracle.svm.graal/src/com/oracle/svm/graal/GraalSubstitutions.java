@@ -256,7 +256,7 @@ final class Target_org_graalvm_compiler_core_match_MatchRuleRegistry {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_org_graalvm_compiler_replacements_nodes_BinaryMathIntrinsicNode {
 

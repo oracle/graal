@@ -226,7 +226,7 @@ class NativeImageVM(GraalVm):
                     hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
 
                 if config.extra_agent_run_args:
-                    hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo else config.extra_agent_run_args
+                    hotspot_run_args += config.extra_profile_run_args if self.hotspot_pgo and not self.is_gate else config.extra_agent_run_args
                 else:
                     hotspot_run_args += image_run_args
 
@@ -353,7 +353,7 @@ def register_graalvm_vms():
     graalvm_hostvm_name = mx_vm.graalvm_dist_name().lower().replace('_', '-')
     for config_name, java_args, launcher_args, priority in mx_sdk.graalvm_hostvm_configs:
         mx_benchmark.java_vm_registry.add_vm(GraalVm(graalvm_hostvm_name, config_name, java_args, launcher_args), _suite, priority)
-    if mx_vm.has_component('svm', fatalIfMissing=False):
+    if mx_vm.has_component('svm'):
         _native_image_vm_registry.add_vm(NativeImageBuildVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
         _gu_vm_registry.add_vm(GuVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
 
@@ -367,7 +367,7 @@ def register_graalvm_vms():
             break
 
 # Add VMs for libgraal
-    if mx_vm.has_component('LibGraal', fatalIfMissing=False):
+    if mx_vm.has_component('LibGraal'):
         libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
         if libgraal_location is not None:
             import mx_graal_benchmark

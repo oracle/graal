@@ -71,4 +71,35 @@ public interface CompilableTruffleAST {
     default void invalidateCode() {
     }
 
+    /**
+     * Returns the estimate of the Truffle node count in this AST.
+     */
+    int getNonTrivialNodeCount();
+
+    /**
+     * Returns the list of call nodes in this AST.
+     */
+    TruffleCallNode[] getCallNodes();
+
+    /**
+     * Return the total number of calls to this target.
+     */
+    int getCallCount();
+
+    /**
+     * Cancel the installed task, i.e. cancel the compilation of this truffle ast.
+     */
+    void cancelInstalledTask();
+
+    /**
+     * @param ast the ast to compare to
+     * @return true if this ast and the argument are the same, one is a split of the other or they
+     *         are both splits of the same ast. False otherwise.
+     */
+    boolean isSameOrSplit(CompilableTruffleAST ast);
+
+    /**
+     * @return How many direct callers is this ast known to have.
+     */
+    int getKnownCallSiteCount();
 }

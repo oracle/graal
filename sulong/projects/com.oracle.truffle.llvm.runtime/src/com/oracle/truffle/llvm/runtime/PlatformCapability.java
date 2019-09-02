@@ -29,16 +29,58 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
+import java.lang.reflect.Array;
 import java.nio.file.Path;
 
-public abstract class PlatformCapability implements LLVMCapability {
+public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
 
     public abstract Path getSulongLibrariesPath();
 
     public abstract String[] getSulongDefaultLibraries();
 
     public abstract LLVMSyscallOperationNode createSyscallNode(long index);
+
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final S[] valueToSysCall;
+
+    protected PlatformCapability(Class<S> cls) {
+        valueToSysCall = initTable(cls);
+    }
+
+    @SuppressWarnings("unchecked")
+    private S[] initTable(Class<S> cls) {
+        S[] constants = cls.getEnumConstants();
+        if (constants == null) {
+            // cls is an empty enum
+            return (S[]) Array.newInstance(cls, 0);
+        }
+        int max = -1;
+        for (S syscall : constants) {
+            max = Math.max(max, syscall.value());
+        }
+        S[] syscalls = (S[]) Array.newInstance(cls, max + 1);
+        for (S syscall : constants) {
+            syscalls[syscall.value()] = syscall;
+        }
+        return syscalls;
+    }
+
+    protected S getSyscall(long value) {
+        if (value >= 0 && value < valueToSysCall.length) {
+            S syscall = valueToSysCall[(int) value];
+            if (syscall != null) {
+                return syscall;
+            }
+        }
+        throw error(value);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static IllegalArgumentException error(long value) {
+        return new IllegalArgumentException("Unknown syscall number: " + value);
+    }
+
 }

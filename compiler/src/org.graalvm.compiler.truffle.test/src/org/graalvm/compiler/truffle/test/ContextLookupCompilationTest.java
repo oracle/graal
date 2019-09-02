@@ -343,7 +343,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         ResolvedJavaField resolvedField = getMetaAccess().lookupJavaField(field);
 
         int count = 0;
-        for (ReadNode readNode : graph.getNodes(ReadNode.TYPE)) {
+        for (ReadNode readNode : graph.getNodes().filter(ReadNode.class)) {
             LocationIdentity location = readNode.getLocationIdentity();
             if (location instanceof FieldLocationIdentity) {
                 if (((FieldLocationIdentity) location).getField().equals(resolvedField)) {
@@ -542,9 +542,9 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     private static void resetSingleContextState() {
         try {
             Class<?> c = Class.forName("com.oracle.truffle.polyglot.PolyglotContextImpl");
-            java.lang.reflect.Method m = c.getDeclaredMethod("resetSingleContextState");
+            java.lang.reflect.Method m = c.getDeclaredMethod("resetSingleContextState", boolean.class);
             m.setAccessible(true);
-            m.invoke(null);
+            m.invoke(null, false);
         } catch (Exception e) {
             throw new AssertionError(e);
         }

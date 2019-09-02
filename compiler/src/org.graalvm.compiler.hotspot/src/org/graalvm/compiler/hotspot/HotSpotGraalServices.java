@@ -28,6 +28,7 @@ import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
 import jdk.vm.ci.hotspot.HotSpotMetaData;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * Interface to HotSpot specific functionality that abstracts over which JDK version Graal is
@@ -76,6 +77,11 @@ public class HotSpotGraalServices {
      */
     @SuppressWarnings("unused")
     public static void exit(int status) {
+        throw shouldNotReachHere();
+    }
+
+    @SuppressWarnings("unused")
+    public static SpeculationLog newHotSpotSpeculationLog(long cachedFailedSpeculationsAddress) {
         throw shouldNotReachHere();
     }
 }
