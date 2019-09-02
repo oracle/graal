@@ -176,8 +176,7 @@ public abstract class PartialEvaluator {
         this.callInlinedAgnosticMethod = findRequiredMethod(type, methods, "callInlinedAgnostic", "([Ljava/lang/Object;)Ljava/lang/Object;");
         this.callIndirectMethod = findRequiredMethod(type, methods, "callIndirect", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
         this.callRootMethod = findRequiredMethod(type, methods, "callRoot", "([Ljava/lang/Object;)Ljava/lang/Object;");
-        this.callBoundary = findRequiredMethod(type, methods, "callBoundary",
-                        "([Ljava/lang/Object;)Ljava/lang/Object;");
+        this.callBoundary = findRequiredMethod(type, methods, "callBoundary", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
         this.configForParsing = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
@@ -231,7 +230,7 @@ public abstract class PartialEvaluator {
     }
 
     public ResolvedJavaMethod[] getCompilationRootMethods() {
-        return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod};
+        return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod, callInlinedAgnosticMethod};
     }
 
     public ResolvedJavaMethod[] getNeverInlineMethods() {
