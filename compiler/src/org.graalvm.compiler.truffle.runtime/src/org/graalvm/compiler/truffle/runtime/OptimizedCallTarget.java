@@ -145,6 +145,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         tvmci.setCallTarget(rootNode, this);
     }
 
+    /**
+     * TODO
+     * @return
+     */
+    public static boolean inInlinedCode() {
+        return false;
+    }
+
     public Assumption getNodeRewritingAssumption() {
         Assumption assumption = nodeRewritingAssumption;
         if (assumption == null) {
