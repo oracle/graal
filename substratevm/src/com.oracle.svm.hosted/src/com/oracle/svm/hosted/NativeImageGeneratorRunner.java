@@ -52,6 +52,7 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
@@ -325,6 +326,9 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         } catch (FallbackFeature.FallbackImageRequest e) {
             reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::warn);
             return 2;
+        } catch (ParsingError e) {
+            NativeImageGeneratorRunner.reportFatalError(e);
+            return 1;
         } catch (UserException | AnalysisError e) {
             reportUserError(e, parsedHostedOptions);
             return 1;
@@ -334,7 +338,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 if (exception instanceof UserException) {
                     reportUserError(exception, parsedHostedOptions);
                     hasUserError = true;
-                } else if (exception instanceof AnalysisError) {
+                } else if (exception instanceof AnalysisError && !(exception instanceof ParsingError)) {
                     reportUserError(exception, parsedHostedOptions);
                     hasUserError = true;
                 }
