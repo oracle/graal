@@ -288,7 +288,7 @@ public final class Safepoint {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void setSafepointRequested(IsolateThread vmThread, int value) {
         assert CurrentIsolate.getCurrentThread().isNull() || VMOperationControl.mayExecuteVmOperations();
-        assert value >= 0;
+        assert value > 0;
         safepointRequested.setVolatile(vmThread, value);
     }
 
@@ -534,7 +534,7 @@ public final class Safepoint {
                  */
                 int newValue = -(value + 2);
                 assert newValue >= -2 && newValue < Integer.MAX_VALUE : "overflow";
-                newValue = newValue < 0 ? 0 : newValue;
+                newValue = newValue <= 0 ? 1 : newValue;
                 setSafepointRequested(vmThread, newValue);
             }
         }
