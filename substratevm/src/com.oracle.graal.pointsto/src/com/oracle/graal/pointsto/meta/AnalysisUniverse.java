@@ -60,7 +60,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -170,7 +169,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     public AnalysisType optionalLookup(ResolvedJavaType type) {
-        ResolvedJavaType actualType = type instanceof HotSpotResolvedJavaType ? substitutions.lookup(type) : type;
+        ResolvedJavaType actualType = substitutions.lookup(type);
         Object claim = types.get(actualType);
         if (claim instanceof AnalysisType) {
             return (AnalysisType) claim;

@@ -24,24 +24,52 @@
  */
 package com.oracle.svm.hosted.agent;
 
-import static org.objectweb.asm.ClassReader.EXPAND_FRAMES;
 import static org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
-import static org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
 
 import java.lang.instrument.Instrumentation;
+import java.util.function.Consumer;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
-import com.oracle.svm.hosted.agent.lambda.LambdaMetaFactoryRewriteVisitor;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AgentSupport;
+import com.oracle.svm.util.TransformerInterface;
 
+/*
+ * Note: no java.lang.invoke.LambdaMetafactory (e.g., Java lambdas) in this file.
+ */
+@SuppressWarnings({"Anonymous2MethodRef", "Convert2Lambda"})
 public class NativeImageBytecodeInstrumentationAgent {
+    private static boolean metafactoryReplacementHappened;
+
     @SuppressWarnings({"unused", "Convert2Lambda"})
     public static void premain(String agentArgs, Instrumentation inst) {
-        inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(NativeImageBytecodeInstrumentationAgent::applyLambdaMetaFactoryTransformation), false);
+        inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(new TransformerInterface() {
+            @Override
+            public byte[] apply(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
+                return applyLambdaMetaFactoryTransformation(className, classfileBuffer);
+            }
+        }), false);
+
+        /*
+         * Now we initialize the InnerClassLambdaMetafactory so rest of the code can use lambdas.
+         */
+        try {
+            Class.forName("java.lang.invoke.LambdaMetafactory");
+            Class.forName("java.lang.invoke.InnerClassLambdaMetafactory");
+        } catch (ClassNotFoundException e) {
+            VMError.shouldNotReachHere();
+        }
+        assert metafactoryReplacementHappened;
+
         if ("traceInitialization".equals(agentArgs)) {
-            inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(NativeImageBytecodeInstrumentationAgent::applyInitializationTrackingTransformation), false);
+            inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(new TransformerInterface() {
+                @Override
+                public byte[] apply(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
+                    return applyInitializationTrackingTransformation(moduleName, loader, className, classfileBuffer);
+                }
+            }), false);
         }
     }
 
@@ -53,11 +81,23 @@ public class NativeImageBytecodeInstrumentationAgent {
         return writer.toByteArray();
     }
 
-    private static byte[] applyLambdaMetaFactoryTransformation(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
-        ClassReader reader = new ClassReader(classfileBuffer);
-        ClassWriter writer = new ClassWriter(reader, COMPUTE_MAXS);
-        LambdaMetaFactoryRewriteVisitor visitor = new LambdaMetaFactoryRewriteVisitor(moduleName, loader, className, writer);
-        reader.accept(visitor, EXPAND_FRAMES);
-        return writer.toByteArray();
+    private static byte[] applyLambdaMetaFactoryTransformation(String className, byte[] classfileBuffer) {
+        if (className != null && className.equals("java/lang/invoke/InnerClassLambdaMetafactory")) {
+            metafactoryReplacementHappened = true;
+            ClassReader reader = new ClassReader(classfileBuffer);
+            ClassWriter writer = new ClassWriter(reader, COMPUTE_FRAMES);
+            InnerClassLambdaMetaFactoryRewriter visitor = new InnerClassLambdaMetaFactoryRewriter(writer, new Consumer<Boolean>() {
+                @Override
+                public void accept(Boolean b) {
+                    if (!b) {
+                        throw VMError.shouldNotReachHere("InnerClassLambdaMetafactory has not been transformed properly. Check if the code changed in the current JDK version.");
+                    }
+                }
+            });
+            reader.accept(visitor, 0);
+            return writer.toByteArray();
+        }
+
+        return null;
     }
 }
