@@ -149,7 +149,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * TODO
      * @return
      */
-    public static boolean inInlinedCode() {
+    protected static boolean inInlinedCode() {
         return false;
     }
 

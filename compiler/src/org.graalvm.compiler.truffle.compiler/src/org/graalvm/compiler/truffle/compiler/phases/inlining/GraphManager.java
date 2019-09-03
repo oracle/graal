@@ -29,6 +29,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -42,6 +43,7 @@ import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -69,6 +71,15 @@ final class GraphManager {
             }
         }
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
+    }
+
+    private static void handleInlinedNodes(StructuredGraph ir, UnmodifiableEconomicMap<Node, Node> duplicates) {
+        for (IsInlinedNode isInlinedNode : ir.getNodes(IsInlinedNode.TYPE)) {
+            final IsInlinedNode duplicate = (IsInlinedNode) duplicates.get(isInlinedNode);
+            if (duplicate != null) {
+                duplicate.inlined();
+            }
+        }
     }
 
     boolean contains(CompilableTruffleAST truffleAST) {
@@ -99,13 +110,21 @@ final class GraphManager {
         return plugin.getTruffleCallNodeToInvoke();
     }
 
-    UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
-        return InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
+    <T extends Node & IterableNodeType> UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
+        final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
                         "cost-benefit analysis", "AgnosticInliningPhase");
+        handleInlinedNodes(ir, duplicates);
+        return duplicates;
     }
 
     public CoreProviders getCoreProviders() {
         return partialEvaluator.getProviders();
+    }
+
+    public void handleRemainingInlinedNodes(StructuredGraph ir) {
+        for (IsInlinedNode isInlinedNode : ir.getNodes(IsInlinedNode.TYPE)) {
+            isInlinedNode.notInlined();
+        }
     }
 
     static class Entry {

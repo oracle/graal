@@ -72,7 +72,6 @@ import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.IsInlinedNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -372,7 +371,6 @@ public class InliningUtil extends ValueMergeUtil {
             nonNullReceiver(invoke);
         }
 
-        ArrayList<IsInlinedNode> isInlinedNodes = new ArrayList<>();
         ArrayList<Node> nodes = new ArrayList<>(inlineGraph.getNodes().count());
         ArrayList<ReturnNode> returnNodes = new ArrayList<>(4);
         ArrayList<Invoke> partialIntrinsicExits = new ArrayList<>();
@@ -387,9 +385,7 @@ public class InliningUtil extends ValueMergeUtil {
                 // Do nothing.
             } else {
                 nodes.add(node);
-                if (node instanceof IsInlinedNode) {
-                    isInlinedNodes.add((IsInlinedNode) node);
-                } else if (node instanceof ReturnNode) {
+                if (node instanceof ReturnNode) {
                     returnNodes.add((ReturnNode) node);
                 } else if (node instanceof Invoke) {
                     Invoke invokeInInlineGraph = (Invoke) node;
@@ -431,13 +427,6 @@ public class InliningUtil extends ValueMergeUtil {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
             if (scope != null) {
                 graph.getInliningLog().addDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
-            }
-        }
-
-        for (IsInlinedNode isInlinedNode : isInlinedNodes) {
-            final IsInlinedNode inlinedNode = (IsInlinedNode) duplicates.get(isInlinedNode);
-            if (inlinedNode != null) {
-                inlinedNode.handleInlined();
             }
         }
 

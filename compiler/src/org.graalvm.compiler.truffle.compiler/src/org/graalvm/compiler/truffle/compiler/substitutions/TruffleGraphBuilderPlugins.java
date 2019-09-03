@@ -51,7 +51,7 @@ import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.IsInlinedNode;
+import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
