@@ -118,8 +118,4 @@ public final class CallTree extends Graph {
     public void dumpInfo(String format, Object arg) {
         getDebug().dump(DebugContext.INFO_LEVEL, this, format, arg);
     }
-
-    void handleInlinedNodes() {
-        graphManager.handleRemainingInlinedNodes(root.getIR());
-    }
 }

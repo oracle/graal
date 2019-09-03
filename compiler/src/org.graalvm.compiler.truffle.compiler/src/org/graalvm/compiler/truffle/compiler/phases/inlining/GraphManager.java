@@ -29,7 +29,6 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -37,7 +36,6 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.truffle.common.CallNodeProvider;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -47,7 +45,6 @@ import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
 final class GraphManager {
@@ -64,15 +61,6 @@ final class GraphManager {
         this.callNodeProvider = callNodeProvider;
     }
 
-    static ResolvedJavaMethod findRequiredMethod(ResolvedJavaType declaringClass, ResolvedJavaMethod[] methods, String name, String descriptor) {
-        for (ResolvedJavaMethod method : methods) {
-            if (method.getName().equals(name) && method.getSignature().toMethodDescriptor().equals(descriptor)) {
-                return method;
-            }
-        }
-        throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
-    }
-
     private static void handleInlinedNodes(StructuredGraph ir, UnmodifiableEconomicMap<Node, Node> duplicates) {
         for (IsInlinedNode isInlinedNode : ir.getNodes(IsInlinedNode.TYPE)) {
             final IsInlinedNode duplicate = (IsInlinedNode) duplicates.get(isInlinedNode);
@@ -82,8 +70,10 @@ final class GraphManager {
         }
     }
 
-    boolean contains(CompilableTruffleAST truffleAST) {
-        return irCache.containsKey(truffleAST);
+    static void handleNonInlinedNodes(StructuredGraph ir) {
+        for (IsInlinedNode isInlinedNode : ir.getNodes(IsInlinedNode.TYPE)) {
+            isInlinedNode.notInlined();
+        }
     }
 
     Entry get(CompilableTruffleAST truffleAST) {
@@ -110,21 +100,11 @@ final class GraphManager {
         return plugin.getTruffleCallNodeToInvoke();
     }
 
-    <T extends Node & IterableNodeType> UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
+    UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST) {
         final UnmodifiableEconomicMap<Node, Node> duplicates = InliningUtil.inline(invoke, ir, true, partialEvaluator.inlineRootForCallTargetAgnostic(truffleAST),
                         "cost-benefit analysis", "AgnosticInliningPhase");
         handleInlinedNodes(ir, duplicates);
         return duplicates;
-    }
-
-    public CoreProviders getCoreProviders() {
-        return partialEvaluator.getProviders();
-    }
-
-    public void handleRemainingInlinedNodes(StructuredGraph ir) {
-        for (IsInlinedNode isInlinedNode : ir.getNodes(IsInlinedNode.TYPE)) {
-            isInlinedNode.notInlined();
-        }
     }
 
     static class Entry {

@@ -37,6 +37,14 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
+/**
+ * This node is used by
+ * {@link org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase
+ * language-agnostic inlining} to differentiate between calls that were inlined (and thus do not
+ * need any special handling code for the call) from those that were not.
+ *
+ * If not handled explicitly the node lowers to {@code false}.
+ */
 @NodeInfo(shortName = "Inlined?", nameTemplate = "Inlined?", cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public class IsInlinedNode extends FloatingNode implements Lowerable, IterableNodeType {
     public static final NodeClass<IsInlinedNode> TYPE = NodeClass.create(IsInlinedNode.class);
