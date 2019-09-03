@@ -87,6 +87,13 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
             if (name.contains("%t")) {
                 name = name.replaceAll("%t", String.valueOf(System.currentTimeMillis()));
             }
+
+            for (String subst : new String[]{"%o", "%e"}) {
+                if (name.contains(subst) && !name.equals(subst)) {
+                    throw new RuntimeException("LogFile substitution " + subst + " cannot be combined");
+                }
+            }
+
             return name;
         }
 
@@ -106,19 +113,29 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                             String nameTemplate = LogStreamOptionKey.this.getValue(defaultOptions());
                             if (nameTemplate != null) {
                                 String name = makeFilename(nameTemplate);
-                                try {
-                                    final boolean enableAutoflush = true;
-                                    FileOutputStream result = new FileOutputStream(name);
-                                    if (!Services.IS_IN_NATIVE_IMAGE) {
-                                        printVMConfig(enableAutoflush, result);
-                                    } else {
-                                        // There are no VM arguments for the libgraal library.
-                                    }
-                                    lazy = result;
-                                    return lazy;
-                                } catch (FileNotFoundException e) {
-                                    throw new RuntimeException("couldn't open file: " + name, e);
+                                switch (name) {
+                                    case "%o":
+                                        lazy = System.out;
+                                        break;
+                                    case "%e":
+                                        lazy = System.err;
+                                        break;
+                                    default:
+                                        try {
+                                            final boolean enableAutoflush = true;
+                                            FileOutputStream result = new FileOutputStream(name);
+                                            if (!Services.IS_IN_NATIVE_IMAGE) {
+                                                printVMConfig(enableAutoflush, result);
+                                            } else {
+                                                // There are no VM arguments for the libgraal
+                                                // library.
+                                            }
+                                            lazy = result;
+                                        } catch (FileNotFoundException e) {
+                                            throw new RuntimeException("couldn't open file: " + name, e);
+                                        }
                                 }
+                                return lazy;
                             }
 
                             lazy = HotSpotJVMCIRuntime.runtime().getLogStream();
