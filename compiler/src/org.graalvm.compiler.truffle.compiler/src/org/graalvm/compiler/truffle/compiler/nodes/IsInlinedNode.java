@@ -32,8 +32,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -41,12 +39,13 @@ import jdk.vm.ci.meta.JavaKind;
  * This node is used by
  * {@link org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase
  * language-agnostic inlining} to differentiate between calls that were inlined (and thus do not
- * need any special handling code for the call) from those that were not.
+ * need any special handling code for the call) from those that were not. The
+ * {@link org.graalvm.compiler.truffle.compiler.PartialEvaluator} removes all instances of this
+ * class from the graph during the Truffle tier.
  *
- * If not handled explicitly the node lowers to {@code false}.
  */
 @NodeInfo(shortName = "Inlined?", nameTemplate = "Inlined?", cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public class IsInlinedNode extends FloatingNode implements Lowerable, IterableNodeType {
+public class IsInlinedNode extends FloatingNode implements IterableNodeType {
     public static final NodeClass<IsInlinedNode> TYPE = NodeClass.create(IsInlinedNode.class);
 
     protected IsInlinedNode() {
@@ -67,10 +66,5 @@ public class IsInlinedNode extends FloatingNode implements Lowerable, IterableNo
 
     private void replaceWith(boolean b) {
         replaceAtUsagesAndDelete(graph().unique(ConstantNode.forBoolean(b)));
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        notInlined();
     }
 }

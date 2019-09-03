@@ -108,6 +108,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
+import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
@@ -207,6 +208,12 @@ public abstract class PartialEvaluator {
             }
         }
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
+    }
+
+    private static void removeIsInlinedNodes(StructuredGraph graph) {
+        for (IsInlinedNode isInlinedNode : graph.getNodes(IsInlinedNode.TYPE)) {
+            isInlinedNode.notInlined();
+        }
     }
 
     public ResolvedJavaMethod getCallDirectMethod() {
@@ -670,6 +677,7 @@ public abstract class PartialEvaluator {
                             TruffleMaximumInlineNodeCount.getValue(graph.getOptions()));
             doGraphPE(compilable, graph, tierContext, inliningDecision, plugin, EconomicMap.create());
         }
+        removeIsInlinedNodes(graph);
     }
 
     protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {

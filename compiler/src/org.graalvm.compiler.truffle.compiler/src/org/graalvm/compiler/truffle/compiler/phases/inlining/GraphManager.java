@@ -70,12 +70,6 @@ final class GraphManager {
         }
     }
 
-    static void handleNonInlinedNodes(StructuredGraph ir) {
-        for (IsInlinedNode isInlinedNode : ir.getNodes(IsInlinedNode.TYPE)) {
-            isInlinedNode.notInlined();
-        }
-    }
-
     Entry get(CompilableTruffleAST truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {

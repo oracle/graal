@@ -84,7 +84,6 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         final CallTree tree = new CallTree(partialEvaluator, callNodeProvider, compilableTruffleAST, graph, policy);
         tree.dumpBasic("Before Inline", "");
         policy.run(tree);
-        GraphManager.handleNonInlinedNodes(tree.getRoot().getIR());
         tree.dumpBasic("After Inline", "");
         tree.trace();
         tree.dequeueInlined();
