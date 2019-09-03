@@ -1,0 +1,16 @@
+{
+    "Polyglot_eval": {
+        "prefix": "polyglot.eval",
+        "body": [
+            "polyglot.eval(language='${1|js,R,ruby|}', ${2|string='',path='file'|})"
+        ],
+        "description": "Polyglot.eval Call"
+    },
+    "Java_type": {
+        "prefix": "java.type",
+        "body": [
+            "java.type(${1:'type'})"
+        ],
+        "description": "Java.type Call"
+    }
+}
