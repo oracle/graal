@@ -1120,7 +1120,8 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    public static @Host(Object.class) StaticObject getAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value) {
+    public static @Host(Object.class) StaticObject getAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    @Host(Object.class) StaticObject value) {
         if (holder.isArray()) {
             return (StaticObject) U.getAndSetObject((holder).unwrap(), offset, value);
         }
