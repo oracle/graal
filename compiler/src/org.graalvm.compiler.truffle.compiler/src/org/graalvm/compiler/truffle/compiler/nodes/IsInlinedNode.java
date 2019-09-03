@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.JavaKind;
  * class from the graph during the Truffle tier.
  *
  */
-@NodeInfo(shortName = "Inlined?", nameTemplate = "Inlined?", cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public class IsInlinedNode extends FloatingNode implements IterableNodeType {
     public static final NodeClass<IsInlinedNode> TYPE = NodeClass.create(IsInlinedNode.class);
 
