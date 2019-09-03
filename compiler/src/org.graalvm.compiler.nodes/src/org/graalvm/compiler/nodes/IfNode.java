@@ -94,6 +94,8 @@ import jdk.vm.ci.meta.TriState;
 public final class IfNode extends ControlSplitNode implements Simplifiable, LIRLowerable, IterableNodeType, SwitchFoldable {
     public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 
+    private static final int MAX_USAGE_COLOR_SET_SIZE = 64;
+
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");
 
     @Successor AbstractBeginNode trueSuccessor;
@@ -1172,6 +1174,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
+    public enum NodeColor {
+        NONE,
+        CONDITION_USAGE,
+        TRUE_BRANCH,
+        FALSE_BRANCH,
+        PHI_MIXED,
+        MIXED
+    }
+
     /**
      * Take an if that is immediately dominated by a merge with a single phi and split off any paths
      * where the test would be statically decidable creating a new merge below the appropriate side
@@ -1190,26 +1201,64 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
         if (merge.getUsageCount() != 1 || merge.phis().count() != 1) {
+            // Don't trigger with multiple phis. Would require more rewiring.
+            // Most of the time the additional phis are memory phis that are removed after
+            // fixed read phase.
             return false;
         }
         if (graph().getGuardsStage().areFrameStatesAtSideEffects() && merge.stateAfter() == null) {
             return false;
         }
-        PhiNode phi = merge.phis().first();
-        if (phi.getUsageCount() != 1) {
-            /*
-             * For simplicity the below code assumes assumes the phi goes dead at the end so skip
-             * this case.
-             */
+
+        PhiNode generalPhi = merge.phis().first();
+        if (!(generalPhi instanceof ValuePhiNode)) {
             return false;
         }
+
+        ValuePhiNode phi = (ValuePhiNode) generalPhi;
+
+        EconomicMap<Node, NodeColor> coloredNodes = EconomicMap.create(8);
 
         /*
          * Check that the condition uses the phi and that there is only one user of the condition
          * expression.
          */
-        if (!conditionUses(condition(), phi)) {
+        if (!conditionUses(condition(), phi, coloredNodes)) {
             return false;
+        }
+
+        // Only allow this optimization in later stages when the merge node doesn't have a frame
+        // state. There is a small intermediate window between fixing guards and assigning frame
+        // states where some merges may have a frame state and others do not. We must not remove a
+        // merge with a frame state that is a dominator to a merge without a frame state.
+        if (!graph().getGuardsStage().allowsFloatingGuards() && merge.stateAfter() != null) {
+            return false;
+        }
+
+        LogicNode[] results = new LogicNode[merge.forwardEndCount()];
+        boolean success = false;
+        for (int i = 0; i < results.length; ++i) {
+            ValueNode value = phi.valueAt(i);
+            LogicNode curResult = computeCondition(tool, condition, phi, value);
+            if (curResult != condition) {
+                success = true;
+            }
+            results[i] = curResult;
+        }
+
+        if (!success) {
+            return false;
+        }
+
+        for (Node usage : phi.usages()) {
+            if (usage == merge.stateAfter()) {
+                // This usage can be ignored, because it is directly in the state after.
+            } else {
+                NodeColor color = colorUsage(coloredNodes, usage, merge, this.trueSuccessor(), this.falseSuccessor());
+                if (color == NodeColor.MIXED) {
+                    return false;
+                }
+            }
         }
 
         /*
@@ -1221,23 +1270,27 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         /* Each successor of the if gets a new merge if needed. */
         MergeNode trueMerge = null;
         MergeNode falseMerge = null;
-
+        int i = 0;
         for (EndNode end : merge.forwardEnds().snapshot()) {
-            Node value = phi.valueAt(end);
-            LogicNode result = computeCondition(tool, condition, phi, value);
+            ValueNode value = phi.valueAt(end);
+            LogicNode result = results[i++];
             if (result instanceof LogicConstantNode) {
-                merge.removeEnd(end);
                 if (((LogicConstantNode) result).getValue()) {
                     if (trueMerge == null) {
-                        trueMerge = insertMerge(trueSuccessor(), merge.stateAfter());
+                        trueMerge = insertMerge(trueSuccessor(), phi, merge.stateAfter());
+                        replaceNodesInBranch(coloredNodes, NodeColor.TRUE_BRANCH, phi, trueMerge.phis().first());
                     }
+                    trueMerge.phis().first().addInput(value);
                     trueMerge.addForwardEnd(end);
                 } else {
                     if (falseMerge == null) {
-                        falseMerge = insertMerge(falseSuccessor(), merge.stateAfter());
+                        falseMerge = insertMerge(falseSuccessor(), phi, merge.stateAfter());
+                        replaceNodesInBranch(coloredNodes, NodeColor.FALSE_BRANCH, phi, falseMerge.phis().first());
                     }
+                    falseMerge.phis().first().addInput(value);
                     falseMerge.addForwardEnd(end);
                 }
+                merge.removeEnd(end);
             } else if (result != condition) {
                 // Build a new IfNode using the new condition
                 BeginNode trueBegin = graph().add(new BeginNode());
@@ -1251,27 +1304,28 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
                 IfNode newIfNode = graph().add(new IfNode(result, trueBegin, falseBegin, trueSuccessorProbability));
                 newIfNode.setNodeSourcePosition(getNodeSourcePosition());
-                merge.removeEnd(end);
-                ((FixedWithNextNode) end.predecessor()).setNext(newIfNode);
 
                 if (trueMerge == null) {
-                    trueMerge = insertMerge(trueSuccessor(), merge.stateAfter());
+                    trueMerge = insertMerge(trueSuccessor(), phi, merge.stateAfter());
+                    replaceNodesInBranch(coloredNodes, NodeColor.TRUE_BRANCH, phi, trueMerge.phis().first());
                 }
+                trueMerge.phis().first().addInput(value);
                 trueBegin.setNext(graph().add(new EndNode()));
                 trueMerge.addForwardEnd((EndNode) trueBegin.next());
 
                 if (falseMerge == null) {
-                    falseMerge = insertMerge(falseSuccessor(), merge.stateAfter());
+                    falseMerge = insertMerge(falseSuccessor(), phi, merge.stateAfter());
+                    replaceNodesInBranch(coloredNodes, NodeColor.FALSE_BRANCH, phi, falseMerge.phis().first());
                 }
+                falseMerge.phis().first().addInput(value);
                 falseBegin.setNext(graph().add(new EndNode()));
                 falseMerge.addForwardEnd((EndNode) falseBegin.next());
 
+                merge.removeEnd(end);
+                ((FixedWithNextNode) end.predecessor()).setNext(newIfNode);
                 end.safeDelete();
             }
         }
-
-        transferProxies(trueSuccessor(), trueMerge);
-        transferProxies(falseSuccessor(), falseMerge);
 
         cleanupMerge(merge);
         cleanupMerge(trueMerge);
@@ -1280,14 +1334,120 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return true;
     }
 
+    private static void replaceNodesInBranch(EconomicMap<Node, NodeColor> coloredNodes, NodeColor branch, ValuePhiNode phi, ValueNode newValue) {
+        for (Node n : phi.usages().snapshot()) {
+            if (coloredNodes.get(n) == branch) {
+                n.replaceAllInputs(phi, newValue);
+            } else if (coloredNodes.get(n) == NodeColor.PHI_MIXED) {
+                assert n instanceof PhiNode;
+                PhiNode phiNode = (PhiNode) n;
+                AbstractMergeNode merge = phiNode.merge();
+                for (int i = 0; i < merge.forwardEndCount(); ++i) {
+                    if (phiNode.valueAt(i) == phi && coloredNodes.get(merge.forwardEndAt(i)) == branch) {
+                        phiNode.setValueAt(i, newValue);
+                    }
+                }
+            }
+        }
+    }
+
+    private NodeColor colorUsage(EconomicMap<Node, NodeColor> coloredNodes, Node node, MergeNode merge, AbstractBeginNode trueSucc, AbstractBeginNode falseSucc) {
+        NodeColor color = coloredNodes.get(node);
+        if (color == null) {
+
+            if (coloredNodes.size() >= MAX_USAGE_COLOR_SET_SIZE) {
+                return NodeColor.MIXED;
+            }
+
+            if (node == merge) {
+                color = NodeColor.MIXED;
+            } else if (node == trueSucc) {
+                color = NodeColor.TRUE_BRANCH;
+            } else if (node == falseSucc) {
+                color = NodeColor.FALSE_BRANCH;
+            } else {
+                if (node instanceof AbstractMergeNode) {
+                    AbstractMergeNode mergeNode = (AbstractMergeNode) node;
+                    NodeColor combinedColor = null;
+                    for (int i = 0; i < mergeNode.forwardEndCount(); ++i) {
+                        NodeColor curColor = colorUsage(coloredNodes, mergeNode.forwardEndAt(i), merge, trueSucc, falseSucc);
+                        if (combinedColor == null) {
+                            combinedColor = curColor;
+                        } else if (combinedColor != curColor) {
+                            combinedColor = NodeColor.MIXED;
+                            break;
+                        }
+                    }
+                    color = combinedColor;
+                } else if (node instanceof StartNode) {
+                    color = NodeColor.MIXED;
+                } else if (node instanceof FixedNode) {
+                    FixedNode fixedNode = (FixedNode) node;
+                    Node predecessor = fixedNode.predecessor();
+                    assert predecessor != null : fixedNode;
+                    color = colorUsage(coloredNodes, predecessor, merge, trueSucc, falseSucc);
+                } else if (node instanceof PhiNode) {
+                    PhiNode phiNode = (PhiNode) node;
+                    AbstractMergeNode phiMerge = phiNode.merge();
+
+                    if (phiMerge instanceof LoopBeginNode) {
+                        color = colorUsage(coloredNodes, phiMerge, merge, trueSucc, falseSucc);
+                    } else {
+
+                        for (int i = 0; i < phiMerge.forwardEndCount(); ++i) {
+                            NodeColor curColor = colorUsage(coloredNodes, phiMerge.forwardEndAt(i), merge, trueSucc, falseSucc);
+                            if (curColor != NodeColor.TRUE_BRANCH && curColor != NodeColor.FALSE_BRANCH) {
+                                color = NodeColor.MIXED;
+                                break;
+                            }
+                        }
+
+                        if (color == null) {
+                            // Each of the inputs to the phi are either coming unambigously from
+                            // true or false branch.
+                            color = NodeColor.PHI_MIXED;
+                            assert node instanceof PhiNode;
+                        }
+                    }
+                } else {
+                    NodeColor combinedColor = null;
+                    for (Node n : node.usages()) {
+                        if (n != node) {
+                            NodeColor curColor = colorUsage(coloredNodes, n, merge, trueSucc, falseSucc);
+                            if (combinedColor == null) {
+                                combinedColor = curColor;
+                            } else if (combinedColor != curColor) {
+                                combinedColor = NodeColor.MIXED;
+                                break;
+                            }
+                        }
+                    }
+                    if (combinedColor == NodeColor.PHI_MIXED) {
+                        combinedColor = NodeColor.MIXED;
+                    }
+                    if (combinedColor == null) {
+                        // Floating node without usages => association unclear.
+                        combinedColor = NodeColor.MIXED;
+                    }
+                    color = combinedColor;
+                }
+            }
+
+            assert color != null : node;
+            coloredNodes.put(node, color);
+        }
+        return color;
+    }
+
     /**
      * @param condition
      * @param phi
+     * @param coloredNodes
      * @return true if the passed in {@code condition} uses {@code phi} and the condition is only
      *         used once. Since the phi will go dead the condition using it will also have to be
      *         dead after the optimization.
      */
-    private static boolean conditionUses(LogicNode condition, PhiNode phi) {
+    private static boolean conditionUses(LogicNode condition, PhiNode phi, EconomicMap<Node, NodeColor> coloredNodes) {
         if (!condition.hasExactlyOneUsage()) {
             return false;
         }
@@ -1300,14 +1460,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                  * condition.
                  */
                 ShortCircuitOrNode orNode = (ShortCircuitOrNode) condition;
-                return (conditionUses(orNode.x, phi) || conditionUses(orNode.y, phi));
+                return (conditionUses(orNode.x, phi, coloredNodes) || conditionUses(orNode.y, phi, coloredNodes));
             }
         } else if (condition instanceof Canonicalizable.Unary<?>) {
             Canonicalizable.Unary<?> unary = (Canonicalizable.Unary<?>) condition;
-            return unary.getValue() == phi;
+            if (unary.getValue() == phi) {
+                coloredNodes.put(condition, NodeColor.CONDITION_USAGE);
+                return true;
+            }
         } else if (condition instanceof Canonicalizable.Binary<?>) {
             Canonicalizable.Binary<?> binary = (Canonicalizable.Binary<?>) condition;
-            return binary.getX() == phi || binary.getY() == phi;
+            if (binary.getX() == phi || binary.getY() == phi) {
+                coloredNodes.put(condition, NodeColor.CONDITION_USAGE);
+                return true;
+            }
         }
         return false;
     }
@@ -1344,10 +1510,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         } else if (condition instanceof Canonicalizable.Binary<?>) {
             Canonicalizable.Binary<Node> compare = (Canonicalizable.Binary<Node>) condition;
-            if (compare.getX() == phi) {
-                return (LogicNode) compare.canonical(tool, value, compare.getY());
-            } else if (compare.getY() == phi) {
-                return (LogicNode) compare.canonical(tool, compare.getX(), value);
+            if (compare.getX() == phi || compare.getY() == phi) {
+                return (LogicNode) compare.canonical(tool, compare.getX() == phi ? value : compare.getX(), compare.getY() == phi ? value : compare.getY());
             }
         } else if (condition instanceof Canonicalizable.Unary<?>) {
             Canonicalizable.Unary<Node> compare = (Canonicalizable.Unary<Node>) condition;
@@ -1361,15 +1525,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return condition;
     }
 
-    private static void transferProxies(AbstractBeginNode successor, MergeNode falseMerge) {
-        if (successor instanceof LoopExitNode && falseMerge != null) {
-            LoopExitNode loopExitNode = (LoopExitNode) successor;
-            for (ProxyNode proxy : loopExitNode.proxies().snapshot()) {
-                proxy.replaceFirstInput(successor, falseMerge);
-            }
-        }
-    }
-
     private void cleanupMerge(MergeNode merge) {
         if (merge != null && merge.isAlive()) {
             if (merge.forwardEndCount() == 0) {
@@ -1381,7 +1536,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @SuppressWarnings("try")
-    private MergeNode insertMerge(AbstractBeginNode begin, FrameState stateAfter) {
+    private MergeNode insertMerge(AbstractBeginNode begin, ValuePhiNode oldPhi, FrameState stateAfter) {
         MergeNode merge = graph().add(new MergeNode());
         if (!begin.anchored().isEmpty()) {
             Object before = begin.anchored().snapshot();
@@ -1403,8 +1558,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         next.replaceAtPredecessor(merge);
         theBegin.setNext(graph().add(new EndNode()));
         merge.addForwardEnd((EndNode) theBegin.next());
-        merge.setStateAfter(stateAfter);
+
+        ValuePhiNode phi = begin.graph().addOrUnique(new ValuePhiNode(oldPhi.stamp(NodeView.DEFAULT), merge));
+        phi.addInput(oldPhi);
+
+        if (stateAfter != null) {
+            FrameState newState = stateAfter.duplicate();
+            newState.replaceAllInputs(oldPhi, phi);
+            merge.setStateAfter(newState);
+        }
         merge.setNext(next);
+
         return merge;
     }
 
