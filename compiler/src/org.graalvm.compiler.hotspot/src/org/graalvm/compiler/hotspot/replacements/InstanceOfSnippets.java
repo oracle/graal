@@ -220,7 +220,7 @@ public class InstanceOfSnippets implements Snippets {
 
     @Snippet
     public static Object isAssignableFrom(@NonNullParameter Class<?> thisClassNonNull, Class<?> otherClass, Object trueValue, Object falseValue, @ConstantParameter Counters counters) {
-        if (otherClass == null) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.DEOPT_PROBABILITY, otherClass == null)) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
             return false;
         }

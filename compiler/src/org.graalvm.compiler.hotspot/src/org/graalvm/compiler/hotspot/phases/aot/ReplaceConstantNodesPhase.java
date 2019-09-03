@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -318,7 +319,7 @@ public class ReplaceConstantNodesPhase extends BasePhase<CoreProviders> {
         NodeMap<Block> nodeToBlock = schedule.getNodeToBlockMap();
         BlockMap<List<Node>> blockToNodes = schedule.getBlockToNodesMap();
 
-        EconomicMap<Block, Node> blockToExisting = EconomicMap.create();
+        EconomicMap<Block, Node> blockToExisting = EconomicMap.create(Equivalence.IDENTITY);
         for (Node n : node.usages().filter(n -> isReplacementNode(n))) {
             blockToExisting.put(nodeToBlock.get(n), n);
         }

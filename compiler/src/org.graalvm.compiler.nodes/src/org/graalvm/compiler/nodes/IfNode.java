@@ -1217,7 +1217,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
         ValuePhiNode phi = (ValuePhiNode) generalPhi;
 
-        EconomicMap<Node, NodeColor> coloredNodes = EconomicMap.create(8);
+        EconomicMap<Node, NodeColor> coloredNodes = EconomicMap.create(Equivalence.IDENTITY, 8);
 
         /*
          * Check that the condition uses the phi and that there is only one user of the condition
