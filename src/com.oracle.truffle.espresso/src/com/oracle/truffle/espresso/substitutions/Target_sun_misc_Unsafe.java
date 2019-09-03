@@ -1102,4 +1102,16 @@ public final class Target_sun_misc_Unsafe {
     public static long reallocateMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, long address, long bytes) {
         return U.reallocateMemory(address, bytes);
     }
+
+    @Substitution(hasReceiver = true)
+    public static @Host(Object.class) StaticObject getAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value) {
+        if (holder.isArray()) {
+            return (StaticObject) U.getAndSetObject((holder).unwrap(), offset, value);
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, encoding is offset <->
+        // field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        return f.getAndSetObject(holder, value);
+    }
 }

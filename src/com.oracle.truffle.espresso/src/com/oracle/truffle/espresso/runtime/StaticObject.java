@@ -791,4 +791,8 @@ public final class StaticObject implements TruffleObject {
             throw meta.throwEx(ArrayIndexOutOfBoundsException.class);
         }
     }
+
+    public StaticObject getAndSetObject(Field field, StaticObject value) {
+        return (StaticObject) U.getAndSetObject(fields, getObjectFieldIndex(field.getFieldIndex()), value);
+    }
 }
