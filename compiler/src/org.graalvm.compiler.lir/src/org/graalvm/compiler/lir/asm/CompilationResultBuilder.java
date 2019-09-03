@@ -53,6 +53,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstructionVerifier;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
 import org.graalvm.compiler.lir.framemap.FrameMap;
@@ -60,6 +61,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -84,6 +86,14 @@ import jdk.vm.ci.meta.Value;
  * @see CompilationResultBuilderFactory
  */
 public class CompilationResultBuilder {
+
+    private final static List<LIRInstructionVerifier> LIR_INSTRUCTION_VERIFIERS = new ArrayList<>();
+
+    static {
+        for (LIRInstructionVerifier verifier : GraalServices.load(LIRInstructionVerifier.class)) {
+            LIR_INSTRUCTION_VERIFIERS.add(verifier);
+        }
+    }
 
     public static class Options {
         @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug) //
@@ -561,7 +571,7 @@ public class CompilationResultBuilder {
                 if (beforeOp != null) {
                     beforeOp.accept(op);
                 }
-                emitOp(this, op);
+                emitOp(op);
                 if (afterOp != null) {
                     afterOp.accept(op);
                 }
@@ -571,12 +581,18 @@ public class CompilationResultBuilder {
         }
     }
 
-    private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
+    private void emitOp(LIRInstruction op) {
         try {
-            int start = crb.asm.position();
-            op.emitCode(crb);
+            int start = asm.position();
+            op.emitCode(this);
             if (op.getPosition() != null) {
-                crb.recordSourceMapping(start, crb.asm.position(), op.getPosition());
+                recordSourceMapping(start, asm.position(), op.getPosition());
+            }
+            if (LIR_INSTRUCTION_VERIFIERS.size() > 0 && start < asm.position()) {
+                byte[] emittedCode = asm.copyFrom(start);
+                for (LIRInstructionVerifier verifier : LIR_INSTRUCTION_VERIFIERS) {
+                    verifier.verify(op, emittedCode);
+                }
             }
         } catch (BailoutException e) {
             throw e;
