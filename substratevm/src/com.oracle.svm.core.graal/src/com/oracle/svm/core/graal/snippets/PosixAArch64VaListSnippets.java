@@ -62,7 +62,7 @@ class PosixAArch64VaListSnippetsFeature implements GraalFeature {
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
                     SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
-        PosixAMD64VaListSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+        PosixAArch64VaListSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
     }
 }
 
@@ -119,7 +119,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
     private static final int MAX_FP_OFFSET = 0;
     private static final int STACK_AREA_LOCATION = 0;
     private static final int STACK_AREA_GP_ALIGNMENT = 8;
-    private static final int STACK_AREA_FP_ALIGNMENT = 16;
+    private static final int STACK_AREA_FP_ALIGNMENT = 8;
     private static final int GP_TOP_LOCATION = 8;
     private static final int FP_TOP_LOCATION = 16;
 
@@ -133,7 +133,7 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
         if (fpOffset < MAX_FP_OFFSET) {
             Pointer regSaveArea = vaList.readWord(FP_TOP_LOCATION);
             double v = regSaveArea.readDouble(fpOffset);
-            vaList.writeInt(FP_OFFSET_LOCATION, fpOffset + 16); // 16-byte XMM register
+            vaList.writeInt(FP_OFFSET_LOCATION, fpOffset + 16); // 16-byte FP register
             return v;
         } else {
             Pointer overflowArgArea = vaList.readWord(STACK_AREA_LOCATION);
@@ -186,10 +186,10 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
 
     protected class VaListSnippetsLowering implements NodeLoweringProvider<VaListNextArgNode> {
 
-        private final SnippetInfo vaArgDouble = snippet(PosixAMD64VaListSnippets.class, "vaArgDoubleSnippet");
-        private final SnippetInfo vaArgFloat = snippet(PosixAMD64VaListSnippets.class, "vaArgFloatSnippet");
-        private final SnippetInfo vaArgLong = snippet(PosixAMD64VaListSnippets.class, "vaArgLongSnippet");
-        private final SnippetInfo vaArgInt = snippet(PosixAMD64VaListSnippets.class, "vaArgIntSnippet");
+        private final SnippetInfo vaArgDouble = snippet(PosixAArch64VaListSnippets.class, "vaArgDoubleSnippet");
+        private final SnippetInfo vaArgFloat = snippet(PosixAArch64VaListSnippets.class, "vaArgFloatSnippet");
+        private final SnippetInfo vaArgLong = snippet(PosixAArch64VaListSnippets.class, "vaArgLongSnippet");
+        private final SnippetInfo vaArgInt = snippet(PosixAArch64VaListSnippets.class, "vaArgIntSnippet");
 
         @Override
         public void lower(VaListNextArgNode node, LoweringTool tool) {
