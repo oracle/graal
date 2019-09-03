@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,28 +29,48 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-public abstract class MDVariable extends MDNamedLocation {
+public abstract class MDNamedLocation extends MDName {
 
-    private MDBaseNode type;
+    private final long line;
 
-    MDVariable(long line) {
-        super(line);
-        this.type = MDVoidNode.INSTANCE;
+    private MDBaseNode scope;
+    private MDBaseNode file;
+
+    MDNamedLocation(long line) {
+        this.line = line;
+
+        this.scope = MDVoidNode.INSTANCE;
+        this.file = MDVoidNode.INSTANCE;
     }
 
-    public MDBaseNode getType() {
-        return type;
+    public long getLine() {
+        return line;
     }
 
-    void setType(MDBaseNode type) {
-        this.type = type;
+    public MDBaseNode getScope() {
+        return scope;
+    }
+
+    public void setScope(MDBaseNode scope) {
+        this.scope = scope;
+    }
+
+    public MDBaseNode getFile() {
+        return file;
+    }
+
+    public void setFile(MDBaseNode file) {
+        this.file = file;
     }
 
     @Override
     public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
         super.replace(oldValue, newValue);
-        if (type == oldValue) {
-            type = newValue;
+        if (scope == oldValue) {
+            scope = newValue;
+        }
+        if (file == oldValue) {
+            file = newValue;
         }
     }
 }
