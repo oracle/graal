@@ -466,6 +466,8 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
 
     public abstract LLVMValueRef[] getCallArguments(LLVMValueRef[] args, CallingConvention.Type callType, ResolvedJavaMethod targetMethod);
 
+    public abstract LLVMTypeRef[] getUnknownCallArgumentTypes(LLVMTypeRef[] args, CallingConvention.Type callType);
+
     protected abstract ResolvedJavaMethod findForeignCallTarget(@SuppressWarnings("unused") ForeignCallDescriptor descriptor);
 
     @Override

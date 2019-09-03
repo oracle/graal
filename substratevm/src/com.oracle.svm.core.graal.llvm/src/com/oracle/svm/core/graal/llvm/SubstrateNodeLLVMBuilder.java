@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.llvm;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.getJavaFrameAnchor;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.hasJavaFrameAnchor;
 
+import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
@@ -101,6 +102,12 @@ public class SubstrateNodeLLVMBuilder extends NodeLLVMBuilder implements Substra
     protected LLVMValueRef[] getCallArguments(NodeInputList<ValueNode> arguments, CallingConvention.Type callType, ResolvedJavaMethod targetMethod) {
         LLVMValueRef[] args = super.getCallArguments(arguments, callType, targetMethod);
         return gen.getCallArguments(args, callType, targetMethod);
+    }
+
+    @Override
+    protected LLVMTypeRef[] getUnknownCallArgumentTypes(NodeInputList<ValueNode> arguments, LoweredCallTargetNode callTarget) {
+        LLVMTypeRef[] types = super.getUnknownCallArgumentTypes(arguments, callTarget);
+        return gen.getUnknownCallArgumentTypes(types, callTarget.callType());
     }
 
     @Override
