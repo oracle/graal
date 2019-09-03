@@ -751,6 +751,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             case MIN:
             case UMIN:
             case UMAX:
+            case FADD:
+            case FSUB:
             default:
                 throw new LLVMParserException("Unsupported read-modify-write operation: " + op);
         }
