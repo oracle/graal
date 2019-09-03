@@ -64,6 +64,10 @@ public final class StaticObject implements TruffleObject {
         return object == StaticObject.NULL;
     }
 
+    public static boolean isEspressoNull(Object object) {
+        return object == StaticObject.NULL;
+    }
+
     @ExportMessage
     public boolean isString() {
         return StaticObject.notNull(this) && getKlass() == getKlass().getMeta().String;

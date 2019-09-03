@@ -362,7 +362,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
         int n = 0;
         if (hasReceiver) {
-            assert frameArguments[0] != StaticObject.NULL : "null receiver in init arguments !";
+            assert !StaticObject.isEspressoNull(frameArguments[0]) : "null receiver in init arguments !";
             setLocalObject(frame, n, (StaticObject) frameArguments[0]);
             n += JavaKind.Object.getSlotCount();
         }
@@ -1519,16 +1519,26 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opCode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert (Bytecodes.INVOKEDYNAMIC == opCode);
-        RuntimeConstantPool pool;
-        InvokeDynamicConstant inDy;
+        RuntimeConstantPool pool = null;
+        InvokeDynamicConstant inDy = null;
+        QuickNode quick = null;
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
-                return nodes[bs.readCPI(curBCI)].invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+                // Check if someone did the job for us. Defer the call until we are out of the lock.
+                quick = nodes[bs.readCPI(curBCI)];
+            } else {
+                pool = getConstantPool();
+                // fetch indy under lock.
+                inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
             }
-            pool = getConstantPool();
-            // fetch indy under lock.
-            inDy = ((InvokeDynamicConstant) pool.at(bs.readCPI(curBCI)));
         }
+        if (quick != null) {
+            // Do invocation outside of the lock.
+            return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        }
+
+        assert pool != null && inDy != null;
+
         // Do the long stuff outside the lock.
         Meta meta = getMeta();
 
@@ -1582,7 +1592,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         StaticObject unboxedAppendix = appendix.get(0);
 
         // re-lock to check if someone did the job for us, since this was a heavy operation.
-        QuickNode quick;
+
         synchronized (this) {
             if (bs.currentBC(curBCI) == QUICK) {
                 // someone beat us to it, just trust him.
@@ -1982,7 +1992,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         return args;
     }
 
-    // Effort to prevent double copies.
+    // Effort to prevent double copies. Erases sub-word primitive types.
     @ExplodeLoop
     public Object[] peekBasicArgumentsWithArray(VirtualFrame frame, int top, final Symbol<Type>[] signature, Object[] args, final int argCount, int start) {
         // Use basic types

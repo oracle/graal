@@ -1527,7 +1527,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public boolean ExceptionCheck() {
         StaticObject ex = threadLocalPendingException.get();
-        assert ex != StaticObject.NULL;
+        assert !StaticObject.isEspressoNull(ex);
         return ex != null;
     }
 
