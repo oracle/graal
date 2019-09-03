@@ -36,6 +36,7 @@ import java.util.List;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
@@ -208,6 +209,15 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void defaultAction(SymbolImpl symbol) {
             unsupported(symbol);
+        }
+
+        @Override
+        public void visit(MetadataSymbol constant) {
+            // metadata is passed as argument to some dbg.* methods. Sulong resolves required
+            // metadata already during parsing and does not require such a value at runtime. We
+            // resolve this type to a constant value here to avoid having to identify all functions,
+            // like dbg.label, that receive metadata but are in practice noops at runtime.
+            resolvedNode = nodeFactory.createSimpleConstantNoArray(0, PrimitiveType.I32);
         }
 
         @Override

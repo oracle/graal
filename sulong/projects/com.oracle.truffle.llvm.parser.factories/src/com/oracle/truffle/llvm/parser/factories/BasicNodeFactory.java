@@ -1972,6 +1972,13 @@ public class BasicNodeFactory implements NodeFactory {
             case "llvm.dbg.addr":
             case "llvm.dbg.value":
                 throw new IllegalStateException("Unhandled call to intrinsic function " + declaration.getName());
+            case "llvm.dbg.label":
+                // a call to dbg.label describes that execution has arrived at a label in the
+                // original source code. the source location of the call will be applied, rather
+                // than the explicit descriptor of the label which is passed to dbg.label. both
+                // reference the same line number, this just avoids special-casing dbg.label like
+                // the other dbg.* intrinsics.
+                return LLVMNoOpNodeGen.create();
             case "llvm.eh.typeid.for":
                 return new LLVMTypeIdForExceptionNode(args[1]);
             case "llvm.expect.i1": {
