@@ -53,7 +53,8 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
 
         // @formatter:off
         @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying " +
-                       "the process, usually the process id and %t will be replaced by System.currentTimeMillis().", type = OptionType.Expert)
+                       "the process, usually the process id and %t will be replaced by System.currentTimeMillis().  " +
+                       "Using %o as filename sends logging to System.out whereas %e sends logging to System.err.", type = OptionType.Expert)
         public static final LogStreamOptionKey LogFile = new LogStreamOptionKey();
         // @formatter:on
     }
@@ -77,7 +78,8 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
         /**
          * @return {@code nameTemplate} with all instances of %p replaced by
          *         {@link GraalServices#getExecutionID()} and %t by
-         *         {@link System#currentTimeMillis()}
+         *         {@link System#currentTimeMillis()}. Checks %o and %e are not combined with any
+         *         other characters.
          */
         private static String makeFilename(String nameTemplate) {
             String name = nameTemplate;
@@ -90,7 +92,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
 
             for (String subst : new String[]{"%o", "%e"}) {
                 if (name.contains(subst) && !name.equals(subst)) {
-                    throw new RuntimeException("LogFile substitution " + subst + " cannot be combined");
+                    throw new IllegalArgumentException("LogFile substitution " + subst + " cannot be combined with any other characters");
                 }
             }
 
