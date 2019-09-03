@@ -422,7 +422,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                      The named modules must either be in `module_dists` or in `jdk`. If None, then
                      the root set will be all the modules in ``module_dists` and `jdk`.
     :param str missing_export_target_action: the action to perform for a qualifed export target that
-                     is not present in `module_dists`. The choices are:
+                     is not present in `module_dists` and does not have a hash stored in java.base.
+                     The choices are:
                        "create" - an empty module is created
                         "error" - raise an error
                            None - do nothing
@@ -442,8 +443,21 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
     if not isdir(jmods_dir):
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' since ' + jmods_dir + ' is missing or is not a directory')
 
+    jdk_modules = {jmd.name : jmd for jmd in jdk.get_modules()}
     modules = [as_java_module(dist, jdk) for dist in module_dists]
-    all_module_names = frozenset([m.name for m in jdk.get_modules()] + [m.name for m in modules])
+    all_module_names = frozenset(list(jdk_modules.keys()) + [m.name for m in modules])
+
+    # Read hashes stored in java.base (the only module in the JDK where hashes are stored)
+    out = mx.LinesOutputCapture()
+    mx.run([jdk.exe_path('jmod'), 'describe', jdk_modules['java.base'].get_jmod_path()], out=out)
+    lines = out.lines
+    hashes = {}
+    for line in lines:
+        if line.startswith('hashes'):
+            parts = line.split()
+            assert len(parts) == 4, 'expected hashes line to have 4 fields, got {} fields: {}'.format(len(parts), line)
+            _, module_name, algorithm, hash_value = parts
+            hashes[module_name] = (algorithm, hash_value)
 
     build_dir = mx.ensure_dir_exists(join(dst_jdk_dir + ".build"))
     try:
@@ -452,7 +466,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         for jmd in modules:
             for targets in jmd.exports.values():
                 for target in targets:
-                    if target not in all_module_names:
+                    if target not in all_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
         if target_requires and missing_export_target_action is not None:
             if missing_export_target_action == 'error':
@@ -480,7 +494,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                 mx.run([jdk.javac.replace('javac', 'jmod'), 'create', '--class-path=' + module_build_dir, jmd.get_jmod_path()])
 
             modules.extend(extra_modules)
-            all_module_names = frozenset([m.name for m in jdk.get_modules()] + [m.name for m in modules])
+            all_module_names = frozenset(list(jdk_modules.keys()) + [m.name for m in modules])
 
         # Extract src.zip from source JDK
         jdk_src_zip = join(jdk.home, 'lib', 'src.zip')

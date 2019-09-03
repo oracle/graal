@@ -640,11 +640,15 @@ graal_bootstrap_tests = [
     BootstrapTest('BootstrapWithSystemAssertionsImmutableCode', _defaultFlags + _assertionFlags + _immutableCodeFlags + ['-Dgraal.VerifyPhases=true'] + _graalErrorFlags, tags=GraalTags.bootstrap)
 ]
 
+def _is_jaotc_supported():
+    return exists(jdk.exe_path('jaotc'))
+
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument)
     compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
     jvmci_ci_version_gate_runner(tasks)
-    mx_jaotc.jaotc_gate_runner(tasks)
+    if _is_jaotc_supported():
+        mx_jaotc.jaotc_gate_runner(tasks)
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -1301,7 +1305,7 @@ def _graal_config():
     return __graal_config
 
 def _jvmci_jars():
-    if not isJDK8:
+    if not isJDK8 and _is_jaotc_supported():
         return [
             'compiler:GRAAL',
             'compiler:GRAAL_MANAGEMENT',
