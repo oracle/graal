@@ -46,52 +46,57 @@ public final class Target_java_lang_System {
     public static void arraycopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
         arraycopyCount.inc();
         try {
-            // Mimics hotspot implementation.
-            if (src.isArray() && dest.isArray()) {
-                // System.arraycopy does the bounds checks
-                if (src == dest) {
-                    // Same array, no need to type check
-                    System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
-                } else {
-                    Klass destType = dest.getKlass().getComponentType();
-                    Klass srcType = src.getKlass().getComponentType();
-                    if (destType.isPrimitive() || srcType.isPrimitive()) {
-                        // primitives -> System.arrayCopy detects the arrayStoreException for us
-                        System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
-                    } else if (destType.isAssignableFrom(srcType)) {
-                        // We have guarantee we can copy, as all elements in src conform to dest.
-                        System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
-                    } else {
-                        // slow path (manual copy) (/ex: copying an Object[] to a String[]) requires
-                        // individual type checks. Should rarely happen ( < 1% of cases).
-                        // @formatter:off
-                        // Use cases:
-                        // - System startup.
-                        // - MethodHandle and CallSite linking.
-                        if (length < 0 || length + srcPos > src.length() || length + destPos > dest.length()){
-                            // Other checks are caught during execution without side effects.
-                            throw new ArrayIndexOutOfBoundsException();
-                        }
-                        StaticObject[] s = src.unwrap();
-                        StaticObject[] d = dest.unwrap();
-                        for (int i = 0; i < length; i++) {
-                            StaticObject cpy = s[i + srcPos];
-                            if (StaticObject.isNull(cpy) || destType.isAssignableFrom(cpy.getKlass())) {
-                                d[destPos + i] = cpy;
-                            } else {
-                                throw new ArrayStoreException();
-                            }
-                        }
-                    }
-                }
-            } else {
-                assert src.getClass().isArray();
-                assert dest.getClass().isArray();
-                System.arraycopy(src, srcPos, dest, destPos, length);
-            }
+            doArrayCopy(src, srcPos, dest, destPos, length);
         } catch (NullPointerException | ArrayStoreException | IndexOutOfBoundsException e) {
             // Should catch NPE if src or dest is null, and ArrayStoreException.
             throw EspressoLanguage.getCurrentContext().getMeta().throwExWithMessage(e.getClass(), e.getMessage());
+        }
+    }
+
+    private static void doArrayCopy(@Host(Object.class) StaticObject src, int srcPos, @Host(Object.class) StaticObject dest, int destPos, int length) {
+        if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
+            throw new NullPointerException();
+        }
+        // Mimics hotspot implementation.
+        if (src.isArray() && dest.isArray()) {
+            // System.arraycopy does the bounds checks
+            if (src == dest) {
+                // Same array, no need to type check
+                System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+            } else {
+                Klass destType = dest.getKlass().getComponentType();
+                Klass srcType = src.getKlass().getComponentType();
+                if (destType.isPrimitive() || srcType.isPrimitive()) {
+                    // primitives -> System.arrayCopy detects the arrayStoreException for us
+                    System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+                } else if (destType.isAssignableFrom(srcType)) {
+                    // We have guarantee we can copy, as all elements in src conform to dest.
+                    System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+                } else {
+                    // slow path (manual copy) (/ex: copying an Object[] to a String[]) requires
+                    // individual type checks. Should rarely happen ( < 1% of cases).
+                    // @formatter:off
+                    // Use cases:
+                    // - System startup.
+                    // - MethodHandle and CallSite linking.
+                    if (srcPos < 0 || destPos < 0 || length < 0 || srcPos > src.length() - length || destPos > dest.length() - length){
+                        // Other checks are caught during execution without side effects.
+                        throw new ArrayIndexOutOfBoundsException();
+                    }
+                    StaticObject[] s = src.unwrap();
+                    StaticObject[] d = dest.unwrap();
+                    for (int i = 0; i < length; i++) {
+                        StaticObject cpy = s[i + srcPos];
+                        if (StaticObject.isNull(cpy) || destType.isAssignableFrom(cpy.getKlass())) {
+                            d[destPos + i] = cpy;
+                        } else {
+                            throw new ArrayStoreException();
+                        }
+                    }
+                }
+            }
+        } else {
+            throw new ArrayStoreException();
         }
     }
 
