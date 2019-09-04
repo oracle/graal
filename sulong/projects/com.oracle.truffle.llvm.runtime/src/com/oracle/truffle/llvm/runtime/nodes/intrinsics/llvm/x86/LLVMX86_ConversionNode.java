@@ -33,10 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMX86_ConversionNode {
@@ -106,6 +107,58 @@ public abstract class LLVMX86_ConversionNode {
                 throw new AssertionError("expected a <2 x double> vector");
             }
             return ((vector.getValue(1) < 0 ? 1 : 0) << 1) | (vector.getValue(0) < 0 ? 1 : 0);
+        }
+    }
+
+    @NodeChild(value = "xmm1", type = LLVMExpressionNode.class)
+    @NodeChild(value = "xmm2", type = LLVMExpressionNode.class)
+    @NodeChild(value = "imm", type = LLVMExpressionNode.class)
+    public abstract static class LLVMX86_Cmpss extends LLVMBuiltin {
+        static float TRUE_MASK = Float.intBitsToFloat(-1);
+
+        @Specialization
+        protected LLVMFloatVector doIntrinsic(LLVMFloatVector xmm1, LLVMFloatVector xmm2, byte imm) {
+            // https://www.felixcloutier.com/x86/cmpss
+            if (xmm1.getLength() != 4) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("xmm1 expected a <4 x float> vector");
+            }
+            if (xmm2.getLength() != 4) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("xmm2 expected a <4 x float> vector");
+            }
+            float[] rv = new float[]{0, xmm1.getValue(1), xmm1.getValue(2), xmm1.getValue(3)};
+            float left = xmm1.getValue(0);
+            float right = xmm2.getValue(0);
+            switch (imm) {
+                case 0: // CMPEQSS
+                    rv[3] = (left == right) ? TRUE_MASK : 0;
+                    break;
+                case 1: // CMPLTSS
+                    rv[3] = (left < right) ? TRUE_MASK : 0;
+                    break;
+                case 2: // CMPLESS
+                    rv[3] = (left <= right) ? TRUE_MASK : 0;
+                    break;
+                case 3: // CMPUNORDSS
+                    rv[3] = (Float.isNaN(left) || Float.isNaN(right)) ? TRUE_MASK : 0;
+                    break;
+                case 4: // CMPNEQSS
+                    rv[3] = (left == right) ? 0 : TRUE_MASK;
+                    break;
+                case 5: // CMPNLTSS
+                    rv[3] = (left < right) ? 0 : TRUE_MASK;
+                    break;
+                case 6: // CMPNLESS
+                    rv[3] = (left <= right) ? 0 : TRUE_MASK;
+                    break;
+                case 7: // CMPORDSS
+                    rv[3] = (Float.isNaN(left) || Float.isNaN(right)) ? 0 : TRUE_MASK;
+                    break;
+                default:
+                    throw new AssertionError("unsupported predicate (not in range 0-7)");
+            }
+            return LLVMFloatVector.create(rv);
         }
     }
 }
