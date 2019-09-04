@@ -1356,6 +1356,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 return NodeColor.MIXED;
             }
 
+            coloredNodes.put(node, NodeColor.MIXED);
+
             if (node == merge) {
                 color = NodeColor.MIXED;
             } else if (node == trueSucc) {
