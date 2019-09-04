@@ -29,26 +29,38 @@
  */
 #include <immintrin.h>
 #include <assert.h>
-#include <math.h>
+#include <stdio.h>
 
 
-#define CMP_ASSERT(a, b, cmp, expected) \
-  assert((int)(_mm_cmp_ss(a, b, cmp))[0] == (int)expected); \
-  assert((int)(_mm_cmp_ss(a, b, cmp))[1] == (int)a[1]); \
-  assert((int)(_mm_cmp_ss(a, b, cmp))[2] == (int)a[2]); \
-  assert((int)(_mm_cmp_ss(a, b, cmp))[3] == (int)a[3])
+#define CALL_INTRINSIC(a, b, cmp) \
+  do { \
+    bitconv bc; \
+    __m128 result = _mm_cmp_ss(a, b, cmp); \
+    bc.f = result[0]; \
+    printf("\n%X\n", bc.i); \
+    bc.f = result[1]; \
+    printf("%X\n", bc.i); \
+    bc.f = result[2]; \
+    printf("%X\n", bc.i); \
+    bc.f = result[3]; \
+    printf("%X\n", bc.i); \
+  } while (0);
+
+typedef union {
+  float f;
+  int i;
+} bitconv;
 
 int main() {
   __m128 v1 = { 1, 2, 3, 1 };
   __m128 v2 = { 3, 2, 1, 2 };
-  int TRUE_MASK = pow(2,32) - 1;
-
-  CMP_ASSERT(v1, v2, 0, 0);
-  CMP_ASSERT(v1, v2, 1, TRUE_MASK); 
-  CMP_ASSERT(v1, v2, 2, TRUE_MASK);
-  CMP_ASSERT(v1, v2, 3, 0);
-  CMP_ASSERT(v1, v2, 4, TRUE_MASK);
-  CMP_ASSERT(v1, v2, 5, 0);
-  CMP_ASSERT(v1, v2, 6, 0);
-  CMP_ASSERT(v1, v2, 7, TRUE_MASK);
+  
+  CALL_INTRINSIC(v1, v2, 0);
+  CALL_INTRINSIC(v1, v2, 1); 
+  CALL_INTRINSIC(v1, v2, 2);
+  CALL_INTRINSIC(v1, v2, 3);
+  CALL_INTRINSIC(v1, v2, 4);
+  CALL_INTRINSIC(v1, v2, 5);
+  CALL_INTRINSIC(v1, v2, 6);
+  CALL_INTRINSIC(v1, v2, 7);
 }
