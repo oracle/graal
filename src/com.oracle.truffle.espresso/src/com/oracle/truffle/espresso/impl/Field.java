@@ -208,4 +208,7 @@ public final class Field implements ModifiersProvider {
         return target;
     }
 
+    public StaticObject getAndSetObject(StaticObject self, StaticObject value) {
+        return self.getAndSetObject(this, value);
+    }
 }

@@ -91,7 +91,7 @@ public abstract class InvokeVirtualNode extends QuickNode {
         // TODO(peterssen): IsNull Node?.
         StaticObject receiver = root.peekReceiver(frame, top, resolutionSeed);
         nullCheck(receiver);
-        Object[] args = root.peekArguments(frame, top, true, resolutionSeed.getParsedSignature());
+        Object[] args = root.peekAndReleaseArguments(frame, top, true, resolutionSeed.getParsedSignature());
         assert receiver != null;
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = executeVirtual(receiver, args);

@@ -167,7 +167,7 @@ final class ObjectSetFieldNode extends AbstractSetFieldNode {
 
     @Override
     public void setField(VirtualFrame frame, BytecodeNode root, int top) {
-        StaticObject value = root.peekObject(frame, top - 1);
+        StaticObject value = root.peekAndReleaseObject(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setField(field, value);
     }
