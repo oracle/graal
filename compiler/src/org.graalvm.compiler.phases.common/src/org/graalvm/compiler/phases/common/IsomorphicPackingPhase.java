@@ -949,7 +949,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 // These are broken by removing one of the packs.
                 Pack packToRemove = earliestUnscheduled(unscheduled, nodeToPackMap);
                 assert packToRemove != null : "there no are unscheduled statements in packs";
-                debug.log("dependency violation, removing %s", packToRemove.toString());
+                debug.log("dependency violation, removing %s", packToRemove);
                 for (Node packNode : packToRemove.getElements()) {
                     nodeToPackMap.remove(packNode); // Remove all references for these statements to pack
                 }
@@ -1118,7 +1118,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return;
             }
 
-            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", currentBlock.toString(), packSet.size());
+            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", currentBlock, packSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
 
             extendPacklist(packSet);
@@ -1126,13 +1126,13 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return;
             }
 
-            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", currentBlock.toString(), packSet.size());
+            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", currentBlock, packSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
 
             // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
 
-            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", currentBlock.toString(), combinedPackSet.size());
+            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", currentBlock, combinedPackSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
 
             try (DebugContext.Scope s = debug.scope("schedule")) {
@@ -1175,7 +1175,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             // ¬listWhitelist ->  anyMatch  <=>   listWhitelist v  anyMatch
             //  listWhitelist -> noneMatch  <=>  ¬listWhitelist v noneMatch
             if ((listWhitelist || list.stream().anyMatch(name::contains)) && (!listWhitelist || list.stream().noneMatch(name::contains))) {
-                debug.log(DebugContext.DETAILED_LEVEL, String.format("Skipping IPP for %s", name));
+                debug.log(DebugContext.DETAILED_LEVEL, "Skipping IPP for %s.%s", method.getDeclaringClass().toJavaName(), method.getName());
                 return;
             }
         }
