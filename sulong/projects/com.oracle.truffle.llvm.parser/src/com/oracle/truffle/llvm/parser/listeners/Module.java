@@ -57,7 +57,7 @@ public final class Module implements ParserListener {
 
     private final ModelModule module;
 
-    private final ParameterAttributes paramAttributes = new ParameterAttributes();
+    private final ParameterAttributes paramAttributes;
 
     private final StringTable stringTable;
 
@@ -74,9 +74,10 @@ public final class Module implements ParserListener {
     Module(ModelModule module, StringTable stringTable, IRScope scope, LLSourceBuilder llSource) {
         this.module = module;
         this.stringTable = stringTable;
-        types = new Types(module);
+        this.types = new Types(module);
         this.scope = scope;
         this.llSource = llSource;
+        this.paramAttributes = new ParameterAttributes(types);
         functionQueue = new ArrayDeque<>();
     }
 

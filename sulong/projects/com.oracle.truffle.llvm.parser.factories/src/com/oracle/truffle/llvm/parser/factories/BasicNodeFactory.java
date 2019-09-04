@@ -598,7 +598,7 @@ public class BasicNodeFactory implements NodeFactory {
             case I64:
                 return LLVMI64RMWNodeFactory.LLVMI64RMWXchgNodeGen.create(pointerNode, valueNode);
             default:
-                throw new AssertionError(type);
+                throw new AssertionError("unsupported for atomicrmw xchg: " + type);
         }
     }
 
@@ -616,7 +616,7 @@ public class BasicNodeFactory implements NodeFactory {
             case I64:
                 return LLVMI64RMWNodeFactory.LLVMI64RMWAddNodeGen.create(pointerNode, valueNode);
             default:
-                throw new AssertionError(type);
+                throw new AssertionError("unsupported add atomicrmw xchg: " + type);
         }
     }
 
@@ -634,7 +634,7 @@ public class BasicNodeFactory implements NodeFactory {
             case I64:
                 return LLVMI64RMWNodeFactory.LLVMI64RMWSubNodeGen.create(pointerNode, valueNode);
             default:
-                throw new AssertionError(type);
+                throw new AssertionError("unsupported sub atomicrmw xchg: " + type);
         }
     }
 
@@ -652,7 +652,7 @@ public class BasicNodeFactory implements NodeFactory {
             case I64:
                 return LLVMI64RMWNodeFactory.LLVMI64RMWAndNodeGen.create(pointerNode, valueNode);
             default:
-                throw new AssertionError(type);
+                throw new AssertionError("unsupported for atomicrmw and: " + type);
         }
     }
 
@@ -670,7 +670,7 @@ public class BasicNodeFactory implements NodeFactory {
             case I64:
                 return LLVMI64RMWNodeFactory.LLVMI64RMWNandNodeGen.create(pointerNode, valueNode);
             default:
-                throw new AssertionError(type);
+                throw new AssertionError("unsupported for atomicrmw nand: " + type);
         }
     }
 
@@ -688,7 +688,7 @@ public class BasicNodeFactory implements NodeFactory {
             case I64:
                 return LLVMI64RMWNodeFactory.LLVMI64RMWOrNodeGen.create(pointerNode, valueNode);
             default:
-                throw new AssertionError(type);
+                throw new AssertionError("unsupported for atomicrmw or: " + type);
         }
     }
 
@@ -706,7 +706,7 @@ public class BasicNodeFactory implements NodeFactory {
             case I64:
                 return LLVMI64RMWNodeFactory.LLVMI64RMWXorNodeGen.create(pointerNode, valueNode);
             default:
-                throw new AssertionError(type);
+                throw new AssertionError("unsupported for atomicrmw xor: " + type);
         }
     }
 
@@ -1972,6 +1972,13 @@ public class BasicNodeFactory implements NodeFactory {
             case "llvm.dbg.addr":
             case "llvm.dbg.value":
                 throw new IllegalStateException("Unhandled call to intrinsic function " + declaration.getName());
+            case "llvm.dbg.label":
+                // a call to dbg.label describes that execution has arrived at a label in the
+                // original source code. the source location of the call will be applied, rather
+                // than the explicit descriptor of the label which is passed to dbg.label. both
+                // reference the same line number, this just avoids special-casing dbg.label like
+                // the other dbg.* intrinsics.
+                return LLVMNoOpNodeGen.create();
             case "llvm.eh.typeid.for":
                 return new LLVMTypeIdForExceptionNode(args[1]);
             case "llvm.expect.i1": {

@@ -29,46 +29,24 @@
  */
 package com.oracle.truffle.llvm.parser.metadata;
 
-public final class MDCommonBlock extends MDName implements MDBaseNode {
-
-    private final long line;
+public final class MDCommonBlock extends MDNamedLocation implements MDBaseNode {
 
     private MDBaseNode declaration;
-    private MDBaseNode scope;
-    private MDBaseNode file;
 
     private MDCommonBlock(long line) {
-        this.line = line;
-
+        super(line);
         this.declaration = MDVoidNode.INSTANCE;
-        this.scope = MDVoidNode.INSTANCE;
-        this.file = MDVoidNode.INSTANCE;
-    }
-
-    public MDBaseNode getScope() {
-        return scope;
-    }
-
-    public MDBaseNode getFile() {
-        return file;
     }
 
     public MDBaseNode getDeclaration() {
         return declaration;
     }
 
-    public long getLine() {
-        return line;
-    }
-
     @Override
     public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
         super.replace(oldValue, newValue);
-        if (scope == oldValue) {
-            scope = newValue;
-        }
-        if (file == oldValue) {
-            file = newValue;
+        if (declaration == oldValue) {
+            declaration = newValue;
         }
     }
 
@@ -86,10 +64,10 @@ public final class MDCommonBlock extends MDName implements MDBaseNode {
     public static MDCommonBlock create(long[] args, MetadataValueList md) {
         final long line = args[ARGINDEX_LINE];
         final MDCommonBlock commonBlock = new MDCommonBlock(line);
-        commonBlock.scope = md.getNullable(args[ARGINDEX_SCOPE], commonBlock);
+        commonBlock.setScope(md.getNullable(args[ARGINDEX_SCOPE], commonBlock));
         commonBlock.declaration = md.getNullable(args[ARGINDEX_DECLARATION], commonBlock);
         commonBlock.setName(md.getNullable(args[ARGINDEX_NAME], commonBlock));
-        commonBlock.file = md.getNullable(args[ARGINDEX_FILE], commonBlock);
+        commonBlock.setFile(md.getNullable(args[ARGINDEX_FILE], commonBlock));
         return commonBlock;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.parser.model.attributes;
+
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class Attribute {
 
@@ -119,6 +121,20 @@ public abstract class Attribute {
         @Override
         public String getIrString() {
             return paramAttr.getIrString();
+        }
+    }
+
+    public static class KnownTypedAttribute extends KnownAttribute {
+
+        private final Type type;
+
+        public KnownTypedAttribute(Kind paramAttr, Type type) {
+            super(paramAttr);
+            this.type = type;
+        }
+
+        public Type getType() {
+            return type;
         }
     }
 
