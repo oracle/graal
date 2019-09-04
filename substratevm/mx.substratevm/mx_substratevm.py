@@ -416,6 +416,8 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             _native_image(['--server-shutdown'])
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
+_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature'
+
 
 def svm_gate_body(args, tasks):
     build_native_image_image()
@@ -444,7 +446,7 @@ def svm_gate_body(args, tasks):
                         blacklist.flush()
                         blacklist_args = ['--blacklist', blacklist.name]
 
-                    native_unittest(['--build-args'] + blacklist_args)
+                    native_unittest(['--build-args', _native_unittest_features] + blacklist_args)
 
         with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
             if t:
