@@ -970,15 +970,25 @@ public final class MethodVerifier implements ContextAccess {
 
     private void validateExceptionHandlers() {
         for (ExceptionHandler handler : exceptionHandlers) {
-            int BCI = handler.getHandlerBCI();
-            validateFormatBCI(BCI);
-            BCI = handler.getStartBCI();
-            validateFormatBCI(BCI);
+            int startBCI = handler.getHandlerBCI();
+            validateFormatBCI(startBCI);
+            startBCI = handler.getStartBCI();
+            validateFormatBCI(startBCI);
             int endBCI = handler.getEndBCI();
-            if (endBCI <= BCI) {
+            if (endBCI <= startBCI) {
                 throw new ClassFormatError("End BCI of handler is before start BCI");
             }
-            validateFormatBCI(endBCI);
+            if (endBCI > code.endBCI()) {
+                throw new ClassFormatError("Control flow falls through code end");
+            }
+            if (endBCI < 0) {
+                throw new ClassFormatError("negative branch target: " + endBCI);
+            }
+            if (endBCI != code.endBCI()) {
+                if (BCIstates[endBCI] == UNREACHABLE) {
+                    throw new ClassFormatError("Jump to the middle of an instruction: " + endBCI);
+                }
+            }
         }
     }
 
@@ -1683,7 +1693,7 @@ public final class MethodVerifier implements ContextAccess {
                         if (receiver.isArrayType()) {
                             throw new VerifyError("Trying to access field of an array type: " + receiver);
                         }
-                        if (methodName != Name.INIT) {
+                        if (!receiver.isUninitThis()) {
                             checkProtectedField(receiver, fieldHolderType, code.readCPI(BCI));
                         }
                     }
