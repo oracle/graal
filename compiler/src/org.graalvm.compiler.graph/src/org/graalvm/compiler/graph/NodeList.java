@@ -157,7 +157,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     @SuppressWarnings("unchecked")
     @Override
     public boolean add(Node node) {
-        assert node == null || !node.isDeleted();
+        assert node == null || !node.isDeleted() : node;
         self.incModCount();
         incModCount();
         int length = nodes.length;

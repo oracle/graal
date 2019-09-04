@@ -74,6 +74,8 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
     public static final double VERY_FAST_PATH_PROBABILITY = 0.999;
     public static final double VERY_SLOW_PATH_PROBABILITY = 1 - VERY_FAST_PATH_PROBABILITY;
 
+    public static final double DEOPT_PROBABILITY = 0.0;
+
     /*
      * This probability may seem excessive, but it makes a difference in long running loops. Lets
      * say a loop is executed 100k times and it has a few null checks with probability 0.999. As

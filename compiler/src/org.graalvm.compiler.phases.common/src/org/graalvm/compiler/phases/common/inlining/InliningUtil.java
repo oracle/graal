@@ -728,7 +728,7 @@ public class InliningUtil extends ValueMergeUtil {
         FrameState stateAtReturn = invoke.stateAfter();
         FrameState outerFrameState = null;
         JavaKind invokeReturnKind = invoke.asNode().getStackKind();
-        EconomicMap<Node, Node> replacements = EconomicMap.create();
+        EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         for (FrameState original : inlineGraph.getNodes(FrameState.TYPE)) {
             FrameState frameState = (FrameState) duplicates.get(original);
             if (frameState != null && frameState.isAlive()) {

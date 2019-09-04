@@ -936,6 +936,12 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
+    public void replaceAllInputs(Node oldInput, Node newInput) {
+        while (nodeClass.replaceFirstInput(this, oldInput, newInput)) {
+            updateUsages(oldInput, newInput);
+        }
+    }
+
     public void replaceFirstInput(Node oldInput, Node newInput, InputType type) {
         for (Position pos : inputPositions()) {
             if (pos.getInputType() == type && pos.get(this) == oldInput) {

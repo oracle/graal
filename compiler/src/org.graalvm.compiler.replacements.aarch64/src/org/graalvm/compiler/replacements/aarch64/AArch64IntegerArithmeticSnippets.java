@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -183,14 +184,14 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     }
 
     private static void checkForZero(int y) {
-        if (y == 0) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.DEOPT_PROBABILITY, y == 0)) {
             // "/ by zero"
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException);
         }
     }
 
     private static void checkForZero(long y) {
-        if (y == 0) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.DEOPT_PROBABILITY, y == 0)) {
             // "/ by zero"
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException);
         }
