@@ -72,6 +72,7 @@ import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.LIRLowerableAccess;
@@ -412,6 +413,29 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             final int shallowDepth = Math.min(leftDepth, rightDepth);
             final Node deep = leftDepth == shallowDepth ? right : left;
             final Node shallow = leftDepth == shallowDepth ? left : right;
+
+            // Ensure that there is no membar between these two nodes
+            final Set<MembarNode> membars = new HashSet<>();
+            int membarCount = 0;
+
+            for (Node shallowSucc : shallow.cfgSuccessors()) {
+                if (shallowSucc instanceof MembarNode) {
+                    membars.add((MembarNode) shallowSucc);
+                    membarCount++;
+                }
+            }
+
+            for (Node deepPred : deep.cfgPredecessors()) {
+                if (deepPred instanceof MembarNode) {
+                    membars.add((MembarNode) deepPred);
+                    membarCount++;
+                }
+            }
+
+            if (membarCount != membars.size()) {
+                // The total number of membars != cardinality of membar set, so there is overlap
+                return false;
+            }
 
             return hasNoPath(shallow, deep);
         }
