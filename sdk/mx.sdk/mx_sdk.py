@@ -187,12 +187,30 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class GraalVmComponent(object):
-    def __init__(self, suite, name, short_name, license_files, third_party_license_files,
-                 jar_distributions=None, builder_jar_distributions=None, support_distributions=None,
-                 dir_name=None, launcher_configs=None, library_configs=None, provided_executables=None,
-                 polyglot_lib_build_args=None, polyglot_lib_jar_dependencies=None, polyglot_lib_build_dependencies=None,
+    def __init__(self,
+                 suite,
+                 name,
+                 short_name,
+                 license_files,
+                 third_party_license_files,
+                 jar_distributions=None,
+                 builder_jar_distributions=None,
+                 support_distributions=None,
+                 support_headers_distributions=None,
+                 dir_name=None,
+                 launcher_configs=None,
+                 library_configs=None,
+                 provided_executables=None,
+                 polyglot_lib_build_args=None,
+                 polyglot_lib_jar_dependencies=None,
+                 polyglot_lib_build_dependencies=None,
                  has_polyglot_lib_entrypoints=False,
-                 boot_jars=None, priority=None, installable=False, post_install_msg=None, installable_id=None,
+                 boot_jars=None,
+                 jvmci_parent_jars=None,
+                 priority=None,
+                 installable=False,
+                 post_install_msg=None,
+                 installable_id=None,
                  dependencies=None):
         """
         :param suite mx.Suite: the suite this component belongs to
@@ -210,11 +228,13 @@ class GraalVmComponent(object):
         :type polyglot_lib_build_dependencies: list[str]
         :type has_polyglot_lib_entrypoints: bool
         :type boot_jars: list[str]
+        :type jvmci_parent_jars: list[str]
         :type launcher_configs: list[LauncherConfig]
         :type library_configs: list[LibraryConfig]
         :type jar_distributions: list[str]
         :type builder_jar_distributions: list[str]
         :type support_distributions: list[str]
+        :type support_headers_distributions: list[str]
         :param int priority: priority with a higher value means higher priority
         :type installable: bool
         :type installable_id: str
@@ -236,9 +256,11 @@ class GraalVmComponent(object):
         self.polyglot_lib_build_dependencies = polyglot_lib_build_dependencies or []
         self.has_polyglot_lib_entrypoints = has_polyglot_lib_entrypoints
         self.boot_jars = boot_jars or []
+        self.jvmci_parent_jars = jvmci_parent_jars or []
         self.jar_distributions = jar_distributions or []
         self.builder_jar_distributions = builder_jar_distributions or []
         self.support_distributions = support_distributions or []
+        self.support_headers_distributions = support_headers_distributions or []
         self.priority = priority or 0
         self.launcher_configs = launcher_configs or []
         self.library_configs = library_configs or []
@@ -249,6 +271,7 @@ class GraalVmComponent(object):
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.builder_jar_distributions, list)
         assert isinstance(self.support_distributions, list)
+        assert isinstance(self.support_headers_distributions, list)
         assert isinstance(self.license_files, list)
         assert isinstance(self.third_party_license_files, list)
         assert isinstance(self.provided_executables, list)
@@ -256,6 +279,7 @@ class GraalVmComponent(object):
         assert isinstance(self.polyglot_lib_jar_dependencies, list)
         assert isinstance(self.polyglot_lib_build_dependencies, list)
         assert isinstance(self.boot_jars, list)
+        assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
 
@@ -555,6 +579,19 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
     if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
         mx.log(out.data)
         mx.abort('Error generating CDS shared archive')
+
+
+register_graalvm_component(GraalVmJreComponent(
+    suite=_suite,
+    name='Graal SDK',
+    short_name='sdk',
+    dir_name='graalvm',
+    license_files=[],
+    third_party_license_files=[],
+    jar_distributions=['sdk:LAUNCHER_COMMON'],
+    boot_jars=['sdk:GRAAL_SDK']
+))
+
 
 mx.update_commands(_suite, {
     'javadoc': [javadoc, '[SL args|@VM options]'],

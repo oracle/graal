@@ -1059,6 +1059,7 @@ suite = {
       ],
       "description" : "Instrumentation tests including InstrumentationTestLanguage.",
       "allowsJavadocWarnings": True,
+      "maven" : False,
     },
 
      "TRUFFLE_TEST" : {
@@ -1104,6 +1105,7 @@ suite = {
       "layout" : {
         "native-image.properties" : "file:mx.truffle/macro-truffle.properties",
       },
+      "maven" : False,
     },
 
     "TRUFFLE_NFI_GRAALVM_SUPPORT" : {
@@ -1112,6 +1114,17 @@ suite = {
       "layout" : {
         "native-image.properties" : "file:mx.truffle/language-nfi.properties",
       },
+      "maven" : False,
+    },
+
+    "TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT" : {
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Truffle NFI support distribution for the GraalVM",
+      "layout" : {
+        "./" : ["dependency:com.oracle.truffle.nfi.native/include/*.h"],
+      },
+      "maven" : False,
     },
   },
 }

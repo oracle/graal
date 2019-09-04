@@ -1081,7 +1081,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     update_reason = None
     if dst_jdk_dir is None:
         graaljdks_dir = mx.ensure_dir_exists(join(_suite.get_output_root(platformDependent=True), 'graaljdks'))
-        jdk_suffix = '-'.join([d.short_name for d in _graalvm_components])
+        graalvm_compiler_short_names = [c.short_name for c in mx_sdk.graalvm_components() if isinstance(c, mx_sdk.GraalVmJvmciComponent) and c.graal_compiler]
+        jdk_suffix = '-'.join(graalvm_compiler_short_names)
         if root_module_names:
             jdk_suffix = jdk_suffix + '-' + hashlib.sha1(','.join(root_module_names)).hexdigest()
         dst_jdk_dir = join(graaljdks_dir, 'jdk{}-{}'.format(src_jdk.javaCompliance, jdk_suffix))
@@ -1149,10 +1150,11 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
                 truffle_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'truffle'))
                 for src_jar in _graal_config().truffle_jars:
                     _copy_file(src_jar, join(truffle_dir, basename(src_jar)))
+                for jvmci_parent_jar in _graal_config().jvmci_parent_jars:
                     with open(join(jvmci_dir, 'parentClassLoader.classpath'), 'w') as fp:
-                        fp.write(join('..', 'truffle', basename(src_jar)))
+                        fp.write(join('..', 'truffle', basename(jvmci_parent_jar)))
             else:
-                boot_jars += _graal_config().truffle_jars
+                boot_jars += _graal_config().jvmci_parent_jars
 
             for src_jar in boot_jars:
                 _copy_file(src_jar, join(boot_dir, basename(src_jar)))
@@ -1252,37 +1254,51 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
     shutil.rmtree(tmp_dir)
     return dst_jdk_dir, True
 
-#: The Graal compiler components
-_graalvm_components = []
-
-def add_compiler_component(component):
-    _graalvm_components.append(component)
-    mx_sdk.register_graalvm_component(component)
-    return component
-
-class GraalConfig:
-    """
-    The distributions and jars that together comprise the set of classes implementing the Graal compiler.
-    """
-    def __init__(self, graalvm_components):
-        self.jvmci_dists = [mx.distribution(e) for component in graalvm_components for e in component.jvmci_jars]
-        self.boot_dists = [mx.distribution(e) for component in graalvm_components for e in component.boot_jars]
-        self.truffle_dists = [mx.distribution('truffle:TRUFFLE_API')] if isJDK8 else []
-        self.dists = self.jvmci_dists + self.boot_dists + self.truffle_dists
-        self.dists_dict = {e.suite.name + ':' + e.name : e for e in self.dists}
-
-        self.jvmci_jars = [d.classpath_repr() for d in self.jvmci_dists]
-        self.boot_jars = [d.classpath_repr() for d in self.boot_dists]
-        self.truffle_jars = [d.classpath_repr() for d in self.truffle_dists]
-        self.jars = self.jvmci_jars + self.boot_jars + self.truffle_jars
-
-    # Singleton instance.
-    _instance = None
+__graal_config = None
 
 def _graal_config():
-    if GraalConfig._instance is None:
-        GraalConfig._instance = GraalConfig(_graalvm_components)
-    return GraalConfig._instance
+    global __graal_config
+
+    class GraalConfig:
+        """
+        The distributions and jars that together comprise the set of classes implementing the Graal compiler.
+        """
+        def __init__(self):
+            self.jvmci_dists = []
+            self.jvmci_jars = []
+            self.jvmci_parent_dists = []
+            self.jvmci_parent_jars = []
+            self.boot_dists = []
+            self.boot_jars = []
+            self.truffle_jars = []
+            self.jars = []
+
+            for component in mx_sdk.graalvm_components():
+                if isinstance(component, mx_sdk.GraalVmJvmciComponent):
+                    for jar in component.jvmci_jars:
+                        d = mx.distribution(jar)
+                        self.jvmci_dists.append(d)
+                        self.jvmci_jars.append(d.classpath_repr())
+                for jar in component.jvmci_parent_jars:
+                    d = mx.distribution(jar)
+                    self.jvmci_parent_dists.append(d)
+                    self.jvmci_parent_jars.append(d.classpath_repr())
+                for jar in component.boot_jars:
+                    d = mx.distribution(jar)
+                    self.boot_dists.append(d)
+                    self.boot_jars.append(d.classpath_repr())
+
+            self.truffle_dists = [mx.distribution('truffle:TRUFFLE_API')] if isJDK8 else []
+            self.truffle_jars = [jar.classpath_repr() for jar in self.truffle_dists]
+
+            self.dists = self.jvmci_dists + self.jvmci_parent_dists + self.boot_dists
+            self.jars = self.jvmci_jars + self.jvmci_parent_jars + self.boot_jars
+
+            self.dists_dict = {e.suite.name + ':' + e.name : e for e in self.dists}
+
+    if __graal_config is None:
+        __graal_config = GraalConfig()
+    return __graal_config
 
 def _jvmci_jars():
     if not isJDK8:
@@ -1298,15 +1314,8 @@ def _jvmci_jars():
             'compiler:GRAAL_MANAGEMENT',
         ]
 
-def _boot_jars():
-    if not isJDK8:
-        return ['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API']
-    else:
-        # In JDK 8, Truffle is not a boot jar and is added separately to GraalVM
-        return ['sdk:GRAAL_SDK']
-
 # The community compiler component
-_compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     suite=_suite,
     name='GraalVM compiler',
     short_name='cmp',
@@ -1323,7 +1332,6 @@ _compiler_component = add_compiler_component(mx_sdk.GraalVmJvmciComponent(
         'compiler:GRAAL_COMPILER_MATCH_PROCESSOR',
     ],
     jvmci_jars=_jvmci_jars(),
-    boot_jars=_boot_jars(),
     graal_compiler='graal',
 ))
 

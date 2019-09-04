@@ -29,7 +29,6 @@ from __future__ import print_function
 
 from abc import ABCMeta
 from argparse import ArgumentParser
-from copy import deepcopy
 import io
 import json
 import os
@@ -119,10 +118,21 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     license_files=['LICENSE.txt'],
     third_party_license_files=['3rd_party_licenses.txt'],
     dependencies=[],
-    support_distributions=['vm:VM_GRAALVM_SUPPORT']
+    support_distributions=['vm:VM_GRAALVM_SUPPORT'],
 ))
 
-default_components = ['gvm']
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=_suite,
+    name='GraalVM Locator',
+    short_name='loc',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jvmci_parent_jars=['vm:LOCATOR'],
+))
+
+default_components = ['gvm', 'loc']
 
 graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-z\-.+]+, mixed mode\)')
 
@@ -148,6 +158,8 @@ def registered_graalvm_components(stage1=False):
                 if component not in components_to_build and not (excludes and is_excluded(component)):
                     components_to_build.append(component)
                     components.extend(component.direct_dependencies())
+                    if isinstance(component, mx_sdk.GraalVmLanguage):
+                        components.append(mx_sdk.graalvm_component_by_name('Truffle Macro'))
 
         # Expand dependencies
         add_dependencies([mx_sdk.graalvm_component_by_name(name) for name in default_components], excludes=True)
@@ -217,13 +229,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution,
                  add_jdk_base=False,
                  base_dir=None,
-                 layout=None,
                  path=None,
                  with_polyglot_launcher=False,
                  with_lib_polyglot=False,
                  stage1=False,
                  **kw_args): # pylint: disable=super-init-not-called
         self.components = components
+        layout = {}
         src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         assert src_jdk_base
         base_dir = base_dir or '.'
@@ -414,6 +426,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add(layout, "<jre_base>/lib/<arch>/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
 
+            if _src_jdk_version == 8:
+                _add(layout, '<jre_base>/lib/jvmci/parentClassLoader.classpath', 'dependency:{}'.format(GraalVmJvmciParentClasspath.project_name()))
+
             # Add Polyglot launcher
             if with_polyglot_launcher:
                 polyglot_launcher_project = get_polyglot_launcher_project()
@@ -440,19 +455,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _metadata = self._get_metadata(_sorted_suites)
             _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
 
-            if _src_jdk_version == 8:
-                _add(layout, '<jre_base>/lib/boot/', "dependency:sdk:GRAAL_SDK")
-                _add(layout, '<jre_base>/lib/boot/', "dependency:sdk:GRAAL_SDK/*.src.zip")
-                _add(layout, '<jre_base>/lib/truffle/', "dependency:truffle:TRUFFLE_API")
-                _add(layout, '<jre_base>/lib/truffle/', "dependency:truffle:TRUFFLE_API/*.src.zip")
-                _add(layout, '<jre_base>/lib/truffle/', "dependency:LOCATOR")
-                _add(layout, '<jre_base>/lib/truffle/', "dependency:LOCATOR/*.src.zip")
-                _add(layout, "<jre_base>/lib/jvmci/parentClassLoader.classpath",
-                            ["string:" + _platform_classpath("../truffle/truffle-api.jar:../truffle/locator.jar")])
-            else:
-                # GRAAL_SDK, TRUFFLE_API and LOCATOR are modules in the jimage
-                pass
-
         # Add the rest of the GraalVM
 
         component_suites = {}
@@ -475,7 +477,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
             if _src_jdk_version == 8:
                 _add(layout, '<jre_base>/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
-            _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions], _component, with_sources=True)
+            _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions + _component.jvmci_parent_jars], _component, with_sources=True)
             _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component, with_sources=True)
             _add(layout, _component_base, [{
                 'source_type': 'extracted-dependency',
@@ -483,6 +485,12 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 'exclude': _component.license_files if mx.get_opts().no_licenses else [],
                 'path': None,
             } for d in _component.support_distributions], _component)
+            _add(layout, '<jdk_base>/include/', [{
+                'source_type': 'extracted-dependency',
+                'dependency': d,
+                'exclude': [],
+                'path': None,
+            } for d in _component.support_headers_distributions], _component)
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _src_jdk_version == 8:
                 _add(layout, '<jre_base>/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component, with_sources=True)
 
@@ -624,12 +632,11 @@ else:
 
 
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # pylint: disable=R0901
-    def __init__(self, base_name, base_layout, theLicense=None, stage1=False, **kw_args):
+    def __init__(self, base_name, theLicense=None, stage1=False, **kw_args):
         self.base_name = base_name
 
         name, base_dir, self.vm_config_name, with_lib_polyglot, with_polyglot_launcher = _get_graalvm_configuration(base_name, stage1)
 
-        layout = deepcopy(base_layout)
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
             name=name,
@@ -642,7 +649,6 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
             testDistribution=False,
             add_jdk_base=True,
             base_dir=base_dir,
-            layout=layout,
             path=None,
             with_polyglot_launcher=with_polyglot_launcher,
             with_lib_polyglot=with_lib_polyglot,
@@ -969,6 +975,21 @@ def _java_properties_escape(s, split_long=None, key_length=0):
     return ''.join(parts)
 
 
+def _file_needs_build(newest_input, filepath, contents_getter):
+    ts = mx.TimeStampFile(filepath)
+    if not ts.exists():
+        return filepath + " does not exist"
+    if newest_input and ts.isOlderThan(newest_input):
+        return "{} is older than {}".format(ts, newest_input)
+    with open(filepath, 'r') as f:
+        on_disk = f.read()
+        if not isinstance(on_disk, _unicode):
+            on_disk = on_disk.decode('utf-8')
+    if contents_getter() != on_disk:
+        return "content not up to date"
+    return None
+
+
 class NativePropertiesBuildTask(mx.ProjectBuildTask):
     def __init__(self, subject, args):
         """
@@ -1126,37 +1147,86 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
         sup = super(NativePropertiesBuildTask, self).needsBuild(newestInput)
         if sup[0]:
             return sup
-        reason = self._needs_build(newestInput, self.subject.properties_output_file(), self.contents)
+        reason = _file_needs_build(newestInput, self.subject.properties_output_file(), self.contents)
         if not reason and isinstance(self.subject.image_config, mx_sdk.LanguageLauncherConfig):
-            reason = self._needs_build(newestInput, self.subject.polyglot_config_output_file(), self.polyglot_config_contents)
+            reason = _file_needs_build(newestInput, self.subject.polyglot_config_output_file(), self.polyglot_config_contents)
         if reason:
             return True, reason
         return False, None
-
-    def _needs_build(self, newest_input, filepath, contents_getter):
-        ts = mx.TimeStampFile(filepath)
-        if not ts.exists():
-            return filepath + " does not exist"
-        if newest_input and ts.isOlderThan(newest_input):
-            return "{} is older than {}".format(ts, newest_input)
-        with open(filepath, 'r') as f:
-            on_disk = f.read()
-            if not isinstance(on_disk, _unicode):
-                on_disk = on_disk.decode('utf-8')
-        if contents_getter() != on_disk:
-            # print(self.contents(), type(self.contents()))
-            # print(on_disk, type(on_disk))
-            # from difflib import unified_diff
-            # for line in unified_diff(on_disk.splitlines(), self.contents().splitlines(), fromfile='on_disk', tofile='contents'):
-            #     print(line)
-            return "content not up to date"
-        return None
 
     def clean(self, forBuild=False):
         if exists(self.subject.properties_output_file()):
             os.unlink(self.subject.properties_output_file())
         if exists(self.subject.polyglot_config_output_file()):
             os.unlink(self.subject.polyglot_config_output_file())
+
+
+class GraalVmJvmciParentClasspath(GraalVmProject):  # based on GraalVmNativeProperties
+    def __init__(self, jvmci_parent_jars, **kw_args):
+        """
+        :type jvmci_parent_jars: list[str]
+        """
+        assert jvmci_parent_jars
+        self.jvmci_parent_jars = jvmci_parent_jars
+        super(GraalVmJvmciParentClasspath, self).__init__(None, GraalVmJvmciParentClasspath.project_name(), deps=[], **kw_args)
+
+    @staticmethod
+    def project_name():
+        return 'jvmci-parent-classpath'
+
+    def output_file(self):
+        return join(self.get_output_base(), GraalVmJvmciParentClasspath.output_file_name(), GraalVmJvmciParentClasspath.project_name(), GraalVmJvmciParentClasspath.output_file_name())
+
+    @staticmethod
+    def output_file_name():
+        return 'parentClassLoader.classpath'
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        _output_file = self.output_file()
+        yield _output_file, basename(_output_file)
+
+    def getBuildTask(self, args):
+        return JvmciParentClasspathBuildTask(self, args)
+
+
+class JvmciParentClasspathBuildTask(mx.ProjectBuildTask):  # based NativePropertiesBuildTask
+    def __init__(self, subject, args):
+        """
+        :type subject: GraalVmJvmciParentClasspath
+        """
+        super(JvmciParentClasspathBuildTask, self).__init__(args, 1, subject)
+        graalvm_dist = get_final_graalvm_distribution()
+        start_path = dirname(graalvm_dist.find_single_source_location('dependency:{}'.format(GraalVmJvmciParentClasspath.project_name())))
+        cp_entries = [relpath(graalvm_dist.find_single_source_location('dependency:{}'.format(jpj)), start_path) for jpj in self.subject.jvmci_parent_jars]
+        self._contents = unicode(_platform_classpath(cp_entries), 'utf-8')
+
+    def contents(self):
+        return self._contents
+
+    def newestOutput(self):
+        return mx.TimeStampFile(self.subject.output_file())
+
+    def __str__(self):
+        return "Creating '{}' file".format(GraalVmJvmciParentClasspath.output_file_name())
+
+    def build(self):
+        with mx.SafeFileCreation(self.subject.output_file()) as sfc, io.open(sfc.tmpFd, mode='w', closefd=False, encoding='utf-8') as f:
+            f.write(self.contents())
+
+    def needsBuild(self, newestInput):
+        sup = super(JvmciParentClasspathBuildTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+        reason = _file_needs_build(newestInput, self.subject.output_file(), self.contents)
+        if reason:
+            return True, reason
+        return False, None
+
+    def clean(self, forBuild=False):
+        _output_file = self.subject.output_file()
+        if exists(_output_file):
+            os.unlink(_output_file)
+
 
 class GraalVmJImage(mx.Project):
     """
@@ -1748,7 +1818,6 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             platformDependent=True,
             theLicense=None,
             testDistribution=False,
-            layout={},
             archive_factory=create_archive,
             path=None,
             **kw_args)
@@ -1810,27 +1879,10 @@ _stage1_graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _polyglot_launcher_project = 'uninitialized'
 
-def _platform_classpath(cp):
-    if mx.get_os() == 'windows':
-        return os.pathsep.join(mx.normpath(entry) for entry in cp.split(':'))
-    return cp
 
-_base_graalvm_layout = {
-    "<jdk_base>/": [
-        "file:GRAALVM-README.md",
-    ],
-    "<jdk_base>/include/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include/*"],
-    "<jre_base>/lib/graalvm/": [
-        "dependency:sdk:LAUNCHER_COMMON",
-        "dependency:sdk:LAUNCHER_COMMON/*.src.zip",
-    ],
-    "<jre_base>/lib/truffle/": [
-        "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
-        "dependency:truffle:TRUFFLE_DSL_PROCESSOR/*.src.zip",
-        "dependency:truffle:TRUFFLE_TCK",
-        "dependency:truffle:TRUFFLE_TCK/*.src.zip",
-    ],
-}
+def _platform_classpath(cp_entries):
+    return os.pathsep.join(mx.normpath(entry) for entry in cp_entries)
+
 
 def get_stage1_graalvm_distribution_name():
     name, _, _, _, _ = _get_graalvm_configuration('GraalVM', True)
@@ -1841,7 +1893,7 @@ def get_stage1_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _stage1_graalvm_distribution
     if _stage1_graalvm_distribution == 'uninitialized':
-        _stage1_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name, _base_graalvm_layout, stage1=True)
+        _stage1_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name, stage1=True)
         _stage1_graalvm_distribution.description = "GraalVM distribution (stage1)"
         _stage1_graalvm_distribution.maven = False
     return _stage1_graalvm_distribution
@@ -1851,7 +1903,7 @@ def get_final_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _final_graalvm_distribution
     if _final_graalvm_distribution == 'uninitialized':
-        _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name, _base_graalvm_layout)
+        _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name)
         _final_graalvm_distribution.description = "GraalVM distribution"
         _final_graalvm_distribution.maven = True
     return _final_graalvm_distribution
@@ -2018,6 +2070,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     short_names = set()
     needs_stage1 = False
     installables = {}
+    jvmci_parent_jars = []
 
     for component in registered_graalvm_components(stage1=False):
         if component.name in names:
@@ -2026,6 +2079,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             mx.abort("Two components have short name '{}'. The short names should be unique".format(component.short_name))
         names.add(component.name)
         short_names.add(component.short_name)
+        jvmci_parent_jars.extend(component.jvmci_parent_jars)
         if register_project:
             if isinstance(component, mx_sdk.GraalVmTruffleComponent):
                 config_class = GraalVmLanguageLauncher
@@ -2073,10 +2127,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             if with_svm:
                 register_project(GraalVmNativeProperties(None, polyglot_launcher_project.native_image_config))
 
+        if _src_jdk_version == 8 and jvmci_parent_jars:
+            register_project(GraalVmJvmciParentClasspath(jvmci_parent_jars))
+
         if _src_jdk.javaCompliance >= '9':
-            jimage_jars = set(['sdk:GRAAL_SDK', 'truffle:TRUFFLE_API', 'vm:LOCATOR'])
+            jimage_jars = set()
             for component in registered_graalvm_components(stage1=False):
-                jimage_jars.update(component.boot_jars)
+                jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
                 if isinstance(component, mx_sdk.GraalVmJvmciComponent):
                     jimage_jars.update(component.jvmci_jars)
 
@@ -2389,20 +2446,20 @@ mx.add_argument('--image-profile', action='append', help='Add a profile to be us
 mx.add_argument('--no-licenses', action='store_true', help='Do not add license files in the archives.')
 
 if mx.get_os() == 'windows':
-    register_vm_config('ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'ins', 'js', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl', 'vvm'], env_file='ce-win')
+    register_vm_config('ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'ins', 'js', 'nfi', 'ni', 'nil', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm', 'vvm'], env_file='ce-win')
 else:
-    register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
-    register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'llp', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'], dist_name='ce-complete')
-register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'nfi', 'njs', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'slg', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
+    register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'loc', 'nfi', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
+    register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'llp', 'loc', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'pyn', 'pynl', 'rby', 'rbyl', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'], dist_name='ce-complete')
+register_vm_config('ce-python', ['cmp', 'gu', 'gvm', 'ins', 'js', 'lg', 'loc', 'nfi', 'njs', 'polynative', 'pyn', 'pynl', 'pro', 'rgx', 'sdk', 'slg', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
 register_vm_config('ce-no_native', ['bgu', 'bjs', 'blli', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bnative-image', 'bnative-image-configure', 'bpolyglot',
-                                    'cmp', 'gu', 'gvm', 'ins', 'js', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'snative-image-agent', 'svm', 'svml', 'tfl', 'libpoly', 'poly', 'vvm'])
-register_vm_config('libgraal', ['bgu', 'cmp', 'gu', 'gvm', 'lg', 'nfi', 'poly', 'polynative', 'rgx', 'svm', 'svml', 'tfl', 'bpolyglot'])
-register_vm_config('toolchain-only', ['tfl', 'gu', 'svm', 'gvm', 'rgx', 'polynative', 'llp', 'nfi', 'svml', 'bgu', 'blli', 'slg', 'cmp'])
+                                    'cmp', 'gu', 'gvm', 'ins', 'js', 'loc', 'nfi', 'ni', 'nil', 'njs', 'polynative', 'pro', 'rgx', 'sdk', 'slg', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm', 'libpoly', 'poly', 'vvm'])
+register_vm_config('libgraal', ['bgu', 'cmp', 'gu', 'gvm', 'lg', 'loc', 'nfi', 'poly', 'polynative', 'rgx', 'sdk', 'svm', 'svml', 'tfl', 'tflm', 'bpolyglot'])
+register_vm_config('toolchain-only', ['tfl', 'tflm', 'gu', 'svm', 'gvm', 'rgx', 'polynative', 'llp', 'loc', 'nfi', 'svml', 'bgu', 'blli', 'sdk', 'slg', 'cmp'])
 
 if mx.get_os() == 'windows':
-    register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'poly', 'polynative', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl'], env_file=False)
+    register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gvm', 'loc', 'nfi', 'ni', 'nil', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm'], env_file=False)
 else:
-    register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gu', 'gvm', 'nfi', 'ni', 'nil', 'nju', 'poly', 'polynative', 'rgx', 'snative-image-agent', 'svm', 'svml', 'tfl'], env_file=False)
+    register_vm_config('svm', ['bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'gu', 'gvm', 'loc', 'nfi', 'ni', 'nil', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'snative-image-agent', 'svm', 'svml', 'tfl', 'tflm'], env_file=False)
 
 
 def _debug_images():
