@@ -289,6 +289,7 @@ builds += [
       [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-ea", build]
       [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
     ]
+    logs: ${common_vm.logs} ["*/graal-compiler.log"]
     timelimit: "45:00"
     targets: [gate]
     name: gate-vm-libgraal-truffle

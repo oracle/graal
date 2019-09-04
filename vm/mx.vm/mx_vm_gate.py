@@ -34,7 +34,7 @@ import functools
 import tempfile
 from mx_gate import Task
 
-from os import environ, listdir
+from os import environ, listdir, remove
 from os.path import join, exists, dirname, isdir, isfile, getsize
 from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
@@ -124,7 +124,16 @@ def gate_body(args, tasks):
                     else:
                         unittest_args = []
                     unittest_args = unittest_args + ["--enable-timing", "--verbose"]
-                    mx_unittest.unittest(unittest_args + extra_vm_arguments + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false", "truffle"])
+                    compiler_log_file = "graal-compiler.log"
+                    mx_unittest.unittest(unittest_args + extra_vm_arguments + [
+                        "-Dgraal.TruffleCompileImmediately=true",
+                        "-Dgraal.TruffleBackgroundCompilation=false",
+                        "-Dgraal.TraceTruffleCompilation=true",
+                        "-Dgraal.PrintCompilation=true",
+                        "-Dgraal.LogFile={0}".format(compiler_log_file),
+                        "truffle"])
+                    if exists(compiler_log_file):
+                        remove(compiler_log_file)
     else:
         mx.warn("Skipping libgraal tests: component not enabled")
 
