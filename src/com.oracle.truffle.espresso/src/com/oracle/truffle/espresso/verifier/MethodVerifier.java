@@ -1546,10 +1546,10 @@ public final class MethodVerifier implements ContextAccess {
                     if (stackFrames[BCI] == null) {
                         stackFrames[BCI] = spawnStackFrame(stack, locals);
                     }
-                    stack.push(new ReturnAddressOperand(BCI));
                     // Push bit vector
                     int targetBCI = code.readBranchDest(BCI);
-                    locals.subRoutineModifications = new SubroutineModificationStack(locals.subRoutineModifications, new boolean[maxLocals], targetBCI);
+                    stack.push(new ReturnAddressOperand(BCI, targetBCI));
+                    locals.subRoutineModifications = new SubroutineModificationStack(locals.subRoutineModifications, new boolean[maxLocals], BCI);
                     branch(targetBCI, stack, locals);
                     BCIstates[BCI] = setStatus(BCIstates[BCI], DONE);
                     return BCI;
