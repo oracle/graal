@@ -48,19 +48,25 @@ public final class ToolchainImpl implements Toolchain {
         if (toolchainConfig == null) {
             return null;
         }
-        TruffleLanguage.Env env = language.getContextReference().get().getEnv();
-        String toolchainRoot = toolchainConfig.getToolchainRootOverride();
-        TruffleFile root = toolchainRoot != null //
-                        ? env.getInternalTruffleFile(toolchainRoot)
-                        : env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
         switch (tool) {
             case "CC":
-                return root.resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang");
+                return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang");
             case "CXX":
-                return root.resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang++");
+                if (!toolchainConfig.enableCXX()) {
+                    return null;
+                }
+                return getRoot().resolve("bin").resolve("graalvm-" + toolchainConfig.getToolchainSubdir() + "-clang++");
             default:
                 return null;
         }
+    }
+
+    protected TruffleFile getRoot() {
+        TruffleLanguage.Env env = language.getContextReference().get().getEnv();
+        String toolchainRoot = toolchainConfig.getToolchainRootOverride();
+        return toolchainRoot != null //
+                        ? env.getInternalTruffleFile(toolchainRoot)
+                        : env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
     }
 
     @Override
@@ -69,5 +75,10 @@ public final class ToolchainImpl implements Toolchain {
             return null;
         }
         return toolchainConfig.getToolchainSubdir();
+    }
+
+    @Override
+    public String toString() {
+        return toolchainConfig.getClass().getSimpleName();
     }
 }

@@ -232,7 +232,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8+",
       "javaProperties" : {
-        "llvm.toolchainRoot" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN>",
+        "llvm.toolchainRoot" : "<nativeToolchainRoot>",
       },
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle, LLVM",
