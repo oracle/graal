@@ -908,6 +908,10 @@ public final class MethodVerifier implements ContextAccess {
         } catch (IndexOutOfBoundsException e) {
             throw new ClassFormatError("Could not construct stackFrames due to invalid maxStack or maxLocals value: " + e.getMessage());
         }
+
+        // Check that unconditional jumps have stackmaps following them.
+        validateUnconditionalJumps();
+
         // Check that BCIs in exception handlers are legal
         validateExceptionHandlers();
 
@@ -927,31 +931,54 @@ public final class MethodVerifier implements ContextAccess {
             verifyExceptionHandlers();
         } while (!queue.isEmpty());
 
+        for (int stackBCI = 0; stackBCI < stackFrames.length; stackBCI++) {
+            if (stackFrames[stackBCI] != null && checkStatus(BCIstates[stackBCI], UNSEEN)) {
+                queue.push(stackBCI, new QueueElement(stackBCI, stackFrames[stackBCI], true));
+            }
+        }
+        while (!queue.isEmpty()) {
+            while (!queue.isEmpty()) {
+                QueueElement toVerify = queue.pop();
+                calledConstructor = toVerify.constructorCalled;
+                locals = toVerify.frame.extractLocals();
+                locals.subRoutineModifications = toVerify.frame.subroutineModificationStack;
+                startVerify(toVerify.BCI, toVerify.frame.extractStack(maxStack), locals);
+            }
+            // Performs verification of reachable handlers
+            verifyExceptionHandlers();
+        }
+
         // Verifies that each bytecode is reachable by control flow.
         verifyReachability();
+    }
+
+    private void validateUnconditionalJumps() {
+        if (useStackMaps) {
+            int BCI = 0;
+            int nextBCI;
+            while (BCI < code.endBCI()) {
+                nextBCI = code.nextBCI(BCI);
+                if (Bytecodes.isStop(code.currentBC(BCI))) {
+                    if (nextBCI < code.endBCI() && stackFrames[nextBCI] == null) {
+                        throw new VerifyError("Control flow stop does not have a stack map at next instruction!");
+                    }
+                }
+                BCI = nextBCI;
+            }
+        }
     }
 
     private void validateExceptionHandlers() {
         for (ExceptionHandler handler : exceptionHandlers) {
             int BCI = handler.getHandlerBCI();
-            validateBCI(BCI);
+            validateFormatBCI(BCI);
             BCI = handler.getStartBCI();
-            validateBCI(BCI);
+            validateFormatBCI(BCI);
             int endBCI = handler.getEndBCI();
             if (endBCI <= BCI) {
-                throw new VerifyError("End BCI of handler is before start BCI");
+                throw new ClassFormatError("End BCI of handler is before start BCI");
             }
-            if (endBCI > code.endBCI()) {
-                throw new VerifyError("Control flow falls through code end");
-            }
-            if (endBCI < 0) {
-                throw new VerifyError("negative branch target: " + BCI);
-            }
-            if (endBCI != code.endBCI()) {
-                if (BCIstates[BCI] == UNREACHABLE) {
-                    throw new VerifyError("Jump to the middle of an instruction: " + BCI);
-                }
-            }
+            validateFormatBCI(endBCI);
         }
     }
 
@@ -1064,6 +1091,18 @@ public final class MethodVerifier implements ContextAccess {
         }
         if (BCIstates[BCI] == UNREACHABLE) {
             throw new VerifyError("Jump to the middle of an instruction: " + BCI);
+        }
+    }
+
+    private void validateFormatBCI(int BCI) {
+        if (BCI >= code.endBCI()) {
+            throw new ClassFormatError("Control flow falls through code end");
+        }
+        if (BCI < 0) {
+            throw new ClassFormatError("negative branch target: " + BCI);
+        }
+        if (BCIstates[BCI] == UNREACHABLE) {
+            throw new ClassFormatError("Jump to the middle of an instruction: " + BCI);
         }
     }
 

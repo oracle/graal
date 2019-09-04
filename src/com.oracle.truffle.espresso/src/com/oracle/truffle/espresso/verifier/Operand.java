@@ -396,7 +396,7 @@ class UninitReferenceOperand extends ReferenceOperand {
         if (other.isUninit()) {
             return compliesWith(other);
         }
-        return false;
+        return other == Invalid;
     }
 
     @Override

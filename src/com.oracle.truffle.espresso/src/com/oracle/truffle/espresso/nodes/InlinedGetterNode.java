@@ -18,12 +18,12 @@ public class InlinedGetterNode extends QuickNode {
     final Field field;
     final Method inlinedMethod;
 
-    @Child ChildGetFieldNode getFieldNode;
+    @Child AbstractGetFieldNode getFieldNode;
 
     InlinedGetterNode(Method inlinedMethod) {
         this.inlinedMethod = inlinedMethod;
         this.field = getInlinedField(inlinedMethod);
-        getFieldNode = ChildGetFieldNode.create(this.field);
+        getFieldNode = AbstractGetFieldNode.create(this.field);
         assert field.isStatic() == inlinedMethod.isStatic();
     }
 

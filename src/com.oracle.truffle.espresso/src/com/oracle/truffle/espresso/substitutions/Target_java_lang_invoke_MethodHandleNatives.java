@@ -135,7 +135,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         EspressoContext context = defc.getKlass().getContext();
         StaticObject[] results = _results.unwrap();
         Symbol<Name> name = null;
-        if (matchName != StaticObject.NULL) {
+        if (!StaticObject.isNull(matchName)) {
             name = context.getNames().lookup(Meta.toHostString(matchName));
             if (name == null)
                 return 0;
@@ -145,7 +145,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             return 0;
 
         Klass caller = null;
-        if (_caller != StaticObject.NULL) {
+        if (!StaticObject.isNull(_caller)) {
             caller = _caller.getMirrorKlass();
             if (caller == null)
                 return -1;

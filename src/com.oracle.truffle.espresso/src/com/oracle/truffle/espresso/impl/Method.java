@@ -48,6 +48,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.espresso.Utils;
+import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.CodeAttribute;
@@ -756,5 +757,10 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callTarget = null;
         }
+    }
+
+    @SuppressWarnings("unused")
+    private void printBytecodes() {
+        new BytecodeStream(getCode()).printBytecode(declaringKlass);
     }
 }
