@@ -31,17 +31,17 @@ package com.oracle.svm.util;
  */
 public interface WorkerThreadMarker /* extends Thread */ {
     default Thread asTerminated() {
-        return TerminatedThread.TERMINATED;
+        return TerminatedThread.SINGLETON;
     }
 }
 
 final class TerminatedThread extends Thread {
-    static final TerminatedThread TERMINATED;
+    static final TerminatedThread SINGLETON;
     static {
-        TERMINATED = new TerminatedThread("Terminated Infrastructure Thread");
-        TERMINATED.start();
+        SINGLETON = new TerminatedThread("Terminated Infrastructure Thread");
+        SINGLETON.start();
         try {
-            TERMINATED.join();
+            SINGLETON.join();
         } catch (InterruptedException ex) {
             throw new IllegalStateException(ex);
         }
