@@ -89,8 +89,8 @@ public final class NativeLibraries {
     private final ResolvedJavaType enumType;
     private final ResolvedJavaType locationIdentityType;
 
-    private final LinkedHashSet<String> libraries;
-    private final LinkedHashSet<String> staticLibraries;
+    private final List<String> libraries;
+    private final List<String> staticLibraries;
     private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
@@ -119,8 +119,8 @@ public final class NativeLibraries {
         enumType = metaAccess.lookupJavaType(Enum.class);
         locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        libraries = new LinkedHashSet<>();
-        staticLibraries = new LinkedHashSet<>();
+        libraries = new ArrayList<>();
+        staticLibraries = new ArrayList<>();
         libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
