@@ -41,6 +41,7 @@ import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -589,9 +590,22 @@ public class CompilationResultBuilder {
                 recordSourceMapping(start, asm.position(), op.getPosition());
             }
             if (LIR_INSTRUCTION_VERIFIERS.size() > 0 && start < asm.position()) {
-                byte[] emittedCode = asm.copyFrom(start);
+                int end = asm.position();
+                for (CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
+                    if (codeAnnotation instanceof JumpTable) {
+                        // Skip jump table. Here we assume the jump table is at the tail of the
+                        // emitted code.
+                        int jumpTableStart = codeAnnotation.position;
+                        if (jumpTableStart >= start && jumpTableStart < end) {
+                            end = jumpTableStart;
+                        }
+                    }
+                }
+                byte[] emittedCode = asm.copy(start, end);
                 for (LIRInstructionVerifier verifier : LIR_INSTRUCTION_VERIFIERS) {
-                    verifier.verify(op, emittedCode);
+                    if (verifier.isEnabled()) {
+                        verifier.verify(op, emittedCode);
+                    }
                 }
             }
         } catch (BailoutException e) {

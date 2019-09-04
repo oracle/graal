@@ -24,8 +24,10 @@
  */
 package org.graalvm.compiler.lir;
 
-public abstract class LIRInstructionVerifier {
+public interface LIRInstructionVerifier {
 
-    public abstract void verify(LIRInstruction op, byte[] emittedCode);
+    boolean isEnabled();
+
+    void verify(LIRInstruction op, byte[] emittedCode);
 
 }

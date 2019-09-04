@@ -162,8 +162,8 @@ public abstract class Assembler {
         return codeBuffer.close(trimmedCopy);
     }
 
-    public byte[] copyFrom(int start) {
-        return codeBuffer.copyData(start, position());
+    public byte[] copy(int start, int end) {
+        return codeBuffer.copyData(start, end);
     }
 
     private void checkAndClearLabelsWithPatches() throws InternalError {
