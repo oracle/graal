@@ -1274,14 +1274,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (result instanceof LogicConstantNode) {
                 if (((LogicConstantNode) result).getValue()) {
                     if (trueMerge == null) {
-                        trueMerge = insertMerge(trueSuccessor(), phi, merge.stateAfter());
+                        trueMerge = insertMerge(trueSuccessor(), phi, merge.stateAfter(), tool);
                         replaceNodesInBranch(coloredNodes, NodeColor.TRUE_BRANCH, phi, trueMerge.phis().first());
                     }
                     trueMerge.phis().first().addInput(value);
                     trueMerge.addForwardEnd(end);
                 } else {
                     if (falseMerge == null) {
-                        falseMerge = insertMerge(falseSuccessor(), phi, merge.stateAfter());
+                        falseMerge = insertMerge(falseSuccessor(), phi, merge.stateAfter(), tool);
                         replaceNodesInBranch(coloredNodes, NodeColor.FALSE_BRANCH, phi, falseMerge.phis().first());
                     }
                     falseMerge.phis().first().addInput(value);
@@ -1303,7 +1303,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 newIfNode.setNodeSourcePosition(getNodeSourcePosition());
 
                 if (trueMerge == null) {
-                    trueMerge = insertMerge(trueSuccessor(), phi, merge.stateAfter());
+                    trueMerge = insertMerge(trueSuccessor(), phi, merge.stateAfter(), tool);
                     replaceNodesInBranch(coloredNodes, NodeColor.TRUE_BRANCH, phi, trueMerge.phis().first());
                 }
                 trueMerge.phis().first().addInput(value);
@@ -1311,7 +1311,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 trueMerge.addForwardEnd((EndNode) trueBegin.next());
 
                 if (falseMerge == null) {
-                    falseMerge = insertMerge(falseSuccessor(), phi, merge.stateAfter());
+                    falseMerge = insertMerge(falseSuccessor(), phi, merge.stateAfter(), tool);
                     replaceNodesInBranch(coloredNodes, NodeColor.FALSE_BRANCH, phi, falseMerge.phis().first());
                 }
                 falseMerge.phis().first().addInput(value);
@@ -1533,7 +1533,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     }
 
     @SuppressWarnings("try")
-    private MergeNode insertMerge(AbstractBeginNode begin, ValuePhiNode oldPhi, FrameState stateAfter) {
+    private MergeNode insertMerge(AbstractBeginNode begin, ValuePhiNode oldPhi, FrameState stateAfter, SimplifierTool tool) {
         MergeNode merge = graph().add(new MergeNode());
 
         AbstractBeginNode newBegin;
@@ -1557,7 +1557,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             merge.setStateAfter(newState);
         }
         merge.setNext(next);
-
+        tool.addToWorkList(begin);
         return merge;
     }
 
