@@ -880,7 +880,8 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        // TODO(peterssen): Volatile is stronger than needed.
+        holder.setIntFieldVolatile(f, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -893,7 +894,8 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        // TODO(peterssen): Volatile is stronger than needed.
+        holder.setLongFieldVolatile(f, value);
     }
 
     @Substitution(hasReceiver = true)
@@ -906,7 +908,8 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        f.set(holder, value);
+        // TODO(peterssen): Volatile is stronger than needed.
+        holder.setFieldVolatile(f, value);
     }
 
     // endregion put*(Object holder, long offset, * value)
