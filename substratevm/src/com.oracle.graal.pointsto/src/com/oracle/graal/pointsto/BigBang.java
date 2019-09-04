@@ -82,12 +82,12 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
-import com.oracle.svm.util.WorkerThreadMarker;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
 public abstract class BigBang {
 
@@ -814,7 +814,7 @@ public abstract class BigBang {
     }
 
     private static class SubstrateWorkerThread extends ForkJoinWorkerThread
-                    implements WorkerThreadMarker {
+                    implements ImageGeneratorThreadMarker {
         private final DebugContext debug;
 
         SubstrateWorkerThread(ForkJoinPool pool, DebugContext debug) {
