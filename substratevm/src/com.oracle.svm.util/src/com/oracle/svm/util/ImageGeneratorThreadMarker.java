@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.util;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 /**
  * Marker interface to identify threads that are only used by SubstateVM infrastructure and will not
  * be present in the image heap at run time. Each of such threads has a {@link #asTerminated() way}
@@ -39,6 +42,7 @@ package com.oracle.svm.util;
  * field is, e.g., constant folded to {@code null} because the static analysis only saw the
  * {@code null} value).
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public interface ImageGeneratorThreadMarker /* extends Thread */ {
     default Thread asTerminated() {
         return TerminatedThread.SINGLETON;
