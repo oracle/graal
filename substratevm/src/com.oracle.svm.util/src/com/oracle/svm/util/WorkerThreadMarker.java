@@ -26,7 +26,7 @@ package com.oracle.svm.util;
 
 /**
  * Marker interface to identify threads that are only used by SubstateVM infrastructure and will not
- * be present in the final runtime. Each of such threads has a {@link #asTerminated() way} to obtain
+ * be present in the image heap at run time. Each of such threads has a {@link #asTerminated() way} to obtain
  * the terminated replacement of itself.
  */
 public interface WorkerThreadMarker /* extends Thread */ {
