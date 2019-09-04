@@ -95,6 +95,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     public static final NodeClass<IfNode> TYPE = NodeClass.create(IfNode.class);
 
     private static final int MAX_USAGE_COLOR_SET_SIZE = 64;
+    private static final int MAX_FRAMESTATE_SEARCH_DEPTH = 4;
 
     private static final CounterKey CORRECTED_PROBABILITIES = DebugContext.counter("CorrectedProbabilities");
 
@@ -1227,11 +1228,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        // Only allow this optimization in later stages when the merge node doesn't have a frame
-        // state. There is a small intermediate window between fixing guards and assigning frame
-        // states where some merges may have a frame state and others do not. We must not remove a
-        // merge with a frame state that is a dominator to a merge without a frame state.
-        if (!graph().getGuardsStage().allowsFloatingGuards() && merge.stateAfter() != null) {
+        if (!mayRemoveSplit(merge)) {
             return false;
         }
 
@@ -1538,26 +1535,18 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
     @SuppressWarnings("try")
     private MergeNode insertMerge(AbstractBeginNode begin, ValuePhiNode oldPhi, FrameState stateAfter) {
         MergeNode merge = graph().add(new MergeNode());
-        if (!begin.anchored().isEmpty()) {
-            Object before = begin.anchored().snapshot();
-            begin.replaceAtUsages(InputType.Guard, merge);
-            begin.replaceAtUsages(InputType.Anchor, merge);
-            assert begin.anchored().isEmpty() : before + " " + begin.anchored().snapshot();
+
+        AbstractBeginNode newBegin;
+        try (DebugCloseable position = begin.withNodeSourcePosition()) {
+            newBegin = graph().add(new BeginNode());
+            begin.replaceAtPredecessor(newBegin);
+            newBegin.setNext(begin);
         }
 
-        AbstractBeginNode theBegin = begin;
-        if (begin instanceof LoopExitNode) {
-            // Insert an extra begin to make it easier.
-            try (DebugCloseable position = begin.withNodeSourcePosition()) {
-                theBegin = graph().add(new BeginNode());
-                begin.replaceAtPredecessor(theBegin);
-                theBegin.setNext(begin);
-            }
-        }
-        FixedNode next = theBegin.next();
+        FixedNode next = newBegin.next();
         next.replaceAtPredecessor(merge);
-        theBegin.setNext(graph().add(new EndNode()));
-        merge.addForwardEnd((EndNode) theBegin.next());
+        newBegin.setNext(graph().add(new EndNode()));
+        merge.addForwardEnd((EndNode) newBegin.next());
 
         ValuePhiNode phi = begin.graph().addOrUnique(new ValuePhiNode(oldPhi.stamp(NodeView.DEFAULT), merge));
         phi.addInput(oldPhi);
@@ -1699,14 +1688,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
-        // Sanity check that both ends are not followed by a merge without frame state.
-        assert !graph().getGuardsStage().allowsFloatingGuards() || (checkFrameState(trueSuccessor()) && checkFrameState(falseSuccessor())) : graph().getGuardsStage();
-
-        // Only allow this optimization in later stages when the merge node doesn't have a frame
-        // state. There is a small intermediate window between fixing guards and assigning frame
-        // states where some merges may have a frame state and others do not. We must not remove a
-        // merge with a frame state that is a dominator to a merge without a frame state.
-        if (!graph().getGuardsStage().allowsFloatingGuards() && merge.stateAfter() != null) {
+        if (!mayRemoveSplit(merge)) {
             return false;
         }
 
@@ -1768,6 +1750,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return true;
     }
 
+    private boolean mayRemoveSplit(AbstractMergeNode merge) {
+
+        if (merge.stateAfter() != null && (!checkFrameState(trueSuccessor, MAX_FRAMESTATE_SEARCH_DEPTH) || !checkFrameState(trueSuccessor, MAX_FRAMESTATE_SEARCH_DEPTH))) {
+            return false;
+        }
+
+        return true;
+    }
+
     private void propagateZeroProbability(FixedNode startNode) {
         Node prev = null;
         for (FixedNode node : GraphUtil.predecessorIterable(startNode)) {
@@ -1804,7 +1795,14 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
-    private static boolean checkFrameState(FixedNode start) {
+    /**
+     * Snippet lowerings may produce patterns without a frame state on the merge. We need to take
+     * extra care when optimizing these patterns.
+     */
+    private static boolean checkFrameState(FixedNode start, int maxDepth) {
+        if (maxDepth == 0) {
+            return false;
+        }
         FixedNode node = start;
         while (true) {
             if (node instanceof AbstractMergeNode) {
@@ -1824,7 +1822,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             if (node instanceof ControlSplitNode) {
                 ControlSplitNode controlSplitNode = (ControlSplitNode) node;
                 for (Node succ : controlSplitNode.cfgSuccessors()) {
-                    if (checkFrameState((FixedNode) succ)) {
+                    if (checkFrameState((FixedNode) succ, maxDepth - 1)) {
                         return true;
                     }
                 }
