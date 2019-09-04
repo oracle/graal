@@ -201,6 +201,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         private int dataSize(ValueNode node) {
+            if (node instanceof LIRLowerableAccess) {
+                return dataSize((LIRLowerableAccess) node);
+            }
+
             return dataSize(node.stamp(view));
         }
 
@@ -304,7 +308,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @return Boolean indicating whether the left and right node of a potential pack are
          *         isomorphic.
          */
-        private boolean isomorphic(Node left, Node right) {
+        private boolean isomorphic(ValueNode left, ValueNode right) {
             // Trivial case, isomorphic if the same
             if (left == right || left.equals(right)) {
                 return true;
@@ -317,6 +321,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             // Is the input count the same? (accounts for inputs that are null)
             if (left.inputs().count() != right.inputs().count()) {
+                return false;
+            }
+
+            // Ensure that both nodes have compatible stamps
+            if (!getStamp(left).isCompatible(getStamp(right))) {
                 return false;
             }
 
@@ -477,7 +486,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
         }
 
-        private boolean stmtsCanPack(Set<Pair<ValueNode, ValueNode>> packSet, Node s1, Node s2, Integer align) {
+        private boolean stmtsCanPack(Set<Pair<ValueNode, ValueNode>> packSet, ValueNode s1, ValueNode s2, Integer align) {
             // TODO: Also make sure that the platform supports vectors of the primitive type of this candidate pack
 
             if (supported(s1) && supported(s2) &&
@@ -532,7 +541,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     }
 
                     // If the statements cannot be packed, bail
-                    if (!align.isPresent() || !stmtsCanPack(packSet, leftInput, rightInput, align.get())) {
+                    if (!align.isPresent() || !stmtsCanPack(packSet, (ValueNode) leftInput, (ValueNode) rightInput, align.get())) {
                         continue outer;
                     }
 
@@ -576,7 +585,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     }
 
                     // TODO: Rather than adding the first, add the best
-                    if (stmtsCanPack(packSet, leftUsage, rightUsage, align.orElse(null))) {
+                    if (leftUsage instanceof ValueNode &&
+                            rightUsage instanceof ValueNode &&
+                            stmtsCanPack(packSet, (ValueNode) leftUsage, (ValueNode) rightUsage, align.orElse(null))) {
                         final int currentSavings = estSavings(packSet, leftUsage, rightUsage);
                         if (currentSavings > savings) {
                             savings = currentSavings;
