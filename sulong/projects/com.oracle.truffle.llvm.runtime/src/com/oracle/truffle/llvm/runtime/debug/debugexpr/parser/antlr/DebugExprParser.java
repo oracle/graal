@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr;
 
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -53,7 +54,7 @@ public class DebugExprParser {
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
             String location = "-- line " + line + " col " + (charPositionInLine + 1) + ": ";
-            throw DebugExprException.create(null, String.format("ASM error in %s:\n%s%s", snippet, location, msg));
+            throw DebugExprException.create(null, String.format("Debug Expression error in %s:\n%s%s", snippet, location, msg));
         }
     }
 
@@ -83,7 +84,7 @@ public class DebugExprParser {
         BailoutErrorListener listener = new BailoutErrorListener(asmSnippet);
         lexer.addErrorListener(listener);
         parser.addErrorListener(listener);
-        parser.r();
+        parser.debugExpr();
 //        parser.snippet = asmSnippet;
 //        parser.factory = new AsmFactory(language, argTypes, asmFlags, retType, retTypes, retOffsets);
 //        parser.inline_assembly();
@@ -91,6 +92,11 @@ public class DebugExprParser {
 //            throw new IllegalStateException("no roots produced by inline assembly snippet");
 //        }
 //        return parser.root;
-        return null;
+        return new LLVMExpressionNode() {
+            @Override
+            public Object executeGeneric(VirtualFrame frame) {
+                throw DebugExprException.create(this, "Not Yet Implemented: " + asmSnippet);
+            }
+        };
     }
 }

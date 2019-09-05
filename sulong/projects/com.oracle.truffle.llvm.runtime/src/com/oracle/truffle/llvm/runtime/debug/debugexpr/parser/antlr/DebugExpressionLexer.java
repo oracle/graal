@@ -50,7 +50,7 @@ public class DebugExpressionLexer extends Lexer {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		T__0=1, ID=2, WS=3;
+		IDENT=1, WS=2;
 	public static String[] channelNames = {
 		"DEFAULT_TOKEN_CHANNEL", "HIDDEN"
 	};
@@ -60,14 +60,13 @@ public class DebugExpressionLexer extends Lexer {
 	};
 
 	public static final String[] ruleNames = {
-		"T__0", "ID", "WS"
+		"LETTER", "IDENT", "WS"
 	};
 
 	private static final String[] _LITERAL_NAMES = {
-		null, "'hello'"
 	};
 	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, "ID", "WS"
+		null, "IDENT", "WS"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
@@ -127,15 +126,13 @@ public class DebugExpressionLexer extends Lexer {
 	public ATN getATN() { return _ATN; }
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\2\5\33\b\1\4\2\t\2"+
-		"\4\3\t\3\4\4\t\4\3\2\3\2\3\2\3\2\3\2\3\2\3\3\6\3\21\n\3\r\3\16\3\22\3"+
-		"\4\6\4\26\n\4\r\4\16\4\27\3\4\3\4\2\2\5\3\3\5\4\7\5\3\2\4\3\2c|\5\2\13"+
-		"\f\17\17\"\"\2\34\2\3\3\2\2\2\2\5\3\2\2\2\2\7\3\2\2\2\3\t\3\2\2\2\5\20"+
-		"\3\2\2\2\7\25\3\2\2\2\t\n\7j\2\2\n\13\7g\2\2\13\f\7n\2\2\f\r\7n\2\2\r"+
-		"\16\7q\2\2\16\4\3\2\2\2\17\21\t\2\2\2\20\17\3\2\2\2\21\22\3\2\2\2\22\20"+
-		"\3\2\2\2\22\23\3\2\2\2\23\6\3\2\2\2\24\26\t\3\2\2\25\24\3\2\2\2\26\27"+
-		"\3\2\2\2\27\25\3\2\2\2\27\30\3\2\2\2\30\31\3\2\2\2\31\32\b\4\2\2\32\b"+
-		"\3\2\2\2\5\2\22\27\3\b\2\2";
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\2\4\24\b\1\4\2\t\2"+
+		"\4\3\t\3\4\4\t\4\3\2\3\2\3\3\3\3\3\4\6\4\17\n\4\r\4\16\4\20\3\4\3\4\2"+
+		"\2\5\3\2\5\3\7\4\3\2\4\5\2C\\aac|\5\2\13\f\17\17\"\"\2\23\2\5\3\2\2\2"+
+		"\2\7\3\2\2\2\3\t\3\2\2\2\5\13\3\2\2\2\7\16\3\2\2\2\t\n\t\2\2\2\n\4\3\2"+
+		"\2\2\13\f\5\3\2\2\f\6\3\2\2\2\r\17\t\3\2\2\16\r\3\2\2\2\17\20\3\2\2\2"+
+		"\20\16\3\2\2\2\20\21\3\2\2\2\21\22\3\2\2\2\22\23\b\4\2\2\23\b\3\2\2\2"+
+		"\4\2\20\3\b\2\2";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {
