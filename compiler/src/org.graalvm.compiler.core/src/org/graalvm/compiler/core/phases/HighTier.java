@@ -28,7 +28,6 @@ import static org.graalvm.compiler.core.common.GraalOptions.ConditionalEliminati
 import static org.graalvm.compiler.core.common.GraalOptions.LoopPeeling;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopUnswitch;
 import static org.graalvm.compiler.core.common.GraalOptions.OptConvertDeoptsToGuards;
-import static org.graalvm.compiler.core.common.GraalOptions.OptLoopTransform;
 import static org.graalvm.compiler.core.common.GraalOptions.OptReadElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialEscapeAnalysis;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
@@ -92,7 +91,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         LoopPolicies loopPolicies = createLoopPolicies();
         appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
 
-        if (OptLoopTransform.getValue(options) && LoopUnswitch.getValue(options)) {
+        if (LoopUnswitch.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopUnswitchingPhase(loopPolicies)));
         }
 

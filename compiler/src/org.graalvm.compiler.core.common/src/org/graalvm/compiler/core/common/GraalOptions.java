@@ -242,9 +242,6 @@ public final class GraalOptions {
     public static final OptionKey<Boolean> OptImplicitNullChecks = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> OptLoopTransform = new OptionKey<>(true);
-
-    @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptFloatingReads = new OptionKey<>(true);
 
     @Option(help = "", type = OptionType.Debug)

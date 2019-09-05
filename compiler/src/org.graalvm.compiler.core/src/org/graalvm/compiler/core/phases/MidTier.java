@@ -27,7 +27,6 @@ package org.graalvm.compiler.core.phases;
 import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
 import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
-import static org.graalvm.compiler.core.common.GraalOptions.OptLoopTransform;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
 import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
 import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
@@ -88,8 +87,8 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new VerifyHeapAtReturnPhase());
         }
 
-        if (OptLoopTransform.getValue(options) && LoopPeeling.getValue(options)) {
-            LoopPolicies loopPolicies = createLoopPolicies();
+        LoopPolicies loopPolicies = createLoopPolicies();
+        if (LoopPeeling.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPeelingPhase(loopPolicies)));
         }
 
@@ -101,12 +100,10 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         appendPhase(new FrameStateAssignmentPhase());
 
-        LoopPolicies loopPolicies = createLoopPolicies();
-        if (OptLoopTransform.getValue(options)) {
-            if (PartialUnroll.getValue(options)) {
-                appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
-            }
+        if (PartialUnroll.getValue(options)) {
+            appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
         }
+
         if (ReassociateInvariants.getValue(options)) {
             appendPhase(new ReassociateInvariantPhase());
         }
