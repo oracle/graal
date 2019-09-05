@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,11 +53,13 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
+import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @ValueType
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(LLVMManagedReadLibrary.class)
 @ExportLibrary(LLVMManagedWriteLibrary.class)
+@ExportLibrary(ReferenceLibrary.class)
 public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
 
     final Object foreign;
@@ -290,5 +293,21 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
     @ExportMessage
     void toNative(@CachedLibrary("this.foreign") InteropLibrary interop) {
         interop.toNative(getForeign());
+    }
+
+    @ExportMessage
+    static class IsSame {
+
+        @Specialization
+        static boolean doTyped(LLVMTypedForeignObject receiver, LLVMTypedForeignObject other,
+                        @CachedLibrary("receiver.foreign") ReferenceLibrary lib) {
+            return lib.isSame(receiver.foreign, other.foreign);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean doGeneric(LLVMTypedForeignObject receiver, Object other) {
+            return false;
+        }
     }
 }
