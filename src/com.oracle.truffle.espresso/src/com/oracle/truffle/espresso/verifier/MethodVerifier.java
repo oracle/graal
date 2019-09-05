@@ -2034,12 +2034,23 @@ public final class MethodVerifier implements ContextAccess {
      * bit array is popped (call it b1) to obtain the wanted local variables, and once done, if
      * there is another bit array on the stack (call it b2), merge the two of them (ie: for each
      * raised bit in b1, raise the corresponding one in b2).
+     * <p>
+     * If the returns jumps over multiple JSRs, pop the stack accordingly. For example:
+     * 
+     * <pre>
+     * 0: jsr 4
+     * 3: return
+     * 4: astore_0
+     * 5: jsr 8
+     * 8: astore_1
+     * 9: ret 0
+     * </pre>
      *
      * @param target BCI of the JSR instruction we will merge into
      * @param locals The state of the local variables at the time of the RET instruction
      * @return the local variables that will be merged into the state at target.
      */
-    private Locals getSubroutineReturnLocals(Integer target, Locals locals) {
+    private Locals getSubroutineReturnLocals(int target, Locals locals) {
         SubroutineModificationStack subRoutineModifications = locals.subRoutineModifications;
         if (subRoutineModifications == null) {
             throw new VerifyError("RET outside of a subroutine");
@@ -2049,6 +2060,11 @@ public final class MethodVerifier implements ContextAccess {
 
         Locals jsrLocals = stackFrames[target].extractLocals();
         Operand[] registers = new Operand[maxLocals];
+
+        if (jsrLocals.subRoutineModifications.depth() >= locals.subRoutineModifications.depth()) {
+            throw new VerifyError("RET increases subroutine depth.");
+        }
+
         for (int i = 0; i < maxLocals; i++) {
             if (subroutineBitArray[i]) {
                 registers[i] = locals.registers[i];
