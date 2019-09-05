@@ -121,6 +121,8 @@ public final class Target_sun_misc_Unsafe {
 
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, classLoader, hostKlass);
 
+        klass.unsafeSetVerified();
+
         klass.getConstantPool().setKlassAt(thisKlassIndex, klass);
 
         return klass;
@@ -225,7 +227,9 @@ public final class Target_sun_misc_Unsafe {
         // TODO(peterssen): Protection domain is ignored.
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        return self.getKlass().getMeta().getRegistries().defineKlass(self.getKlass().getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader).mirror();
+        Klass klass = self.getKlass().getMeta().getRegistries().defineKlass(self.getKlass().getTypes().fromClassGetName(Meta.toHostString(name)), bytes, loader);
+        klass.unsafeSetVerified();
+        return klass.mirror();
     }
 
     // region compareAndSwap*
