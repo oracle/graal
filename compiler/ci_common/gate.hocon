@@ -152,11 +152,7 @@ gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
 
 gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
 
-gateLinuxAArch64 : ${linux-aarch64} ${gateCommon} {
-  downloads : {
-    JAVA_HOME : ${jdks.openjdk11}
-  }
-}
+gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
 gateJAOTC : {
   environment : {
