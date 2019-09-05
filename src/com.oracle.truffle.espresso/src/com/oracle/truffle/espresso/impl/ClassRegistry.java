@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -90,6 +91,9 @@ public abstract class ClassRegistry implements ContextAccess {
         }
 
         Symbol<Type> pop() {
+            if (isEmpty()) {
+                throw EspressoError.shouldNotReachHere();
+            }
             Symbol<Type> res = stack.entry;
             stack = stack.next;
             return res;
