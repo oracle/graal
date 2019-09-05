@@ -174,6 +174,42 @@ public final class Types {
         return symbols.symbolify(ByteSequence.wrap(bytes));
     }
 
+    public static void verifyClassName(String className) {
+        int index = 0;
+        int length = className.length();
+        while (index < length && className.charAt(index) == '[') {
+            index++;
+        }
+        if (index > 255) {
+            throw new ClassFormatError("Array with more than 255 dimensions " + className);
+        }
+        char separator = 0;
+        int prevSeparator = index;
+        while (index < length) {
+            char ch = className.charAt(index);
+            if (ch == '.' || ch == '/') {
+                if (separator == 0) {
+                    separator = ch;
+                } else {
+                    if (separator != ch) {
+                        throw new ClassFormatError("Inconsistent separator in classname: " + className);
+                    }
+                    if (index == prevSeparator + 1) {
+                        throw new ClassFormatError("Invalid type descriptor: " + className);
+                    }
+                    prevSeparator = index;
+                }
+            } else if (ch == ';') {
+                if (index + 1 < length) {
+                    throw new ClassFormatError("Invalid type descriptor: " + className);
+                }
+            } else if (ch == '[') {
+                throw new ClassFormatError("Invalid type descriptor: " + className);
+            }
+            index++;
+        }
+    }
+
     public Symbol<Type> arrayOf(Symbol<Type> type) {
         return arrayOf(type, 1);
     }
