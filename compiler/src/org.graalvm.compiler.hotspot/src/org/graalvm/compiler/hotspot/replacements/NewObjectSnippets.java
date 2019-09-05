@@ -77,11 +77,11 @@ import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.P
 import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.ProfileAllocationsContext;
 import static org.graalvm.compiler.nodes.PiArrayNode.piArrayCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.runtimeAssert;
@@ -622,21 +622,21 @@ public class NewObjectSnippets implements Snippets {
      * Zero uninitialized memory in a newly allocated object, unrolling as necessary and ensuring
      * that stores are aligned.
      *
-     * @param size number of bytes to zero
-     * @param memory beginning of object which is being zeroed
-     * @param constantSize is {@code size} known to be constant in the snippet
+     * @param memory beginning of object which is being zeroedt
      * @param startOffset offset to begin zeroing. May not be word aligned.
+     * @param offsetLimit offset to stop zeroing.
+     * @param constantOffsetLimit is {@code offsetLimit} known to be constant in the snippe
      * @param manualUnroll maximally unroll zeroing
-     * @param bulkZeroingStride apply bulk zeroing
+     * @param bulkZeroingStride stride of bulk zeroing supported by the backend
      */
-    private static void zeroMemory(long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll,
+    private static void zeroMemory(Word memory, int startOffset, long offsetLimit, boolean constantOffsetLimit, boolean manualUnroll,
                     int bulkZeroingStride, Counters counters) {
-        fillMemory(0, size, memory, constantSize, startOffset, manualUnroll, bulkZeroingStride, counters);
+        fillMemory(0, memory, startOffset, offsetLimit, constantOffsetLimit, manualUnroll, bulkZeroingStride, counters);
     }
 
-    private static void fillMemory(long value, long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll,
+    private static void fillMemory(long value, Word memory, int startOffset, long offsetLimit, boolean constantOffsetLimit, boolean manualUnroll,
                     int bulkZeroingStride, Counters counters) {
-        ReplacementsUtil.runtimeAssert((size & 0x7) == 0, "unaligned object size");
+        ReplacementsUtil.runtimeAssert((offsetLimit & 0x7) == 0, "unaligned object size");
         int offset = startOffset;
         if ((offset & 0x7) != 0) {
             memory.writeInt(offset, (int) value, LocationIdentity.init());
@@ -644,8 +644,8 @@ public class NewObjectSnippets implements Snippets {
         }
         ReplacementsUtil.runtimeAssert((offset & 0x7) == 0, "unaligned offset");
         Counters theCounters = counters;
-        if (manualUnroll && ((size - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
-            ReplacementsUtil.staticAssert(!constantSize, "size shouldn't be constant at instantiation time");
+        if (manualUnroll && ((offsetLimit - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
+            ReplacementsUtil.staticAssert(!constantOffsetLimit, "size shouldn't be constant at instantiation time");
             // This case handles arrays of constant length. Instead of having a snippet variant for
             // each length, generate a chain of stores of maximum length. Once it's inlined the
             // break statement will trim excess stores.
@@ -655,7 +655,7 @@ public class NewObjectSnippets implements Snippets {
 
             explodeLoop();
             for (int i = 0; i < MAX_UNROLLED_OBJECT_ZEROING_STORES; i++, offset += 8) {
-                if (offset == size) {
+                if (offset == offsetLimit) {
                     break;
                 }
                 memory.initializeLong(offset, value, LocationIdentity.init());
@@ -663,13 +663,13 @@ public class NewObjectSnippets implements Snippets {
         } else {
             // Use Word instead of int to avoid extension to long in generated code
             Word off = WordFactory.signed(offset);
-            if (bulkZeroingStride > 0 && value == 0 && probability(SLOW_PATH_PROBABILITY, (size - offset) >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
+            if (bulkZeroingStride > 0 && value == 0 && probability(SLOW_PATH_PROBABILITY, (offsetLimit - offset) >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
                 if (theCounters != null && theCounters.instanceBulkInit != null) {
                     theCounters.instanceBulkInit.inc();
                 }
-                ZeroMemoryNode.zero(memory.add(off), size - offset, LocationIdentity.init());
+                ZeroMemoryNode.zero(memory.add(off), offsetLimit - offset, LocationIdentity.init());
             } else {
-                if (constantSize && ((size - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
+                if (constantOffsetLimit && ((offsetLimit - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
                     if (theCounters != null && theCounters.instanceSeqInit != null) {
                         theCounters.instanceSeqInit.inc();
                     }
@@ -679,7 +679,7 @@ public class NewObjectSnippets implements Snippets {
                         theCounters.instanceLoopInit.inc();
                     }
                 }
-                for (; off.rawValue() < size; off = off.add(8)) {
+                for (; off.rawValue() < offsetLimit; off = off.add(8)) {
                     memory.initializeLong(off, value, LocationIdentity.init());
                 }
             }
@@ -695,14 +695,15 @@ public class NewObjectSnippets implements Snippets {
      * Fill uninitialized memory with garbage value in a newly allocated object, unrolling as
      * necessary and ensuring that stores are aligned.
      *
-     * @param size number of bytes to zero
      * @param memory beginning of object which is being zeroed
-     * @param constantSize is {@code  size} known to be constant in the snippet
-     * @param startOffset offset to begin zeroing. May not be word aligned.
+     * @param startOffset offset to begin filling garbage value. May not be word aligned.
+     * @param offsetLimit offset to stop filling garbage value.
+     * @param constantOffsetLimit is {@code  constantOffsetLimit} known to be constant in the
+     *            snippet
      * @param manualUnroll maximally unroll zeroing
      */
-    private static void fillWithGarbage(long size, Word memory, boolean constantSize, int startOffset, boolean manualUnroll, Counters counters) {
-        fillMemory(0xfefefefefefefefeL, size, memory, constantSize, startOffset, manualUnroll, 0, counters);
+    private static void fillWithGarbage(Word memory, int startOffset, long offsetLimit, boolean constantOffsetLimit, boolean manualUnroll, Counters counters) {
+        fillMemory(0xfefefefefefefefeL, memory, startOffset, offsetLimit, constantOffsetLimit, manualUnroll, 0, counters);
     }
 
     /**
@@ -719,9 +720,9 @@ public class NewObjectSnippets implements Snippets {
         Word prototypeMarkWord = useBiasedLocking(INJECTED_VMCONFIG) ? hub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION) : compileTimePrototypeMarkWord;
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
-            zeroMemory(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, 0, counters);
+            zeroMemory(memory, instanceHeaderSize(INJECTED_VMCONFIG), size, constantSize, false, 0, counters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
-            fillWithGarbage(size, memory, constantSize, instanceHeaderSize(INJECTED_VMCONFIG), false, counters);
+            fillWithGarbage(memory, instanceHeaderSize(INJECTED_VMCONFIG), size, constantSize, false, counters);
         }
         if (emitMemoryBarrier) {
             MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
@@ -775,9 +776,9 @@ public class NewObjectSnippets implements Snippets {
          */
         initializeObjectHeader(memory, prototypeMarkWord, hub);
         if (fillContents) {
-            zeroMemory(allocationSize, memory, false, headerSize, maybeUnroll, bulkZeroingStride, counters);
+            zeroMemory(memory, headerSize, allocationSize, false, maybeUnroll, bulkZeroingStride, counters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
-            fillWithGarbage(allocationSize, memory, false, headerSize, maybeUnroll, counters);
+            fillWithGarbage(memory, headerSize, allocationSize, false, maybeUnroll, counters);
         }
         if (emitMemoryBarrier) {
             MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
