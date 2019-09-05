@@ -1198,7 +1198,7 @@ class JvmciParentClasspathBuildTask(mx.ProjectBuildTask):  # based NativePropert
         graalvm_dist = get_final_graalvm_distribution()
         start_path = dirname(graalvm_dist.find_single_source_location('dependency:{}'.format(GraalVmJvmciParentClasspath.project_name())))
         cp_entries = [relpath(graalvm_dist.find_single_source_location('dependency:{}'.format(jpj)), start_path) for jpj in self.subject.jvmci_parent_jars]
-        self._contents = unicode(_platform_classpath(cp_entries), 'utf-8')
+        self._contents = _unicode(_platform_classpath(cp_entries), 'utf-8')
 
     def contents(self):
         return self._contents
