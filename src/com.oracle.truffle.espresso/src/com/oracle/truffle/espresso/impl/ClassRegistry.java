@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
@@ -44,6 +45,64 @@ import com.oracle.truffle.espresso.substitutions.Host;
  */
 public abstract class ClassRegistry implements ContextAccess {
 
+    /**
+     * Traces the classes being initialized by this thread. Its only use is to be able to detect
+     * class circularity errors. A class being defined, that needs its superclass also to be defined
+     * will be pushed onto this stack. If the superclass is already present, then there is a
+     * circularity error.
+     */
+    // TODO: Rework this, a thread local is certainly less than optimal.
+    static final ThreadLocal<TypeStack> stack = ThreadLocal.withInitial(TypeStack.supplier);
+
+    static final class TypeStack {
+        static final Supplier<TypeStack> supplier = new Supplier<TypeStack>() {
+            @Override
+            public TypeStack get() {
+                return new TypeStack();
+            }
+        };
+
+        Stack stack = null;
+
+        static final class Stack {
+            Symbol<Type> entry;
+            Stack next;
+
+            Stack(Symbol<Type> entry, Stack next) {
+                this.entry = entry;
+                this.next = next;
+            }
+        }
+
+        boolean isEmpty() {
+            return stack == null;
+        }
+
+        boolean contains(Symbol<Type> type) {
+            Stack curr = stack;
+            while (curr != null) {
+                if (curr.entry == type) {
+                    return true;
+                }
+                curr = curr.next;
+            }
+            return false;
+        }
+
+        Symbol<Type> pop() {
+            Symbol<Type> res = stack.entry;
+            stack = stack.next;
+            return res;
+        }
+
+        void push(Symbol<Type> type) {
+            stack = new Stack(type, stack);
+        }
+
+        private TypeStack() {
+        }
+    }
+
     private final EspressoContext context;
 
     /**
@@ -63,20 +122,13 @@ public abstract class ClassRegistry implements ContextAccess {
         this.context = context;
     }
 
-    public Klass loadKlass(Symbol<Type> type) {
-        return loadKlass(type, null);
-    }
-
     /**
      * Queries a registry to load a Klass for us.
      * 
      * @param type the symbolic reference to the Klass we want to load
-     * @param instigator Should the loading of a Klass require loading other Klasses (superKlass for
-     *            example), this argument is the symbolic reference to the first Klass we attempted
-     *            to load through the whole loading chain.
      * @return The Klass corresponding to given type
      */
-    protected abstract Klass loadKlass(Symbol<Type> type, Symbol<Type> instigator);
+    protected abstract Klass loadKlass(Symbol<Type> type);
 
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
@@ -92,11 +144,7 @@ public abstract class ClassRegistry implements ContextAccess {
         return classes.get(type);
     }
 
-    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
-        return defineKlass(type, bytes, null);
-    }
-
-    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, Symbol<Type> instigator) {
+    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
         Meta meta = getMeta();
         if (typeOrNull != null && classes.containsKey(typeOrNull)) {
             throw meta.throwExWithMessage(LinkageError.class, "Class " + typeOrNull + " already defined in the BCL");
@@ -106,10 +154,6 @@ public abstract class ClassRegistry implements ContextAccess {
         ParserKlass parserKlass = getParserKlass(bytes, strType);
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
-
-        if (type == superKlassType || (superKlassType != null && instigator == superKlassType)) {
-            throw meta.throwEx(ClassCircularityError.class);
-        }
 
         return createAndPutKlass(meta, parserKlass, type, superKlassType);
     }
@@ -131,20 +175,41 @@ public abstract class ClassRegistry implements ContextAccess {
     private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
         ObjectKlass superKlass = superKlassType == null ? null : loadKlassRecursively(meta, superKlassType, true);
 
-        final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+        TypeStack chain = stack.get();
 
-        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
-                        ? LinkedKlass.EMPTY_ARRAY
-                        : new LinkedKlass[superInterfacesTypes.length];
+        ObjectKlass[] superInterfaces = null;
+        LinkedKlass[] linkedInterfaces = null;
 
-        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0
-                        ? ObjectKlass.EMPTY_ARRAY
-                        : new ObjectKlass[superInterfacesTypes.length];
+        chain.push(type);
 
-        for (int i = 0; i < superInterfacesTypes.length; ++i) {
-            ObjectKlass interf = loadKlassRecursively(meta, superInterfacesTypes[i], false);
-            superInterfaces[i] = interf;
-            linkedInterfaces[i] = interf.getLinkedKlass();
+        try {
+            if (superKlassType != null) {
+                if (chain.contains(superKlassType)) {
+                    throw meta.throwEx(ClassCircularityError.class);
+                }
+                superKlass = loadKlassRecursively(meta, superKlassType, true);
+            }
+
+            final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+
+            linkedInterfaces = superInterfacesTypes.length == 0
+                            ? LinkedKlass.EMPTY_ARRAY
+                            : new LinkedKlass[superInterfacesTypes.length];
+
+            superInterfaces = superInterfacesTypes.length == 0
+                            ? ObjectKlass.EMPTY_ARRAY
+                            : new ObjectKlass[superInterfacesTypes.length];
+
+            for (int i = 0; i < superInterfacesTypes.length; ++i) {
+                if (chain.contains(superInterfacesTypes[i])) {
+                    throw meta.throwEx(ClassCircularityError.class);
+                }
+                ObjectKlass interf = loadKlassRecursively(meta, superInterfacesTypes[i], false);
+                superInterfaces[i] = interf;
+                linkedInterfaces[i] = interf.getLinkedKlass();
+            }
+        } finally {
+            chain.pop();
         }
 
         // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
@@ -152,10 +217,8 @@ public abstract class ClassRegistry implements ContextAccess {
 
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
 
-        if (superKlass != null) {
-            if (!Klass.checkAccess(superKlass, klass)) {
-                throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superclass " + superKlassType));
-            }
+        if (superKlass != null && !Klass.checkAccess(superKlass, klass)) {
+            throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superclass " + superKlassType));
         }
 
         for (ObjectKlass interf : superInterfaces) {
