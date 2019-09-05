@@ -999,9 +999,9 @@ def create_asm_parser(args=None, out=None):
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
 
 def create_debugexpr_parser(args=None, out=None):
-    """create the inline assembly parser using antlr"""
+    """create the debug expression parser using antlr"""
     mx.suite("truffle").extensions.create_parser(grammar_project="com.oracle.truffle.llvm.runtime",
-                                                 grammar_package="com.oracle.truffle.llvm.runtime.debug.debugexpr.parser",
+                                                 grammar_package="com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr",
                                                  grammar_name="DebugExpression",
                                                  copyright_template=COPYRIGHT_HEADER_BSD, args=args, out=out)
 

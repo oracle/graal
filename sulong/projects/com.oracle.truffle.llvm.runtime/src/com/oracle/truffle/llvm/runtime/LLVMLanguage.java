@@ -175,6 +175,29 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected ExecutableNode parse(InlineParsingRequest request) throws Exception {
+        if (!Boolean.getBoolean("debugexpr.antlr")) {
+            return parseAntlr(request);
+        }
+        return parseCoCoR(request);
+    }
+
+    private ExecutableNode parseAntlr(InlineParsingRequest request) {
+        Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
+        final com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser d = new com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser(this, request, globalScopes);
+        try {
+            return new DebugExprExecutableNode(d.parse());
+        } catch (DebugExprException | LLVMParserException e) {
+            // error found during parsing
+            return new ExecutableNode(this) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return e.getMessage();
+                }
+            };
+        }
+    }
+
+    private ExecutableNode parseCoCoR(InlineParsingRequest request) {
         Iterable<Scope> globalScopes = findTopScopes(getContextReference().get());
         final DebugExprParser d = new DebugExprParser(this, request, globalScopes);
         try {
