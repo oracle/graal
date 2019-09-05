@@ -44,6 +44,22 @@ public abstract class IntegerHelper {
         return rawCompare(cast(a), cast(b));
     }
 
+    public boolean isGreater(long a, long b) {
+        return compare(a, b) > 0;
+    }
+
+    public boolean isSmaller(long a, long b) {
+        return compare(a, b) < 0;
+    }
+
+    public boolean isGreaterEqual(long a, long b) {
+        return compare(a, b) >= 0;
+    }
+
+    public boolean isSmallerEqual(long a, long b) {
+        return compare(a, b) <= 0;
+    }
+
     public long min(long a, long b) {
         return rawMin(cast(a), cast(b));
     }
