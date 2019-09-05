@@ -356,7 +356,7 @@ public final class AMD64Packing {
             // If we can fill an entire *MM register, we can just perform a single move and skip more complicated packing logic.
             if (sizeInBytes == YMM.getBytes()) {
                 masm.vmovdqu(asRegister(result), input.toAddress());
-            } if (sizeInBytes == XMM.getBytes()) {
+            } else if (sizeInBytes == XMM.getBytes()) {
                 masm.vmovdqu128(asRegister(result), input.toAddress());
             } else {
                 final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
@@ -417,7 +417,7 @@ public final class AMD64Packing {
             // If we can fill an entire *MM register, we can just perform a single move and skip more complicated packing logic.
             if (sizeInBytes == YMM.getBytes()) {
                 masm.vmovdqu(result.toAddress(), asRegister(input));
-            } if (sizeInBytes == XMM.getBytes()) {
+            } else if (sizeInBytes == XMM.getBytes()) {
                 masm.vmovdqu128(result.toAddress(), asRegister(input));
             } else {
                 final AMD64Address packSpaceAddress = (AMD64Address) crb.asAddress(packSpace);
