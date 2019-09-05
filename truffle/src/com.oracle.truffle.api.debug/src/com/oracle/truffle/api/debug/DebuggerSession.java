@@ -1264,6 +1264,8 @@ public final class DebuggerSession implements Closeable {
             return evalInContext(ev, node, frame, code);
         } catch (KillException kex) {
             throw new DebugException(ev.getSession(), "Evaluation was killed.", null, true, null);
+        } catch (IllegalStateException ex) {
+            throw ex;
         } catch (Throwable ex) {
             LanguageInfo language = null;
             RootNode root = node.getRootNode();
@@ -1277,15 +1279,12 @@ public final class DebuggerSession implements Closeable {
     private static Object evalInContext(SuspendedEvent ev, Node node, MaterializedFrame frame, String code) {
         RootNode rootNode = node.getRootNode();
         if (rootNode == null) {
-            throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopated using a RootNode.");
+            throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopted using a RootNode.");
         }
 
         LanguageInfo info = rootNode.getLanguageInfo();
         if (info == null) {
             throw new IllegalArgumentException("Cannot evaluate in context using a without an associated TruffleLanguage.");
-        }
-        if (!info.isInteractive()) {
-            throw new IllegalStateException("Can not evaluate in a non-interactive language.");
         }
 
         final Source source = Source.newBuilder(info.getId(), code, "eval in context").internal(true).build();
@@ -1294,6 +1293,9 @@ public final class DebuggerSession implements Closeable {
             ev.getInsertableNode().setParentOf(fragment);
             return fragment.execute(frame);
         } else {
+            if (!info.isInteractive()) {
+                throw new IllegalStateException("Can not evaluate in a non-interactive language.");
+            }
             return Debugger.ACCESSOR.evalInContext(source, node, frame);
         }
     }
