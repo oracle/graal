@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.233.3",
+  "mxversion" : "5.234.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -1936,7 +1936,7 @@ suite = {
         "org.graalvm.compiler.truffle.common.hotspot",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8,11+",
+      "javaCompliance" : "8,11,13+",
       "workingSets" : "Graal,Truffle",
     },
 
@@ -2040,7 +2040,7 @@ suite = {
       ],
       "checkPackagePrefix" : "false",
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8,11+",
+      "javaCompliance" : "8,13+",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.hotspot",
       "workingSets" : "Graal,Truffle",
     },
