@@ -1293,7 +1293,7 @@ public final class MethodVerifier implements ContextAccess {
                 
                 case LDC: 
                 case LDC_W: {
-                    PoolConstant pc = pool.at(code.readCPI(BCI));
+                    PoolConstant pc = poolAt(code.readCPI(BCI));
                     pc.checkValidity(pool);
                     Operand op = ldcFromTag(pc);
                     if (isType2(op)) {
@@ -1306,7 +1306,7 @@ public final class MethodVerifier implements ContextAccess {
                     break;
                 }
                 case LDC2_W: {
-                    PoolConstant pc = pool.at(code.readCPI(BCI));
+                    PoolConstant pc = poolAt(code.readCPI(BCI));
                     pc.checkValidity(pool);
                     Operand op = ldcFromTag(pc);
                     if (!isType2(op)) {
@@ -1612,7 +1612,7 @@ public final class MethodVerifier implements ContextAccess {
         if (code.readByte(BCI + 2) != 0 || code.readByte(BCI + 3) != 0) {
             throw new VerifyError("bytes 3 and 4 after invokedynamic must be 0.");
         }
-        PoolConstant pc = pool.at(code.readCPI(BCI));
+        PoolConstant pc = poolAt(code.readCPI(BCI));
 
         // Check CP validity
         if (pc.tag() != ConstantPool.Tag.INVOKEDYNAMIC) {
@@ -1644,15 +1644,21 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
-    private void verifyMultiNewArray(int BCI, Stack stack) {
-        // Check CP validity
-        PoolConstant pc = pool.at(code.readCPI(BCI));
+    private Symbol<Type> getTypeFromPool(int c, String s) {
+        PoolConstant pc = poolAt(c);
         if (pc.tag() != CLASS) {
-            throw new VerifyError("Invalid CP constant for MULTIANEWARRAY: " + pc.toString());
+            throw new VerifyError(s + pc.toString());
         }
         pc.checkValidity(pool);
         ClassConstant cc = (ClassConstant) pc;
         Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+        Types.verify(type);
+        return type;
+    }
+
+    private void verifyMultiNewArray(int BCI, Stack stack) {
+        // Check CP validity
+        Symbol<Type> type = getTypeFromPool(code.readCPI(BCI), "Invalid CP constant for MULTIANEWARRAY: ");
         if (!Types.isArray(type)) {
             throw new VerifyError("Class " + type + " for MULTINEWARRAY is not an array type.");
         }
@@ -1680,13 +1686,7 @@ public final class MethodVerifier implements ContextAccess {
         stack.popRef();
 
         // Check CP validity
-        PoolConstant pc = pool.at(code.readCPI(BCI));
-        if (pc.tag() != CLASS) {
-            throw new VerifyError("Invalid CP constant for INSTANCEOF: " + pc.toString());
-        }
-        pc.checkValidity(pool);
-        ClassConstant cc = (ClassConstant) pc;
-        Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+        Symbol<Type> type = getTypeFromPool(code.readCPI(BCI), "Invalid CP constant for INSTANCEOF: ");
         if (Types.isPrimitive(type)) {
             throw new VerifyError("Primitive type for INSTANCEOF: " + type);
         }
@@ -1700,14 +1700,7 @@ public final class MethodVerifier implements ContextAccess {
         Operand stacKOp = stack.popRef();
 
         // Check CP validity
-        int CPI = code.readCPI(BCI);
-        PoolConstant pc = pool.at(CPI);
-        if (pc.tag() != CLASS) {
-            throw new VerifyError("Invalid CP constant for CHECKCAST: " + pc.toString());
-        }
-        pc.checkValidity(pool);
-        ClassConstant cc = (ClassConstant) pc;
-        Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+        Symbol<Type> type = getTypeFromPool(code.readCPI(BCI), "Invalid CP constant for CHECKCAST: ");
         if (Types.isPrimitive(type)) {
             throw new VerifyError("Primitive type for CHECKCAST: " + type);
         }
@@ -1724,13 +1717,7 @@ public final class MethodVerifier implements ContextAccess {
     private void verifyNewObjectArray(int BCI, Stack stack) {
         // Check CP validity
         int CPI = code.readCPI(BCI);
-        PoolConstant pc = pool.at(CPI);
-        if (pc.tag() != CLASS) {
-            throw new VerifyError("Invalid CP constant for ANEWARRAY: " + pc.toString());
-        }
-        pc.checkValidity(pool);
-        ClassConstant cc = (ClassConstant) pc;
-        Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+        Symbol<Type> type = getTypeFromPool(CPI, "Invalid CP constant for ANEWARRAY: ");
         if (Types.isPrimitive(type)) {
             throw new VerifyError("Primitive type for ANEWARRAY: " + type);
         }
@@ -1747,6 +1734,13 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
+    private PoolConstant poolAt(int CPI) {
+        if (CPI >= pool.length() || CPI < 0) {
+            throw new VerifyError("Invalid constant pool access at " + CPI + ", pool length: " + pool.length());
+        }
+        return pool.at(CPI);
+    }
+
     private void verifyNewPrimitiveArray(int BCI, Stack stack) {
         byte jvmType = code.readByte(BCI);
         if (jvmType < 4 || jvmType > 11) {
@@ -1758,13 +1752,7 @@ public final class MethodVerifier implements ContextAccess {
 
     private void verifyNew(int BCI, Stack stack) {
         // Check CP validity
-        PoolConstant pc = pool.at(code.readCPI(BCI));
-        if (pc.tag() != CLASS) {
-            throw new VerifyError("Invalid CP constant for NEW: " + pc.toString());
-        }
-        pc.checkValidity(pool);
-        ClassConstant cc = (ClassConstant) pc;
-        Symbol<Type> type = getTypes().fromName(cc.getName(pool));
+        Symbol<Type> type = getTypeFromPool(code.readCPI(BCI), "Invalid CP constant for NEW: ");
         if (Types.isPrimitive(type) || Types.isArray(type)) {
             throw new VerifyError("use NEWARRAY for creating array or primitive type: " + type);
         }
@@ -1776,21 +1764,23 @@ public final class MethodVerifier implements ContextAccess {
 
     private void verifyPutField(int BCI, Stack stack, int curOpcode) {
         // Check CP validity
-        PoolConstant pc = pool.at(code.readCPI(BCI));
+        PoolConstant pc = poolAt(code.readCPI(BCI));
         if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
-            throw new VerifyError();
+            throw new VerifyError("Invalid CP constant for PUTFIELD: " + pc.toString());
         }
         pc.checkValidity(pool);
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
         Symbol<Type> fieldDesc = frc.getType(pool);
+        Types.verify(fieldDesc);
         Operand toPut = stack.pop(kindToOperand(fieldDesc));
 
         checkInit(toPut);
         if (curOpcode == PUTFIELD) {
             // Pop and check verifier
             Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
+            Types.verify(fieldHolderType);
             Operand fieldHolder = kindToOperand(fieldHolderType);
             Operand receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             if (receiver.isArrayType()) {
@@ -1804,18 +1794,20 @@ public final class MethodVerifier implements ContextAccess {
 
     private void verifyGetField(int BCI, Stack stack, int curOpcode) {
         // Check CP validity
-        PoolConstant pc = pool.at(code.readCPI(BCI));
+        PoolConstant pc = poolAt(code.readCPI(BCI));
         if (pc.tag() != ConstantPool.Tag.FIELD_REF) {
-            throw new VerifyError();
+            throw new VerifyError("Invalid CP constant for GETFIELD: " + pc.toString());
         }
         pc.checkValidity(pool);
 
         // Obtain field info
         FieldRefConstant frc = (FieldRefConstant) pc;
         Symbol<Type> type = frc.getType(pool);
+        Types.verify(type);
         if (curOpcode == GETFIELD) {
             // Pop and check receiver
             Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
+            Types.verify(fieldHolderType);
             Operand fieldHolder = kindToOperand(fieldHolderType);
             Operand receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             checkProtectedField(receiver, fieldHolderType, code.readCPI(BCI));
@@ -1918,7 +1910,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private MethodRefConstant getMethodRefConstant(int BCI) {
-        PoolConstant pc = pool.at(code.readCPI(BCI));
+        PoolConstant pc = poolAt(code.readCPI(BCI));
         if (!(pc instanceof MethodRefConstant)) {
             throw new VerifyError("Invalid CP constant for a MethodRef: " + pc.getClass().getName());
         }
@@ -1999,6 +1991,7 @@ public final class MethodVerifier implements ContextAccess {
         }
 
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
+        Types.verify(methodHolder);
         Operand methodHolderOp = kindToOperand(methodHolder);
 
         checkInit(stack.popRef(methodHolderOp));
@@ -2030,6 +2023,8 @@ public final class MethodVerifier implements ContextAccess {
         }
 
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
+        Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
+        Types.verify(methodHolder);
 
         if (!(returnOp == Void)) {
             stack.push(returnOp);
@@ -2054,11 +2049,12 @@ public final class MethodVerifier implements ContextAccess {
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
 
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
+        Types.verify(methodHolder);
         Operand methodHolderOp = kindToOperand(methodHolder);
 
         if (isInstanceInit(calledMethodName)) {
             if (returnOp != Void) {
-                throw new VerifyError("<init> method with non-void return type.");
+                throw new ClassFormatError("<init> method with non-void return type.");
             }
             UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(methodHolderOp);
             if (toInit.isUninitThis()) {
@@ -2128,6 +2124,7 @@ public final class MethodVerifier implements ContextAccess {
         Operand returnOp = popSignatureGetReturnOP(stack, mrc);
 
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
+        Types.verify(methodHolder);
         Operand methodHolderOp = kindToOperand(methodHolder);
         Operand stackOp = checkInit(stack.popRef(methodHolderOp));
 
