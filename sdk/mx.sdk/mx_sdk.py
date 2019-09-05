@@ -538,7 +538,25 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
 
         module_path = jmods_dir
         if modules:
-            module_path = os.pathsep.join((m.get_jmod_path(respect_stripping=True) for m in modules)) + os.pathsep + module_path
+            def _get_checked_jmod_path(m):
+                jmod_path = m.get_jmod_path(respect_stripping=True)
+                if m.dist:
+                    discriminant = 'jdk{}'.format(jdk.javaCompliance)
+                    jmod_path_parts = jmod_path.split(os.sep)
+                    jdk_index = -3 if jmod_path_parts[-2] == 'stripped' else -2
+                    assert jmod_path_parts[jdk_index].startswith('jdk'), 'parts={}, jdk_index={}, jmod_path={}'.format(jmod_path_parts, jdk_index, jmod_path)
+                    jmod_path_parts[jdk_index] = discriminant
+                    new_jmod_path = os.sep.join(jmod_path_parts)
+                    if new_jmod_path != jmod_path:
+                        mx.abort('Cannot use jlink in {} with a .jmod file for another JDK version ({}). '.format(jdk, jmod_path) +
+                                 'Ensure that JAVA_HOME is a more recent JDK than any available in EXTRA_JAVA_HOMES.' + os.linesep +
+                                 '       JAVA_HOME: ' + mx.get_env('JAVA_HOME', '') + os.linesep +
+                                 'EXTRA_JAVA_HOMES: ' + mx.get_env('EXTRA_JAVA_HOMES', ''))
+                if not exists(jmod_path):
+                    mx.abort('{} is missing. Should be fixed with `mx build')
+                return jmod_path
+
+            module_path = os.pathsep.join((_get_checked_jmod_path(m) for m in modules)) + os.pathsep + module_path
         jlink.append('--module-path=' + module_path)
         jlink.append('--output=' + dst_jdk_dir)
 
