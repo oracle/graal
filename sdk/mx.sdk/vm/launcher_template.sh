@@ -48,7 +48,7 @@ done
 jvm_args=("-Dorg.graalvm.launcher.shell=true")
 launcher_args=()
 
-# Unfortunately, parsing of `--jvm.*` arguments has to be done blind:
+# Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
 # Maybe some of those arguments where not really intended for the launcher but were application arguments
 
 for o in "$@"; do
