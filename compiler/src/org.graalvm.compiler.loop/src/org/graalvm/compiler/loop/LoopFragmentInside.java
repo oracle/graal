@@ -438,7 +438,7 @@ public class LoopFragmentInside extends LoopFragment {
             for (int i = 0; i < phi.valueCount(); i++) {
                 ValueNode v = phi.valueAt(i);
                 if (loopBegin.isPhiAtMerge(v)) {
-                    PhiNode newV = peel.getDuplicatedNode((ValuePhiNode) v);
+                    PhiNode newV = peel.getDuplicatedNode((PhiNode) v);
                     if (newV != null) {
                         phi.setValueAt(i, newV);
                     }

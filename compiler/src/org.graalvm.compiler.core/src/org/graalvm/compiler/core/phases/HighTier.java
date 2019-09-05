@@ -34,8 +34,8 @@ import static org.graalvm.compiler.core.common.GraalOptions.PartialEscapeAnalysi
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
 
 import org.graalvm.compiler.loop.LoopPolicies;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
-import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
@@ -43,13 +43,11 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.NodeCounterPhase;
-import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -94,13 +92,8 @@ public class HighTier extends BaseTier<HighTierContext> {
         LoopPolicies loopPolicies = createLoopPolicies();
         appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
 
-        if (OptLoopTransform.getValue(options)) {
-            if (LoopPeeling.getValue(options)) {
-                appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPeelingPhase(loopPolicies)));
-            }
-            if (LoopUnswitch.getValue(options)) {
-                appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopUnswitchingPhase(loopPolicies)));
-            }
+        if (OptLoopTransform.getValue(options) && LoopUnswitch.getValue(options)) {
+            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopUnswitchingPhase(loopPolicies)));
         }
 
         if (PartialEscapeAnalysis.getValue(options)) {
@@ -110,8 +103,6 @@ public class HighTier extends BaseTier<HighTierContext> {
         if (OptReadElimination.getValue(options)) {
             appendPhase(new EarlyReadEliminationPhase(canonicalizer));
         }
-
-        appendPhase(new RemoveValueProxyPhase());
 
         if (NodeCounterPhase.Options.NodeCounters.getValue(options)) {
             appendPhase(new NodeCounterPhase(NodeCounterPhase.Stage.LATE));
