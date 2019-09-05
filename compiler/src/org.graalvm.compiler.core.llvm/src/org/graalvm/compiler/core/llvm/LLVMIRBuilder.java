@@ -637,7 +637,7 @@ public class LLVMIRBuilder {
     /* Control flow */
     public static final AtomicLong nextPatchpointId = new AtomicLong(0);
 
-    LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
+    public LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
         return LLVM.LLVMBuildCall(builder, callee, new PointerPointer<>(args), args.length, DEFAULT_INSTR_NAME);
     }
 

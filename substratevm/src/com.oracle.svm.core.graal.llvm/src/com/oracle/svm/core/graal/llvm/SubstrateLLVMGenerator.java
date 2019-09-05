@@ -297,4 +297,9 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     protected CallingConvention.Type getCallingConventionType(CallingConvention callingConvention) {
         return ((SubstrateCallingConvention) callingConvention).getType();
     }
+
+    @Override
+    public LLVMValueRef getRetrieveExceptionFunction() {
+        return getFunction(LLVMFeature.retrieveExceptionMethod);
+    }
 }

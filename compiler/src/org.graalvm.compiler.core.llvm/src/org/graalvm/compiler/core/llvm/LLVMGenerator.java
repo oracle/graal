@@ -891,6 +891,8 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         return new LLVMVariable(builder.buildPtrToInt(returnAddress, builder.longType()));
     }
 
+    public abstract LLVMValueRef getRetrieveExceptionFunction();
+
     public LLVMGenerationResult getLLVMResult() {
         return generationResult;
     }
