@@ -2308,7 +2308,7 @@ public final class MethodVerifier implements ContextAccess {
         }
     }
 
-    private void checkProtectedMethod(Operand stackOp, Symbol<Type> methodHolderType, int fieldCPI) {
+    private void checkProtectedMethod(Operand stackOp, Symbol<Type> methodHolderType, int methodCPI) {
         /**
          * 4.10.1.8.
          *
@@ -2329,7 +2329,7 @@ public final class MethodVerifier implements ContextAccess {
             if (superKlass.getType() == methodHolderType) {
                 final Method method;
                 try {
-                    method = pool.resolvedMethodAt(thisKlass, fieldCPI);
+                    method = pool.resolvedMethodAt(thisKlass, methodCPI);
                 } catch (EspressoException e) {
                     if (getMeta().IllegalArgumentException.isAssignableFrom(e.getException().getKlass())) {
                         throw new VerifyError(EspressoException.getMessage(e.getException()));

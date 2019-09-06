@@ -255,6 +255,7 @@ import com.oracle.truffle.espresso.classfile.IntegerConstant;
 import com.oracle.truffle.espresso.classfile.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.LongConstant;
 import com.oracle.truffle.espresso.classfile.MethodHandleConstant;
+import com.oracle.truffle.espresso.classfile.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.MethodTypeConstant;
 import com.oracle.truffle.espresso.classfile.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.PoolConstant;
@@ -1438,10 +1439,10 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         return invoke.invoke(frame, top);
     }
 
-    private QuickNode dispatchQuickened(int curBCI, int opCode, Method resolutionSeed, boolean allowFieldAccessInlining) {
+    private QuickNode dispatchQuickened(int curBCI, int opCode, Method _resolutionSeed, boolean allowFieldAccessInlining) {
         assert !allowFieldAccessInlining || EspressoLanguage.getCurrentContext().InlineFieldAccessors;
         QuickNode invoke;
-
+        Method resolutionSeed = _resolutionSeed;
         switch (opCode) {
             case INVOKESTATIC:
                 // Otherwise, if the resolved method is an instance method, the invokestatic
@@ -1482,6 +1483,26 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 if (resolutionSeed.isStatic()) {
                     CompilerDirectives.transferToInterpreter();
                     throw getMeta().throwEx(IncompatibleClassChangeError.class);
+                }
+                // If all of the following are true, let C be the direct superclass of the current
+                // class:
+                //
+                // * The resolved method is not an instance initialization method (§2.9).
+                //
+                // * If the symbolic reference names a class (not an interface), then that class is
+                // a superclass of the current class.
+                //
+                // * The ACC_SUPER flag is set for the class file (§4.1). In Java SE 8 and above,
+                // the Java Virtual Machine considers the ACC_SUPER flag to be set in every class
+                // file, regardless of the actual value of the flag in the class file and the
+                // version of the class file.
+                if (!resolutionSeed.isConstructor()) {
+                    Klass declaringKlass = getMethod().getDeclaringKlass();
+                    Klass symbolicRef = ((MethodRefConstant.Indexes) getConstantPool().methodAt(bs.readCPI(curBCI))).getResolvedHolderKlass(declaringKlass, getConstantPool());
+                    if (!symbolicRef.isInterface() && symbolicRef != declaringKlass && declaringKlass.getSuperKlass() != null && symbolicRef != declaringKlass.getSuperKlass() &&
+                                    symbolicRef.isAssignableFrom(declaringKlass)) {
+                        resolutionSeed = declaringKlass.getSuperKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), declaringKlass);
+                    }
                 }
                 break;
             default:

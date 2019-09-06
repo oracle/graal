@@ -726,8 +726,4 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     public boolean sameRuntimePackage(Klass other) {
         return this.getDefiningClassLoader() == other.getDefiningClassLoader() && this.getRuntimePackage().equals(other.getRuntimePackage());
     }
-
-    public void unsafeSetVerified() {
-
-    }
 }
