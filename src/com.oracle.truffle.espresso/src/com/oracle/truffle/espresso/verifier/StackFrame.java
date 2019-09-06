@@ -538,7 +538,7 @@ class Locals {
 class SubroutineModificationStack {
     SubroutineModificationStack next;
     boolean[] subRoutineModifications;
-    int subroutineBCI;
+    int jsrBCI;
     int depth;
 
     SubroutineModificationStack(SubroutineModificationStack next, boolean[] subRoutineModifications, int bci) {
@@ -549,14 +549,14 @@ class SubroutineModificationStack {
             depth = 1 + next.depth();
         }
         this.subRoutineModifications = subRoutineModifications;
-        this.subroutineBCI = bci;
+        this.jsrBCI = bci;
     }
 
     static SubroutineModificationStack copy(SubroutineModificationStack tocopy) {
         if (tocopy == null) {
             return null;
         }
-        return new SubroutineModificationStack(tocopy.next, tocopy.subRoutineModifications.clone(), tocopy.subroutineBCI);
+        return new SubroutineModificationStack(tocopy.next, tocopy.subRoutineModifications.clone(), tocopy.jsrBCI);
     }
 
     public void merge(SubroutineModificationStack other) {

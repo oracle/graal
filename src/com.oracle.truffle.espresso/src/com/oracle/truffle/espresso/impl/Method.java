@@ -760,7 +760,7 @@ public final class Method implements TruffleObject, ModifiersProvider, ContextAc
     }
 
     @SuppressWarnings("unused")
-    private void printBytecodes() {
+    void printBytecodes() {
         new BytecodeStream(getCode()).printBytecode(declaringKlass);
     }
 }

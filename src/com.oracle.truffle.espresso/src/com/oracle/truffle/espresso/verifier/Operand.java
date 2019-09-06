@@ -9,6 +9,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 abstract class Operand {
     static public Operand[] EMPTY_ARRAY = new Operand[0];
@@ -63,6 +64,10 @@ abstract class Operand {
         return false;
     }
 
+    boolean isUninitThis() {
+        return false;
+    }
+
     boolean isNull() {
         return false;
     }
@@ -105,15 +110,18 @@ class PrimitiveOperand extends Operand {
 
 class ReturnAddressOperand extends PrimitiveOperand {
     ArrayList<Integer> targetBCIs = new ArrayList<>();
+    int subroutineBCI;
 
-    ReturnAddressOperand(int target) {
+    ReturnAddressOperand(int target, int subroutineBCI) {
         super(JavaKind.ReturnAddress);
         targetBCIs.add(target);
+        this.subroutineBCI = subroutineBCI;
     }
 
-    private ReturnAddressOperand(ArrayList<Integer> bcis) {
+    private ReturnAddressOperand(ArrayList<Integer> bcis, int subroutineBCI) {
         super(JavaKind.ReturnAddress);
         targetBCIs.addAll(bcis);
+        this.subroutineBCI = subroutineBCI;
     }
 
     @Override
@@ -128,6 +136,9 @@ class ReturnAddressOperand extends PrimitiveOperand {
         }
         if (other.isReturnAddress()) {
             ReturnAddressOperand ra = (ReturnAddressOperand) other;
+            if (ra.subroutineBCI != subroutineBCI) {
+                return false;
+            }
             for (Integer target : targetBCIs) {
                 if (!ra.targetBCIs.contains(target)) {
                     return false;
@@ -143,7 +154,11 @@ class ReturnAddressOperand extends PrimitiveOperand {
         if (!other.isReturnAddress()) {
             return null;
         }
-        ReturnAddressOperand ra = new ReturnAddressOperand(((ReturnAddressOperand) other).targetBCIs);
+        ReturnAddressOperand otherRA = (ReturnAddressOperand) other;
+        if (otherRA.subroutineBCI != subroutineBCI) {
+            return null;
+        }
+        ReturnAddressOperand ra = new ReturnAddressOperand(otherRA.targetBCIs, subroutineBCI);
         for (Integer target : targetBCIs) {
             if (!ra.targetBCIs.contains(target)) {
                 ra.targetBCIs.add(target);
@@ -192,8 +207,12 @@ class ReferenceOperand extends Operand {
                 } else {
                     klass = thisKlass.getMeta().loadKlass(type, thisKlass.getDefiningClassLoader());
                 }
-            } catch (Exception e) {
+            } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch
+                if (thisKlass.getMeta().ClassNotFoundException.isAssignableFrom(e.getException().getKlass())) {
+                    throw new NoClassDefFoundError(type.toString());
+                }
+                throw e;
             }
             if (klass == null) {
                 throw new NoClassDefFoundError(type.toString());
@@ -415,6 +434,7 @@ class UninitReferenceOperand extends ReferenceOperand {
         }
     }
 
+    @Override
     boolean isUninitThis() {
         return newBCI == -1;
     }

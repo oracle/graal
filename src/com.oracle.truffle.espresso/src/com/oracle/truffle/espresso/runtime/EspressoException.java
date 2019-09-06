@@ -156,4 +156,22 @@ public final class EspressoException extends RuntimeException implements Truffle
     public String toString() {
         return "EspressoException<" + getException() + ": " + getMessage() + ">";
     }
+
+    // Debug methods
+
+    @SuppressWarnings("unused")
+    private boolean match(String exceptionClass, String message) {
+        if (getException().getKlass().getType().toString().contains(exceptionClass)) {
+            if (message == null) {
+                return true;
+            }
+            return getMessage().contains(message);
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unused")
+    private boolean match(String exceptionClass) {
+        return match(exceptionClass, null);
+    }
 }
