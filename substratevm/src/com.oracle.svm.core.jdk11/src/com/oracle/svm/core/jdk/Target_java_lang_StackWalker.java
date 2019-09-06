@@ -48,6 +48,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -110,7 +111,7 @@ final class Target_java_lang_StackWalker {
     @NeverInline("Starting a stack walk in the caller frame")
     private <T> T walk(Function<? super Stream<StackFrame>, ? extends T> function) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        JavaStackWalker.initWalk(walk, KnownIntrinsics.readCallerStackPointer(), WordFactory.nullPointer());
+        JavaStackWalker.initWalk(walk, KnownIntrinsics.readCallerStackPointer());
 
         StackFrameSpliterator spliterator = new StackFrameSpliterator(walk);
         try {
@@ -194,14 +195,16 @@ final class Target_java_lang_StackWalker {
                 JavaStackWalker.continueWalk(walk);
 
             } else {
-                CodeInfo info = CodeInfoTable.lookupCodeInfo(ip);
-                walk.setIPCodeInfo(info);
-                Object tether = CodeInfoAccess.acquireTether(info);
+                UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+                walk.setIPCodeInfo(untetheredInfo);
+
+                Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
                 try {
+                    CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
                     curRegularFrame = queryFrameInfo(info, ip);
                     JavaStackWalker.continueWalk(walk);
                 } finally {
-                    CodeInfoAccess.releaseTether(info, tether);
+                    CodeInfoAccess.releaseTether(untetheredInfo, tether);
                 }
             }
         }

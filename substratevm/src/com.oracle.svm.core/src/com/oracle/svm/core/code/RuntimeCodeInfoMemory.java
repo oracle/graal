@@ -36,36 +36,39 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ObjectReferenceWalker;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 /**
  * Keeps track of {@link CodeInfo} structures of runtime-compiled methods (including invalidated and
- * not yet freed ones), {@linkplain ObjectReferenceWalker walks the object references they contain},
- * and releases their memory on tear-down.
+ * not yet freed ones) and releases their memory on tear-down.
  * <p>
  * Implementation: linear probing hash table adapted from OpenJDK {@link java.util.IdentityHashMap}.
+ * <p>
+ * All methods in here need to be either uninterruptible or it must be ensured that they are only
+ * called by the GC. This is necessary because the GC can invalidate code as well. So, it must be
+ * guaranteed that none of these methods is executed when a GC is triggered as we would end up with
+ * races between the application and the GC otherwise.
  */
-public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
+public class RuntimeCodeInfoMemory {
     @Fold
-    public static RuntimeMethodInfoMemory singleton() {
-        return ImageSingletons.lookup(RuntimeMethodInfoMemory.class);
+    public static RuntimeCodeInfoMemory singleton() {
+        return ImageSingletons.lookup(RuntimeCodeInfoMemory.class);
     }
 
     private final ReentrantLock lock = new ReentrantLock();
-    private NonmovableArray<CodeInfo> table;
+    private NonmovableArray<UntetheredCodeInfo> table;
     private int count = 0;
 
     public boolean add(CodeInfo info) {
+        // It is fine that this method is interruptible as all the relevant work is done in the
+        // uninterruptible method that is called below.
         assert !Heap.getHeap().isAllocationDisallowed();
         assert info.isNonNull();
         lock.lock();
         try {
-            if (table.isNull()) { // lazily and only when actually used
-                Heap.getHeap().getGC().registerObjectReferenceWalker(this);
-            }
             return add0(info);
         } finally {
             lock.unlock();
@@ -73,14 +76,23 @@ public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
     }
 
     public boolean remove(CodeInfo info) {
-        assert !Heap.getHeap().isAllocationDisallowed();
+        assert VMOperation.isGCInProgress() : "Otherwise, we would need to protect the CodeInfo from the GC.";
         assert info.isNonNull();
-        lock.lock();
-        try {
-            return remove0(info);
-        } finally {
-            lock.unlock();
+
+        int length = NonmovableArrays.lengthOf(table);
+        int index = hashIndex(info, length);
+        UntetheredCodeInfo entry = NonmovableArrays.getWord(table, index);
+        while (entry.isNonNull()) {
+            if (entry.equal(info)) {
+                NonmovableArrays.setWord(table, index, WordFactory.zero());
+                count--;
+                rehashAfterUnregisterAt(index);
+                return true;
+            }
+            index = nextIndex(index, length);
+            entry = NonmovableArrays.getWord(table, index);
         }
+        return false;
     }
 
     @Uninterruptible(reason = "Manipulate walkers list atomically with regard to GC.")
@@ -120,10 +132,10 @@ public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
         if (oldLength >= newLength) {
             return false;
         }
-        NonmovableArray<CodeInfo> oldTable = table;
+        NonmovableArray<UntetheredCodeInfo> oldTable = table;
         table = NonmovableArrays.createWordArray(newLength);
         for (int i = 0; i < oldLength; i++) {
-            CodeInfo tag = NonmovableArrays.getWord(oldTable, i);
+            UntetheredCodeInfo tag = NonmovableArrays.getWord(oldTable, i);
             if (tag.isNonNull()) {
                 NonmovableArrays.setWord(oldTable, i, WordFactory.zero());
                 int u = hashIndex(tag, newLength);
@@ -137,31 +149,13 @@ public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
         return true;
     }
 
-    @Uninterruptible(reason = "Manipulate walkers list atomically with regard to GC.")
-    private boolean remove0(CodeInfo info) {
-        int length = NonmovableArrays.lengthOf(table);
-        int index = hashIndex(info, length);
-        CodeInfo entry = NonmovableArrays.getWord(table, index);
-        while (entry.isNonNull()) {
-            if (entry.equal(info)) {
-                NonmovableArrays.setWord(table, index, WordFactory.zero());
-                count--;
-                rehashAfterUnregisterAt(index);
-                return true;
-            }
-            index = nextIndex(index, length);
-            entry = NonmovableArrays.getWord(table, index);
-        }
-        return false;
-    }
-
     /** Rehashes possibly-colliding entries after deletion to preserve collision properties. */
     @Uninterruptible(reason = "Called from uninterruptible code.")
     private void rehashAfterUnregisterAt(int index) { // from IdentityHashMap: Knuth 6.4 Algorithm R
         int length = NonmovableArrays.lengthOf(table);
         int d = index;
         int i = nextIndex(d, length);
-        CodeInfo info = NonmovableArrays.getWord(table, i);
+        UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
         while (info.isNonNull()) {
             int r = hashIndex(info, length);
             if ((i < r && (r <= d || d <= i)) || (r <= d && d <= i)) {
@@ -174,14 +168,20 @@ public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
         }
     }
 
-    @Override
-    public boolean walk(ObjectReferenceVisitor visitor) {
+    public boolean walkRuntimeMethods(CodeInfoVisitor visitor) {
+        assert VMOperation.isGCInProgress() : "otherwise, we would need to make sure that the CodeInfo is not freeded by the GC";
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
-            for (int i = 0; i < length; i++) {
-                CodeInfo info = NonmovableArrays.getWord(table, i);
+            for (int i = 0; i < length;) {
+                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
                 if (info.isNonNull()) {
-                    RuntimeMethodInfoAccess.walkReferences(info, visitor);
+                    visitor.visitCode(CodeInfoAccess.convert(info));
+                }
+
+                // If the visitor removed the current entry from the table, then it is necessary to
+                // visit the now updated entry one more time.
+                if (info == NonmovableArrays.getWord(table, i)) {
+                    i++;
                 }
             }
         }
@@ -189,7 +189,7 @@ public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static int hashIndex(CodeInfo tag, int length) {
+    private static int hashIndex(UntetheredCodeInfo tag, int length) {
         int h = (int) (tag.rawValue() >>> 32) * 31 + (int) tag.rawValue();
         // Multiply by -127, and left-shift to use least bit as part of hash
         return ((h << 1) - (h << 8)) & (length - 1);
@@ -205,9 +205,15 @@ public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
             for (int i = 0; i < length; i++) {
-                CodeInfo info = NonmovableArrays.getWord(table, i);
-                if (info.isNonNull()) {
-                    RuntimeMethodInfoAccess.releaseMethodInfoOnTearDown(info);
+                UntetheredCodeInfo untetheredInfo = NonmovableArrays.getWord(table, i);
+                if (untetheredInfo.isNonNull()) {
+                    Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+                    try {
+                        CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
+                        RuntimeCodeInfoAccess.releaseMethodInfoOnTearDown(info);
+                    } finally {
+                        CodeInfoAccess.releaseTetherUnsafe(untetheredInfo, tether);
+                    }
                 }
             }
             NonmovableArrays.releaseUnmanagedArray(table);
@@ -220,6 +226,6 @@ public class RuntimeMethodInfoMemory extends ObjectReferenceWalker {
 class RuntimeMethodInfoMemoryFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeMethodInfoMemory.class, new RuntimeMethodInfoMemory());
+        ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
     }
 }

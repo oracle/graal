@@ -230,7 +230,7 @@ public class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
+    public static DynamicHub dynamicHubFromObjectHeader(UnsignedWord header) {
         // Turn the Unsigned header into a Pointer, and then to an Object of type DynamicHub.
         final UnsignedWord pointerBits = clearBits(header);
         final Object objectValue;
@@ -332,7 +332,12 @@ public class ObjectHeaderImpl extends ObjectHeader {
         return isBootImageHeaderBits(headerBits);
     }
 
-    protected boolean isBootImageHeaderBits(UnsignedWord headerBits) {
+    public boolean isBootImageHeader(UnsignedWord header) {
+        final UnsignedWord headerBits = ObjectHeaderImpl.getHeaderBitsFromHeader(header);
+        return isBootImageHeaderBits(headerBits);
+    }
+
+    private static boolean isBootImageHeaderBits(UnsignedWord headerBits) {
         return headerBitsEqual(headerBits, BOOT_IMAGE);
     }
 

@@ -33,9 +33,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -89,11 +89,11 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         return (address0 != 0) && isValidLastTier0(address0);
     }
 
-    @Uninterruptible(reason = "Prevent invalidation of code while in this method.")
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
     private static boolean isValidLastTier0(long address0) {
-        CodeInfo codeInfo = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(address0));
-        if (codeInfo.isNonNull() && codeInfo.notEqual(CodeInfoTable.getImageCodeInfo())) {
-            return CodeInfoAccess.getTier(codeInfo) == TruffleCompiler.LAST_TIER_INDEX;
+        UntetheredCodeInfo info = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(address0));
+        if (info.isNonNull() && info.notEqual(CodeInfoTable.getImageCodeInfo())) {
+            return UntetheredCodeInfoAccess.getTier(info) == TruffleCompiler.LAST_TIER_INDEX;
         }
         return false;
     }
@@ -127,6 +127,7 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
          * that no longer contains executable code.
          */
         long start = address;
+        // The call below is not a safepoint as it is intrinsified in TruffleGraphBuilderPlugins.
         if (!inInlinedCode() && start != 0) {
             CallBoundaryFunctionPointer target = WordFactory.pointer(start);
             return KnownIntrinsics.convertUnknownValue(target.invoke(this, args), Object.class);

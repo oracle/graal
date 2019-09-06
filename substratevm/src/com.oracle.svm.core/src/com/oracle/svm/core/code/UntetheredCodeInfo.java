@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.core.code;
 
-import java.lang.management.GarbageCollectorMXBean;
-import java.util.List;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
 
-public interface GC {
-
-    /** Cause a collection of the Heap's choosing. */
-    void collect(GCCause cause);
-
-    /** Cause a full collection. */
-    void collectCompletely(GCCause cause);
-
-    /*
-     * Registered collection watchers.
-     */
-
-    void registerCollectionWatcher(CollectionWatcher watcher);
-
-    void unregisterCollectionWatcher(CollectionWatcher watcher);
-
-    /** Get the list of GarbageCollectorMXBeans for this collector. */
-    List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList();
+/**
+ * The untethered version of {@link CodeInfo}, which can be released by the GC at <b>ANY</b>
+ * safepoint. Before it is possible to access any data, it is necessary to convert a pointer of this
+ * type to a {@link CodeInfo} pointer using {@link CodeInfoAccess#acquireTether} and
+ * {@link CodeInfoAccess#convert}. For more details, refer to the documentation of
+ * {@link CodeInfoAccess}.
+ * <p>
+ * <b>NEVER</b> do a direct cast from {@link UntetheredCodeInfo} to {@link CodeInfo}.
+ * <p>
+ * If it is necessary to access data without acquiring the tether, then call the static methods of
+ * the class {@link UntetheredCodeInfoAccess} from uninterruptible code.
+ */
+@RawStructure
+public interface UntetheredCodeInfo extends PointerBase {
 }

@@ -45,12 +45,10 @@ import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectHeader.HeapKind;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -201,9 +199,8 @@ public final class NonmovableArrays {
     /**
      * Allocates an array of the specified length to hold references to objects on the Java heap. In
      * order to ensure that the referenced objects are reachable for garbage collection, the owner
-     * of an instance must call {@link #walkUnmanagedObjectArray} on each array from
-     * {@linkplain GC#registerObjectReferenceWalker a GC-registered reference walker}. The array
-     * must be released manually with {@link #releaseUnmanagedArray}.
+     * of an instance must call {@link #walkUnmanagedObjectArray} on each array from a GC-registered
+     * reference walker. The array must be released manually with {@link #releaseUnmanagedArray}.
      * <p>
      * The returned array must be accessed via methods of {@link NonmovableArrays} only, such as
      * {@link #getObject} and {@link #setObject}. Although the array's memory layout might resemble
@@ -370,21 +367,33 @@ public final class NonmovableArrays {
 
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
-     *
-     * @see ObjectReferenceWalker
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
-    public static void walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
+    public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
+            return walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
+        }
+        return true;
+    }
+
+    /**
+     * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
+    public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
+        if (array.isNonNull()) {
+            assert startIndex >= 0 && count <= lengthOf(array) - startIndex;
             int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             assert refSize == (1 << readElementShift(array));
-            int length = lengthOf(array);
-            Pointer p = ((Pointer) array).add(readArrayBase(array));
-            for (int i = 0; i < length; i++) {
-                visitor.visitObjectReference(p, true);
+            Pointer p = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
+            for (int i = 0; i < count; i++) {
+                if (!visitor.visitObjectReference(p, true)) {
+                    return false;
+                }
                 p = p.add(refSize);
             }
         }
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
