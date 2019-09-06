@@ -191,7 +191,7 @@ public class LLVMFeature implements Feature, GraalFeature {
         }
     }
 
-    private static final int MIN_LLVM_MAJOR_VERSION = 6;
+    private static final int MIN_LLVM_MAJOR_VERSION = 8;
     private static final int MIN_LLVM_MINOR_VERSION = 0;
 
     private static void checkLLVMVersion() {
