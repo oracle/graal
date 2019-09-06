@@ -882,7 +882,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             ],
         ),
     ],
-    provided_executables=['bin/rebuild-images'] if not mx.is_windows() else [],
+    provided_executables=['bin/<cmd:rebuild-images>'],
     installable=True,
 ))
 
