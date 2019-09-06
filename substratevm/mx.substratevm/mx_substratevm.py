@@ -469,7 +469,6 @@ def svm_gate_body(args, tasks):
                     unittest_deps.append(mx.dependency('truffle:TRUFFLE_SL_TCK'))
                     vm_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
                     tests_image = native_image(vm_image_args + ['--macro:truffle',
-                                                                '--initialize-at-build-time=org.graalvm.polyglot.tck,org.hamcrest,org.junit',
                                                                 '--features=com.oracle.truffle.tck.tests.TruffleTCKFeature',
                                                                 '-H:Class=org.junit.runner.JUnitCore', '-H:IncludeResources=com/oracle/truffle/sl/tck/resources/.*',
                                                                 '-H:MaxRuntimeCompileMethods=3000'])
