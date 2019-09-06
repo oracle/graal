@@ -52,18 +52,23 @@ import org.graalvm.compiler.phases.graph.ReentrantBlockIterator;
 import org.graalvm.compiler.phases.graph.ReentrantBlockIterator.BlockIteratorClosure;
 import org.graalvm.word.LocationIdentity;
 
-public final class MemoryScheduleVerification extends BlockIteratorClosure<EconomicSet<FloatingReadNode>> {
+/**
+ * Verifies that the schedule of the graph is correct. Checks that floating reads are not killed
+ * between definition and usage. Also checks that there are no usages spanning loop exits without a
+ * proper proxy node.
+ */
+public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet<FloatingReadNode>> {
 
     private final BlockMap<List<Node>> blockToNodesMap;
     private final NodeMap<Block> nodeMap;
     private final StructuredGraph graph;
 
     public static boolean check(Block startBlock, BlockMap<List<Node>> blockToNodesMap, NodeMap<Block> nodeMap) {
-        ReentrantBlockIterator.apply(new MemoryScheduleVerification(blockToNodesMap, nodeMap, startBlock.getBeginNode().graph()), startBlock);
+        ReentrantBlockIterator.apply(new ScheduleVerification(blockToNodesMap, nodeMap, startBlock.getBeginNode().graph()), startBlock);
         return true;
     }
 
-    private MemoryScheduleVerification(BlockMap<List<Node>> blockToNodesMap, NodeMap<Block> nodeMap, StructuredGraph graph) {
+    private ScheduleVerification(BlockMap<List<Node>> blockToNodesMap, NodeMap<Block> nodeMap, StructuredGraph graph) {
         this.blockToNodesMap = blockToNodesMap;
         this.nodeMap = nodeMap;
         this.graph = graph;
@@ -161,7 +166,7 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Econo
                     while (usageLoop != block.getLoop() && usageLoop != null) {
                         usageLoop = usageLoop.getParent();
                     }
-                    assert usageLoop != null : n + ", " + usageNode;
+                    assert usageLoop != null : n + ", " + usageNode + ", " + usageBlock + ", " + usageBlock.getLoop() + ", " + block + ", " + block.getLoop();
                 }
             }
         }

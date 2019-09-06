@@ -107,7 +107,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         canonicalizer.apply(graph, getProviders());
         HighTierContext context = getDefaultHighTierContext();
-        new LoopFullUnrollPhase(canonicalizer, new DefaultLoopPolicies()).apply(graph, context);
+        new LoopFullUnrollPhase(canonicalizer, new DefaultLoopPolicies(true)).apply(graph, context);
         new LockEliminationPhase().apply(graph);
         assertDeepEquals(1, graph.getNodes().filter(RawMonitorEnterNode.class).count());
         assertDeepEquals(1, graph.getNodes().filter(MonitorExitNode.class).count());

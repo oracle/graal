@@ -207,7 +207,7 @@ public final class SchedulePhase extends Phase {
 
                 assert verifySchedule(cfg, latestBlockToNodesMap, currentNodeMap);
                 assert (!Assertions.detailedAssertionsEnabled(graph.getOptions())) ||
-                                MemoryScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap, currentNodeMap);
+                                ScheduleVerification.check(cfg.getStartBlock(), latestBlockToNodesMap, currentNodeMap);
 
                 this.blockToNodesMap = latestBlockToNodesMap;
 
@@ -897,7 +897,7 @@ public final class SchedulePhase extends Phase {
                 }
             }
 
-            assert (!Assertions.detailedAssertionsEnabled(cfg.graph.getOptions())) || MemoryScheduleVerification.check(cfg.getStartBlock(), blockToNodes, nodeToBlock);
+            assert (!Assertions.detailedAssertionsEnabled(cfg.graph.getOptions())) || ScheduleVerification.check(cfg.getStartBlock(), blockToNodes, nodeToBlock);
         }
 
         private static void processNodes(NodeBitMap visited, NodeMap<MicroBlock> entries, NodeStack stack, MicroBlock startBlock, Iterable<? extends Node> nodes) {

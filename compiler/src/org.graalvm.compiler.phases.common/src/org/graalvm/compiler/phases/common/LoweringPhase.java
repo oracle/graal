@@ -46,6 +46,7 @@ import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -131,12 +132,14 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
         private final NodeBitMap activeGuards;
         private AnchoringNode guardAnchor;
         private FixedWithNextNode lastFixedNode;
+        private NodeMap<Block> nodeMap;
 
-        LoweringToolImpl(CoreProviders context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode) {
+        LoweringToolImpl(CoreProviders context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, NodeMap<Block> nodeMap) {
             this.context = context;
             this.guardAnchor = guardAnchor;
             this.activeGuards = activeGuards;
             this.lastFixedNode = lastFixedNode;
+            this.nodeMap = nodeMap;
         }
 
         @Override
@@ -199,7 +202,8 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
             StructuredGraph graph = before.graph();
             if (OptEliminateGuards.getValue(graph.getOptions())) {
                 for (Node usage : condition.usages()) {
-                    if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).isNegated() == negated) {
+                    if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).isNegated() == negated &&
+                                    (!before.graph().hasValueProxies() || nodeMap.get(((GuardNode) usage).getAnchor().asNode()).sameOrOuterLoop(nodeMap.get(before)))) {
                         return (GuardNode) usage;
                     }
                 }
@@ -447,7 +451,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
         @SuppressWarnings("try")
         private AnchoringNode process(final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor) {
 
-            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode());
+            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), this.schedule.getNodeToBlockMap());
 
             // Lower the instructions of this block.
             List<Node> nodes = schedule.nodesFor(b);

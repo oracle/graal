@@ -365,4 +365,27 @@ public final class Block extends AbstractBlockBase<Block> {
     protected void setPostDominator(Block postdominator) {
         this.postdominator = postdominator;
     }
+
+    public boolean sameOrOuterLoop(Block block) {
+
+        Loop<Block> l = this.loop;
+        if (l == null) {
+            // We are in no loop, so this holds true for every other block.
+            return true;
+        }
+
+        if (block.loop == null) {
+            // We are in a loop, but block isn't, so this always false.
+            return false;
+        }
+
+        while (l != null) {
+            if (l == block.loop) {
+                return true;
+            }
+            l = l.getParent();
+        }
+
+        return false;
+    }
 }

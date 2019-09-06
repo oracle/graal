@@ -88,7 +88,7 @@ public class LoopFullUnrollTest extends GraalCompilerTest {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO, debug);
 
             CoreProviders context = getProviders();
-            new LoopFullUnrollPhase(createCanonicalizerPhase(), new DefaultLoopPolicies()).apply(graph, context);
+            new LoopFullUnrollPhase(createCanonicalizerPhase(), new DefaultLoopPolicies(true)).apply(graph, context);
 
             assertTrue(graph.getNodes().filter(LoopBeginNode.class).count() == loopCount);
         } catch (Throwable e) {
