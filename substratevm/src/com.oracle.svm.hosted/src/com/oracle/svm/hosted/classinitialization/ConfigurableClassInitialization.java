@@ -27,8 +27,10 @@ package com.oracle.svm.hosted.classinitialization;
 import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
 
 import java.lang.reflect.Proxy;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,7 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -105,6 +108,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void setConfigurationSealed(boolean sealed) {
         configurationSealed = sealed;
+        if (configurationSealed && ClassInitializationFeature.Options.PrintClassInitialization.getValue()) {
+            List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
+            allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
+            String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
+            ReportUtils.report("initializer configuration", path, "initializer_configuration", "txt", writer -> {
+                for (ClassOrPackageConfig config : allConfigs) {
+                    writer.append(config.getName()).append(" -> ").append(config.getKind().toString()).append(" reasons: ")
+                                    .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
+                }
+            });
+        }
     }
 
     @Override
@@ -504,11 +518,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (clazz.isAnnotation()) {
             throw UserError.abort("Class initialization of annotation classes cannot be delayed to runtime. Culprit: " + clazz.getTypeName());
         }
-    }
-
-    @Override
-    public List<ClassOrPackageConfig> getClassInitializationConfiguration() {
-        return classInitializationConfiguration.allConfigs();
     }
 
     /**
