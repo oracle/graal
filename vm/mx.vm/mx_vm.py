@@ -45,6 +45,7 @@ import mx_vm_benchmark
 import mx_vm_gate
 
 import sys
+
 if sys.version_info[0] < 3:
     _unicode = unicode # pylint: disable=undefined-variable
     def _decode(x):
@@ -53,6 +54,15 @@ else:
     _unicode = str
     def _decode(x):
         return x.decode()
+
+def unicode_utf8(string):
+    if sys.version_info[0] < 3:
+        if isinstance(string, str):
+            return unicode(string, 'utf-8')
+    elif isinstance(string, bytes):
+        return str(string)
+    return string
+
 
 def _with_metaclass(meta, *bases):
     """Create a base class with a metaclass."""
@@ -982,12 +992,11 @@ def _file_needs_build(newest_input, filepath, contents_getter):
     if newest_input and ts.isOlderThan(newest_input):
         return "{} is older than {}".format(ts, newest_input)
     with open(filepath, 'r') as f:
-        on_disk = f.read()
-        if not isinstance(on_disk, _unicode):
-            on_disk = on_disk.decode('utf-8')
+        on_disk = unicode_utf8(f.read())
     if contents_getter() != on_disk:
         return "content not up to date"
     return None
+
 
 
 class NativePropertiesBuildTask(mx.ProjectBuildTask):
@@ -1198,7 +1207,7 @@ class JvmciParentClasspathBuildTask(mx.ProjectBuildTask):  # based NativePropert
         graalvm_dist = get_final_graalvm_distribution()
         start_path = dirname(graalvm_dist.find_single_source_location('dependency:{}'.format(GraalVmJvmciParentClasspath.project_name())))
         cp_entries = [relpath(graalvm_dist.find_single_source_location('dependency:{}'.format(jpj)), start_path) for jpj in self.subject.jvmci_parent_jars]
-        self._contents = _unicode(_platform_classpath(cp_entries), 'utf-8')
+        self._contents = unicode_utf8(_platform_classpath(cp_entries))
 
     def contents(self):
         return self._contents
