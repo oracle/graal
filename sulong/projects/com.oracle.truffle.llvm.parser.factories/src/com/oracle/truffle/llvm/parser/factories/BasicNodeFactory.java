@@ -1681,12 +1681,12 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> allFunctionNodes, UniquesRegionAllocator uniquesRegionAllocator,
-                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location) {
+                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMStatementNode[] copyArgumentsToFrame, LLVMSourceLocation location, FrameDescriptor frameDescriptor) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = LLVMUniquesRegionAllocNodeGen.create(uniquesRegionAllocator);
         LLVMDispatchBasicBlockNode body = new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller,
                         afterBlockNuller);
         body.getOrCreateSourceDescriptor().setSourceLocation(location);
-        final LLVMFunctionRootNode functionRoot = new LLVMFunctionRootNode(uniquesRegionAllocNode, copyArgumentsToFrame, body);
+        final LLVMFunctionRootNode functionRoot = new LLVMFunctionRootNode(uniquesRegionAllocNode, copyArgumentsToFrame, body, frameDescriptor);
         functionRoot.getOrCreateSourceDescriptor().setSourceLocation(location);
         return functionRoot;
     }
