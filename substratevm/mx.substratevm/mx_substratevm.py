@@ -416,7 +416,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             _native_image(['--server-shutdown'])
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
-_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature'
+_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature'
 
 
 def svm_gate_body(args, tasks):
