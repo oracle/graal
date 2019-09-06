@@ -409,6 +409,16 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/lang/Math.max(FF)F",
                             "java/lang/Math.min(DD)D",
                             "java/lang/Math.min(FF)F");
+            add(toBeInvestigated,
+                            "jdk/internal/misc/Unsafe.writeback0(J)V",
+                            "jdk/internal/misc/Unsafe.writebackPostSync0()V",
+                            "jdk/internal/misc/Unsafe.writebackPreSync0()V");
+        }
+
+        if (isJDK14OrHigher()) {
+            add(toBeInvestigated,
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
         }
 
         if (!config.inlineNotify()) {
@@ -581,6 +591,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     private static boolean isJDK13OrHigher() {
         return JavaVersionUtil.JAVA_SPEC >= 13;
+    }
+
+    private static boolean isJDK14OrHigher() {
+        return JavaVersionUtil.JAVA_SPEC >= 14;
     }
 
     public interface Refiner {
