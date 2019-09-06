@@ -121,6 +121,7 @@ import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 import org.graalvm.compiler.nodes.spi.MemoryProxy;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
@@ -886,7 +887,7 @@ public class SnippetTemplate {
 
             GuardsStage guardsStage = args.cacheKey.guardsStage;
             // Perform lowering on the snippet
-            if (!guardsStage.allowsFloatingGuards()) {
+            if (args.cacheKey.loweringStage != StandardLoweringStage.HIGH_TIER) {
                 new GuardLoweringPhase().apply(snippetCopy, null);
             }
             snippetCopy.setGuardsStage(guardsStage);
@@ -930,7 +931,10 @@ public class SnippetTemplate {
             assert checkAllVarargPlaceholdersAreDeleted(parameterCount, placeholders);
 
             new FloatingReadPhase(true, true).apply(snippetCopy);
-            new RemoveValueProxyPhase().apply(snippetCopy);
+
+            if (guardsStage.areFrameStatesAtDeopts()) {
+                new RemoveValueProxyPhase().apply(snippetCopy);
+            }
 
             MemoryAnchorNode anchor = snippetCopy.add(new MemoryAnchorNode());
             snippetCopy.start().replaceAtUsages(InputType.Memory, anchor);

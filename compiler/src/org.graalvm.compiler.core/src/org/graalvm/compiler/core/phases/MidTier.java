@@ -25,6 +25,9 @@
 package org.graalvm.compiler.core.phases;
 
 import static org.graalvm.compiler.core.common.GraalOptions.ConditionalElimination;
+import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopPeeling;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopUnswitch;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
 import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
@@ -38,6 +41,7 @@ import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
+import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.loop.phases.ReassociateInvariantPhase;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -87,9 +91,14 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new VerifyHeapAtReturnPhase());
         }
 
-        LoopPolicies loopPolicies = createLoopPolicies();
+        LoopPolicies loopPolicies = createLoopPolicies(false);
+
         if (LoopPeeling.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPeelingPhase(loopPolicies)));
+        }
+
+        if (LoopUnswitch.getValue(options)) {
+            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopUnswitchingPhase(loopPolicies)));
         }
 
         appendPhase(new RemoveValueProxyPhase());
@@ -116,4 +125,11 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         appendPhase(new WriteBarrierAdditionPhase());
     }
+<<<<<<< HEAD
+=======
+
+    public LoopPolicies createLoopPolicies(boolean highTier) {
+        return new DefaultLoopPolicies(highTier);
+    }
+>>>>>>> Add highTier flag to loop policies. Apply loop peeling and splitting in high tier and mid tier. Restrict loop frequencies to >= 1.0.
 }

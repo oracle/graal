@@ -306,7 +306,8 @@ public class FloatingReadPhase extends Phase {
             if (node instanceof LoopExitNode) {
                 final LoopExitNode loopExitNode = (LoopExitNode) node;
                 final EconomicSet<LocationIdentity> modifiedInLoop = modifiedInLoops.get(loopExitNode.loopBegin());
-                state.getMap().replaceAll((locationIdentity, memoryNode) -> modifiedInLoop.contains(locationIdentity)
+                final boolean anyModified = modifiedInLoop.contains(LocationIdentity.any());
+                state.getMap().replaceAll((locationIdentity, memoryNode) -> (anyModified || modifiedInLoop.contains(locationIdentity))
                                 ? ProxyNode.forMemory(memoryNode, loopExitNode, locationIdentity)
                                 : memoryNode);
             }

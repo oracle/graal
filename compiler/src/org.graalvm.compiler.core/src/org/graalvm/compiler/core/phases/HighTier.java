@@ -35,6 +35,7 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import org.graalvm.compiler.loop.LoopPolicies;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
+import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
@@ -88,8 +89,12 @@ public class HighTier extends BaseTier<HighTierContext> {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
-        LoopPolicies loopPolicies = createLoopPolicies();
+        LoopPolicies loopPolicies = createLoopPolicies(true);
         appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
+
+        if (LoopPeeling.getValue(options)) {
+            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPeelingPhase(loopPolicies)));
+        }
 
         if (LoopUnswitch.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopUnswitchingPhase(loopPolicies)));
@@ -108,5 +113,9 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));
+    }
+
+    public LoopPolicies createLoopPolicies(boolean highTier) {
+        return new DefaultLoopPolicies(highTier);
     }
 }

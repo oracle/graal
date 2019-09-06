@@ -82,8 +82,12 @@ public abstract class LoopTransformations {
     }
 
     public static void peel(LoopEx loop) {
+        loop.detectCounted();
         loop.inside().duplicate().insertBefore(loop);
-        loop.loopBegin().setLoopFrequency(Math.max(0.0, loop.loopBegin().loopFrequency() - 1));
+        if (loop.isCounted()) {
+            // For counted loops we assume that we have an effect on the loop frequency.
+            loop.loopBegin().setLoopFrequency(Math.max(1.0, loop.loopBegin().loopFrequency() - 1));
+        }
     }
 
     @SuppressWarnings("try")
@@ -322,9 +326,9 @@ public abstract class LoopTransformations {
 
         // Change the preLoop to execute one iteration for now
         updatePreLoopLimit(preCounted);
-        preLoopBegin.setLoopFrequency(1);
-        mainLoopBegin.setLoopFrequency(Math.max(0.0, mainLoopBegin.loopFrequency() - 2));
-        postLoopBegin.setLoopFrequency(Math.max(0.0, postLoopBegin.loopFrequency() - 1));
+        preLoopBegin.setLoopFrequency(1.0);
+        mainLoopBegin.setLoopFrequency(Math.max(1.0, mainLoopBegin.loopFrequency() - 2));
+        postLoopBegin.setLoopFrequency(Math.max(1.0, postLoopBegin.loopFrequency() - 1));
 
         // The pre and post loops don't require safepoints at all
         for (SafepointNode safepoint : preLoop.nodes().filter(SafepointNode.class)) {

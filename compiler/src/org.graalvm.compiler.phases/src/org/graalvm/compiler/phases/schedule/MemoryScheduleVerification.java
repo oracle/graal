@@ -35,7 +35,10 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MemoryProxyNode;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -73,6 +76,15 @@ public final class MemoryScheduleVerification extends BlockIteratorClosure<Econo
                 if (phi instanceof MemoryPhiNode) {
                     MemoryPhiNode memoryPhiNode = (MemoryPhiNode) phi;
                     addFloatingReadUsages(currentState, memoryPhiNode);
+                }
+            }
+        }
+        if (beginNode instanceof LoopExitNode) {
+            LoopExitNode loopExitNode = (LoopExitNode) beginNode;
+            for (ProxyNode proxy : loopExitNode.proxies()) {
+                if (proxy instanceof MemoryProxyNode) {
+                    MemoryProxyNode memoryProxyNode = (MemoryProxyNode) proxy;
+                    addFloatingReadUsages(currentState, memoryProxyNode);
                 }
             }
         }

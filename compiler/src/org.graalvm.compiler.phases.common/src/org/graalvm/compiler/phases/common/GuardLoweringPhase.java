@@ -59,11 +59,9 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static class LowerGuards extends ScheduledNodeIterator {
 
-        private final Block block;
         private boolean useGuardIdAsDebugId;
 
-        LowerGuards(Block block, boolean useGuardIdAsDebugId) {
-            this.block = block;
+        LowerGuards(boolean useGuardIdAsDebugId) {
             this.useGuardIdAsDebugId = useGuardIdAsDebugId;
         }
 
@@ -129,6 +127,6 @@ public class GuardLoweringPhase extends BasePhase<MidTierContext> {
 
     private static void processBlock(Block block, ScheduleResult schedule) {
         DebugContext debug = block.getBeginNode().getDebug();
-        new LowerGuards(block, debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod()).processNodes(block, schedule);
+        new LowerGuards(debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod()).processNodes(block, schedule);
     }
 }

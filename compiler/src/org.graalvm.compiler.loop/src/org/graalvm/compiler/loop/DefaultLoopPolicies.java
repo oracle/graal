@@ -75,6 +75,16 @@ public class DefaultLoopPolicies implements LoopPolicies {
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> UnrollMaxIterations = new OptionKey<>(16);
     }
 
+    private boolean highTier;
+
+    public DefaultLoopPolicies(boolean highTier) {
+        this.highTier = highTier;
+    }
+
+    public boolean isHighTierPolicy() {
+        return this.highTier;
+    }
+
     @Override
     public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, MetaAccessProvider metaAccess) {
         LoopBeginNode loopBegin = loop.loopBegin();
