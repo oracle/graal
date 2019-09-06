@@ -141,7 +141,6 @@ public final class LLVMTCKLanguageProvider implements LanguageProvider {
         return Collections.emptyList();
     }
 
-
     @Override
     public Collection<? extends Snippet> createScripts(Context context) {
         // List<Snippet> res = new ArrayList<>();
