@@ -203,7 +203,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
             if (OptEliminateGuards.getValue(graph.getOptions())) {
                 for (Node usage : condition.usages()) {
                     if (!activeGuards.isNew(usage) && activeGuards.isMarked(usage) && ((GuardNode) usage).isNegated() == negated &&
-                                    (!before.graph().hasValueProxies() || nodeMap.get(((GuardNode) usage).getAnchor().asNode()).sameOrOuterLoop(nodeMap.get(before)))) {
+                                    (!before.graph().hasValueProxies() || nodeMap.get(((GuardNode) usage).getAnchor().asNode()).isInSameOrOuterLoopOf(nodeMap.get(before)))) {
                         return (GuardNode) usage;
                     }
                 }

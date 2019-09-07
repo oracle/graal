@@ -366,21 +366,20 @@ public final class Block extends AbstractBlockBase<Block> {
         this.postdominator = postdominator;
     }
 
-    public boolean sameOrOuterLoop(Block block) {
+    /**
+     * Checks whether {@code this} block is in the same loop or an outer loop of the block given as
+     * parameter.
+     */
+    public boolean isInSameOrOuterLoopOf(Block block) {
 
-        Loop<Block> l = this.loop;
-        if (l == null) {
+        if (this.loop == null) {
             // We are in no loop, so this holds true for every other block.
             return true;
         }
 
-        if (block.loop == null) {
-            // We are in a loop, but block isn't, so this always false.
-            return false;
-        }
-
+        Loop<Block> l = block.loop;
         while (l != null) {
-            if (l == block.loop) {
+            if (l == this.loop) {
                 return true;
             }
             l = l.getParent();
