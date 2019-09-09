@@ -1206,8 +1206,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         if (method != null) {
             final String name = String.format("%s.%s", method.getDeclaringClass().toJavaName(), method.getName());
             // In first order logic:
-            // ¬listWhitelist ->  anyMatch  <=>   listWhitelist v  anyMatch
-            //  listWhitelist -> noneMatch  <=>  ¬listWhitelist v noneMatch
+            // !listWhitelist ->  anyMatch  <=>   listWhitelist v  anyMatch
+            //  listWhitelist -> noneMatch  <=>  !listWhitelist v noneMatch
             if ((listWhitelist || list.stream().anyMatch(name::contains)) && (!listWhitelist || list.stream().noneMatch(name::contains))) {
                 debug.log(DebugContext.DETAILED_LEVEL, "Skipping IPP for %s.%s", method.getDeclaringClass().toJavaName(), method.getName());
                 return;
