@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -39,12 +40,15 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
+import org.graalvm.compiler.phases.common.vectorization.AutovectorizationPolicies;
+import org.graalvm.compiler.phases.common.vectorization.DefaultAutovectorizationPolicies;
 import org.graalvm.compiler.phases.common.vectorization.IsomorphicPackingPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
 import org.graalvm.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
+import org.graalvm.compiler.phases.common.vectorization.MethodList;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
@@ -104,7 +108,12 @@ public class LowTier extends PhaseSuite<LowTierContext> {
             if (!listValue.isEmpty()) {
                 list = Arrays.asList(listValue.split(","));
             }
-            appendPhase(new IsomorphicPackingPhase(new SchedulePhase(SchedulingStrategy.EARLIEST), list, Options.AVWhitelist.getValue(options)));
+
+            appendPhase(new IsomorphicPackingPhase(
+                    new SchedulePhase(SchedulingStrategy.EARLIEST),
+                    createAutovectorizationPolicies(),
+                    new MethodList(list, Options.AVWhitelist.getValue(options)),
+                    NodeView.DEFAULT));
         }
 
         appendPhase(canonicalizer);
@@ -114,5 +123,9 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         appendPhase(new PropagateDeoptimizeProbabilityPhase());
 
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
+    }
+
+    public AutovectorizationPolicies createAutovectorizationPolicies() {
+        return new DefaultAutovectorizationPolicies();
     }
 }

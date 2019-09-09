@@ -88,6 +88,8 @@ import org.graalvm.compiler.phases.tiers.LowTierContext;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import static org.graalvm.compiler.phases.common.vectorization.BlockInfo.sameBaseAddress;
+
 /**
  * A phase to identify isomorphisms within basic blocks.
  * MIT (basis)  http://groups.csail.mit.edu/cag/slp/SLP-PLDI-2000.pdf
@@ -109,107 +111,40 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     NegateNode.class,
                     FloatDivNode.class).collect(Collectors.toSet()));
 
-    public static final class Util {
-        private Util() { }
-
-        static Stamp getStamp(ValueNode node, NodeView view) {
-            return (node instanceof WriteNode ? ((WriteNode) node).value() : node).stamp(view);
-        }
-
-        static Set<Node> getInductionVariables(AddressNode address) {
-            final Set<Node> ivs = new HashSet<>();
-            final Deque<Node> bfs = new ArrayDeque<>();
-            bfs.add(address);
-
-            while (!bfs.isEmpty()) {
-                final Node node = bfs.remove();
-                if (node instanceof AddressNode) {
-                    final AddressNode addressNode = (AddressNode) node;
-                    if (addressNode.getIndex() != null) {
-                        bfs.add(addressNode.getIndex());
-                    }
-                } else if (node instanceof AddNode) {
-                    final AddNode addNode = (AddNode) node;
-                    bfs.add(addNode.getX());
-                    bfs.add(addNode.getY());
-                } else if (node instanceof LeftShiftNode) {
-                    final LeftShiftNode leftShiftNode = (LeftShiftNode) node;
-                    bfs.add(leftShiftNode.getX());
-                    bfs.add(leftShiftNode.getY());
-                } else if (node instanceof SignExtendNode) {
-                    final SignExtendNode signExtendNode = (SignExtendNode) node;
-                    bfs.add(signExtendNode.getValue());
-                } else if (node instanceof ConstantNode) {
-                    // constant nodes are leaf nodes
-                } else {
-                    ivs.add(node);
-                }
-            }
-
-            return ivs;
-        }
-    }
-
     // Class to encapsulate state used by functions in the algorithm
     private static final class Instance {
         private final LowTierContext context;
         private final DebugContext debug;
-        private final Graph graph;
-        private final Block currentBlock;
+        private final StructuredGraph graph;
+        private final BlockInfo blockInfo;
+        private final AutovectorizationPolicies policies;
         private final NodeView view;
-        private final NodeMap<Block> nodeToBlockMap;
-        private final BlockMap<List<Node>> blockToNodesMap;
 
         private final NodeMap<Integer> alignmentMap;
-        private final NodeMap<Integer> depthMap;
 
-        private Instance(LowTierContext context, DebugContext debug, StructuredGraph graph, Block currentBlock, NodeView view) {
+        private Instance(LowTierContext context, DebugContext debug, StructuredGraph graph, Block currentBlock, AutovectorizationPolicies policies, NodeView view) {
             this.context = context;
             this.debug = debug;
             this.graph = graph;
-            this.currentBlock = currentBlock;
+            this.blockInfo = new BlockInfo(graph, currentBlock, context, view);
+            this.policies = policies;
             this.view = view;
 
-            this.nodeToBlockMap = graph.getLastSchedule().getNodeToBlockMap();
-            this.blockToNodesMap = graph.getLastSchedule().getBlockToNodesMap();
-
             this.alignmentMap = new NodeMap<>(graph);
-            this.depthMap = new NodeMap<>(graph);
         }
 
         // Utilities
 
-        /**
-         * Check whether the node is not in the current basic block.
-         * @param node Node to check the block membership of.
-         * @return True if the provided node is not in the current basic block.
-         */
-        private boolean notInBlock(Node node) {
-            return nodeToBlockMap.get(node) != currentBlock;
-        }
-
         private int dataSize(Node node) {
             if (node instanceof LIRLowerableAccess) {
-                return dataSize((LIRLowerableAccess) node);
+                return dataSize(((LIRLowerableAccess) node).getAccessStamp());
             }
 
             if (node instanceof ValueNode) {
-                return dataSize((ValueNode) node);
+                return dataSize(((ValueNode) node).stamp(view));
             }
 
             return -1;
-        }
-
-        private int dataSize(ValueNode node) {
-            if (node instanceof LIRLowerableAccess) {
-                return dataSize((LIRLowerableAccess) node);
-            }
-
-            return dataSize(node.stamp(view));
-        }
-
-        private int dataSize(LIRLowerableAccess node) {
-            return dataSize(node.getAccessStamp());
         }
 
         private int dataSize(Stamp stamp) {
@@ -273,247 +208,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return supportedNodes.contains(node.getClass());
         }
 
-        /**
-         * Determine whether two nodes are accesses with the same base address.
-         * @param left Left access node
-         * @param right Right access node
-         * @return Boolean indicating whether base is the same.
-         *         If nodes are not access nodes, this is false.
-         */
-        private static boolean sameBaseAddress(Node left, Node right) {
-            if (!(left instanceof FixedAccessNode) || !(right instanceof FixedAccessNode)) {
-                return false;
-            }
-
-            final AddressNode leftAddress = ((FixedAccessNode) left).getAddress();
-            final AddressNode rightAddress = ((FixedAccessNode) right).getAddress();
-
-            if (leftAddress.getBase() == null  || rightAddress.getBase() == null) {
-                return false;
-            }
-
-            if (!leftAddress.getBase().equals(rightAddress.getBase())) {
-                return false;
-            }
-
-            return true;
-        }
-
-        /**
-         * Check whether the left and right node of a potential pack are isomorphic.
-         * "Isomorphic statements are those that contain the same operations in the same order."
-         *
-         * @param left Left node of the potential pack
-         * @param right Right node of the potential pack
-         * @return Boolean indicating whether the left and right node of a potential pack are
-         *         isomorphic.
-         */
-        private boolean isomorphic(ValueNode left, ValueNode right) {
-            // Trivial case, isomorphic if the same
-            if (left == right || left.equals(right)) {
-                return true;
-            }
-
-            // Are left & right the same action?
-            if (!left.getNodeClass().equals(right.getNodeClass())) {
-                return false;
-            }
-
-            // Is the input count the same? (accounts for inputs that are null)
-            if (left.inputs().count() != right.inputs().count()) {
-                return false;
-            }
-
-            // Ensure that both nodes have compatible stamps
-            if (!getStamp(left).isCompatible(getStamp(right))) {
-                return false;
-            }
-
-            // Conservatively bail if we have a FAN and non-FAN
-            if (left instanceof FixedAccessNode != right instanceof FixedAccessNode) {
-                return false;
-            }
-
-            // Ensure that both fixed access nodes are accessing the same array
-            if (left instanceof FixedAccessNode && !sameBaseAddress(left, right)) {
-                return false;
-            }
-
-            return true;
-        }
-
-        private int findDepth(Node node) {
-            Integer depth = depthMap.get(node);
-            if (depth == null) {
-                depth = findDepthImpl(node);
-                depthMap.put(node, depth);
-            }
-
-            return depth;
-        }
-
-        private int findDepthImpl(Node node) {
-            int depth = 0;
-            for (Node current : currentBlock.getNodes()) {
-                if (current.equals(node)) {
-                    return depth;
-                }
-                depth++;
-            }
-
-            return -1;
-        }
-
-        private boolean hasNoPath(Node shallow, Node deep) {
-            return hasNoPath(shallow, deep, 0);
-        }
-
-        private boolean hasNoPath(Node shallow, Node deep, int iterationDepth) {
-            if (iterationDepth >= 1000) {
-                return false; // Stop infinite/deep recursion
-            }
-
-            final int shallowDepth = findDepth(shallow);
-
-            for (Node pred : deep.inputs()) {
-                if (notInBlock(pred)) { // ensure that the predecessor is in the block
-                    continue;
-                }
-
-                if (shallow == pred) {
-                    return false;
-                }
-
-                if (shallowDepth < findDepth(pred) && !hasNoPath(shallow, pred, iterationDepth + 1)) {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        /**
-         * Ensure that there is no data path between left and right. Pre: left and right are
-         * isomorphic
-         *
-         * @param left Left node of the potential pack
-         * @param right Right node of the potential pack
-         * @return Are the two statements independent? Only independent statements may be packed.
-         */
-        private boolean independent(Node left, Node right) {
-            // Calculate depth from how far into block.getNodes() we are.
-            final int leftDepth = findDepth(left);
-            final int rightDepth = findDepth(right);
-
-            if (leftDepth == rightDepth) {
-                return !left.equals(right);
-            }
-
-            final int shallowDepth = Math.min(leftDepth, rightDepth);
-            final Node deep = leftDepth == shallowDepth ? right : left;
-            final Node shallow = leftDepth == shallowDepth ? left : right;
-
-            // Ensure that there is no membar between these two nodes
-            final Set<MembarNode> membars = new HashSet<>();
-            int membarCount = 0;
-
-            for (Node shallowSucc : shallow.cfgSuccessors()) {
-                if (shallowSucc instanceof MembarNode) {
-                    membars.add((MembarNode) shallowSucc);
-                    membarCount++;
-                }
-            }
-
-            for (Node deepPred : deep.cfgPredecessors()) {
-                if (deepPred instanceof MembarNode) {
-                    membars.add((MembarNode) deepPred);
-                    membarCount++;
-                }
-            }
-
-            if (membarCount != membars.size()) {
-                // The total number of membars != cardinality of membar set, so there is overlap
-                return false;
-            }
-
-            return hasNoPath(shallow, deep);
-        }
-
         private Stamp getStamp(ValueNode node) {
             return Util.getStamp(node, view);
-        }
-
-        /**
-         * Ensure that there is no data path between left and right. This version operates on Nodes,
-         * avoiding the need to check for FAN at the callsite. Pre: left and right are isomorphic
-         *
-         * @param left Left node of the potential pack
-         * @param right Right node of the potential pack
-         * @return Are the two statements independent? Only independent statements may be packed.
-         */
-        private boolean adjacent(Node left, Node right) {
-            return left instanceof FixedAccessNode &&
-                            right instanceof FixedAccessNode &&
-                            adjacent((FixedAccessNode) left, (FixedAccessNode) right);
-        }
-
-        /**
-         * Check whether s1 is immediately before s2 in memory, if both are primitive.
-         *
-         * @param s1 First FixedAccessNode to check
-         * @param s2 Second FixedAccessNode to check
-         * @return Boolean indicating whether s1 is immediately before s2 in memory
-         */
-        private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2) {
-            return adjacent(s1, s2, getStamp(s1), getStamp(s2));
-        }
-
-        /**
-         * Check whether s1 is immediately before s2 in memory, if both are primitive. This function
-         * exists as not all nodes carry the right kind information. TODO: Find a better way to deal
-         * with this
-         *
-         * @param s1 First FixedAccessNode to check
-         * @param s2 Second FixedAccessNode to check
-         * @param s1s Stamp of the first FixedAccessNode
-         * @param s2s Stamp of the second FixedAccessNode
-         * @return Boolean indicating whether s1 is immediately before s2 in memory
-         */
-        private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2, Stamp s1s, Stamp s2s) {
-            final AddressNode s1a = s1.getAddress();
-            final AddressNode s2a = s2.getAddress();
-
-            final JavaKind s1k = s1s.javaType(context.getMetaAccess()).getJavaKind();
-            final JavaKind s2k = s2s.javaType(context.getMetaAccess()).getJavaKind();
-
-            // Only use superword on primitives
-            if (!s1k.isPrimitive() || !s2k.isPrimitive()) {
-                return false;
-            }
-
-            // Only use superword on nodes in the current block
-            if (notInBlock(s1) || notInBlock(s2)) {
-                return false;
-            }
-
-            // Only use superword on types that are comparable
-            if (s1a.getBase() != null && s2a.getBase() != null && !s1a.getBase().equals(s2a.getBase())) {
-                return false;
-            }
-
-            // Ensure induction variables are the same
-            if (!Util.getInductionVariables(s1a).equals(Util.getInductionVariables(s2a))) {
-                return false;
-            }
-
-            return s2a.getMaxConstantDisplacement() - s1a.getMaxConstantDisplacement() == s1k.getByteCount();
         }
 
         private boolean stmtsCanPack(Set<Pair<ValueNode, ValueNode>> packSet, ValueNode s1, ValueNode s2, Integer align) {
             // TODO: Also make sure that the platform supports vectors of the primitive type of this candidate pack
 
             if (supported(s1) && supported(s2) &&
-                isomorphic(s1, s2) && independent(s1, s2) &&
+                blockInfo.isomorphic(s1, s2) && blockInfo.independent(s1, s2) &&
                 packSet.stream().noneMatch(p -> p.getLeft().equals(s1) || p.getRight().equals(s2))) {
                 final Optional<Integer> alignS1 = getAlignment(s1);
                 final Optional<Integer> alignS2 = getAlignment(s2);
@@ -559,7 +262,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     }
 
                     // Check block membership, bail if nodes not in block (prevent analysis beyond block)
-                    if (notInBlock(leftInput) || notInBlock(rightInput)) {
+                    if (blockInfo.notInBlock(leftInput) || blockInfo.notInBlock(rightInput)) {
                         continue outer;
                     }
 
@@ -569,8 +272,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     }
 
                     // If there are no savings to be gained, bail
-                    // NB: here this is basically useless, as <s>our</s> the C2 formula does not allow for negative savings
-                    if (estSavings(packSet, leftInput, rightInput) < 0) {
+                    if (policies.estSavings(blockInfo, packSet, leftInput, rightInput) < 0) {
                         continue outer;
                     }
 
@@ -598,12 +300,12 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             // TODO: bail if left is store (why?)
 
             for (Node leftUsage : left.usages()) {
-                if (notInBlock(left)) {
+                if (blockInfo.notInBlock(left)) {
                     continue;
                 }
 
                 for (Node rightUsage : right.usages()) {
-                    if (leftUsage == rightUsage || notInBlock(right)) {
+                    if (leftUsage == rightUsage || blockInfo.notInBlock(right)) {
                         continue;
                     }
 
@@ -611,7 +313,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     if (leftUsage instanceof ValueNode &&
                             rightUsage instanceof ValueNode &&
                             stmtsCanPack(packSet, (ValueNode) leftUsage, (ValueNode) rightUsage, align.orElse(null))) {
-                        final int currentSavings = estSavings(packSet, leftUsage, rightUsage);
+                        final int currentSavings = policies.estSavings(blockInfo, packSet, leftUsage, rightUsage);
                         if (currentSavings > savings) {
                             savings = currentSavings;
                             bestPack = Pair.create((ValueNode) leftUsage, (ValueNode) rightUsage);
@@ -632,75 +334,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             return false;
-        }
-
-        /**
-         * Estimate the savings of executing the pack rather than two separate instructions.
-         *
-         * @param s1 Candidate left element of Pack
-         * @param s2 Candidate right element of Pack
-         * @param packSet PackSet, for membership checks
-         * @return Savings in an arbitrary unit and can be negative.
-         */
-        private int estSavings(Set<Pair<ValueNode, ValueNode>> packSet, Node s1, Node s2) {
-            // Savings originating from inputs
-            int saveIn = 1; // Save 1 instruction as executing 2 in parallel.
-
-            outer: // labelled outer loop so that hasNext check is performed for left
-            for (Iterator<Node> leftInputIt = s1.inputs().iterator(); leftInputIt.hasNext();) {
-                for (Iterator<Node> rightInputIt = s2.inputs().iterator(); leftInputIt.hasNext() && rightInputIt.hasNext();) {
-                    final Node leftInput = leftInputIt.next();
-                    final Node rightInput = rightInputIt.next();
-
-                    if (leftInput == rightInput) {
-                        continue outer;
-                    }
-
-                    if (adjacent(leftInput, rightInput)) {
-                        // Inputs are adjacent in memory, this is good.
-                        saveIn += 2; // Not necessarily packed, but good because packing is easy.
-                    } else if (packSet.contains(Pair.create(leftInput, rightInput))) {
-                        saveIn += 2; // Inputs already packed, so we don't need to pack these.
-                    } else {
-                        saveIn -= 2; // Not adjacent, not packed. Inputs need to be packed in a
-                                     // vector for candidate.
-                    }
-                }
-            }
-
-            // Savings originating from result
-            int ct = 0; // the number of usages that are packed
-            int saveUse = 0;
-            for (Node s1Usage : s1.usages()) {
-                for (Pair<ValueNode, ValueNode> pack : packSet) {
-                    if (pack.getLeft() != s1Usage) {
-                        continue;
-                    }
-
-                    for (Node s2Usage : s2.usages()) {
-                        if (pack.getRight() != s2Usage) {
-                            continue;
-                        }
-
-                        ct++;
-
-                        if (adjacent(s1Usage, s2Usage)) {
-                            saveUse += 2;
-                        }
-                    }
-                }
-            }
-
-            // idk, c2 does this though
-            if (ct < s1.getUsageCount()) {
-                saveUse += 1;
-            }
-            if (ct < s2.getUsageCount()) {
-                saveUse += 1;
-            }
-
-            // TODO: investigate this formula - can't have negative savings
-            return Math.max(saveIn, saveUse);
         }
 
         private int getIvAdjustment(FixedAccessNode alignmentReference) {
@@ -731,7 +364,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final FixedAccessNode s1 = memoryNodes.get(i);
                 for (int j = i + 1; j < memoryNodes.size(); j++) {
                     final FixedAccessNode s2 = memoryNodes.get(j);
-                    if (isomorphic(s1, s2) && sameBaseAddress(s1, s2)) {
+                    if (blockInfo.isomorphic(s1, s2) && sameBaseAddress(s1, s2)) {
                         accessCount[i]++;
                         accessCount[j]++;
                     }
@@ -810,7 +443,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         private void findAdjRefs(Set<Pair<ValueNode, ValueNode>> packSet) {
             // Create initial seed set containing memory operations
             List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
-                    StreamSupport.stream(currentBlock.getNodes().spliterator(), false).
+                    StreamSupport.stream(blockInfo.getBlock().getNodes().spliterator(), false).
                             filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess).
                             map(x -> (FixedAccessNode & LIRLowerableAccess) x).
                             // using stack kind here as this works with MetaspacePointerStamp and others
@@ -826,7 +459,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
                 for (int i = memoryNodes.size() - 1; i >= 0; i--) {
                     final FixedAccessNode s = memoryNodes.get(i);
-                    if (isomorphic(s, alignmentReference) && sameBaseAddress(s, alignmentReference)) {
+                    if (blockInfo.isomorphic(s, alignmentReference) && sameBaseAddress(s, alignmentReference)) {
                         setAlignment(s, memoryAlignment((FixedAccessNode & LIRLowerableAccess) s, ivAdjust));
                     }
                 }
@@ -843,7 +476,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                             continue;
                         }
 
-                        if (s1 != s2 && adjacent(s1, s2) && stmtsCanPack(packSet, s1, s2, alignS1.orElse(null))) {
+                        if (s1 != s2 && blockInfo.adjacent(s1, s2) && stmtsCanPack(packSet, s1, s2, alignS1.orElse(null))) {
                             packSet.add(Pair.create(s1, s2));
                         }
                     }
@@ -921,12 +554,14 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * are not in the current block as well as Begin/End/Return.
          */
         private boolean depsScheduled(Node node, List<Node> scheduled, boolean considerControlFlow) {
+            final NodeMap<Block> nodeToBlockMap = graph.getLastSchedule().getNodeToBlockMap();
+
             return StreamSupport.stream(node.inputs().spliterator(), false).
-                    filter(n -> !nodeToBlockMap.isNew(n) && nodeToBlockMap.get(n) == currentBlock).
+                    filter(n -> !nodeToBlockMap.isNew(n) && blockInfo.inBlock(n)).
                     allMatch(scheduled::contains) &&
                     // AND have all the control flow dependencies been scheduled? (only if considering CF)
                     (!considerControlFlow || StreamSupport.stream(node.cfgPredecessors().spliterator(), false).
-                            filter(n -> nodeToBlockMap.get(n) == currentBlock).
+                            filter(blockInfo::inBlock).
                             allMatch(scheduled::contains)
                     );
         }
@@ -1125,7 +760,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          * @return Boolean indicating whether we can proceed with packing.
          */
         private boolean validForBlock() {
-            for (FixedNode node : currentBlock.getNodes()) {
+            for (FixedNode node : blockInfo.getBlock().getNodes()) {
                 if (node instanceof ControlSplitNode) {
                     return false;
                 }
@@ -1152,7 +787,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return;
             }
 
-            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", currentBlock, packSet.size());
+            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", blockInfo.getBlock(), packSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
 
             extendPacklist(packSet);
@@ -1160,17 +795,17 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 return;
             }
 
-            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", currentBlock, packSet.size());
+            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", blockInfo.getBlock(), packSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
 
             // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
 
-            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", currentBlock, combinedPackSet.size());
+            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
 
             try (DebugContext.Scope s = debug.scope("schedule")) {
-                schedule(new ArrayList<>(blockToNodesMap.get(currentBlock)), combinedPackSet);
+                schedule(new ArrayList<>(graph.getLastSchedule().getBlockToNodesMap().get(blockInfo.getBlock())), combinedPackSet);
             } catch (Throwable t) {
                 throw debug.handle(t);
             }
@@ -1179,19 +814,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     }
 
     private final SchedulePhase schedulePhase;
-    private final List<String> list;
-    private final boolean listWhitelist;
+    private final AutovectorizationPolicies policies;
+    private final MethodList methodList;
     private final NodeView view;
 
-    public IsomorphicPackingPhase(SchedulePhase schedulePhase, List<String> list, boolean listWhitelist) {
-        this(schedulePhase, list, NodeView.DEFAULT, listWhitelist);
-    }
-
-    public IsomorphicPackingPhase(SchedulePhase schedulePhase, List<String> list, NodeView view, boolean listWhitelist) {
+    public IsomorphicPackingPhase(SchedulePhase schedulePhase, AutovectorizationPolicies policies, MethodList methodList, NodeView view) {
         this.schedulePhase = schedulePhase;
-        this.list = list;
+        this.policies = policies;
+        this.methodList = methodList;
         this.view = view;
-        this.listWhitelist = listWhitelist;
     }
 
     @Override
@@ -1203,19 +834,13 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         final DebugContext debug = graph.getDebug();
 
         final ResolvedJavaMethod method = graph.method();
-        if (method != null) {
-            final String name = String.format("%s.%s", method.getDeclaringClass().toJavaName(), method.getName());
-            // In first order logic:
-            // !listWhitelist ->  anyMatch  <=>   listWhitelist v  anyMatch
-            //  listWhitelist -> noneMatch  <=>  !listWhitelist v noneMatch
-            if ((listWhitelist || list.stream().anyMatch(name::contains)) && (!listWhitelist || list.stream().noneMatch(name::contains))) {
-                debug.log(DebugContext.DETAILED_LEVEL, "Skipping IPP for %s.%s", method.getDeclaringClass().toJavaName(), method.getName());
-                return;
-            }
+        if (method != null && methodList.shouldSkip(method)) {
+            debug.log(DebugContext.DETAILED_LEVEL, "Skipping IPP for %s.%s", method.getDeclaringClass().toJavaName(), method.getName());
+            return;
         }
 
         for (Block block : cfg.reversePostOrder()) {
-            new Instance(context, debug, graph, block, view).slpExtract();
+            new Instance(context, debug, graph, block, policies, view).slpExtract();
         }
     }
 }

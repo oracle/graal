@@ -37,7 +37,7 @@ import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
-import static org.graalvm.compiler.phases.common.vectorization.IsomorphicPackingPhase.Util.getStamp;
+import static org.graalvm.compiler.phases.common.vectorization.Util.getStamp;
 
 public final class Pack implements Iterable<ValueNode> {
    private final List<ValueNode> elements;
