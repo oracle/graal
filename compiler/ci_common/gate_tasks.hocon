@@ -19,7 +19,7 @@ builds += [
   ${gateTest}          ${labsjdk11}       ${gateLinuxAMD64}   {name: "gate-compiler-test-11-linux-amd64"}
   ${gateJavaBaseTest}  ${labsjdk11}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-javabasetest-11-linux-amd64"} ${graalWeekly}
   ${gateTestCTW}       ${oraclejdk8}      ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
-  ${gateTestCTWWeekly} ${openjdk8}        ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-openjdk8-linux-amd64", timelimit: "1:30:00"} ${graalWeekly}
+  ${gateTestCTWWeekly} ${openjdk8}        ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-openjdk8-linux-amd64", timelimit: "2:00:00"} ${graalWeekly}
   ${gateTestCTWWeekly} ${labsjdk11}       ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-11-linux-amd64"} ${graalWeekly}
   ${gateTest}          ${oraclejdk8Debug} ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-fastdebug", timelimit: "1:50:00"} ${graalWeekly}
   ${gateTestBenchmark} ${oraclejdk8}      ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64"}
