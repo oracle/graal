@@ -87,6 +87,7 @@ public final class BootClassRegistry extends ClassRegistry {
         // Defining a class also loads the superclass and the superinterfaces which excludes the
         // use of computeIfAbsent to insert the class since the map is modified.
         ObjectKlass result = defineKlass(type, classpathFile.contents);
+        getRegistries().recordConstraint(type, result, getClassLoader());
         packageMap.put(result.getRuntimePackage(), classpathFile.classpathEntry.path());
 
         return result;

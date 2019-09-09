@@ -186,6 +186,10 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
                 throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString(getName(pool)));
             }
 
+            if (!method.isMethodHandleIntrinsic() && !(method.getRawSignature() == Signature.Object_ObjectArray)) {
+                method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
+            }
+
             return new Resolved(method);
         }
 

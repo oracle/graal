@@ -231,6 +231,8 @@ public abstract class ClassRegistry implements ContextAccess {
             }
         }
 
+        getRegistries().recordConstraint(type, klass, getClassLoader());
+
         Klass previous = classes.putIfAbsent(type, klass);
         if (previous != null) {
             throw meta.throwExWithMessage(LinkageError.class, "Class " + previous + " loaded twice");
