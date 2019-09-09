@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Objects;
@@ -249,6 +250,24 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
                 loadMethod = servicesClass.getMethod("load", Class.class);
             } catch (ClassNotFoundException | NoSuchMethodException e) {
                 // Services.load is not available
+            }
+            if (loadMethod != null) {
+                try {
+                    try {
+                        loadMethod.invoke(null, (Object) null);
+                    } catch (InvocationTargetException e) {
+                        throw e.getTargetException();
+                    }
+                } catch (NullPointerException npe) {
+                    // Services.load is accessible
+                } catch (IllegalAccessException iae) {
+                    // Services.load is not accessible. This happens on JDK 9+ when EnableJVMCI is
+                    // true (either explicitly or by default) which causes the jdk.internal.vm.ci
+                    // module to be resolved.
+                    loadMethod = null;
+                } catch (Throwable e) {
+                    throw new InternalError(e);
+                }
             }
             LOAD_METHOD = loadMethod;
         }
