@@ -31,6 +31,8 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.Equal;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag.NotEqual;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
@@ -48,6 +50,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MOp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -616,12 +619,12 @@ public class AMD64Move {
                 break;
             case V32_BYTE:
             case V32_WORD:
-                masm.movl(dest, input);
+                VMOVD.emit(masm, AVXKind.AVXSize.DWORD, dest, input);
                 break;
             case V64_BYTE:
             case V64_WORD:
             case V64_DWORD:
-                masm.movq(dest, input);
+                VMOVQ.emit(masm, AVXKind.AVXSize.QWORD, dest, input);
                 break;
             case V128_BYTE:
             case V128_WORD:
@@ -667,12 +670,12 @@ public class AMD64Move {
                 break;
             case V32_BYTE:
             case V32_WORD:
-                masm.movl(result, src);
+                VMOVD.emit(masm, AVXKind.AVXSize.DWORD, result, src);
                 break;
             case V64_BYTE:
             case V64_WORD:
             case V64_DWORD:
-                masm.movq(result, src);
+                VMOVQ.emit(masm, AVXKind.AVXSize.QWORD, result, src);
                 break;
             case V128_BYTE:
             case V128_WORD:
