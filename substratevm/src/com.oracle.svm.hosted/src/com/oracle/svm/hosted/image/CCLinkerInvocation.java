@@ -42,7 +42,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
         @Option(help = "Pass the provided raw option to the linker command that produces the final binary. The possible options are platform specific and passed through without any validation.")//
-        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(new String[0]);
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
@@ -192,10 +192,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             }
         }
 
-        if (Options.NativeLinkerOption.getValue() != null) {
-            for (String nativeLinkerOption : Options.NativeLinkerOption.getValue()) {
-                cmd.add(nativeLinkerOption);
-            }
+        for (String nativeLinkerOption : Options.NativeLinkerOption.getValue()) {
+            cmd.add(nativeLinkerOption);
         }
         return cmd;
     }
