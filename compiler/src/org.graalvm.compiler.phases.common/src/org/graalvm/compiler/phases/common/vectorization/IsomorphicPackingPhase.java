@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.common;
+package org.graalvm.compiler.phases.common.vectorization;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -82,7 +82,6 @@ import org.graalvm.compiler.nodes.memory.VectorWriteNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.util.Pack;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
@@ -113,11 +112,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     public static final class Util {
         private Util() { }
 
-        public static Stamp getStamp(ValueNode node, NodeView view) {
+        static Stamp getStamp(ValueNode node, NodeView view) {
             return (node instanceof WriteNode ? ((WriteNode) node).value() : node).stamp(view);
         }
 
-        public static Set<Node> getInductionVariables(AddressNode address) {
+        static Set<Node> getInductionVariables(AddressNode address) {
             final Set<Node> ivs = new HashSet<>();
             final Deque<Node> bfs = new ArrayDeque<>();
             bfs.add(address);

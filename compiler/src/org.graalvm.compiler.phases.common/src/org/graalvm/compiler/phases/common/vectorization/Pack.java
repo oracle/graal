@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.phases.common.util;
+package org.graalvm.compiler.phases.common.vectorization;
 
 import java.util.Iterator;
 import java.util.List;
@@ -37,7 +37,7 @@ import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 
-import static org.graalvm.compiler.phases.common.IsomorphicPackingPhase.Util.getStamp;
+import static org.graalvm.compiler.phases.common.vectorization.IsomorphicPackingPhase.Util.getStamp;
 
 public final class Pack implements Iterable<ValueNode> {
    private final List<ValueNode> elements;

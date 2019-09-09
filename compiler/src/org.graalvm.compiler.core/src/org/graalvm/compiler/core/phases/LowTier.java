@@ -39,7 +39,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
-import org.graalvm.compiler.phases.common.IsomorphicPackingPhase;
+import org.graalvm.compiler.phases.common.vectorization.IsomorphicPackingPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
