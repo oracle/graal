@@ -1,4 +1,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-public class PThreadExitException {
+import com.oracle.truffle.api.nodes.ControlFlowException;
+
+public class PThreadExitException extends ControlFlowException {
 }

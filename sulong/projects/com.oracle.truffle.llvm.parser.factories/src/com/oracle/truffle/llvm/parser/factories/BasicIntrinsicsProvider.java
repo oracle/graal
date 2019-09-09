@@ -136,6 +136,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsic
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatDivNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatMulNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadKeyIntrinsicsFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadThreadIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartInternalNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartNodeGen;
@@ -346,6 +348,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         registerComplexNumberIntrinsics();
         registerCTypeIntrinsics();
         registerManagedAllocationIntrinsics();
+        registerPThreadIntrinsics();
     }
 
     protected static LLVMExpressionNode[] argumentsArray(List<LLVMExpressionNode> arguments, int startIndex, int arity) {
@@ -354,6 +357,19 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
             args[i] = arguments.get(i + startIndex);
         }
         return args;
+    }
+
+    private static void registerPThreadIntrinsics() {
+        add("pthread_create", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadCreateNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4)));
+        add("pthread_equal", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadEqualNodeGen.create(args.get(1), args.get(2)));
+        add("pthread_exit", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadExitNodeGen.create(args.get(1)));
+        add("pthread_join", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadJoinNodeGen.create(args.get(1), args.get(2)));
+        add("pthread_once", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadOnceNodeGen.create(args.get(1), args.get(2)));
+        add("pthread_self", (args, context) -> LLVMPThreadThreadIntrinsicsFactory.LLVMPThreadSelfNodeGen.create());
+        add("pthread_key_create", (args, context) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadKeyCreateNodeGen.create(args.get(1), args.get(2)));
+        add("pthread_key_delete", (args, context) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadKeyDeleteNodeGen.create(args.get(1)));
+        add("pthread_getspecific", (args, context) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadGetspecificNodeGen.create(args.get(1)));
+        add("pthread_setspecific", (args, context) -> LLVMPThreadKeyIntrinsicsFactory.LLVMPThreadSetspecificNodeGen.create(args.get(1), args.get(2)));
     }
 
     private static void registerSulongIntrinsics() {
