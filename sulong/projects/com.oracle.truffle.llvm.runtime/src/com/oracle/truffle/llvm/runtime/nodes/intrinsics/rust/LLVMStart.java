@@ -36,6 +36,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -89,7 +91,8 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
         @TruffleBoundary
         protected LangStartVtableType createLangStartVtable(LLVMContext ctx, Type vtableType) {
-            DataLayout dataSpecConverter = ctx.getDataSpecConverter();
+            NodeFactory nodeFactory = ctx.getLanguage().getNodeFactory();
+            DataLayout dataSpecConverter = ((BasicNodeFactory) nodeFactory).getDataSpecConverter();
             return LangStartVtableType.create(dataSpecConverter, vtableType);
         }
 

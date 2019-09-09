@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
@@ -50,7 +51,7 @@ public final class AllocateReadOnlyGlobalsBlockNode extends LLVMNode implements 
     private final TruffleObject allocateGlobalsBlock;
 
     public AllocateReadOnlyGlobalsBlockNode(LLVMContext context, StructureType type) {
-        this.size = context.getByteSize(type);
+        this.size = ((BasicNodeFactory) context.getLanguage().getNodeFactory()).getByteSize(type);
         this.toNative = LLVMToNativeNode.createToNativeWithTarget();
 
         NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);

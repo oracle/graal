@@ -35,7 +35,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
@@ -59,9 +60,9 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class LLVMSourceTypeFactory {
 
-    public static LLVMSourceType resolveType(Type type, LLVMContext context) {
+    public static LLVMSourceType resolveType(Type type, NodeFactory nodeFactory) {
         CompilerAsserts.neverPartOfCompilation();
-        final ConversionVisitor visitor = new ConversionVisitor(context);
+        final ConversionVisitor visitor = new ConversionVisitor(nodeFactory);
         return visitor.resolveType(type);
     }
 
@@ -70,12 +71,12 @@ public final class LLVMSourceTypeFactory {
 
     private static final class ConversionVisitor implements TypeVisitor {
 
-        private final LLVMContext context;
+        private final NodeFactory nodeFactory;
 
         private final Map<Type, LLVMSourceType> resolved;
 
-        private ConversionVisitor(LLVMContext context) {
-            this.context = context;
+        private ConversionVisitor(NodeFactory nodeFactory) {
+            this.nodeFactory = nodeFactory;
             this.resolved = new IdentityHashMap<>();
         }
 
@@ -163,7 +164,7 @@ public final class LLVMSourceTypeFactory {
             final int numberOfMembers = type.getNumberOfElements();
             for (int i = 0; i < numberOfMembers; i++) {
                 final Type memberType = type.getElementType(i);
-                final long memberBitOffset = type.getOffsetOf(i, context.getDataSpecConverter()) * Byte.SIZE;
+                final long memberBitOffset = type.getOffsetOf(i, ((BasicNodeFactory) nodeFactory).getDataSpecConverter()) * Byte.SIZE;
 
                 final String memberName = String.format("[%d]", i);
                 final LLVMSourceType resolvedMemberType = resolveType(memberType);
@@ -219,12 +220,12 @@ public final class LLVMSourceTypeFactory {
         }
 
         private long getBitSize(Type type) {
-            final int byteSize = context.getByteSize(type);
+            final int byteSize = ((BasicNodeFactory) nodeFactory).getByteSize(type);
             return byteSize * (long) Byte.SIZE;
         }
 
         private long getAlignment(Type type) {
-            return context.getByteAlignment(type);
+            return ((BasicNodeFactory) nodeFactory).getByteAlignment(type);
         }
     }
 }

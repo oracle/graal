@@ -36,6 +36,8 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
@@ -75,8 +77,9 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
     @Child private LLVMCMPXCHInternalNode cmpxch;
 
     public LLVMCompareExchangeNode(LLVMContext context, AggregateType returnType) {
-        int resultSize = context.getByteSize(returnType);
-        long secondValueOffset = context.getIndexOffset(1, returnType);
+        NodeFactory nodeFactory = context.getLanguage().getNodeFactory();
+        int resultSize = ((BasicNodeFactory) nodeFactory).getByteSize(returnType);
+        long secondValueOffset = ((BasicNodeFactory) nodeFactory).getIndexOffset(1, returnType);
         this.cmpxch = LLVMCMPXCHInternalNodeGen.create(resultSize, secondValueOffset);
     }
 
