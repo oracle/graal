@@ -18,7 +18,7 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-19.3-b01"
+    - JVMCI_VERSION="jvmci-19.3-b02"
     - JDK8_UPDATE_VERSION="222"
     - JDK8_UPDATE_VERSION_SUFFIX=""
 
