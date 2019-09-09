@@ -1369,7 +1369,7 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.resumed\"}\n"));
         // And check the result value printed out
         tester.receiveMessages(
-                        "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"args\":[{\"type\":\"string\",\"value\":\"30000000000\\n\"}],\"executionContextId\":" + id + ",\"type\":\"log\",\"timestamp\":",
+                        "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"args\":[{\"type\":\"string\",\"value\":\"30000000000\"}],\"executionContextId\":" + id + ",\"type\":\"log\",\"timestamp\":",
                         "}}\n");
         tester.finish();
     }

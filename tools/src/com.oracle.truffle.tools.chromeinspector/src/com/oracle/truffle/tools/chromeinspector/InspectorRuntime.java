@@ -871,7 +871,7 @@ public final class InspectorRuntime extends RuntimeDomain {
 
         @Override
         public void outputText(String str) {
-            notifyConsoleAPICalled(type, str);
+            notifyConsoleAPICalled(type, str.endsWith("\n") ? str.substring(0, str.length() - 1) : str);
         }
 
     }

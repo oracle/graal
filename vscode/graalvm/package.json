@@ -130,6 +130,14 @@
 								"description": "Where to launch the debug target: internal console, or integrated terminal.",
 								"default": "internalConsole"
 							},
+							"outputCapture": {
+								"enum": [
+									"console",
+									"std"
+								],
+								"description": "From where to capture output messages: The debug API, or stdout/stderr streams.",
+								"default": "console"
+							},
 							"cwd": {
 								"type": "string",
 								"description": "Absolute path to the working directory of the program being debugged.",
@@ -212,6 +220,7 @@
 							"type": "graalvm",
 							"request": "launch",
 							"name": "Launch Node App",
+							"outputCapture": "std",
 							"program": "^\"\\${workspaceFolder}/${1:app.js}\""
 						}
 					},
