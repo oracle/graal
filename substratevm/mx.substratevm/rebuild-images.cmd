@@ -4,8 +4,8 @@ setlocal enabledelayedexpansion
 
 set "rebuild_images=%~dpnx0"
 call :dirname "%rebuild_images%" bin_dir
-rem We assume we are in `jre\lib\svm\bin`
-set "graalvm_home=%bin_dir%\..\..\..\.."
+rem We assume we are in `lib\svm\bin`
+set "graalvm_home=%bin_dir%\..\..\.."
 
 echo %* | findstr \"" >nul && echo Warning: the " character in program arguments is not fully supported.
 
@@ -120,7 +120,7 @@ goto :eof
       set "cmd_line=%cmd_line% --no-server"
     )
   )
-  if exist "%graalvm_home%\jre\lib\svm\builder\svm-enterprise.jar" (
+  if exist "%graalvm_home%\lib\svm\builder\svm-enterprise.jar" (
     set "cmd_line=%cmd_line% -g"
   )
   endlocal & set "%1=%cmd_line%"
