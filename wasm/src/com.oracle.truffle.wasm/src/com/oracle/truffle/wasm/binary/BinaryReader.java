@@ -1110,7 +1110,7 @@ public class BinaryReader extends BinaryStreamReader {
             } while (instruction != END);
             int byteLength = readVectorLength();
 
-            long baseAddress = memory.startAddress() + offset;
+            long baseAddress = offset;
             memory.validateAddress(baseAddress, byteLength);
 
             for (int writeOffset = 0; writeOffset != byteLength; ++writeOffset) {
