@@ -220,14 +220,12 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.wasm.binary.constants.ExportIdentifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
+import com.oracle.truffle.wasm.binary.constants.ImportIdentifier;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
-
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /** Simple recursive-descend parser for the binary WebAssembly format.
  */
@@ -240,11 +238,20 @@ public class BinaryReader extends BinaryStreamReader {
     private WasmModule wasmModule;
     private byte[] bytesConsumed;
 
+    /**
+     * Modules may import, as well as define their own functions.
+     * Function IDs are shared among imported and defined functions.
+     * This variable keeps track of the function indices, so that imported and parsed code
+     * entries can be correctly associated to their respective functions and types.
+     */
+    private int moduleFunctionIndex;
+
     BinaryReader(WasmLanguage wasmLanguage, String moduleName, byte[] data) {
         super(data);
         this.wasmLanguage = wasmLanguage;
         this.wasmModule = new WasmModule(moduleName);
         this.bytesConsumed = new byte[1];
+        this.moduleFunctionIndex = 0;
     }
 
     void readModule() {
@@ -321,7 +328,70 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readImportSection() {
-
+        int numImports = readVectorLength();
+        for (int i = 0; i != numImports; ++i) {
+            String moduleName = readName();
+            String importName = readName();
+            byte importType = readImportType();
+            switch (importType) {
+                case ImportIdentifier.FUNCTION: {
+                    int typeIndex = readTypeIndex();
+                    wasmModule.symbolTable().importFunction(wasmLanguage, moduleName, importName, typeIndex);
+                    moduleFunctionIndex++;
+                    break;
+                }
+                case ImportIdentifier.TABLE: {
+                    // TODO: This table is normally supposed to be provided by the external environment (e.g. JS).
+                    byte elemType = read1();
+                    Assert.assertEquals(elemType, 0x70, "Invalid element type for table import");
+                    byte limitsPrefix = read1();
+                    switch (limitsPrefix) {
+                        case 0x00: {
+                            int initSize = readUnsignedInt32();  // initial size (in number of entries)
+                            wasmModule.table().initialize(initSize);
+                            break;
+                        }
+                        case 0x01: {
+                            int initSize = readUnsignedInt32();  // initial size (in number of entries)
+                            int maxSize = readUnsignedInt32();  // max size (in number of entries)
+                            wasmModule.table().initialize(initSize, maxSize);
+                            break;
+                        }
+                        default:
+                            Assert.fail(String.format("Invalid limits prefix for imported table (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+                    }
+                    break;
+                }
+                case ImportIdentifier.MEMORY: {
+                    // TODO: This memory is normally supposed to be provided by the external environment (e.g. JS).
+                    byte limitsPrefix = read1();
+                    switch (limitsPrefix) {
+                        case 0x00: {
+                            readUnsignedInt32();  // initial size (in number of entries)
+                            break;
+                        }
+                        case 0x01: {
+                            readUnsignedInt32();  // initial size (in number of entries)
+                            readUnsignedInt32();  // max size (in number of entries)
+                            break;
+                        }
+                        default:
+                            Assert.fail(String.format("Invalid limits prefix for imported memory (expected 0x00 or 0x01, got 0x%02X", limitsPrefix));
+                    }
+                    break;
+                }
+                case ImportIdentifier.GLOBAL: {
+                    byte type = readValueType();
+                    byte mut = read1();  // 0x00 means const, 0x01 means var
+                    wasmModule.globals().registerImported(importName, type, mut != GlobalModifier.CONSTANT);
+                    // TODO: Store the imported global.
+                    break;
+                }
+                default: {
+                    Assert.fail(String.format("Invalid import type identifier: 0x%02X", importType));
+                }
+            }
+        }
     }
 
     private void readFunctionSection() {
@@ -384,15 +454,15 @@ public class BinaryReader extends BinaryStreamReader {
         int numCodeEntries = readVectorLength();
         WasmRootNode[] rootNodes = new WasmRootNode[numCodeEntries];
         for (int entry = 0; entry != numCodeEntries; ++entry) {
-            rootNodes[entry] = createCodeEntry(entry);
+            rootNodes[entry] = createCodeEntry(moduleFunctionIndex + entry);
         }
         for (int entry = 0; entry != numCodeEntries; ++entry) {
             int codeEntrySize = readUnsignedInt32();
             int startOffset = offset;
-            // TODO: Offset the entry by the number of already parsed code entries
-            readCodeEntry(entry, rootNodes[entry]);
+            readCodeEntry(moduleFunctionIndex + entry, rootNodes[entry]);
             Assert.assertEquals(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entry));
         }
+        moduleFunctionIndex += numCodeEntries;
     }
 
     private WasmRootNode createCodeEntry(int funcIndex) {
@@ -1213,7 +1283,11 @@ public class BinaryReader extends BinaryStreamReader {
         return read1();
     }
 
-    private String readExportName() {
+    private byte readImportType() {
+        return read1();
+    }
+
+    private String readName() {
         int nameLength = readVectorLength();
         byte[] name = new byte[nameLength];
         for (int i = 0; i != nameLength; ++i) {
