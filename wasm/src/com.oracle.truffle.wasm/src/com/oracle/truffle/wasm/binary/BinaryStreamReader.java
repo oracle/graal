@@ -250,8 +250,9 @@ public abstract class BinaryStreamReader {
     public static byte peekBlockType(byte[] data, int offset) {
         byte type = peek1(data, offset);
         switch (type) {
-            case 0x40:
-                return type;
+            case 0x00:
+            case ValueTypes.VOID_TYPE:
+                return ValueTypes.VOID_TYPE;
             default:
                 return peekValueType(data, offset);
         }
