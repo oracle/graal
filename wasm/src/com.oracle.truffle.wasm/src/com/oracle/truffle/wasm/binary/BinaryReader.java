@@ -934,8 +934,6 @@ public class BinaryReader extends BinaryStreamReader {
         // Read false branch, if it exists.
         WasmNode falseBranch;
         if (peek1(-1) == ELSE) {
-            int stackSizeAfterTrueBlock = state.stackSize();
-
             // If the if instruction has a true and a false branch, and it has non-void type, then each one of the two
             // readBlock above and below would push once, hence we need to pop once to compensate for the extra push.
             if (blockTypeId != ValueTypes.VOID_TYPE) {
@@ -943,7 +941,14 @@ public class BinaryReader extends BinaryStreamReader {
             }
 
             falseBranch = readBlock(codeEntry, state, blockTypeId);
-            Assert.assertEquals(stackSizeAfterTrueBlock, state.stackSize(), "Stack sizes must be equal after both branches of an if statement.");
+
+            if (blockTypeId != ValueTypes.VOID_TYPE) {
+                // TODO: Hack to correctly set the stack pointer for abstract interpretation.
+                // If a block has branch instructions that target "shallower" blocks which return no value,
+                // then it can leave no values in the stack, which is invalid for our abstract interpretation.
+                // Correct the stack pointer to the value it would have in case there were no branch instructions.
+                state.setStackPointer(initialStackPointer);
+            }
         } else {
             if (blockTypeId != ValueTypes.VOID_TYPE) {
                 Assert.fail("An if statement without an else branch block cannot return values.");
