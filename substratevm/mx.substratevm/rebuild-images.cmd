@@ -2,43 +2,46 @@
 
 setlocal enabledelayedexpansion
 
+echo %* | findstr = >nul && (
+  echo Warning: the '=' character in program arguments is not fully supported.
+  echo Make sure that command line arguments using it are wrapped in double quotes.
+  echo Example:
+  echo "-Dfoo=bar"
+  echo.
+)
+
 set "rebuild_images=%~dpnx0"
 call :dirname "%rebuild_images%" bin_dir
 rem We assume we are in `lib\svm\bin`
 set "graalvm_home=%bin_dir%\..\..\.."
 
-echo %* | findstr \"" >nul && echo Warning: the " character in program arguments is not fully supported.
+set "to_build="
+set "custom_args="
 
-rem This is the best I could come up with to parse command line arguments.
-rem Other, simpler approaches consider '=' a delimiter for splitting arguments.
-rem Know issues:
-rem 1. --vm.foo=bar works, but "--vm.foo=bar" does not
-rem    It considers '=' a delimiter, therefore --vm.foo and bar are considered 2 distinct arguments.
-rem    This does not throw an error but arguments are not properly parsed.
-rem 2. --vm.foo="bar" works, but --vm.foo="b a r" does not (spaces are delimiters)
-rem    This throws a syntax error.
-set "next_arg=%*"
-:loop
-for /f "tokens=1*" %%a in ("%next_arg%") do (
+for %%a in (%*) do (
+  rem Unquote the argument (`u_arg=%%~a`) before checking its prefix.
+  rem Pass the argument to the native-image executable as it was quoted by the user (`arg=%%a`)
   set "arg=%%a"
+  set "u_arg=%%~a"
+
   set "_tb="
   set "_h="
 
-  if "!arg!"=="polyglot" (
-    set "_tb=!arg!"
-  ) else if "!arg!"=="libpolyglot" (
-    set "_tb=!arg!"
-  ) else if "!arg!"=="js" (
-    set "_tb=!arg!"
-  ) else if "!arg!"=="llvm" (
-    set "_tb=!arg!"
-  ) else if "!arg!"=="python" (
-    set "_tb=!arg!"
-  ) else if "!arg!"=="ruby" (
-    set "_tb=!arg!"
-  ) else if "!arg!"=="--help" (
+  if "!u_arg!"=="polyglot" (
+    set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="libpolyglot" (
+    set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="js" (
+    set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="llvm" (
+    set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="python" (
+    set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="ruby" (
+    set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="--help" (
     set "_h=true"
-  ) else if "!arg!"=="-h" (
+  ) else if "!u_arg!"=="-h" (
     set "_h=true"
   )
 
@@ -52,18 +55,16 @@ for /f "tokens=1*" %%a in ("%next_arg%") do (
     echo Rebuilds native images in place
     call :usage
     exit /b 0
-  ) else if "!arg!"=="--verbose" (
+  ) else if "!u_arg!"=="--verbose" (
     set "verbose=true"
-  ) else if "!arg!"=="-v" (
+  ) else if "!u_arg!"=="-v" (
     set "verbose=true"
   ) else if defined custom_args (
     set "custom_args=!custom_args! !arg!"
   ) else (
     set "custom_args=!arg!"
   )
-  set "next_arg=%%~b"
 )
-if defined next_arg goto :loop
 
 if not defined to_build (
   echo Nothing to build
@@ -106,7 +107,7 @@ goto :eof
   exit /b 0
 
 :usage
-  echo Usage: "%~nx0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
+  echo Usage: "%~nx0 [-v|--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
   exit /b 0
 
 :common cmd_line
