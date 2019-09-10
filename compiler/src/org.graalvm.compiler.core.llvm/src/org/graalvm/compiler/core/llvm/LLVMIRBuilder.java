@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.llvm;
 
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.NULL;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpValues;
@@ -37,17 +38,21 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.LLVM;
 import org.bytedeco.javacpp.LLVM.LLVMAttributeRef;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMBuilderRef;
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
+import org.bytedeco.javacpp.LLVM.LLVMMemoryBufferRef;
 import org.bytedeco.javacpp.LLVM.LLVMModuleRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.bytedeco.javacpp.PointerPointer;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -89,6 +94,26 @@ public class LLVMIRBuilder {
 
     public LLVMModuleRef getModule() {
         return module;
+    }
+
+    public byte[] getBitcode() {
+        if (LLVM.LLVMVerifyModule(module, LLVM.LLVMPrintMessageAction, new BytePointer(NULL)) == TRUE) {
+            LLVM.LLVMDumpModule(module);
+            throw new GraalError("LLVM module verification failed");
+        }
+
+        LLVMMemoryBufferRef buffer = LLVM.LLVMWriteBitcodeToMemoryBuffer(module);
+        LLVM.LLVMDisposeModule(module);
+        LLVM.LLVMDisposeBuilder(builder);
+        LLVM.LLVMContextDispose(context);
+
+        BytePointer start = LLVM.LLVMGetBufferStart(buffer);
+        int size = NumUtil.safeToInt(LLVM.LLVMGetBufferSize(buffer));
+        byte[] bitcode = new byte[size];
+        start.get(bitcode, 0, size);
+        LLVM.LLVMDisposeMemoryBuffer(buffer);
+
+        return bitcode;
     }
 
     public String getFunctionName() {
@@ -612,7 +637,7 @@ public class LLVMIRBuilder {
     /* Control flow */
     public static final AtomicLong nextPatchpointId = new AtomicLong(0);
 
-    LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
+    public LLVMValueRef buildCall(LLVMValueRef callee, LLVMValueRef... args) {
         return LLVM.LLVMBuildCall(builder, callee, new PointerPointer<>(args), args.length, DEFAULT_INSTR_NAME);
     }
 

@@ -231,6 +231,11 @@ public class LLVMStackMapInfo {
         return patchpointToFunction.get(startPatchpointID).stackSize;
     }
 
+    private long getFunctionOffset(long startPatchpointID) {
+        assert patchpointToFunction.containsKey(startPatchpointID);
+        return patchpointToFunction.get(startPatchpointID).address;
+    }
+
     public int[] getPatchpointOffsets(long patchpointID) {
         if (patchpointsByID.containsKey(patchpointID)) {
             return patchpointsByID.get(patchpointID).stream().mapToInt(r -> r.instructionOffset).toArray();
@@ -259,7 +264,16 @@ public class LLVMStackMapInfo {
             Location ref = locations[i + 1];
 
             if (base.type == Location.Type.Constant || ref.type == Location.Type.Constant) {
-                assert base.type == ref.type && base.offset == 0 && ref.offset == 0;
+                assert base.type == ref.type && base.offset == ref.offset;
+                if (base.offset != 0) {
+                    /*
+                     * We are seeing a hard-coded pointer. This will most probably cause a segfault
+                     * at runtime, but we have to emit it either way and not fail during
+                     * compilation.
+                     */
+                    seenBases.add((int) (base.offset - getFunctionOffset(patchpointID)));
+                    seenOffsets.add((int) (ref.offset - getFunctionOffset(patchpointID)));
+                }
                 continue;
             }
 

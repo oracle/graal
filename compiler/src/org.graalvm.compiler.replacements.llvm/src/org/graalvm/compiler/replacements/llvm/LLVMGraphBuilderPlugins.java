@@ -119,10 +119,13 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
         for (JavaKind kind : Arrays.asList(JavaKind.Float, JavaKind.Double)) {
             if (kind == JavaKind.Double) {
-                /* An LLVM bug prevents constant folding for the float minimum intrinsic */
+                /*
+                 * An LLVM bug prevents constant folding for the float minimum and maximum
+                 * intrinsics
+                 */
                 registerBinaryLLVMIntrinsic(r, "min", MIN, kind, kind.toJavaClass(), kind.toJavaClass());
+                registerBinaryLLVMIntrinsic(r, "max", MAX, kind, kind.toJavaClass(), kind.toJavaClass());
             }
-            registerBinaryLLVMIntrinsic(r, "max", MAX, kind, kind.toJavaClass(), kind.toJavaClass());
             registerBinaryLLVMIntrinsic(r, "copySign", COPYSIGN, kind, kind.toJavaClass(), kind.toJavaClass());
         }
 
