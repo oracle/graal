@@ -409,6 +409,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
                     stackPointer -= args.length;
 
+                    System.out.println("Call to " + function);
+
                     Object result = callNode.call(args);
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in the future.
@@ -470,6 +472,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     Object[] args = createArgumentsForCall(frame, function, function.numArguments(), stackPointer);
                     stackPointer -= args.length;
+
+                    System.out.println("Indirect call to " + function);
 
                     Object result = callNode.call(function.getCallTarget(), args);
                     // At the moment, WebAssembly functions may return up to one value.
