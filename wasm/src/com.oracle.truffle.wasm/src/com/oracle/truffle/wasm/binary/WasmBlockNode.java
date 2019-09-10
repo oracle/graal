@@ -460,34 +460,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += 1;  // For the 0x00 constant at the end of the CALL_INDIRECT instruction.
 
                     // Validate that the function type matches the expected type.
-                    int expectedNumArgs = wasmModule().symbolTable().getFunctionTypeNumArguments(expectedFunctionTypeIndex);
-                    int expectedReturnLength = wasmModule().symbolTable().getFunctionTypeReturnTypeLength(expectedFunctionTypeIndex);
-
-                    boolean valid = true;
-                    valid = valid && (expectedNumArgs == function.numArguments());
-                    valid = valid && (expectedReturnLength == function.returnTypeLength());
-
-                    if (!valid) {
-                        throw new WasmTrap("CALL_INDIRECT: Actual and expected function types differ", this);
-                    }
-                    // At this point, the expected and actual number of arguments and return length match.
-
-                    // Validate the argument types.
-                    for (int i = 0; i != expectedNumArgs; ++i) {
-                        byte actualType = function.argumentTypeAt(i);
-                        byte expectedType = wasmModule().symbolTable().getFunctionTypeArgumentTypeAt(expectedFunctionTypeIndex, i);
-                        valid = valid && (actualType == expectedType);
-                    }
-
-                    // Validate the return types.
-                    for (int i = 0; i != expectedReturnLength; ++i) {
-                        byte actualType = function.returnTypeAt(i);
-                        byte expectedType = wasmModule().symbolTable().getFunctionTypeReturnTypeAt(expectedFunctionTypeIndex, i);
-                        valid = valid && (actualType == expectedType);
-                    }
-
-                    if (!valid) {
-                        throw new WasmTrap("CALL_INDIRECT: Actual and expected function types differ", this);
+                    if (expectedFunctionTypeIndex != function.typeIndex()) {
+                        throw new WasmTrap(format("CALL_INDIRECT: Actual (%d) and expected (%d) function types differ", function.typeIndex(), expectedFunctionTypeIndex), this);
                     }
 
                     // Invoke the resolved function.
