@@ -1009,7 +1009,7 @@ public class BinaryReader extends BinaryStreamReader {
     private void readExportSection() {
         int numExports = readVectorLength();
         for (int i = 0; i != numExports; ++i) {
-            String exportName = readExportName();
+            String exportName = readName();
             byte exportType = readExportType();
             switch (exportType) {
                 case ExportIdentifier.FUNCTION: {
@@ -1031,6 +1031,9 @@ public class BinaryReader extends BinaryStreamReader {
                     int globalIndex = readGlobalIndex();
                     // TODO: Store the export information somewhere (e.g. in the symbol table).
                     break;
+                }
+                default: {
+                    Assert.fail(String.format("Invalid export type identifier: 0x%02X", exportType));
                 }
             }
         }
