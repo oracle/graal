@@ -42,4 +42,5 @@ public interface AutovectorizationPolicies {
      */
     int estSavings(BlockInfo blockInfo, Set<Pair<ValueNode, ValueNode>> packSet, Node s1, Node s2);
 
+    void filterPacks(Set<Pack> combinedPackSet);
 }

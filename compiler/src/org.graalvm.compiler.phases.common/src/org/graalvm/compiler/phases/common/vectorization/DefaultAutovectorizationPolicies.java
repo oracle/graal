@@ -95,4 +95,9 @@ public class DefaultAutovectorizationPolicies implements AutovectorizationPolici
         return Math.max(saveIn, saveUse);
     }
 
+    @Override
+    public void filterPacks(Set<Pack> combinedPackSet) {
+        // implement
+    }
+
 }

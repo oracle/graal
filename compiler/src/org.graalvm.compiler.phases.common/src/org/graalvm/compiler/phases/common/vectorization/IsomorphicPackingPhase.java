@@ -791,10 +791,14 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", blockInfo.getBlock(), packSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
 
-            // after this it's not a packset anymore
             combinePacks(packSet, combinedPackSet);
 
             debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
+            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
+
+            policies.filterPacks(combinedPackSet);
+
+            debug.log(DebugContext.VERBOSE_LEVEL, "%s filtered packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
 
             try (DebugContext.Scope s = debug.scope("schedule")) {
