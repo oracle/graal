@@ -1156,7 +1156,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 case DISSIDENT:
                     // This thread refuses to stop. Send a host exception.
                     throw getMeta().throwEx(ThreadDeath.class);
-// throw new EspressoKillError();
+                    // throw new EspressoKillError();
             }
         }
     }
