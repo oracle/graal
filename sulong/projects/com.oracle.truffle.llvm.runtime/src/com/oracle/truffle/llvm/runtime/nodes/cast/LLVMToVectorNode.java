@@ -1072,6 +1072,18 @@ public abstract class LLVMToVectorNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
+        protected LLVMI32Vector doFloatVector(LLVMFloatVector from) {
+            assert from.getLength() == getVectorLength();
+            final int[] vector = new int[getVectorLength()];
+            for (int i = 0; i < getVectorLength(); i++) {
+                int value = Float.floatToRawIntBits(from.getValue(i));
+                vector[i] = value;
+            }
+            return LLVMI32Vector.create(vector);
+        }
+
+        @Specialization
+        @ExplodeLoop
         protected LLVMI32Vector doDoubleVector(LLVMDoubleVector from) {
             assert from.getLength() * INTS_PER_LONG == getVectorLength();
             final int[] vector = new int[getVectorLength()];
