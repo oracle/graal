@@ -1067,7 +1067,7 @@ public class BinaryReader extends BinaryStreamReader {
             int contentLength = readUnsignedInt32();
             int[] contents = new int[contentLength];
             for (int funcIdx = 0; funcIdx != contentLength; ++funcIdx) {
-                contents[i] = readFunctionIndex();
+                contents[funcIdx] = readFunctionIndex();
             }
             wasmModule.table().initializeContents(offset, contents);
         }
