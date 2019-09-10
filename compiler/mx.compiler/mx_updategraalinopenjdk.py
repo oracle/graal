@@ -182,6 +182,9 @@ def updategraalinopenjdk(args):
             worklist = []
 
             for p in [e for e in suite.projects if e.isJavaProject()]:
+                if str(mx_compiler.jdk.javaCompliance) not in p.javaCompliance:
+                    mx.log('  skipping {} since its compliance ({}) is not compatible with {}'.format(p, repr(p.javaCompliance), mx_compiler.jdk.javaCompliance))
+                    continue
                 if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
                     assert len(p.source_dirs()) == 1, p
                     version = 0
