@@ -1,18 +1,48 @@
+/*
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.compiler.phases.common.vectorization;
 
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -35,6 +65,8 @@ public class BlockInfo {
 
         this.depthMap = new NodeMap<>(graph);
     }
+
+    // Isomorphism Check
 
     /**
      * Check whether the left and right node of a potential pack are isomorphic.
@@ -79,31 +111,7 @@ public class BlockInfo {
         return true;
     }
 
-    /**
-     * Determine whether two nodes are accesses with the same base address.
-     * @param left Left access node
-     * @param right Right access node
-     * @return Boolean indicating whether base is the same.
-     *         If nodes are not access nodes, this is false.
-     */
-    static boolean sameBaseAddress(Node left, Node right) {
-        if (!(left instanceof FixedAccessNode) || !(right instanceof FixedAccessNode)) {
-            return false;
-        }
-
-        final AddressNode leftAddress = ((FixedAccessNode) left).getAddress();
-        final AddressNode rightAddress = ((FixedAccessNode) right).getAddress();
-
-        if (leftAddress.getBase() == null  || rightAddress.getBase() == null) {
-            return false;
-        }
-
-        if (!leftAddress.getBase().equals(rightAddress.getBase())) {
-            return false;
-        }
-
-        return true;
-    }
+    // Adjacency Check
 
     /**
      * Ensure that there is no data path between left and right. This version operates on Nodes,
@@ -164,7 +172,7 @@ public class BlockInfo {
         }
 
         // Ensure induction variables are the same
-        if (!Util.getInductionVariables(s1a).equals(Util.getInductionVariables(s2a))) {
+        if (!getInductionVariables(s1a).equals(getInductionVariables(s2a))) {
             return false;
         }
 
@@ -172,16 +180,111 @@ public class BlockInfo {
     }
 
     /**
-     * Check whether the node is not in the current basic block.
-     * @param node Node to check the block membership of.
-     * @return True if the provided node is not in the current basic block.
+     * Determine whether two nodes are accesses with the same base address.
+     * @param left Left access node
+     * @param right Right access node
+     * @return Boolean indicating whether base is the same.
+     *         If nodes are not access nodes, this is false.
      */
-    boolean notInBlock(Node node) {
-        return nodeToBlockMap.get(node) != block;
+    static boolean sameBaseAddress(Node left, Node right) {
+        if (!(left instanceof FixedAccessNode) || !(right instanceof FixedAccessNode)) {
+            return false;
+        }
+
+        final AddressNode leftAddress = ((FixedAccessNode) left).getAddress();
+        final AddressNode rightAddress = ((FixedAccessNode) right).getAddress();
+
+        if (leftAddress.getBase() == null  || rightAddress.getBase() == null) {
+            return false;
+        }
+
+        if (!leftAddress.getBase().equals(rightAddress.getBase())) {
+            return false;
+        }
+
+        return true;
     }
 
-    boolean inBlock(Node node) {
-        return !notInBlock(node);
+    private static Set<Node> getInductionVariables(AddressNode address) {
+        final Set<Node> ivs = new HashSet<>();
+        final Deque<Node> bfs = new ArrayDeque<>();
+        bfs.add(address);
+
+        while (!bfs.isEmpty()) {
+            final Node node = bfs.remove();
+            if (node instanceof AddressNode) {
+                final AddressNode addressNode = (AddressNode) node;
+                if (addressNode.getIndex() != null) {
+                    bfs.add(addressNode.getIndex());
+                }
+            } else if (node instanceof AddNode) {
+                final AddNode addNode = (AddNode) node;
+                bfs.add(addNode.getX());
+                bfs.add(addNode.getY());
+            } else if (node instanceof LeftShiftNode) {
+                final LeftShiftNode leftShiftNode = (LeftShiftNode) node;
+                bfs.add(leftShiftNode.getX());
+                bfs.add(leftShiftNode.getY());
+            } else if (node instanceof SignExtendNode) {
+                final SignExtendNode signExtendNode = (SignExtendNode) node;
+                bfs.add(signExtendNode.getValue());
+            } else if (node instanceof ConstantNode) {
+                // constant nodes are leaf nodes
+            } else {
+                ivs.add(node);
+            }
+        }
+
+        return ivs;
+    }
+
+    // Independence Check
+
+    /**
+     * Ensure that there is no data path between left and right. Pre: left and right are
+     * isomorphic
+     *
+     * @param left Left node of the potential pack
+     * @param right Right node of the potential pack
+     * @return Are the two statements independent? Only independent statements may be packed.
+     */
+    boolean independent(Node left, Node right) {
+        // Calculate depth from how far into block.getNodes() we are.
+        final int leftDepth = findDepth(left);
+        final int rightDepth = findDepth(right);
+
+        if (leftDepth == rightDepth) {
+            return !left.equals(right);
+        }
+
+        final int shallowDepth = Math.min(leftDepth, rightDepth);
+        final Node deep = leftDepth == shallowDepth ? right : left;
+        final Node shallow = leftDepth == shallowDepth ? left : right;
+
+        // Ensure that there is no membar between these two nodes
+        final Set<MembarNode> membars = new HashSet<>();
+        int membarCount = 0;
+
+        for (Node shallowSucc : shallow.cfgSuccessors()) {
+            if (shallowSucc instanceof MembarNode) {
+                membars.add((MembarNode) shallowSucc);
+                membarCount++;
+            }
+        }
+
+        for (Node deepPred : deep.cfgPredecessors()) {
+            if (deepPred instanceof MembarNode) {
+                membars.add((MembarNode) deepPred);
+                membarCount++;
+            }
+        }
+
+        if (membarCount != membars.size()) {
+            // The total number of membars != cardinality of membar set, so there is overlap
+            return false;
+        }
+
+        return hasNoPath(shallow, deep);
     }
 
     private int findDepth(Node node) {
@@ -234,51 +337,19 @@ public class BlockInfo {
         return true;
     }
 
+    // Misc Block Utilities
+
     /**
-     * Ensure that there is no data path between left and right. Pre: left and right are
-     * isomorphic
-     *
-     * @param left Left node of the potential pack
-     * @param right Right node of the potential pack
-     * @return Are the two statements independent? Only independent statements may be packed.
+     * Check whether the node is not in the current basic block.
+     * @param node Node to check the block membership of.
+     * @return True if the provided node is not in the current basic block.
      */
-    boolean independent(Node left, Node right) {
-        // Calculate depth from how far into block.getNodes() we are.
-        final int leftDepth = findDepth(left);
-        final int rightDepth = findDepth(right);
+    boolean notInBlock(Node node) {
+        return nodeToBlockMap.get(node) != block;
+    }
 
-        if (leftDepth == rightDepth) {
-            return !left.equals(right);
-        }
-
-        final int shallowDepth = Math.min(leftDepth, rightDepth);
-        final Node deep = leftDepth == shallowDepth ? right : left;
-        final Node shallow = leftDepth == shallowDepth ? left : right;
-
-        // Ensure that there is no membar between these two nodes
-        final Set<MembarNode> membars = new HashSet<>();
-        int membarCount = 0;
-
-        for (Node shallowSucc : shallow.cfgSuccessors()) {
-            if (shallowSucc instanceof MembarNode) {
-                membars.add((MembarNode) shallowSucc);
-                membarCount++;
-            }
-        }
-
-        for (Node deepPred : deep.cfgPredecessors()) {
-            if (deepPred instanceof MembarNode) {
-                membars.add((MembarNode) deepPred);
-                membarCount++;
-            }
-        }
-
-        if (membarCount != membars.size()) {
-            // The total number of membars != cardinality of membar set, so there is overlap
-            return false;
-        }
-
-        return hasNoPath(shallow, deep);
+    boolean inBlock(Node node) {
+        return !notInBlock(node);
     }
 
     public Block getBlock() {
