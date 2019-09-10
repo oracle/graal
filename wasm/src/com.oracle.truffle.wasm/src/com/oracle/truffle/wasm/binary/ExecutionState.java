@@ -40,6 +40,7 @@ public class ExecutionState {
     private ByteArrayList byteConstants;
     private IntArrayList intConstants;
     private IntArrayList stackStates;
+    private IntArrayList blockReturnLengthStack;
     private LongArrayList numericLiterals;
     private IntArrayArrayList branchTables;
 
@@ -49,6 +50,7 @@ public class ExecutionState {
         this.byteConstants = new ByteArrayList();
         this.intConstants = new IntArrayList();
         this.stackStates = new IntArrayList();
+        this.blockReturnLengthStack = new IntArrayList();
         this.numericLiterals = new LongArrayList();
         this.branchTables = new IntArrayArrayList();
     }
@@ -71,6 +73,10 @@ public class ExecutionState {
         stackSize -= n;
     }
 
+    public void setStackPointer(int stackPointer) {
+        stackSize = stackPointer;
+    }
+
     public void useByteConstant(byte constant) {
         byteConstants.add(constant);
     }
@@ -89,6 +95,22 @@ public class ExecutionState {
 
     public int getStackState(int level) {
         return stackStates.get(stackStates.size() - level - 1);
+    }
+
+    public void pushBlockReturnLength(int n) {
+        blockReturnLengthStack.add(n);
+    }
+
+    public void popBlockReturnLength() {
+        blockReturnLengthStack.popBack();
+    }
+
+    public int getBlockReturnLength(int offset) {
+        return blockReturnLengthStack.get(blockReturnLengthStack.size() - offset);
+    }
+
+    public int getRootBlockReturnLength() {
+        return blockReturnLengthStack.get(0);
     }
 
     public int stackSize() {

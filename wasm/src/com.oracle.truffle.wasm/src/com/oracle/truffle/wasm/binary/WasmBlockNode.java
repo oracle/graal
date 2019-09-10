@@ -197,6 +197,8 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_GET;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_SET;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOCAL_TEE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.LOOP;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.MEMORY_GROW;
+import static com.oracle.truffle.wasm.binary.constants.Instructions.MEMORY_SIZE;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.NOP;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.RETURN;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
@@ -336,11 +338,12 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     // Reset the stack pointer to the target block stack pointer.
                     int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
+                    int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 1);
                     // Technically, we should increment the intConstantOffset and numericLiteralOffset at this point,
                     // but since we are returning, it does not really matter.
 
                     // Populate the stack with the return values of the current block (the one we are escaping from).
-                    unwindStack(frame, stackPointer, continuationStackPointer);
+                    unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
 
                     return unwindCounter;
                 }
@@ -352,11 +355,12 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                         // Reset the stack pointer to the target block stack pointer.
                         int continuationStackPointer = codeEntry().intConstant(intConstantOffset);
+                        int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 1);
                         // Technically, we should increment the intConstantOffset and numericLiteralOffset at this point,
                         // but since we are returning, it does not really matter.
 
                         // Populate the stack with the return values of the current block (the one we are escaping from).
-                        unwindStack(frame, stackPointer, continuationStackPointer);
+                        unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
 
                         return unwindCounter;
                     }
@@ -371,19 +375,21 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int index = popInt(frame, stackPointer);
                     int[] table = codeEntry().branchTable(branchTableOffset);
                     int[] continuationStackPointers = codeEntry().branchTable(branchTableOffset + 1);
+                    int[] targetBlocksReturnLengths = codeEntry().branchTable(branchTableOffset + 2);
                     index = index >= table.length ? table.length - 1 : index;
                     // Technically, we should increment the branchTableOffset at this point,
                     // but since we are returning, it does not really matter.
 
                     // Populate the stack with the return values of the current block (the one we are escaping from).
-                    unwindStack(frame, stackPointer, continuationStackPointers[index]);
+                    unwindStack(frame, stackPointer, continuationStackPointers[index], targetBlocksReturnLengths[index]);
 
                     return table[index];
                 }
                 case RETURN: {
                     // A return statement causes the termination of the current function, i.e. causes the execution
                     // to resume after the instruction that invoked the current frame.
-                    unwindStack(frame, stackPointer, 0);
+                    int rootBlockReturnLength = codeEntry().intConstant(intConstantOffset);
+                    unwindStack(frame, stackPointer, 0, rootBlockReturnLength);
                     return Integer.MAX_VALUE;
                 }
                 case CALL: {
@@ -962,6 +968,14 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                         throw new WasmTrap("memory address out-of-bounds", this);
                     }
 
+                    break;
+                }
+                case MEMORY_SIZE: {
+                    offset++;  // 0x00
+                    break;
+                }
+                case MEMORY_GROW: {
+                    offset++;  // 0x00
                     break;
                 }
                 case I32_CONST: {
@@ -1969,8 +1983,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer) {
-        for (int i = 0; i != returnTypeLength(); ++i) {
+    private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer, int targetBlockReturnLength) {
+        for (int i = 0; i != targetBlockReturnLength; ++i) {
             stackPointer--;
             long value = pop(frame, stackPointer);
             push(frame, continuationStackPointer, value);

@@ -557,26 +557,33 @@ public class BinaryReader extends BinaryStreamReader {
             opcode = read1() & 0xFF;
             switch (opcode) {
                 case UNREACHABLE:
+                    break;
                 case NOP:
                     break;
                 case BLOCK: {
                     state.pushStackState();
+                    state.pushBlockReturnLength(currentBlock.returnTypeLength());
                     WasmBlockNode nestedBlock = readBlock(codeEntry, state);
                     nestedControlTable.add(nestedBlock);
+                    state.popBlockReturnLength();
                     state.popStackState();
                     break;
                 }
                 case LOOP: {
                     state.pushStackState();
+                    state.pushBlockReturnLength(currentBlock.returnTypeLength());
                     WasmLoopNode loopBlock = readLoop(codeEntry, state);
                     nestedControlTable.add(loopBlock);
+                    state.popBlockReturnLength();
                     state.popStackState();
                     break;
                 }
                 case IF: {
                     state.pushStackState();
+                    state.pushBlockReturnLength(currentBlock.returnTypeLength());
                     WasmIfNode ifNode = readIf(codeEntry, state);
                     nestedControlTable.add(ifNode);
+                    state.popBlockReturnLength();
                     state.popStackState();
                     break;
                 }
@@ -595,6 +602,7 @@ public class BinaryReader extends BinaryStreamReader {
                     state.saveNumericLiteral(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
                     state.useIntConstant(state.getStackState(unwindLevel));
+                    state.useIntConstant(state.getBlockReturnLength(unwindLevel));
                     break;
                 }
                 case BR_IF: {
@@ -609,27 +617,33 @@ public class BinaryReader extends BinaryStreamReader {
                     state.saveNumericLiteral(unwindLevel);
                     state.useByteConstant(bytesConsumed[0]);
                     state.useIntConstant(state.getStackState(unwindLevel));
+                    state.useIntConstant(state.getBlockReturnLength(unwindLevel));
                     break;
                 }
                 case BR_TABLE: {
                     int numLabels = readVectorLength();
-                    // We need to save two tables here, to maintain the mapping target -> state mapping:
+                    // We need to save three tables here, to maintain the mapping target -> state mapping:
                     // - a table containing the branch targets for the instruction
                     // - a table containing the stack state for each corresponding branch target
+                    // - a table containing the target block return length, so that we can unwind the stack
                     int[] branchTable = new int[numLabels + 1];
                     int[] stackStates = new int[numLabels + 1];
+                    int[] blockReturnLengths = new int[numLabels + 1];
                     // The BR_TABLE instruction behaves like a 'switch' statement.
                     // There is one extra label for the 'default' case.
                     for (int i = 0; i != numLabels + 1; ++i) {
                         branchTable[i] = readLabelIndex();
                         stackStates[i] = state.getStackState(branchTable[i]);
+                        blockReturnLengths[i] = state.getBlockReturnLength(branchTable[i]);
                     }
                     state.pop();  // The offset to the branch table.
                     state.saveBranchTable(branchTable);
                     state.saveBranchTable(stackStates);
+                    state.saveBranchTable(blockReturnLengths);
                     break;
                 }
                 case RETURN: {
+                    state.useIntConstant(state.getRootBlockReturnLength());
                     break;
                 }
                 case CALL: {
