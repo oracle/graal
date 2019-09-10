@@ -427,6 +427,23 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return memoryNodes.get(maxIndex);
         }
 
+        /**
+         * Predicate to determine whether performing the IPP operation is valid for this block.
+         * @return Boolean indicating whether we can proceed with packing.
+         */
+        private boolean validForBlock() {
+            for (FixedNode node : blockInfo.getBlock().getNodes()) {
+                if (node instanceof ControlSplitNode) {
+                    return false;
+                }
+                if (node instanceof InvokeNode) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         // Core
 
         /**
@@ -746,23 +763,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
 
             // non-fixed nodes don't have control flow, so don't need to do anything else
-        }
-
-        /**
-         * Predicate to determine whether performing the IPP operation is valid for this block.
-         * @return Boolean indicating whether we can proceed with packing.
-         */
-        private boolean validForBlock() {
-            for (FixedNode node : blockInfo.getBlock().getNodes()) {
-                if (node instanceof ControlSplitNode) {
-                    return false;
-                }
-                if (node instanceof InvokeNode) {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         // Main
