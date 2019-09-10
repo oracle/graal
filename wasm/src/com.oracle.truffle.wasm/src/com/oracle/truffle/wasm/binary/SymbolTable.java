@@ -33,7 +33,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
+import com.oracle.truffle.wasm.env.functions.NoOp;
+import com.oracle.truffle.wasm.env.functions.Print;
 
 public class SymbolTable {
     private static final int INITIAL_DATA_SIZE = 512;
