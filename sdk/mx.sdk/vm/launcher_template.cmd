@@ -29,6 +29,14 @@
 
 setlocal enabledelayedexpansion
 
+echo %* | findstr = >nul && (
+  echo Warning: the '=' character in program arguments is not fully supported.
+  echo Make sure that command line arguments using it are wrapped in double quotes.
+  echo Example:
+  echo "--vm.Dfoo=bar"
+  echo.
+)
+
 set location=%~dp0
 
 set "relcp=<classpath>"
@@ -43,33 +51,25 @@ for /f "tokens=1* delims=;" %%i in ("%relcp%") do (
 )
 if not "%relcp_next%"=="%relcp%" set "relcp=%relcp_next%" & goto :nextcp
 
-echo %* | findstr \"" >nul && echo Warning: the " character in program arguments is not fully supported.
-
 set "jvm_args=-Dorg.graalvm.launcher.shell=true"
 set "launcher_args="
 set "args_delim="
 
-rem This is the best I could come up with to parse command line arguments.
-rem Other, simpler approaches consider '=' a delimiter for splitting arguments.
-rem Know issues:
-rem 1. --vm.foo=bar works, but "--vm.foo=bar" does not
-rem    It considers '=' a delimiter, therefore --vm.foo and bar are considered 2 distinct arguments.
-rem    This does not throw an error but arguments are not properly parsed.
-rem 2. --vm.foo="bar" works, but --vm.foo="b a r" does not (spaces are delimiters)
-rem    This throws a syntax error.
-set "next_arg=%*"
-:loop
-for /f "tokens=1*" %%a in ("%next_arg%") do (
+for %%a in (%*) do (
+  rem Unquote the argument (`u_arg=%%~a`) before checking its prefix.
+  rem Pass program arguments to the main class as they are quoted by the user (`arg=%%a`)
   set "arg=%%a"
+  set "u_arg=%%~a"
+
   set "jvm_arg="
   set "wrong_cp="
 
   rem Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
   rem Maybe some of those arguments where not really intended for the launcher but were application arguments
-  if "!arg:~0,5!"=="--vm." (
-    set "jvm_arg=-!arg:~5!"
-  ) else if "!arg:~0,6!"=="--jvm." (
-    set "jvm_arg=-!arg:~6!"
+  if "!u_arg:~0,5!"=="--vm." (
+    set "jvm_arg=-!u_arg:~5!"
+  ) else if "!u_arg:~0,6!"=="--jvm." (
+    set "jvm_arg=-!u_arg:~6!"
   )
 
   if not "!jvm_arg!"=="" (
@@ -87,16 +87,14 @@ for /f "tokens=1*" %%a in ("%next_arg%") do (
     ) else if "!jvm_arg:~0,11!"=="-classpath=" (
       set "realcp=%realcp%;!jvm_arg:~11!"
     ) else (
-      set "jvm_args=!jvm_args! !jvm_arg!"
+      rem Quote all VM arguments
+      set "jvm_args=!jvm_args! "!jvm_arg!""
     )
   ) else (
     set "launcher_args=!launcher_args!!args_delim!!arg!"
     set "args_delim= "
   )
-
-  set "next_arg=%%~b"
 )
-if defined next_arg goto :loop
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
