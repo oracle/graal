@@ -33,13 +33,17 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Engine;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -58,6 +62,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -74,7 +79,7 @@ public final class EspressoContext {
     private final MethodHandleIntrinsics methodHandleIntrinsics;
 
     private final ConcurrentHashMap<Thread, StaticObject> host2guest = new ConcurrentHashMap<>();
-    private final Set<Thread> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
+    private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<StaticObject, Boolean>());
 
     private final AtomicInteger klassIdProvider = new AtomicInteger();
 
@@ -98,6 +103,10 @@ public final class EspressoContext {
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
     @CompilationFinal private ArrayList<Method> frames;
+
+    // Set on calling guest Therad.stop0(), or when closing context.
+    @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
+    private boolean isClosing = false;
 
     public EspressoContext(TruffleLanguage.Env env, EspressoLanguage language) {
         this.env = env;
@@ -200,6 +209,9 @@ public final class EspressoContext {
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
+        // Create the discarding assumption
+        this.noThreadStop = Truffle.getRuntime().createAssumption("no thread.stop() called");
+
         initializeKnownClass(Type.Object);
 
         for (Symbol<Type> type : Arrays.asList(
@@ -259,7 +271,7 @@ public final class EspressoContext {
         // Allow guest Thread.currentThread() to work.
         mainThread.setHiddenField(this.meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         host2guest.put(Thread.currentThread(), mainThread);
-        activeThreads.add(Thread.currentThread());
+        activeThreads.add(mainThread);
 
         StaticObject mainThreadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
@@ -278,22 +290,64 @@ public final class EspressoContext {
     }
 
     public void interruptActiveThreads() {
-        Thread initiatingThread = Thread.currentThread();
-        for (Thread t : activeThreads) {
+        isClosing = true;
+        invalidateNoThreadStop("Killing the VM");
+        Thread hostInitiatingThread = Thread.currentThread();
+        StaticObject initiatingThread = getHost2Guest(hostInitiatingThread);
+        killingRound(guestRound1, hostRound1, initiatingThread);
+        killingRound(guestRound2, hostRound2, initiatingThread);
+        Target_java_lang_Thread.interrupt0(initiatingThread);
+        hostInitiatingThread.interrupt();
+    }
+
+    private static final Consumer<StaticObject> guestRound1 = Target_java_lang_Thread::interrupt0;
+    private static final Function<Thread, Boolean> hostRound1 = host -> {
+        try {
+            host.interrupt();
+            host.join(100);
+        } catch (InterruptedException e) {
+            System.err.println("Interrupted while closing");
+        }
+        return false;
+    };
+
+    private static final Consumer<StaticObject> guestRound2 = t -> {
+        Target_java_lang_Thread.killThread(t);
+        Target_java_lang_Thread.interrupt0(t);
+    };
+    private static final Function<Thread, Boolean> hostRound2 = host -> {
+        try {
+            host.interrupt();
+            if (host.getState() == Thread.State.BLOCKED) {
+                return true;
+            }
+            host.join(100);
+        } catch (InterruptedException e) {
+            System.err.println("Interrupted while killing");
+        }
+        return false;
+    };
+
+    private void killingRound(Consumer<StaticObject> guestAction, Function<Thread, Boolean> hostAction, StaticObject initiatingThread) {
+        boolean redo;
+
+        for (StaticObject t : activeThreads) {
             if (t != initiatingThread) {
-                try {
-                    if (t.isDaemon()) {
-                        t.interrupt();
-                        t.join();
-                    } else {
-                        t.join();
-                    }
-                } catch (InterruptedException e) {
-                    System.err.println("Interrupted while stopping thread in closing context.");
-                }
+                guestAction.accept(t);
             }
         }
-        initiatingThread.interrupt();
+        do {
+            redo = false;
+            for (StaticObject t : activeThreads) {
+                if (t != initiatingThread) {
+                    if (Target_java_lang_Thread.checkThreadStatus(t, Target_java_lang_Thread.KillStatus.KILLED)) {
+                        Target_java_lang_Thread.setThreadStop(t, Target_java_lang_Thread.KillStatus.DISSIDENT);
+                    }
+                    Thread host = Target_java_lang_Thread.getHostFromGuestThread(t);
+                    redo |= hostAction.apply(host);
+                }
+            }
+        } while (redo);
     }
 
     private void initVmProperties() {
@@ -386,12 +440,24 @@ public final class EspressoContext {
         return host2guest.get(hostThread);
     }
 
-    public void registerThread(Thread thread) {
+    public void registerThread(StaticObject thread) {
         activeThreads.add(thread);
     }
 
-    public void unregisterThread(Thread thread) {
+    public void unregisterThread(StaticObject thread) {
         activeThreads.remove(thread);
+    }
+
+    public boolean noThreadStop() {
+        return noThreadStop.isValid();
+    }
+
+    public void invalidateNoThreadStop(String message) {
+        noThreadStop.invalidate(message);
+    }
+
+    public boolean isClosing() {
+        return isClosing;
     }
 
     // region Options

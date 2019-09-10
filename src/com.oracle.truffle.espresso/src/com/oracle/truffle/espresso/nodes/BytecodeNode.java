@@ -228,7 +228,9 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -275,8 +277,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.EspressoKillError;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 import com.oracle.truffle.object.DebugCounter;
@@ -907,8 +911,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                         case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
                         case INSTANCEOF: top += quickenInstanceOf(frame, top, curBCI, curOpcode); break;
 
-                        case MONITORENTER: InterpreterToVM.monitorEnter(nullCheck(peekAndReleaseObject(frame, top - 1))); break;
-                        case MONITOREXIT: InterpreterToVM.monitorExit(nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                        case MONITORENTER: monitorEnter(nullCheck(peekAndReleaseObject(frame, top - 1))); break;
+                        case MONITOREXIT: monitorExit(nullCheck(peekAndReleaseObject(frame, top - 1))); break;
 
                         case WIDE:
                             CompilerAsserts.neverPartOfCompilation();
@@ -1030,7 +1034,9 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                     }
                     putObject(frame, 0, e.getException());
                     top++;
-                    curBCI = handler.getHandlerBCI();
+                    int targetBCI = handler.getHandlerBCI();
+                    checkBackEdge(curBCI, targetBCI, top, NOP);
+                    curBCI = targetBCI;
                     if (DEBUG_CATCH) {
                         reportCatch(e, curBCI, this);
                     }
@@ -1080,6 +1086,15 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     }
 
+    private void monitorExit(Object monitor) {
+        InterpreterToVM.monitorExit(monitor);
+    }
+
+    private void monitorEnter(Object monitor) {
+        checkStopping();
+        InterpreterToVM.monitorEnter(monitor);
+    }
+
     private boolean takeBranch(VirtualFrame frame, int top, int opCode) {
         assert Bytecodes.isBranch(opCode);
         // @formatter:off
@@ -1113,11 +1128,37 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opCode) {
         int newTop = top + Bytecodes.stackEffectOf(opCode);
         if (targetBCI < curBCI) {
+            checkStopping();
             if (CompilerDirectives.inInterpreter()) {
                 LoopNode.reportLoopCount(this, 1);
             }
         }
         return newTop;
+    }
+
+    private void checkStopping() {
+        if (!getContext().noThreadStop()) {
+            StaticObject thread = getContext().getHost2Guest(Thread.currentThread());
+            Target_java_lang_Thread.KillStatus status = Target_java_lang_Thread.getKillStatus(thread);
+            switch (status) {
+                case NORMAL:
+                case EXITING:
+                case KILLED:
+                    break;
+                case KILL:
+                    if (getContext().isClosing()) {
+                        // Give some leeway during closing.
+                        Target_java_lang_Thread.setThreadStop(thread, Target_java_lang_Thread.KillStatus.KILLED);
+                    } else {
+                        Target_java_lang_Thread.setThreadStop(thread, Target_java_lang_Thread.KillStatus.NORMAL);
+                    }
+                    throw getMeta().throwEx(ThreadDeath.class);
+                case DISSIDENT:
+                    // This thread refuses to stop. Send a host exception.
+                    throw getMeta().throwEx(ThreadDeath.class);
+// throw new EspressoKillError();
+            }
+        }
     }
 
     @TruffleBoundary

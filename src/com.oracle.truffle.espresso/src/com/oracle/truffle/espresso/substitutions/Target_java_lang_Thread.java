@@ -93,7 +93,6 @@ public final class Target_java_lang_Thread {
         }
 
     }
-    // TODO(peterssen): Remove single thread shim, support real threads.
 
     @Substitution
     public static @Host(Thread.class) StaticObject currentThread() {
@@ -117,26 +116,34 @@ public final class Target_java_lang_Thread {
                         meta.Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getException());
                     } finally {
                         self.setIntField(meta.Thread_state, State.TERMINATED.value);
+                        boolean stoppedThread = checkThreadStop(self);
+                        setThreadStop(self, KillStatus.EXITING);
                         meta.Thread_exit.invokeDirect(self);
                         synchronized (self) {
                             // Notify waiting threads you are done working
                             self.notifyAll();
                         }
                         // Cleanup.
-                        context.unregisterThread((Thread) self.getHiddenField(meta.HIDDEN_HOST_THREAD));
+                        context.unregisterThread(self);
+                        if (context.isClosing()) {
+                            // Ignore exceptions that arise during closing.
+                            return;
+                        }
+
                     }
                 }
             });
 
             self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
+            setThreadStop(self, KillStatus.NORMAL);
             context.putHost2Guest(hostThread, self);
-            context.registerThread(hostThread);
+            context.registerThread(self);
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_state, State.RUNNABLE.value);
             hostThread.start();
         } else {
             System.err.println(
-                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use -Despresso.EnableThreads=true to enable experimental thread support.");
+                            "Thread.start() called on " + self.getKlass() + " but thread support is disabled. Use -Despresso.EnableThreads=true to enable thread support.");
         }
     }
 
@@ -148,7 +155,7 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void setPriority0(@Host(Thread.class) StaticObject self, int newPriority) {
-        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
         }
@@ -163,7 +170,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution(hasReceiver = true)
     public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self) {
-        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        Thread hostThread = getHostFromGuestThread(self);
         // If hostThread is null, start hasn't been called yet -> NEW state.
         return (StaticObject) self.getKlass().getMeta().VM_toThreadState.invokeDirect(null, hostThread == null ? State.NEW.value : stateToInt(hostThread.getState()));
     }
@@ -172,20 +179,6 @@ public final class Target_java_lang_Thread {
     @Substitution
     public static void registerNatives() {
         /* nop */
-    }
-
-    @Substitution(hasReceiver = true)
-    public static boolean isInterrupted(@Host(Thread.class) StaticObject self) {
-        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
-        if (hostThread == null) {
-            return false;
-        }
-        return hostThread.isInterrupted();
-    }
-
-    @Substitution
-    public static boolean interrupted() {
-        return Thread.interrupted();
     }
 
     @Substitution
@@ -208,14 +201,36 @@ public final class Target_java_lang_Thread {
         }
     }
 
+    private static void setInterrupt(StaticObject self, boolean value) {
+        self.setHiddenField(self.getKlass().getMeta().HIDDEN_INTERRUPTED, value);
+    }
+
+    private static boolean checkInterrupt(StaticObject self) {
+        Boolean interrupt = (Boolean) self.getHiddenField(self.getKlass().getMeta().HIDDEN_INTERRUPTED);
+        return interrupt != null && interrupt;
+    }
+
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void interrupt0(@Host(Object.class) StaticObject self) {
-        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
         }
-        hostThread.interrupt();
+        setInterrupt(self, true);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean clear) {
+        Thread hostThread = getHostFromGuestThread(self);
+        if (hostThread == null) {
+            return false;
+        }
+        boolean result = checkInterrupt(self);
+        if (clear) {
+            setInterrupt(self, false);
+        }
+        return result;
     }
 
     @TruffleBoundary
@@ -225,7 +240,7 @@ public final class Target_java_lang_Thread {
         if (EspressoOptions.RUNNING_ON_SVM) {
             /* nop */
         } else {
-            Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+            Thread hostThread = getHostFromGuestThread(self);
             if (hostThread == null) {
                 return;
             }
@@ -240,7 +255,7 @@ public final class Target_java_lang_Thread {
         if (EspressoOptions.RUNNING_ON_SVM) {
             /* nop */
         } else {
-            Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+            Thread hostThread = getHostFromGuestThread(self);
             if (hostThread == null) {
                 return;
             }
@@ -249,23 +264,58 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @SuppressWarnings({"unused", "deprecation"})
     @Substitution(hasReceiver = true)
+    @SuppressWarnings("unused")
     public static void stop0(@Host(Object.class) StaticObject self, Object unused) {
-        if (EspressoOptions.RUNNING_ON_SVM) {
-            /* nop */
-        } else {
-            Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
-            if (hostThread == null) {
-                return;
-            }
-            hostThread.stop();
+        Thread hostThread = getHostFromGuestThread(self);
+        if (hostThread == null) {
+            return;
         }
+        self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
+        killThread(self);
     }
 
     @Substitution(hasReceiver = true)
     public static void setNativeName(@Host(Object.class) StaticObject self, @Host(String.class) StaticObject name) {
-        Thread hostThread = (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+        Thread hostThread = getHostFromGuestThread(self);
         hostThread.setName(Meta.toHostString(name));
     }
+
+    public static Thread getHostFromGuestThread(@Host(Object.class) StaticObject self) {
+        return (Thread) self.getHiddenField(self.getKlass().getMeta().HIDDEN_HOST_THREAD);
+    }
+
+    public static boolean checkThreadStatus(StaticObject thread, KillStatus status) {
+        KillStatus stop = (KillStatus) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH);
+        return stop != null && stop == status;
+    }
+
+    public static void setThreadStop(StaticObject thread, KillStatus value) {
+        thread.setHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH, value);
+    }
+
+    public static void killThread(StaticObject thread) {
+        thread.setHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH, KillStatus.KILL);
+    }
+
+    public static boolean checkThreadStop(StaticObject thread) {
+        KillStatus stop = (KillStatus) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH);
+        if (stop == null) {
+            return false;
+        }
+        return stop != KillStatus.NORMAL;
+    }
+
+    public static KillStatus getKillStatus(StaticObject thread) {
+        return (KillStatus) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH);
+    }
+
+    public enum KillStatus {
+        NORMAL,
+        KILL,
+        KILLED,
+        EXITING,
+        DISSIDENT
+    }
+
 }
