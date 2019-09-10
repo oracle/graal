@@ -99,23 +99,17 @@ suite = {
     },
 
     "libraries": {
-       "NanoHTTPD" : {
-          "path" : "lib/nanohttpd-2.3.1.jar",
-          "sha1" : "a8d54d1ca554a77f377eff6bf9e16ca8383c8f6c",
-          "maven" : {
-            "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd",
-            "version" : "2.3.1",
-          }
+        "NanoHTTPD" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar",
+            ],
+            "sha1" : "7d28e2828bfe2ac04dcb8779aded934ac7dc1e52",
         },
-       "NanoHTTPD-WebSocket" : {
-          "path" : "lib/nanohttpd-websocket-2.3.1.jar",
-          "sha1" : "f2cfb09cee12469ff64f0d698b13de19903bb4f7",
-          "maven" : {
-            "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd-websocket",
-            "version" : "2.3.1",
-          }
+        "NanoHTTPD-WebSocket" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-websocket-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar",
+            ],
+            "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
         "TruffleJSON" : {
           "urls" : [

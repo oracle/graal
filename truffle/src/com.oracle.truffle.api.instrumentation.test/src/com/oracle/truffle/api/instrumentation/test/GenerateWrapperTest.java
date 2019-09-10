@@ -134,6 +134,9 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
     @Test
     public void testUnwindReturnValueInEnter() {
+        if (System.getProperty("java.vm.name").contains("Graal:graal-enterprise")) {
+            return; // GR-16755
+        }
         setupEnv();
         DefaultNode instrumentedNode = new DefaultNode();
         Supplier<DefaultNode> node = adoptNode(instrumentedNode);
@@ -163,6 +166,9 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
     @Test
     public void testUnwindReturnValueInReturn() {
+        if (System.getProperty("java.vm.name").contains("Graal:graal-enterprise")) {
+            return; // GR-16755
+        }
         setupEnv();
         DefaultNode instrumentedNode = new DefaultNode();
         Supplier<DefaultNode> node = adoptNode(instrumentedNode);
@@ -378,6 +384,9 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
     @Test
     public void testIncomingValueConverter() {
+        if (System.getProperty("java.vm.name").contains("Graal:graal-enterprise")) {
+            return; // GR-16755
+        }
         setupEnv();
         IncomingValueNode instrumentedNode = new IncomingValueNode();
         Supplier<IncomingValueNode> node = adoptNode(instrumentedNode);
