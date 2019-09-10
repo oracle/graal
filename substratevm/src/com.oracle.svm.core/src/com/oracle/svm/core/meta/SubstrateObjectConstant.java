@@ -138,17 +138,20 @@ public abstract class SubstrateObjectConstant implements JavaConstant, Compressi
     }
 
     @Override
-    public boolean equals(Object obj) {
+    public final boolean equals(Object obj) {
         if (obj != this && obj instanceof SubstrateObjectConstant) {
-            return compressed == ((SubstrateObjectConstant) obj).compressed;
+            SubstrateObjectConstant other = (SubstrateObjectConstant) obj;
+            return isCompressed() == other.isCompressed() && ObjectConstantEquality.get().test(this, other);
         }
         return obj == this;
     }
 
     @Override
-    public int hashCode() {
-        return Boolean.hashCode(compressed);
+    public final int hashCode() {
+        return getIdentityHashCode();
     }
+
+    protected abstract int getIdentityHashCode();
 
     @Override
     public String toString() {

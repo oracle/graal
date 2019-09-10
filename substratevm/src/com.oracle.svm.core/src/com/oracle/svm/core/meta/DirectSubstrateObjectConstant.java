@@ -108,17 +108,8 @@ public final class DirectSubstrateObjectConstant extends SubstrateObjectConstant
     }
 
     @Override
-    public int hashCode() {
-        return super.hashCode() * 31 + System.identityHashCode(object);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this != obj && obj instanceof DirectSubstrateObjectConstant) {
-            DirectSubstrateObjectConstant other = (DirectSubstrateObjectConstant) obj;
-            return object == other.object && super.equals(other);
-        }
-        return (this == obj);
+    protected int getIdentityHashCode() {
+        return System.identityHashCode(object);
     }
 
     @Override
