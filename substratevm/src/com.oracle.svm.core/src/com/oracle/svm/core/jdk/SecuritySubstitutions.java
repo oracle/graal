@@ -36,10 +36,13 @@ import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.SecureRandom;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -386,6 +389,34 @@ final class ContainsVerifyJars implements Predicate<Class<?>> {
     }
 }
 
+/*
+ * Library sunec depends on bits from sun.security.krb5 that are currently not used at runtime
+ * (never called). For a dynamically linked sunec this is fine because the dynamic linker resolves
+ * these calls lazily. On the other hand for statically linking sunec we do need to resolve these
+ * dependencies at image built time (during linking). To ensure linking succeeds dummy
+ * implementations are provided for the Kerberos methods.
+ */
+@Platforms({InternalPlatform.PLATFORM_JNI.class})
+@TargetClass(className = "sun.security.krb5.SCDynamicStoreConfig")
+@SuppressWarnings({"static-method", "unused"})
+final class Target_sun_security_krb5_SCDynamicStoreConfig {
+    @Substitute
+    private static Hashtable<String, Object> getKerberosConfig() {
+        throw VMError.shouldNotReachHere("Method sun.security.krb5.SCDynamicStoreConfig.getKerberosConfig() currently not supported for PLATFORM_JNI");
+    }
+}
+
+@Platforms({InternalPlatform.PLATFORM_JNI.class})
+@TargetClass(className = "sun.security.krb5.Config")
+@SuppressWarnings({"static-method", "unused"})
+final class Target_sun_security_krb5_Config {
+    @Substitute
+    private static String getWindowsDirectory(boolean var0) {
+        throw VMError.shouldNotReachHere("Method sun.security.krb5.Config.getWindowsDirectory() currently not supported for PLATFORM_JNI");
+    }
+}
+
 /** Dummy class to have a class with the file's name. */
 public final class SecuritySubstitutions {
+    boolean initSunEC = true;
 }

@@ -40,15 +40,19 @@ import java.util.function.Function;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.security.jca.Providers;
@@ -205,6 +209,28 @@ public class SecurityServicesFeature implements Feature {
                 }
             }
         }
+
+        Class<?> classECDSASignature = access.findClassByName("sun.security.ec.ECDSASignature");
+        access.registerReachabilityHandler(SecurityServicesFeature::staticLinkSunEC,
+                        ReflectionUtil.lookupMethod(classECDSASignature, "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
+                        ReflectionUtil.lookupMethod(classECDSASignature, "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+    }
+
+    private static void staticLinkSunEC(DuringAnalysisAccess duringAnalysisAccess) {
+        FeatureImpl.DuringAnalysisAccessImpl a = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
+        NativeLibraries nativeLibraries = a.getNativeLibraries();
+        if (nativeLibraries.getStaticLibraryPath("sunec") != null) {
+            /* We statically link sunec thus we classify it as builtIn library */
+            PlatformNativeLibrarySupport.singleton().addBuiltInLibrary("sunec");
+
+            nativeLibraries.addLibrary("sunec", true);
+            /* Library sunec depends on stdc++ */
+            nativeLibraries.addLibrary("stdc++", false);
+        } else {
+            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+                VMError.shouldNotReachHere("Using sunec native methods require static sunec library for image building");
+            }
+        }
     }
 
     /**
@@ -346,5 +372,4 @@ public class SecurityServicesFeature implements Feature {
             // Checkstyle: resume
         }
     }
-
 }
