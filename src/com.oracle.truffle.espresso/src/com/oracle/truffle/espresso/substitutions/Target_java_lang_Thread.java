@@ -106,6 +106,11 @@ public final class Target_java_lang_Thread {
             // Thread.start() is synchronized.
             EspressoContext context = self.getKlass().getContext();
             Meta meta = context.getMeta();
+            KillStatus killStatus = getKillStatus(self);
+            if (killStatus != null || context.isClosing()) {
+                return;
+            }
+            setThreadStop(self, KillStatus.NORMAL);
             Thread hostThread = context.getEnv().createThread(new Runnable() {
                 @Override
                 public void run() {
@@ -116,7 +121,6 @@ public final class Target_java_lang_Thread {
                         meta.Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getException());
                     } finally {
                         self.setIntField(meta.Thread_state, State.TERMINATED.value);
-                        boolean stoppedThread = checkThreadStop(self);
                         setThreadStop(self, KillStatus.EXITING);
                         meta.Thread_exit.invokeDirect(self);
                         synchronized (self) {
@@ -129,13 +133,11 @@ public final class Target_java_lang_Thread {
                             // Ignore exceptions that arise during closing.
                             return;
                         }
-
                     }
                 }
             });
 
             self.setHiddenField(meta.HIDDEN_HOST_THREAD, hostThread);
-            setThreadStop(self, KillStatus.NORMAL);
             context.putHost2Guest(hostThread, self);
             context.registerThread(self);
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
@@ -218,6 +220,7 @@ public final class Target_java_lang_Thread {
             return;
         }
         setInterrupt(self, true);
+        hostThread.interrupt();
     }
 
     @Substitution(hasReceiver = true)
@@ -273,6 +276,8 @@ public final class Target_java_lang_Thread {
         }
         self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
         killThread(self);
+        setInterrupt(self, true);
+        hostThread.interrupt();
     }
 
     @Substitution(hasReceiver = true)
@@ -298,23 +303,22 @@ public final class Target_java_lang_Thread {
         thread.setHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH, KillStatus.KILL);
     }
 
-    public static boolean checkThreadStop(StaticObject thread) {
-        KillStatus stop = (KillStatus) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH);
-        if (stop == null) {
-            return false;
-        }
-        return stop != KillStatus.NORMAL;
-    }
-
     public static KillStatus getKillStatus(StaticObject thread) {
         return (KillStatus) thread.getHiddenField(thread.getKlass().getMeta().HIDDEN_DEATH);
     }
 
     public enum KillStatus {
+        // Normal state: no Thread.stop() called, or ThreadDeath has already been thrown.
         NORMAL,
+        // Thread will be thrown an asynchronous ThreadDeath whenever possible.
         KILL,
+        // Was killed, but we are in context closing. If the thread is alive for a while in that
+        // state, it will be considered uncooperative.
         KILLED,
+        // Was killed, and is calling Thread.exit(). Ignore further kill signals.
         EXITING,
+        // Thread is uncooperative: needs to be killed with a host exception. Very dangerous state
+        // to be in.
         DISSIDENT
     }
 

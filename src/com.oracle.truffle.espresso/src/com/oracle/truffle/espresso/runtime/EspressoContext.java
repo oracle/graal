@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Engine;
@@ -294,60 +293,63 @@ public final class EspressoContext {
         invalidateNoThreadStop("Killing the VM");
         Thread hostInitiatingThread = Thread.currentThread();
         StaticObject initiatingThread = getHost2Guest(hostInitiatingThread);
+        // Soft interruption
         killingRound(guestRound1, hostRound1, initiatingThread);
+        // Start killing threads
         killingRound(guestRound2, hostRound2, initiatingThread);
+        // Threads still alive at that point ignored our warnings: kill them hard.
+        killingRound(guestRound3, hostRound3, initiatingThread);
         Target_java_lang_Thread.interrupt0(initiatingThread);
         hostInitiatingThread.interrupt();
     }
 
     private static final Consumer<StaticObject> guestRound1 = Target_java_lang_Thread::interrupt0;
-    private static final Function<Thread, Boolean> hostRound1 = host -> {
+
+    private static final Consumer<Thread> hostRound1 = host -> {
         try {
-            host.interrupt();
             host.join(100);
         } catch (InterruptedException e) {
             System.err.println("Interrupted while closing");
         }
-        return false;
     };
 
     private static final Consumer<StaticObject> guestRound2 = t -> {
         Target_java_lang_Thread.killThread(t);
         Target_java_lang_Thread.interrupt0(t);
     };
-    private static final Function<Thread, Boolean> hostRound2 = host -> {
+    private static final Consumer<Thread> hostRound2 = host -> {
         try {
-            host.interrupt();
-            if (host.getState() == Thread.State.BLOCKED) {
-                return true;
-            }
             host.join(100);
         } catch (InterruptedException e) {
             System.err.println("Interrupted while killing");
         }
-        return false;
+    };
+    private static final Consumer<StaticObject> guestRound3 = t -> {
+        if (Target_java_lang_Thread.checkThreadStatus(t, Target_java_lang_Thread.KillStatus.KILLED) ||
+                        Target_java_lang_Thread.checkThreadStatus(t, Target_java_lang_Thread.KillStatus.KILL)) {
+            Target_java_lang_Thread.setThreadStop(t, Target_java_lang_Thread.KillStatus.DISSIDENT);
+        }
+    };
+    private static final Consumer<Thread> hostRound3 = host -> {
+        try {
+            host.join();
+        } catch (InterruptedException e) {
+            System.err.println("Interrupted while killing");
+        }
     };
 
-    private void killingRound(Consumer<StaticObject> guestAction, Function<Thread, Boolean> hostAction, StaticObject initiatingThread) {
-        boolean redo;
-
+    private void killingRound(Consumer<StaticObject> guestAction, Consumer<Thread> hostAction, StaticObject initiatingThread) {
         for (StaticObject t : activeThreads) {
             if (t != initiatingThread) {
                 guestAction.accept(t);
             }
         }
-        do {
-            redo = false;
-            for (StaticObject t : activeThreads) {
-                if (t != initiatingThread) {
-                    if (Target_java_lang_Thread.checkThreadStatus(t, Target_java_lang_Thread.KillStatus.KILLED)) {
-                        Target_java_lang_Thread.setThreadStop(t, Target_java_lang_Thread.KillStatus.DISSIDENT);
-                    }
-                    Thread host = Target_java_lang_Thread.getHostFromGuestThread(t);
-                    redo |= hostAction.apply(host);
-                }
+        for (StaticObject t : activeThreads) {
+            if (t != initiatingThread) {
+                Thread host = Target_java_lang_Thread.getHostFromGuestThread(t);
+                hostAction.accept(host);
             }
-        } while (redo);
+        }
     }
 
     private void initVmProperties() {
