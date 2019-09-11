@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
-import java.util.List;
-
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.VectorPrimitiveStamp;
@@ -104,18 +102,4 @@ public class VectorWriteNode extends VectorFixedAccessNode implements LIRLowerab
         return super.verify();
     }
 
-    public static VectorWriteNode fromPackElements(List<WriteNode> nodes, ValueNode value) {
-        assert nodes.size() != 0 : "pack empty";
-        assert value.stamp(NodeView.DEFAULT) instanceof VectorPrimitiveStamp : "value not vector";
-        // Pre: nodes all have the same guard.
-        // Pre: nodes are contiguous
-        // Pre: nodes are from the same memory region
-        // ???
-
-        final WriteNode anchor = nodes.get(0);
-        final AddressNode address = anchor.getAddress();
-        final LocationIdentity[] locations = nodes.stream().map(WriteNode::getLocationIdentity).toArray(LocationIdentity[]::new);
-
-        return new VectorWriteNode(TYPE, address, locations, value, anchor.getBarrierType());
-    }
 }

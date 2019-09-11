@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
-import java.util.List;
-
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
@@ -42,8 +40,8 @@ public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerabl
 
     public static final NodeClass<VectorReadNode> TYPE = NodeClass.create(VectorReadNode.class);
 
-    public VectorReadNode(AddressNode address, LocationIdentity[] locations, Stamp stamp, BarrierType barrierType) {
-        this(TYPE, address, locations, stamp, null, barrierType, false);
+    public VectorReadNode(AddressNode address, LocationIdentity[] locations, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck) {
+        this(TYPE, address, locations, stamp, guard, barrierType, nullCheck);
     }
 
     public VectorReadNode(NodeClass<? extends VectorReadNode> c, AddressNode address, LocationIdentity[] locations, Stamp stamp, GuardingNode guard, BarrierType barrierType, boolean nullCheck) {
@@ -61,18 +59,4 @@ public class VectorReadNode extends VectorFixedAccessNode implements LIRLowerabl
         return getNullCheck() && type == InputType.Guard || super.isAllowedUsageType(type);
     }
 
-    public static VectorReadNode fromPackElements(List<ReadNode> nodes) {
-        assert nodes.size() != 0 : "pack empty";
-        // Pre: nodes all have the same guard.
-        // Pre: nodes are contiguous
-        // Pre: nodes are from the same memory region
-        // ???
-
-        final ReadNode anchor = nodes.get(0);
-        final AddressNode address = anchor.getAddress();
-        final LocationIdentity[] locations = nodes.stream().map(ReadNode::getLocationIdentity).toArray(LocationIdentity[]::new);
-
-        final Stamp stamp = anchor.getAccessStamp().asVector(locations.length);
-        return new VectorReadNode(TYPE, address, locations, stamp, anchor.getGuard(), anchor.getBarrierType(), anchor.getNullCheck());
-    }
 }

@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.word.LocationIdentity;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -784,7 +785,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             if (first instanceof ReadNode) {
                 final List<ReadNode> nodes = pack.getElements().stream().map(x -> (ReadNode) x).collect(Collectors.toList());
-                final VectorReadNode vectorRead = VectorReadNode.fromPackElements(nodes);
+                final ReadNode anchor = nodes.get(0);
+
+                final VectorReadNode vectorRead = new VectorReadNode(
+                        anchor.getAddress(),
+                        nodes.stream().map(ReadNode::getLocationIdentity).toArray(LocationIdentity[]::new),
+                        anchor.getAccessStamp().asVector(nodes.size()),
+                        anchor.getGuard(),
+                        anchor.getBarrierType(),
+                        anchor.getNullCheck());
                 graph.add(vectorRead);
 
                 for (ReadNode node : nodes) {
@@ -814,7 +823,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
                 final VectorPackNode vectorPackNode =
                         graph.addOrUnique(new VectorPackNode(pack.stamp(view), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList())));
-                final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, vectorPackNode);
+
+                final WriteNode anchor = nodes.get(0);
+                final VectorWriteNode vectorWrite =
+                        new VectorWriteNode(anchor.getAddress(), nodes.stream().map(WriteNode::getLocationIdentity).toArray(LocationIdentity[]::new), vectorPackNode, anchor.getBarrierType());
 
                 for (WriteNode node : nodes) {
                     if (node.predecessor() != null) {
