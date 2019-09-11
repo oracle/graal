@@ -78,7 +78,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
     public LLVMCompareExchangeNode(AggregateType returnType) {
         LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
         DataLayout dataLayout = startNode.getDataSpecConverter();
-        int resultSize  = returnType.getSize(dataLayout);
+        int resultSize = returnType.getSize(dataLayout);
         long secondValueOffset = returnType.getOffsetOf(1, dataLayout);
         this.cmpxch = LLVMCMPXCHInternalNodeGen.create(resultSize, secondValueOffset);
     }

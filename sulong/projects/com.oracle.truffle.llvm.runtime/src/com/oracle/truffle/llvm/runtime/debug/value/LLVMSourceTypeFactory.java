@@ -219,7 +219,7 @@ public final class LLVMSourceTypeFactory {
         }
 
         private long getBitSize(Type type) {
-            final int byteSize = type.getSize (dataLayout);
+            final int byteSize = type.getSize(dataLayout);
             return byteSize * (long) Byte.SIZE;
         }
 

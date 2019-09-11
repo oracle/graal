@@ -161,7 +161,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         this.nodeFactory = nodeFactory;
     }
 
-    public NodeFactory getNodeFactory(){
+    public NodeFactory getNodeFactory() {
         return nodeFactory;
     }
 

@@ -115,7 +115,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     public static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
 
     public static LLVMBitcodeInstructionVisitor create(FrameDescriptor frame, UniquesRegion uniquesRegion, List<Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols, LLVMContext context,
-                                                       ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout) {
+                    ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler,
+                    DataLayout dataLayout) {
         return new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, nullerInfos, notNullable, dbgInfoHandler, dataLayout);
     }
 
@@ -648,7 +649,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final long offset = sourceType.getOffsetOf(targetIndex, dataLayout);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,
-                sourceType.getSize(dataLayout), offset, valueToInsert, valueType);
+                        sourceType.getSize(dataLayout), offset, valueToInsert, valueType);
 
         createFrameWrite(result, insert);
     }
