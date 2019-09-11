@@ -132,8 +132,8 @@ public final class VectorFloatStamp extends VectorPrimitiveStamp {
             null
     );
 
-    public static VectorFloatStamp create(FloatStamp scalar, int elementCount) {
-        return new VectorFloatStamp(scalar, elementCount, OPS);
+    public static VectorFloatStamp create(Stamp scalar, int elementCount) {
+        return new VectorFloatStamp((FloatStamp) scalar, elementCount, OPS);
     }
 
     private VectorFloatStamp(FloatStamp scalar, int elementCount, ArithmeticOpTable ops) {

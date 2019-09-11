@@ -69,12 +69,12 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
-    public FloatStamp unrestricted() {
+    public Stamp unrestricted() {
         return new FloatStamp(getBits());
     }
 
     @Override
-    public FloatStamp empty() {
+    public Stamp empty() {
         return new FloatStamp(getBits(), Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, true);
     }
 
@@ -234,7 +234,7 @@ public class FloatStamp extends PrimitiveStamp {
     }
 
     @Override
-    public FloatStamp join(Stamp otherStamp) {
+    public Stamp join(Stamp otherStamp) {
         if (otherStamp == this) {
             return this;
         }
