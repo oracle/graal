@@ -66,16 +66,16 @@ public class BlockInfo {
         this.depthMap = new NodeMap<>(graph);
     }
 
-    // Isomorphism Check
+    // region Isomorphism Check
 
     /**
      * Check whether the left and right node of a potential pack are isomorphic.
-     * "Isomorphic statements are those that contain the same operations in the same order."
      *
-     * @param left Left node of the potential pack
-     * @param right Right node of the potential pack
-     * @return Boolean indicating whether the left and right node of a potential pack are
-     *         isomorphic.
+     * The SLP paper states: "Isomorphic statements are those that contain the same operations in the same order."
+     *
+     * @param left Left node of the potential pack.
+     * @param right Right node of the potential pack.
+     * @return Boolean indicating whether the left and right node of a potential pack are isomorphic.
      */
     boolean isomorphic(ValueNode left, ValueNode right) {
         // Trivial case, isomorphic if the same
@@ -111,43 +111,52 @@ public class BlockInfo {
         return true;
     }
 
-    // Adjacency Check
+    // endregion
+
+    // region Adjacency Check
 
     /**
-     * Ensure that there is no data path between left and right. This version operates on Nodes,
-     * avoiding the need to check for FAN at the callsite. Pre: left and right are isomorphic
+     * Check whether s1 is immediately before s2 in memory, if both are primitive.
      *
-     * @param left Left node of the potential pack
-     * @param right Right node of the potential pack
-     * @return Are the two statements independent? Only independent statements may be packed.
+     * @param s1 Left node.
+     * @param s2 Right node.
+     * @return Boolean indicating if s1 is immediately before s2 in memory.
+     *         s1 and s2 cannot be adjacent if they are not FixedAccessNodes, in which case false is returned.
      */
-    boolean adjacent(Node left, Node right) {
-        return left instanceof FixedAccessNode &&
-                right instanceof FixedAccessNode &&
-                adjacent((FixedAccessNode) left, (FixedAccessNode) right);
+    boolean adjacent(Node s1, Node s2) {
+        return s1 instanceof FixedAccessNode &&
+                s2 instanceof FixedAccessNode &&
+                adjacent((FixedAccessNode) s1, (FixedAccessNode) s2);
     }
 
     /**
      * Check whether s1 is immediately before s2 in memory, if both are primitive.
      *
-     * @param s1 First FixedAccessNode to check
-     * @param s2 Second FixedAccessNode to check
-     * @return Boolean indicating whether s1 is immediately before s2 in memory
+     * @param s1 Left node.
+     * @param s2 Right node.
+     * @return Boolean indicating if s1 is immediately before s2 in memory.
      */
     private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2) {
         return adjacent(s1, s2, Util.getStamp(s1, view), Util.getStamp(s2, view));
     }
 
     /**
-     * Check whether s1 is immediately before s2 in memory, if both are primitive. This function
-     * exists as not all nodes carry the right kind information. TODO: Find a better way to deal
-     * with this
+     * Check whether s1 is immediately before s2 in memory, if both are primitive.
      *
-     * @param s1 First FixedAccessNode to check
-     * @param s2 Second FixedAccessNode to check
-     * @param s1s Stamp of the first FixedAccessNode
-     * @param s2s Stamp of the second FixedAccessNode
-     * @return Boolean indicating whether s1 is immediately before s2 in memory
+     * This method exists as not all nodes carry the right kind information.
+     * TODO: Find a better way to implement the adjacency check.
+     * Two nodes are considered adjacent if the following conditions are met:
+     * - Both have values that are primitive in type.
+     * - Both are in the current block.
+     * - Both have the same base address (either null, or equal).
+     * - Both have the same induction variables (or none at all).
+     * - The difference of the constant displacements of both accesses is equal to the element size in bytes.
+     *
+     * @param s1 Left node.
+     * @param s2 Right node.
+     * @param s1s Stamp of the left FixedAccessNode.
+     * @param s2s Stamp of the right FixedAccessNode.
+     * @return Boolean indicating if s1 is immediately before s2 in memory.
      */
     private boolean adjacent(FixedAccessNode s1, FixedAccessNode s2, Stamp s1s, Stamp s2s) {
         final AddressNode s1a = s1.getAddress();
@@ -180,11 +189,11 @@ public class BlockInfo {
     }
 
     /**
-     * Determine whether two nodes are accesses with the same base address.
-     * @param left Left access node
-     * @param right Right access node
-     * @return Boolean indicating whether base is the same.
-     *         If nodes are not access nodes, this is false.
+     * Determine if two nodes are accesses with the same base address.
+     *
+     * @param left Left access node.
+     * @param right Right access node.
+     * @return Boolean indicating whether base is the same. If nodes are not access nodes, this is false.
      */
     static boolean sameBaseAddress(Node left, Node right) {
         if (!(left instanceof FixedAccessNode) || !(right instanceof FixedAccessNode)) {
@@ -205,6 +214,21 @@ public class BlockInfo {
         return true;
     }
 
+    /**
+     * Compute the set of nodes representing induction variables for a given memory access' address node.
+     *
+     * The current implementation is incomplete and a better solution would require the presence of some sort of
+     * symbolic expression evaluation. Currently, we perform a breadth-first traversal and construct a set of nodes
+     * that we know do not affect the value of the address itself. We do not traverse beyond nodes that we do not
+     * recognize. One such node is a PhiNode, which could take on several values and therefore is a potential
+     * induction variable.
+     *
+     * The current algorithm is too eager to avoid false positives.
+     * TODO: this algorithm needs to be adjusted or replaced entirely.
+     *
+     * @param address Address of the memory access.
+     * @return Set containing
+     */
     private static Set<Node> getInductionVariables(AddressNode address) {
         final Set<Node> ivs = new HashSet<>();
         final Deque<Node> bfs = new ArrayDeque<>();
@@ -241,8 +265,14 @@ public class BlockInfo {
     // Independence Check
 
     /**
-     * Ensure that there is no data path between left and right. Pre: left and right are
-     * isomorphic
+     * Ensure that there is no data path between the left and the right node.
+     *
+     * PRE: left and right are isomorphic.
+     * This method computes the 'depth' of both nodes and then attempts to find a path between the shallow node
+     * and the deep node.
+     * Before we attempt to find a path, we make sure that there is no membar between the two nodes as
+     * a membar cannot be vectorized across. Perhaps the membar check could be extracted into a different method but it
+     * was placed here as we know which node is shallow and which node is deep.
      *
      * @param left Left node of the potential pack
      * @param right Right node of the potential pack
@@ -341,6 +371,7 @@ public class BlockInfo {
 
     /**
      * Check whether the node is not in the current basic block.
+     *
      * @param node Node to check the block membership of.
      * @return True if the provided node is not in the current basic block.
      */
