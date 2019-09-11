@@ -280,7 +280,7 @@ public class LanguageServer {
 
                 @Override
                 public void publishDiagnostics(PublishDiagnosticsParams params) {
-                    sendNotification("textDocument/publishDiagnostics", params);
+                    sendNotification("textDocument/publishDiagnostics", params.jsonData);
                 }
             });
         }
@@ -660,7 +660,7 @@ public class LanguageServer {
             final JSONObject response = new JSONObject();
             response.put("jsonrpc", "2.0");
             response.put("id", id);
-            response.put("result", result);
+            response.put("result", result != null ? result : JSONObject.NULL);
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending response '(%s)'\nResult: %s";
                 server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), id, result.toString()));

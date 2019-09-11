@@ -449,9 +449,10 @@ public final class TruffleAdapter implements VirtualLanguageServerFileProvider {
     public Future<?> clearCoverage(URI uri) {
         return contextAwareExecutor.executeWithDefaultContext(() -> {
             TextDocumentSurrogate surrogate = surrogateMap.get(uri);
-            surrogate.clearCoverage();
-            sourceCodeEvaluator.parse(surrogate);
-
+            if (surrogate != null) {
+                surrogate.clearCoverage();
+                sourceCodeEvaluator.parse(surrogate);
+            }
             throw new DiagnosticsNotification(PublishDiagnosticsParams.create(uri.toString(), Collections.emptyList()));
         });
     }

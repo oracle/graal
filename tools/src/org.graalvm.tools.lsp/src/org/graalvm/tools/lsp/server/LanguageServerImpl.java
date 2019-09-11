@@ -236,19 +236,19 @@ public final class LanguageServerImpl extends LanguageServer {
     public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params) {
         return CompletableFuture.supplyAsync(() -> {
             CodeLens codeLens = CodeLens.create(Range.create(0, 0, 0, 0), null);
-            Command command = Command.create("Analyse coverage", ANALYSE_COVERAGE, Arrays.asList(params.getTextDocument().getUri()));
+            Command command = Command.create("Analyse coverage", ANALYSE_COVERAGE, params.getTextDocument().getUri());
             codeLens.setCommand(command);
 
             CodeLens codeLensShowCoverage = CodeLens.create(Range.create(0, 0, 0, 0), null);
-            Command commandShowCoverage = Command.create("Highlight uncovered code", SHOW_COVERAGE, Arrays.asList(params.getTextDocument().getUri()));
+            Command commandShowCoverage = Command.create("Highlight uncovered code", SHOW_COVERAGE, params.getTextDocument().getUri());
             codeLensShowCoverage.setCommand(commandShowCoverage);
 
             CodeLens codeLensClear = CodeLens.create(Range.create(0, 0, 0, 0), null);
-            Command commandClear = Command.create("Clear coverage", CLEAR_COVERAGE, Arrays.asList(params.getTextDocument().getUri()));
+            Command commandClear = Command.create("Clear coverage", CLEAR_COVERAGE, params.getTextDocument().getUri());
             codeLensClear.setCommand(commandClear);
 
             CodeLens codeLensClearAll = CodeLens.create(Range.create(0, 0, 0, 0), null);
-            Command commandClearAll = Command.create("Clear coverage (all files)", CLEAR_ALL_COVERAGE, Arrays.asList(params.getTextDocument().getUri()));
+            Command commandClearAll = Command.create("Clear coverage (all files)", CLEAR_ALL_COVERAGE, params.getTextDocument().getUri());
             codeLensClearAll.setCommand(commandClearAll);
 
             return Arrays.asList(codeLens, codeLensShowCoverage, codeLensClear, codeLensClearAll);

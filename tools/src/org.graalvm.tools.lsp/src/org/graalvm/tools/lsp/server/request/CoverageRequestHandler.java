@@ -72,6 +72,11 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
 
     public Boolean runCoverageAnalysisWithEnteredContext(final URI uri) throws DiagnosticsNotification {
         final TextDocumentSurrogate surrogateOfOpenedFile = surrogateMap.get(uri);
+
+        if (surrogateOfOpenedFile == null) {
+            return Boolean.FALSE;
+        }
+
         TextDocumentSurrogate surrogateOfTestFile = sourceCodeEvaluator.createSurrogateForTestFile(surrogateOfOpenedFile, null);
         final URI runScriptUri = surrogateOfTestFile.getUri();
 
@@ -152,8 +157,7 @@ public final class CoverageRequestHandler extends AbstractRequestHandler {
 
     public void showCoverageWithEnteredContext(URI uri) throws DiagnosticsNotification {
         final TextDocumentSurrogate surrogate = surrogateMap.get(uri);
-        assert surrogate != null;
-        if (surrogate.getSourceWrapper() != null && surrogate.getSourceWrapper().isParsingSuccessful()) {
+        if (surrogate != null && surrogate.getSourceWrapper() != null && surrogate.getSourceWrapper().isParsingSuccessful()) {
             SourceSectionFilter filter = SourceSectionFilter.newBuilder() //
                             .sourceIs(surrogate.getSourceWrapper().getSource()) //
                             .tagIs(StatementTag.class) //
