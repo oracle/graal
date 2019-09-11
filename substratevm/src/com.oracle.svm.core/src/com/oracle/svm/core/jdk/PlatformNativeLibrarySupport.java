@@ -76,6 +76,10 @@ public abstract class PlatformNativeLibrarySupport {
                     /* SVM Specific packages */
                     "com_oracle_svm_core_jdk"));
 
+    private static final List<String> defaultBuiltInPkgNativesBlacklist = Collections.unmodifiableList(Arrays.asList(
+                    "sun_security_krb5_SCDynamicStoreConfig_getKerberosConfig",
+                    "sun_security_krb5_Config_getWindowsDirectory"));
+
     public static PlatformNativeLibrarySupport singleton() {
         return ImageSingletons.lookup(PlatformNativeLibrarySupport.class);
     }
@@ -107,6 +111,11 @@ public abstract class PlatformNativeLibrarySupport {
         String commonPrefix = "Java_";
         if (name.startsWith(commonPrefix)) {
             String strippedName = name.substring(commonPrefix.length());
+            for (String str : defaultBuiltInPkgNativesBlacklist) {
+                if (strippedName.startsWith(str)) {
+                    return false;
+                }
+            }
             for (String str : builtInPkgNatives) {
                 if (strippedName.startsWith(str)) {
                     return true;
