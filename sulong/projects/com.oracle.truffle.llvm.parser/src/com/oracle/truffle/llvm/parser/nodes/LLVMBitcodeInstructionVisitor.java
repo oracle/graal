@@ -38,7 +38,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
-import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
@@ -90,6 +89,7 @@ import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
@@ -115,8 +115,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     public static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
 
     public static LLVMBitcodeInstructionVisitor create(FrameDescriptor frame, UniquesRegion uniquesRegion, List<Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols, LLVMContext context,
-                    ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
-        return new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, nullerInfos, notNullable, dbgInfoHandler);
+                                                       ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout) {
+        return new LLVMBitcodeInstructionVisitor(frame, uniquesRegion, blockPhis, argCount, symbols, context, library, nullerInfos, notNullable, dbgInfoHandler, dataLayout);
     }
 
     private final LLVMContext context;
@@ -131,6 +131,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private final List<FrameSlot> notNullable;
     private final LLVMRuntimeDebugInformation dbgInfoHandler;
     private final LLVMStack.UniquesRegion uniquesRegion;
+    private final DataLayout dataLayout;
 
     private final List<LLVMStatementNode> blockInstructions;
     private int instructionIndex;
@@ -140,7 +141,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private LLVMBitcodeInstructionVisitor(FrameDescriptor frame, LLVMStack.UniquesRegion uniquesRegion, List<LLVMPhiManager.Phi> blockPhis, int argCount, LLVMSymbolReadResolver symbols,
                     LLVMContext context, LLVMContext.ExternalLibrary library, ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, List<FrameSlot> notNullable,
-                    LLVMRuntimeDebugInformation dbgInfoHandler) {
+                    LLVMRuntimeDebugInformation dbgInfoHandler, DataLayout dataLayout) {
         this.context = context;
         this.nodeFactory = context.getLanguage().getNodeFactory();
         this.frame = frame;
@@ -153,6 +154,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         this.dbgInfoHandler = dbgInfoHandler;
         this.lastLocation = null;
         this.uniquesRegion = uniquesRegion;
+        this.dataLayout = dataLayout;
 
         this.blockInstructions = new ArrayList<>();
     }
@@ -179,7 +181,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type type = allocate.getPointeeType();
         int alignment;
         if (allocate.getAlign() == 0) {
-            alignment = ((BasicNodeFactory) nodeFactory).getByteAlignment(type);
+            alignment = type.getAlignment(dataLayout);
         } else {
             alignment = 1 << (allocate.getAlign() - 1);
         }
@@ -581,11 +583,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        long offset = ((BasicNodeFactory) nodeFactory).getIndexOffset(targetIndex, aggregateType);
+        long offset = aggregateType.getOffsetOf(targetIndex, dataLayout);
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-            offset += ((BasicNodeFactory) nodeFactory).getBytePadding(offset, targetType);
+            offset += Type.getPadding(offset, targetType, dataLayout);
         }
 
         if (offset != 0) {
@@ -644,9 +646,9 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final LLVMExpressionNode resultAggregate = nodeFactory.createGetUniqueStackSpace(sourceType, uniquesRegion);
 
-        final long offset = ((BasicNodeFactory) nodeFactory).getIndexOffset(targetIndex, sourceType);
+        final long offset = sourceType.getOffsetOf(targetIndex, dataLayout);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,
-                ((BasicNodeFactory) nodeFactory).getByteSize(sourceType), offset, valueToInsert, valueType);
+                sourceType.getSize(dataLayout), offset, valueToInsert, valueType);
 
         createFrameWrite(result, insert);
     }
@@ -931,8 +933,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
         final Type pointee = ((PointerType) type).getPointeeType();
 
-        final int size = ((BasicNodeFactory) nodeFactory).getByteSize(pointee);
-        int alignment = ((BasicNodeFactory) nodeFactory).getByteAlignment(pointee);
+        final int size = pointee.getSize(dataLayout);
+        int alignment = pointee.getAlignment(dataLayout);
         for (Attribute attr : paramAttr.getAttributes()) {
             if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
                 alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();

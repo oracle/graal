@@ -132,7 +132,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         dbgInfoHandler.registerStaticDebugSymbols(method);
 
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime.getContext(), runtime.getLibrary(), frame, uniquesRegion, phis, method.getParameters().size(), symbols, method,
-                        liveness, notNullable, dbgInfoHandler);
+                        liveness, notNullable, dbgInfoHandler, dataLayout);
         method.accept(visitor);
         FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getFrameSlots(), liveness.getNullableBeforeBlock(), notNullable);
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getFrameSlots(), liveness.getNullableAfterBlock(), notNullable);

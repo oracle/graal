@@ -1785,7 +1785,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createCompareExchangeInstruction(AggregateType returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode,
                     LLVMExpressionNode newNode) {
-        return LLVMCompareExchangeNodeGen.create(context, returnType, ptrNode, cmpNode, newNode);
+        return LLVMCompareExchangeNodeGen.create(returnType, ptrNode, cmpNode, newNode);
     }
 
     @Override

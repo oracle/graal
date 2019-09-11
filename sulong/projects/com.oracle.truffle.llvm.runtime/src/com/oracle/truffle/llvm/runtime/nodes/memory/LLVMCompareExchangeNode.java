@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI16;
@@ -76,7 +75,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
 
     @Child private LLVMCMPXCHInternalNode cmpxch;
 
-    public LLVMCompareExchangeNode(LLVMContext context, AggregateType returnType) {
+    public LLVMCompareExchangeNode(AggregateType returnType) {
         LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
         DataLayout dataLayout = startNode.getDataSpecConverter();
         int resultSize  = returnType.getSize(dataLayout);
