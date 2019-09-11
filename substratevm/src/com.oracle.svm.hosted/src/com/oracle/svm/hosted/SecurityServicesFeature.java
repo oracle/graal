@@ -40,10 +40,8 @@ import java.util.function.Function;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -228,10 +226,6 @@ public class SecurityServicesFeature implements Feature {
             nativeLibraries.addLibrary("sunec", true);
             /* Library sunec depends on stdc++ */
             nativeLibraries.addLibrary("stdc++", false);
-        } else {
-            if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-                VMError.shouldNotReachHere("Using sunec native methods require static sunec library for image building");
-            }
         }
     }
 

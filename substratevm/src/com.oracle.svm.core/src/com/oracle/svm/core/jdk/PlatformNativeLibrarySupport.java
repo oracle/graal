@@ -69,7 +69,6 @@ public abstract class PlatformNativeLibrarySupport {
                     "sun_net",
                     "sun_nio",
                     "sun_reflect",
-                    "sun_security",
                     "sun_text",
                     "sun_util",
 
