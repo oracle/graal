@@ -29,11 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.memory;
 
-import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 
@@ -43,7 +43,8 @@ public final class AllocateGlobalsBlockNode extends LLVMNode implements LLVMAllo
     private final LLVMMemory memory;
 
     public AllocateGlobalsBlockNode(LLVMContext context, StructureType type) {
-        this.size = ((BasicNodeFactory) context.getLanguage().getNodeFactory()).getByteSize(type);
+        LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
+        this.size = type.getSize(startNode.getDataSpecConverter());
         this.memory = context.getLanguage().getCapability(LLVMMemory.class);
     }
 

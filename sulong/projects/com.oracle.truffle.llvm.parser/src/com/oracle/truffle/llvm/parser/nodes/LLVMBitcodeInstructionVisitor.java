@@ -38,6 +38,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
+import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
@@ -178,7 +179,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type type = allocate.getPointeeType();
         int alignment;
         if (allocate.getAlign() == 0) {
-            alignment = context.getByteAlignment(type);
+            alignment = ((BasicNodeFactory) nodeFactory).getByteAlignment(type);
         } else {
             alignment = 1 << (allocate.getAlign() - 1);
         }
@@ -580,11 +581,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        long offset = context.getIndexOffset(targetIndex, aggregateType);
+        long offset = ((BasicNodeFactory) nodeFactory).getIndexOffset(targetIndex, aggregateType);
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-            offset += context.getBytePadding(offset, targetType);
+            offset += ((BasicNodeFactory) nodeFactory).getBytePadding(offset, targetType);
         }
 
         if (offset != 0) {
@@ -643,9 +644,9 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final LLVMExpressionNode resultAggregate = nodeFactory.createGetUniqueStackSpace(sourceType, uniquesRegion);
 
-        final long offset = context.getIndexOffset(targetIndex, sourceType);
+        final long offset = ((BasicNodeFactory) nodeFactory).getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,
-                        context.getByteSize(sourceType), offset, valueToInsert, valueType);
+                ((BasicNodeFactory) nodeFactory).getByteSize(sourceType), offset, valueToInsert, valueType);
 
         createFrameWrite(result, insert);
     }
@@ -930,8 +931,8 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private LLVMExpressionNode capsuleAddressByValue(LLVMExpressionNode child, Type type, AttributesGroup paramAttr) {
         final Type pointee = ((PointerType) type).getPointeeType();
 
-        final int size = context.getByteSize(pointee);
-        int alignment = context.getByteAlignment(pointee);
+        final int size = ((BasicNodeFactory) nodeFactory).getByteSize(pointee);
+        int alignment = ((BasicNodeFactory) nodeFactory).getByteAlignment(pointee);
         for (Attribute attr : paramAttr.getAttributes()) {
             if (attr instanceof Attribute.KnownIntegerValueAttribute && ((Attribute.KnownIntegerValueAttribute) attr).getAttr() == Attribute.Kind.ALIGN) {
                 alignment = ((Attribute.KnownIntegerValueAttribute) attr).getValue();

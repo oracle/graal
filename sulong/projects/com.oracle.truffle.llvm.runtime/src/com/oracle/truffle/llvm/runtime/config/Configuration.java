@@ -29,15 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.config;
 
+import java.util.List;
+
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
-import java.util.List;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 
 public interface Configuration {
 
-    NodeFactory createNodeFactory(LLVMContext context);
+    NodeFactory createNodeFactory(LLVMContext context, DataLayout dataLayout);
 
     /**
      * Context extensions encapsulate optional functionality that has a state and which therefore

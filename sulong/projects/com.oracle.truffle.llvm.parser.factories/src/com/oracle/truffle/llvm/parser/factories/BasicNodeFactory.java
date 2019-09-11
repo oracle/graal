@@ -452,9 +452,9 @@ public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
     private DataLayout dataLayout;
 
-    public BasicNodeFactory(LLVMContext context) {
+    public BasicNodeFactory(LLVMContext context, DataLayout dataLayout) {
         this.context = context;
-        this.dataLayout = new DataLayout();
+        this.dataLayout = dataLayout;
     }
 
     public void addDataLayout(DataLayout layout) {
@@ -1705,7 +1705,7 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, FrameDescriptor frame, String name, String originalName,
                     int argumentCount, Source bcSource, LLVMSourceLocation location) {
-        return new LLVMFunctionStartNode(context.getLanguage(), functionBodyNode, frame, name, argumentCount, originalName, bcSource, location);
+        return new LLVMFunctionStartNode(context.getLanguage(), functionBodyNode, frame, name, argumentCount, originalName, bcSource, location, dataLayout);
     }
 
     @Override
@@ -2303,7 +2303,7 @@ public class BasicNodeFactory implements NodeFactory {
             return null;
         }
 
-        final LLVMSourceType sourceType = LLVMSourceTypeFactory.resolveType(type, this);
+        final LLVMSourceType sourceType = LLVMSourceTypeFactory.resolveType(type, dataLayout);
         if (sourceType == null) {
             return null;
         }

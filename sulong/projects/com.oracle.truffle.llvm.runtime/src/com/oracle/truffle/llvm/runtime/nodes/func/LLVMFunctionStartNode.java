@@ -39,8 +39,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
 public class LLVMFunctionStartNode extends RootNode {
 
@@ -49,9 +51,12 @@ public class LLVMFunctionStartNode extends RootNode {
     private final int explicitArgumentsCount;
     private final DebugInformation debugInformation;
 
+    private final DataLayout dataLayout;
+
     public LLVMFunctionStartNode(LLVMLanguage language, LLVMExpressionNode node, FrameDescriptor frameDescriptor, String name, int explicitArgumentsCount, String originalName, Source bcSource,
-                    LLVMSourceLocation location) {
+                    LLVMSourceLocation location, DataLayout dataLayout) {
         super(language, frameDescriptor);
+        this.dataLayout = dataLayout;
         this.debugInformation = new DebugInformation(originalName, bcSource, location);
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;
@@ -101,6 +106,10 @@ public class LLVMFunctionStartNode extends RootNode {
 
     public Source getBcSource() {
         return debugInformation.bcSource;
+    }
+
+    public DataLayout getDataSpecConverter() {
+        return dataLayout;
     }
 
     @Override

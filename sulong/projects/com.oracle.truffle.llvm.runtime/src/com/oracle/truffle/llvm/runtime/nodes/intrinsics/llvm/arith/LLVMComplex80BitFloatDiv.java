@@ -34,12 +34,10 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -65,8 +63,8 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
     }
 
     int getSizeInBytes() {
-        NodeFactory nodeFactory = lookupContextReference(LLVMLanguage.class).get().getLanguage().getNodeFactory();
-        return ((BasicNodeFactory) nodeFactory).getDataSpecConverter().getSize(PrimitiveType.X86_FP80);
+        LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
+        return startNode.getDataSpecConverter().getSize(PrimitiveType.X86_FP80);
     }
 
     @Specialization
