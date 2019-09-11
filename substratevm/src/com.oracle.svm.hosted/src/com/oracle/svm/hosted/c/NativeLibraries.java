@@ -255,7 +255,7 @@ public final class NativeLibraries {
         return getStaticLibraryPath(getAllStaticLibs(), staticLibraryName);
     }
 
-    private Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
+    private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
         return allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
     }
 
