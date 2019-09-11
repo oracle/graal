@@ -105,23 +105,19 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     FloatDivNode.class).collect(Collectors.toSet()));
 
     // Class to encapsulate state used by functions in the algorithm
-    private static final class Instance {
+    private final class Instance {
         private final LowTierContext context;
-        private final DebugContext debug;
         private final StructuredGraph graph;
+        private final DebugContext debug;
         private final BlockInfo blockInfo;
-        private final AutovectorizationPolicies policies;
-        private final NodeView view;
 
         private final NodeMap<Integer> alignmentMap;
 
-        private Instance(LowTierContext context, DebugContext debug, StructuredGraph graph, Block currentBlock, AutovectorizationPolicies policies, NodeView view) {
+        private Instance(LowTierContext context, DebugContext debug, StructuredGraph graph, Block currentBlock) {
             this.context = context;
-            this.debug = debug;
             this.graph = graph;
+            this.debug = debug;
             this.blockInfo = new BlockInfo(graph, currentBlock, context, view);
-            this.policies = policies;
-            this.view = view;
 
             this.alignmentMap = new NodeMap<>(graph);
         }
@@ -853,7 +849,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
         for (Block block : cfg.reversePostOrder()) {
-            new Instance(context, debug, graph, block, policies, view).slpExtract();
+            new Instance(context, debug, graph, block).slpExtract();
         }
     }
 }
