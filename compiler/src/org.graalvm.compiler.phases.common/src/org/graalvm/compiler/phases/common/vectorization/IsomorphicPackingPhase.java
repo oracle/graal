@@ -85,13 +85,18 @@ import static org.graalvm.compiler.phases.common.vectorization.BlockInfo.sameBas
 
 /**
  * A phase to identify isomorphisms within basic blocks.
- * MIT (basis)  http://groups.csail.mit.edu/cag/slp/SLP-PLDI-2000.pdf
+ *
+ * Algorithm based on paper by Larsen and Amarasinghe ("the SLP paper"),
+ * found here: http://groups.csail.mit.edu/cag/slp/SLP-PLDI-2000.pdf
+ *
+ * Further inspiration and future extensions derived from:
  * GCC          https://ols.fedoraproject.org/GCC/Reprints-2007/rosen-reprint.pdf
  * INTEL        https://people.apache.org/~xli/papers/npc10_java_vectorization.pdf
  */
 public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
     private static final int ALIGNMENT_BOTTOM = -666;
+
     private static final Set<Class<? extends Node>> supportedNodes = new HashSet<>(Stream.of(
                     WriteNode.class,
                     ReadNode.class,
@@ -104,7 +109,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     NegateNode.class,
                     FloatDivNode.class).collect(Collectors.toSet()));
 
-    // Class to encapsulate state used by functions in the algorithm
+    /**
+     * Instance to capture algorithm state for each block processed.
+     */
     private final class Instance {
         private final LowTierContext context;
         private final StructuredGraph graph;
@@ -122,13 +129,13 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             this.alignmentMap = new NodeMap<>(graph);
         }
 
-        // Main
+        /**
+         * Main method of algorithm. Should only be called once.
+         *
+         * This method runs the SLP algorithm, invoking its four distinct stages and checking state throughout.
+         */
         @SuppressWarnings("try")
         private void slpExtract() {
-            if (!validForBlock()) {
-                return;
-            }
-
             final Set<Pair<ValueNode, ValueNode>> packSet = new HashSet<>();
             final Set<Pack> combinedPackSet = new HashSet<>();
 
@@ -169,8 +176,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         // region Core Algorithm
 
         /**
-         * Create the initial seed packSet of operations that are adjacent.
-         * @param packSet PackSet to populate.
+         * Create the initial seed packset of adjacent memory accesses.
+         *
+         * @param packSet The packset to populate.
+         *                This method will add pairs of memory access nodes to this packset if they are adjacent.
          */
         private void findAdjRefs(Set<Pair<ValueNode, ValueNode>> packSet) {
             // Create initial seed set containing memory operations
@@ -179,7 +188,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                             filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess).
                             map(x -> (FixedAccessNode & LIRLowerableAccess) x).
                             // using stack kind here as this works with MetaspacePointerStamp and others
-                                    filter(x -> getStamp(x).getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).
+                            filter(x -> getStamp(x).getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).
                             collect(Collectors.toList());
 
             while (!memoryNodes.isEmpty()) {
@@ -226,7 +235,9 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         /**
          * Extend the packset by following use->def and def->use links from pack members until the set does not change.
-         * @param packSet PackSet to populate.
+         *
+         * @param packSet The packset to populate.
+         *                This method will augment the given set with further pairs.
          */
         private void extendPacklist(Set<Pair<ValueNode, ValueNode>> packSet) {
             Set<Pair<ValueNode, ValueNode>> iterationPackSet;
@@ -244,7 +255,20 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         }
 
 
-        // Combine packs where right = left
+        /**
+         * Combine pairs from a packset into a combined packset containing packs that are as large as possible.
+         *
+         * The packset is traversed pairwise to find pairs of nodes where the left element refers to the same element as
+         * the right element. If we have two pairs where the left and right correspond, the pairs can be merged into a
+         * three-element pack. This is repeated until the combined packset no longer changes.
+         *
+         * E.g. combine [(A, B), (B, C), (D, E)] = [(A, B, C), (D, E)].
+         *
+         * @param packSet         The packset to combine.
+         *                        This method will remove elements from given packset.
+         *                        Once method finishes, packset will be empty.
+         * @param combinedPackSet The resultant combined packset with largest packs.
+         */
         private void combinePacks(Set<Pair<ValueNode, ValueNode>> packSet, Set<Pack> combinedPackSet) {
             combinedPackSet.addAll(packSet.stream().map(Pack::create).collect(Collectors.toList()));
             packSet.clear();
@@ -282,6 +306,19 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             } while (changed);
         }
 
+        /**
+         * Schedule all nodes in the current block, with respect to the provided (combined) packset.
+         *
+         * Scheduling is the final step in SLP. We traverse all unscheduled nodes, removing each node from the
+         * unscheduled list once it has been scheduled. Upon encountering a pack, the pack is only scheduled if all of
+         * its data dependencies have already been scheduled. Otherwise, the pack is skipped and we continue scheduling
+         * other nodes. If the dependency requirement cannot be met, the pack is removed and its nodes are scheduled as
+         * scalar instructions instead.
+         *
+         * @param unscheduled A list of all nodes in the current block that we wish to schedule.
+         *                    List will be empty once method completes.
+         * @param packSet     The combined packset of packs to vectorize.
+         */
         private void schedule(List<Node> unscheduled, Set<Pack> packSet) {
             final List<Node> scheduled = new ArrayList<>();
             final Deque<FixedNode> lastFixed = new ArrayDeque<>();
@@ -293,7 +330,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
             final List<Runnable> deferred = new ArrayList<>();
 
-            // While unscheduled isn't empty
             outer: while (!unscheduled.isEmpty()) {
                 for (Node node : unscheduled) {
                     // Node is in some pack p
@@ -330,6 +366,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 }
             }
 
+            // Scheduling itself is deferred until nodes for scheduling and a relative order has been identified.
+            // This is done as the scheduling methods mutate the graph.
             for (Runnable runnable : deferred) {
                 runnable.run();
             }
@@ -340,7 +378,17 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         // region Adjacent References
 
         /**
-         * Get the alignment of a vector memory reference.
+         * Compute the memory alignment of a memory access relative to its iv-adjusted base address and platform vector size.
+         *
+         * This method computes the byte offset of this node inside a vector. The maximum platform vector size is taken
+         * into account in the calculation and causes the alignment to wrap around. Alignment is used to ensure that
+         * vectorized instructions can pass data between each other without the need for packing and unpacking.
+         *
+         * @param access    Memory access to compute the alignment of.
+         * @param ivAdjust  The induction variable adjustment in elements. Moves the 'zero point' for the alignment
+         *                  calculation to allow the induction variable to take on an arbitrary initial value and allow
+         *                  for a containing loop to be unrolled such that the number of iterations is a power of two.
+         * @return The number of bytes indicating the alignment of the access, as an integer.
          */
         private <T extends FixedAccessNode & LIRLowerableAccess> int memoryAlignment(T access, int ivAdjust) {
             final Stamp stamp = access.getAccessStamp();
@@ -363,6 +411,15 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return offsetRemainder >= 0 ? offsetRemainder : offsetRemainder + vectorWidthInBytes;
         }
 
+        /**
+         * Set the alignment of two nodes that we know to be adjacent.
+         *
+         * The right node will be aligned one element ahead of the left node.
+         *
+         * @param s1 Left node
+         * @param s2 Right node
+         * @param align The alignment of the left node.
+         */
         private void setAlignment(Node s1, Node s2, int align) {
             setAlignment(s1, align);
             if (align == ALIGNMENT_BOTTOM) {
@@ -372,14 +429,45 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             }
         }
 
+        /**
+         * Memoized alignment setter.
+         *
+         * @param node Node to record the alignment of.
+         * @param alignment The alignment of node.
+         */
         private void setAlignment(Node node, int alignment) {
             alignmentMap.put(node, alignment);
         }
 
+        /**
+         * Memoized alignment getter.
+         *
+         * In order to avoid computing alignments for repeated queries, alignments are stored into a map for easy retrieval.
+         *
+         * @param node Node to retrieve the alignment of.
+         * @return Option.of(ALIGNMENT) or Option.empty() if no alignment data exists for this particular node.
+         *         Option.empty() is equivalent to TOP alignment, i.e. the alignment is not invalid but not known.
+         */
         private Optional<Integer> getAlignment(Node node) {
             return Optional.ofNullable(alignmentMap.get(node));
         }
 
+        /**
+         * This method determines whether two statements (nodes) can pe packed with the given alignment.
+         *
+         * In order to pack two nodes, the following conditions need to be met:
+         * - s1 is a supported node
+         * - s2 is a supported node
+         * - s1 and s2 are isomorphic
+         * - no pairs exist in the packset where s1 is in the left position or s2 is in the right position
+         * - s1 or s2 are top-aligned, or s1 is aligned to given alignment, or s2 is aligned adjacent to align
+         *
+         * @param packSet The current working packset to check the presence of pairs.
+         * @param s1 'Left' node of the candidate pair.
+         * @param s2 'Right' node of the candidate pair.
+         * @param align Alignment to which s1 should be aligned unless it is top.
+         * @return Boolean indicating whether two statements can be packed, i.e. all conditions are met.
+         */
         private boolean stmtsCanPack(Set<Pair<ValueNode, ValueNode>> packSet, ValueNode s1, ValueNode s2, Integer align) {
             if (supported(s1) && supported(s2) &&
                     blockInfo.isomorphic(s1, s2) && blockInfo.independent(s1, s2) &&
@@ -399,6 +487,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return false;
         }
 
+        /**
+         * Compute an element-wise induction variable adjustment to the alignmentReference.
+         * @param alignmentReference Reference to align to, typically the result of findAlignToRef.
+         * @return The number of elements to adjust induction variable by.
+         */
         private int getIvAdjustment(FixedAccessNode alignmentReference) {
             final int offset = (int) alignmentReference.getAddress().getMaxConstantDisplacement();
             final int elementSize = dataSize(getStamp(alignmentReference));
@@ -415,6 +508,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          *
          * First we look at stores, then at loads.
          * This alignment analysis is largely inspired by C2's superword.cpp implementation.
+         */
+
+        /**
+         * Find a memory reference that all other memory references should be aligned to.
+         *
+         * This reference should have the largest number of memory references similar to it.
+         * First we look at stores, then at loads. This analysis is largely inspired by C2's superword.cpp implementation.
+         *
+         * @param memoryNodes A list of nodes that perform memory accesses, i.e. reads and writes.
+         * @return Return the best reference to align to, or null, if no such reference exists.
          */
         private FixedAccessNode findAlignToRef(List<FixedAccessNode> memoryNodes) {
             // Count the number of comparable memory operations
@@ -502,9 +605,11 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         // region Extend Packlist
 
         /**
-         * Extend the packset by visiting operand definitions of nodes inside the provided pack.
-         * @param packSet Pack set.
-         * @param pack The pack to use for operand definitions.
+         * Extend the given packset by visiting operand definitions of nodes inside the provided pack.
+         *
+         * @param packSet Packset that should be extended.
+         * @param pack Pack to use for operand definitions.
+         * @return Boolean indicating whether the packset has changed, used by extendPacklist to halt.
          */
         private boolean followUseDefs(Set<Pair<ValueNode, ValueNode>> packSet, Pair<ValueNode, ValueNode> pack) {
             final Node left = pack.getLeft();
@@ -553,8 +658,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         /**
          * Extend the packset by visiting uses of nodes in the provided pack.
-         * @param packSet Pack set.
-         * @param pack The pack to use for nodes to find usages of.
+         *
+         * @param packSet Packset that should be extended.
+         * @param pack Pack to use for nodes to find usages of.
+         * @return Boolean indicating whether the packset has changed, used by extendPacklist to halt.
          */
         private boolean followDefUses(Set<Pair<ValueNode, ValueNode>> packSet, Pair<ValueNode, ValueNode> pack) {
             final Node left = pack.getLeft();
@@ -608,8 +715,23 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         // region Scheduling
 
         /**
-         * Have all of the dependencies of node been scheduled? Filters inputs, removing blocks that
-         * are not in the current block as well as Begin/End/Return.
+         * Determine whether all dependencies of a node have been scheduled.
+         *
+         * Traverses the input of the given node, filtering out any nodes that are not in the current block.
+         * For each node, we expect it to be in the scheduled list (the node has been scheduled).
+         * If we are considering control flow (which we only do for the first node in a given pack), then we also need
+         * to make sure that all of the control flow dependencies have been scheduled. The check is done by traversing
+         * all of the node's cfgPredecessors() in the current block and checking that each ofo these nodes has been
+         * scheduled as well.
+         *
+         * @param node Node to check the dependencies of.
+         * @param scheduled List containing all nodes that have already been scheduled.
+         * @param considerControlFlow Boolean indicating if control flow dependencies should also be considered.
+         *                            If this is false, this method only checks for data dependencies. Control flow
+         *                            dependencies should only be checked where we know that a packing operation won't
+         *                            change the control flow. This is only the case for the first node in each pack, as
+         *                            we use this node to anchor the entire pack.
+         * @return Boolean indicating if dependencies (data & optionally control) have been scheduled already.
          */
         private boolean depsScheduled(Node node, List<Node> scheduled, boolean considerControlFlow) {
             final NodeMap<Block> nodeToBlockMap = graph.getLastSchedule().getNodeToBlockMap();
@@ -624,6 +746,18 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     );
         }
 
+        /**
+         * Get the earliest unscheduled pack from the unscheduled node list.
+         *
+         * PRE: The unscheduled node list must contain fixed nodes in control flow order. 'Earliness' does not apply
+         *      to floating nodes.
+         *
+         * @param unscheduled List of nodes that have not been scheduled yet.
+         *                    Needs to follow order as described by precondition.
+         *                    Typically when querying the block for all nodes this order should be maintained.
+         * @param nodeToPackMap Mapping of all nodes to their corresponding packs, if applicable.
+         * @return Earliest unscheduled node, or null if no more unscheduled nodes are present in any packs.
+         */
         private Pack earliestUnscheduled(List<Node> unscheduled, Map<Node, Pack> nodeToPackMap) {
             for (Node node : unscheduled) {
                 if (nodeToPackMap.containsKey(node)) {
@@ -634,6 +768,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return null;
         }
 
+        /**
+         * Schedule a pack of nodes.
+         *
+         * This method should be called once the scheduling order has been determined as it mutates the graph.
+         *
+         * @param pack Pack to schedule.
+         * @param lastFixed Queue of fixed nodes that have been scheduled into the control flow graph.
+         *                  This is the shared state between all calls to schedulePack and scheduleStmt to enable
+         *                  the correct control flow to be re-created when packed nodes are removed from the graph.
+         */
         private void schedulePack(Pack pack, Deque<FixedNode> lastFixed) {
             final Node first = pack.getElements().get(0);
             final Graph graph = first.graph();
@@ -748,6 +892,17 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             throw GraalError.shouldNotReachHere("I don't know how to vectorize pack.");
         }
 
+        /**
+         * Schedule a node that does not belong to a pack.
+         *
+         * This method should be called once the scheduling order has been determined as it mutates the graph.
+         *
+         * @param node Node to schedule.
+         * @param lastFixed Queue of fixed nodes that have been scheduled into the control flow graph.
+         *                  This is the shared state between all calls to schedulePack and scheduleStmt to enable
+         *                  the correct control flow to be re-created when packed nodes are removed from the graph.
+         *                  This method only modifies this queue if the node being scheduled is a fixed node.
+         */
         private void scheduleStmt(Node node, Deque<FixedNode> lastFixed) {
             if (node instanceof FixedNode) {
                 if (!lastFixed.isEmpty() && lastFixed.element() instanceof FixedWithNextNode) {
@@ -764,6 +919,23 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
 
         // region Utilities
 
+        /**
+         * Predicate to check if a specific node is supported for vectorization, based on its type.
+         *
+         * @param node Candidate node for vectorization.
+         * @return Whether the node is supported for vectorization.
+         */
+        private boolean supported(Node node) {
+            return supportedNodes.contains(node.getClass());
+        }
+
+        /**
+         * Maximum size of a node's value, in bytes.
+         *
+         * @param node Node to compute the data size of.
+         * @return The number of bytes that the value of this node is represented with, or -1 if the node is
+         *         not a ValueNode.
+         */
         private int dataSize(Node node) {
             if (node instanceof LIRLowerableAccess) {
                 return dataSize(((LIRLowerableAccess) node).getAccessStamp());
@@ -776,46 +948,37 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return -1;
         }
 
+        /**
+         * Maximum size required to represent the stamp, in bytes.
+         * @param stamp Stamp to compute the data size of.
+         * @return The number of bytes that the stamp is represented with.
+         */
         private int dataSize(Stamp stamp) {
             return stamp.javaType(context.getMetaAccess()).getJavaKind().getByteCount();
         }
 
+        /**
+         * Convenience method to retrieve the maximum vector width that can be used with node.
+         *
+         * The target provider's vector description has a method that takes a stamp and returns the maximum vector width
+         * for this stamp. This method retrieves the stamp of the node and then makes this call.
+         *
+         * @param node Node to compute the maximum vector width for.
+         * @return Maximum vector width for node, in bytes.
+         */
         private int vectorWidth(ValueNode node) {
             final Stamp stamp = getStamp(node);
             return dataSize(stamp) * context.getTargetProvider().getVectorDescription().maxVectorWidth(stamp);
         }
 
         /**
-         * Predicate to determine whether a specific node is supported for
-         * vectorization, based on its type.
+         * Convenience method to retrieve the stamp of a ValueNode without having to explicitly pass the view.
          *
-         * @param node Vectorization candidate.
-         * @return Whether this is a supported node.
+         * @param node Node to get the stamp of.
+         * @return Stamp of value node, taking into account the current pass' node view.
          */
-        private boolean supported(Node node) {
-            return supportedNodes.contains(node.getClass());
-        }
-
         private Stamp getStamp(ValueNode node) {
             return Util.getStamp(node, view);
-        }
-
-
-        /**
-         * Predicate to determine whether performing the IPP operation is valid for this block.
-         * @return Boolean indicating whether we can proceed with packing.
-         */
-        private boolean validForBlock() {
-            for (FixedNode node : blockInfo.getBlock().getNodes()) {
-                if (node instanceof ControlSplitNode) {
-                    return false;
-                }
-                if (node instanceof InvokeNode) {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         // endregion
@@ -848,7 +1011,16 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return;
         }
 
-        for (Block block : cfg.reversePostOrder()) {
+        blockLoop: for (Block block : cfg.reversePostOrder()) {
+            // We cannot run the IsomorphicPackingPhase on blocks that contain control flow splits
+            // (like conditional statements) or method invocations that are not inlined.
+
+            for (FixedNode node : block.getNodes()) {
+                if (node instanceof ControlSplitNode || node instanceof InvokeNode) {
+                    continue blockLoop;
+                }
+            }
+
             new Instance(context, debug, graph, block).slpExtract();
         }
     }
