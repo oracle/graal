@@ -126,28 +126,222 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             this.alignmentMap = new NodeMap<>(graph);
         }
 
-        // Utilities
-
-        private int dataSize(Node node) {
-            if (node instanceof LIRLowerableAccess) {
-                return dataSize(((LIRLowerableAccess) node).getAccessStamp());
+        // Main
+        @SuppressWarnings("try")
+        private void slpExtract() {
+            if (!validForBlock()) {
+                return;
             }
 
-            if (node instanceof ValueNode) {
-                return dataSize(((ValueNode) node).stamp(view));
+            final Set<Pair<ValueNode, ValueNode>> packSet = new HashSet<>();
+            final Set<Pack> combinedPackSet = new HashSet<>();
+
+            findAdjRefs(packSet);
+            if (packSet.isEmpty()) {
+                return;
             }
 
-            return -1;
+            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", blockInfo.getBlock(), packSet.size());
+            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
+
+            extendPacklist(packSet);
+            if (packSet.isEmpty()) {
+                return;
+            }
+
+            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", blockInfo.getBlock(), packSet.size());
+            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
+
+            combinePacks(packSet, combinedPackSet);
+
+            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
+            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
+
+            policies.filterPacks(combinedPackSet);
+
+            debug.log(DebugContext.VERBOSE_LEVEL, "%s filtered packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
+            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
+
+            try (DebugContext.Scope s = debug.scope("schedule")) {
+                schedule(new ArrayList<>(graph.getLastSchedule().getBlockToNodesMap().get(blockInfo.getBlock())), combinedPackSet);
+            } catch (Throwable t) {
+                throw debug.handle(t);
+            }
         }
 
-        private int dataSize(Stamp stamp) {
-            return stamp.javaType(context.getMetaAccess()).getJavaKind().getByteCount();
+
+        // region Core Algorithm
+
+        /**
+         * Create the initial seed packSet of operations that are adjacent.
+         * @param packSet PackSet to populate.
+         */
+        private void findAdjRefs(Set<Pair<ValueNode, ValueNode>> packSet) {
+            // Create initial seed set containing memory operations
+            List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
+                    StreamSupport.stream(blockInfo.getBlock().getNodes().spliterator(), false).
+                            filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess).
+                            map(x -> (FixedAccessNode & LIRLowerableAccess) x).
+                            // using stack kind here as this works with MetaspacePointerStamp and others
+                                    filter(x -> getStamp(x).getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).
+                            collect(Collectors.toList());
+
+            while (!memoryNodes.isEmpty()) {
+                final FixedAccessNode alignmentReference = findAlignToRef(memoryNodes);
+                if (alignmentReference == null) {
+                    return; // we can't find a reference to align to, packSet is complete
+                }
+                final int ivAdjust = getIvAdjustment(alignmentReference);
+
+                for (int i = memoryNodes.size() - 1; i >= 0; i--) {
+                    final FixedAccessNode s = memoryNodes.get(i);
+                    if (blockInfo.isomorphic(s, alignmentReference) && sameBaseAddress(s, alignmentReference)) {
+                        setAlignment(s, memoryAlignment((FixedAccessNode & LIRLowerableAccess) s, ivAdjust));
+                    }
+                }
+
+                // create a pack
+                for (FixedAccessNode s1 : memoryNodes) {
+                    final Optional<Integer> alignS1 = getAlignment(s1);
+                    if (!alignS1.isPresent()) {
+                        continue;
+                    }
+
+                    for (FixedAccessNode s2 : memoryNodes) {
+                        if (!getAlignment(s2).isPresent()) {
+                            continue;
+                        }
+
+                        if (s1 != s2 && blockInfo.adjacent(s1, s2) && stmtsCanPack(packSet, s1, s2, alignS1.orElse(null))) {
+                            packSet.add(Pair.create(s1, s2));
+                        }
+                    }
+                }
+
+                // remove unused memory nodes
+                for (int i = memoryNodes.size() - 1; i >= 0; i--) {
+                    final FixedAccessNode s = memoryNodes.get(i);
+                    if (getAlignment(s).isPresent()) {
+                        memoryNodes.remove(i);
+                    }
+                }
+            }
         }
 
-        private int vectorWidth(ValueNode node) {
-            final Stamp stamp = getStamp(node);
-            return dataSize(stamp) * context.getTargetProvider().getVectorDescription().maxVectorWidth(stamp);
+        /**
+         * Extend the packset by following use->def and def->use links from pack members until the set does not change.
+         * @param packSet PackSet to populate.
+         */
+        private void extendPacklist(Set<Pair<ValueNode, ValueNode>> packSet) {
+            Set<Pair<ValueNode, ValueNode>> iterationPackSet;
+
+            boolean changed;
+            do {
+                changed = false;
+                iterationPackSet = new HashSet<>(packSet);
+
+                for (Pair<ValueNode, ValueNode> pack : iterationPackSet) {
+                    changed |= followUseDefs(packSet, pack);
+                    changed |= followDefUses(packSet, pack);
+                }
+            } while (changed);
         }
+
+
+        // Combine packs where right = left
+        private void combinePacks(Set<Pair<ValueNode, ValueNode>> packSet, Set<Pack> combinedPackSet) {
+            combinedPackSet.addAll(packSet.stream().map(Pack::create).collect(Collectors.toList()));
+            packSet.clear();
+
+            boolean changed;
+            do {
+                changed = false;
+
+                Deque<Pack> remove = new ArrayDeque<>();
+                Deque<Pack> add = new ArrayDeque<>();
+
+                for (Pack leftPack : combinedPackSet) {
+                    if (remove.contains(leftPack)) {
+                        continue;
+                    }
+
+                    for (Pack rightPack : combinedPackSet) {
+                        if (remove.contains(leftPack) || remove.contains(rightPack)) {
+                            continue;
+                        }
+
+
+                        if (leftPack != rightPack && leftPack.getLast().equals(rightPack.getFirst())) {
+                            remove.push(leftPack);
+                            remove.push(rightPack);
+
+                            add.push(Pack.combine(leftPack, rightPack));
+                            changed = true;
+                        }
+                    }
+                }
+
+                combinedPackSet.removeAll(remove);
+                combinedPackSet.addAll(add);
+            } while (changed);
+        }
+
+        private void schedule(List<Node> unscheduled, Set<Pack> packSet) {
+            final List<Node> scheduled = new ArrayList<>();
+            final Deque<FixedNode> lastFixed = new ArrayDeque<>();
+
+            // Populate a nodeToPackMap
+            final Map<Node, Pack> nodeToPackMap = packSet.stream().
+                    flatMap(pack -> pack.getElements().stream().map(node -> Pair.create(node, pack))).
+                    collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
+
+            final List<Runnable> deferred = new ArrayList<>();
+
+            // While unscheduled isn't empty
+            outer: while (!unscheduled.isEmpty()) {
+                for (Node node : unscheduled) {
+                    // Node is in some pack p
+                    if (nodeToPackMap.containsKey(node)) {
+                        final Pack pack = nodeToPackMap.get(node);
+                        // Have the dependencies of statements in the pack been scheduled?
+
+                        // Use control flow of earliest node in chain
+                        final Node firstInCFPack = unscheduled.stream().filter(x -> pack.getElements().contains(x)).findFirst().get();
+
+                        if (pack.getElements().stream().allMatch(n -> depsScheduled(n, scheduled, n == firstInCFPack))) {
+                            // Remove statements from unscheduled
+                            scheduled.addAll(pack.getElements());
+                            unscheduled.removeAll(pack.getElements());
+                            deferred.add(() -> schedulePack(pack, lastFixed));
+                            continue outer;
+                        }
+                    } else if (depsScheduled(node, scheduled, true)) {
+                        // Remove statement from unscheduled and schedule
+                        scheduled.add(node);
+                        unscheduled.remove(node);
+                        deferred.add(() -> scheduleStmt(node, lastFixed));
+                        continue outer;
+                    }
+                }
+
+                // We only reach here if there is a grouped statement dependency violation.
+                // These are broken by removing one of the packs.
+                Pack packToRemove = earliestUnscheduled(unscheduled, nodeToPackMap);
+                assert packToRemove != null : "there no are unscheduled statements in packs";
+                debug.log("dependency violation, removing %s", packToRemove);
+                for (Node packNode : packToRemove.getElements()) {
+                    nodeToPackMap.remove(packNode); // Remove all references for these statements to pack
+                }
+            }
+
+            for (Runnable runnable : deferred) {
+                runnable.run();
+            }
+        }
+
+        // endregion
+
+        // region Adjacent References
 
         /**
          * Get the alignment of a vector memory reference.
@@ -190,27 +384,10 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return Optional.ofNullable(alignmentMap.get(node));
         }
 
-        /**
-         * Predicate to determine whether a specific node is supported for
-         * vectorization, based on its type.
-         *
-         * @param node Vectorization candidate.
-         * @return Whether this is a supported node.
-         */
-        private boolean supported(Node node) {
-            return supportedNodes.contains(node.getClass());
-        }
-
-        private Stamp getStamp(ValueNode node) {
-            return Util.getStamp(node, view);
-        }
-
         private boolean stmtsCanPack(Set<Pair<ValueNode, ValueNode>> packSet, ValueNode s1, ValueNode s2, Integer align) {
-            // TODO: Also make sure that the platform supports vectors of the primitive type of this candidate pack
-
             if (supported(s1) && supported(s2) &&
-                blockInfo.isomorphic(s1, s2) && blockInfo.independent(s1, s2) &&
-                packSet.stream().noneMatch(p -> p.getLeft().equals(s1) || p.getRight().equals(s2))) {
+                    blockInfo.isomorphic(s1, s2) && blockInfo.independent(s1, s2) &&
+                    packSet.stream().noneMatch(p -> p.getLeft().equals(s1) || p.getRight().equals(s2))) {
                 final Optional<Integer> alignS1 = getAlignment(s1);
                 final Optional<Integer> alignS2 = getAlignment(s2);
 
@@ -220,110 +397,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     offset = alignS2.map(v -> v == s2DataSize + align).orElse(false);
                 }
 
-                return (!alignS1.isPresent() || alignS1.get().equals(align)) &&
-                        (!alignS2.isPresent() || offset);
-            }
-
-            return false;
-        }
-
-        /**
-         * Extend the packset by visiting operand definitions of nodes inside the provided pack.
-         * @param packSet Pack set.
-         * @param pack The pack to use for operand definitions.
-         */
-        private boolean followUseDefs(Set<Pair<ValueNode, ValueNode>> packSet, Pair<ValueNode, ValueNode> pack) {
-            final Node left = pack.getLeft();
-            final Node right = pack.getRight();
-            final Optional<Integer> align = getAlignment(left);
-
-            // TODO: bail if left is load (why?)
-
-            boolean changed = false;
-
-            outer: // labelled outer loop so that hasNext check is performed for left
-            for (Iterator<Node> leftInputIt = left.inputs().iterator(); leftInputIt.hasNext();) {
-                for (Iterator<Node> rightInputIt = right.inputs().iterator(); leftInputIt.hasNext() && rightInputIt.hasNext();) {
-                    // Incrementing both iterators at the same time, so looking at the same input
-                    // always
-                    final Node leftInput = leftInputIt.next();
-                    final Node rightInput = rightInputIt.next();
-
-                    // If nodes not value nodes, bail
-                    if (!(leftInput instanceof ValueNode) || !(rightInput instanceof ValueNode)) {
-                        continue outer;
-                    }
-
-                    // Check block membership, bail if nodes not in block (prevent analysis beyond block)
-                    if (blockInfo.notInBlock(leftInput) || blockInfo.notInBlock(rightInput)) {
-                        continue outer;
-                    }
-
-                    // If the statements cannot be packed, bail
-                    if (!align.isPresent() || !stmtsCanPack(packSet, (ValueNode) leftInput, (ValueNode) rightInput, align.get())) {
-                        continue outer;
-                    }
-
-                    // If there are no savings to be gained, bail
-                    if (policies.estSavings(blockInfo, packSet, leftInput, rightInput) < 0) {
-                        continue outer;
-                    }
-
-                    changed |= packSet.add(Pair.create((ValueNode) leftInput, (ValueNode) rightInput));
-                    setAlignment(left, right, align.get());
-                }
-            }
-
-            return changed;
-        }
-
-        /**
-         * Extend the packset by visiting uses of nodes in the provided pack.
-         * @param packSet Pack set.
-         * @param pack The pack to use for nodes to find usages of.
-         */
-        private boolean followDefUses(Set<Pair<ValueNode, ValueNode>> packSet, Pair<ValueNode, ValueNode> pack) {
-            final Node left = pack.getLeft();
-            final Node right = pack.getRight();
-            final Optional<Integer> align = getAlignment(left);
-
-            int savings = -1;
-            Pair<ValueNode, ValueNode> bestPack = null;
-
-            // TODO: bail if left is store (why?)
-
-            for (Node leftUsage : left.usages()) {
-                if (blockInfo.notInBlock(left)) {
-                    continue;
-                }
-
-                for (Node rightUsage : right.usages()) {
-                    if (leftUsage == rightUsage || blockInfo.notInBlock(right)) {
-                        continue;
-                    }
-
-                    // TODO: Rather than adding the first, add the best
-                    if (leftUsage instanceof ValueNode &&
-                            rightUsage instanceof ValueNode &&
-                            stmtsCanPack(packSet, (ValueNode) leftUsage, (ValueNode) rightUsage, align.orElse(null))) {
-                        final int currentSavings = policies.estSavings(blockInfo, packSet, leftUsage, rightUsage);
-                        if (currentSavings > savings) {
-                            savings = currentSavings;
-                            bestPack = Pair.create((ValueNode) leftUsage, (ValueNode) rightUsage);
-                        }
-                    }
-                }
-            }
-
-            if (savings >= 0) {
-                if (align.isPresent()) {
-                    setAlignment(bestPack.getLeft(), bestPack.getRight(), align.get());
-                } else {
-                    alignmentMap.removeKey(bestPack.getLeft());
-                    alignmentMap.removeKey(bestPack.getRight());
-                }
-
-                return packSet.add(bestPack);
+                return (!alignS1.isPresent() || alignS1.get().equals(align)) && (!alignS2.isPresent() || offset);
             }
 
             return false;
@@ -427,137 +501,115 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return memoryNodes.get(maxIndex);
         }
 
+        // endregion
+
+        // region Extend Packlist
+
         /**
-         * Predicate to determine whether performing the IPP operation is valid for this block.
-         * @return Boolean indicating whether we can proceed with packing.
+         * Extend the packset by visiting operand definitions of nodes inside the provided pack.
+         * @param packSet Pack set.
+         * @param pack The pack to use for operand definitions.
          */
-        private boolean validForBlock() {
-            for (FixedNode node : blockInfo.getBlock().getNodes()) {
-                if (node instanceof ControlSplitNode) {
-                    return false;
-                }
-                if (node instanceof InvokeNode) {
-                    return false;
+        private boolean followUseDefs(Set<Pair<ValueNode, ValueNode>> packSet, Pair<ValueNode, ValueNode> pack) {
+            final Node left = pack.getLeft();
+            final Node right = pack.getRight();
+            final Optional<Integer> align = getAlignment(left);
+
+            // TODO: bail if left is load (why?)
+
+            boolean changed = false;
+
+            outer: // labelled outer loop so that hasNext check is performed for left
+            for (Iterator<Node> leftInputIt = left.inputs().iterator(); leftInputIt.hasNext();) {
+                for (Iterator<Node> rightInputIt = right.inputs().iterator(); leftInputIt.hasNext() && rightInputIt.hasNext();) {
+                    // Incrementing both iterators at the same time, so looking at the same input
+                    // always
+                    final Node leftInput = leftInputIt.next();
+                    final Node rightInput = rightInputIt.next();
+
+                    // If nodes not value nodes, bail
+                    if (!(leftInput instanceof ValueNode) || !(rightInput instanceof ValueNode)) {
+                        continue outer;
+                    }
+
+                    // Check block membership, bail if nodes not in block (prevent analysis beyond block)
+                    if (blockInfo.notInBlock(leftInput) || blockInfo.notInBlock(rightInput)) {
+                        continue outer;
+                    }
+
+                    // If the statements cannot be packed, bail
+                    if (!align.isPresent() || !stmtsCanPack(packSet, (ValueNode) leftInput, (ValueNode) rightInput, align.get())) {
+                        continue outer;
+                    }
+
+                    // If there are no savings to be gained, bail
+                    if (policies.estSavings(blockInfo, packSet, leftInput, rightInput) < 0) {
+                        continue outer;
+                    }
+
+                    changed |= packSet.add(Pair.create((ValueNode) leftInput, (ValueNode) rightInput));
+                    setAlignment(left, right, align.get());
                 }
             }
 
-            return true;
+            return changed;
         }
 
-        // Core
-
         /**
-         * Create the initial seed packSet of operations that are adjacent.
-         * @param packSet PackSet to populate.
+         * Extend the packset by visiting uses of nodes in the provided pack.
+         * @param packSet Pack set.
+         * @param pack The pack to use for nodes to find usages of.
          */
-        private void findAdjRefs(Set<Pair<ValueNode, ValueNode>> packSet) {
-            // Create initial seed set containing memory operations
-            List<FixedAccessNode> memoryNodes = // Candidate list of memory nodes
-                    StreamSupport.stream(blockInfo.getBlock().getNodes().spliterator(), false).
-                            filter(x -> x instanceof FixedAccessNode && x instanceof LIRLowerableAccess).
-                            map(x -> (FixedAccessNode & LIRLowerableAccess) x).
-                            // using stack kind here as this works with MetaspacePointerStamp and others
-                            filter(x -> getStamp(x).getStackKind().isPrimitive() && memoryAlignment(x, 0) != ALIGNMENT_BOTTOM).
-                            collect(Collectors.toList());
+        private boolean followDefUses(Set<Pair<ValueNode, ValueNode>> packSet, Pair<ValueNode, ValueNode> pack) {
+            final Node left = pack.getLeft();
+            final Node right = pack.getRight();
+            final Optional<Integer> align = getAlignment(left);
 
-            while (!memoryNodes.isEmpty()) {
-                final FixedAccessNode alignmentReference = findAlignToRef(memoryNodes);
-                if (alignmentReference == null) {
-                    return; // we can't find a reference to align to, packSet is complete
-                }
-                final int ivAdjust = getIvAdjustment(alignmentReference);
+            int savings = -1;
+            Pair<ValueNode, ValueNode> bestPack = null;
 
-                for (int i = memoryNodes.size() - 1; i >= 0; i--) {
-                    final FixedAccessNode s = memoryNodes.get(i);
-                    if (blockInfo.isomorphic(s, alignmentReference) && sameBaseAddress(s, alignmentReference)) {
-                        setAlignment(s, memoryAlignment((FixedAccessNode & LIRLowerableAccess) s, ivAdjust));
-                    }
+            // TODO: bail if left is store (why?)
+
+            for (Node leftUsage : left.usages()) {
+                if (blockInfo.notInBlock(left)) {
+                    continue;
                 }
 
-                // create a pack
-                for (FixedAccessNode s1 : memoryNodes) {
-                    final Optional<Integer> alignS1 = getAlignment(s1);
-                    if (!alignS1.isPresent()) {
+                for (Node rightUsage : right.usages()) {
+                    if (leftUsage == rightUsage || blockInfo.notInBlock(right)) {
                         continue;
                     }
 
-                    for (FixedAccessNode s2 : memoryNodes) {
-                        if (!getAlignment(s2).isPresent()) {
-                            continue;
+                    // TODO: Rather than adding the first, add the best
+                    if (leftUsage instanceof ValueNode &&
+                            rightUsage instanceof ValueNode &&
+                            stmtsCanPack(packSet, (ValueNode) leftUsage, (ValueNode) rightUsage, align.orElse(null))) {
+                        final int currentSavings = policies.estSavings(blockInfo, packSet, leftUsage, rightUsage);
+                        if (currentSavings > savings) {
+                            savings = currentSavings;
+                            bestPack = Pair.create((ValueNode) leftUsage, (ValueNode) rightUsage);
                         }
-
-                        if (s1 != s2 && blockInfo.adjacent(s1, s2) && stmtsCanPack(packSet, s1, s2, alignS1.orElse(null))) {
-                            packSet.add(Pair.create(s1, s2));
-                        }
-                    }
-                }
-
-                // remove unused memory nodes
-                for (int i = memoryNodes.size() - 1; i >= 0; i--) {
-                    final FixedAccessNode s = memoryNodes.get(i);
-                    if (getAlignment(s).isPresent()) {
-                        memoryNodes.remove(i);
                     }
                 }
             }
-        }
 
-        /**
-         * Extend the packset by following use->def and def->use links from pack members until the set does not change.
-         * @param packSet PackSet to populate.
-         */
-        private void extendPacklist(Set<Pair<ValueNode, ValueNode>> packSet) {
-            Set<Pair<ValueNode, ValueNode>> iterationPackSet;
-
-            boolean changed;
-            do {
-                changed = false;
-                iterationPackSet = new HashSet<>(packSet);
-
-                for (Pair<ValueNode, ValueNode> pack : iterationPackSet) {
-                    changed |= followUseDefs(packSet, pack);
-                    changed |= followDefUses(packSet, pack);
-                }
-            } while (changed);
-        }
-
-        // Combine packs where right = left
-        private void combinePacks(Set<Pair<ValueNode, ValueNode>> packSet, Set<Pack> combinedPackSet) {
-            combinedPackSet.addAll(packSet.stream().map(Pack::create).collect(Collectors.toList()));
-            packSet.clear();
-
-            boolean changed;
-            do {
-                changed = false;
-
-                Deque<Pack> remove = new ArrayDeque<>();
-                Deque<Pack> add = new ArrayDeque<>();
-
-                for (Pack leftPack : combinedPackSet) {
-                    if (remove.contains(leftPack)) {
-                        continue;
-                    }
-
-                    for (Pack rightPack : combinedPackSet) {
-                        if (remove.contains(leftPack) || remove.contains(rightPack)) {
-                            continue;
-                        }
-
-
-                        if (leftPack != rightPack && leftPack.getLast().equals(rightPack.getFirst())) {
-                            remove.push(leftPack);
-                            remove.push(rightPack);
-
-                            add.push(Pack.combine(leftPack, rightPack));
-                            changed = true;
-                        }
-                    }
+            if (savings >= 0) {
+                if (align.isPresent()) {
+                    setAlignment(bestPack.getLeft(), bestPack.getRight(), align.get());
+                } else {
+                    alignmentMap.removeKey(bestPack.getLeft());
+                    alignmentMap.removeKey(bestPack.getRight());
                 }
 
-                combinedPackSet.removeAll(remove);
-                combinedPackSet.addAll(add);
-            } while (changed);
+                return packSet.add(bestPack);
+            }
+
+            return false;
         }
+
+        // endregion
+
+        // region Scheduling
 
         /**
          * Have all of the dependencies of node been scheduled? Filters inputs, removing blocks that
@@ -586,59 +638,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             return null;
         }
 
-        private void schedule(List<Node> unscheduled, Set<Pack> packSet) {
-            final List<Node> scheduled = new ArrayList<>();
-            final Deque<FixedNode> lastFixed = new ArrayDeque<>();
-
-            // Populate a nodeToPackMap
-            final Map<Node, Pack> nodeToPackMap = packSet.stream().
-                    flatMap(pack -> pack.getElements().stream().map(node -> Pair.create(node, pack))).
-                    collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
-
-            final List<Runnable> deferred = new ArrayList<>();
-
-            // While unscheduled isn't empty
-            outer: while (!unscheduled.isEmpty()) {
-                for (Node node : unscheduled) {
-                    // Node is in some pack p
-                    if (nodeToPackMap.containsKey(node)) {
-                        final Pack pack = nodeToPackMap.get(node);
-                        // Have the dependencies of statements in the pack been scheduled?
-
-                        // Use control flow of earliest node in chain
-                        final Node firstInCFPack = unscheduled.stream().filter(x -> pack.getElements().contains(x)).findFirst().get();
-
-                        if (pack.getElements().stream().allMatch(n -> depsScheduled(n, scheduled, n == firstInCFPack))) {
-                            // Remove statements from unscheduled
-                            scheduled.addAll(pack.getElements());
-                            unscheduled.removeAll(pack.getElements());
-                            deferred.add(() -> schedulePack(pack, lastFixed));
-                            continue outer;
-                        }
-                    } else if (depsScheduled(node, scheduled, true)) {
-                        // Remove statement from unscheduled and schedule
-                        scheduled.add(node);
-                        unscheduled.remove(node);
-                        deferred.add(() -> scheduleStmt(node, lastFixed));
-                        continue outer;
-                    }
-                }
-
-                // We only reach here if there is a grouped statement dependency violation.
-                // These are broken by removing one of the packs.
-                Pack packToRemove = earliestUnscheduled(unscheduled, nodeToPackMap);
-                assert packToRemove != null : "there no are unscheduled statements in packs";
-                debug.log("dependency violation, removing %s", packToRemove);
-                for (Node packNode : packToRemove.getElements()) {
-                    nodeToPackMap.remove(packNode); // Remove all references for these statements to pack
-                }
-            }
-
-            for (Runnable runnable : deferred) {
-                runnable.run();
-            }
-        }
-
         private void schedulePack(Pack pack, Deque<FixedNode> lastFixed) {
             final Node first = pack.getElements().get(0);
             final Graph graph = first.graph();
@@ -654,7 +653,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 for (int i = 0; i < nodes.size(); i++) {
                     final ReadNode node = nodes.get(i);
                     final VectorExtractNode extractNode =
-                        graph.addOrUnique(new VectorExtractNode(node.getAccessStamp().unrestricted(), vectorRead, i));
+                            graph.addOrUnique(new VectorExtractNode(node.getAccessStamp().unrestricted(), vectorRead, i));
 
                     if (node.predecessor() != null) {
                         node.predecessor().clearSuccessors();
@@ -674,7 +673,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final List<WriteNode> nodes = pack.getElements().stream().map(x -> (WriteNode) x).collect(Collectors.toList());
 
                 final VectorPackNode vectorPackNode =
-                    graph.addOrUnique(new VectorPackNode(pack.stamp(view), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList())));
+                        graph.addOrUnique(new VectorPackNode(pack.stamp(view), nodes.stream().map(AbstractWriteNode::value).collect(Collectors.toList())));
                 final VectorWriteNode vectorWrite = VectorWriteNode.fromPackElements(nodes, vectorPackNode);
 
                 for (WriteNode node : nodes) {
@@ -699,8 +698,8 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                 final UnaryArithmeticNode<?> firstUAN = (UnaryArithmeticNode<?>) first;
 
                 final List<UnaryArithmeticNode<?>> nodes = pack.getElements().stream().
-                    map(x -> (UnaryArithmeticNode<?>) x).
-                    collect(Collectors.toList());
+                        map(x -> (UnaryArithmeticNode<?>) x).
+                        collect(Collectors.toList());
 
                 // Link up firstUAN
                 final VectorPackNode packVal = graph.addOrUnique(new VectorPackNode(pack.stamp(view), nodes.stream().map(UnaryNode::getValue).collect(Collectors.toList())));
@@ -765,48 +764,65 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             // non-fixed nodes don't have control flow, so don't need to do anything else
         }
 
-        // Main
-        @SuppressWarnings("try")
-        private void slpExtract() {
-            if (!validForBlock()) {
-                return;
+        // endregion
+
+        // region Utilities
+
+        private int dataSize(Node node) {
+            if (node instanceof LIRLowerableAccess) {
+                return dataSize(((LIRLowerableAccess) node).getAccessStamp());
             }
 
-            final Set<Pair<ValueNode, ValueNode>> packSet = new HashSet<>();
-            final Set<Pack> combinedPackSet = new HashSet<>();
-
-            findAdjRefs(packSet);
-            if (packSet.isEmpty()) {
-                return;
+            if (node instanceof ValueNode) {
+                return dataSize(((ValueNode) node).stamp(view));
             }
 
-            debug.log(DebugContext.DETAILED_LEVEL, "%s seed packset has size %d", blockInfo.getBlock(), packSet.size());
-            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
-
-            extendPacklist(packSet);
-            if (packSet.isEmpty()) {
-                return;
-            }
-
-            debug.log(DebugContext.DETAILED_LEVEL, "%s extended packset has size %d", blockInfo.getBlock(), packSet.size());
-            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", packSet);
-
-            combinePacks(packSet, combinedPackSet);
-
-            debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
-            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
-
-            policies.filterPacks(combinedPackSet);
-
-            debug.log(DebugContext.VERBOSE_LEVEL, "%s filtered packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
-            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
-
-            try (DebugContext.Scope s = debug.scope("schedule")) {
-                schedule(new ArrayList<>(graph.getLastSchedule().getBlockToNodesMap().get(blockInfo.getBlock())), combinedPackSet);
-            } catch (Throwable t) {
-                throw debug.handle(t);
-            }
+            return -1;
         }
+
+        private int dataSize(Stamp stamp) {
+            return stamp.javaType(context.getMetaAccess()).getJavaKind().getByteCount();
+        }
+
+        private int vectorWidth(ValueNode node) {
+            final Stamp stamp = getStamp(node);
+            return dataSize(stamp) * context.getTargetProvider().getVectorDescription().maxVectorWidth(stamp);
+        }
+
+        /**
+         * Predicate to determine whether a specific node is supported for
+         * vectorization, based on its type.
+         *
+         * @param node Vectorization candidate.
+         * @return Whether this is a supported node.
+         */
+        private boolean supported(Node node) {
+            return supportedNodes.contains(node.getClass());
+        }
+
+        private Stamp getStamp(ValueNode node) {
+            return Util.getStamp(node, view);
+        }
+
+
+        /**
+         * Predicate to determine whether performing the IPP operation is valid for this block.
+         * @return Boolean indicating whether we can proceed with packing.
+         */
+        private boolean validForBlock() {
+            for (FixedNode node : blockInfo.getBlock().getNodes()) {
+                if (node instanceof ControlSplitNode) {
+                    return false;
+                }
+                if (node instanceof InvokeNode) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // endregion
 
     }
 
