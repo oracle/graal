@@ -450,7 +450,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMVector;
 
 public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
-    private DataLayout dataLayout;
+    protected DataLayout dataLayout;
 
     public BasicNodeFactory(LLVMContext context, DataLayout dataLayout) {
         this.context = context;
