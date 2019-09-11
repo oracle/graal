@@ -114,7 +114,7 @@ public class DirectoryStorage implements ManagementStorage {
      */
     private static final String BUNDLE_REQUIRED_PREFIX = BundleConstants.BUNDLE_REQUIRED + "-"; // NOI18N
     private static final String BUNDLE_PROVIDED_PREFIX = BundleConstants.BUNDLE_PROVIDED + "-"; // NOI18N
-
+    
     /**
      * Root of the storage fileName.
      */
@@ -519,7 +519,9 @@ public class DirectoryStorage implements ManagementStorage {
             }
             p.setProperty(BUNDLE_PROVIDED_PREFIX + k, t + o.toString());
         }
-
+        if (!info.getDependencies().isEmpty()) {
+            p.setProperty(BundleConstants.BUNDLE_DEPENDENCY, info.getDependencies().stream().sequential().collect(Collectors.joining(":")));
+        }
         if (info.getPostinstMessage() != null) {
             p.setProperty(BundleConstants.BUNDLE_MESSAGE_POSTINST, info.getPostinstMessage());
         }

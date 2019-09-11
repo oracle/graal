@@ -27,9 +27,11 @@ package org.graalvm.component.installer.persist;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.DependencyException;
 import java.util.Map;
+import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.TestBase;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Rule;
 import org.junit.Test;
@@ -46,6 +48,10 @@ public class HeaderParserTest extends TestBase {
 
     private HeaderParser c(String content) {
         return new HeaderParser(BundleConstants.BUNDLE_PROVIDED, content, withBundle(HeaderParser.class));
+    }
+    
+    private HeaderParser d(String content) {
+        return new HeaderParser(BundleConstants.BUNDLE_DEPENDENCY, content, withBundle(HeaderParser.class));
     }
 
     private static void assertHeader(MetadataException ex) {
@@ -308,5 +314,28 @@ public class HeaderParserTest extends TestBase {
         exc.expect(MetadataException.class);
         exc.expectMessage("ERROR_InvalidCapabilitySyntax");
         c("org.graalvm; edition; graalvm_version=ff").parseProvidedCapabilities();
+    }
+    
+    @Test 
+    public void testSimpleDependency() {
+        assertTrue(d("").parseDependencies().isEmpty());
+        Set<String> s = d("org.graalvm.llvm-toolchain").parseDependencies();
+        assertEquals(1, s.size());
+        assertEquals("org.graalvm.llvm-toolchain", s.iterator().next());
+    }
+    
+    @Test
+    public void testMultipleDependencies() {
+        Set<String> s = d("org.graalvm.llvm-toolchain, org.graalvm.native-image").parseDependencies();
+        assertEquals(2, s.size());
+        assertTrue(s.contains("org.graalvm.llvm-toolchain"));
+        assertTrue(s.contains("org.graalvm.native-image"));
+    }
+    
+    @Test
+    public void testRejectVersionedDependency() {
+        exc.expect(MetadataException.class);
+        exc.expectMessage("ERROR_DependencyParametersNotSupported");
+        Set<String> s = d("org.graalvm.llvm-toolchain; bundle-version=19.3").parseDependencies();
     }
 }

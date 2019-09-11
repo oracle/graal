@@ -28,8 +28,10 @@ import java.util.Collections;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.DependencyException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.Feedback;
@@ -46,6 +48,7 @@ public class HeaderParser {
     private final Map<String, String> directives = new HashMap<>();
     private final Map<String, String> filterValue = new HashMap<>();
     private final Map<String, Object> capabilities = new HashMap<>();
+    private final Set<String> dependencies = new HashSet<>();
     private final Feedback feedback;
 
     private String header;
@@ -246,7 +249,7 @@ public class HeaderParser {
         boolean componentEmpty = true;
         while (!isEmpty()) {
             char c = ch();
-            if (c == ';') {
+            if (c == ';' || c == ',') {
                 String s = cut();
                 return s;
             }
@@ -554,6 +557,29 @@ public class HeaderParser {
         }
         return capabilities;
     }
+    
+    public Set<String> parseDependencies() {
+        if (isEmpty()) {
+            return Collections.emptySet();
+        }
+        while (!isEmpty()) {
+            String sn = parseSymbolicName();
+            dependencies.add(sn);
+            skipWhitespaces();
+            if (isEmpty()) {
+                break;
+            }
+            char c = next();
+            switch (c) {
+                case ',':
+                    // OK
+                    break;
+                case ';': 
+                    throw metaEx("ERROR_DependencyParametersNotSupported");
+            }
+        }
+        return dependencies;
+    }
 
     private void parseCapability() {
         String capName = readExtendedName();
@@ -615,5 +641,4 @@ public class HeaderParser {
         }
         capabilities.put(capName, o);
     }
-
 }
