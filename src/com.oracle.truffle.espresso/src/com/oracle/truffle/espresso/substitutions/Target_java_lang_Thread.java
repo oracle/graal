@@ -78,7 +78,7 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    enum State {
+    public enum State {
         NEW(0),
         RUNNABLE(4),
         BLOCKED(1024),
@@ -86,7 +86,7 @@ public final class Target_java_lang_Thread {
         TIMED_WAITING(32),
         TERMINATED(2);
 
-        final int value;
+        public final int value;
 
         State(int value) {
             this.value = value;
@@ -120,7 +120,7 @@ public final class Target_java_lang_Thread {
                     } catch (EspressoException uncaught) {
                         meta.Thread_dispatchUncaughtException.invokeDirect(self, uncaught.getException());
                     } finally {
-                        self.setIntField(meta.Thread_state, State.TERMINATED.value);
+                        self.setIntField(meta.Thread_threadStatus, State.TERMINATED.value);
                         setThreadStop(self, KillStatus.EXITING);
                         meta.Thread_exit.invokeDirect(self);
                         synchronized (self) {
@@ -141,7 +141,7 @@ public final class Target_java_lang_Thread {
             context.putHost2Guest(hostThread, self);
             context.registerThread(self);
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
-            self.setIntField(meta.Thread_state, State.RUNNABLE.value);
+            self.setIntField(meta.Thread_threadStatus, State.RUNNABLE.value);
             hostThread.start();
         } else {
             System.err.println(
@@ -166,7 +166,7 @@ public final class Target_java_lang_Thread {
 
     @Substitution(hasReceiver = true)
     public static boolean isAlive(@Host(Thread.class) StaticObject self) {
-        int state = self.getIntField(self.getKlass().getMeta().Thread_state);
+        int state = self.getIntField(self.getKlass().getMeta().Thread_threadStatus);
         return state != State.NEW.value && state != State.TERMINATED.value;
     }
 
@@ -174,7 +174,7 @@ public final class Target_java_lang_Thread {
     public static @Host(typeName = "Ljava/lang/Thread$State;") StaticObject getState(@Host(Thread.class) StaticObject self) {
         Thread hostThread = getHostFromGuestThread(self);
         // If hostThread is null, start hasn't been called yet -> NEW state.
-        return (StaticObject) self.getKlass().getMeta().VM_toThreadState.invokeDirect(null, hostThread == null ? State.NEW.value : stateToInt(hostThread.getState()));
+        return (StaticObject) self.getKlass().getMeta().VM_toThreadState.invokeDirect(null, hostThread == null ? State.NEW.value : (hostThread.getState()));
     }
 
     @SuppressWarnings("unused")

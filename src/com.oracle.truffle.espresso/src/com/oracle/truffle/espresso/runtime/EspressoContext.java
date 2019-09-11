@@ -263,15 +263,14 @@ public final class EspressoContext {
         StaticObject systemThreadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup.lookupDeclaredMethod(Name.INIT, Signature._void) // private ThreadGroup()
                         .invokeDirect(systemThreadGroup);
-
         StaticObject mainThread = meta.Thread.allocateInstance();
         meta.Thread_priority.set(mainThread, Thread.NORM_PRIORITY);
-
         // Allow guest Thread.currentThread() to work.
         mainThread.setHiddenField(this.meta.HIDDEN_HOST_THREAD, Thread.currentThread());
+        meta.Thread_threadStatus.set(mainThread, Target_java_lang_Thread.State.RUNNABLE.value);
+        mainThread.setHiddenField(meta.HIDDEN_HOST_THREAD, Thread.currentThread());
         host2guest.put(Thread.currentThread(), mainThread);
         activeThreads.add(mainThread);
-
         StaticObject mainThreadGroup = meta.ThreadGroup.allocateInstance();
         meta.ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
                         .lookupDeclaredMethod(Name.INIT, Signature._void_ThreadGroup_String) //
@@ -284,11 +283,38 @@ public final class EspressoContext {
                         .invokeDirect(mainThread,
                                         /* group */ mainThreadGroup,
                                         /* name */ meta.toGuestString("main"));
-
-        meta.Thread_threadStatus.set(mainThread, /* JVMTI_THREAD_STATE_ALIVE */ 0x01 + /* JVMTI_THREAD_STATE_RUNNABLE */ 0x04);
     }
 
     public void interruptActiveThreads() {
+        isClosing = true;
+        invalidateNoThreadStop("Killing the VM");
+        Thread initiatingThread = Thread.currentThread();
+        for (StaticObject guest : activeThreads) {
+            Thread t = Target_java_lang_Thread.getHostFromGuestThread(guest);
+            if (t != initiatingThread) {
+                try {
+                    if (t.isDaemon()) {
+                        Target_java_lang_Thread.killThread(guest);
+                        Target_java_lang_Thread.interrupt0(guest);
+                        t.join(10);
+                        if (t.isAlive()) {
+                            Target_java_lang_Thread.setThreadStop(guest, Target_java_lang_Thread.KillStatus.DISSIDENT);
+                            t.join();
+                        }
+                    } else {
+                        Target_java_lang_Thread.interrupt0(guest);
+                        t.join();
+                    }
+                } catch (InterruptedException e) {
+                    System.err.println("Interrupted while stopping thread in closing context.");
+                }
+            }
+        }
+        initiatingThread.interrupt();
+    }
+
+    // More involved killing. Doesn't work yet.
+    public void interruptActiveThreadsNew() {
         isClosing = true;
         invalidateNoThreadStop("Killing the VM");
         Thread hostInitiatingThread = Thread.currentThread();
