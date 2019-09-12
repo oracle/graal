@@ -24,34 +24,23 @@
  */
 package org.graalvm.compiler.phases.common.vectorization;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ValueNode;
 
-import java.util.Set;
-
-public interface AutovectorizationPolicies {
+public interface AutovectorizationContext {
 
     /**
-     * Estimate the savings of executing the pack rather than two separate instructions.
+     * Predicate to check if a specific node is supported for vectorization, based on its type.
      *
-     * @param context AutovectorizationContext to query information about the context.
-     * @param packSet packset, for membership checks.
-     * @param s1 Candidate left element of Pack.
-     * @param s2 Candidate right element of Pack.
-     * @return Savings in an arbitrary unit, can be negative.
-     *         Candidate pack is created if this method returns a non-negative integer.
+     * @param node Candidate node for vectorization.
+     * @return Whether the node is supported for vectorization.
      */
-    int estSavings(AutovectorizationContext context, Set<Pair<ValueNode, ValueNode>> packSet, Node s1, Node s2);
+    boolean supported(Node node);
 
     /**
-     * Filter out packs according to a heuristic.
+     * Retrieve the BlockInfo object for the current block.
      *
-     * This method serves to be a final point at which to evaluate whether a Pack is beneficial within the context
-     * of all other Packs. If a pack is to be removed, this method should mutate the set.
-     *
-     * @param context AutovectorizationContext to query information about the context.
-     * @param combinedPackSet Set of packs that are as large as possible, just before being scheduled.
+     * @return BlockInfo for the current block.
      */
-    void filterPacks(AutovectorizationContext context, Set<Pack> combinedPackSet);
+    BlockInfo getBlockInfo();
+
 }

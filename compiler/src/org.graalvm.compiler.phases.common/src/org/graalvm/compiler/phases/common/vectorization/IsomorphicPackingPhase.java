@@ -113,7 +113,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
     /**
      * Instance to capture algorithm state for each block processed.
      */
-    private final class Instance {
+    private final class Instance implements AutovectorizationContext {
         private final LowTierContext context;
         private final StructuredGraph graph;
         private final DebugContext debug;
@@ -161,7 +161,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
             debug.log(DebugContext.VERBOSE_LEVEL, "%s combined packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
 
-            policies.filterPacks(combinedPackSet);
+            policies.filterPacks(this, combinedPackSet);
 
             debug.log(DebugContext.VERBOSE_LEVEL, "%s filtered packset has size %d", blockInfo.getBlock(), combinedPackSet.size());
             debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s", combinedPackSet);
@@ -645,7 +645,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     }
 
                     // If there are no savings to be gained, bail
-                    if (policies.estSavings(blockInfo, packSet, leftInput, rightInput) < 0) {
+                    if (policies.estSavings(this, packSet, leftInput, rightInput) < 0) {
                         continue outer;
                     }
 
@@ -688,7 +688,7 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
                     if (leftUsage instanceof ValueNode &&
                             rightUsage instanceof ValueNode &&
                             stmtsCanPack(packSet, (ValueNode) leftUsage, (ValueNode) rightUsage, align.orElse(null))) {
-                        final int currentSavings = policies.estSavings(blockInfo, packSet, leftUsage, rightUsage);
+                        final int currentSavings = policies.estSavings(this, packSet, leftUsage, rightUsage);
                         if (currentSavings > savings) {
                             savings = currentSavings;
                             bestPack = Pair.create((ValueNode) leftUsage, (ValueNode) rightUsage);
@@ -932,16 +932,6 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
         // region Utilities
 
         /**
-         * Predicate to check if a specific node is supported for vectorization, based on its type.
-         *
-         * @param node Candidate node for vectorization.
-         * @return Whether the node is supported for vectorization.
-         */
-        private boolean supported(Node node) {
-            return supportedNodes.contains(node.getClass());
-        }
-
-        /**
          * Maximum size of a node's value, in bytes.
          *
          * @param node Node to compute the data size of.
@@ -991,6 +981,26 @@ public final class IsomorphicPackingPhase extends BasePhase<LowTierContext> {
          */
         private Stamp getStamp(ValueNode node) {
             return Util.getStamp(node, view);
+        }
+
+        // endregion
+
+        // region AutovectorizationContext
+
+        /**
+         * Predicate to check if a specific node is supported for vectorization, based on its type.
+         *
+         * @param node Candidate node for vectorization.
+         * @return Whether the node is supported for vectorization.
+         */
+        @Override
+        public boolean supported(Node node) {
+            return supportedNodes.contains(node.getClass());
+        }
+
+        @Override
+        public BlockInfo getBlockInfo() {
+            return blockInfo;
         }
 
         // endregion

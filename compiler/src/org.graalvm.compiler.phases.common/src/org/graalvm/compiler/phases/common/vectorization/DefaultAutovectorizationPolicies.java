@@ -34,7 +34,7 @@ import java.util.Set;
 public class DefaultAutovectorizationPolicies implements AutovectorizationPolicies {
 
     @Override
-    public int estSavings(BlockInfo blockInfo, Set<Pair<ValueNode, ValueNode>> packSet, Node s1, Node s2) {
+    public int estSavings(AutovectorizationContext context, Set<Pair<ValueNode, ValueNode>> packSet, Node s1, Node s2) {
         // Savings originating from inputs
         int saveIn = 1; // Save 1 instruction as executing 2 in parallel.
 
@@ -48,7 +48,7 @@ public class DefaultAutovectorizationPolicies implements AutovectorizationPolici
                     continue outer;
                 }
 
-                if (blockInfo.adjacent(leftInput, rightInput)) {
+                if (context.getBlockInfo().adjacent(leftInput, rightInput)) {
                     // Inputs are adjacent in memory, this is good.
                     saveIn += 2; // Not necessarily packed, but good because packing is easy.
                 } else if (packSet.contains(Pair.create(leftInput, rightInput))) {
@@ -76,7 +76,7 @@ public class DefaultAutovectorizationPolicies implements AutovectorizationPolici
 
                     ct++;
 
-                    if (blockInfo.adjacent(s1Usage, s2Usage)) {
+                    if (context.getBlockInfo().adjacent(s1Usage, s2Usage)) {
                         saveUse += 2;
                     }
                 }
@@ -96,7 +96,7 @@ public class DefaultAutovectorizationPolicies implements AutovectorizationPolici
     }
 
     @Override
-    public void filterPacks(Set<Pack> combinedPackSet) {
+    public void filterPacks(AutovectorizationContext context, Set<Pack> combinedPackSet) {
         // implement
     }
 
