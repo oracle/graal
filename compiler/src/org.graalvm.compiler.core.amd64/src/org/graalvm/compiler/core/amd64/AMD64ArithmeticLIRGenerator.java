@@ -117,6 +117,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SAR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHL;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift.SHR;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VADDSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VANDPD;
@@ -128,6 +129,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VDIVSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VFMADD231SS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMULSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VORPD;
@@ -356,7 +358,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 case QWORD:
                     return emitBinary(resultKind, VPADDQ, a, b);
                 case SINGLE:
-                    return emitBinary(resultKind, VADDSD, a, b);
+                    return emitBinary(resultKind, VADDPS, a, b);
                 case DOUBLE:
                     return emitBinary(resultKind, VADDPD, a, b);
                 default:
@@ -410,7 +412,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 case QWORD:
                     return emitBinary(resultKind, VPSUBQ, a, b);
                 case SINGLE:
-                    return emitBinary(resultKind, VSUBSD, a, b);
+                    return emitBinary(resultKind, VSUBPS, a, b);
                 case DOUBLE:
                     return emitBinary(resultKind, VSUBPD, a, b);
                 default:
@@ -480,7 +482,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 case DWORD:
                     return emitBinary(resultKind, VPMULLD, a, b);
                 case SINGLE:
-                    return emitBinary(resultKind, VMULSD, a, b);
+                    return emitBinary(resultKind, VMULPS, a, b);
                 case DOUBLE:
                     return emitBinary(resultKind, VMULPD, a, b);
                 default:
