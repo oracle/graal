@@ -65,7 +65,7 @@ public class CCompilerInvoker {
             InputStream is = compilingProcess.getInputStream();
 
             List<String> lines = FileUtils.readAllLines(es);
-            FileUtils.readAllLines(is);
+            List<String> outputLines = FileUtils.readAllLines(is);
             int status = compilingProcess.waitFor();
 
             boolean errorReported = false;
@@ -76,7 +76,11 @@ public class CCompilerInvoker {
                 }
             }
             if (status != 0 && !errorReported) {
-                reportCompilerError(source, lines.toString());
+                if (Platform.includedIn(Platform.WINDOWS.class)) {
+                    reportCompilerError(source, outputLines.toString());
+                } else {
+                    reportCompilerError(source, lines.toString());
+                }
             }
             compilingProcess.destroy();
             return target;
