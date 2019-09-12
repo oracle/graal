@@ -108,6 +108,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
+import org.graalvm.compiler.truffle.compiler.nodes.IsInlinedNode;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
@@ -149,6 +150,7 @@ public abstract class PartialEvaluator {
     private final InvocationPlugins decodingInvocationPlugins;
     private final NodePlugin[] nodePlugins;
     private final KnownTruffleTypes knownTruffleTypes;
+    private final ResolvedJavaMethod callBoundary;
 
     /**
      * The instrumentation object is used by the Truffle instrumentation to count executions. The
@@ -175,6 +177,7 @@ public abstract class PartialEvaluator {
         this.callInlinedAgnosticMethod = findRequiredMethod(type, methods, "callInlinedAgnostic", "([Ljava/lang/Object;)Ljava/lang/Object;");
         this.callIndirectMethod = findRequiredMethod(type, methods, "callIndirect", "(Lcom/oracle/truffle/api/nodes/Node;[Ljava/lang/Object;)Ljava/lang/Object;");
         this.callRootMethod = findRequiredMethod(type, methods, "callRoot", "([Ljava/lang/Object;)Ljava/lang/Object;");
+        this.callBoundary = findRequiredMethod(type, methods, "callBoundary", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
         this.configForParsing = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
@@ -207,6 +210,20 @@ public abstract class PartialEvaluator {
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
     }
 
+    private static void removeIsInlinedNodes(StructuredGraph graph) {
+        for (IsInlinedNode isInlinedNode : graph.getNodes(IsInlinedNode.TYPE)) {
+            isInlinedNode.notInlined();
+        }
+    }
+
+    public ResolvedJavaMethod getCallDirectMethod() {
+        return callDirectMethod;
+    }
+
+    public ResolvedJavaMethod getCallBoundary() {
+        return callBoundary;
+    }
+
     public Providers getProviders() {
         return providers;
     }
@@ -220,7 +237,7 @@ public abstract class PartialEvaluator {
     }
 
     public ResolvedJavaMethod[] getCompilationRootMethods() {
-        return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod};
+        return new ResolvedJavaMethod[]{callRootMethod, callInlinedMethod, callInlinedAgnosticMethod};
     }
 
     public ResolvedJavaMethod[] getNeverInlineMethods() {
@@ -660,6 +677,7 @@ public abstract class PartialEvaluator {
                             TruffleMaximumInlineNodeCount.getValue(graph.getOptions()));
             doGraphPE(compilable, graph, tierContext, inliningDecision, plugin, EconomicMap.create());
         }
+        removeIsInlinedNodes(graph);
     }
 
     protected void applyInstrumentationPhases(StructuredGraph graph, HighTierContext tierContext) {
