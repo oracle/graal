@@ -33,6 +33,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -44,7 +45,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import org.graalvm.compiler.options.OptionStability;
 
 public class SubstrateOptions {
 
@@ -330,6 +330,11 @@ public class SubstrateOptions {
 
     @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
+
+    @Option(help = "Provide custom path to C compiler used for query code compilation and linking.", type = OptionType.User)//
+    public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
+    @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
+    public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
 
     /**
      * The alignment for AOT and JIT compiled methods. The value is constant folded during image

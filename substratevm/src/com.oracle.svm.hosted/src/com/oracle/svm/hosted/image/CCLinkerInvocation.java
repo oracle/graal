@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.Option;
 
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -46,7 +47,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
-    protected String compilerCommand = "cc";
+    private String compilerCommand = "cc";
     protected final List<String> inputFilenames = new ArrayList<>();
     protected final List<String> rpaths = new ArrayList<>();
     protected final List<String> libpaths = new ArrayList<>();
@@ -149,6 +150,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     @Override
     public String getCompilerCommand() {
+        String customCompiler = CCompilerInvoker.getCCompilerPath();
+        if (customCompiler != null) {
+            return customCompiler;
+        }
         return compilerCommand;
     }
 
@@ -164,7 +169,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     @Override
     public List<String> getCommand() {
         ArrayList<String> cmd = new ArrayList<>();
-        cmd.add(compilerCommand);
+        cmd.add(getCompilerCommand());
         cmd.add("-v");
         cmd.add("-o");
         cmd.add(outputFile.toString());
