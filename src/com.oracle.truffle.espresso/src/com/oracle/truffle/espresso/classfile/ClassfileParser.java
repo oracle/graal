@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019 Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,21 @@
 
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.classfile.ConstantPool.classFormatError;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNCHRONIZED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VOLATILE;
 import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
@@ -38,17 +50,22 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDE
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 
+import java.lang.reflect.Modifier;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -59,27 +76,38 @@ public final class ClassfileParser {
 
     public static final int MAGIC = 0xCAFEBABE;
 
-    public static final int JAVA_4_VERSION = 48;
-    public static final int JAVA_5_VERSION = 49;
+    public static final int JAVA_1_1_VERSION = 45;
+    public static final int JAVA_1_2_VERSION = 46;
+    public static final int JAVA_1_3_VERSION = 47;
+    public static final int JAVA_1_4_VERSION = 48;
+    public static final int JAVA_1_5_VERSION = 49;
+
     public static final int JAVA_6_VERSION = 50;
     public static final int JAVA_7_VERSION = 51;
     public static final int JAVA_8_VERSION = 52;
     public static final int JAVA_9_VERSION = 53;
     public static final int JAVA_10_VERSION = 54;
     public static final int JAVA_11_VERSION = 55;
+    public static final int JAVA_12_VERSION = 56;
+    public static final int JAVA_13_VERSION = 57;
+    public static final int JAVA_14_VERSION = 58;
 
     private static final int MAJOR_VERSION_JAVA_MIN = 0;
-    private static final int MAJOR_VERSION_JAVA_MAX = JAVA_11_VERSION;
+    private static final int MAJOR_VERSION_JAVA_MAX = JAVA_14_VERSION;
 
-    public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_5_VERSION;
+    public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_1_5_VERSION;
     public static final int STACKMAP_ATTRIBUTE_MAJOR_VERSION = JAVA_6_VERSION;
     public static final int INVOKEDYNAMIC_MAJOR_VERSION = JAVA_7_VERSION;
     public static final int NO_RELAX_ACCESS_CTRL_CHECK_VERSION = JAVA_8_VERSION;
     public static final int DYNAMICCONSTANT_MAJOR_VERSION = JAVA_11_VERSION;
 
+    public static final char JAVA_MIN_SUPPORTED_VERSION = JAVA_1_1_VERSION;
+    public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_8_VERSION;
+    public static final char JAVA_MAX_SUPPORTED_MINOR_VERSION = 0;
+
     private final ClasspathFile classfile;
 
-    private final String requestedClassName;
+    private final String requestedClassType;
 
     private final EspressoContext context;
 
@@ -87,9 +115,12 @@ public final class ClassfileParser {
 
     private final StaticObject[] constantPoolPatches;
 
-    private String className;
+    private Symbol<Type> classType;
     private int minorVersion;
     private int majorVersion;
+    int classFlags;
+
+    private Symbol<Type>[] classInnerClasses;
 
     private int maxBootstrapMethodAttrIndex;
     private Tag badConstantSeen;
@@ -102,15 +133,14 @@ public final class ClassfileParser {
         return hostClass;
     }
 
-    // /**
-    // * The host class for an anonymous class.
-    // */
+    /**
+     * The host class for an anonymous class.
+     */
     private final Klass hostClass;
 
     @SuppressWarnings("unused")
-    private ClassfileParser(ClasspathFile classpathFile, String requestedClassName, @SuppressWarnings("unused") Klass hostClass, EspressoContext context) {
-        this.requestedClassName = requestedClassName;
-        this.className = requestedClassName;
+    private ClassfileParser(ClasspathFile classpathFile, String requestedClassType, @SuppressWarnings("unused") Klass hostClass, EspressoContext context) {
+        this.requestedClassType = requestedClassType;
         this.hostClass = hostClass;
         this.context = context;
         this.classfile = classpathFile;
@@ -118,9 +148,8 @@ public final class ClassfileParser {
         this.constantPoolPatches = null;
     }
 
-    private ClassfileParser(ClassfileStream stream, String requestedClassName, @SuppressWarnings("unused") Klass hostClass, EspressoContext context) {
-        this.requestedClassName = requestedClassName;
-        this.className = requestedClassName;
+    private ClassfileParser(ClassfileStream stream, String requestedClassType, @SuppressWarnings("unused") Klass hostClass, EspressoContext context) {
+        this.requestedClassType = requestedClassType;
         this.hostClass = hostClass;
         this.context = context;
         this.classfile = null;
@@ -128,9 +157,8 @@ public final class ClassfileParser {
         this.constantPoolPatches = null;
     }
 
-    public ClassfileParser(ClassfileStream stream, String requestedClassName, @SuppressWarnings("unused") Klass hostClass, EspressoContext context, StaticObject[] constantPoolPatches) {
-        this.requestedClassName = requestedClassName;
-        this.className = requestedClassName;
+    public ClassfileParser(ClassfileStream stream, String requestedClassType, @SuppressWarnings("unused") Klass hostClass, EspressoContext context, StaticObject[] constantPoolPatches) {
+        this.requestedClassType = requestedClassType;
         this.hostClass = hostClass;
         this.context = context;
         this.classfile = null;
@@ -195,18 +223,35 @@ public final class ClassfileParser {
         }
     }
 
-    public ParserKlass parseClassImpl() {
-        // magic
+    protected void readMagic() {
         int magic = stream.readS4();
         if (magic != MAGIC) {
-            throw stream.classFormatError("Incompatible magic value %x in class file %s", magic, classfile);
+            throw classFormatError("Invalid magic number 0x" + Integer.toHexString(magic));
         }
+    }
+
+    /**
+     * Verifies that the class file version is supported.
+     *
+     * @param major the major version number
+     * @param minor the minor version number
+     */
+    public static void verifyVersion(int major, int minor) {
+        if ((major >= JAVA_MIN_SUPPORTED_VERSION) &&
+                        (major <= JAVA_MAX_SUPPORTED_VERSION) &&
+                        ((major != JAVA_MAX_SUPPORTED_VERSION) ||
+                                        (minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION))) {
+            return;
+        }
+        throw new UnsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+    }
+
+    public ParserKlass parseClassImpl() {
+        readMagic();
 
         minorVersion = stream.readU2();
         majorVersion = stream.readU2();
-        if (majorVersion < MAJOR_VERSION_JAVA_MIN || majorVersion > MAJOR_VERSION_JAVA_MAX) {
-            throw new UnsupportedClassVersionError("Unsupported class file version: " + majorVersion + "." + minorVersion);
-        }
+        verifyVersion(majorVersion, minorVersion);
 
         if (constantPoolPatches == null) {
             this.pool = ConstantPool.parse(context.getLanguage(), stream, this);
@@ -215,21 +260,20 @@ public final class ClassfileParser {
         }
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
-        int accessFlags;
         if (majorVersion >= JAVA_9_VERSION) {
-            accessFlags = stream.readU2() & (JVM_RECOGNIZED_CLASS_MODIFIERS | Constants.ACC_MODULE);
+            classFlags = stream.readU2() & (JVM_RECOGNIZED_CLASS_MODIFIERS | Constants.ACC_MODULE);
         } else {
-            accessFlags = stream.readU2() & (JVM_RECOGNIZED_CLASS_MODIFIERS);
+            classFlags = stream.readU2() & (JVM_RECOGNIZED_CLASS_MODIFIERS);
         }
 
-        if ((accessFlags & ACC_INTERFACE) != 0 && majorVersion < JAVA_6_VERSION) {
+        if ((classFlags & ACC_INTERFACE) != 0 && majorVersion < JAVA_6_VERSION) {
             // Set abstract bit for old class files for backward compatibility
-            accessFlags |= ACC_ABSTRACT;
+            classFlags |= ACC_ABSTRACT;
         }
 
-        boolean isModule = (accessFlags & Constants.ACC_MODULE) != 0;
+        boolean isModule = (classFlags & Constants.ACC_MODULE) != 0;
         if (isModule) {
-            throw new NoClassDefFoundError(className + " is not a class because access_flag ACC_MODULE is set");
+            throw new NoClassDefFoundError(classType + " is not a class because access_flag ACC_MODULE is set");
         }
 
         if (badConstantSeen != null) {
@@ -239,57 +283,293 @@ public final class ClassfileParser {
             throw classfile.classFormatError("Unknown constant tag %s", badConstantSeen);
         }
 
-        // This class and superclass
+        // this class
         thisKlassIndex = stream.readU2();
 
-        // this.typeDescriptor = pool.classAt(thisKlassIndex).getName(pool);
-
-        // Update className which could be null previously
-        // to reflect the name in the constant pool
-        className = "L" + pool.classAt(thisKlassIndex).getName(pool).toString() + ";";
-
-        // Checks if name in class file matches requested name
-        if (requestedClassName != null && !requestedClassName.equals(className)) {
-            throw new NoClassDefFoundError(className + " (wrong name: " + requestedClassName + ")");
-        }
-
+        // Update className which could be null previously to reflect the name in the constant pool.
         Symbol<Name> thisKlassName = pool.classAt(thisKlassIndex).getName(pool);
         Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);
+        classType = thisKlassType;
+
+        // Checks if name in class file matches requested name
+        if (requestedClassType != null && !requestedClassType.equals(classType.toString())) {
+            throw new NoClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
+        }
+
+        final boolean isInterface = Modifier.isInterface(classFlags);
 
         Symbol<Type> superKlass = parseSuperKlass();
         Symbol<Type>[] superInterfaces = parseInterfaces();
 
-        ParserField[] fields = parseFields();
-        ParserMethod[] methods = parseMethods();
-        Attribute[] attributes = parseAttributes();
+        final ParserField[] fields = parseFields(isInterface);
+        final ParserMethod[] methods = parseMethods(isInterface);
+        final Attribute[] attributes = parseClassAttributes();
 
-        return new ParserKlass(pool, accessFlags, thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes);
+        // Ensure there are no trailing bytes
+        stream.checkEndOfFile();
+
+        return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes);
     }
 
-    private ParserMethod[] parseMethods() {
+    private ParserMethod[] parseMethods(boolean isInterface) {
         int methodCount = stream.readU2();
         if (methodCount == 0) {
             return ParserMethod.EMPTY_ARRAY;
         }
         ParserMethod[] methods = new ParserMethod[methodCount];
         for (int i = 0; i < methodCount; ++i) {
-            methods[i] = parseMethod();
+            methods[i] = parseMethod(isInterface);
         }
         return methods;
     }
 
-    private ParserMethod parseMethod() {
-        int flags = stream.readU2();
-        int nameIndex = stream.readU2();
-        int signatureIndex = stream.readU2();
-        Attribute[] methodAttributes = parseAttributes();
-        for (Attribute attr : methodAttributes) {
-            if (attr.getName().equals(Name.Synthetic)) {
-                flags |= ACC_SYNTHETIC;
-                break;
+    /**
+     * Verifies that the flags for a method are valid.
+     *
+     * @param flags the flags to test
+     * @param isInit true if the method is "<init>"
+     * @param isClinit true if the method is "<clinit>"
+     * @param majorVersion the version of the class file
+     * @throws ClassFormatError if the flags are invalid
+     */
+    public static void verifyMethodFlags(int flags, boolean isInterface, boolean isInit, boolean isClinit, int majorVersion) {
+        // The checks below are based on JVMS8 4.6
+
+        // Class and interface initialization methods are called
+        // implicitly by the Java Virtual Machine. The value of their
+        // access_flags item is ignored except for the setting of the
+        // ACC_STRICT flag.
+        if (isClinit) {
+            return;
+        }
+
+        boolean valid = true;
+
+        // If a method of a class or interface has its ACC_ABSTRACT flag set, it
+        // must not have any of its ACC_PRIVATE, ACC_STATIC, ACC_FINAL,
+        // ACC_SYNCHRONIZED, ACC_NATIVE, or ACC_STRICT flags set.
+        if ((flags & ACC_ABSTRACT) != 0) {
+            valid &= (flags & (ACC_PRIVATE | ACC_STATIC | ACC_FINAL | Constants.ACC_NATIVE)) == 0;
+            if (majorVersion >= JAVA_1_5_VERSION) {
+                valid &= (flags & (Constants.ACC_SYNCHRONIZED | ACC_STRICT)) == 0;
             }
         }
-        return new ParserMethod(flags, nameIndex, signatureIndex, methodAttributes);
+
+        if (valid) {
+            if (!isInterface) {
+                // Methods of classes may have any of the flags in Table 4.6-A
+                // set. However, each method of a class may have at most one of
+                // its ACC_PUBLIC, ACC_PRIVATE, and ACC_PROTECTED flags set
+
+                // These are all small bits. The value is between 0 and 7.
+                final int maskedFlags = flags & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED);
+                valid &= maskedFlags == 0 || (maskedFlags & ~(maskedFlags - 1)) == maskedFlags;
+            } else {
+                // Methods of interfaces may have any of the flags in Table
+                // 4.6-A set except ACC_PROTECTED, ACC_FINAL, ACC_SYNCHRONIZED,
+                // and ACC_NATIVE
+                valid &= (flags & (ACC_PROTECTED | ACC_FINAL | ACC_SYNCHRONIZED | ACC_NATIVE)) == 0;
+
+                // In a class file whose version number is less than 52.0, each
+                // method of an interface must have its ACC_PUBLIC and
+                // ACC_ABSTRACT flags set; in a class file whose version number
+                // is 52.0 or above, each method of an interface must have
+                // exactly one of its ACC_PUBLIC and ACC_PRIVATE flags set.
+                if (majorVersion < JAVA_8_VERSION) {
+                    final int publicAndAbstract = ACC_PUBLIC | ACC_ABSTRACT;
+                    valid &= (flags & publicAndAbstract) == publicAndAbstract;
+                    // And since it is public it can't be private as well
+                    valid &= (flags & ACC_PRIVATE) == 0;
+                } else {
+                    final int maskedFlags = flags & (ACC_PUBLIC | ACC_PRIVATE);
+                    valid &= (maskedFlags & ~(maskedFlags - 1)) == maskedFlags;
+                }
+            }
+
+            if (valid) {
+                if (isInit) {
+                    // Each instance initialization method may have at most one of
+                    // its ACC_PUBLIC, ACC_PRIVATE, and ACC_PROTECTED flags set
+                    // (this part is already checked above), and may also have its
+                    // ACC_VARARGS, ACC_STRICT, and ACC_SYNTHETIC flags set, but
+                    // must not have any of the other flags in Table 4.6-A set.
+                    valid = (flags & ~(ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED | ACC_VARARGS | ACC_STRICT | ACC_SYNTHETIC)) == 0;
+                }
+            }
+        }
+        if (!valid) {
+            throw classFormatError("Invalid method flags 0x" + Integer.toHexString(flags));
+        }
+    }
+
+    private ParserMethod parseMethod(boolean isInterface) {
+        int methodFlags = stream.readU2();
+        int nameIndex = stream.readU2();
+        int signatureIndex = stream.readU2();
+
+        final Symbol<Name> name = pool.utf8At(nameIndex, "field name");
+        verifyMethodName(name, true);
+
+        int extraFlags = methodFlags;
+        boolean isClinit = false;
+        boolean isInit = false;
+        if (name.equals(Name.CLINIT)) {
+            // Class and interface initialization methods (3.9) are called
+            // implicitly by the Java virtual machine; the value of their
+            // access_flags item is ignored except for the settings of the
+            // ACC_STRICT flag.
+            methodFlags &= ACC_STRICT;
+            methodFlags |= ACC_STATIC;
+            // extraFlags = INITIALIZER | methodFlags;
+            isClinit = true;
+        } else if (name.equals(Name.INIT)) {
+            // extraFlags |= INITIALIZER;
+            isInit = true;
+        }
+
+        final boolean isStatic = Modifier.isStatic(extraFlags);
+
+        verifyMethodFlags(methodFlags, isInterface, isInit, isClinit, majorVersion);
+
+        final Symbol<Signature> signature = Signatures.check(pool.utf8At(signatureIndex, "method descriptor"));
+
+        if (Signatures.slotsForParameters(context.getSignatures().parsed(signature)) + (isStatic ? 0 : 1) > 255) {
+            throw classFormatError("Too many arguments in method signature: " + signature);
+        }
+
+        if (name.equals(Name.finalize) && signature.equals(Signature._void) && Modifier.isStatic(methodFlags)) {
+            // this class has a finalizer method implementation
+            // (this bit will be cleared for java.lang.Object later)
+            classFlags |= ACC_FINALIZER;
+        }
+
+        int attributeCount = stream.readU2();
+        Attribute[] methodAttributes = new Attribute[attributeCount];
+
+        {
+            SignatureAttribute genericSignature = null;
+            CodeAttribute codeAttribute = null;
+            Attribute checkedExceptions = null;
+            Attribute runtimeVisibleAnnotations = null;
+            Attribute runtimeVisibleParameterAnnotations = null;
+            Attribute annotationDefault = null;
+
+            for (int i = 0; i < attributeCount; ++i) {
+                final int attributeNameIndex = stream.readU2();
+                final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
+                final int attributeSize = stream.readS4();
+                final int startPosition = stream.getPosition();
+                if (attributeName.equals(Name.Code)) {
+                    if (codeAttribute != null) {
+                        throw classFormatError("Duplicate Code attribute");
+                    }
+                    methodAttributes[i] = codeAttribute = parseCodeAttribute(attributeName);
+                } else if (attributeName.equals(Name.Exceptions)) {
+                    if (checkedExceptions != null) {
+                        throw classFormatError("Duplicate Exceptions attribute");
+                    }
+                    methodAttributes[i] = checkedExceptions = parseExceptions(attributeName);
+                } else if (attributeName.equals(Name.Synthetic)) {
+                    methodFlags |= Constants.ACC_SYNTHETIC;
+                    methodAttributes[i] = checkedExceptions = new Attribute(attributeName, null);
+                } else if (majorVersion >= JAVA_1_5_VERSION) {
+                    if (attributeName.equals(Name.Signature)) {
+                        methodAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
+                    } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
+                        assert runtimeVisibleAnnotations == null;
+                        methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                    } else if (attributeName.equals(Name.RuntimeVisibleParameterAnnotations)) {
+                        methodAttributes[i] = runtimeVisibleParameterAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                    } else if (attributeName.equals(Name.AnnotationDefault)) {
+                        methodAttributes[i] = annotationDefault = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                    } else {
+                        // stream.skip(attributeSize);
+                        methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                    }
+                } else {
+                    // stream.skip(attributeSize);
+                    methodAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                }
+
+                final int distance = stream.getPosition() - startPosition;
+                if (attributeSize != distance) {
+                    final String message = "Invalid attribute_length for " + attributeName + " attribute (reported " + attributeSize + " != parsed " + distance + ")";
+                    throw classFormatError(message);
+                }
+            }
+
+            if (Modifier.isAbstract(methodFlags) || Modifier.isNative(methodFlags)) {
+                if (codeAttribute != null) {
+                    throw classFormatError("Code attribute supplied for native or abstract method");
+                }
+            } else {
+                if (codeAttribute == null) {
+                    throw classFormatError("Missing Code attribute");
+                }
+            }
+        }
+
+        return new ParserMethod(methodFlags, nameIndex, signatureIndex, methodAttributes);
+    }
+
+    private Attribute[] parseClassAttributes() {
+        int attributeCount = stream.readU2();
+        if (attributeCount == 0) {
+            return Attribute.EMPTY_ARRAY;
+        }
+
+        SourceFileAttribute sourceFileName = null;
+        SignatureAttribute genericSignature = null;
+        Attribute runtimeVisibleAnnotations = null;
+        EnclosingMethodAttribute enclosingMethod = null;
+        BootstrapMethodsAttribute bootstrapMethods = null;
+
+        final Attribute[] classAttributes = new Attribute[attributeCount];
+        for (int i = 0; i < attributeCount; i++) {
+            final int attributeNameIndex = stream.readU2();
+            final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
+            final int attributeSize = stream.readS4();
+            final int startPosition = stream.getPosition();
+            if (attributeName.equals(Name.SourceFile)) {
+                if (sourceFileName != null) {
+                    throw classFormatError("Duplicate SourceFile attribute");
+                }
+                classAttributes[i] = sourceFileName = parseSourceFileAttribute(attributeName);
+            } else if (attributeName.equals(Name.Synthetic)) {
+                classFlags |= Constants.ACC_SYNTHETIC;
+                classAttributes[i] = new Attribute(attributeName, null);
+            } else if (attributeName.equals(Name.InnerClasses)) {
+                classAttributes[i] = parseInnerClasses(attributeName);
+            } else if (majorVersion >= JAVA_1_5_VERSION) {
+                if (attributeName.equals(Name.Signature)) {
+                    classAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
+                } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
+                    classAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else if (majorVersion >= JAVA_7_VERSION && attributeName.equals(Name.BootstrapMethods)) {
+                    if (bootstrapMethods != null) {
+                        throw classFormatError("Duplicate BootstrapMethods attribute");
+                    }
+                    classAttributes[i] = bootstrapMethods = parseBootstrapMethods(attributeName);
+                } else if (attributeName.equals(Name.EnclosingMethod)) {
+                    if (enclosingMethod != null) {
+                        throw classFormatError("Duplicate EnclosingMethod attribute");
+                    }
+                    classAttributes[i] = enclosingMethod = parseEnclosingMethodAttribute(attributeName);
+                } else {
+                    // stream.skip(attributeSize);
+                    classAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                }
+            } else {
+                // stream.skip(attributeSize);
+                classAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+            }
+
+            if (attributeSize != stream.getPosition() - startPosition) {
+                throw classFormatError("Invalid attribute length for " + attributeName + " attribute");
+            }
+        }
+
+        return classAttributes;
     }
 
     private Attribute[] parseAttributes() {
@@ -307,6 +587,7 @@ public final class ClassfileParser {
     private Attribute parseAttribute() {
         int nameIndex = stream.readU2();
         Symbol<Name> name = pool.utf8At(nameIndex);
+        int length = stream.readS4();
         if (CodeAttribute.NAME.equals(name)) {
             return parseCodeAttribute(name);
         }
@@ -340,21 +621,18 @@ public final class ClassfileParser {
         if (StackMapTableAttribute.NAME.equals(name)) {
             return parseStackMapTableAttribute(name);
         }
-        int length = stream.readS4();
         byte[] data = stream.readByteArray(length);
         return new Attribute(name, data);
     }
 
     private SourceFileAttribute parseSourceFileAttribute(Symbol<Name> name) {
         assert Name.SourceFile.equals(name);
-        /* int length = */ stream.readS4();
         int sourceFileIndex = stream.readU2();
         return new SourceFileAttribute(name, sourceFileIndex);
     }
 
     private LineNumberTable parseLineNumberTable(Symbol<Name> name) {
         assert Name.LineNumberTable.equals(name);
-        /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         if (entryCount == 0) {
             return LineNumberTable.EMPTY;
@@ -370,13 +648,17 @@ public final class ClassfileParser {
 
     private SignatureAttribute parseSignatureAttribute(Symbol<Name> name) {
         assert Name.Signature.equals(name);
-        /* int length = */ stream.readS4();
         int signatureIndex = stream.readU2();
         return new SignatureAttribute(name, signatureIndex);
     }
 
+    private SourceFileAttribute parseSourceFileNameAttribute(Symbol<Name> name) {
+        assert Name.Signature.equals(name);
+        int sourceFileNameIndex = stream.readU2();
+        return new SourceFileAttribute(name, sourceFileNameIndex);
+    }
+
     private MethodParametersAttribute parseMethodParameters(Symbol<Name> name) {
-        /* int length = */ stream.readS4();
         int entryCount = stream.readU1();
         if (entryCount == 0) {
             return MethodParametersAttribute.EMPTY;
@@ -392,14 +674,12 @@ public final class ClassfileParser {
 
     private Attribute parseConstantValue(Symbol<Name> name) {
         assert Name.ConstantValue.equals(name);
-        /* int length = */ stream.readS4();
         int constantValueIndex = stream.readU2();
         return new ConstantValueAttribute(constantValueIndex);
     }
 
     private ExceptionsAttribute parseExceptions(Symbol<Name> name) {
         assert Name.Exceptions.equals(name);
-        /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         int[] entries = new int[entryCount];
         for (int i = 0; i < entryCount; ++i) {
@@ -410,7 +690,6 @@ public final class ClassfileParser {
     }
 
     private BootstrapMethodsAttribute parseBootstrapMethods(Symbol<Name> name) {
-        /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         BootstrapMethodsAttribute.Entry[] entries = new BootstrapMethodsAttribute.Entry[entryCount];
         for (int i = 0; i < entryCount; ++i) {
@@ -426,7 +705,9 @@ public final class ClassfileParser {
     }
 
     private InnerClassesAttribute parseInnerClasses(Symbol<Name> name) {
-        /* int length = */ stream.readS4();
+        if (classInnerClasses != null) {
+            throw classFormatError("Duplicate InnerClass attribute");
+        }
         int entryCount = stream.readU2();
         InnerClassesAttribute.Entry[] entries = new InnerClassesAttribute.Entry[entryCount];
         for (int i = 0; i < entryCount; ++i) {
@@ -444,7 +725,6 @@ public final class ClassfileParser {
     }
 
     private EnclosingMethodAttribute parseEnclosingMethodAttribute(Symbol<Name> name) {
-        /* int length = */ stream.readS4();
         int classIndex = stream.readU2();
         int methodIndex = stream.readU2();
         return new EnclosingMethodAttribute(name, classIndex, methodIndex);
@@ -520,7 +800,6 @@ public final class ClassfileParser {
     }
 
     private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> name) {
-        /* int length = */ stream.readS4();
         int entryCount = stream.readU2();
         StackMapFrame[] entries = new StackMapFrame[entryCount];
         for (int i = 0; i < entryCount; i++) {
@@ -530,7 +809,6 @@ public final class ClassfileParser {
     }
 
     private CodeAttribute parseCodeAttribute(Symbol<Name> name) {
-        /* int length = */ stream.readS4();
         int maxStack = stream.readU2();
         int maxLocals = stream.readU2();
         int codeLength = stream.readS4();
@@ -557,29 +835,184 @@ public final class ClassfileParser {
         return entries;
     }
 
-    private ParserField parseField() {
-        int flags = stream.readU2();
-        int nameIndex = stream.readU2();
-        int typeIndex = stream.readU2();
-        Attribute[] fieldAttributes = parseAttributes();
-        for (Attribute attr : fieldAttributes) {
-            if (attr.getName().equals(Name.Synthetic)) {
-                flags |= ACC_SYNTHETIC;
+    /**
+     * Parses an Unqualified Name as defined in $4.2.2 of the JVM spec 8 at a given offset of a
+     * string.
+     *
+     * @param string the string to test
+     * @param offset the offset at which a legal field or type identifier should occur
+     * @return the first character after the legal unqualified name or -1 if there is no legal
+     *         unqualified name at {@code offset}
+     */
+    private static int parseUnqualifiedName(String string, int offset, boolean isMethod) {
+        boolean isFirstChar = true;
+        char ch;
+        int i;
+        for (i = offset; i != string.length(); i++, isFirstChar = false) {
+            ch = string.charAt(i);
+            if (ch == '.' || ch == ';' ||
+                            ch == '[' || ch == '/' ||
+                            (isMethod && (ch == '<' || ch == '>'))) {
                 break;
             }
         }
-        return new ParserField(flags, pool.utf8At(nameIndex), pool.utf8At(typeIndex), typeIndex, fieldAttributes);
+        return isFirstChar ? -1 : i;
     }
 
-    private ParserField[] parseFields() {
+    public static void verifyFieldName(Symbol<Name> name) {
+        if (!isValidFieldName(name)) {
+            throw classFormatError("Invalid field name: " + name);
+        }
+    }
+
+    public static boolean isValidMethodName(Symbol<Name> name, boolean allowClinit) {
+        if (name.equals(Name.INIT)) {
+            return true;
+        }
+        if (allowClinit && name.equals(Name.CLINIT)) {
+            return true;
+        }
+        return parseUnqualifiedName(name.toString(), 0, true) == name.toString().length();
+    }
+
+    public static void verifyMethodName(Symbol<Name> name, boolean allowClinit) {
+        if (!isValidMethodName(name, allowClinit)) {
+            throw classFormatError("Invalid method name: " + name);
+        }
+    }
+
+    public static boolean isValidFieldName(Symbol<Name> name) {
+        return parseUnqualifiedName(name.toString(), 0, false) == name.toString().length();
+    }
+
+    /**
+     * Verifies that the flags for a field are valid.
+     *
+     * @param name the name of the field
+     * @param flags the flags to test
+     * @param isInterface if the field flags are being tested for an interface
+     * @throws ClassFormatError if the flags are invalid
+     */
+    public static void verifyFieldFlags(Symbol<Name> name, int flags, boolean isInterface) {
+        boolean valid;
+        if (!isInterface) {
+            // Class or instance fields
+            final int maskedFlags = flags & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED);
+
+            // Make sure that flags has at most one of its ACC_PRIVATE,
+            // ACC_PROTECTED bits set. That is, do a population count of these
+            // bit positions corresponding to these flags and ensure that it is
+            // at most 1.
+            valid = maskedFlags == 0 || (maskedFlags & ~(maskedFlags - 1)) == maskedFlags;
+
+            // A field can't be both final and volatile
+            final int finalAndVolatile = ACC_FINAL | ACC_VOLATILE;
+            valid = valid && ((flags & finalAndVolatile) != finalAndVolatile);
+        } else {
+            // interface fields must be public static final (i.e. constants), but may have
+            // ACC_SYNTHETIC set
+            valid = (flags & ~ACC_SYNTHETIC) == (ACC_STATIC | ACC_FINAL | ACC_PUBLIC);
+        }
+        if (!valid) {
+            throw classFormatError(name + ": invalid field flags 0x" + Integer.toHexString(flags));
+        }
+    }
+
+    private ParserField parseField(boolean isInterface) {
+        int fieldFlags = stream.readU2();
+        int nameIndex = stream.readU2();
+        int typeIndex = stream.readU2();
+
+        final Symbol<Name> name = pool.utf8At(nameIndex, "field name");
+        verifyFieldName(name);
+        verifyFieldFlags(name, fieldFlags, isInterface);
+
+        final boolean isStatic = Modifier.isStatic(fieldFlags);
+
+        final Symbol<Type> descriptor = Types.fromSymbol(pool.utf8At(typeIndex, "field descriptor"));
+
+        final int attributeCount = stream.readU2();
+        final Attribute[] fieldAttributes = new Attribute[attributeCount];
+
+        ConstantValueAttribute constantValue = null;
+        SignatureAttribute genericSignature = null;
+        Attribute runtimeVisibleAnnotations = null;
+
+        for (int i = 0; i < attributeCount; ++i) {
+            final int attributeNameIndex = stream.readU2();
+            final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
+            final int attributeSize = stream.readS4();
+            final int startPosition = stream.getPosition();
+            if (isStatic && attributeName.equals(Name.ConstantValue)) {
+                if (constantValue != null) {
+                    throw classFormatError("Duplicate ConstantValue attribute");
+                }
+                fieldAttributes[i] = constantValue = new ConstantValueAttribute(stream.readU2());
+                if (constantValue.getConstantValueIndex() == 0) {
+                    throw classFormatError("Invalid ConstantValue index");
+                }
+            } else if (attributeName.equals(Name.Synthetic)) {
+                fieldFlags |= Constants.ACC_SYNTHETIC;
+                fieldAttributes[i] = new Attribute(attributeName, null);
+            } else if (majorVersion >= JAVA_1_5_VERSION) {
+                if (attributeName.equals(Name.Signature)) {
+                    fieldAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
+                } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
+                    fieldAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else {
+                    // stream.skip(attributeSize);
+                    fieldAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                }
+            } else {
+                // stream.skip(attributeSize);
+                fieldAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+            }
+
+            if (attributeSize != stream.getPosition() - startPosition) {
+                throw classFormatError("Invalid attribute_length for " + attributeName + " attribute");
+            }
+        }
+
+        final JavaKind kind = Types.getJavaKind(descriptor);
+        if (kind == JavaKind.Void) {
+            throw classFormatError("Fields cannot be of type void");
+        }
+
+        if (constantValue != null) {
+            switch (kind) {
+                case Boolean:
+                case Byte:
+                case Short:
+                case Char:
+                case Int:
+                case Float:
+                case Long:
+                case Double:
+                    break;
+                case Object:
+                    if (!descriptor.equals(Type.String)) {
+                        throw classFormatError("Invalid ConstantValue attribute");
+                    }
+                    break;
+                default: {
+                    throw classFormatError("Cannot have ConstantValue for fields of type " + kind);
+                }
+            }
+        }
+
+        return new ParserField(fieldFlags, pool.utf8At(nameIndex), pool.utf8At(typeIndex), typeIndex, fieldAttributes);
+    }
+
+    private ParserField[] parseFields(boolean isInterface) {
         int fieldCount = stream.readU2();
         if (fieldCount == 0) {
             return ParserField.EMPTY_ARRAY;
         }
         ParserField[] fields = new ParserField[fieldCount];
         for (int i = 0; i < fieldCount; i++) {
-            fields[i] = parseField();
+            fields[i] = parseField(isInterface);
         }
+        // verifyNoDuplicates(fields);
         return fields;
     }
 
@@ -591,8 +1024,8 @@ public final class ClassfileParser {
     private Symbol<Type> parseSuperKlass() {
         int index = stream.readU2();
         if (index == 0) {
-            if (!className.equals("Ljava/lang/Object;")) {
-                throw stream.classFormatError("Invalid superclass index 0");
+            if (!classType.equals(Type.Object)) {
+                throw classFormatError("Invalid superclass index 0");
             }
             return null;
         }
