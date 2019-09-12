@@ -818,7 +818,11 @@ def create_toolchain_root_provider(name, dist):
     def provider():
         bootstrap_graalvm = mx.get_env('SULONG_BOOTSTRAP_GRAALVM')
         if bootstrap_graalvm:
-            return os.path.join(bootstrap_graalvm, 'jre', 'languages', 'llvm', name)
+            ret = os.path.join(bootstrap_graalvm, 'jre', 'languages', 'llvm', name)
+            if os.path.exists(ret): # jdk8 based graalvm
+                return ret
+            else: # jdk11+ based graalvm
+                return os.path.join(bootstrap_graalvm, 'languages', 'llvm', name)
         return mx.distribution(dist).get_output()
     return provider
 
