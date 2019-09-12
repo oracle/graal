@@ -76,10 +76,20 @@ public class Driver {
         }
     }
 
+    private static boolean isJdk8 = System.getProperty("java.specification.version").startsWith("1.");
+
+    private static Path getJreDir() {
+        Path jreDir = Engine.findHome();
+        if (isJdk8) {
+            jreDir = jreDir.resolve("jre");
+        }
+        return jreDir;
+    }
+
     public Path getLLVMBinDir() {
         String llvmDir = System.getProperty("llvm.bin.dir");
         if (llvmDir == null) {
-            return Engine.findHome().resolve("jre").resolve("lib").resolve("llvm").resolve("bin");
+            return getJreDir().resolve("lib").resolve("llvm").resolve("bin");
         }
         return Paths.get(llvmDir);
     }
@@ -87,7 +97,7 @@ public class Driver {
     public Path getSulongHome() {
         String llvmDir = System.getProperty("llvm.home");
         if (llvmDir == null) {
-            return Engine.findHome().resolve("jre").resolve("languages").resolve("llvm");
+            return getJreDir().resolve("languages").resolve("llvm");
         }
         return Paths.get(llvmDir);
     }
