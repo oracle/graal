@@ -1,7 +1,7 @@
 {
   local base = {
 
-      local labsjdk8 = {name: 'oraclejdk', version: '8u212-jvmci-19.2-b01', platformspecific: true},
+      local labsjdk8 = {name: 'oraclejdk', version: '8u221-jvmci-19.3-b02', platformspecific: true},
       local oraclejdk11 = {name : 'oraclejdk', version : "11+20", platformspecific: true},
 
       jdk8: {
