@@ -2597,6 +2597,12 @@ def _release_catalog():
 def mx_post_parse_cmd_line(args):
     mx_vm_benchmark.register_graalvm_vms()
 
+    if _src_jdk_version >= 9:
+        for component in registered_graalvm_components():
+            for boot_jar in component.boot_jars:
+                if not mx.get_module_name(mx.distribution(boot_jar)):
+                    mx.abort("Component '{}' declares a boot jar distribution ('{}') that does not define a module.\nPlease set 'moduleInfo' or 'moduleName'.".format(component.name, boot_jar))
+
 
 mx.update_commands(_suite, {
     'graalvm-dist-name': [log_graalvm_dist_name, ''],
