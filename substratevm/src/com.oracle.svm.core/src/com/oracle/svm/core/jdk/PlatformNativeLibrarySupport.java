@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -36,13 +35,14 @@ import org.graalvm.word.PointerBase;
 
 public abstract class PlatformNativeLibrarySupport {
 
-    public static final List<String> defaultBuiltInLibraries = Collections.unmodifiableList(Arrays.asList(
+    public static final String[] defaultBuiltInLibraries = {
                     "java",
                     "nio",
                     "net",
-                    "zip"));
+                    "zip"
+    };
 
-    private static final List<String> defaultBuiltInPkgNatives = Collections.unmodifiableList(Arrays.asList(
+    private static final String[] defaultBuiltInPkgNatives = {
                     "com_sun_demo_jvmti_hprof",
                     "com_sun_java_util_jar_pack",
                     "com_sun_net_ssl",
@@ -73,11 +73,13 @@ public abstract class PlatformNativeLibrarySupport {
                     "sun_util",
 
                     /* SVM Specific packages */
-                    "com_oracle_svm_core_jdk"));
+                    "com_oracle_svm_core_jdk"
+    };
 
-    private static final List<String> defaultBuiltInPkgNativesBlacklist = Collections.unmodifiableList(Arrays.asList(
+    private static final String[] defaultBuiltInPkgNativesBlacklist = {
                     "sun_security_krb5_SCDynamicStoreConfig_getKerberosConfig",
-                    "sun_security_krb5_Config_getWindowsDirectory"));
+                    "sun_security_krb5_Config_getWindowsDirectory"
+    };
 
     public static PlatformNativeLibrarySupport singleton() {
         return ImageSingletons.lookup(PlatformNativeLibrarySupport.class);
@@ -86,11 +88,11 @@ public abstract class PlatformNativeLibrarySupport {
     protected PlatformNativeLibrarySupport() {
         builtInPkgNatives = new ArrayList<>();
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-            builtInPkgNatives.addAll(defaultBuiltInPkgNatives);
+            builtInPkgNatives.addAll(Arrays.asList(defaultBuiltInPkgNatives));
         }
     }
 
-    private List<String> builtInLibraries = new ArrayList<>(defaultBuiltInLibraries);
+    private List<String> builtInLibraries = new ArrayList<>(Arrays.asList(defaultBuiltInLibraries));
 
     public void addBuiltInLibrary(String libName) {
         builtInLibraries.add(libName);
