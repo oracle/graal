@@ -39,8 +39,10 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 @TypeSystemReference(LLVMTypes.class)
@@ -104,4 +106,12 @@ public abstract class LLVMNode extends Node {
         // used as a workaround for a DSL bug
         return a == b;
     }
+
+    protected DataLayout getDataLayout() {
+        CompilerAsserts.neverPartOfCompilation();
+        LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
+        return startNode.getDataSpecConverter();
+    }
+
+
 }
