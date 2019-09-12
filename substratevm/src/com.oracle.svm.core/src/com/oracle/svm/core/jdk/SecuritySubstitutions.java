@@ -385,3 +385,7 @@ final class ContainsVerifyJars implements Predicate<Class<?>> {
         }
     }
 }
+
+/** Dummy class to have a class with the file's name. */
+public final class SecuritySubstitutions {
+}
