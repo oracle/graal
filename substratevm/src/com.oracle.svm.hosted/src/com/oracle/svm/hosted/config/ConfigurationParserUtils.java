@@ -53,7 +53,6 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.json.JSONParserException;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageOptions;
 
 public final class ConfigurationParserUtils {
 
