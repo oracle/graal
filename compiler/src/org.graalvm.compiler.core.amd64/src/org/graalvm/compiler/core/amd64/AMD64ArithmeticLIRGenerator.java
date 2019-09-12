@@ -184,7 +184,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
-            int length = kind.getVectorLength();
             switch (scalarKind) {
                 case DWORD:
                     getLIRGen().append(new AMD64VectorUnary.AVXNegateOp(VPSUBD, getLIRGen(), AVXKind.getRegisterSize(kind), result, input));
