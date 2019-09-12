@@ -622,16 +622,16 @@ public class NewObjectSnippets implements Snippets {
      * Zero uninitialized memory in a newly allocated object, unrolling as necessary and ensuring
      * that stores are aligned.
      *
-     * @param memory beginning of object which is being zeroedt
-     * @param startOffset offset to begin zeroing. May not be word aligned.
-     * @param offsetLimit offset to stop zeroing.
-     * @param constantOffsetLimit is {@code offsetLimit} known to be constant in the snippe
+     * @param memory beginning of object which is being zeroed
+     * @param startOffset offset to begin zeroing (inclusive). May not be word aligned.
+     * @param endOffset offset to stop zeroing (exclusive). May not be word aligned.
+     * @param isEndOffsetConstant is {@code endOffset} known to be constant in the snippet
      * @param manualUnroll maximally unroll zeroing
      * @param bulkZeroingStride stride of bulk zeroing supported by the backend
      */
-    private static void zeroMemory(Word memory, int startOffset, long offsetLimit, boolean constantOffsetLimit, boolean manualUnroll,
+    private static void zeroMemory(Word memory, int startOffset, long endOffset, boolean isEndOffsetConstant, boolean manualUnroll,
                     int bulkZeroingStride, Counters counters) {
-        fillMemory(0, memory, startOffset, offsetLimit, constantOffsetLimit, manualUnroll, bulkZeroingStride, counters);
+        fillMemory(0, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, bulkZeroingStride, counters);
     }
 
     private static void fillMemory(long value, Word memory, int startOffset, long offsetLimit, boolean constantOffsetLimit, boolean manualUnroll,
@@ -696,14 +696,14 @@ public class NewObjectSnippets implements Snippets {
      * necessary and ensuring that stores are aligned.
      *
      * @param memory beginning of object which is being zeroed
-     * @param startOffset offset to begin filling garbage value. May not be word aligned.
-     * @param offsetLimit offset to stop filling garbage value.
-     * @param constantOffsetLimit is {@code  constantOffsetLimit} known to be constant in the
-     *            snippet
+     * @param startOffset offset to begin filling garbage value (inclusive). May not be word
+     *            aligned.
+     * @param endOffset offset to stop filling garbage value (exclusive). May not be word aligned.
+     * @param isEndOffsetConstant is {@code  endOffset} known to be constant in the snippet
      * @param manualUnroll maximally unroll zeroing
      */
-    private static void fillWithGarbage(Word memory, int startOffset, long offsetLimit, boolean constantOffsetLimit, boolean manualUnroll, Counters counters) {
-        fillMemory(0xfefefefefefefefeL, memory, startOffset, offsetLimit, constantOffsetLimit, manualUnroll, 0, counters);
+    private static void fillWithGarbage(Word memory, int startOffset, long endOffset, boolean isEndOffsetConstant, boolean manualUnroll, Counters counters) {
+        fillMemory(0xfefefefefefefefeL, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, 0, counters);
     }
 
     /**
