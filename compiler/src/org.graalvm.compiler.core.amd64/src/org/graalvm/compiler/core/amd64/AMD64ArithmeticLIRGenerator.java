@@ -350,7 +350,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
-            int length = kind.getVectorLength();
             switch (scalarKind) {
                 case DWORD:
                     return emitBinary(resultKind, VPADDD, a, b);
@@ -405,7 +404,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
-            int length = kind.getVectorLength();
             switch (scalarKind) {
                 case DWORD:
                     return emitBinary(resultKind, VPSUBD, a, b);
@@ -478,7 +476,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
-            int length = kind.getVectorLength();
             switch (scalarKind) {
                 case DWORD:
                     return emitBinary(resultKind, VPMULLD, a, b);
@@ -643,7 +640,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
-            int length = kind.getVectorLength();
             switch (scalarKind) {
                 case SINGLE:
                     return emitBinary(resultKind, VDIVPS, a, b);
@@ -741,7 +737,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
-            int length = kind.getVectorLength();
             switch (scalarKind) {
                 case BYTE:
                     return emitBinary(resultKind, VPAND, a, b);
@@ -781,7 +776,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
-            int length = kind.getVectorLength();
             switch (scalarKind) {
                 case BYTE:
                     return emitBinary(resultKind, VPOR, a, b);
@@ -829,7 +823,6 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
         if (kind.getVectorLength() > 1 && isAvx) {
             AMD64Kind scalarKind = kind.getScalar();
-            int length = kind.getVectorLength();
             switch (scalarKind) {
                 case BYTE:
                     return emitBinary(resultKind, VPXOR, a, b);
