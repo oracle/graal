@@ -45,24 +45,27 @@ public class NativeImageBytecodeInstrumentationAgent {
 
     @SuppressWarnings({"unused", "Convert2Lambda"})
     public static void premain(String agentArgs, Instrumentation inst) {
-        inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(new TransformerInterface() {
-            @Override
-            public byte[] apply(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
-                return applyLambdaMetaFactoryTransformation(className, classfileBuffer);
+        /* In 11+ we modify the JDK */
+        if (getJavaVersion() < 11) {
+            inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(new TransformerInterface() {
+                @Override
+                public byte[] apply(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
+                    return applyLambdaMetaFactoryTransformation(className, classfileBuffer);
+                }
+            }), false);
+
+            /*
+             * Now we initialize the InnerClassLambdaMetafactory so rest of the code can use
+             * lambdas.
+             */
+            try {
+                Class.forName("java.lang.invoke.LambdaMetafactory");
+                Class.forName("java.lang.invoke.InnerClassLambdaMetafactory");
+            } catch (ClassNotFoundException e) {
+                VMError.shouldNotReachHere();
             }
-        }), false);
-
-        /*
-         * Now we initialize the InnerClassLambdaMetafactory so rest of the code can use lambdas.
-         */
-        try {
-            Class.forName("java.lang.invoke.LambdaMetafactory");
-            Class.forName("java.lang.invoke.InnerClassLambdaMetafactory");
-        } catch (ClassNotFoundException e) {
-            VMError.shouldNotReachHere();
+            assert metafactoryReplacementHappened;
         }
-        assert metafactoryReplacementHappened;
-
         if ("traceInitialization".equals(agentArgs)) {
             inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(new TransformerInterface() {
                 @Override
@@ -99,5 +102,18 @@ public class NativeImageBytecodeInstrumentationAgent {
         }
 
         return null;
+    }
+
+    static int getJavaVersion() {
+        String version = System.getProperty("java.version");
+        if (version.startsWith("1.")) {
+            version = version.substring(2, 3);
+        } else {
+            int dot = version.indexOf(".");
+            if (dot != -1) {
+                version = version.substring(0, dot);
+            }
+        }
+        return Integer.parseInt(version);
     }
 }

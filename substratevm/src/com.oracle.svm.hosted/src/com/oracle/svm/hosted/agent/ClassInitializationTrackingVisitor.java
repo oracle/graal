@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.agent;
 
+import static com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent.getJavaVersion;
 import static org.graalvm.compiler.bytecode.Bytecodes.ALOAD;
 import static org.objectweb.asm.Opcodes.ACC_STATIC;
 import static org.objectweb.asm.Opcodes.ASM6;
@@ -104,19 +105,6 @@ public class ClassInitializationTrackingVisitor extends ClassVisitor {
     }
 
     private static Set<String> trackedJDKClasses = new HashSet<>(Arrays.asList("java.lang.Thread", "java.util.zip.ZipFile", "java.nio.MappedByteBuffer", "java.io.FileDescriptor"));
-
-    public static int getJavaVersion() {
-        String version = System.getProperty("java.version");
-        if (version.startsWith("1.")) {
-            version = version.substring(2, 3);
-        } else {
-            int dot = version.indexOf(".");
-            if (dot != -1) {
-                version = version.substring(0, dot);
-            }
-        }
-        return Integer.parseInt(version);
-    }
 
     private boolean initInstrumentationSupported(String name) {
         if (!"<init>".equals(name)) {
