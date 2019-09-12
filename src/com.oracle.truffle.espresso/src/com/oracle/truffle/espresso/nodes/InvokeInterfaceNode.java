@@ -70,9 +70,9 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     static Method methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
         assert !receiver.getKlass().isArray();
         Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
-        if (!method.hasCode()) {
+        if (!method.isPublic()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw receiver.getKlass().getMeta().throwEx(AbstractMethodError.class);
+            throw receiver.getKlass().getMeta().throwEx(IllegalAccessError.class);
         }
         return method;
     }
