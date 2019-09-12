@@ -102,9 +102,11 @@ public final class LLVMContext {
     public final List<LLVMPointer> onceStorage;
 
     public int curKeyVal;
+    public final Object keyLockObj;
     public final ConcurrentMap<Integer, ConcurrentMap<Long, LLVMPointer>> keyStorage;
     public final ConcurrentMap<Integer, LLVMPointer> destructorStorage;
 
+    public final Object callTargetLock;
     public CallTarget pthreadCallTarget;
     public final UtilCConstants pthreadConstants;
 
@@ -240,8 +242,10 @@ public final class LLVMContext {
         this.createdThreads = new ArrayList<>();
         this.onceStorage = new ArrayList<>();
         this.curKeyVal = 0;
+        this.keyLockObj = new Object();
         this.keyStorage = new ConcurrentHashMap<>();
         this.destructorStorage = new ConcurrentHashMap<>();
+        this.callTargetLock = new Object();
         this.pthreadCallTarget = null;
         this.pthreadConstants = new UtilCConstants(this);
 
@@ -430,7 +434,6 @@ public final class LLVMContext {
         for (int i = 0; i < createdThreads.size(); i++) {
             try {
                 createdThreads.get(i).join();
-                getLanguage().disposeThread(this, createdThreads.get(i));
             } catch (InterruptedException e) {
             }
         }

@@ -33,9 +33,9 @@
 
 #include "unsupported.h"
 
-int pthread_attr_destroy(pthread_attr_t *attr) {
-  ERR_UNSUPPORTED(pthread_attr_destroy);
-}
+//int pthread_attr_destroy(pthread_attr_t *attr) {
+//  ERR_UNSUPPORTED(pthread_attr_destroy);
+//}
 int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate) {
   ERR_UNSUPPORTED(pthread_attr_getdetachstate);
 }
@@ -60,9 +60,9 @@ int pthread_attr_getstackaddr(const pthread_attr_t *attr, void **stackaddr) {
 int pthread_attr_getstacksize(const pthread_attr_t *restrict attr, size_t *restrict stacksize) {
   ERR_UNSUPPORTED(pthread_attr_getstacksize);
 }
-int pthread_attr_init(pthread_attr_t *attr) {
-  ERR_UNSUPPORTED(pthread_attr_init);
-}
+//int pthread_attr_init(pthread_attr_t *attr) {
+//  ERR_UNSUPPORTED(pthread_attr_init);
+//}
 int pthread_attr_setdetachstate(pthread_attr_t *attr, int detachstate) {
   ERR_UNSUPPORTED(pthread_attr_setdetachstate);
 }
@@ -128,12 +128,6 @@ int pthread_condattr_setpshared(pthread_condattr_t *attr, int pshared) {
 int pthread_detach(pthread_t thread) {
   ERR_UNSUPPORTED(pthread_detach);
 }
-// this function might be defined as a macro
-//#ifndef pthread_equal
-//int pthread_equal(pthread_t t1, pthread_t t2) {
-//  ERR_UNSUPPORTED(pthread_equal);
-//}
-//#endif
 //void pthread_exit(void *value_ptr) {
 //  ERR_UNSUPPORTED(pthread_exit);
 //}
