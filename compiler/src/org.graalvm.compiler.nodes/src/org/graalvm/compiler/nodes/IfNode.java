@@ -1238,6 +1238,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             ValueNode value = phi.valueAt(i);
             LogicNode curResult = computeCondition(tool, condition, phi, value);
             if (curResult != condition) {
+                for (Node n : curResult.inputs()) {
+                    if (n instanceof ConstantNode || n instanceof ParameterNode || n instanceof FixedNode) {
+                        // Constant inputs or parameters or fixed nodes are OK.
+                    } else if (n == value) {
+                        // References to the value itself are also OK.
+                    } else {
+                        // Input may cause scheduling issues.
+                        curResult = condition;
+                        break;
+                    }
+                }
                 success = true;
             }
             results[i] = curResult;
