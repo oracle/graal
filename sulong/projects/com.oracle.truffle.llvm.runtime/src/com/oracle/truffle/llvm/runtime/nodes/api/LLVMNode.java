@@ -108,7 +108,6 @@ public abstract class LLVMNode extends Node {
     }
 
     protected DataLayout getDataLayout() {
-        CompilerAsserts.neverPartOfCompilation();
         LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
         return startNode.getDataSpecConverter();
     }
