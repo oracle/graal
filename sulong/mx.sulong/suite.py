@@ -135,6 +135,41 @@ suite = {
       "testProject" : True,
       "jacoco" : "exclude",
     },
+    "com.oracle.truffle.llvm.tests.tck" : {
+      "subDir" : "tests",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.llvm.runtime",
+        "mx:JUNIT",
+        "sdk:POLYGLOT_TCK",
+      ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+    "com.oracle.truffle.llvm.tests.tck.native" : {
+      "subDir" : "tests",
+      "native" : True,
+      "vpath" : True,
+      "results" : [
+        "bin/"
+      ],
+      "buildDependencies" : [
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+        "SULONG_HOME",
+      ],
+      "buildEnv" : {
+        "SULONGTCKTEST" : "<lib:sulongtck>",
+        "CLANG" : "<toolchainGetToolPath:native,CC>",
+      },
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
     "com.oracle.truffle.llvm.api" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -982,7 +1017,8 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
         "com.oracle.truffle.llvm.tests.types",
-        "com.oracle.truffle.llvm.tests.pipe"
+        "com.oracle.truffle.llvm.tests.pipe",
+        "com.oracle.truffle.llvm.tests.tck"
       ],
       "exclude" : [
        "mx:JUNIT"
@@ -996,7 +1032,8 @@ suite = {
         "SULONG_TEST_NATIVE",
       ],
       "javaProperties" : {
-        "sulongtest.testSuitePath" : "<path:SULONG_TEST_SUITES>"
+        "sulongtest.testSuitePath" : "<path:SULONG_TEST_SUITES>",
+        "test.sulongtck.path" : "<path:SULONG_TCK_NATIVE>/bin"
       },
       "license" : "BSD-new",
       "testDistribution" : True,
@@ -1037,6 +1074,18 @@ suite = {
       "license" : "BSD-new",
       "testDistribution" : True,
       "defaultBuild" : False,
+    },
+    "SULONG_TCK_NATIVE" : {
+      "native" : True,
+      "relpath" : True,
+      "platformDependent" : True,
+      "layout" : {
+        "./" : [
+          "dependency:com.oracle.truffle.llvm.tests.tck.native/*",
+        ],
+      },
+      "license" : "BSD-new",
+      "testDistribution" : True,
     },
     "SULONG_DOC": {
       "native": True, # Not Java
