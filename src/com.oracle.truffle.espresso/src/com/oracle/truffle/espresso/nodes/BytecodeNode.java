@@ -1528,7 +1528,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
             // Can happen in old classfiles that calls j.l.Object on interfaces.
             invoke = InvokeVirtualNodeGen.create(resolutionSeed);
-        } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
+        } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinalFlagSet() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
             invoke = new InvokeSpecialNode(resolutionSeed);
         } else {
             // @formatter:off
