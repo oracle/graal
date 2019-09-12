@@ -57,7 +57,7 @@ public final class GuestClassRegistry extends ClassRegistry {
         super(context);
         assert StaticObject.notNull(classLoader) : "cannot be the BCL";
         this.classLoader = classLoader;
-        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String_boolean);
+        this.ClassLoader_loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
         this.ClassLoader_addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
     }
 
@@ -79,7 +79,7 @@ public final class GuestClassRegistry extends ClassRegistry {
             return klass;
         }
         assert StaticObject.notNull(classLoader);
-        StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)), false);
+        StaticObject guestClass = (StaticObject) ClassLoader_loadClass.invokeDirect(classLoader, getMeta().toGuestString(Types.binaryName(type)));
         klass = guestClass.getMirrorKlass();
         Klass previous = classes.putIfAbsent(type, klass);
         assert previous == null || previous == klass;
@@ -92,10 +92,7 @@ public final class GuestClassRegistry extends ClassRegistry {
     }
 
     @Override
-    public ObjectKlass defineKlass(Symbol<Type> type, final byte[] bytes) {
-        ObjectKlass klass = super.defineKlass(type, bytes);
-        // Register class in guest CL. Mimics HotSpot behavior.
-        ClassLoader_addClass.invokeDirect(classLoader, klass.mirror());
-        return klass;
+    public Method getAddClass() {
+        return ClassLoader_addClass;
     }
 }
