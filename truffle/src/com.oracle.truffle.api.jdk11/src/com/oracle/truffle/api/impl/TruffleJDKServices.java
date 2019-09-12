@@ -84,4 +84,11 @@ public class TruffleJDKServices {
     public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
         return Collections.singletonList(ServiceLoader.load(TruffleRuntimeAccess.class));
     }
+
+    public static <S> void addUses(Class<S> service) {
+        Module module = TruffleJDKServices.class.getModule();
+        if (!module.canUse(service)) {
+            module.addUses(service);
+        }
+    }
 }

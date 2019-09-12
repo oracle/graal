@@ -82,4 +82,13 @@ public final class TruffleJDKServices {
     public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
         throw shouldNotReachHere();
     }
+
+    /**
+     * Ensures that the Truffle module declares a use of {@code service}.
+     *
+     * @param service a class describing a service about to be loaded by Truffle
+     */
+    public static <S> void addUses(Class<S> service) {
+        throw shouldNotReachHere();
+    }
 }
