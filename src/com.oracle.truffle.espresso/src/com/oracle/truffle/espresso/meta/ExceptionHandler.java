@@ -32,6 +32,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
  */
 public final class ExceptionHandler {
 
+    public final static ExceptionHandler[] EMPTY_ARRAY = new ExceptionHandler[0];
+
     private final int startBCI;
     private final int endBCI;
     private final int handlerBCI;

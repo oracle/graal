@@ -49,6 +49,9 @@ public final class Constants {
     public static final int ACC_MANDATED = 0x00008000;
     public static final int ACC_MODULE = 0x00008000;
 
+    // Not part of the spec, used internally by the VM.
+    public static final int ACC_FINALIZER = 0x00010000;
+
     public static final int JVM_RECOGNIZED_CLASS_MODIFIERS = ACC_PUBLIC |
                     ACC_FINAL |
                     // ACC_SUPER | // Only very old compilers.

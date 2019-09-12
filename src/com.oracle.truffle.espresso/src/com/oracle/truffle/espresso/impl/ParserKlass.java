@@ -23,13 +23,16 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.Attributes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
+/**
+ * Immutable raw representation of classes in Espresso, this is the output of the parser, super
+ * klass/interfaces are not resolved.
+ */
 public final class ParserKlass {
 
     private final Symbol<Name> name;
@@ -47,35 +50,8 @@ public final class ParserKlass {
     @CompilationFinal(dimensions = 1) //
     private final ParserField[] fields; // name + type + attributes
 
-    private final Attributes attributes;
-
-    public int getFlags() {
-        return flags;
-    }
-
-    public Symbol<Type> getType() {
-        return type;
-    }
-
-    public Symbol<Type> getSuperKlass() {
-        return superKlass;
-    }
-
-    public Symbol<Type>[] getSuperInterfaces() {
-        return superInterfaces;
-    }
-
-    ParserMethod[] getMethods() {
-        return methods;
-    }
-
-    ParserField[] getFields() {
-        return fields;
-    }
-
-    public ConstantPool getConstantPool() {
-        return pool;
-    }
+    @CompilationFinal(dimensions = 1) //
+    private final Attribute[] attributes;
 
     /**
      * Unresolved constant pool, only trivial entries (with no resolution involved) are computed.
@@ -99,14 +75,55 @@ public final class ParserKlass {
         this.superInterfaces = superInterfaces;
         this.methods = methods;
         this.fields = fields;
-        this.attributes = new Attributes(attributes);
+        this.attributes = attributes;
     }
 
-    Attribute getAttribute(Symbol<Name> attrName) {
-        return attributes.get(attrName);
+    /**
+     * Returns class flags, it includes VM internal flags that should be filtered-out.
+     */
+    public int getFlags() {
+        return flags;
     }
 
+    /**
+     * The class name.
+     *
+     * @return class name
+     */
     public Symbol<Name> getName() {
         return name;
+    }
+
+    public Symbol<Type> getType() {
+        return type;
+    }
+
+    public Symbol<Type> getSuperKlass() {
+        return superKlass;
+    }
+
+    public Symbol<Type>[] getSuperInterfaces() {
+        return superInterfaces;
+    }
+
+    public ConstantPool getConstantPool() {
+        return pool;
+    }
+
+    ParserMethod[] getMethods() {
+        return methods;
+    }
+
+    ParserField[] getFields() {
+        return fields;
+    }
+
+    Attribute getAttribute(Symbol<Name> attributeName) {
+        for (Attribute attribute : attributes) {
+            if (attributeName.equals(attribute.getName())) {
+                return attribute;
+            }
+        }
+        return null;
     }
 }

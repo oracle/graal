@@ -23,12 +23,13 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.Attributes;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-// Unresolved unlinked.
+/**
+ * Immutable raw representation of methods in Espresso, this is the output of the parser.
+ */
 public final class ParserMethod {
 
     public static final ParserMethod[] EMPTY_ARRAY = new ParserMethod[0];
@@ -41,7 +42,8 @@ public final class ParserMethod {
         return flags;
     }
 
-    private final Attributes attributes;
+    @CompilationFinal(dimensions = 1) //
+    private final Attribute[] attributes;
 
     // Shared quickening recipes.
     // Stores BC + arguments in compact form.
@@ -61,7 +63,12 @@ public final class ParserMethod {
     }
 
     public Attribute getAttribute(Symbol<Name> name) {
-        return attributes.get(name);
+        for (Attribute attribute : attributes) {
+            if (name.equals(attribute.getName())) {
+                return attribute;
+            }
+        }
+        return null;
     }
 
     public long[] getRecipes() {
@@ -72,6 +79,6 @@ public final class ParserMethod {
         this.flags = flags;
         this.nameIndex = nameIndex;
         this.signatureIndex = signatureIndex;
-        this.attributes = new Attributes(attributes);
+        this.attributes = attributes;
     }
 }
