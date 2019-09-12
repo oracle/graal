@@ -1136,13 +1136,14 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             Object topMonitor = monitors[top - 1];
             if (monitor == topMonitor) {
                 // Balanced locking: simply pop.
-                monitors[top--] = null;
+                monitors[--top] = null;
             } else {
                 // Unbalanced locking: do the linear search.
-                for (int i = 0; i < top; i++) {
+                int i = top - 1;
+                for (; i >= 0; i--) {
                     if (monitors[i] == monitor) {
-                        System.arraycopy(monitors, i + 1, monitors, i, top - i);
-                        --top;
+                        System.arraycopy(monitors, i + 1, monitors, i, top - 1 - i);
+                        monitors[--top] = null;
                         return;
                     }
                 }
