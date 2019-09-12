@@ -35,9 +35,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import org.graalvm.polyglot.Engine;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -59,7 +62,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-import org.graalvm.polyglot.Engine;
 
 public final class EspressoContext {
 
@@ -179,6 +181,18 @@ public final class EspressoContext {
         assert !this.initialized;
         spawnVM();
         this.initialized = true;
+    }
+
+    public Source findOrCreateSource(Method method) {
+        String sourceFile = method.getSourceFile();
+        if (sourceFile == null) {
+            return null;
+        } else {
+            TruffleFile file = env.getInternalTruffleFile(sourceFile);
+            Source source = Source.newBuilder("java", file).content(Source.CONTENT_NONE).build();
+            // sources are interned so no cache needed (hopefully)
+            return source;
+        }
     }
 
     public Meta getMeta() {

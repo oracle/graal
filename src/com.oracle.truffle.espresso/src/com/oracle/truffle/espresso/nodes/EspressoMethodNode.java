@@ -35,6 +35,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 public abstract class EspressoMethodNode extends EspressoInstrumentableNode implements ContextAccess {
 
     private final Method method;
+    private Source source;
 
     EspressoMethodNode(Method method) {
         this.method = method;
@@ -53,9 +54,19 @@ public abstract class EspressoMethodNode extends EspressoInstrumentableNode impl
     public final SourceSection getSourceSection() {
         // TODO this needs to to know the source file it is coming from
         // also this should be cached, at least not create a new source every time.
-        String methodName = getMethod().getName().toString();
-        Source source = Source.newBuilder("java", methodName, methodName).build();
-        return source.createSection(1);
+        Source s = getSource();
+        if (s == null) {
+            return null;
+        }
+        return s.createSection(1);
+    }
+
+    public final Source getSource() {
+        Source localSource = this.source;
+        if (localSource == null) {
+            this.source = localSource = method.getContext().findOrCreateSource(method);
+        }
+        return localSource;
     }
 
     @Override

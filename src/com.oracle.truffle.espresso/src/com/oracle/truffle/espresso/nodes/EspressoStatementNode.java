@@ -25,21 +25,23 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.classfile.LineNumberTable;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Node that simulates espresso statements for debugging support.
  */
-public abstract class EspressoStatementNode extends EspressoInstrumentableNode {
+public final class EspressoStatementNode extends EspressoInstrumentableNode {
 
-    private final Source source;
-    private final int lineNumber;
+    private final int startBci;
+    private final LineNumberTable.Entry lineNumberTableEntry;
 
-    protected EspressoStatementNode(Source source, int lineNumber) {
-        this.source = source;
-        this.lineNumber = lineNumber;
+    EspressoStatementNode(int startBci, LineNumberTable.Entry lineNumberTableEntry) {
+        this.lineNumberTableEntry = lineNumberTableEntry;
+        this.startBci = startBci;
     }
 
     @Override
@@ -47,13 +49,41 @@ public abstract class EspressoStatementNode extends EspressoInstrumentableNode {
         return StaticObject.NULL;
     }
 
+    public LineNumberTable.Entry getLineNumberTableEntry() {
+        return lineNumberTableEntry;
+    }
+
     @Override
     public SourceSection getSourceSection() {
-        return source.createSection(lineNumber);
+        Source s = getBytecodesNode().getSource();
+        if (s != null) {
+            return s.createSection(lineNumberTableEntry.getLineNumber());
+        } else {
+            // TODO should this really happen? If there is a line number table
+            // shouldn't there also be a source file?
+            return null;
+        }
     }
 
     public boolean hasTag(Class<? extends Tag> tag) {
         return tag == StandardTags.StatementTag.class;
+    }
+
+    public BytecodesNode getBytecodesNode() {
+        Node parent = getParent();
+        if (parent instanceof WrapperNode) {
+            parent = parent.getParent();
+        }
+        assert !(parent instanceof WrapperNode);
+        return (BytecodesNode) parent;
+    }
+
+    public boolean isAfter(int bci) {
+        return bci == lineNumberTableEntry.getBCI();
+    }
+
+    public boolean isBefore(int bci) {
+        return bci == startBci;
     }
 
 }

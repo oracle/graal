@@ -44,6 +44,10 @@ public final class LineNumberTable extends Attribute {
         this.entries = entries;
     }
 
+    public Entry[] getEntries() {
+        return entries;
+    }
+
     /**
      * Gets a source line number for bytecode index {@code atBci}.
      */
