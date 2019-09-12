@@ -128,9 +128,9 @@
         "strings-inline-js": {
             "patterns": [
                 {
-                    "name": "string.quoted.single.python",
+                    "name": "string.quoted.multi.python",
                     "contentName": "meta.embedded.inline.js",
-                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "begin": "(string)\\s*(=)\\s*('''|\"\"\")",
                     "beginCaptures": {
                         "1": {
                             "name": "variable.parameter.function-call.python"
@@ -146,6 +146,36 @@
                     "endCaptures": {
                         "1": {
                             "name": "punctuation.definition.string.end.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.js"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.python",
+                    "contentName": "meta.embedded.inline.js",
+                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)|((?<!\\\\)\\n)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        },
+                        "2": {
+                            "name": "invalid.illegal.newline.python"
                         }
                     },
                     "patterns": [
@@ -191,9 +221,9 @@
         "strings-inline-r": {
             "patterns": [
                 {
-                    "name": "string.quoted.single.python",
+                    "name": "string.quoted.multi.python",
                     "contentName": "meta.embedded.inline.r",
-                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "begin": "(string)\\s*(=)\\s*('''|\"\"\")",
                     "beginCaptures": {
                         "1": {
                             "name": "variable.parameter.function-call.python"
@@ -209,6 +239,36 @@
                     "endCaptures": {
                         "1": {
                             "name": "punctuation.definition.string.end.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.r"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.python",
+                    "contentName": "meta.embedded.inline.r",
+                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)|((?<!\\\\)\\n)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        },
+                        "2": {
+                            "name": "invalid.illegal.newline.python"
                         }
                     },
                     "patterns": [
@@ -254,9 +314,9 @@
         "strings-inline-ruby": {
             "patterns": [
                 {
-                    "name": "string.quoted.single.python",
+                    "name": "string.quoted.multi.python",
                     "contentName": "meta.embedded.inline.ruby",
-                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "begin": "(string)\\s*(=)\\s*('''|\"\"\")",
                     "beginCaptures": {
                         "1": {
                             "name": "variable.parameter.function-call.python"
@@ -272,6 +332,36 @@
                     "endCaptures": {
                         "1": {
                             "name": "punctuation.definition.string.end.python"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.ruby"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.python",
+                    "contentName": "meta.embedded.inline.ruby",
+                    "begin": "(string)\\s*(=)\\s*(['\"])",
+                    "beginCaptures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        },
+                        "3": {
+                            "name": "punctuation.definition.string.begin.python"
+                        }
+                    },
+                    "end": "(\\3)|((?<!\\\\)\\n)",
+                    "endCaptures": {
+                        "1": {
+                            "name": "punctuation.definition.string.end.python"
+                        },
+                        "2": {
+                            "name": "invalid.illegal.newline.python"
                         }
                     },
                     "patterns": [
