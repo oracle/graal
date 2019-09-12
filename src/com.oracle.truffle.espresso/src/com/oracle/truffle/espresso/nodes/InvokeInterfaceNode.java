@@ -60,7 +60,8 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         return indirectCallNode.call(methodLookup(receiver, itableIndex, declaringKlass).getCallTarget(), arguments);
     }
 
-    InvokeInterfaceNode(Method resolutionSeed) {
+    InvokeInterfaceNode(Method resolutionSeed, int top) {
+        super(top);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.itableIndex = resolutionSeed.getITableIndex();
@@ -78,12 +79,12 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     }
 
     @Override
-    public final int invoke(final VirtualFrame frame, int top) {
+    public final int execute(final VirtualFrame frame) {
         // Method signature does not change across methods.
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        BytecodeNode root = (BytecodeNode) getParent();
+        BytecodesNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?.
         final StaticObject receiver = nullCheck(root.peekReceiver(frame, top, resolutionSeed));
         assert receiver != null;

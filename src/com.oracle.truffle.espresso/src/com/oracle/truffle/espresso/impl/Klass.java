@@ -52,7 +52,7 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
-import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
+import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
 import com.oracle.truffle.espresso.nodes.MHInvokeBasicNode;
 import com.oracle.truffle.espresso.nodes.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.nodes.MHLinkToNode;
@@ -276,10 +276,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
      * Determines if this type is either the same as, or is a superclass or superinterface of, the
      * type represented by the specified parameter. This method is identical to
      * {@link Class#isAssignableFrom(Class)} in terms of the value return for this type.
-     * 
+     *
      * Fast check for Object types (as opposed to interface types) -> do not need to walk the entire
      * class hierarchy.
-     * 
+     *
      * Interface check is still slow, though.
      */
     public final boolean isAssignableFrom(Klass other) {
@@ -644,10 +644,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
                     MethodHandleIntrinsics.PolySigIntrinsics id,
                     Klass accessingKlass) {
         if (id == InvokeGeneric) {
-            return (methodName == Name.invoke ? getMeta().invoke : getMeta().invokeExact).findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+            return (methodName == Name.invoke ? getMeta().invoke : getMeta().invokeExact).findIntrinsic(signature, new Function<Method, EspressoMethodNode>() {
                 // TODO(garcia) Create a whole new Node to handle MH invokes.
                 @Override
-                public EspressoBaseNode apply(Method method) {
+                public EspressoMethodNode apply(Method method) {
                     // TODO(garcia) true access checks
                     Klass callerKlass = accessingKlass == null ? getMeta().Object : accessingKlass;
                     StaticObject appendixBox = StaticObject.createArray(getMeta().Object_array, new Object[1]);
@@ -661,9 +661,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
                 }
             }, id);
         } else if (id == InvokeBasic) {
-            return getMeta().invokeBasic.findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+            return getMeta().invokeBasic.findIntrinsic(signature, new Function<Method, EspressoMethodNode>() {
                 @Override
-                public EspressoBaseNode apply(Method method) {
+                public EspressoMethodNode apply(Method method) {
                     return new MHInvokeBasicNode(method);
                 }
             }, id);
@@ -685,9 +685,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess {
     }
 
     private static Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
-        return m.findIntrinsic(signature, new Function<Method, EspressoBaseNode>() {
+        return m.findIntrinsic(signature, new Function<Method, EspressoMethodNode>() {
             @Override
-            public EspressoBaseNode apply(Method method) {
+            public EspressoMethodNode apply(Method method) {
                 return MHLinkToNode.create(method, id);
             }
         }, id);

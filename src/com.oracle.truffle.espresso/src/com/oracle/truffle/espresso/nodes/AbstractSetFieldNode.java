@@ -20,7 +20,7 @@ public abstract class AbstractSetFieldNode extends Node {
         this.isStatic = field.isStatic();
     }
 
-    public abstract void setField(VirtualFrame frame, BytecodeNode root, int top);
+    public abstract void setField(VirtualFrame frame, BytecodesNode root, int top);
 
     public static AbstractSetFieldNode create(Field f) {
         // @formatter:off
@@ -40,7 +40,7 @@ public abstract class AbstractSetFieldNode extends Node {
         // @formatter:on
     }
 
-    StaticObject getReceiver(VirtualFrame frame, BytecodeNode root, int top) {
+    StaticObject getReceiver(VirtualFrame frame, BytecodesNode root, int top) {
         return isStatic
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(root.peekObject(frame, top - 1 - slotCount));
@@ -54,7 +54,7 @@ final class IntSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         int value = root.peekInt(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setIntField(field, value);
@@ -68,7 +68,7 @@ final class BooleanSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         boolean value = root.peekInt(frame, top - 1) != 0;
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setBooleanField(field, value);
@@ -82,7 +82,7 @@ final class CharSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         char value = (char) root.peekInt(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setCharField(field, value);
@@ -96,7 +96,7 @@ final class ShortSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         short value = (short) root.peekInt(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setShortField(field, value);
@@ -110,7 +110,7 @@ final class ByteSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         byte value = (byte) root.peekInt(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setByteField(field, value);
@@ -124,7 +124,7 @@ final class LongSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         long value = root.peekLong(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setLongField(field, value);
@@ -138,7 +138,7 @@ final class FloatSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         float value = root.peekFloat(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setFloatField(field, value);
@@ -152,7 +152,7 @@ final class DoubleSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         double value = root.peekDouble(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setDoubleField(field, value);
@@ -166,7 +166,7 @@ final class ObjectSetFieldNode extends AbstractSetFieldNode {
     }
 
     @Override
-    public void setField(VirtualFrame frame, BytecodeNode root, int top) {
+    public void setField(VirtualFrame frame, BytecodesNode root, int top) {
         StaticObject value = root.peekAndReleaseObject(frame, top - 1);
         StaticObject receiver = getReceiver(frame, root, top);
         receiver.setField(field, value);

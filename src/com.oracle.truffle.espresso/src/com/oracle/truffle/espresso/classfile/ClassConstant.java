@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.classfile;
 
 import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
-import static com.oracle.truffle.espresso.nodes.BytecodeNode.resolveKlassCount;
+import static com.oracle.truffle.espresso.nodes.BytecodesNode.resolveKlassCount;
 
 import java.util.Objects;
 

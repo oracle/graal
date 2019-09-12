@@ -20,26 +20,27 @@ public class InlinedGetterNode extends QuickNode {
 
     @Child AbstractGetFieldNode getFieldNode;
 
-    InlinedGetterNode(Method inlinedMethod) {
+    InlinedGetterNode(Method inlinedMethod, int top) {
+        super(top);
         this.inlinedMethod = inlinedMethod;
         this.field = getInlinedField(inlinedMethod);
         getFieldNode = AbstractGetFieldNode.create(this.field);
         assert field.isStatic() == inlinedMethod.isStatic();
     }
 
-    public static InlinedGetterNode create(Method inlinedMethod, int opCode, int curBCI) {
+    public static InlinedGetterNode create(Method inlinedMethod, int top, int opCode, int curBCI) {
         getterNodes.inc();
         if (inlinedMethod.isFinalFlagSet() || inlinedMethod.getDeclaringKlass().isFinalFlagSet()) {
-            return new InlinedGetterNode(inlinedMethod);
+            return new InlinedGetterNode(inlinedMethod, top);
         } else {
             leafGetterNodes.inc();
-            return new LeafAssumptionGetterNode(inlinedMethod, opCode, curBCI);
+            return new LeafAssumptionGetterNode(inlinedMethod, top, opCode, curBCI);
         }
     }
 
     @Override
-    public int invoke(VirtualFrame frame, int top) {
-        BytecodeNode root = (BytecodeNode) getParent();
+    public int execute(VirtualFrame frame) {
+        BytecodesNode root = getBytecodesNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(root.peekAndReleaseObject(frame, top - 1));

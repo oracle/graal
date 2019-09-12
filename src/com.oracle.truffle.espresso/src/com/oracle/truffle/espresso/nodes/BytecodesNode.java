@@ -229,6 +229,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -238,6 +239,8 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.CustomNodeCount;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -295,7 +298,7 @@ import com.oracle.truffle.object.DebugCounter;
  * bytecode is first processed/executed without growing or shinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCount {
+public final class BytecodesNode extends EspressoMethodNode implements CustomNodeCount, InstrumentableNode {
 
     public static final boolean DEBUG_GENERAL = false;
     public static final boolean DEBUG_THROWN = false;
@@ -328,17 +331,17 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private final BytecodeStream bs;
 
     @TruffleBoundary
-    public BytecodeNode(Method method, FrameDescriptor frameDescriptor) {
+    public BytecodesNode(Method method, FrameDescriptor frameDescriptor) {
         super(method);
         CompilerAsserts.neverPartOfCompilation();
         this.bs = new BytecodeStream(method.getCode());
         FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
         this.locals = Arrays.copyOfRange(slots, 0, method.getMaxLocals());
         this.stackSlots = Arrays.copyOfRange(slots, method.getMaxLocals(), method.getMaxLocals() + method.getMaxStackSize());
-        this.SOEinfo = getMethod().getSOEHandlerInfo();
+        this.SOEinfo = method.getSOEHandlerInfo();
     }
 
-    public BytecodeNode(BytecodeNode copy) {
+    public BytecodesNode(BytecodesNode copy) {
         this(copy.getMethod(), copy.getRootNode().getFrameDescriptor());
         System.err.println("Copying node for " + getMethod());
     }
@@ -528,7 +531,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     @Override
     @SuppressWarnings("unchecked")
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object invokeNaked(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
 
         int curBCI = 0;
         int top = 0;
@@ -921,7 +924,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
                         case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
 
-                        case QUICK: top += nodes[bs.readCPI(curBCI)].invoke(frame, top); break;
+                        case QUICK: top += nodes[bs.readCPI(curBCI)].execute(frame); break;
 
                         default:
                             CompilerAsserts.neverPartOfCompilation();
@@ -1080,6 +1083,11 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     }
 
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        // TODO Auto-generated method stub
+        return super.materializeInstrumentableNodes(materializedTags);
+    }
+
     private boolean takeBranch(VirtualFrame frame, int top, int opCode) {
         assert Bytecodes.isBranch(opCode);
         // @formatter:off
@@ -1131,7 +1139,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     @TruffleBoundary
-    static private void reportRuntimeException(RuntimeException e, int curBCI, BytecodeNode thisNode) {
+    static private void reportRuntimeException(RuntimeException e, int curBCI, BytecodesNode thisNode) {
         Method m = thisNode.getMethod();
         System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
         if (e.getCause() != null) {
@@ -1141,14 +1149,14 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     @TruffleBoundary
-    static private void reportVMError(VirtualMachineError e, int curBCI, BytecodeNode thisNode) {
+    static private void reportVMError(VirtualMachineError e, int curBCI, BytecodesNode thisNode) {
         Method m = thisNode.getMethod();
         System.err.println("Internal error (caught in invocation): " + m.report(curBCI));
         e.printStackTrace();
     }
 
     @TruffleBoundary
-    static private void reportCatch(EspressoException e, int curBCI, BytecodeNode thisNode) {
+    static private void reportCatch(EspressoException e, int curBCI, BytecodesNode thisNode) {
         if (thisNode.getMethod().getName().toString().contains("refill") ||
                         thisNode.getMethod().getName().toString().contains("loadClass") ||
                         thisNode.getMethod().getName().toString().contains("findClass")) {
@@ -1384,10 +1392,10 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             } else {
                 Klass typeToCheck;
                 typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck));
+                quick = injectQuick(curBCI, CheckCastNodeGen.create(typeToCheck, top));
             }
         }
-        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     private int quickenInstanceOf(final VirtualFrame frame, int top, int curBCI, int opCode) {
@@ -1400,10 +1408,10 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             } else {
                 Klass typeToCheck;
                 typeToCheck = resolveType(opCode, bs.readCPI(curBCI));
-                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck));
+                quick = injectQuick(curBCI, InstanceOfNodeGen.create(typeToCheck, top));
             }
         }
-        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     @SuppressWarnings("unused")
@@ -1423,12 +1431,12 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 // During resolution of the symbolic reference to the method, any of the exceptions
                 // pertaining to method resolution (§5.4.3.3) can be thrown.
                 Method resolutionSeed = resolveMethod(opCode, bs.readCPI(curBCI));
-                QuickNode invoke = dispatchQuickened(curBCI, opCode, resolutionSeed, getContext().InlineFieldAccessors);
+                QuickNode invoke = dispatchQuickened(top, curBCI, opCode, resolutionSeed, getContext().InlineFieldAccessors);
                 quick = injectQuick(curBCI, invoke);
             }
         }
         // Perform the call outside of the lock.
-        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     /**
@@ -1441,15 +1449,15 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         QuickNode invoke = null;
         synchronized (this) {
             assert bs.currentBC(curBCI) == QUICK;
-            invoke = dispatchQuickened(curBCI, opCode, resolutionSeed, false);
+            invoke = dispatchQuickened(top, curBCI, opCode, resolutionSeed, false);
             char cpi = bs.readCPI(curBCI);
             nodes[cpi] = nodes[cpi].replace(invoke);
         }
         // Perform the call outside of the lock.
-        return invoke.invoke(frame, top);
+        return invoke.execute(frame);
     }
 
-    private QuickNode dispatchQuickened(int curBCI, int opCode, Method _resolutionSeed, boolean allowFieldAccessInlining) {
+    private QuickNode dispatchQuickened(int top, int curBCI, int opCode, Method _resolutionSeed, boolean allowFieldAccessInlining) {
         assert !allowFieldAccessInlining || EspressoLanguage.getCurrentContext().InlineFieldAccessors;
         QuickNode invoke;
         Method resolutionSeed = _resolutionSeed;
@@ -1520,24 +1528,24 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         }
 
         if (allowFieldAccessInlining && resolutionSeed.isInlinableGetter()) {
-            invoke = InlinedGetterNode.create(resolutionSeed, opCode, curBCI);
+            invoke = InlinedGetterNode.create(resolutionSeed, top, opCode, curBCI);
         } else if (allowFieldAccessInlining && resolutionSeed.isInlinableSetter()) {
-            invoke = InlinedSetterNode.create(resolutionSeed, opCode, curBCI);
+            invoke = InlinedSetterNode.create(resolutionSeed, top, opCode, curBCI);
         } else if (resolutionSeed.isMethodHandleIntrinsic()) {
-            invoke = new MethodHandleInvokeNode(resolutionSeed);
+            invoke = new MethodHandleInvokeNode(resolutionSeed, top);
         } else if (opCode == INVOKEINTERFACE && resolutionSeed.getITableIndex() < 0) {
             // Can happen in old classfiles that calls j.l.Object on interfaces.
-            invoke = InvokeVirtualNodeGen.create(resolutionSeed);
+            invoke = InvokeVirtualNodeGen.create(resolutionSeed, top);
         } else if (opCode == INVOKEVIRTUAL && (resolutionSeed.isFinal() || resolutionSeed.getDeclaringKlass().isFinalFlagSet() || resolutionSeed.isPrivate())) {
-            invoke = new InvokeSpecialNode(resolutionSeed);
+            invoke = new InvokeSpecialNode(resolutionSeed, top);
         } else {
             // @formatter:off
             // Checkstyle: stop
             switch (opCode) {
-                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed);          break;
-                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed); break;
-                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed);   break;
-                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed);         break;
+                case INVOKESTATIC    : invoke = new InvokeStaticNode(resolutionSeed, top);          break;
+                case INVOKEINTERFACE : invoke = InvokeInterfaceNodeGen.create(resolutionSeed, top); break;
+                case INVOKEVIRTUAL   : invoke = InvokeVirtualNodeGen.create(resolutionSeed, top);   break;
+                case INVOKESPECIAL   : invoke = new InvokeSpecialNode(resolutionSeed, top);         break;
                 default              :
                     throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opCode));
             }
@@ -1565,7 +1573,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         }
         if (quick != null) {
             // Do invocation outside of the lock.
-            return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+            return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
         }
 
         assert pool != null && inDy != null;
@@ -1629,10 +1637,10 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                 // someone beat us to it, just trust him.
                 quick = nodes[bs.readCPI(curBCI)];
             } else {
-                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta));
+                quick = injectQuick(curBCI, new InvokeDynamicCallSiteNode(memberName, unboxedAppendix, parsedInvokeSignature, meta, top));
             }
         }
-        return quick.invoke(frame, top) - Bytecodes.stackEffectOf(opCode);
+        return quick.execute(frame) - Bytecodes.stackEffectOf(opCode);
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, Klass declaringKlass, Meta meta) {

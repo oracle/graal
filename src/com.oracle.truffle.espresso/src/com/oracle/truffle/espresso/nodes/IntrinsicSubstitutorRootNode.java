@@ -28,7 +28,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.Substitutor;
 
-public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
+public class IntrinsicSubstitutorRootNode extends EspressoMethodNode {
     private final Substitutor substitution;
 
     public IntrinsicSubstitutorRootNode(Substitutor sub, Method method) {
@@ -37,7 +37,7 @@ public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
     }
 
     @Override
-    public Object invokeNaked(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         try {
             return substitution.invoke(frame.getArguments());
         } catch (EspressoError e) {
@@ -53,4 +53,5 @@ public class IntrinsicSubstitutorRootNode extends EspressoBaseNode {
             throw outer;
         }
     }
+
 }

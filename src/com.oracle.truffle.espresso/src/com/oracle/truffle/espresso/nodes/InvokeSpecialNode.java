@@ -31,14 +31,15 @@ public final class InvokeSpecialNode extends QuickNode {
     protected final Method method;
     @Child private DirectCallNode directCallNode;
 
-    public InvokeSpecialNode(Method method) {
+    public InvokeSpecialNode(Method method, int top) {
+        super(top);
         this.method = method;
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
     }
 
     @Override
-    public int invoke(final VirtualFrame frame, int top) {
-        BytecodeNode root = (BytecodeNode) getParent();
+    public int execute(final VirtualFrame frame) {
+        BytecodesNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?
         Object receiver = nullCheck(root.peekReceiver(frame, top, method));
         Object[] args = root.peekAndReleaseArguments(frame, top, true, method.getParsedSignature());

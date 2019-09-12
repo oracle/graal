@@ -27,7 +27,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class MHInvokeGenericNode extends EspressoBaseNode {
+public class MHInvokeGenericNode extends EspressoMethodNode {
     private final StaticObject appendix;
     @Child private DirectCallNode callNode;
 
@@ -39,11 +39,12 @@ public class MHInvokeGenericNode extends EspressoBaseNode {
     }
 
     @Override
-    public Object invokeNaked(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         // The quick node gave us the room to append the appendix.
         assert args[args.length - 1] == null;
         args[args.length - 1] = appendix;
         return callNode.call(args);
     }
+
 }

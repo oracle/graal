@@ -24,71 +24,129 @@ package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * The root of all executable bits in Espresso, includes everything that can be called a "method" in
  * Java. Regular (concrete) Java methods, native methods and intrinsics/substitutions.
  */
-public final class EspressoRootNode extends RootNode implements ContextAccess {
-    private final Method method;
+public abstract class EspressoRootNode extends RootNode implements ContextAccess {
 
-    @Child EspressoBaseNode childNode;
+    // must not be of type EspressoMethodNode as it might be wrapped by instrumentation
+    @Child protected EspressoInstrumentableNode methodNode;
+
+    EspressoRootNode(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
+        super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
+        this.methodNode = methodNode;
+    }
 
     public final Method getMethod() {
-        return method;
-    }
-
-    public EspressoRootNode(Method method, EspressoBaseNode childNode) {
-        super(method.getEspressoLanguage());
-        this.method = method;
-        this.childNode = childNode;
-    }
-
-    public EspressoRootNode(Method method, FrameDescriptor frameDescriptor, EspressoBaseNode childNode) {
-        super(method.getEspressoLanguage(), frameDescriptor);
-        this.method = method;
-        this.childNode = childNode;
+        return getMethodNode().getMethod();
     }
 
     @Override
-    public EspressoContext getContext() {
-        return method.getContext();
+    public final EspressoContext getContext() {
+        return getMethodNode().getContext();
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
-        try {
-            return childNode.execute(frame);
-        } catch (EspressoException e) {
-            if (!(isBytecodeNode()) && e.isUnwinding(getMeta())) {
-                e.addStackFrame(method, -2, getMeta());
-            }
-            throw e;
-        }
-    }
-
-    @Override
-    public String getName() {
+    public final String getName() {
         return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return getName();
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return childNode.getSourceSection();
+    public final SourceSection getSourceSection() {
+        return getMethodNode().getSourceSection();
     }
 
-    public boolean isBytecodeNode() {
-        return childNode instanceof BytecodeNode;
+    public final boolean isBytecodeNode() {
+        return getMethodNode() instanceof BytecodesNode;
     }
+
+    private final EspressoMethodNode getMethodNode() {
+        Node child = methodNode;
+        if (child instanceof WrapperNode) {
+            child = ((WrapperNode) child).getDelegateNode();
+        }
+        assert !(child instanceof WrapperNode);
+        return (EspressoMethodNode) child;
+    }
+
+    public static EspressoRootNode create(FrameDescriptor descriptor, EspressoMethodNode methodNode) {
+        if (methodNode.getMethod().isSynchronized()) {
+            return new Synchronized(descriptor, methodNode);
+        } else {
+            return new Default(descriptor, methodNode);
+        }
+    }
+
+    static final class Synchronized extends EspressoRootNode {
+
+        Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode childNode) {
+            super(frameDescriptor, childNode);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            try {
+                Method method = getMethod();
+                assert method.isSynchronized();
+                Object monitor = method.isStatic()
+                                ? /* class */ method.getDeclaringKlass().mirror()
+                                : /* receiver */ frame.getArguments()[0];
+                // No owner checks in SVM. Manual monitor accesses is a safeguard against unbalanced
+                // monitor accesses until Espresso has its own monitor handling.
+                //
+                // synchronized (monitor) {
+                InterpreterToVM.monitorEnter(monitor);
+                Object result;
+                try {
+                    result = methodNode.execute(frame);
+                } finally {
+                    InterpreterToVM.monitorExit(monitor);
+                }
+                return result;
+            } catch (EspressoException e) {
+                if (!(isBytecodeNode()) && e.isUnwinding(getMeta())) {
+                    e.addStackFrame(getMethod(), -2, getMeta());
+                }
+                throw e;
+            }
+        }
+
+    }
+
+    static final class Default extends EspressoRootNode {
+
+        Default(FrameDescriptor frameDescriptor, EspressoMethodNode childNode) {
+            super(frameDescriptor, childNode);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            try {
+                return methodNode.execute(frame);
+            } catch (EspressoException e) {
+                if (!(isBytecodeNode()) && e.isUnwinding(getMeta())) {
+                    e.addStackFrame(getMethod(), -2, getMeta());
+                }
+                throw e;
+            }
+        }
+
+    }
+
 }

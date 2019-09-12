@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,24 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class QuickNode extends Node {
+@GenerateWrapper
+public abstract class EspressoInstrumentableNode extends Node implements InstrumentableNode {
 
-    public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
+    public abstract Object execute(VirtualFrame frame);
 
-    protected final int top;
-
-    protected QuickNode(int top) {
-        this.top = top;
+    public final boolean isInstrumentable() {
+        return true;
     }
 
-    public abstract int execute(VirtualFrame frame);
-
-    // TODO(peterssen): Make this a node?
-    protected static final StaticObject nullCheck(StaticObject value) {
-        if (StaticObject.isNull(value)) {
-            CompilerDirectives.transferToInterpreter();
-            // TODO(peterssen): Profile whether null was hit or not.
-            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwEx(NullPointerException.class);
-        }
-        return value;
+    @Override
+    public final WrapperNode createWrapper(ProbeNode probeNode) {
+        return new EspressoInstrumentableNodeWrapper(this, probeNode);
     }
 
-    protected final BytecodesNode getBytecodesNode() {
-        return (BytecodesNode) getParent();
-    }
 }

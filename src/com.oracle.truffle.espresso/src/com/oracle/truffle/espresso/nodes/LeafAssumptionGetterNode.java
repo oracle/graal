@@ -9,15 +9,15 @@ public class LeafAssumptionGetterNode extends InlinedGetterNode {
     protected final int opCode;
     protected final int curBCI;
 
-    protected LeafAssumptionGetterNode(Method inlinedMethod, int opCode, int curBCI) {
-        super(inlinedMethod);
+    protected LeafAssumptionGetterNode(Method inlinedMethod, int top, int opCode, int curBCI) {
+        super(inlinedMethod, top);
         this.opCode = opCode;
         this.curBCI = curBCI;
     }
 
     @Override
-    public int invoke(VirtualFrame frame, int top) {
-        BytecodeNode root = (BytecodeNode) getParent();
+    public int execute(VirtualFrame frame) {
+        BytecodesNode root = getBytecodesNode();
         if (inlinedMethod.leafAssumption()) {
             StaticObject receiver = field.isStatic()
                             ? field.getDeclaringKlass().tryInitializeAndGetStatics()

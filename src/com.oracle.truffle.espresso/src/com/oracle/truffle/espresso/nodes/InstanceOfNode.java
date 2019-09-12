@@ -52,7 +52,8 @@ public abstract class InstanceOfNode extends QuickNode {
         return instanceOf(typeToCheck, instanceKlass);
     }
 
-    InstanceOfNode(Klass typeToCheck) {
+    InstanceOfNode(Klass typeToCheck, int top) {
+        super(top);
         assert !typeToCheck.isPrimitive();
         this.typeToCheck = typeToCheck;
     }
@@ -64,9 +65,9 @@ public abstract class InstanceOfNode extends QuickNode {
     }
 
     @Override
-    public final int invoke(final VirtualFrame frame, int top) {
+    public final int execute(final VirtualFrame frame) {
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        BytecodeNode root = (BytecodeNode) getParent();
+        BytecodesNode root = getBytecodesNode();
         StaticObject receiver = root.peekObject(frame, top - 1);
         boolean result = StaticObject.notNull(receiver) && executeInstanceOf(receiver.getKlass());
         root.putKind(frame, top - 1, result, JavaKind.Boolean);

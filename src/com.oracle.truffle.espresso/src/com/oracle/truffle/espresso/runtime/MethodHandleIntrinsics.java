@@ -27,13 +27,13 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoBaseNode;
+import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
 
 public final class MethodHandleIntrinsics implements ContextAccess {
     public enum PolySigIntrinsics {
@@ -112,7 +112,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         return context;
     }
 
-    public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature, Function<Method, EspressoBaseNode> baseNodeFactory, PolySigIntrinsics id) {
+    public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature, Function<Method, EspressoMethodNode> baseNodeFactory, PolySigIntrinsics id) {
         ConcurrentHashMap<Symbol<Signature>, Method> intrinsics = getIntrinsicMap(id, thisMethod);
         Method method = intrinsics.get(signature);
         if (method != null) {

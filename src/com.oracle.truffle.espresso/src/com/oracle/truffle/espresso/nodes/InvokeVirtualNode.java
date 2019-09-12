@@ -64,7 +64,8 @@ public abstract class InvokeVirtualNode extends QuickNode {
         return indirectCallNode.call(target.getCallTarget(), arguments);
     }
 
-    InvokeVirtualNode(Method resolutionSeed) {
+    InvokeVirtualNode(Method resolutionSeed, int top) {
+        super(top);
         assert !resolutionSeed.isStatic();
         this.resolutionSeed = resolutionSeed;
         this.vtableIndex = resolutionSeed.getVTableIndex();
@@ -82,12 +83,12 @@ public abstract class InvokeVirtualNode extends QuickNode {
     }
 
     @Override
-    public final int invoke(final VirtualFrame frame, int top) {
+    public final int execute(final VirtualFrame frame) {
         // Method signature does not change across methods.
         // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
         // signature from the lookup.
         // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        BytecodeNode root = (BytecodeNode) getParent();
+        BytecodesNode root = getBytecodesNode();
         // TODO(peterssen): IsNull Node?.
         StaticObject receiver = root.peekReceiver(frame, top, resolutionSeed);
         nullCheck(receiver);

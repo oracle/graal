@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,38 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class QuickNode extends Node {
+/**
+ * Node that simulates espresso statements for debugging support.
+ */
+public abstract class EspressoStatementNode extends EspressoInstrumentableNode {
 
-    public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
+    private final Source source;
+    private final int lineNumber;
 
-    protected final int top;
-
-    protected QuickNode(int top) {
-        this.top = top;
+    protected EspressoStatementNode(Source source, int lineNumber) {
+        this.source = source;
+        this.lineNumber = lineNumber;
     }
 
-    public abstract int execute(VirtualFrame frame);
-
-    // TODO(peterssen): Make this a node?
-    protected static final StaticObject nullCheck(StaticObject value) {
-        if (StaticObject.isNull(value)) {
-            CompilerDirectives.transferToInterpreter();
-            // TODO(peterssen): Profile whether null was hit or not.
-            Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-            throw meta.throwEx(NullPointerException.class);
-        }
-        return value;
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return StaticObject.NULL;
     }
 
-    protected final BytecodesNode getBytecodesNode() {
-        return (BytecodesNode) getParent();
+    @Override
+    public SourceSection getSourceSection() {
+        return source.createSection(lineNumber);
     }
+
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return tag == StandardTags.StatementTag.class;
+    }
+
 }
