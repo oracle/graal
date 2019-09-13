@@ -64,6 +64,11 @@ public class TruffleJDKServices {
         // No need to do anything on JDK 8
     }
 
+    @SuppressWarnings("unused")
+    public static <S> void addUses(Class<S> service) {
+        // No need to do anything on JDK 8
+    }
+
     /**
      * Gets the ordered list of loaders for {@link TruffleRuntimeAccess} providers.
      */
