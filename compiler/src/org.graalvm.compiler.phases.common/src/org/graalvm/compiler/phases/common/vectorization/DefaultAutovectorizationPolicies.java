@@ -29,7 +29,10 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DefaultAutovectorizationPolicies implements AutovectorizationPolicies {
 
@@ -95,9 +98,39 @@ public class DefaultAutovectorizationPolicies implements AutovectorizationPolici
         return Math.max(saveIn, saveUse);
     }
 
+    private static int scorePack(AutovectorizationContext context, Pack pack, Map<Node, Pack> nodeToPackMap) {
+        int score = 0;
+
+        final List<ValueNode> elements = pack.getElements();
+        for (int i = 0; i < elements.size(); i++) {
+            final ValueNode node = elements.get(i);
+
+            for (Node input : node.inputs()) {
+                final Pack inputPack = nodeToPackMap.get(input);
+                if (inputPack != null && inputPack.getElements().size() > i && inputPack.getElements().get(i) == input) {
+                    score += scorePack(context, inputPack, nodeToPackMap);
+                } else if (context.supported(input)) {
+                    score++;
+                }
+            }
+        }
+
+        return score;
+    }
+
     @Override
     public void filterPacks(AutovectorizationContext context, Set<Pack> combinedPackSet) {
-        // implement
+        final Map<Node, Pack> nodeToPackMap = combinedPackSet.stream().flatMap(pack -> pack.getElements().stream().map(node -> Pair.create(node, pack))).collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
+
+        int score = 0;
+
+        for (Pack pack : combinedPackSet) {
+            score += scorePack(context, pack, nodeToPackMap);
+        }
+
+        if (score > 0) {
+            combinedPackSet.clear();
+        }
     }
 
 }
