@@ -127,4 +127,4 @@ The following should reset everything:
 
 ## License
 
-The Substrate VM is licensed under the [GPL 2 with Classpath exception](LICENSE.md).
+The Substrate VM is licensed under the GPL 2 with Classpath Exception.
