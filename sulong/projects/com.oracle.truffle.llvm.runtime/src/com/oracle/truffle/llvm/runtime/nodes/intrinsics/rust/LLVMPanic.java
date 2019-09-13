@@ -54,7 +54,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
 
     protected PanicLocType createPanicLocation() {
         LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
-        DataLayout dataSpecConverter = startNode.getDataSpecConverter();
+        DataLayout dataSpecConverter = startNode.getDatalayout();
         return PanicLocType.create(dataSpecConverter);
     }
 

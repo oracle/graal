@@ -62,6 +62,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMStatementRootNode;
 import com.oracle.truffle.llvm.parser.LLVMParser;
@@ -849,7 +850,7 @@ final class Runner {
         }
     }
 
-    private static final class InitializeModuleNode extends LLVMNode {
+    private static final class InitializeModuleNode extends LLVMNode implements LLVMHasDatalayoutNode {
 
         private final RootCallTarget destructor;
         private final DataLayout dataLayout;
@@ -878,6 +879,11 @@ final class Runner {
                 protectRoData.execute(roDataBase);
             }
             constructor.execute(frame);
+        }
+
+        @Override
+        public DataLayout getDatalayout() {
+            return dataLayout;
         }
     }
 

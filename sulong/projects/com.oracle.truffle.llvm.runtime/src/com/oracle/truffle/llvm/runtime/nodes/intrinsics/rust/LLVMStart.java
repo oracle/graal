@@ -91,7 +91,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         @TruffleBoundary
         protected LangStartVtableType createLangStartVtable(Type vtableType) {
             LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
-            DataLayout dataSpecConverter = startNode.getDataSpecConverter();
+            DataLayout dataSpecConverter = startNode.getDatalayout();
             return LangStartVtableType.create(dataSpecConverter, vtableType);
         }
 

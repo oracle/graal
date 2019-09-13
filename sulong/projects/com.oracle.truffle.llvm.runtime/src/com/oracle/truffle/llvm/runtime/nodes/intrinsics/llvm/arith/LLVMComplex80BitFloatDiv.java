@@ -64,7 +64,7 @@ public abstract class LLVMComplex80BitFloatDiv extends LLVMExpressionNode {
 
     int getSizeInBytes() {
         LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
-        return startNode.getDataSpecConverter().getSize(PrimitiveType.X86_FP80);
+        return startNode.getDatalayout().getSize(PrimitiveType.X86_FP80);
     }
 
     @Specialization

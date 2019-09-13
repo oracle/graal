@@ -42,9 +42,10 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
-public class LLVMFunctionStartNode extends RootNode {
+public class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayoutNode {
 
     @Child private LLVMExpressionNode node;
     private final String name;
@@ -108,7 +109,8 @@ public class LLVMFunctionStartNode extends RootNode {
         return debugInformation.bcSource;
     }
 
-    public DataLayout getDataSpecConverter() {
+    @Override
+    public DataLayout getDatalayout() {
         return dataLayout;
     }
 
