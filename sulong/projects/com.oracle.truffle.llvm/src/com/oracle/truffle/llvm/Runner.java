@@ -852,6 +852,7 @@ final class Runner {
     private static final class InitializeModuleNode extends LLVMNode {
 
         private final RootCallTarget destructor;
+        private final DataLayout dataLayout;
 
         @Child StaticInitsNode globalVarInit;
         @Child LLVMMemoryOpNode protectRoData;
@@ -860,6 +861,7 @@ final class Runner {
 
         InitializeModuleNode(Runner runner, FrameDescriptor rootFrame, LLVMParserResult parserResult) {
             this.destructor = runner.createDestructor(parserResult);
+            this.dataLayout = parserResult.getDataLayout();
 
             this.globalVarInit = runner.createGlobalVariableInitializer(rootFrame, parserResult);
             this.protectRoData = runner.language.getNodeFactory().createProtectGlobalsBlock();
