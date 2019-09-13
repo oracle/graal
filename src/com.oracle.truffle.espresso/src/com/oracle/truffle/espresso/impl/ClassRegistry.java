@@ -30,7 +30,6 @@ import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -81,10 +80,6 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public abstract @Host(ClassLoader.class) StaticObject getClassLoader();
 
-    public Method getAddClass() {
-        throw EspressoError.shouldNotReachHere();
-    }
-
     public Klass findLoadedKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
             Symbol<Type> elemental = context.getTypes().getElementalType(type);
@@ -116,9 +111,7 @@ public abstract class ClassRegistry implements ContextAccess {
             throw meta.throwEx(ClassCircularityError.class);
         }
 
-        ObjectKlass klass = createAndPutKlass(meta, parserKlass, type, superKlassType);
-
-        return klass;
+        return createAndPutKlass(meta, parserKlass, type, superKlassType);
     }
 
     private ParserKlass getParserKlass(byte[] bytes, String strType) {
@@ -136,12 +129,7 @@ public abstract class ClassRegistry implements ContextAccess {
     }
 
     private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
-        ObjectKlass superKlass;
-        if (superKlassType == null) {
-            superKlass = null;
-        } else {
-            superKlass = loadKlassRecursively(meta, superKlassType, true);
-        }
+        ObjectKlass superKlass = superKlassType == null ? null : loadKlassRecursively(meta, superKlassType, true);
 
         final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
 
@@ -164,15 +152,6 @@ public abstract class ClassRegistry implements ContextAccess {
 
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
 
-        Klass previous = classes.putIfAbsent(type, klass);
-        if (previous != null) {
-            throw meta.throwExWithMessage(LinkageError.class, "Class " + previous + " loaded twice");
-        }
-
-        if (!StaticObject.isNull(getClassLoader())) {
-            getAddClass().invokeDirect(getClassLoader(), klass.mirror());
-        }
-
         if (superKlass != null) {
             if (!Klass.checkAccess(superKlass, klass)) {
                 throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superclass " + superKlassType));
@@ -184,6 +163,12 @@ public abstract class ClassRegistry implements ContextAccess {
                 throw meta.throwExWithMessage(meta.IllegalAccessError, meta.toGuestString("class " + type + " cannot access its superinterface " + interf.getType()));
             }
         }
+
+        Klass previous = classes.putIfAbsent(type, klass);
+        if (previous != null) {
+            throw meta.throwExWithMessage(LinkageError.class, "Class " + previous + " loaded twice");
+        }
+
         return klass;
     }
 
