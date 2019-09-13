@@ -33,12 +33,16 @@ import java.io.PrintStream;
 import java.net.URL;
 import java.nio.file.Path;
 import java.text.MessageFormat;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 import java.util.function.Supplier;
+import org.graalvm.component.installer.model.CatalogContents;
+import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
  * Implementation of feedback and input for commands.
@@ -55,7 +59,7 @@ public final class Environment implements Feedback, CommandInput {
     private InputStream in = System.in;
     private PrintStream err = System.err;
     private PrintStream out = System.out;
-    private Supplier<ComponentCollection> registrySupplier;
+    private Supplier<ComponentCatalog> registrySupplier;
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
     private ComponentIterable fileIterable;
@@ -141,7 +145,7 @@ public final class Environment implements Feedback, CommandInput {
     }
 
     @Override
-    public ComponentCollection getRegistry() {
+    public ComponentCatalog getRegistry() {
         return registrySupplier.get();
     }
 
@@ -153,11 +157,59 @@ public final class Environment implements Feedback, CommandInput {
     public void setLocalRegistry(ComponentRegistry r) {
         this.localRegistry = r;
         if (this.registrySupplier == null) {
-            this.registrySupplier = () -> r;
+            this.registrySupplier = () -> new InstalledCatalog(r);
         }
     }
 
-    public void setComponentRegistry(Supplier<ComponentCollection> registrySupplier) {
+    private static class InstalledCatalog implements ComponentCatalog {
+        private final ComponentRegistry local;
+
+        InstalledCatalog(ComponentRegistry local) {
+            this.local = local;
+        }
+
+        @Override
+        public ComponentInfo findComponent(String id, Version.Match vm) {
+            return local.findComponent(id, vm);
+        }
+
+        @Override
+        public ComponentInfo findComponent(String idspec) {
+            return local.findComponent(idspec);
+        }
+
+        @Override
+        public Collection<String> getComponentIDs() {
+            return local.getComponentIDs();
+        }
+
+        @Override
+        public Collection<ComponentInfo> loadComponents(String id, Version.Match selector, boolean filelist) {
+            return local.loadComponents(id, selector, filelist);
+        }
+
+        @Override
+        public ComponentInfo findComponent(String id, Version.Match vmatch, boolean localOnly) {
+            return local.findComponent(id, vmatch);
+        }
+
+        @Override
+        public Set<String> findDependencies(ComponentInfo start, boolean closure, Boolean installed, Set<ComponentInfo> result) {
+            return CatalogContents.findDependencies(start, true, installed, result, this::findComponent);
+        }
+
+        @Override
+        public void setAllowDistUpdate(boolean distUpgrade) {
+        }
+
+        @Override
+        public String shortenComponentId(ComponentInfo info) {
+            return local.shortenComponentId(info);
+        }
+
+    }
+
+    public void setComponentRegistry(Supplier<ComponentCatalog> registrySupplier) {
         this.registrySupplier = registrySupplier;
     }
 

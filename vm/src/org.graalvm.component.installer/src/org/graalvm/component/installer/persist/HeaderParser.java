@@ -213,7 +213,9 @@ public class HeaderParser {
             char c = next();
             switch (c) {
                 case '"':
-                    return cut(1);
+                    String s = cut(1);
+                    skipWithSemicolon();
+                    return s;
                 case '\n':
                 case '\r':
                 case 0:
@@ -545,7 +547,7 @@ public class HeaderParser {
 
         char c = next();
         if (c != ';' && c != 0) {
-            throw metaErr("ERROR_InvalidFilterSpecification");
+            throw metaErr("ERROR_InvalidCapabilitySyntax");
         }
 
         if (!BundleConstants.GRAALVM_CAPABILITY.equals(namespace)) {
@@ -557,7 +559,7 @@ public class HeaderParser {
         }
         return capabilities;
     }
-    
+
     public Set<String> parseDependencies() {
         if (isEmpty()) {
             return Collections.emptySet();
@@ -574,7 +576,7 @@ public class HeaderParser {
                 case ',':
                     // OK
                     break;
-                case ';': 
+                case ';':
                     throw metaEx("ERROR_DependencyParametersNotSupported");
             }
         }
@@ -602,12 +604,15 @@ public class HeaderParser {
                 }
                 c = next();
                 if (Character.isWhitespace(c) || c == '=' || c == ';') {
+                    if (isEmpty()) {
+                        throw metaEx("ERROR_InvalidCapabilitySyntax", capName);
+                    }
                     break;
                 } else if (!isAlphaNum(c)) {
                     throw metaEx("ERROR_InvalidCapabilitySyntax", capName);
                 }
             }
-            String type = cut();
+            String type = cut(1);
 
             switch (type.toLowerCase(Locale.ENGLISH)) {
                 case "version":
@@ -617,12 +622,11 @@ public class HeaderParser {
                     break;
                 case "long":
                 case "double":
-                case "list":
+                case "":
                 default:
                     throw metaEx("ERROR_UnsupportedCapabilityType", capName, type);
             }
             skipWhitespaces();
-            c = next();
         }
         if (c != '=') { // NOI18N
             throw metaEx("ERROR_InvalidCapabilitySyntax", capName);

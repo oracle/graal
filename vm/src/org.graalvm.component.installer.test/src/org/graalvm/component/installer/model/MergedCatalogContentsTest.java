@@ -43,8 +43,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * Tests CatalogContents which is essentially a combination of several catalogs
- *  + local registry contents.
+ * Tests CatalogContents which is essentially a combination of several catalogs + local registry
+ * contents.
+ * 
  * @author sdedic
  */
 public class MergedCatalogContentsTest extends CommandTestBase {
@@ -78,7 +79,7 @@ public class MergedCatalogContentsTest extends CommandTestBase {
     }
 
     /**
-     * Finds 1st level dependencies of components
+     * Finds 1st level dependencies of components.
      */
     @Test
     public void testFindDependenciesOneLevel() throws Exception {
@@ -90,7 +91,7 @@ public class MergedCatalogContentsTest extends CommandTestBase {
         assertNull(errors);
         assertEquals(1, deps.size());
         assertEquals("org.graalvm.llvm-toolchain", deps.iterator().next().getId());
-        
+
         ci = coll.findComponent("org.graalvm.ruby", null);
         assertNotNull(ci);
         deps = new HashSet<>();
@@ -101,7 +102,7 @@ public class MergedCatalogContentsTest extends CommandTestBase {
     }
 
     /**
-     * Finds 1st level dependencies of components
+     * Finds 1st level dependencies of components, but just those installed.
      */
     @Test
     public void testFindDependenciesOneLevelInstalled() throws Exception {
@@ -114,13 +115,13 @@ public class MergedCatalogContentsTest extends CommandTestBase {
         // fake the component is local
         ll.setInfoPath("");
         storage.installed.add(ll);
-        
+
         Set<ComponentInfo> deps = new HashSet<>();
         Set<String> errors = coll.findDependencies(ci, false, Boolean.TRUE, deps);
         assertNull(errors);
         assertEquals(1, deps.size());
         assertEquals("org.graalvm.llvm-toolchain", deps.iterator().next().getId());
-        
+
         // native-image is not local, will be reported as broken:
         ci = coll.findComponent("org.graalvm.ruby", null);
         assertNotNull(ci);
@@ -131,9 +132,9 @@ public class MergedCatalogContentsTest extends CommandTestBase {
         assertEquals(1, errors.size());
         assertEquals("org.graalvm.native-image", errors.iterator().next());
     }
-    
+
     /**
-     * Finds 1st level dependencies of components
+     * Finds components recursively.
      */
     @Test
     public void testFindDependenciesRecursive() throws Exception {
@@ -145,14 +146,14 @@ public class MergedCatalogContentsTest extends CommandTestBase {
         assertNull(errors);
         assertEquals(1, deps.size());
         assertEquals("org.graalvm.llvm-toolchain", deps.iterator().next().getId());
-        
+
         ci = coll.findComponent("org.graalvm.ruby", null);
         assertNotNull(ci);
         deps = new HashSet<>();
         errors = coll.findDependencies(ci, true, null, deps);
         assertNull(errors);
         assertEquals(2, deps.size());
-        
+
         ComponentInfo ni = coll.findComponent("org.graalvm.native-image", null);
         ComponentInfo ll = coll.findComponent("org.graalvm.llvm-toolchain", null);
         assertTrue(deps.contains(ni));
@@ -160,8 +161,8 @@ public class MergedCatalogContentsTest extends CommandTestBase {
     }
 
     /**
-     * Checks that installed components from the closure are reported and
-     * those not installed are reported as missing in the return val.
+     * Checks that installed components from the closure are reported and those not installed are
+     * reported as missing in the return val.
      */
     @Test
     public void testFindDependenciesRecursiveInstalled() throws Exception {
@@ -172,7 +173,7 @@ public class MergedCatalogContentsTest extends CommandTestBase {
         assertNotNull(ni);
         ni.setInfoPath("");
         storage.installed.add(ni);
-        
+
         Set<ComponentInfo> deps = new HashSet<>();
         Set<String> errors = coll.findDependencies(ci, true, Boolean.TRUE, deps);
         assertNotNull(errors);
@@ -183,9 +184,8 @@ public class MergedCatalogContentsTest extends CommandTestBase {
     }
 
     /**
-     * Checks that only not installed dependencies are reported. One is installed
-     * and will not be returned (but is present). The other is not yet installed, will 
-     * be reported.
+     * Checks that only not installed dependencies are reported. One is installed and will not be
+     * returned (but is present). The other is not yet installed, will be reported.
      */
     @Test
     public void testFindDependenciesOnlyMissing() throws Exception {
@@ -196,7 +196,7 @@ public class MergedCatalogContentsTest extends CommandTestBase {
         assertNotNull(ni);
         ni.setInfoPath("");
         storage.installed.add(ni);
-        
+
         Set<ComponentInfo> deps = new HashSet<>();
         Set<String> errors = coll.findDependencies(ci, true, Boolean.FALSE, deps);
         assertNull(errors);

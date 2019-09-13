@@ -27,17 +27,24 @@ package org.graalvm.component.installer.commands;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.List;
+import java.util.Set;
 import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
+import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.IncompatibleException;
 import org.graalvm.component.installer.model.CatalogContents;
+import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.graalvm.component.installer.persist.test.Handler;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -66,9 +73,13 @@ public class CatalogInstallTest extends CommandTestBase {
         String relSpec;
 
         if (rel == null) {
-            relSpec = "catalog-" + name + ".properties";
+            relSpec = "catalog-" + name.getMethodName() + ".properties";
             if (getClass().getResource(relSpec) == null) {
-                relSpec = "catalogInstallTest.properties";
+                if (name.getMethodName().contains("Deps")) {
+                    relSpec = "cataloginstallDeps.properties";
+                } else {
+                    relSpec = "catalogInstallTest.properties";
+                }
             }
         } else {
             relSpec = rel;
@@ -189,5 +200,68 @@ public class CatalogInstallTest extends CommandTestBase {
         cmd.execute();
 
         assertNotNull(formatted[0]);
+    }
+
+    @Test
+    public void testInstallWithDepsSingleLevel() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        textParams.add("r");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+
+        List<ComponentParam> deps = cmd.getDependencies();
+        assertEquals(1, deps.size());
+        assertEquals("org.graalvm.llvm-toolchain", deps.get(0).createMetaLoader().getComponentInfo().getId());
+    }
+
+    @Test
+    public void testInstallWithBrokenDeps() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        textParams.add("additional");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("INSTALL_UnresolvedDependencies");
+        try {
+            cmd.executeStep(cmd::prepareInstallation, false);
+        } catch (FailedOperationException ex) {
+            Set<String> u = cmd.getUnresolvedDependencies();
+            assertFalse(u.isEmpty());
+            assertEquals("org.graalvm.unknown", u.iterator().next());
+            throw ex;
+        }
+    }
+
+    /**
+     * Checks that a dependency that is already installed is not installed again.
+     */
+    @Test
+    public void testInstallDepsWithDependecnyInstalled() throws Exception {
+        ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.llvm-toolchain", "Fake Toolchain", "19.3-dev");
+        fakeInfo.setInfoPath("");
+        storage.installed.add(fakeInfo);
+
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        textParams.add("r");
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+        assertTrue(cmd.getDependencies().isEmpty());
     }
 }

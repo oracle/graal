@@ -277,7 +277,7 @@ public final class ComponentInstaller {
                                 env,
                                 getCatalogURL());
                 downloader.setDefaultCatalog(env.l10n("Installer_BuiltingCatalogURL")); // NOI18N
-                ComponentCollection col = new CatalogContents(env, downloader.getStorage(), env.getLocalRegistry());
+                CatalogContents col = new CatalogContents(env, downloader.getStorage(), env.getLocalRegistry());
                 env.setComponentRegistry(() -> col);
                 env.setFileIterable(new CatalogIterable(env, env, col, downloader));
             }

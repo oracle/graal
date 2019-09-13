@@ -39,7 +39,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.CommonConstants;
-import org.graalvm.component.installer.ComponentCollection;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
@@ -48,7 +48,7 @@ import org.graalvm.component.installer.Version;
  *
  * @author sdedic
  */
-public final class CatalogContents implements ComponentCollection {
+public final class CatalogContents implements ComponentCatalog {
     private static final List<ComponentInfo> NONE = new ArrayList<>();
 
     private final ComponentStorage storage;
@@ -65,17 +65,17 @@ public final class CatalogContents implements ComponentCollection {
      */
     private boolean allowDistUpdate;
 
-    public CatalogContents(Feedback env, ComponentStorage storage, ComponentRegistry installed) {
-        this(env, storage, installed, installed.getGraalVersion());
+    public CatalogContents(Feedback env, ComponentStorage storage, ComponentRegistry inst) {
+        this(env, storage, inst, inst.getGraalVersion());
     }
 
-    public CatalogContents(Feedback env, ComponentStorage storage, ComponentRegistry installed, Version version) {
+    public CatalogContents(Feedback env, ComponentStorage storage, ComponentRegistry inst, Version version) {
         this.storage = storage;
         this.env = env.withBundle(Feedback.class);
-        this.verifier = new Verifier(env, installed, this);
+        this.verifier = new Verifier(env, inst, this);
         this.graalVersion = version;
-        this.installed = installed;
-        
+        this.installed = inst;
+
         verifier.ignoreExisting(true);
         verifier.setSilent(true);
         verifier.setCollectErrors(true);
@@ -290,7 +290,8 @@ public final class CatalogContents implements ComponentCollection {
         }
         return v;
     }
-    
+
+    @Override
     public ComponentInfo findComponent(String id, Version.Match vmatch, boolean localOnly) {
         ComponentInfo ci = installed.loadSingleComponent(id, false);
         if (ci != null) {
@@ -303,28 +304,22 @@ public final class CatalogContents implements ComponentCollection {
         }
         return findComponent(id, vmatch);
     }
-    
-    /**
-     * Attempts to resolve dependencies or create dependency closure.
-     * The 'installed' parameter controls the search mode:
-     * <ul>
-     * <li>{@code true}: only search among installed components. Any unresolved dependencies are reported.
-     * <li>{@code false}: do not report components, which are already installed.
-     * <li>{@code null}: report both installed and uninstalled components.
-     * </ul>
-     * 
-     * @param installed controls handling for installed components.
-     * @param start the starting point
-     * @param closure if true, makes complete closure of dependencies. False inspects only 1st level dependencies.
-     * @param result set of dependencies.
-     * @return will contain ids whose Components could not be found. {@code null} is returned instead of empty collection for easier test.
-     */
-    public Set<String> findDependencies(ComponentInfo start, boolean closure, Boolean installed, Set<ComponentInfo> result) {
+
+    @Override
+    public Set<String> findDependencies(ComponentInfo start, boolean closure, Boolean inst, Set<ComponentInfo> result) {
+        return findDependencies(start, closure, inst, result, this::findComponent);
+    }
+
+    public interface ComponentQuery {
+        ComponentInfo findComponent(String id, Version.Match vmatch, boolean localOnly);
+    }
+
+    public static Set<String> findDependencies(ComponentInfo start, boolean closure, Boolean inst, Set<ComponentInfo> result, ComponentQuery q) {
         Set<String> missing = new HashSet<>();
         Set<String> known = new HashSet<>();
         Deque<ComponentInfo> buffer = new ArrayDeque<>();
         buffer.add(start);
-        
+        boolean localOnly = Boolean.TRUE.equals(inst);
         while (!buffer.isEmpty()) {
             ComponentInfo c = buffer.poll();
             Version.Match vm = c.getVersion().match(Version.Match.Type.COMPATIBLE);
@@ -332,14 +327,14 @@ public final class CatalogContents implements ComponentCollection {
                 if (!known.add(d)) {
                     continue;
                 }
-                ComponentInfo res = findComponent(d, vm, Boolean.TRUE.equals(installed));
+                ComponentInfo res = q.findComponent(d, vm, localOnly);
                 if (res == null) {
                     missing.add(d);
                 } else {
                     if (closure) {
                         buffer.add(res);
                     }
-                    if (installed == null || (installed == res.isInstalled())) {
+                    if (inst == null || (inst == res.isInstalled())) {
                         result.add(res);
                     }
                 }

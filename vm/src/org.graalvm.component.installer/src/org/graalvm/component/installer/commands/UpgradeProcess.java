@@ -42,6 +42,7 @@ import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.ComponentIterable;
@@ -592,7 +593,7 @@ public class UpgradeProcess implements AutoCloseable {
         }
 
         @Override
-        public ComponentCollection getRegistry() {
+        public ComponentCatalog getRegistry() {
             return input.getRegistry();
         }
 

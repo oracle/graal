@@ -332,7 +332,7 @@ public final class FileDownloader {
         }
 
         URLConnection conn = getConnectionFactory().createConnection(sourceURL, this::configureHeaders);
-        
+
         size = conn.getContentLengthLong();
         verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
         if (verbose) {

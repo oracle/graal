@@ -96,7 +96,7 @@ public final class ComponentInfo {
     private String postinstMessage;
 
     private boolean nativeComponent;
-    
+
     /**
      * Component direct dependencies. Contains component canonical IDs.
      */
@@ -327,7 +327,7 @@ public final class ComponentInfo {
             provideValue(s, vals.get(s));
         }
     }
-    
+
     public void setDependencies(Set<String> deps) {
         this.dependencies = deps;
     }
@@ -335,7 +335,7 @@ public final class ComponentInfo {
     public Set<String> getDependencies() {
         return Collections.unmodifiableSet(dependencies);
     }
-    
+
     /**
      * @return True, if the Component is already installed.
      */

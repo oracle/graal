@@ -63,7 +63,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     protected FileOperations fileOps;
     protected MockStorage storage;
     protected MockStorage catalogStorage;
-    protected ComponentCollection registry;
+    protected ComponentCatalog registry;
     protected ComponentRegistry localRegistry;
 
     protected List<File> files = new ArrayList<>();
@@ -219,7 +219,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
-    public ComponentCollection getRegistry() {
+    public ComponentCatalog getRegistry() {
         if (registry == null) {
             registry = new CatalogContents(this, catalogStorage, getLocalRegistry());
         }

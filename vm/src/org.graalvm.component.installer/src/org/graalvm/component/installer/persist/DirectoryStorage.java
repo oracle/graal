@@ -114,7 +114,7 @@ public class DirectoryStorage implements ManagementStorage {
      */
     private static final String BUNDLE_REQUIRED_PREFIX = BundleConstants.BUNDLE_REQUIRED + "-"; // NOI18N
     private static final String BUNDLE_PROVIDED_PREFIX = BundleConstants.BUNDLE_PROVIDED + "-"; // NOI18N
-    
+
     /**
      * Root of the storage fileName.
      */
