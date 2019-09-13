@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,11 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.util.GuardedAnnotationAccess;
+
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -53,7 +53,6 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.MethodPointer;
-import com.oracle.svm.jni.JNIGlobalHandlesFeature;
 import com.oracle.svm.jni.JNIThreadLocalEnvironmentFeature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.functions.JNIFunctions.UnimplementedWithJNIEnvArgument;
@@ -89,7 +88,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(JNIAccessFeature.class, JNIThreadLocalEnvironmentFeature.class, JNIGlobalHandlesFeature.class);
+        return Arrays.asList(JNIAccessFeature.class, JNIThreadLocalEnvironmentFeature.class);
     }
 
     @Override

@@ -36,8 +36,8 @@ import org.graalvm.word.WordFactory;
 public final class ThreadLocalHandles<T extends ObjectHandle> {
     private static final int INITIAL_NUMBER_OF_FRAMES = 4;
 
-    private static final int MIN_VALUE = Math.toIntExact(1 + nullHandle().rawValue());
-    private static final int MAX_VALUE = Integer.MAX_VALUE;
+    public static final int MIN_VALUE = Math.toIntExact(1 + nullHandle().rawValue());
+    public static final int MAX_VALUE = Integer.MAX_VALUE;
 
     public static <U extends SignedWord> U nullHandle() {
         return WordFactory.signed(0);
