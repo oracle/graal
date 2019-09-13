@@ -1130,13 +1130,6 @@ def _ensure_vm_built():
 
 @mx.command(suite.name, 'native-image')
 def native_image_on_jvm(args, **kwargs):
-    save_args = []
-    for arg in args:
-        if arg == '--no-server' or arg.startswith('--server'):
-            mx.warn('Ignoring server-mode native-image argument ' + arg)
-        else:
-            save_args.append(arg)
-
     _ensure_vm_built()
     if mx.is_windows():
         config = graalvm_jvm_configs[-1]
@@ -1146,7 +1139,7 @@ def native_image_on_jvm(args, **kwargs):
         executable = join(vm_link, 'bin', 'native-image')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
-    mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + save_args, **kwargs)
+    mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
 
 
 @mx.command(suite.name, 'native-image-configure')
