@@ -28,11 +28,17 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
+
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -84,13 +90,31 @@ public class CCompilerInvoker {
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding();
         } catch (IOException ex) {
-            throw UserError.abort("Unable to compile C-ABI query code. Make sure GCC toolchain is installed on your system.");
+            throw UserError.abort("Unable to compile C-ABI query code. Make sure GCC toolchain is installed on your system.", ex);
         }
+    }
+
+    public static String getCCompilerPath() {
+        String compilerPath = SubstrateOptions.CCompilerPath.getValue();
+        if (compilerPath != null) {
+            Path path = Paths.get(compilerPath);
+            if (Files.isDirectory(path) || !Files.isExecutable(path)) {
+                throw UserError.abort(SubstrateOptionsParser.commandArgument(SubstrateOptions.CCompilerPath, compilerPath) + " does not specify a path to an executable.");
+            }
+        }
+        return compilerPath;
     }
 
     public Process startCompiler(List<String> options, Path source, Path target) throws IOException {
         List<String> command = new ArrayList<>();
-        command.add(Platform.includedIn(Platform.WINDOWS.class) ? "CL" : "gcc");
+
+        String compilerPath = getCCompilerPath();
+        if (compilerPath == null) {
+            compilerPath = Platform.includedIn(Platform.WINDOWS.class) ? "CL" : "gcc";
+        }
+        command.add(compilerPath);
+        command.addAll(Arrays.asList(SubstrateOptions.CCompilerOption.getValue()));
+
         command.addAll(options);
         command.add(source.normalize().toString());
         if (target != null) {
