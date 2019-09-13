@@ -236,6 +236,17 @@
 						}
 					},
 					{
+						"label": "GraalVM: Launch Polyglot Application",
+						"description": "Launch a Polyglot Application in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch Polyglot App",
+							"runtimeExecutable": "polyglot",
+							"program": "^\"${1:\\${file\\}}\""
+						}
+					},
+					{
 						"label": "GraalVM: Attach",
 						"description": "Attach to a running GraalVM",
 						"body": {
