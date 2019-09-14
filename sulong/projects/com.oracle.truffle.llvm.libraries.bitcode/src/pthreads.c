@@ -27,12 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <pthread.h>
 
 #include "unsupported.h"
 
+int __sulong_getEBUSY() {
+	return EBUSY;
+}
+int __sulong_getEINVAL() {
+	return EINVAL;
+}
+int __sulong_getEDEADLK() {
+	return EDEADLK;
+}
+int __sulong_getEPERM() {
+	return EPERM;
+}
+int __sulong_getPTHREAD_MUTEX_DEFAULT() {
+	return PTHREAD_MUTEX_DEFAULT;
+}
+int __sulong_getPTHREAD_MUTEX_ERRORCHECK() {
+	return PTHREAD_MUTEX_ERRORCHECK;
+}
+int __sulong_getPTHREAD_MUTEX_NORMAL() {
+	return PTHREAD_MUTEX_NORMAL;
+}
+int __sulong_getPTHREAD_MUTEX_RECURSIVE() {
+	return PTHREAD_MUTEX_RECURSIVE;
+}
 //int pthread_attr_destroy(pthread_attr_t *attr) {
 //  ERR_UNSUPPORTED(pthread_attr_destroy);
 //}

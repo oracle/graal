@@ -66,7 +66,7 @@ public class UtilCConstants {
             return valueMap.get(constant);
         }
         int value;
-        RootCallTarget callTarget = ctx.getGlobalScope().getFunction("@__sulong_get" + constant.value).getLLVMIRFunction();
+        RootCallTarget callTarget = ctx.getGlobalScope().getFunction("__sulong_get" + constant.value).getLLVMIRFunction();
         try (LLVMStack.StackPointer sp =  ctx.getThreadingStack().getStack().newFrame()) {
             value = (int) callTarget.call(sp);
         }
