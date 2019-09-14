@@ -113,6 +113,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final String runtimeName;
     private final String compilerConfigurationName;
     private final HotSpotBackend hostBackend;
+
+    public GlobalMetrics getMetricValues() {
+        return metricValues;
+    }
+
     private final GlobalMetrics metricValues = new GlobalMetrics();
     private final List<SnippetCounter.Group> snippetCounterGroups;
     private final HotSpotGC garbageCollector;
