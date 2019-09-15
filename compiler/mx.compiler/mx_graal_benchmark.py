@@ -211,6 +211,7 @@ _graal_variants = [
     ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
     ('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
+    ('la-inline', ['-Dgraal.TruffleLanguageAgnosticInlining=true'], 0),
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
