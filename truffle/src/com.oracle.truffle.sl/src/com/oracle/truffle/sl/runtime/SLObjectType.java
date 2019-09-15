@@ -279,7 +279,7 @@ public final class SLObjectType extends ObjectType {
                         })
         @SuppressWarnings("unused")
         static void writeNewPropertyCached(DynamicObject receiver, String name, Object value,
-                        @Cached("name") Object cachedName,
+                        @Cached("name") String cachedName,
                         @Cached("receiver.getShape()") Shape oldShape,
                         @Cached("lookupLocation(oldShape, name, value)") Location oldLocation,
                         @Cached("defineProperty(oldShape, name, value)") Shape newShape,
