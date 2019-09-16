@@ -653,7 +653,17 @@ public class BinaryReader extends BinaryStreamReader {
                     WasmFunction function = wasmModule.symbolTable().function(functionIndex);
                     state.pop(function.numArguments());
                     state.push(function.returnTypeLength());
-                    callNodes.add(Truffle.getRuntime().createDirectCallNode(function.getCallTarget()));
+
+                    // We deliberately do not create the call node during parsing,
+                    // because the call target is only created after the code entry is parsed.
+                    // Furthermore, if the call target is imported from another module,
+                    // then that other module might not have been parsed yet.
+                    // Therefore, the call node must be created lazily,
+                    // i.e. during the first execution.
+                    // Therefore, we store the WasmFunction the corresponding index,
+                    // which is replaced with the call node during the first execution.
+                    callNodes.add(new WasmCallStubNode(function));
+
                     break;
                 }
                 case CALL_INDIRECT: {

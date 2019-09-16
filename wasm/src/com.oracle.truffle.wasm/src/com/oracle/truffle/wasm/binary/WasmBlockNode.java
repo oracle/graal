@@ -204,6 +204,9 @@ import static com.oracle.truffle.wasm.binary.constants.Instructions.RETURN;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.SELECT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.UNREACHABLE;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -403,17 +406,22 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte returnType = function.returnType();
                     int numArgs = function.numArguments();
 
+                    if (callNodeTable[callNodeOffset] instanceof WasmCallStubNode) {
+                        // Lazily create the direct call node at this code position.
+                        final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().getCallTarget();
+                        callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                    }
                     DirectCallNode callNode = (DirectCallNode) callNodeTable[callNodeOffset];
                     callNodeOffset++;
 
                     Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
                     stackPointer -= args.length;
 
-                    System.out.println("Call to " + function);
-
                     Object result = callNode.call(args);
                     // At the moment, WebAssembly functions may return up to one value.
-                    // As per the WebAssembly specification, this restriction may be lifted in the future.
+                    // As per the WebAssembly specification,
+                    // this restriction may be lifted in the future.
                     switch (returnType) {
                         case ValueTypes.I32_TYPE: {
                             pushInt(frame, stackPointer, (int) result);
