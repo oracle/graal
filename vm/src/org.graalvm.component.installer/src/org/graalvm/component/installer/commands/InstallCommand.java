@@ -145,7 +145,7 @@ public class InstallCommand implements InstallerCommand {
      */
     private Version minRequiredGraalVersion;
 
-    void executionInit() throws IOException {
+    protected void executionInit() throws IOException {
         input.getLocalRegistry().verifyAdministratorAccess();
         input.existingFiles().setVerifyJars(verifyJar);
 
@@ -328,7 +328,7 @@ public class InstallCommand implements InstallerCommand {
         throw feedback.failure("INSTALL_UnresolvedDependencies", null);
     }
 
-    void prepareInstallation() throws IOException {
+    protected void prepareInstallation() throws IOException {
         for (ComponentParam p : componentsWithDependencies()) {
             feedback.output("INSTALL_VerboseProcessingArchive", p.getDisplayName());
             current = p.getSpecification();

@@ -57,15 +57,14 @@ public class CatalogIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
     private final SoftwareChannel factory;
-    private final ComponentCollection remoteRegistry;
+    private ComponentCollection remoteRegistry;
     private boolean verifyJars;
     private boolean incompatible;
 
-    public CatalogIterable(CommandInput input, Feedback feedback, ComponentCollection remoteRegistry, SoftwareChannel fact) {
+    public CatalogIterable(CommandInput input, Feedback feedback, SoftwareChannel fact) {
         this.input = input;
         this.feedback = feedback.withBundle(CatalogIterable.class);
         this.factory = fact;
-        this.remoteRegistry = remoteRegistry;
     }
 
     public boolean isVerifyJars() {
@@ -83,6 +82,9 @@ public class CatalogIterable implements ComponentIterable {
     }
 
     ComponentCollection getRegistry() {
+        if (remoteRegistry == null) {
+            remoteRegistry = input.getCatalogFactory().createComponentCatalog(input, input.getLocalRegistry());
+        }
         return remoteRegistry;
     }
 
@@ -146,7 +148,7 @@ public class CatalogIterable implements ComponentIterable {
                     // must be already initialized
                     Version gv = input.getLocalRegistry().getGraalVersion();
                     Version.Match selector = gv.match(Version.Match.Type.INSTALLABLE);
-                    Collection<ComponentInfo> infos = remoteRegistry.loadComponents(id, selector, false);
+                    Collection<ComponentInfo> infos = getRegistry().loadComponents(id, selector, false);
                     if (infos != null && !infos.isEmpty()) {
                         if (incompatible) {
                             return latest(s, infos);
@@ -161,7 +163,7 @@ public class CatalogIterable implements ComponentIterable {
                         }
                     }
                     // last try, catch obsolete components:
-                    infos = remoteRegistry.loadComponents(id, Version.NO_VERSION.match(Version.Match.Type.GREATER), false);
+                    infos = getRegistry().loadComponents(id, Version.NO_VERSION.match(Version.Match.Type.GREATER), false);
                     if (infos != null && !infos.isEmpty()) {
                         if (incompatible) {
                             return latest(s, infos);

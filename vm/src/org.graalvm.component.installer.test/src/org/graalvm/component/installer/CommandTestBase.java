@@ -121,67 +121,77 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
         return fileOps;
     }
 
+    protected class CompIterableImpl implements ComponentIterable {
+        @Override
+        public void setVerifyJars(boolean verify) {
+            verifyJars = verify;
+        }
+
+        @Override
+        public ComponentParam createParam(String cmdString, ComponentInfo nfo) {
+            return null;
+        }
+
+        @Override
+        public Iterator<ComponentParam> iterator() {
+            return new Iterator<ComponentParam>() {
+                private Iterator<ComponentParam> pit = components.iterator();
+                private Iterator<ComponentParam> fit;
+                {
+                    FileIterable ff = new FileIterable(CommandTestBase.this, CommandTestBase.this);
+                    ff.setVerifyJars(verifyJars);
+                    fit = ff.iterator();
+                }
+
+                @Override
+                public boolean hasNext() {
+                    return fit.hasNext() || pit.hasNext();
+                }
+
+                @Override
+                public ComponentParam next() {
+                    ComponentParam p = null;
+
+                    if (pit.hasNext()) {
+                        p = pit.next();
+                        // discard one parameter from files:
+                        files.remove(0);
+                        if (p != null) {
+                            return p;
+                        }
+                    }
+                    return fit.next();
+                }
+
+            };
+        }
+
+        @Override
+        public ComponentIterable matchVersion(Version.Match m) {
+            return this;
+        }
+
+        @Override
+        public ComponentIterable allowIncompatible() {
+            return this;
+        }
+    }
+
+    protected ComponentIterable iterableInstance;
+
+    protected ComponentIterable createComponentIterable() {
+        if (iterableInstance != null) {
+            return iterableInstance;
+        }
+        return new CompIterableImpl();
+    }
+
     @Override
     public ComponentIterable existingFiles() throws FailedOperationException {
         if (paramIterable != null) {
             return paramIterable;
         }
-        return new ComponentIterable() {
-            @Override
-            public void setVerifyJars(boolean verify) {
-                verifyJars = verify;
-            }
-
-            @Override
-            public ComponentParam createParam(String cmdString, ComponentInfo nfo) {
-                return null;
-            }
-
-            @Override
-            public Iterator<ComponentParam> iterator() {
-                return new Iterator<ComponentParam>() {
-                    private Iterator<ComponentParam> pit = components.iterator();
-                    private Iterator<ComponentParam> fit;
-                    {
-                        FileIterable ff = new FileIterable(CommandTestBase.this, CommandTestBase.this);
-                        ff.setVerifyJars(verifyJars);
-                        fit = ff.iterator();
-                    }
-
-                    @Override
-                    public boolean hasNext() {
-                        return fit.hasNext() || pit.hasNext();
-                    }
-
-                    @Override
-                    public ComponentParam next() {
-                        ComponentParam p = null;
-
-                        if (pit.hasNext()) {
-                            p = pit.next();
-                            // discard one parameter from files:
-                            files.remove(0);
-                            if (p != null) {
-                                return p;
-                            }
-                        }
-                        return fit.next();
-                    }
-
-                };
-            }
-
-            @Override
-            public ComponentIterable matchVersion(Version.Match m) {
-                return this;
-            }
-
-            @Override
-            public ComponentIterable allowIncompatible() {
-                return this;
-            }
-
-        };
+        return createComponentIterable();
     }
 
     @Override
@@ -221,7 +231,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     @Override
     public ComponentCatalog getRegistry() {
         if (registry == null) {
-            registry = new CatalogContents(this, catalogStorage, getLocalRegistry());
+            registry = getCatalogFactory().createComponentCatalog(this, getLocalRegistry());
         }
         return registry;
     }
@@ -255,5 +265,14 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     @Override
     public ComponentStorage getStorage() {
         return catalogStorage;
+    }
+
+    @Override
+    public CatalogFactory getCatalogFactory() {
+        if (registry != null) {
+            return (a, b) -> registry;
+        } else {
+            return (a, b) -> new CatalogContents(this, catalogStorage, getLocalRegistry());
+        }
     }
 }

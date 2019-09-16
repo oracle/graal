@@ -27,6 +27,7 @@ package org.graalvm.component.installer.commands;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import org.graalvm.component.installer.remote.CatalogIterable;
@@ -35,7 +36,9 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.FailedOperationException;
+import org.graalvm.component.installer.FileIterable;
 import org.graalvm.component.installer.IncompatibleException;
+import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.ProxyResource;
@@ -116,7 +119,7 @@ public class CatalogInstallTest extends CommandTestBase {
 
         setupCatalog(null);
         textParams.add("ruby");
-        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable = new CatalogIterable(this, this, downloader);
         paramIterable.iterator().next();
     }
 
@@ -144,7 +147,7 @@ public class CatalogInstallTest extends CommandTestBase {
         exception.expectMessage("VERIFY_ObsoleteGraalVM");
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, registry, downloader);
+        paramIterable = new CatalogIterable(this, this, downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this,
@@ -160,7 +163,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable = new CatalogIterable(this, this, downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this, withBundle(InstallCommand.class));
@@ -182,7 +185,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable = new CatalogIterable(this, this, downloader);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this, withBundle(InstallCommand.class));
@@ -206,7 +209,7 @@ public class CatalogInstallTest extends CommandTestBase {
     public void testInstallWithDepsSingleLevel() throws Exception {
         setupVersion("19.3-dev");
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable = new CatalogIterable(this, this, downloader);
         textParams.add("r");
 
         InstallCommand cmd = new InstallCommand();
@@ -224,7 +227,7 @@ public class CatalogInstallTest extends CommandTestBase {
     public void testInstallWithBrokenDeps() throws Exception {
         setupVersion("19.3-dev");
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable = new CatalogIterable(this, this, downloader);
         textParams.add("additional");
 
         InstallCommand cmd = new InstallCommand();
@@ -254,7 +257,7 @@ public class CatalogInstallTest extends CommandTestBase {
 
         setupVersion("19.3-dev");
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable = new CatalogIterable(this, this, downloader);
         textParams.add("r");
 
         InstallCommand cmd = new InstallCommand();
@@ -263,5 +266,45 @@ public class CatalogInstallTest extends CommandTestBase {
 
         cmd.executeStep(cmd::prepareInstallation, false);
         assertTrue(cmd.getDependencies().isEmpty());
+    }
+
+    CatalogFactory catalogFactory = null;
+
+    @Override
+    public CatalogFactory getCatalogFactory() {
+        if (catalogFactory == null) {
+            return super.getCatalogFactory();
+        } else {
+            return catalogFactory;
+        }
+    }
+
+    /**
+     * Checks that dependencies can be loaded from the same directory as the installed Component.
+     */
+    @Test
+    public void testInstallDependencyFromSameDirectory() throws Exception {
+        Path ruby193Source = dataFile("../repo/19.3.0.0/r");
+        Path llvm193Source = dataFile("../repo/19.3.0.0/llvm-toolchain");
+
+        // they should be next to eah other
+        assertEquals(ruby193Source.getParent(), llvm193Source.getParent());
+        files.add(ruby193Source.toFile());
+        setupVersion("19.3.0.0");
+        // no external catalog
+        downloader = new RemoteCatalogDownloader(this, this, (URL) null);
+        downloader.addLocalChannelSource(
+                        new SoftwareChannelSource(ruby193Source.getParent().toFile().toURI().toString()));
+        catalogFactory = (input, registry) -> new CatalogContents(this, downloader.getStorage(), registry);
+        FileIterable fit = new FileIterable(this, this);
+        fit.setSoftwareChannel(downloader);
+        paramIterable = fit;
+
+        InstallCommand cmd = new InstallCommand();
+        cmd.init(this, withBundle(InstallCommand.class));
+        cmd.executionInit();
+
+        cmd.executeStep(cmd::prepareInstallation, false);
+        assertFalse(cmd.getDependencies().isEmpty());
     }
 }

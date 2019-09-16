@@ -43,11 +43,11 @@ import org.graalvm.component.installer.persist.AbstractCatalogStorage;
  * 
  * @author sdedic
  */
-class MergeStorage extends AbstractCatalogStorage {
+public class MergeStorage extends AbstractCatalogStorage {
     private final Map<ComponentInfo, SoftwareChannel> channelMap = new HashMap<>();
     private final List<SoftwareChannel> channels = new ArrayList<>();
 
-    MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
+    public MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
         super(localRegistry, feedback, null);
     }
 

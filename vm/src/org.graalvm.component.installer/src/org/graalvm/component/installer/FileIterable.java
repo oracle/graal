@@ -34,11 +34,14 @@ import java.util.Iterator;
 import java.util.ServiceLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
+import org.graalvm.component.installer.remote.CatalogIterable;
+import org.graalvm.component.installer.remote.RemoteComponentParam;
 
 public class FileIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
     private boolean verifyJars;
+    private SoftwareChannel factory;
 
     public FileIterable(CommandInput input, Feedback fb) {
         this.input = input;
@@ -87,9 +90,24 @@ public class FileIterable implements ComponentIterable {
         };
     }
 
+    public void setSoftwareChannel(SoftwareChannel factory) {
+        this.factory = factory;
+    }
+
     @Override
     public ComponentParam createParam(String cmdString, ComponentInfo info) {
-        return null;
+        if (factory == null) {
+            return null;
+        }
+        RemoteComponentParam param = new CatalogIterable.CatalogItemParam(
+                        factory,
+                        info,
+                        info.getName(),
+                        cmdString,
+                        feedback,
+                        input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null);
+        param.setVerifyJars(verifyJars);
+        return param;
     }
 
     public static class FileComponent implements ComponentParam {

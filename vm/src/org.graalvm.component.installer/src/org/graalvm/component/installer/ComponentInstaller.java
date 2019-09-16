@@ -266,21 +266,48 @@ public final class ComponentInstaller {
             if (env.hasOption(Commands.OPTION_NON_INTERACTIVE)) {
                 env.setNonInteractive(true);
             }
+
+            catalogURL = optValues.get(Commands.OPTION_FOREIGN_CATALOG);
+            RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
+                            env,
+                            env,
+                            getCatalogURL());
+            downloader.setDefaultCatalog(env.l10n("Installer_BuiltingCatalogURL")); // NOI18N
+
+            boolean setIterable = true;
             if (optValues.containsKey(Commands.OPTION_FILES)) {
-                env.setFileIterable(new FileIterable(env, env));
+                FileIterable fi = new FileIterable(env, env);
+                fi.setSoftwareChannel(downloader);
+                env.setFileIterable(fi);
+                while (env.hasParameter()) {
+                    String s = env.nextParameter();
+                    Path p = SystemUtils.fromUserString(s);
+                    if (p != null) {
+                        Path parent = p.getParent();
+                        if (parent != null && Files.isDirectory(parent)) {
+                            downloader.addLocalChannelSource(
+                                            new SoftwareChannelSource(parent.toUri().toString(), null));
+                        }
+                    }
+                }
+                setIterable = false;
             } else if (optValues.containsKey(Commands.OPTION_URLS)) {
-                env.setFileIterable(new DownloadURLIterable(env, env));
-            } else {
-                catalogURL = optValues.get(Commands.OPTION_FOREIGN_CATALOG);
-                RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
-                                env,
-                                env,
-                                getCatalogURL());
-                downloader.setDefaultCatalog(env.l10n("Installer_BuiltingCatalogURL")); // NOI18N
-                CatalogContents col = new CatalogContents(env, downloader.getStorage(), env.getLocalRegistry());
-                env.setComponentRegistry(() -> col);
-                env.setFileIterable(new CatalogIterable(env, env, col, downloader));
+                DownloadURLIterable dit = new DownloadURLIterable(env, env);
+                dit.setSoftwareChannel(downloader);
+                env.setFileIterable(dit);
+                setIterable = false;
             }
+
+            env.setCatalogFactory((CommandInput input, ComponentRegistry lreg) -> {
+                RemoteCatalogDownloader nDownloader = new RemoteCatalogDownloader(downloader, input, env);
+                CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
+                return col;
+            });
+
+            if (setIterable) {
+                env.setFileIterable(new CatalogIterable(env, env, downloader));
+            }
+
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
             retcode = cmdHandler.execute();
         } catch (FileAlreadyExistsException ex) {

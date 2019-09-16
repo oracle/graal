@@ -49,10 +49,11 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     private final Feedback feedback;
 
     private Iterable<SoftwareChannel.Factory> factories;
-    private List<SoftwareChannelSource> channelSources;
+    private List<SoftwareChannelSource> channelSources = new ArrayList<>();
     private CatalogContents union;
     private String overrideCatalogSpec;
     private String defaultCatalogSpec;
+    private boolean catalogURLParsed;
 
     public RemoteCatalogDownloader(CommandInput in, Feedback out, String overrideCatalogSpec) {
         this.input = in;
@@ -61,9 +62,22 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         factories = ServiceLoader.load(SoftwareChannel.Factory.class);
     }
 
+    public RemoteCatalogDownloader(RemoteCatalogDownloader config, CommandInput in, Feedback out) {
+        this.input = in;
+        this.feedback = out.withBundle(RemoteCatalogDownloader.class);
+        this.overrideCatalogSpec = null;
+
+        factories = config.factories;
+        channelSources = new ArrayList<>(config.channelSources);
+    }
+
     // tests only
     public RemoteCatalogDownloader(CommandInput in, Feedback out, URL catalogURL) {
-        this(in, out, catalogURL.toString());
+        this(in, out, catalogURL == null ? null : catalogURL.toString());
+    }
+
+    public void addLocalChannelSource(SoftwareChannelSource src) {
+        channelSources.add(src);
     }
 
     // for testing only
@@ -82,7 +96,9 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     @SuppressWarnings("ThrowableResultIgnored")
     List<SoftwareChannelSource> parseChannelSources(String overrideSpec) {
         List<SoftwareChannelSource> sources = new ArrayList<>();
-
+        if (overrideSpec == null) {
+            return sources;
+        }
         String[] parts = overrideSpec.split("\\|"); // NOI18N
         for (String s : parts) {
             try {
@@ -95,19 +111,21 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
     }
 
     List<SoftwareChannelSource> getChannelSources() {
-        if (channelSources != null) {
+        if (catalogURLParsed) {
             return channelSources;
         }
+        List<SoftwareChannelSource> sources;
         if (overrideCatalogSpec != null) {
-            return channelSources = parseChannelSources(overrideCatalogSpec);
+            sources = parseChannelSources(overrideCatalogSpec);
         } else {
-            List<SoftwareChannelSource> sources = readChannelSources();
+            sources = readChannelSources();
             if (sources.isEmpty()) {
                 sources = parseChannelSources(defaultCatalogSpec);
             }
-            channelSources = sources;
-            return sources;
         }
+        channelSources.addAll(0, sources);
+        catalogURLParsed = true;
+        return channelSources;
     }
 
     private static final Comparator<String> CHANNEL_KEY_COMPARATOR = new Comparator<String>() {

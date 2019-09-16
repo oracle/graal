@@ -39,6 +39,7 @@ import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import static org.junit.Assert.assertEquals;
@@ -54,18 +55,23 @@ import org.junit.Test;
  */
 public class UpgradeTest extends CommandTestBase {
     private UpgradeProcess helper;
+    private RemoteCatalogDownloader downloader;
 
     private Version initVersion(String s) throws IOException {
+        return initVersion(s, "../repo/catalog.properties");
+    }
+        
+    private Version initVersion(String s, String catalogResource) throws IOException {
         Version v = Version.fromString(s);
         storage.graalInfo.put(BundleConstants.GRAAL_VERSION, s);
-        Path catalogPath = dataFile("../repo/catalog.properties");
-        RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
+        Path catalogPath = dataFile(catalogResource);
+        downloader = new RemoteCatalogDownloader(
                         this,
                         this,
                         catalogPath.toUri().toURL());
 
         registry = new CatalogContents(this, downloader.getStorage(), localRegistry);
-        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable = new CatalogIterable(this, this, downloader);
         helper = new UpgradeProcess(this, this, registry);
         return v;
     }
@@ -556,5 +562,64 @@ public class UpgradeTest extends CommandTestBase {
         ComponentInfo ci = p.createMetaLoader().getComponentInfo();
         // check that component 1.0.1 will be installed
         assertEquals("1.0.0-dev", ci.getVersion().displayString());
+    }
+    
+    static class InstallTrampoline extends InstallCommand {
+
+        @Override
+        protected void prepareInstallation() throws IOException {
+            super.prepareInstallation();
+        }
+
+        @Override
+        protected void executionInit() throws IOException {
+            super.executionInit();
+        }
+        
+    }
+    
+    CatalogFactory factory;
+
+    @Override
+    public CatalogFactory getCatalogFactory() {
+        return factory != null ? factory : super.getCatalogFactory();
+    }
+    
+    /**
+     * Upgrade an installation with "ruby" to a newer one, where "ruby" has a dependency
+     * on an additional component. The other component should be auto-installed.
+     */
+    @Test
+    public void testUpgradeWithDependencies() throws Exception {
+        initVersion("1.0.0.0", "../repo/catalog-19.3.properties");
+        
+        ComponentInfo ci = new ComponentInfo("org.graalvm.r", "Installed R", "1.0.0.0");
+        storage.installed.add(ci);
+        UpgradeCommand cmd = new UpgradeCommand();
+        cmd.init(this, this);
+        
+        textParams.add("r");
+        ComponentInfo graalInfo = cmd.configureProcess();
+        assertNotNull(graalInfo);
+        assertEquals(Version.fromString("19.3.0.0"), graalInfo.getVersion());
+
+        boolean installed = cmd.getProcess().installGraalCore(graalInfo);
+        assertTrue(installed);
+        
+        factory = (in, reg) -> {
+            RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(downloader, in, this);
+            return new CatalogContents(this, dnl.getStorage(), reg);
+        };
+        
+        InstallTrampoline targetInstall = new InstallTrampoline();
+        cmd.getProcess().configureInstallCommand(targetInstall);
+        targetInstall.executionInit();
+        targetInstall.prepareInstallation();
+        
+        assertTrue(targetInstall.getUnresolvedDependencies().isEmpty());
+        List<ComponentParam> deps = targetInstall.getDependencies();
+        assertEquals(1, deps.size());
+        MetadataLoader ldr  = deps.iterator().next().createFileLoader();
+        assertEquals("org.graalvm.llvm-toolchain", ldr.getComponentInfo().getId());
     }
 }

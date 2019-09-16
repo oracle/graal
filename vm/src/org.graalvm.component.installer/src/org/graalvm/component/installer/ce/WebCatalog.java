@@ -24,13 +24,18 @@
  */
 package org.graalvm.component.installer.ce;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.MalformedURLException;
 import java.net.NoRouteToHostException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Properties;
 import org.graalvm.component.installer.BundleConstants;
@@ -61,14 +66,22 @@ public class WebCatalog implements SoftwareChannel {
         this.source = source;
     }
 
-    protected static boolean acceptURLScheme(String scheme) {
+    protected static boolean acceptURLScheme(String scheme, String urlSpec) {
         switch (scheme) {
             case "http":    // NOI18N
             case "https":   // NOI18N
             case "ftp":     // NOI18N
             case "ftps":    // NOI18N
-            case "file":
                 return true;
+            case "file":    // NOI18N
+                // accept only regular files
+                try {
+                    Path p = new File(new URI(urlSpec)).toPath();
+                    return Files.isRegularFile(p) && Files.isReadable(p);
+                } catch (URISyntaxException ex) {
+                    // cannot be converted to file, bail out
+                    break;
+                }
         }
         return false;
     }
@@ -183,7 +196,7 @@ public class WebCatalog implements SoftwareChannel {
                 return null;
             }
             String scheme = urlSpec.toLowerCase().substring(0, schColon);
-            if (acceptURLScheme(scheme)) {
+            if (acceptURLScheme(scheme, urlSpec)) {
                 WebCatalog c = new WebCatalog(urlSpec, src);
                 c.init(in, fb);
                 return c;

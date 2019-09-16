@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
@@ -90,7 +91,11 @@ public class UpgradeProcess implements AutoCloseable {
 
     final void resetExistingComponents() {
         existingComponents.clear();
-        existingComponents.addAll(input.getLocalRegistry().getComponentIDs());
+        existingComponents.addAll(input.getLocalRegistry().getComponentIDs().stream().filter((id) -> {
+            ComponentInfo info = input.getLocalRegistry().findComponent(id);
+            // only auto-include the 'leaf' components
+            return info != null && input.getLocalRegistry().findDependentComponents(info, false).isEmpty();
+        }).collect(Collectors.toList()));
         existingComponents.remove(BundleConstants.GRAAL_COMPONENT_ID);
     }
 
@@ -122,7 +127,7 @@ public class UpgradeProcess implements AutoCloseable {
 
     public List<ComponentParam> allComponents() throws IOException {
         Set<String> ids = new HashSet<>();
-        ArrayList<ComponentParam> allComps = new ArrayList<>();
+        ArrayList<ComponentParam> allComps = new ArrayList<>(addedComponents());
         for (ComponentParam p : allComps) {
             ids.add(p.createMetaLoader().getComponentInfo().getId());
         }
@@ -132,7 +137,6 @@ public class UpgradeProcess implements AutoCloseable {
             }
             allComps.add(input.existingFiles().createParam(mig.getId(), mig));
         }
-        allComps.addAll(addedComponents());
         return allComps;
     }
 
@@ -466,23 +470,25 @@ public class UpgradeProcess implements AutoCloseable {
         }
     }
 
-    private InstallCommand instCommand;
-
-    public void installAddedComponents() throws IOException {
-        instCommand = new InstallCommand();
-
+    protected InstallCommand configureInstallCommand(InstallCommand instCommand) throws IOException {
         List<ComponentParam> params = new ArrayList<>();
         // add migrated components
         params.addAll(allComponents());
         if (params.isEmpty()) {
-            return;
+            return null;
         }
         instCommand.init(new InputDelegate(params), feedback);
         instCommand.setAllowUpgrades(true);
         instCommand.setForce(true);
+        return instCommand;
+    }
 
+    public void installAddedComponents() throws IOException {
         // install all the components
-        instCommand.execute();
+        InstallCommand ic = configureInstallCommand(new InstallCommand());
+        if (ic != null) {
+            ic.execute();
+        }
     }
 
     @Override
@@ -495,9 +501,14 @@ public class UpgradeProcess implements AutoCloseable {
         }
     }
 
+    /**
+     * The class provides a new local registry in the new installation, and a new component
+     * registry, for the target graalvm version.
+     */
     class InputDelegate implements CommandInput {
         private final List<ComponentParam> params;
         private int index;
+        private ComponentCatalog remoteRegistry;
 
         InputDelegate(List<ComponentParam> params) {
             this.params = params;
@@ -506,6 +517,11 @@ public class UpgradeProcess implements AutoCloseable {
         @Override
         public FileOperations getFileOperations() {
             return input.getFileOperations();
+        }
+
+        @Override
+        public CatalogFactory getCatalogFactory() {
+            return input.getCatalogFactory();
         }
 
         @Override
@@ -594,7 +610,10 @@ public class UpgradeProcess implements AutoCloseable {
 
         @Override
         public ComponentCatalog getRegistry() {
-            return input.getRegistry();
+            if (remoteRegistry == null) {
+                remoteRegistry = input.getCatalogFactory().createComponentCatalog(this, getLocalRegistry());
+            }
+            return remoteRegistry;
         }
 
         @Override

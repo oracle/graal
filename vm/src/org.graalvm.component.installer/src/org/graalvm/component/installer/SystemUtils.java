@@ -29,10 +29,14 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -455,6 +459,47 @@ public class SystemUtils {
             return jre;
         } else {
             return jdkInstallDir;
+        }
+    }
+
+    public static Path copySubtree(Path from, Path to) throws IOException {
+        Files.walkFileTree(from, new CopyDirVisitor(from, to));
+        return to;
+    }
+
+    public static class CopyDirVisitor extends SimpleFileVisitor<Path> {
+
+        private Path fromPath;
+        private Path toPath;
+        private StandardCopyOption copyOption;
+
+        public CopyDirVisitor(Path fromPath, Path toPath, StandardCopyOption copyOption) {
+            this.fromPath = fromPath;
+            this.toPath = toPath;
+            this.copyOption = copyOption;
+        }
+
+        public CopyDirVisitor(Path fromPath, Path toPath) {
+            this(fromPath, toPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                        throws IOException {
+
+            Path targetPath = toPath.resolve(fromPath.relativize(dir));
+            if (!Files.exists(targetPath)) {
+                Files.createDirectory(targetPath);
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                        throws IOException {
+
+            Files.copy(file, toPath.resolve(fromPath.relativize(file)), copyOption);
+            return FileVisitResult.CONTINUE;
         }
     }
 }
