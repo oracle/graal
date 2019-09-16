@@ -734,7 +734,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                 "Some guards for the following specializations could not be negated for the @%s specialization: %s. " +
                                                 "Guards cannot be negated for the @%s when they bind @%s parameters and the specialization may consist of multiple instances. " +
                                                 "To fix this limit the number of instances to '1' or " +
-                                                "introduce a more generic specialization declared between this specialization and the fallback. " +
+                                                "introduce a more generic specialization that replaces this specialization. " +
                                                 "Alternatively the use of @%s can be avoided by declaring a @%s with manually specified negated guards.",
                                 Fallback.class.getSimpleName(), specializationIds, Fallback.class.getSimpleName(), Cached.class.getSimpleName(), Fallback.class.getSimpleName(),
                                 Specialization.class.getSimpleName());
