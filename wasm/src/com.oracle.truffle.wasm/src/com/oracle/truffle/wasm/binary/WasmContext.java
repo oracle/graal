@@ -47,12 +47,18 @@ public class WasmContext {
     private Env env;
     private WasmLanguage language;
     private Map<String, WasmModule> modules;
+    private Map<String, ExternalModule> externalModules;
     private WasmMemory memory;
+
+    public static WasmContext getCurrent() {
+        return WasmLanguage.getCurrentContext();
+    }
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
         this.language = language;
         this.modules = new HashMap<>();
+        this.externalModules = new HashMap<>();
         this.memory = new UnsafeWasmMemory(DEFAULT_MEMORY_SIZE);
     }
 
@@ -78,8 +84,13 @@ public class WasmContext {
         modules.put(module.name(), module);
     }
 
-    public static WasmContext getCurrent() {
-        return WasmLanguage.getCurrentContext();
+    public ExternalModule getExternalModule(String moduleName) {
+        ExternalModule module = externalModules.get(moduleName);
+        if (module == null) {
+            module = new ExternalModule();
+            externalModules.put(moduleName, module);
+        }
+        return module;
     }
 
     public WasmMemory memory() {
