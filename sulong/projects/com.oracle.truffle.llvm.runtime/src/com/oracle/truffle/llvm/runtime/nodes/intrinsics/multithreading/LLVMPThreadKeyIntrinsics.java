@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -46,13 +45,15 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class LLVMPThreadKeyIntrinsics {
+
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
     @NodeChild(type = LLVMExpressionNode.class, value = "destructor")
     public abstract static class LLVMPThreadKeyCreate extends LLVMBuiltin {
+
         @Child LLVMStoreNode store = null;
 
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, LLVMPointer key, LLVMPointer destructor, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        protected int doIntrinsic(LLVMPointer key, LLVMPointer destructor, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
             if (store == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 store = ctx.getLanguage().getNodeFactory().createStoreNode(LLVMInteropType.ValueKind.I32);
@@ -71,8 +72,9 @@ public class LLVMPThreadKeyIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
     public abstract static class LLVMPThreadKeyDelete extends LLVMBuiltin {
+
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, int key, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        protected int doIntrinsic(int key, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
             UtilAccessCollectionWithBoundary.remove(ctx.keyStorage, key);
             UtilAccessCollectionWithBoundary.remove(ctx.destructorStorage, key);
             return 0;
@@ -81,8 +83,9 @@ public class LLVMPThreadKeyIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
     public abstract static class LLVMPThreadGetspecific extends LLVMBuiltin {
+
         @Specialization
-        protected LLVMPointer doIntrinsic(VirtualFrame frame, int key, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        protected LLVMPointer doIntrinsic(int key, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
             if (ctx.keyStorage.containsKey(key) && ctx.keyStorage.get(key).containsKey(Thread.currentThread().getId())) {
                 return UtilAccessCollectionWithBoundary.get(UtilAccessCollectionWithBoundary.get(ctx.keyStorage, key), Thread.currentThread().getId());
             }
@@ -93,9 +96,10 @@ public class LLVMPThreadKeyIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
     @NodeChild(type = LLVMExpressionNode.class, value = "value")
     public abstract static class LLVMPThreadSetspecific extends LLVMBuiltin {
+
         // [EINVAL] if key is not valid
         @Specialization
-        protected int doIntrinsic(VirtualFrame frame, int key, LLVMPointer value, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        protected int doIntrinsic(int key, LLVMPointer value, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
             if (!ctx.keyStorage.containsKey(key)) {
                 return ctx.pthreadConstants.getConstant(UtilCConstants.CConstant.EINVAL);
             }

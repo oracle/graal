@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -47,8 +48,10 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 import java.util.concurrent.ConcurrentMap;
 
-public class UtilFunctionCall {
-    static class FunctionCallRunnable implements Runnable {
+final class UtilFunctionCall {
+
+    static final class FunctionCallRunnable implements Runnable {
+
         private boolean isThread;
         private Object startRoutine;
         private Object arg;
@@ -102,6 +105,7 @@ public class UtilFunctionCall {
                                         continue;
                                     }
                                 } catch (Exception e) {
+                                    // ignored
                                 }
                                 UtilAccessCollectionWithBoundary.remove(specValueMap, Thread.currentThread().getId());
                                 new FunctionCallRunnable(destructor, keyVal, this.ctx, false).run();
@@ -114,6 +118,7 @@ public class UtilFunctionCall {
     }
 
     static final class MyArgNode extends LLVMExpressionNode {
+
         private final FrameSlot slot;
 
         private MyArgNode(FrameSlot slot) {
@@ -126,18 +131,19 @@ public class UtilFunctionCall {
         }
     }
 
-    private static class FunctionCallNode extends RootNode {
+    private static final class FunctionCallNode extends RootNode {
+
         @Child LLVMExpressionNode callNode = null;
 
-        @CompilerDirectives.CompilationFinal FrameSlot functionSlot = null;
+        @CompilationFinal FrameSlot functionSlot = null;
 
-        @CompilerDirectives.CompilationFinal FrameSlot argSlot = null;
+        @CompilationFinal FrameSlot argSlot = null;
 
-        @CompilerDirectives.CompilationFinal FrameSlot spSlot = null;
+        @CompilationFinal FrameSlot spSlot = null;
 
         private final LLVMContext ctx;
 
-        protected FunctionCallNode(LLVMLanguage language) {
+        FunctionCallNode(LLVMLanguage language) {
             super(language);
             this.ctx = language.getContextReference().get();
         }

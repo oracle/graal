@@ -34,7 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
-public class UtilAccessCollectionWithBoundary {
+final class UtilAccessCollectionWithBoundary {
 
     @TruffleBoundary
     public static <T> void add(List<T> list, T object) {
