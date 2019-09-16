@@ -235,6 +235,16 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-linux-amd64
   }
+  ${vm_java_11} ${svm-common-linux-amd64} ${custom_vm_linux} ${linux-deploy} ${deploy_vm_linux} {
+    run: ${collect_profiles} [
+      ${mx_vm_common} ${vm_profiles} [build]
+      ${mx_vm_common} ${vm_profiles} ${maven_deploy_vm}
+      ${notify-nexus-deploy}
+    ]
+    logs: ${common_vm.logs}
+    timelimit: "1:30:00"
+    name: deploy-vm-jdk11-linux-amd64
+  }
   ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
