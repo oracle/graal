@@ -461,11 +461,6 @@ def jvmci_ci_version_gate_runner(tasks):
         if t: verify_jvmci_ci_versions([])
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
-    with Task('CheckCopyright', tasks, tags=[mx_gate.Tags.style]) as t:
-        if t:
-            if mx.checkcopyrights(['--primary']) != 0:
-                t.abort('Copyright errors found. Please run "mx checkcopyrights --primary -- --fix" to fix them.')
-
     if jdk.javaCompliance >= '9':
         with Task('JDK_java_base_test', tasks, tags=['javabasetest']) as t:
             if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
