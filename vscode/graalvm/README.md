@@ -50,9 +50,3 @@ This extension contributes the following settings:
 
 * __graalvm.home__ - Path to GraalVM installation.
 
-## Release Notes
-
-### 0.0.1
-
-Initial version of the extension.
-

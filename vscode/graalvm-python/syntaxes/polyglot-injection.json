@@ -44,53 +44,53 @@
     "repository": {
         "function-arguments": {
             "patterns": [
-				{
-					"name": "punctuation.separator.arguments.python",
-					"match": "(,)"
-				},
-				{
-					"match": "(?x)\n  (?:(?<=[,(])|^) \\s* (\\*{1,2})\n",
-					"captures": {
-						"1": {
-							"name": "keyword.operator.unpacking.arguments.python"
-						}
-					}
-				},
-				{
-					"include": "source.python#lambda-incomplete"
-				},
-				{
-					"include": "source.python#illegal-names"
-				},
-				{
-					"match": "\\b([[:alpha:]_]\\w*)\\s*(=)(?!=)",
-					"captures": {
-						"1": {
-							"name": "variable.parameter.function-call.python"
-						},
-						"2": {
-							"name": "keyword.operator.assignment.python"
-						}
-					}
-				},
-				{
-					"name": "keyword.operator.assignment.python",
-					"match": "=(?!=)"
-				},
-				{
-					"include": "source.python#expression"
-				},
-				{
-					"match": "\\s*(\\))\\s*(\\()",
-					"captures": {
-						"1": {
-							"name": "punctuation.definition.arguments.end.python"
-						},
-						"2": {
-							"name": "punctuation.definition.arguments.begin.python"
-						}
-					}
-				}
+                {
+                    "name": "punctuation.separator.arguments.python",
+                    "match": "(,)"
+                },
+                {
+                    "match": "(?x)\n  (?:(?<=[,(])|^) \\s* (\\*{1,2})\n",
+                    "captures": {
+                        "1": {
+                            "name": "keyword.operator.unpacking.arguments.python"
+                        }
+                    }
+                },
+                {
+                    "include": "source.python#lambda-incomplete"
+                },
+                {
+                    "include": "source.python#illegal-names"
+                },
+                {
+                    "match": "\\b([[:alpha:]_]\\w*)\\s*(=)(?!=)",
+                    "captures": {
+                        "1": {
+                            "name": "variable.parameter.function-call.python"
+                        },
+                        "2": {
+                            "name": "keyword.operator.assignment.python"
+                        }
+                    }
+                },
+                {
+                    "name": "keyword.operator.assignment.python",
+                    "match": "=(?!=)"
+                },
+                {
+                    "include": "source.python#expression"
+                },
+                {
+                    "match": "\\s*(\\))\\s*(\\()",
+                    "captures": {
+                        "1": {
+                            "name": "punctuation.definition.arguments.end.python"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.arguments.begin.python"
+                        }
+                    }
+                }
             ]
         },
         "polyglot-call-js": {
