@@ -78,7 +78,8 @@ public class UtilFunctionCall {
                 }
                 UtilAccessCollectionWithBoundary.put(ctx.retValStorage, Thread.currentThread().getId(), retVal);
             } catch (PThreadExitException e) {
-                // return value is written to retval storage in exit function before it throws this exception
+                // return value is written to retval storage in exit function before it throws this
+                // exception
             } catch (LLVMExitException e) {
                 System.exit(e.getExitStatus());
             } finally {
@@ -126,17 +127,13 @@ public class UtilFunctionCall {
     }
 
     private static class FunctionCallNode extends RootNode {
-        @Child
-        LLVMExpressionNode callNode = null;
+        @Child LLVMExpressionNode callNode = null;
 
-        @CompilerDirectives.CompilationFinal
-        FrameSlot functionSlot = null;
+        @CompilerDirectives.CompilationFinal FrameSlot functionSlot = null;
 
-        @CompilerDirectives.CompilationFinal
-        FrameSlot argSlot = null;
+        @CompilerDirectives.CompilationFinal FrameSlot argSlot = null;
 
-        @CompilerDirectives.CompilationFinal
-        FrameSlot spSlot = null;
+        @CompilerDirectives.CompilationFinal FrameSlot spSlot = null;
 
         private final LLVMContext ctx;
 
@@ -155,12 +152,11 @@ public class UtilFunctionCall {
                 spSlot = frame.getFrameDescriptor().findOrAddFrameSlot("sp");
 
                 callNode = ctx.getLanguage().getNodeFactory().createFunctionCall(
-                        new MyArgNode(functionSlot),
-                        new LLVMExpressionNode[] {
-                                new MyArgNode(spSlot), new MyArgNode(argSlot)
-                        },
-                        new FunctionType(PointerType.VOID, new Type[] {PointerType.VOID}, false)
-                );
+                                new MyArgNode(functionSlot),
+                                new LLVMExpressionNode[]{
+                                                new MyArgNode(spSlot), new MyArgNode(argSlot)
+                                },
+                                new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
             }
             // copy arguments to frame
             final Object[] arguments = frame.getArguments();

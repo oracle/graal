@@ -48,8 +48,7 @@ public class LLVMPThreadThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "startRoutine")
     @NodeChild(type = LLVMExpressionNode.class, value = "arg")
     public abstract static class LLVMPThreadCreate extends LLVMBuiltin {
-        @Child
-        LLVMStoreNode store = null;
+        @Child LLVMStoreNode store = null;
 
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, LLVMPointer thread, LLVMPointer attr, LLVMPointer startRoutine, LLVMPointer arg, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {

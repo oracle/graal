@@ -110,8 +110,6 @@ public final class LLVMContext {
     public CallTarget pthreadCallTarget;
     public final UtilCConstants pthreadConstants;
 
-
-
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
     @CompilationFinal private Path internalLibraryPath;

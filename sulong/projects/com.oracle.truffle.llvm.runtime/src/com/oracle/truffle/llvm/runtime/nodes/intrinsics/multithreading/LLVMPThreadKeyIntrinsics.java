@@ -49,8 +49,7 @@ public class LLVMPThreadKeyIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
     @NodeChild(type = LLVMExpressionNode.class, value = "destructor")
     public abstract static class LLVMPThreadKeyCreate extends LLVMBuiltin {
-        @Child
-        LLVMStoreNode store = null;
+        @Child LLVMStoreNode store = null;
 
         @Specialization
         protected int doIntrinsic(VirtualFrame frame, LLVMPointer key, LLVMPointer destructor, @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
@@ -60,7 +59,8 @@ public class LLVMPThreadKeyIntrinsics {
             }
             synchronized (ctx.keyLockObj) {
                 store.executeWithTarget(key, ctx.curKeyVal + 1);
-                // add new key-value to key-storage, which is a hashmap(key-value->hashmap(thread-id->specific-value))
+                // add new key-value to key-storage, which is a
+                // hashmap(key-value->hashmap(thread-id->specific-value))
                 UtilAccessCollectionWithBoundary.put(ctx.keyStorage, ctx.curKeyVal + 1, new ConcurrentHashMap<>());
                 UtilAccessCollectionWithBoundary.put(ctx.destructorStorage, ctx.curKeyVal + 1, destructor);
                 ctx.curKeyVal++;
