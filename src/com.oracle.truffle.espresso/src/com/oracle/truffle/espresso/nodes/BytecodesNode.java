@@ -890,32 +890,17 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                         // @formatter:off
                         // Checkstyle: stop
                         case IRETURN:
-                            try {
-                                return exitMethodAndReturn(peekInt(frame, top - 1));
-                            } finally {
-                                if (instrument != null) {
-                                    instrument.notifyAfterBci(frame, curBCI);
-                                }
-                            }
-                        case LRETURN:
-                            try {
-                                return exitMethodAndReturnObject(peekInt(frame, top - 1));
-                            } finally {
-                                if (instrument != null) {
-                                    instrument.notifyAfterBci(frame, curBCI);
-                                }
-                            }
-                            return notifyReturn(frame, curBCI, top, exitMethodAndReturn(peekInt(frame, top - 1)));
+                            return notifyReturn(frame, curBCI, exitMethodAndReturn(peekInt(frame, top - 1)));
                        case LRETURN:
-                            return notifyReturn(frame, curBCI, top, exitMethodAndReturnObject(peekLong(frame, top - 1)));
+                            return notifyReturn(frame, curBCI, exitMethodAndReturnObject(peekLong(frame, top - 1)));
                         case FRETURN:
-                            return notifyReturn(frame, curBCI, top, exitMethodAndReturnObject(peekFloat(frame, top - 1)));
+                            return notifyReturn(frame, curBCI, exitMethodAndReturnObject(peekFloat(frame, top - 1)));
                         case DRETURN:
-                            return notifyReturn(frame, curBCI, top, exitMethodAndReturnObject(peekDouble(frame, top - 1)));
+                            return notifyReturn(frame, curBCI, exitMethodAndReturnObject(peekDouble(frame, top - 1)));
                         case ARETURN:
-                             return notifyReturn(frame, curBCI, top, exitMethodAndReturnObject(peekObject(frame, top - 1)));
+                             return notifyReturn(frame, curBCI, exitMethodAndReturnObject(peekObject(frame, top - 1)));
                         case RETURN:
-                            return notifyReturn(frame, curBCI, top, exitMethodAndReturn());
+                            return notifyReturn(frame, curBCI, exitMethodAndReturn());
 
                         // TODO(peterssen): Order shuffled.
                         case GETSTATIC: // fall through
@@ -1122,7 +1107,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
 
     }
 
-    private Object notifyReturn(VirtualFrame frame, int curBCI, int top, Object toReturn) {
+    private Object notifyReturn(VirtualFrame frame, int curBCI, Object toReturn) {
         if (instrumentation != null) {
             instrumentation.notifyAfterBci(frame, curBCI);
         }
