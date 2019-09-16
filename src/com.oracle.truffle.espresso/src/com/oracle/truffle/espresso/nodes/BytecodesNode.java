@@ -2172,14 +2172,9 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
         private Map<Integer, Integer> hookBCIToNodeIndex;
 
         InstrumentationSupport(Method method) {
-            LineNumberTable table = null;
-            for (Attribute attribute : method.getCodeAttribute().getAttributes()) {
-                if (attribute instanceof LineNumberTable) {
-                    table = (LineNumberTable) attribute;
-                    break;
-                }
-            }
-            if (table != null) {
+            LineNumberTable table = method.getCodeAttribute().getLineNumberTable();
+
+            if (table != LineNumberTable.EMPTY) {
                 LineNumberTable.Entry[] entries = table.getEntries();
                 statementNodes = new EspressoInstrumentableNode[entries.length];
                 hookBCIToNodeIndex = new HashMap<>(entries.length);
