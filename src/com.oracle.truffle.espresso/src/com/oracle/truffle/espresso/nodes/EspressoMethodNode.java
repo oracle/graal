@@ -68,8 +68,18 @@ public abstract class EspressoMethodNode extends EspressoInstrumentableNode impl
 
         if (lineNumberTable != LineNumberTable.EMPTY) {
             LineNumberTable.Entry[] entries = lineNumberTable.getEntries();
-            int startLine = entries[0].getLineNumber();
-            int endLine = entries[entries.length - 1].getLineNumber();
+            int startLine = Integer.MAX_VALUE;
+            int endLine = 0;
+
+            for (int i = 0; i < entries.length; i++) {
+                int line = entries[i].getLineNumber();
+                if (line > endLine) {
+                    endLine = line;
+                }
+                if (line < startLine) {
+                    startLine = line;
+                }
+            }
 
             return s.createSection(startLine, 1, endLine, 1);
         }
