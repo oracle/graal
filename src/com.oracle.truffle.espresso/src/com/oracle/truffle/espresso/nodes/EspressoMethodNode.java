@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.classfile.LineNumberTable;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -52,12 +53,20 @@ public abstract class EspressoMethodNode extends EspressoInstrumentableNode impl
     @TruffleBoundary
     @Override
     public final SourceSection getSourceSection() {
-        // TODO this needs to to know the source file it is coming from
-        // also this should be cached, at least not create a new source every time.
+        LineNumberTable lineNumberTable = method.getCodeAttribute().getLineNumberTable();
         Source s = getSource();
         if (s == null) {
             return null;
         }
+
+        if (lineNumberTable != LineNumberTable.EMPTY) {
+            LineNumberTable.Entry[] entries = lineNumberTable.getEntries();
+            int startLine = entries[0].getLineNumber();
+            int endLine = entries[entries.length - 1].getLineNumber();
+
+            return s.createSection(startLine, 1, endLine, 1);
+        }
+        // also this should be cached, at least not create a new source every time.
         return s.createSection(1);
     }
 
