@@ -57,7 +57,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     private static WasmTestStatus runTestCase(WasmTestCase testCase) {
         try {
             byte[] binary = testCase.selfCompile();
-            Context context = Context.create();
+            Context.Builder contextBuilder = Context.newBuilder("wasm");
+            if (WasmTestOptions.LOG_LEVEL != null) {
+                contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
+            }
+            Context context = contextBuilder.build();
             Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);
             Value function = context.getBindings("wasm").getMember("_main");

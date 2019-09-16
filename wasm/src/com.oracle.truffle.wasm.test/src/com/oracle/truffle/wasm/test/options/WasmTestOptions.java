@@ -34,4 +34,5 @@ public final class WasmTestOptions {
     public static final String TEST_SOURCE_PATH = System.getProperty("wasmtest.testSourcePath");
     public static final String TEST_FILTER = System.getProperty("wasmtest.testFilter");
     public static final boolean TRIGGER_GRAAL = Boolean.parseBoolean(System.getProperty("wasmtest.triggerGraal"));
+    public static final String LOG_LEVEL = System.getProperty("wasmtest.logLevel");
 }

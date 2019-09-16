@@ -208,6 +208,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -221,6 +222,8 @@ import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class WasmBlockNode extends WasmNode implements RepeatingNode {
+    private static final TruffleLogger logger = TruffleLogger.getLogger("wasm");
+
     @CompilationFinal private final int startOffset;
     @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final int initialStackPointer;
@@ -263,20 +266,25 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         int branchTableOffset = initialBranchTableOffset;
         int stackPointer = initialStackPointer;
         int offset = startOffset;
+        logger.finest("block/if/loop EXECUTE");
         while (offset < startOffset + byteLength()) {
             byte byteOpcode = BinaryStreamReader.peek1(codeEntry().data(), offset);
             int opcode = byteOpcode & 0xFF;
             offset++;
             switch (opcode) {
                 case UNREACHABLE:
+                    logger.finest("unreachable");
                     throw new WasmTrap("unreachable", this);
                 case NOP:
+                    logger.finest("noop");
                     break;
                 case BLOCK: {
                     WasmNode block = nestedControlTable[nestedControlOffset];
 
                     // The unwind counter indicates how many levels up we need to branch from within the block.
+                    logger.finest("block ENTER");
                     int unwindCounter = block.execute(context, frame);
+                    logger.finest(() -> String.format("block EXIT, target = %d", unwindCounter));
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
                     }
@@ -301,7 +309,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     //   This is handled internally by Truffle and the executing loop should never return 0 here.
                     // - A value larger than 0 indicates that we need to branch to a level "shallower" than the current
                     //   loop block (break out of the loop and even further).
+                    logger.finest("loop ENTER");
                     int unwindCounter = loopNode.execute(context, frame);
+                    logger.finest(() -> String.format("loop EXIT, target = %d", unwindCounter));
                     assert unwindCounter != 0;
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
@@ -319,7 +329,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case IF: {
                     WasmNode ifNode = nestedControlTable[nestedControlOffset];
                     stackPointer--;
+                    logger.finest("if ENTER");
                     int unwindCounter = ifNode.execute(context, frame);
+                    logger.finest(() -> String.format("if EXIT, target = %d", unwindCounter));
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
                     }
@@ -345,6 +357,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Technically, we should increment the intConstantOffset and numericLiteralOffset at this point,
                     // but since we are returning, it does not really matter.
 
+                    logger.finest(() -> String.format("br, target = %d", unwindCounter));
+
                     // Populate the stack with the return values of the current block (the one we are escaping from).
                     unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
 
@@ -361,6 +375,8 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                         int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset + 1);
                         // Technically, we should increment the intConstantOffset and numericLiteralOffset at this point,
                         // but since we are returning, it does not really matter.
+
+                        logger.finest(() -> String.format("br_if, target = %d", unwindCounter));
 
                         // Populate the stack with the return values of the current block (the one we are escaping from).
                         unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
@@ -383,16 +399,20 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Technically, we should increment the branchTableOffset at this point,
                     // but since we are returning, it does not really matter.
 
+                    int target = table[index];
+                    logger.finest(() -> String.format("br_table, target = %d", target));
+
                     // Populate the stack with the return values of the current block (the one we are escaping from).
                     unwindStack(frame, stackPointer, continuationStackPointers[index], targetBlocksReturnLengths[index]);
 
-                    return table[index];
+                    return target;
                 }
                 case RETURN: {
                     // A return statement causes the termination of the current function, i.e. causes the execution
                     // to resume after the instruction that invoked the current frame.
                     int rootBlockReturnLength = codeEntry().intConstant(intConstantOffset);
                     unwindStack(frame, stackPointer, 0, rootBlockReturnLength);
+                    logger.finest("return");
                     return Integer.MAX_VALUE;
                 }
                 case CALL: {
@@ -418,7 +438,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
                     stackPointer -= args.length;
 
+                    logger.finest(() -> "direct call to function " + function + " (" + args.length + " args)");
                     Object result = callNode.call(args);
+                    logger.finest(() -> "return from direct call to function " + function + " : " + result);
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification,
                     // this restriction may be lifted in the future.
@@ -481,7 +503,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     Object[] args = createArgumentsForCall(frame, function, function.numArguments(), stackPointer);
                     stackPointer -= args.length;
 
+                    logger.finest(() -> "indirect call to function " + function + " (" + args.length + " args)");
                     Object result = callNode.call(function.getCallTarget(), args);
+                    logger.finest(() -> "return from indirect_call to function " + function + " : " + result);
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in the future.
                     switch (function.returnType()) {
@@ -514,7 +538,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case DROP: {
                     stackPointer--;
-                    pop(frame, stackPointer);
+                    long x = pop(frame, stackPointer);
+                    // logger.finest("drop");
+                    logger.finest(() -> String.format("drop (raw long value = 0x%016X)", x));
                     break;
                 }
                 case SELECT: {
@@ -526,6 +552,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long val1 = pop(frame, stackPointer);
                     push(frame, stackPointer, cond != 0 ? val1 : val2);
                     stackPointer++;
+                    logger.finest(() -> String.format("select 0x%08X ? 0x%08X : 0x%08X = 0x%08X", cond, val1, val2, cond != 0 ? val1 : val2));
                     break;
                 }
                 case LOCAL_GET: {
@@ -540,24 +567,28 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             int value = getInt(frame, index);
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
+                            logger.finest(() -> String.format("local.get %d, value = 0x%08X (%d) [i32]", index, value, value));
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
                             long value = getLong(frame, index);
                             push(frame, stackPointer, value);
                             stackPointer++;
+                            logger.finest(() -> String.format("local.get %d, value = 0x%016X (%d) [i64]", index, value, value));
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
                             float value = getFloat(frame, index);
                             pushFloat(frame, stackPointer, value);
                             stackPointer++;
+                            logger.finest(() -> String.format("local.get %d, value = %d [f32]", index, value));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
                             double value = getDouble(frame, index);
                             pushDouble(frame, stackPointer, value);
                             stackPointer++;
+                            logger.finest(() -> String.format("local.get %d, value = %d [f64]", index, value));
                             break;
                         }
                     }
@@ -575,24 +606,28 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
                             setInt(frame, index, value);
+                            logger.finest(() -> String.format("local.set %d, value = 0x%08X (%d) [i32]", index, value, value));
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
                             setLong(frame, index, value);
+                            logger.finest(() -> String.format("local.set %d, value = 0x%016X (%d) [i64]", index, value, value));
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
                             stackPointer--;
                             float value = popAsFloat(frame, stackPointer);
                             setFloat(frame, index, value);
+                            logger.finest(() -> String.format("local.set %d, value = %f [f32]", index, value));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
                             stackPointer--;
                             double value = popAsDouble(frame, stackPointer);
                             setDouble(frame, index, value);
+                            logger.finest(() -> String.format("local.set %d, value = %f [f64]", index, value));
                             break;
                         }
                     }
@@ -612,6 +647,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
                             setInt(frame, index, value);
+                            logger.finest(() -> String.format("local.tee %d, value = 0x%08X (%d) [i32]", index, value, value));
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
@@ -620,6 +656,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             push(frame, stackPointer, value);
                             stackPointer++;
                             setLong(frame, index, value);
+                            logger.finest(() -> String.format("local.tee %d, value = 0x%016X (%d) [i64]", index, value, value));
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
@@ -628,6 +665,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             pushFloat(frame, stackPointer, value);
                             stackPointer++;
                             setFloat(frame, index, value);
+                            logger.finest(() -> String.format("local.tee %d, value = %f [f32]", index, value));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
@@ -636,6 +674,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             pushDouble(frame, stackPointer, value);
                             stackPointer++;
                             setDouble(frame, index, value);
+                            logger.finest(() -> String.format("local.tee %d, value = %f [f64]", index, value));
                             break;
                         }
                     }
@@ -653,24 +692,28 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             int value = wasmModule().globals().getAsInt(index);
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
+                            logger.finest(() -> String.format("global.get %d, value = 0x%08X (%d) [i32]", index, value, value));
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
                             long value = wasmModule().globals().getAsLong(index);
                             push(frame, stackPointer, value);
                             stackPointer++;
+                            logger.finest(() -> String.format("global.get %d, value = 0x%016X (%d) [i64]", index, value, value));
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
                             float value = wasmModule().globals().getAsFloat(index);
                             pushFloat(frame, stackPointer, value);
                             stackPointer++;
+                            logger.finest(() -> String.format("global.get %d, value = %f [f32]", index, value));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
                             double value = wasmModule().globals().getAsDouble(index);
                             pushDouble(frame, stackPointer, value);
                             stackPointer++;
+                            logger.finest(() -> String.format("global.get %d, value = %f [f64]", index, value));
                             break;
                         }
                     }
@@ -690,24 +733,28 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
                             wasmModule().globals().setInt(index, value);
+                            logger.finest(() -> String.format("global.set %d, value = 0x%08X (%d) [i32]", index, value, value));
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
                             wasmModule().globals().setLong(index, value);
+                            logger.finest(() -> String.format("global.set %d, value = 0x%016X (%d) [i64]", index, value, value));
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
                             stackPointer--;
                             float value = popAsFloat(frame, stackPointer);
                             wasmModule().globals().setFloat(index, value);
+                            logger.finest(() -> String.format("global.set %d, value = %f [f32]", index, value));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
                             stackPointer--;
                             double value = popAsDouble(frame, stackPointer);
                             wasmModule().globals().setDouble(index, value);
+                            logger.finest(() -> String.format("global.set %d, value = %f [f64]", index, value));
                             break;
                         }
                     }
@@ -781,13 +828,13 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             case I32_LOAD16_S: {
-                                context.memory().validateAddress(address, 16);
+                                context.memory().validateAddress(address, 016);
                                 int value = context.memory().load_i32_16s(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
                             }
                             case I32_LOAD16_U: {
-                                context.memory().validateAddress(address, 16);
+                                context.memory().validateAddress(address, 016);
                                 int value = context.memory().load_i32_16u(address);
                                 pushInt(frame, stackPointer, value);
                                 break;
@@ -805,13 +852,13 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                                 break;
                             }
                             case I64_LOAD16_S: {
-                                context.memory().validateAddress(address, 16);
+                                context.memory().validateAddress(address, 016);
                                 long value = context.memory().load_i64_16s(address);
                                 push(frame, stackPointer, value);
                                 break;
                             }
                             case I64_LOAD16_U: {
-                                context.memory().validateAddress(address, 16);
+                                context.memory().validateAddress(address, 016);
                                 long value = context.memory().load_i64_16u(address);
                                 push(frame, stackPointer, value);
                                 break;
@@ -956,10 +1003,12 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case MEMORY_SIZE: {
                     offset++;  // 0x00
+                    logger.finest("memory_size");
                     break;
                 }
                 case MEMORY_GROW: {
                     offset++;  // 0x00
+                    logger.finest("memory_grow");
                     break;
                 }
                 case I32_CONST: {
@@ -970,6 +1019,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += constantLength;
                     pushInt(frame, stackPointer, value);
                     stackPointer++;
+                    logger.finest(() -> String.format("i32.const 0x%08X (%d)", value, value));
                     break;
                 }
                 case I64_CONST: {
@@ -980,6 +1030,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += constantLength;
                     push(frame, stackPointer, value);
                     stackPointer++;
+                    logger.finest(() -> String.format("i64.const 0x%016X (%d)", value, value));
                     break;
                 }
                 case I32_EQZ: {
@@ -987,6 +1038,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, x == 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X == 0x%08X ? [i32]", x, 0));
                     break;
                 }
                 case I32_EQ: {
@@ -996,6 +1048,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y == x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X == 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_NE: {
@@ -1005,6 +1058,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y != x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X != 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_LT_S: {
@@ -1014,6 +1068,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y < x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X <= 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_LT_U: {
@@ -1023,6 +1078,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) < 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X <=u 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_GT_S: {
@@ -1032,6 +1088,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y > x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X > 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_GT_U: {
@@ -1041,6 +1098,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) > 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X >u 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_LE_S: {
@@ -1050,6 +1108,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y <= x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X <= 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_LE_U: {
@@ -1059,6 +1118,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) <= 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X <=u 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_GE_S: {
@@ -1068,6 +1128,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y >= x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X >= 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_GE_U: {
@@ -1077,6 +1138,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) >= 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%08X >=u 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I64_EQZ: {
@@ -1084,6 +1146,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, x == 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X == 0x%016X ? [i64]", x, 0));
                     break;
                 }
                 case I64_EQ: {
@@ -1093,6 +1156,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, y == x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X == 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_NE: {
@@ -1102,6 +1166,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, y != x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X != 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_LT_S: {
@@ -1111,6 +1176,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, y < x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X < 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_LT_U: {
@@ -1120,6 +1186,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, Long.compareUnsigned(y, x) < 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X <u 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_GT_S: {
@@ -1129,6 +1196,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, y > x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X > 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_GT_U: {
@@ -1138,6 +1206,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, Long.compareUnsigned(y, x) > 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X >u 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_LE_S: {
@@ -1147,6 +1216,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y <= x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X <= 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_LE_U: {
@@ -1156,6 +1226,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, Long.compareUnsigned(y, x) <= 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X <=u 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_GE_S: {
@@ -1165,6 +1236,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, y >= x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X >= 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case I64_GE_U: {
@@ -1174,6 +1246,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, Long.compareUnsigned(y, x) >= 0 ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("0x%016X >=u 0x%016X ? [i64]", y, x));
                     break;
                 }
                 case F32_EQ: {
@@ -1183,6 +1256,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float y = popAsFloat(frame, stackPointer);
                     pushInt(frame, stackPointer, y == x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f == %f ? [f32]", y, x));
                     break;
                 }
                 case F32_NE: {
@@ -1192,6 +1266,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float y = popAsFloat(frame, stackPointer);
                     pushInt(frame, stackPointer, y != x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f != %f ? [f32]", y, x));
                     break;
                 }
                 case F32_LT: {
@@ -1201,6 +1276,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float y = popAsFloat(frame, stackPointer);
                     pushInt(frame, stackPointer, y < x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f < %f ? [f32]", y, x));
                     break;
                 }
                 case F32_GT: {
@@ -1210,6 +1286,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float y = popAsFloat(frame, stackPointer);
                     pushInt(frame, stackPointer, y > x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f > %f ? [f32]", y, x));
                     break;
                 }
                 case F32_LE: {
@@ -1219,6 +1296,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float y = popAsFloat(frame, stackPointer);
                     pushInt(frame, stackPointer, y <= x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f <= %f ? [f32]", y, x));
                     break;
                 }
                 case F32_GE: {
@@ -1228,6 +1306,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float y = popAsFloat(frame, stackPointer);
                     pushInt(frame, stackPointer, y >= x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f >= %f ? [f32]", y, x));
                     break;
                 }
                 case F64_EQ: {
@@ -1237,6 +1316,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double y = popAsDouble(frame, stackPointer);
                     pushInt(frame, stackPointer, y == x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f == %f ? [f64]", y, x));
                     break;
                 }
                 case F64_NE: {
@@ -1246,6 +1326,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double y = popAsDouble(frame, stackPointer);
                     pushInt(frame, stackPointer, y != x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f != %f ? [f64]", y, x));
                     break;
                 }
                 case F64_LT: {
@@ -1255,6 +1336,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double y = popAsDouble(frame, stackPointer);
                     pushInt(frame, stackPointer, y < x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f < %f ? [f64]", y, x));
                     break;
                 }
                 case F64_GT: {
@@ -1264,6 +1346,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double y = popAsDouble(frame, stackPointer);
                     pushInt(frame, stackPointer, y > x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f > %f ? [f64]", y, x));
                     break;
                 }
                 case F64_LE: {
@@ -1273,6 +1356,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double y = popAsDouble(frame, stackPointer);
                     pushInt(frame, stackPointer, y <= x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f <= %f ? [f64]", y, x));
                     break;
                 }
                 case F64_GE: {
@@ -1282,27 +1366,34 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double y = popAsDouble(frame, stackPointer);
                     pushInt(frame, stackPointer, y >= x ? 1 : 0);
                     stackPointer++;
+                    logger.finest(() -> String.format("%f >= %f ? [f64]", y, x));
                     break;
                 }
                 case I32_CLZ: {
                     stackPointer--;
                     int x = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, Integer.numberOfLeadingZeros(x));
+                    int result = Integer.numberOfLeadingZeros(x);
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("clz(0x%08X) = %d [i32]", x, result));
                     break;
                 }
                 case I32_CTZ: {
                     stackPointer--;
                     int x = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, Integer.numberOfTrailingZeros(x));
+                    int result = Integer.numberOfTrailingZeros(x);
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("ctz(0x%08X) = %d [i32]", x, result));
                     break;
                 }
                 case I32_POPCNT: {
                     stackPointer--;
                     int x = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, Integer.bitCount(x));
+                    int result = Integer.bitCount(x);
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("popcnt(0x%08X) = %d [i32]", x, result));
                     break;
                 }
                 case I32_ADD: {
@@ -1310,8 +1401,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y + x);
+                    int result = y + x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X + 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_SUB: {
@@ -1319,8 +1412,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y - x);
+                    int result = y - x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X - 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_MUL: {
@@ -1328,8 +1423,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y * x);
+                    int result = y * x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X * 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_DIV_S: {
@@ -1337,8 +1434,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y / x);
+                    int result = y / x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X / 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_DIV_U: {
@@ -1346,8 +1445,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, Integer.divideUnsigned(y, x));
+                    int result = Integer.divideUnsigned(y, x);
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X /u 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_REM_S: {
@@ -1355,8 +1456,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y % x);
+                    int result = y % x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X %% 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_REM_U: {
@@ -1364,8 +1467,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, Integer.remainderUnsigned(y, x));
+                    int result = Integer.remainderUnsigned(y, x);
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X %%u 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_AND: {
@@ -1373,8 +1478,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y & x);
+                    int result = y & x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X & 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_OR: {
@@ -1382,8 +1489,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y | x);
+                    int result = y | x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X | 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_XOR: {
@@ -1391,8 +1500,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y ^ x);
+                    int result = y ^ x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X ^ 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_SHL: {
@@ -1400,8 +1511,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y << x);
+                    int result = y << x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X << 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_SHR_S: {
@@ -1409,8 +1522,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y >> x);
+                    int result = y >> x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X >> 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_SHR_U: {
@@ -1418,8 +1533,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, y >>> x);
+                    int result = y >>> x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X >>> 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_ROTL: {
@@ -1427,8 +1544,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, Integer.rotateLeft(y, x));
+                    int result = Integer.rotateLeft(y, x);
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X rotl 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I32_ROTR: {
@@ -1436,29 +1555,37 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int x = popInt(frame, stackPointer);
                     stackPointer--;
                     int y = popInt(frame, stackPointer);
-                    pushInt(frame, stackPointer, Integer.rotateRight(y, x));
+                    int result = Integer.rotateRight(y, x);
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%08X rotr 0x%08X = 0x%08X (%d) [i32]", y, x, result, result));
                     break;
                 }
                 case I64_CLZ: {
                     stackPointer--;
                     long x = pop(frame, stackPointer);
-                    push(frame, stackPointer, Long.numberOfLeadingZeros(x));
+                    long result = Long.numberOfLeadingZeros(x);
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("clz(0x%016X) = 0x%08X (%d) [i32]", x, result, result));
                     break;
                 }
                 case I64_CTZ: {
                     stackPointer--;
                     long x = pop(frame, stackPointer);
-                    push(frame, stackPointer, Long.numberOfTrailingZeros(x));
+                    long result = Long.numberOfTrailingZeros(x);
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("ctz(0x%016X) = 0x%08X (%d) [i32]", x, result, result));
                     break;
                 }
                 case I64_POPCNT: {
                     stackPointer--;
                     long x = pop(frame, stackPointer);
-                    push(frame, stackPointer, Long.bitCount(x));
+                    long result = Long.bitCount(x);
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("popcnt(0x%016X) = 0x%08X (%d) [i32]", x, result, result));
                     break;
                 }
                 case I64_ADD: {
@@ -1466,8 +1593,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y + x);
+                    long result = y + x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X + 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_SUB: {
@@ -1475,8 +1604,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y - x);
+                    long result = y - x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X - 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_MUL: {
@@ -1484,8 +1615,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y * x);
+                    long result = y * x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X * 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_DIV_S: {
@@ -1493,8 +1626,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y / x);
+                    long result = y / x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X / 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_DIV_U: {
@@ -1502,8 +1637,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, Long.divideUnsigned(y, x));
+                    long result = Long.divideUnsigned(y, x);
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X /u 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_REM_S: {
@@ -1511,8 +1648,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y % x);
+                    long result = y % x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X %% 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_REM_U: {
@@ -1520,8 +1659,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, Long.remainderUnsigned(y, x));
+                    long result = Long.remainderUnsigned(y, x);
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X %%u 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_AND: {
@@ -1529,8 +1670,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y & x);
+                    long result = y & x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X & 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_OR: {
@@ -1538,8 +1681,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y | x);
+                    long result = y | x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X | 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_XOR: {
@@ -1547,8 +1692,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y ^ x);
+                    long result = y ^ x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X ^ 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_SHL: {
@@ -1556,8 +1703,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y << x);
+                    long result = y << x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X << 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_SHR_S: {
@@ -1565,8 +1714,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y >> x);
+                    long result = y >> x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X >> 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_SHR_U: {
@@ -1574,8 +1725,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, y >>> x);
+                    long result = y >>> x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X >>> 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_ROTL: {
@@ -1583,8 +1736,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, Long.rotateLeft(y, (int) x));
+                    long result = Long.rotateLeft(y, (int) x);
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X rotl 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case I64_ROTR: {
@@ -1592,8 +1747,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     long x = pop(frame, stackPointer);
                     stackPointer--;
                     long y = pop(frame, stackPointer);
-                    push(frame, stackPointer, Long.rotateRight(y, (int) x));
+                    long result = Long.rotateRight(y, (int) x);
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push 0x%016X rotr 0x%016X = 0x%016X (%d) [i64]", y, x, result, result));
                     break;
                 }
                 case F32_CONST: {
@@ -1602,55 +1759,70 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += 4;
                     pushInt(frame, stackPointer, value);
                     stackPointer++;
+                    logger.finest(() -> String.format("f32.const %f", Float.intBitsToFloat(value)));
                     break;
                 }
                 case F32_ABS: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, Math.abs(x));
+                    float result = Math.abs(x);
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f32.abs(%f) = %f", x, result));
                     break;
                 }
                 case F32_NEG: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, -x);
+                    float result = -x;
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f32.neg(%f) = %f", x, result));
                     break;
                 }
                 case F32_CEIL: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, (float) Math.ceil(x));
+                    float result = (float) Math.ceil(x);
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f32.ceil(%f) = %f", x, result));
                     break;
                 }
                 case F32_FLOOR: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, (float) Math.floor(x));
+                    float result = (float) Math.floor(x);
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f32.floor(%f) = %f", x, result));
                     break;
                 }
                 case F32_TRUNC: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, (int) x);
+                    float result = (int) x;
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f32.trunc(%f) = %f", x, result));
                     break;
                 }
                 case F32_NEAREST: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, Math.round(x));
+                    float result = Math.round(x);
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f32.nearest(%f) = %f", x, result));
                     break;
                 }
                 case F32_SQRT: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, (float) Math.sqrt(x));
+                    float result = (float) Math.sqrt(x);
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f32.sqrt(%f) = %f", x, result));
                     break;
                 }
                 case F32_ADD: {
@@ -1658,7 +1830,9 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float x = popAsFloat(frame, stackPointer);
                     stackPointer--;
                     float y = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, y + x);
+                    float result = y + x;
+                    pushFloat(frame, stackPointer, result);
+                    logger.finest(() -> String.format("push %f + %f = %f [f32]", y, x, result));
                     stackPointer++;
                     break;
                 }
@@ -1667,8 +1841,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float x = popAsFloat(frame, stackPointer);
                     stackPointer--;
                     float y = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, y - x);
+                    float result = y - x;
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push %f - %f = %f [f32]", y, x, result));
                     break;
                 }
                 case F32_MUL: {
@@ -1676,8 +1852,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float x = popAsFloat(frame, stackPointer);
                     stackPointer--;
                     float y = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, y * x);
+                    float result = y * x;
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push %f * %f = %f [f32]", y, x, result));
                     break;
                 }
                 case F32_DIV: {
@@ -1685,8 +1863,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float x = popAsFloat(frame, stackPointer);
                     stackPointer--;
                     float y = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, y / x);
+                    float result = y / x;
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push %f / %f = %f [f32]", y, x, result));
                     break;
                 }
                 case F32_MIN: {
@@ -1694,8 +1874,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float x = popAsFloat(frame, stackPointer);
                     stackPointer--;
                     float y = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, Math.min(y, x));
+                    float result = Math.min(y, x);
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push min(%f, %f) = %f [f32]", y, x, result));
                     break;
                 }
                 case F32_MAX: {
@@ -1703,8 +1885,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float x = popAsFloat(frame, stackPointer);
                     stackPointer--;
                     float y = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, Math.max(y, x));
+                    float result = Math.max(y, x);
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push max(%f, %f) = %f [f32]", y, x, result));
                     break;
                 }
                 case F32_COPYSIGN: {
@@ -1712,8 +1896,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     float x = popAsFloat(frame, stackPointer);
                     stackPointer--;
                     float y = popAsFloat(frame, stackPointer);
-                    pushFloat(frame, stackPointer, Math.copySign(y, x));
+                    float result = Math.copySign(y, x);
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push copysign(%f, %f) = %f [f32]", y, x, result));
                     break;
                 }
                 case F64_CONST: {
@@ -1722,55 +1908,70 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += 8;
                     push(frame, stackPointer, value);
                     stackPointer++;
+                    logger.finest(() -> String.format("f64.const %f", Double.longBitsToDouble(value)));
                     break;
                 }
                 case F64_ABS: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, Math.abs(x));
+                    double result = Math.abs(x);
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f64.abs(%f) = %f", x, result));
                     break;
                 }
                 case F64_NEG: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
+                    double result = -x;
                     pushDouble(frame, stackPointer, -x);
                     stackPointer++;
+                    logger.finest(() -> String.format("f64.neg(%f) = %f", x, result));
                     break;
                 }
                 case F64_CEIL: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, Math.ceil(x));
+                    double result = Math.ceil(x);
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f64.ceil(%f) = %f", x, result));
                     break;
                 }
                 case F64_FLOOR: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, Math.floor(x));
+                    double result = Math.floor(x);
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f64.floor(%f) = %f", x, result));
                     break;
                 }
                 case F64_TRUNC: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, (long) x);
+                    double result = (long) x;
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f64.trunc(%f) = %f", x, result));
                     break;
                 }
                 case F64_NEAREST: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, Math.round(x));
+                    double result = Math.round(x);
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f64.nearest(%f) = %f", x, result));
                     break;
                 }
                 case F64_SQRT: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, Math.sqrt(x));
+                    double result = Math.sqrt(x);
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("f64.sqrt(%f) = %f", x, result));
                     break;
                 }
                 case F64_ADD: {
@@ -1778,8 +1979,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double x = popAsDouble(frame, stackPointer);
                     stackPointer--;
                     double y = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, y + x);
+                    double result = y + x;
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push %f + %f = %f [f64]", y, x, result));
                     break;
                 }
                 case F64_SUB: {
@@ -1787,8 +1990,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double x = popAsDouble(frame, stackPointer);
                     stackPointer--;
                     double y = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, y - x);
+                    double result = y - x;
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push %f - %f = %f [f64]", y, x, result));
                     break;
                 }
                 case F64_MUL: {
@@ -1796,8 +2001,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double x = popAsDouble(frame, stackPointer);
                     stackPointer--;
                     double y = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, y * x);
+                    double result = y * x;
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push %f * %f = %f [f64]", y, x, result));
                     break;
                 }
                 case F64_DIV: {
@@ -1805,8 +2012,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double x = popAsDouble(frame, stackPointer);
                     stackPointer--;
                     double y = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, y / x);
+                    double result = y / x;
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push %f / %f = %f [f64]", y, x, result));
                     break;
                 }
                 case F64_MIN: {
@@ -1814,8 +2023,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double x = popAsDouble(frame, stackPointer);
                     stackPointer--;
                     double y = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, Math.min(y, x));
+                    double result = Math.min(y, x);
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push min(%f, %f) = %f [f64]", y, x, result));
                     break;
                 }
                 case F64_MAX: {
@@ -1823,8 +2034,10 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double x = popAsDouble(frame, stackPointer);
                     stackPointer--;
                     double y = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, Math.max(y, x));
+                    double result = Math.max(y, x);
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push max(%f, %f) = %f [f64]", y, x, result));
                     break;
                 }
                 case F64_COPYSIGN: {
@@ -1832,77 +2045,97 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     double x = popAsDouble(frame, stackPointer);
                     stackPointer--;
                     double y = popAsDouble(frame, stackPointer);
-                    pushDouble(frame, stackPointer, Math.copySign(y, x));
+                    double result = Math.copySign(y, x);
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push copysign(%f, %f) = %f [f64]", y, x, result));
                     break;
                 }
                 case I32_WRAP_I64: {
                     stackPointer--;
                     long x = pop(frame, stackPointer);
-                    pushInt(frame, stackPointer, (int) (x % 0x8000_0000));
+                    int result = (int) (x % 0x8000_0000);
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push wrap_i64(0x%016X) = 0x%08X (%d) [i32]", x, result, result));
                     break;
                 }
                 case I32_TRUNC_F32_S:
                 case I32_TRUNC_F32_U: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    pushInt(frame, stackPointer, (int) x);
+                    int result = (int) x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push trunc_f32(%f) = 0x%08X (%d) [i32]", x, result, result));
                     break;
                 }
                 case I32_TRUNC_F64_S:
                 case I32_TRUNC_F64_U: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
-                    pushInt(frame, stackPointer, (int) x);
+                    int result = (int) x;
+                    pushInt(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push trunc_f64(%f) = 0x%08X (%d) [i32]", x, result, result));
                     break;
                 }
                 case I64_EXTEND_I32_S: {
                     stackPointer--;
                     int x = popInt(frame, stackPointer);
-                    push(frame, stackPointer, x);
+                    long result = x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push extend_i32_s(0x%08X) = 0x%016X (%d) [i64]", x, result, result));
                     break;
                 }
                 case I64_EXTEND_I32_U: {
                     stackPointer--;
                     int x = popInt(frame, stackPointer);
-                    push(frame, stackPointer, x & 0xFFFF_FFFFL);
+                    long result = x & 0xFFFF_FFFFL;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push extend_i32_u(0x%08X) = 0x%016X (%d) [i64]", x, result, result));
                     break;
                 }
                 case I64_TRUNC_F32_S:
                 case I64_TRUNC_F32_U: {
                     stackPointer--;
                     float x = popAsFloat(frame, stackPointer);
-                    push(frame, stackPointer, (long) x);
+                    long result = (long) x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push trunc_f32(%d) = 0x%016X (%d) [i64]", x, result, result));
                     break;
                 }
                 case I64_TRUNC_F64_S:
                 case I64_TRUNC_F64_U: {
                     stackPointer--;
                     double x = popAsDouble(frame, stackPointer);
-                    push(frame, stackPointer, (long) x);
+                    long result = (long) x;
+                    push(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push trunc_f64(%f) = 0x%016X (%d) [i64]", x, result, result));
                     break;
                 }
                 case F32_CONVERT_I32_S:
                 case F32_CONVERT_I32_U: {
                     stackPointer--;
                     int x = popInt(frame, stackPointer);
-                    pushFloat(frame, stackPointer, (float) x);
+                    float result = (float) x;
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push convert_i32(0x%08X) = %f [f32]", x, result));
                     break;
                 }
                 case F32_CONVERT_I64_S:
                 case F32_CONVERT_I64_U: {
                     stackPointer--;
                     long x = pop(frame, stackPointer);
-                    pushFloat(frame, stackPointer, (float) x);
+                    float result = (float) x;
+                    pushFloat(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push convert_i64(0x%016X) = %f [f32]", x, result));
                     break;
                 }
                 case F32_DEMOTE_F64: {
@@ -1912,27 +2145,47 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case F64_CONVERT_I32_U: {
                     stackPointer--;
                     int x = popInt(frame, stackPointer);
-                    pushDouble(frame, stackPointer, (double) x);
+                    double result = (double) x;
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push convert_i32(0x%08X) = %f [f64]", x, result));
                     break;
                 }
                 case F64_CONVERT_I64_S:
                 case F64_CONVERT_I64_U: {
                     stackPointer--;
                     long x = pop(frame, stackPointer);
-                    pushDouble(frame, stackPointer, (double) x);
+                    double result = (double) x;
+                    pushDouble(frame, stackPointer, result);
                     stackPointer++;
+                    logger.finest(() -> String.format("push convert_i64(0x%016X) = %f [f64]", x, result));
                     break;
                 }
                 case F64_PROMOTE_F32: {
                     throw new NotImplementedException();
                 }
-                case I32_REINTERPRET_F32:
-                case I64_REINTERPRET_F64:
-                case F32_REINTERPRET_I32:
+                case I32_REINTERPRET_F32: {
+                    // As we don't store type information for the frame slots (everything is stored as raw bits in a long,
+                    // and interpreted appropriately upon access), we don't need to do anything for these instructions.
+                    logger.finest("push reinterpret_f32 [i32]");
+                    break;
+                }
+                case I64_REINTERPRET_F64: {
+                    // As we don't store type information for the frame slots (everything is stored as raw bits in a long,
+                    // and interpreted appropriately upon access), we don't need to do anything for these instructions.
+                    logger.finest("push reinterpret_f64 [i64]");
+                    break;
+                }
+                case F32_REINTERPRET_I32: {
+                    // As we don't store type information for the frame slots (everything is stored as raw bits in a long,
+                    // and interpreted appropriately upon access), we don't need to do anything for these instructions.
+                    logger.finest("push reinterpret_i32 [f32]");
+                    break;
+                }
                 case F64_REINTERPRET_I64: {
                     // As we don't store type information for the frame slots (everything is stored as raw bits in a long,
                     // and interpreted appropriately upon access), we don't need to do anything for these instructions.
+                    logger.finest("push reinterpret_i64 [f64]");
                     break;
                 }
                 default:
