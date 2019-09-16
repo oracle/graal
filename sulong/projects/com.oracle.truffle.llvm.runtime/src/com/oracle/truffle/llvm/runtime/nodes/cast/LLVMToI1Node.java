@@ -98,17 +98,17 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
 
         @Specialization
         protected boolean doFloat(float from) {
-            return from != 0;
+            return ((int) from & 1) != 0;
         }
 
         @Specialization
         protected boolean doDouble(double from) {
-            return from != 0;
+            return ((long) from & 1) != 0;
         }
 
         @Specialization
         protected boolean doLLVM80BitFloat(LLVM80BitFloat from) {
-            return from.getLongValue() != 0;
+            return (from.getLongValue() & 1) != 0;
         }
     }
 
