@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.classfile.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.LineNumberTable;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
@@ -53,11 +54,17 @@ public abstract class EspressoMethodNode extends EspressoInstrumentableNode impl
     @TruffleBoundary
     @Override
     public final SourceSection getSourceSection() {
-        LineNumberTable lineNumberTable = method.getCodeAttribute().getLineNumberTable();
         Source s = getSource();
         if (s == null) {
             return null;
         }
+
+        CodeAttribute codeAttribute = method.getCodeAttribute();
+        if (codeAttribute == null) {
+            return null;
+        }
+
+        LineNumberTable lineNumberTable = codeAttribute.getLineNumberTable();
 
         if (lineNumberTable != LineNumberTable.EMPTY) {
             LineNumberTable.Entry[] entries = lineNumberTable.getEntries();
