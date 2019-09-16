@@ -51,7 +51,7 @@ class WindowsNativeLibraryFeature implements Feature {
     }
 }
 
-class WindowsNativeLibrarySupport implements PlatformNativeLibrarySupport {
+class WindowsNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
     static void initialize() {
         ImageSingletons.add(PlatformNativeLibrarySupport.class, new WindowsNativeLibrarySupport());
