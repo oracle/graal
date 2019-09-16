@@ -84,7 +84,7 @@ public class WasmContext {
         modules.put(module.name(), module);
     }
 
-    public ExternalModule getExternalModule(String moduleName) {
+    public ExternalModule externalModule(String moduleName) {
         ExternalModule module = externalModules.get(moduleName);
         if (module == null) {
             module = new ExternalModule();
