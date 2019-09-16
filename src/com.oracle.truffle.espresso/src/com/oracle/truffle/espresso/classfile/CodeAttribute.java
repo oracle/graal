@@ -51,6 +51,8 @@ public final class CodeAttribute extends Attribute {
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
+    private LineNumberTable lineNumberTable;
+
     public CodeAttribute(Symbol<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes, int majorVersion) {
         super(name, null);
         this.maxStack = maxStack;
@@ -59,6 +61,20 @@ public final class CodeAttribute extends Attribute {
         this.exceptionHandlerEntries = exceptionHandlerEntries;
         this.attributes = attributes;
         this.majorVersion = majorVersion;
+    }
+
+    private LineNumberTable setLineNumberTable() {
+        LineNumberTable table = null;
+        for (Attribute attribute : attributes) {
+            if (attribute instanceof LineNumberTable) {
+                table = (LineNumberTable) attribute;
+                break;
+            }
+        }
+        if (table == null) {
+            table = LineNumberTable.EMPTY;
+        }
+        return table;
     }
 
     public int getMaxStack() {
@@ -71,6 +87,13 @@ public final class CodeAttribute extends Attribute {
 
     public Attribute[] getAttributes() {
         return attributes;
+    }
+
+    public LineNumberTable getLineNumberTable() {
+        if (lineNumberTable == null) {
+            lineNumberTable = setLineNumberTable();
+        }
+        return lineNumberTable;
     }
 
     public byte[] getCode() {
