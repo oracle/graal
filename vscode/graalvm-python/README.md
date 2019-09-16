@@ -26,9 +26,3 @@ For Python sources opened in editor, all the `Polyglot.eval(...)` calls are dete
 This extension depends on the following extensions:
 * [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) - Python language support.
 * [GraalVM](https://marketplace.visualstudio.com/items?itemName=OracleLabs.graalvm) - Basic support for GraalVM.
-
-## Release Notes
-
-### 0.0.1
-
-Initial release of the extension.
