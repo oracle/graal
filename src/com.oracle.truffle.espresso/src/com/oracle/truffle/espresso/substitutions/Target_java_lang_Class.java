@@ -186,7 +186,9 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     public static @Host(Constructor[].class) StaticObject getDeclaredConstructors0(@Host(Class.class) StaticObject self, boolean publicOnly) {
         ArrayList<Method> collectedMethods = new ArrayList<>();
-        for (Method m : self.getMirrorKlass().getDeclaredConstructors()) {
+        Klass klass = self.getMirrorKlass();
+        klass.safeInitialize();
+        for (Method m : klass.getDeclaredConstructors()) {
             if (Name.INIT.equals(m.getName()) && (!publicOnly || m.isPublic())) {
                 collectedMethods.add(m);
             }
