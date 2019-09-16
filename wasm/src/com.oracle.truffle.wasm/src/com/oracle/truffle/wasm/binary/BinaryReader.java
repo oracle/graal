@@ -1001,8 +1001,16 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private WasmLoopNode readLoop(WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
-       WasmBlockNode loopBlock = readBlock(codeEntry, state, returnTypeId);
-       return new WasmLoopNode(loopBlock);
+        int initialStackPointer = state.stackSize();
+        WasmBlockNode loopBlock = readBlock(codeEntry, state, returnTypeId);
+
+        // TODO: Hack to correctly set the stack pointer for abstract interpretation.
+        // If a block has branch instructions that target "shallower" blocks which return no value,
+        // then it can leave no values in the stack, which is invalid for our abstract interpretation.
+        // Correct the stack pointer to the value it would have in case there were no branch instructions.
+        state.setStackPointer(returnTypeId != ValueTypes.VOID_TYPE ? initialStackPointer + 1 : initialStackPointer);
+
+        return new WasmLoopNode(loopBlock);
     }
 
     private WasmIfNode readIf(WasmCodeEntry codeEntry, ExecutionState state) {
@@ -1017,6 +1025,12 @@ public class BinaryReader extends BinaryStreamReader {
         // Read true branch.
         int startOffset = offset();
         WasmBlockNode trueBranchBlock = readBlock(codeEntry, state, blockTypeId);
+
+        // TODO: Hack to correctly set the stack pointer for abstract interpretation.
+        // If a block has branch instructions that target "shallower" blocks which return no value,
+        // then it can leave no values in the stack, which is invalid for our abstract interpretation.
+        // Correct the stack pointer to the value it would have in case there were no branch instructions.
+        state.setStackPointer(blockTypeId != ValueTypes.VOID_TYPE ? initialStackPointer : initialStackPointer - 1);
 
         // Read false branch, if it exists.
         WasmNode falseBranch;
