@@ -29,29 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.except.LLVMException;
 
-import java.util.concurrent.ConcurrentMap;
+public final class LLVMThreadException extends LLVMException {
 
-final class UtilAccessCollectionWithBoundary {
+    private static final long serialVersionUID = -165236179174859132L;
 
-    @TruffleBoundary
-    public static <K, V> void put(ConcurrentMap<K, V> c, K key, V value) {
-        c.put(key, value);
+    public LLVMThreadException(Node location, String message, Throwable cause) {
+        super(location, message, cause);
     }
 
-    @TruffleBoundary
-    public static <K, V> V get(ConcurrentMap<K, V> c, K key) {
-        return c.get(key);
-    }
-
-    @TruffleBoundary
-    public static <K, V> void remove(ConcurrentMap<K, V> c, K key) {
-        c.remove(key);
-    }
-
-    @TruffleBoundary
-    public static <K, V> boolean containsKey(ConcurrentMap<K, V> map, K key) {
-        return map.containsKey(key);
-    }
 }

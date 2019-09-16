@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -62,6 +63,7 @@ public final class UtilCConstants {
         }
     }
 
+    @TruffleBoundary
     public int getConstant(CConstant constant) {
         if (valueMap.containsKey(constant)) {
             return valueMap.get(constant);

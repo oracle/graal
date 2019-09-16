@@ -74,12 +74,12 @@ final class UtilFunctionCall {
             // pthread_exit throws a control flow exception to stop the thread
             try {
                 // save return value in storage
-                Object retVal = ctx.pthreadCallTarget.call(startRoutine, arg);
+                Object returnValue = ctx.pthreadCallTarget.call(startRoutine, arg);
                 // no null values in concurrent hash map allowed
-                if (retVal == null) {
-                    retVal = LLVMNativePointer.createNull();
+                if (returnValue == null) {
+                    returnValue = LLVMNativePointer.createNull();
                 }
-                UtilAccessCollectionWithBoundary.put(ctx.retValStorage, Thread.currentThread().getId(), retVal);
+                ctx.setThreadReturnValue(Thread.currentThread().getId(), returnValue);
             } catch (PThreadExitException e) {
                 // return value is written to retval storage in exit function before it throws this
                 // exception
