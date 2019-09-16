@@ -70,10 +70,11 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
     }
 
     public BytecodesNode getBytecodesNode() {
-        // parent is BytecodesNode.InstrumentationSupport
-        // parents parent is the BytecodesNode
-        Node parent = getParent().getParent();
-        if (parent instanceof WrapperNode || parent instanceof BytecodesNode.InstrumentationSupport) {
+        // parent is normally the BytecodesNode.InstrumentationSupport
+        // parents parent is normally the BytecodesNode
+        Node parent = getParent();
+
+        while (parent instanceof WrapperNode || parent instanceof BytecodesNode.InstrumentationSupport) {
             parent = parent.getParent();
         }
         assert !(parent instanceof WrapperNode);
