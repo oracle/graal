@@ -63,20 +63,6 @@ public final class CodeAttribute extends Attribute {
         this.majorVersion = majorVersion;
     }
 
-    private LineNumberTable setLineNumberTable() {
-        LineNumberTable table = null;
-        for (Attribute attribute : attributes) {
-            if (attribute instanceof LineNumberTable) {
-                table = (LineNumberTable) attribute;
-                break;
-            }
-        }
-        if (table == null) {
-            table = LineNumberTable.EMPTY;
-        }
-        return table;
-    }
-
     public int getMaxStack() {
         return maxStack;
     }
@@ -87,13 +73,6 @@ public final class CodeAttribute extends Attribute {
 
     public Attribute[] getAttributes() {
         return attributes;
-    }
-
-    public LineNumberTable getLineNumberTable() {
-        if (lineNumberTable == null) {
-            lineNumberTable = setLineNumberTable();
-        }
-        return lineNumberTable;
     }
 
     public byte[] getCode() {
@@ -113,18 +92,18 @@ public final class CodeAttribute extends Attribute {
         return null;
     }
 
-    private LineNumberTable getLineNumberTableAttribute() {
+    public LineNumberTable getLineNumberTableAttribute() {
         for (Attribute attr : attributes) {
             if (attr.getName() == Name.LineNumberTable) {
                 return (LineNumberTable) attr;
             }
         }
-        return null;
+        return LineNumberTable.EMPTY;
     }
 
     public final int BCItoLineNumber(int BCI) {
         LineNumberTable lnt = getLineNumberTableAttribute();
-        if (lnt == null) {
+        if (lnt == LineNumberTable.EMPTY) {
             return -1;
         }
         return lnt.getLineNumber(BCI);
