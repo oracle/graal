@@ -44,6 +44,11 @@ public class EmscriptenSuite extends WasmSuiteBase {
         return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "emcc");
     }
 
+    @Override
+    protected String includedExternalModules() {
+        return "env:emscripten";
+    }
+
     @Test
     public void test() throws IOException {
         // This is here just to make mx aware of the test suite class.

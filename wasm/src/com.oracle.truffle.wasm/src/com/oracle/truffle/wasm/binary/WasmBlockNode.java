@@ -407,7 +407,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int numArgs = function.numArguments();
 
                     if (callNodeTable[callNodeOffset] instanceof WasmCallStubNode) {
-                        // Lazily create the direct call node at this code position.
+                        // Lazily create the direct call node at this code position, and recompile to eliminate this check.
                         final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().getCallTarget();
                         callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
                         CompilerDirectives.transferToInterpreterAndInvalidate();

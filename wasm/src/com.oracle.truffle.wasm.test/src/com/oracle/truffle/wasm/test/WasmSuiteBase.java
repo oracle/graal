@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.wasm.binary.WasmContext;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -54,10 +55,10 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.wasm.test.options.WasmTestOptions;
 
 public abstract class WasmSuiteBase extends WasmTestBase {
-    private static WasmTestStatus runTestCase(WasmTestCase testCase) {
+    private WasmTestStatus runTestCase(WasmTestCase testCase) {
         try {
             byte[] binary = testCase.selfCompile();
-            Context context = Context.create();
+            Context context = Context.newBuilder().environment("external-modules", includedExternalModules()).build();
             Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);
             Value function = context.getBindings("wasm").getMember("_main");
@@ -73,6 +74,10 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             validateThrown(testCase.data.expectedErrorMessage, e);
         }
         return WasmTestStatus.OK;
+    }
+
+    protected String includedExternalModules() {
+        return "";
     }
 
     private static void validateResult(Consumer<Value> validator, Value result) {
