@@ -227,7 +227,9 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -251,6 +253,7 @@ import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.bytecode.MapperBCI;
 import com.oracle.truffle.espresso.classfile.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.ClassConstant;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -278,7 +281,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -303,10 +305,6 @@ import com.oracle.truffle.object.DebugCounter;
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
 public final class BytecodesNode extends EspressoMethodNode implements CustomNodeCount {
-
-    public static final boolean DEBUG_GENERAL = false;
-    public static final boolean DEBUG_THROWN = false;
-    public static final boolean DEBUG_CATCH = false;
 
     public static final DebugCounter bcCount = DebugCounter.create("Bytecodes executed");
 
@@ -543,6 +541,8 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
         int top = 0;
         initArguments(frame);
         InstrumentationSupport instrument = this.instrumentation;
+        int statementIndex = -1;
+        int nextStatementIndex = 0;
 
         loop: while (true) {
             int curOpcode;
@@ -552,14 +552,18 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                 CompilerAsserts.partialEvaluationConstant(top);
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 CompilerAsserts.partialEvaluationConstant(curOpcode);
+                CompilerAsserts.partialEvaluationConstant(statementIndex);
+                CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
 
                 if (instrument != null) {
-                    instrument.notifyBeforeBci(frame, curBCI);
+                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
+                    statementIndex = nextStatementIndex;
                 }
 
                 // @formatter:off
                 // Checkstyle: stop
                     try {
+                       switchLabel:
                        switch (curOpcode) {
                         case NOP: break;
                         case ACONST_NULL: putObject(frame, top, StaticObject.NULL); break;
@@ -775,18 +779,27 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                             // Checkstyle: resume
                             if (takeBranch(frame, top, curOpcode)) {
                                 int targetBCI = bs.readBranchDest(curBCI);
-                                top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                CompilerAsserts.partialEvaluationConstant(targetBCI);
+                                checkBackEdge(curBCI, targetBCI);
+                                if (instrument != null) {
+                                    nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                }
+                                top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
-                            break;
+                            break switchLabel;
 
                         case JSR: // fall through
                         case JSR_W: {
                             putReturnAddress(frame, top, bs.nextBCI(curBCI));
                             int targetBCI = bs.readBranchDest(curBCI);
                             CompilerAsserts.partialEvaluationConstant(targetBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            checkBackEdge(curBCI, targetBCI);
+                            if (instrument != null) {
+                                nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                            }
+                            top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
                             continue loop;
                         }
@@ -803,15 +816,26 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                             for (int jsr : JSRbci[curBCI]) {
                                 if (jsr == targetBCI) {
                                     CompilerAsserts.partialEvaluationConstant(jsr);
-                                    top = checkBackEdge(curBCI, jsr, top, curOpcode);
-                                    curBCI = jsr;
+                                    targetBCI = jsr;
+                                    CompilerAsserts.partialEvaluationConstant(targetBCI);
+                                    checkBackEdge(curBCI, targetBCI);
+                                    if (instrument != null) {
+                                        nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                    }
+                                    top += Bytecodes.stackEffectOf(curOpcode);
+                                    curBCI = targetBCI;
                                     continue loop;
                                 }
                             }
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             JSRbci[curBCI] = Arrays.copyOf(JSRbci[curBCI], JSRbci[curBCI].length + 1);
                             JSRbci[curBCI][JSRbci[curBCI].length - 1] = targetBCI;
-                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            CompilerAsserts.partialEvaluationConstant(targetBCI);
+                            checkBackEdge(curBCI, targetBCI);
+                            if (instrument != null) {
+                                nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                            }
+                            top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
                             continue loop;
                         }
@@ -832,7 +856,11 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                                     targetBCI = switchHelper.defaultTarget(curBCI);
                                 }
                                 CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                checkBackEdge(curBCI, targetBCI);
+                                if (instrument != null) {
+                                    nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                }
+                                top += Bytecodes.stackEffectOf(curOpcode);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -845,7 +873,11 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                                     // Key found.
                                     int targetBCI = switchHelper.targetAt(curBCI, i - low);
                                     CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                    top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                    checkBackEdge(curBCI, targetBCI);
+                                    if (instrument != null) {
+                                        nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                    }
+                                    top += Bytecodes.stackEffectOf(curOpcode);
                                     curBCI = targetBCI;
                                     continue loop;
                                 }
@@ -854,7 +886,11 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                             // Key not found.
                             int targetBCI = switchHelper.defaultTarget(curBCI);
                             CompilerAsserts.partialEvaluationConstant(targetBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            checkBackEdge(curBCI, targetBCI);
+                            if (instrument != null) {
+                                nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                            }
+                            top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
                             continue loop;
                         }
@@ -874,7 +910,11 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                                     // Key found.
                                     int targetBCI = curBCI + switchHelper.offsetAt(curBCI, mid);
                                     CompilerAsserts.partialEvaluationConstant(targetBCI);
-                                    top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                                    checkBackEdge(curBCI, targetBCI);
+                                    if (instrument != null) {
+                                        nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                                    }
+                                    top += Bytecodes.stackEffectOf(curOpcode);
                                     curBCI = targetBCI;
                                     continue loop;
                                 }
@@ -883,24 +923,28 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                             // Key not found.
                             int targetBCI = switchHelper.defaultTarget(curBCI);
                             CompilerAsserts.partialEvaluationConstant(targetBCI);
-                            top = checkBackEdge(curBCI, targetBCI, top, curOpcode);
+                            checkBackEdge(curBCI, targetBCI);
+                            if (instrument != null) {
+                                nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                            }
+                            top += Bytecodes.stackEffectOf(curOpcode);
                             curBCI = targetBCI;
                             continue loop;
                         }
                         // @formatter:off
                         // Checkstyle: stop
                         case IRETURN:
-                            return notifyReturn(frame, curBCI, exitMethodAndReturn(peekInt(frame, top - 1)));
+                            return notifyReturn(frame,  statementIndex, exitMethodAndReturn(peekInt(frame, top - 1)));
                        case LRETURN:
-                            return notifyReturn(frame, curBCI, exitMethodAndReturnObject(peekLong(frame, top - 1)));
+                            return notifyReturn(frame,  statementIndex, exitMethodAndReturnObject(peekLong(frame, top - 1)));
                         case FRETURN:
-                            return notifyReturn(frame, curBCI, exitMethodAndReturnObject(peekFloat(frame, top - 1)));
+                            return notifyReturn(frame,  statementIndex, exitMethodAndReturnObject(peekFloat(frame, top - 1)));
                         case DRETURN:
-                            return notifyReturn(frame, curBCI, exitMethodAndReturnObject(peekDouble(frame, top - 1)));
+                            return notifyReturn(frame,  statementIndex, exitMethodAndReturnObject(peekDouble(frame, top - 1)));
                         case ARETURN:
-                             return notifyReturn(frame, curBCI, exitMethodAndReturnObject(peekObject(frame, top - 1)));
+                             return notifyReturn(frame,  statementIndex, exitMethodAndReturnObject(peekObject(frame, top - 1)));
                         case RETURN:
-                            return notifyReturn(frame, curBCI, exitMethodAndReturn());
+                            return notifyReturn(frame,  statementIndex, exitMethodAndReturn());
 
                         // TODO(peterssen): Order shuffled.
                         case GETSTATIC: // fall through
@@ -919,9 +963,6 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                         case ARRAYLENGTH: putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekAndReleaseObject(frame, top - 1)))); break;
 
                         case ATHROW:
-                            if (DEBUG_THROWN) {
-                                reportThrow(curBCI, getMethod(), nullCheck(peekObject(frame, top - 1)));
-                            }
                             throw new EspressoException(nullCheck(peekAndReleaseObject(frame, top - 1)));
 
                         case CHECKCAST: top += quickenCheckCast(frame, top, curBCI, curOpcode); break;
@@ -952,7 +993,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                     // Checkstyle: resume
                 } catch (EspressoException | EspressoExitException e) {
                     if (instrument != null) {
-                        instrument.notifyExceptionInBci(frame, e, curBCI);
+                        instrument.notifyExceptionAt(frame, e, statementIndex);
                     }
                     throw e;
                 } catch (OutOfMemoryError e) {
@@ -977,9 +1018,6 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                     throw getMeta().throwEx(e.getClass());
                 } catch (RuntimeException e) {
                     CompilerDirectives.transferToInterpreter();
-                    if (DEBUG_GENERAL) {
-                        reportRuntimeException(e, curBCI, this);
-                    }
                     throw e;
                 } catch (Exception e) {
                     // TODO(garcia) Do not lose the cause.
@@ -988,9 +1026,6 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     e.printStackTrace();
                     throw EspressoError.shouldNotReachHere("Shouldn't see host exceptions here" + e);
-                }
-                if (instrument != null) {
-                    instrument.notifyAfterBci(frame, curBCI);
                 }
             } catch (EspressoException e) {
                 // CompilerDirectives.transferToInterpreter();
@@ -1032,6 +1067,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                     }
                     throw e;
                 }
+                StaticObject exceptionToHandle = e.getException();
                 ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
                 ExceptionHandler handler = null;
                 for (ExceptionHandler toCheck : handlers) {
@@ -1042,7 +1078,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                             // instanceof
                             catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
                         }
-                        if (catchType == null || InterpreterToVM.instanceOf(e.getException(), catchType)) {
+                        if (catchType == null || InterpreterToVM.instanceOf(exceptionToHandle, catchType)) {
                             // the first found exception handler is our exception handler
                             handler = toCheck;
                             break;
@@ -1055,23 +1091,22 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                         e.addStackFrame(getMethod(), curBCI, getMeta());
                         InterpreterToVM.fillInStackTrace(e.getException(), true, getMeta());
                     }
-                    putObject(frame, 0, e.getException());
+                    putObject(frame, 0, exceptionToHandle);
                     top++;
-                    curBCI = handler.getHandlerBCI();
-                    if (DEBUG_CATCH) {
-                        reportCatch(e, curBCI, this);
+                    int targetBCI = handler.getHandlerBCI();
+                    checkBackEdge(curBCI, targetBCI);
+                    if (instrument != null) {
+                        nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
                     }
-                    continue loop; // skip bs.next()
+                    curBCI = targetBCI;
+                    continue loop;
                 } else {
-                    if (e.isUnwinding(getMeta())) {
-                        e.addStackFrame(getMethod(), curBCI, getMeta());
-                    }
-                    throw e;
+                    throw new EspressoException(exceptionToHandle);
                 }
             } catch (VirtualMachineError e) {
                 // TODO(peterssen): Host should not throw invalid VME (not in the boot classpath).
                 Meta meta = EspressoLanguage.getCurrentContext().getMeta();
-                StaticObject ex = meta.initEx(e.getClass());
+                StaticObject exceptionToHandle = meta.initEx(e.getClass());
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 ExceptionHandler[] handlers = getMethod().getExceptionHandlers();
                 ExceptionHandler handler = null;
@@ -1083,7 +1118,7 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                             // instanceof
                             catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
                         }
-                        if (catchType == null || InterpreterToVM.instanceOf(ex, catchType)) {
+                        if (catchType == null || InterpreterToVM.instanceOf(exceptionToHandle, catchType)) {
                             // the first found exception handler is our exception handler
                             handler = toCheck;
                             break;
@@ -1092,24 +1127,31 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
                 }
                 if (handler != null) {
                     top = 0;
-                    putObject(frame, 0, ex);
+                    putObject(frame, 0, exceptionToHandle);
                     top++;
-                    curBCI = handler.getHandlerBCI();
-                    continue loop; // skip bs.next()
+                    int targetBCI = handler.getHandlerBCI();
+                    checkBackEdge(curBCI, targetBCI);
+                    if (instrument != null) {
+                        nextStatementIndex = instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
+                    }
+                    curBCI = targetBCI;
+                    continue loop;
                 } else {
-                    reportVMError(e, curBCI, this);
-                    throw new EspressoException(ex);
+                    throw new EspressoException(exceptionToHandle);
                 }
             }
             top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = bs.nextBCI(curBCI);
+            if (instrument != null) {
+                nextStatementIndex = instrument.getNextStatementIndex(statementIndex, curBCI);
+            }
         }
 
     }
 
-    private Object notifyReturn(VirtualFrame frame, int curBCI, Object toReturn) {
+    private Object notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn) {
         if (instrumentation != null) {
-            instrumentation.notifyAfterBci(frame, curBCI);
+            instrumentation.notifyStatement(frame, statementIndex, -1);
         }
         return toReturn;
     }
@@ -1165,14 +1207,12 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
         // Checkstyle: resume
     }
 
-    private int checkBackEdge(int curBCI, int targetBCI, int top, int opCode) {
-        int newTop = top + Bytecodes.stackEffectOf(opCode);
+    private void checkBackEdge(int curBCI, int targetBCI) {
         if (targetBCI < curBCI) {
             if (CompilerDirectives.inInterpreter()) {
                 LoopNode.reportLoopCount(this, 1);
             }
         }
-        return newTop;
     }
 
     @TruffleBoundary
@@ -1873,9 +1913,6 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
         if (StaticObject.isNull(value)) {
             // TODO(peterssen): Profile whether null was hit or not.
             Meta meta = getMethod().getContext().getMeta();
-            if (DEBUG_GENERAL) {
-                System.err.println("null appeared in: " + this);
-            }
             throw meta.throwEx(meta.NullPointerException);
         }
         return value;
@@ -2169,33 +2206,51 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
     static final class InstrumentationSupport extends Node {
 
         @Children private final EspressoInstrumentableNode[] statementNodes;
-        private Map<Integer, Integer> hookBCIToNodeIndex;
+        @Child private MapperBCI hookBCIToNodeIndex;
 
         InstrumentationSupport(Method method) {
             LineNumberTable table = method.getLineNumberTable();
 
             if (table != LineNumberTable.EMPTY) {
                 LineNumberTable.Entry[] entries = table.getEntries();
-                statementNodes = new EspressoInstrumentableNode[entries.length];
-                hookBCIToNodeIndex = new HashMap<>(entries.length);
+                this.statementNodes = new EspressoInstrumentableNode[entries.length];
+                this.hookBCIToNodeIndex = new MapperBCI(table);
 
                 for (int i = 0; i < entries.length; i++) {
                     LineNumberTable.Entry entry = entries[i];
-                    statementNodes[i] = new EspressoStatementNode(entry.getBCI(), entry);
-                    hookBCIToNodeIndex.put(entry.getBCI(), i);
+                    statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), entry.getLineNumber());
                 }
             } else {
                 this.statementNodes = null;
+                this.hookBCIToNodeIndex = null;
             }
         }
 
-        final void notifyBeforeBci(VirtualFrame frame, int bci) {
-            EspressoInstrumentableNodeWrapper wrapperNode = getWrapper(bci);
+        /**
+         * If transitioning between two statements, exits the current one, and enter the new one.
+         */
+        final void notifyStatement(VirtualFrame frame, int statementIndex, int nextStatementIndex) {
+            CompilerAsserts.partialEvaluationConstant(statementIndex);
+            CompilerAsserts.partialEvaluationConstant(nextStatementIndex);
+            if (statementIndex == nextStatementIndex) {
+                return;
+            }
+            exitAt(frame, statementIndex);
+            enterAt(frame, nextStatementIndex);
+        }
+
+        final void notifyExceptionAt(VirtualFrame frame, Throwable t, int statementIndex) {
+            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(statementIndex);
             if (wrapperNode == null) {
                 return;
             }
-            EspressoStatementNode statement = (EspressoStatementNode) wrapperNode.getDelegateNode();
-            if (!statement.isBefore(bci)) {
+            ProbeNode probeNode = wrapperNode.getProbeNode();
+            probeNode.onReturnExceptionalOrUnwind(frame, t, false);
+        }
+
+        private void enterAt(VirtualFrame frame, int index) {
+            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(index);
+            if (wrapperNode == null) {
                 return;
             }
             ProbeNode probeNode = wrapperNode.getProbeNode();
@@ -2216,25 +2271,11 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
             }
         }
 
-        final void notifyExceptionInBci(VirtualFrame frame, Throwable t, int bci) {
-            EspressoInstrumentableNodeWrapper wrapperNode = getWrapper(bci);
+        private void exitAt(VirtualFrame frame, int index) {
+            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(index);
             if (wrapperNode == null) {
                 return;
             }
-            ProbeNode probeNode = wrapperNode.getProbeNode();
-            probeNode.onReturnExceptionalOrUnwind(frame, t, false);
-        }
-
-        final void notifyAfterBci(VirtualFrame frame, int bci) {
-            EspressoInstrumentableNodeWrapper wrapperNode = getWrapper(bci);
-            if (wrapperNode == null) {
-                return;
-            }
-            EspressoStatementNode statement = (EspressoStatementNode) wrapperNode.getDelegateNode();
-            if (!statement.isAfter(bci)) {
-                return;
-            }
-
             ProbeNode probeNode = wrapperNode.getProbeNode();
             try {
                 probeNode.onReturnValue(frame, StaticObject.NULL);
@@ -2253,20 +2294,28 @@ public final class BytecodesNode extends EspressoMethodNode implements CustomNod
             }
         }
 
-        private EspressoInstrumentableNodeWrapper getWrapper(int bci) {
-            if (statementNodes == null) {
-                return null;
+        final int getStatementIndexAfterJump(int statementIndex, int curBCI, int targetBCI) {
+            if (hookBCIToNodeIndex == null) {
+                return 0;
             }
-            Integer nodeIndex = hookBCIToNodeIndex.get(bci);
-            if (nodeIndex == null) {
-                return null;
-            }
+            return hookBCIToNodeIndex.lookup(statementIndex, curBCI, targetBCI);
+        }
 
-            EspressoInstrumentableNode node = statementNodes[nodeIndex];
+        final int getNextStatementIndex(int statementIndex, int nextBCI) {
+            if (hookBCIToNodeIndex == null) {
+                return 0;
+            }
+            return hookBCIToNodeIndex.checkNext(statementIndex, nextBCI);
+        }
+
+        private EspressoInstrumentableNodeWrapper getWrapperAt(int index) {
+            if (statementNodes == null || index < 0) {
+                return null;
+            }
+            EspressoInstrumentableNode node = statementNodes[index];
             if (!(node instanceof EspressoInstrumentableNodeWrapper)) {
                 return null;
             }
-
             CompilerAsserts.partialEvaluationConstant(node);
             return ((EspressoInstrumentableNodeWrapper) node);
         }

@@ -28,7 +28,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.classfile.LineNumberTable;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -37,10 +36,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class EspressoStatementNode extends EspressoInstrumentableNode {
 
     private final int startBci;
-    private final LineNumberTable.Entry lineNumberTableEntry;
+    private final int lineNumber;
 
-    EspressoStatementNode(int startBci, LineNumberTable.Entry lineNumberTableEntry) {
-        this.lineNumberTableEntry = lineNumberTableEntry;
+    EspressoStatementNode(int startBci, int lineNumber) {
+        this.lineNumber = lineNumber;
         this.startBci = startBci;
     }
 
@@ -49,15 +48,15 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
         return StaticObject.NULL;
     }
 
-    public LineNumberTable.Entry getLineNumberTableEntry() {
-        return lineNumberTableEntry;
+    public int getLineNumberTableEntry() {
+        return lineNumber;
     }
 
     @Override
     public SourceSection getSourceSection() {
         Source s = getBytecodesNode().getSource();
         if (s != null) {
-            return s.createSection(lineNumberTableEntry.getLineNumber());
+            return s.createSection(lineNumber);
         } else {
             // TODO should this really happen? If there is a line number table
             // shouldn't there also be a source file?
@@ -82,7 +81,7 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
     }
 
     public boolean isAfter(int bci) {
-        return bci == lineNumberTableEntry.getBCI();
+        return bci == startBci;
     }
 
     public boolean isBefore(int bci) {
