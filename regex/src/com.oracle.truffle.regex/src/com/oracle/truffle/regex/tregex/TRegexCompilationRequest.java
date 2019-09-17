@@ -34,9 +34,6 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
@@ -125,7 +122,7 @@ final class TRegexCompilationRequest {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
         createNFA();
-        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !properties.hasLoops()) {
+        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
@@ -233,29 +230,7 @@ final class TRegexCompilationRequest {
     }
 
     private TRegexDFAExecutorProperties createExecutorProperties(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot inputFS = frameDescriptor.addFrameSlot("input", FrameSlotKind.Object);
-        FrameSlot fromIndexFS = frameDescriptor.addFrameSlot("fromIndex", FrameSlotKind.Int);
-        FrameSlot indexFS = frameDescriptor.addFrameSlot("index", FrameSlotKind.Int);
-        FrameSlot maxIndexFS = frameDescriptor.addFrameSlot("maxIndex", FrameSlotKind.Int);
-        FrameSlot curMaxIndexFS = frameDescriptor.addFrameSlot("curMaxIndex", FrameSlotKind.Int);
-        FrameSlot successorIndexFS = frameDescriptor.addFrameSlot("successorIndex", FrameSlotKind.Int);
-        FrameSlot resultFS = frameDescriptor.addFrameSlot("result", FrameSlotKind.Int);
-        FrameSlot captureGroupResultFS = frameDescriptor.addFrameSlot("captureGroupResult", FrameSlotKind.Object);
-        FrameSlot lastTransitionFS = frameDescriptor.addFrameSlot("lastTransition", FrameSlotKind.Int);
-        FrameSlot cgDataFS = frameDescriptor.addFrameSlot("cgData", FrameSlotKind.Object);
         return new TRegexDFAExecutorProperties(
-                        frameDescriptor,
-                        inputFS,
-                        fromIndexFS,
-                        indexFS,
-                        maxIndexFS,
-                        curMaxIndexFS,
-                        successorIndexFS,
-                        resultFS,
-                        captureGroupResultFS,
-                        lastTransitionFS,
-                        cgDataFS,
                         forward,
                         searching,
                         trackCaptureGroups,

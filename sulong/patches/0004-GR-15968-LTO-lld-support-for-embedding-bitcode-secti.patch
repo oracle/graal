@@ -1,0 +1,509 @@
+From d563e33a7935dec13e944543dff1f8cdf36eaac7 Mon Sep 17 00:00:00 2001
+From: Josef Eisl <josef.eisl@oracle.com>
+Date: Fri, 11 Jan 2019 10:54:59 +0100
+Subject: [PATCH 4/4] [GR-15968] [LTO,lld] support for embedding bitcode
+ section during LTO
+
+---
+ clang/lib/CodeGen/BackendUtil.cpp         | 116 +--------------------
+ lld/ELF/Config.h                          |   9 ++
+ lld/ELF/Driver.cpp                        |  15 +++
+ lld/ELF/LTO.cpp                           |   7 ++
+ lld/ELF/Options.td                        |   9 ++
+ lld/test/ELF/lto/embed-bitcode.ll         |  35 +++++++
+ llvm/include/llvm/Bitcode/BitcodeWriter.h |   7 ++
+ llvm/include/llvm/LTO/Config.h            |   8 ++
+ llvm/lib/Bitcode/Writer/BitcodeWriter.cpp | 119 ++++++++++++++++++++++
+ llvm/lib/LTO/LTOBackend.cpp               |  15 +++
+ 10 files changed, 227 insertions(+), 113 deletions(-)
+ create mode 100644 lld/test/ELF/lto/embed-bitcode.ll
+
+diff --git a/clang/lib/CodeGen/BackendUtil.cpp b/clang/lib/CodeGen/BackendUtil.cpp
+index b927acabac5..18536ad5c29 100644
+--- a/clang/lib/CodeGen/BackendUtil.cpp
++++ b/clang/lib/CodeGen/BackendUtil.cpp
+@@ -1330,123 +1330,13 @@ void clang::EmitBackendOutput(DiagnosticsEngine &Diags,
+   }
+ }
+ 
+-static const char* getSectionNameForBitcode(const Triple &T) {
+-  switch (T.getObjectFormat()) {
+-  case Triple::MachO:
+-    return "__LLVM,__bitcode";
+-  case Triple::COFF:
+-  case Triple::ELF:
+-  case Triple::Wasm:
+-  case Triple::UnknownObjectFormat:
+-    return ".llvmbc";
+-  }
+-  llvm_unreachable("Unimplemented ObjectFormatType");
+-}
+-
+-static const char* getSectionNameForCommandline(const Triple &T) {
+-  switch (T.getObjectFormat()) {
+-  case Triple::MachO:
+-    return "__LLVM,__cmdline";
+-  case Triple::COFF:
+-  case Triple::ELF:
+-  case Triple::Wasm:
+-  case Triple::UnknownObjectFormat:
+-    return ".llvmcmd";
+-  }
+-  llvm_unreachable("Unimplemented ObjectFormatType");
+-}
+-
+ // With -fembed-bitcode, save a copy of the llvm IR as data in the
+ // __LLVM,__bitcode section.
+ void clang::EmbedBitcode(llvm::Module *M, const CodeGenOptions &CGOpts,
+                          llvm::MemoryBufferRef Buf) {
+   if (CGOpts.getEmbedBitcode() == CodeGenOptions::Embed_Off)
+     return;
+-
+-  // Save llvm.compiler.used and remote it.
+-  SmallVector<Constant*, 2> UsedArray;
+-  SmallPtrSet<GlobalValue*, 4> UsedGlobals;
+-  Type *UsedElementType = Type::getInt8Ty(M->getContext())->getPointerTo(0);
+-  GlobalVariable *Used = collectUsedGlobalVariables(*M, UsedGlobals, true);
+-  for (auto *GV : UsedGlobals) {
+-    if (GV->getName() != "llvm.embedded.module" &&
+-        GV->getName() != "llvm.cmdline")
+-      UsedArray.push_back(
+-          ConstantExpr::getPointerBitCastOrAddrSpaceCast(GV, UsedElementType));
+-  }
+-  if (Used)
+-    Used->eraseFromParent();
+-
+-  // Embed the bitcode for the llvm module.
+-  std::string Data;
+-  ArrayRef<uint8_t> ModuleData;
+-  Triple T(M->getTargetTriple());
+-  // Create a constant that contains the bitcode.
+-  // In case of embedding a marker, ignore the input Buf and use the empty
+-  // ArrayRef. It is also legal to create a bitcode marker even Buf is empty.
+-  if (CGOpts.getEmbedBitcode() != CodeGenOptions::Embed_Marker) {
+-    if (!isBitcode((const unsigned char *)Buf.getBufferStart(),
+-                   (const unsigned char *)Buf.getBufferEnd())) {
+-      // If the input is LLVM Assembly, bitcode is produced by serializing
+-      // the module. Use-lists order need to be perserved in this case.
+-      llvm::raw_string_ostream OS(Data);
+-      llvm::WriteBitcodeToFile(*M, OS, /* ShouldPreserveUseListOrder */ true);
+-      ModuleData =
+-          ArrayRef<uint8_t>((const uint8_t *)OS.str().data(), OS.str().size());
+-    } else
+-      // If the input is LLVM bitcode, write the input byte stream directly.
+-      ModuleData = ArrayRef<uint8_t>((const uint8_t *)Buf.getBufferStart(),
+-                                     Buf.getBufferSize());
+-  }
+-  llvm::Constant *ModuleConstant =
+-      llvm::ConstantDataArray::get(M->getContext(), ModuleData);
+-  llvm::GlobalVariable *GV = new llvm::GlobalVariable(
+-      *M, ModuleConstant->getType(), true, llvm::GlobalValue::PrivateLinkage,
+-      ModuleConstant);
+-  GV->setSection(getSectionNameForBitcode(T));
+-  UsedArray.push_back(
+-      ConstantExpr::getPointerBitCastOrAddrSpaceCast(GV, UsedElementType));
+-  if (llvm::GlobalVariable *Old =
+-          M->getGlobalVariable("llvm.embedded.module", true)) {
+-    assert(Old->hasOneUse() &&
+-           "llvm.embedded.module can only be used once in llvm.compiler.used");
+-    GV->takeName(Old);
+-    Old->eraseFromParent();
+-  } else {
+-    GV->setName("llvm.embedded.module");
+-  }
+-
+-  // Skip if only bitcode needs to be embedded.
+-  if (CGOpts.getEmbedBitcode() != CodeGenOptions::Embed_Bitcode) {
+-    // Embed command-line options.
+-    ArrayRef<uint8_t> CmdData(const_cast<uint8_t *>(CGOpts.CmdArgs.data()),
+-                              CGOpts.CmdArgs.size());
+-    llvm::Constant *CmdConstant =
+-      llvm::ConstantDataArray::get(M->getContext(), CmdData);
+-    GV = new llvm::GlobalVariable(*M, CmdConstant->getType(), true,
+-                                  llvm::GlobalValue::PrivateLinkage,
+-                                  CmdConstant);
+-    GV->setSection(getSectionNameForCommandline(T));
+-    UsedArray.push_back(
+-        ConstantExpr::getPointerBitCastOrAddrSpaceCast(GV, UsedElementType));
+-    if (llvm::GlobalVariable *Old =
+-            M->getGlobalVariable("llvm.cmdline", true)) {
+-      assert(Old->hasOneUse() &&
+-             "llvm.cmdline can only be used once in llvm.compiler.used");
+-      GV->takeName(Old);
+-      Old->eraseFromParent();
+-    } else {
+-      GV->setName("llvm.cmdline");
+-    }
+-  }
+-
+-  if (UsedArray.empty())
+-    return;
+-
+-  // Recreate llvm.compiler.used.
+-  ArrayType *ATy = ArrayType::get(UsedElementType, UsedArray.size());
+-  auto *NewUsed = new GlobalVariable(
+-      *M, ATy, false, llvm::GlobalValue::AppendingLinkage,
+-      llvm::ConstantArray::get(ATy, UsedArray), "llvm.compiler.used");
+-  NewUsed->setSection("llvm.metadata");
++  llvm::EmbedBitcodeInModule(*M, Buf,
++                             CGOpts.getEmbedBitcode() == CodeGenOptions::Embed_Marker,
++                             &CGOpts.CmdArgs);
+ }
+diff --git a/lld/ELF/Config.h b/lld/ELF/Config.h
+index 60555f188fe..4e63a43d45d 100644
+--- a/lld/ELF/Config.h
++++ b/lld/ELF/Config.h
+@@ -61,6 +61,14 @@ enum class Target2Policy { Abs, Rel, GotRel };
+ // For tracking ARM Float Argument PCS
+ enum class ARMVFPArgKind { Default, Base, VFP, ToolChain };
+ 
++// For --embed-bitcode.
++enum class EmbedBitcodeKind {
++    Embed_Invalid,  // Invalid.
++    Embed_Off,      // No embedded bitcode.
++    Embed_Bitcode,  // Embed bitcode and commandline in the output.
++    Embed_Marker    // Embed a marker as a placeholder for bitcode.
++};
++
+ struct SymbolVersion {
+   llvm::StringRef Name;
+   bool IsExternCpp;
+@@ -222,6 +230,7 @@ struct Configuration {
+   unsigned Optimize;
+   unsigned ThinLTOJobs;
+   int32_t SplitStackAdjustSize;
++  EmbedBitcodeKind EmbedBitcode = EmbedBitcodeKind::Embed_Off;
+ 
+   // The following config options do not directly correspond to any
+   // particualr command line options.
+diff --git a/lld/ELF/Driver.cpp b/lld/ELF/Driver.cpp
+index bce9d944a4a..a28e1d79b5e 100644
+--- a/lld/ELF/Driver.cpp
++++ b/lld/ELF/Driver.cpp
+@@ -895,6 +895,21 @@ void LinkerDriver::readConfigs(opt::InputArgList &Args) {
+   for (auto *Arg : Args.filtered(OPT_plugin_opt))
+     parseClangOption(Arg->getValue(), Arg->getSpelling());
+ 
++  // Process --plugin-opt=embed-bitcode= flags.
++  if (auto *A = Args.getLastArg(OPT_plugin_opt_embed_bitcode_EQ)) {
++    StringRef Name = A->getValue();
++    auto Model = llvm::StringSwitch<EmbedBitcodeKind>(Name)
++            .Case("off", EmbedBitcodeKind::Embed_Off)
++            .Case("all", EmbedBitcodeKind::Embed_Bitcode)
++            .Case("bitcode", EmbedBitcodeKind::Embed_Bitcode)
++            .Case("marker", EmbedBitcodeKind::Embed_Marker)
++            .Default(EmbedBitcodeKind::Embed_Invalid);
++    if (Model == EmbedBitcodeKind::Embed_Invalid) {
++      error("invalid value '" + A->getAsString(Args) + "' for '" + Name + "'");
++    } else
++      Config->EmbedBitcode = Model;
++  }
++
+   // Parse -mllvm options.
+   for (auto *Arg : Args.filtered(OPT_mllvm))
+     parseClangOption(Arg->getValue(), Arg->getSpelling());
+diff --git a/lld/ELF/LTO.cpp b/lld/ELF/LTO.cpp
+index ca44581780e..3c4055e9466 100644
+--- a/lld/ELF/LTO.cpp
++++ b/lld/ELF/LTO.cpp
+@@ -111,6 +111,13 @@ static lto::Config createConfig() {
+     };
+   }
+ 
++  if (Config->EmbedBitcode == EmbedBitcodeKind::Embed_Marker)
++    C.EmbedBitcode = lto::Embed_Marker;
++  else if (Config->EmbedBitcode == EmbedBitcodeKind::Embed_Bitcode)
++    C.EmbedBitcode = lto::Embed_Bitcode;
++  else
++    C.EmbedBitcode = lto::Embed_Off;
++
+   if (Config->SaveTemps)
+     checkError(C.addSaveTemps(Config->OutputFile.str() + ".",
+                               /*UseInputModulePath*/ true));
+diff --git a/lld/ELF/Options.td b/lld/ELF/Options.td
+index 439fe341644..e219de6f78c 100644
+--- a/lld/ELF/Options.td
++++ b/lld/ELF/Options.td
+@@ -454,6 +454,15 @@ def thinlto_cache_dir: J<"thinlto-cache-dir=">,
+   HelpText<"Path to ThinLTO cached object file directory">;
+ defm thinlto_cache_policy: Eq<"thinlto-cache-policy", "Pruning policy for the ThinLTO cache">;
+ def thinlto_jobs: J<"thinlto-jobs=">, HelpText<"Number of ThinLTO jobs">;
++def plugin_opt_embed_bitcode_EQ : J<"plugin-opt=embed-bitcode=">,
++    MetaVarName<"<option>">,
++    HelpText<"Embed LLVM bitcode (option: off, all, bitcode, marker)">;
++def plugin_opt_embed_bitcode : F<"plugin-opt=embed-bitcode">,
++  Alias<plugin_opt_embed_bitcode_EQ>, AliasArgs<["all"]>,
++  HelpText<"Embed LLVM IR bitcode as data">;
++def plugin_opt_embed_bitcode_marker : F<"plugin-opt=embed-bitcode-marker">,
++  Alias<plugin_opt_embed_bitcode_EQ>, AliasArgs<["marker"]>,
++  HelpText<"Embed placeholder LLVM IR data as a marker">;
+ 
+ def: J<"plugin-opt=O">, Alias<lto_O>, HelpText<"Alias for -lto-O">;
+ def: F<"plugin-opt=debug-pass-manager">,
+diff --git a/lld/test/ELF/lto/embed-bitcode.ll b/lld/test/ELF/lto/embed-bitcode.ll
+new file mode 100644
+index 00000000000..d352ea282d6
+--- /dev/null
++++ b/lld/test/ELF/lto/embed-bitcode.ll
+@@ -0,0 +1,35 @@
++; REQUIRES: x86
++
++; RUN: llvm-as %s -o %t1.o
++; RUN: llvm-as %p/Inputs/start-lib1.ll -o %t2.o
++; RUN: llvm-as %p/Inputs/start-lib2.ll -o %t3.o
++
++; RUN: ld.lld --plugin-opt=embed-bitcode-marker -shared -o %t3 %t1.o %t2.o %t3.o
++; RUN: llvm-readelf -S %t3 | FileCheck %s --check-prefix=CHECK-ELF
++
++; RUN: ld.lld --plugin-opt=embed-bitcode=marker -shared -o %t3 %t1.o %t2.o %t3.o
++; RUN: llvm-readelf -S %t3 | FileCheck %s --check-prefix=CHECK-ELF
++
++; RUN: ld.lld --plugin-opt=embed-bitcode -shared -o %t3 %t1.o %t2.o %t3.o
++; RUN: llvm-readelf -S %t3 | FileCheck %s --check-prefix=CHECK-ELF
++; RUN: llvm-objcopy -O binary -j .llvmbc %t3 %t-embedded.bc
++; RUN: llvm-dis %t-embedded.bc -o - | FileCheck %s --check-prefix=CHECK-LL
++
++; RUN: ld.lld --plugin-opt=embed-bitcode=all -shared -o %t3 %t1.o %t2.o %t3.o
++; RUN: llvm-readelf -S %t3 | FileCheck %s --check-prefix=CHECK-ELF
++; RUN: llvm-objcopy -O binary -j .llvmbc %t3 %t-embedded.bc
++; RUN: llvm-dis %t-embedded.bc -o - | FileCheck %s --check-prefix=CHECK-LL
++
++; CHECK-ELF: .llvmbc
++; CHECK-ELF: .text
++
++; CHECK-LL: @_start
++; CHECK-LL: @foo
++; CHECK-LL: @bar
++
++target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
++target triple = "x86_64-unknown-linux-gnu"
++
++define void @_start() {
++  ret void
++}
+diff --git a/llvm/include/llvm/Bitcode/BitcodeWriter.h b/llvm/include/llvm/Bitcode/BitcodeWriter.h
+index 0010cf6c054..bc49550f1e5 100644
+--- a/llvm/include/llvm/Bitcode/BitcodeWriter.h
++++ b/llvm/include/llvm/Bitcode/BitcodeWriter.h
+@@ -18,6 +18,7 @@
+ #include "llvm/IR/ModuleSummaryIndex.h"
+ #include "llvm/MC/StringTableBuilder.h"
+ #include "llvm/Support/Allocator.h"
++#include "llvm/Support/MemoryBuffer.h"
+ #include <map>
+ #include <memory>
+ #include <string>
+@@ -152,6 +153,12 @@ class raw_ostream;
+                         const std::map<std::string, GVSummaryMapTy>
+                             *ModuleToSummariesForIndex = nullptr);
+ 
++  /// Save a copy of the llvm IR as data in the __LLVM,__bitcode section.
++  void EmbedBitcodeInModule(Module &M,
++                            MemoryBufferRef Buf,
++                            bool EmbedMarker,
++                            const std::vector<uint8_t> *CmdArgs);
++
+ } // end namespace llvm
+ 
+ #endif // LLVM_BITCODE_BITCODEWRITER_H
+diff --git a/llvm/include/llvm/LTO/Config.h b/llvm/include/llvm/LTO/Config.h
+index 7058602c3ee..a07c6295e38 100644
+--- a/llvm/include/llvm/LTO/Config.h
++++ b/llvm/include/llvm/LTO/Config.h
+@@ -31,6 +31,12 @@ class raw_pwrite_stream;
+ 
+ namespace lto {
+ 
++enum EmbedBitcodeKind {
++    Embed_Off,      // No embedded bitcode.
++    Embed_Bitcode,  // Embed bitcode and commandline in the output.
++    Embed_Marker    // Embed a marker as a placeholder for bitcode.
++};
++
+ /// LTO configuration. A linker can configure LTO by setting fields in this data
+ /// structure and passing it to the lto::LTO constructor.
+ struct Config {
+@@ -103,6 +109,8 @@ struct Config {
+   bool ShouldDiscardValueNames = true;
+   DiagnosticHandlerFunction DiagHandler;
+ 
++  EmbedBitcodeKind EmbedBitcode = EmbedBitcodeKind::Embed_Off;
++
+   /// If this field is set, LTO will write input file paths and symbol
+   /// resolutions here in llvm-lto2 command line flag format. This can be
+   /// used for testing and for running the LTO pipeline outside of the linker
+diff --git a/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp b/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
+index ba4f932e2e6..77e984320a5 100644
+--- a/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
++++ b/llvm/lib/Bitcode/Writer/BitcodeWriter.cpp
+@@ -26,6 +26,7 @@
+ #include "llvm/ADT/StringRef.h"
+ #include "llvm/ADT/Triple.h"
+ #include "llvm/Bitcode/BitCodes.h"
++#include "llvm/Bitcode/BitcodeReader.h"
+ #include "llvm/Bitcode/BitstreamWriter.h"
+ #include "llvm/Bitcode/LLVMBitCodes.h"
+ #include "llvm/Config/llvm-config.h"
+@@ -4496,3 +4497,121 @@ void llvm::WriteThinLinkBitcodeToFile(const Module &M, raw_ostream &Out,
+ 
+   Out.write((char *)&Buffer.front(), Buffer.size());
+ }
++
++static const char* getSectionNameForBitcode(const Triple &T) {
++  switch (T.getObjectFormat()) {
++    case Triple::MachO:
++      return "__LLVM,__bitcode";
++    case Triple::COFF:
++    case Triple::ELF:
++    case Triple::Wasm:
++    case Triple::UnknownObjectFormat:
++      return ".llvmbc";
++  }
++  llvm_unreachable("Unimplemented ObjectFormatType");
++}
++
++static const char* getSectionNameForCommandline(const Triple &T) {
++  switch (T.getObjectFormat()) {
++    case Triple::MachO:
++      return "__LLVM,__cmdline";
++    case Triple::COFF:
++    case Triple::ELF:
++    case Triple::Wasm:
++    case Triple::UnknownObjectFormat:
++      return ".llvmcmd";
++  }
++  llvm_unreachable("Unimplemented ObjectFormatType");
++}
++
++void llvm::EmbedBitcodeInModule(llvm::Module &M,
++                        llvm::MemoryBufferRef Buf,
++                        bool EmbedMarker,
++                        const std::vector<uint8_t> *CmdArgs) {
++  // Save llvm.compiler.used and remove it.
++  SmallVector<Constant*, 2> UsedArray;
++  SmallPtrSet<GlobalValue*, 4> UsedGlobals;
++  Type *UsedElementType = Type::getInt8Ty(M.getContext())->getPointerTo(0);
++  GlobalVariable *Used = collectUsedGlobalVariables(M, UsedGlobals, true);
++  for (auto *GV : UsedGlobals) {
++    if (GV->getName() != "llvm.embedded.module" &&
++        GV->getName() != "llvm.cmdline")
++      UsedArray.push_back(
++              ConstantExpr::getPointerBitCastOrAddrSpaceCast(GV, UsedElementType));
++  }
++  if (Used)
++    Used->eraseFromParent();
++
++  // Embed the bitcode for the llvm module.
++  std::string Data;
++  ArrayRef<uint8_t> ModuleData;
++  Triple T(M.getTargetTriple());
++  // Create a constant that contains the bitcode.
++  // In case of embedding a marker, ignore the input Buf and use the empty
++  // ArrayRef. It is also legal to create a bitcode marker even Buf is empty.
++  if (!EmbedMarker) {
++    if (!isBitcode((const unsigned char *)Buf.getBufferStart(),
++                   (const unsigned char *)Buf.getBufferEnd())) {
++      // If the input is LLVM Assembly, bitcode is produced by serializing
++      // the module. Use-lists order need to be preserved in this case.
++      llvm::raw_string_ostream OS(Data);
++      llvm::WriteBitcodeToFile(M, OS, /* ShouldPreserveUseListOrder */ true);
++      ModuleData =
++              ArrayRef<uint8_t>((const uint8_t *)OS.str().data(), OS.str().size());
++    } else
++      // If the input is LLVM bitcode, write the input byte stream directly.
++      ModuleData = ArrayRef<uint8_t>((const uint8_t *)Buf.getBufferStart(),
++                                     Buf.getBufferSize());
++  }
++  llvm::Constant *ModuleConstant =
++          llvm::ConstantDataArray::get(M.getContext(), ModuleData);
++  llvm::GlobalVariable *GV = new llvm::GlobalVariable(
++          M, ModuleConstant->getType(), true, llvm::GlobalValue::PrivateLinkage,
++          ModuleConstant);
++  GV->setSection(getSectionNameForBitcode(T));
++  UsedArray.push_back(
++          ConstantExpr::getPointerBitCastOrAddrSpaceCast(GV, UsedElementType));
++  if (llvm::GlobalVariable *Old =
++          M.getGlobalVariable("llvm.embedded.module", true)) {
++    assert(Old->hasOneUse() &&
++           "llvm.embedded.module can only be used once in llvm.compiler.used");
++    GV->takeName(Old);
++    Old->eraseFromParent();
++  } else {
++    GV->setName("llvm.embedded.module");
++  }
++
++  // Skip if only bitcode needs to be embedded.
++  if (EmbedMarker) {
++    // Embed command-line options.
++    ArrayRef<uint8_t> CmdData(const_cast<uint8_t *>(CmdArgs->data()),
++                              CmdArgs->size());
++    llvm::Constant *CmdConstant =
++            llvm::ConstantDataArray::get(M.getContext(), CmdData);
++    GV = new llvm::GlobalVariable(M, CmdConstant->getType(), true,
++                                  llvm::GlobalValue::PrivateLinkage,
++                                  CmdConstant);
++    GV->setSection(getSectionNameForCommandline(T));
++    UsedArray.push_back(
++            ConstantExpr::getPointerBitCastOrAddrSpaceCast(GV, UsedElementType));
++    if (llvm::GlobalVariable *Old =
++            M.getGlobalVariable("llvm.cmdline", true)) {
++      assert(Old->hasOneUse() &&
++             "llvm.cmdline can only be used once in llvm.compiler.used");
++      GV->takeName(Old);
++      Old->eraseFromParent();
++    } else {
++      GV->setName("llvm.cmdline");
++    }
++  }
++
++  if (UsedArray.empty())
++    return;
++
++  // Recreate llvm.compiler.used.
++  ArrayType *ATy = ArrayType::get(UsedElementType, UsedArray.size());
++  auto *NewUsed = new GlobalVariable(
++          M, ATy, false, llvm::GlobalValue::AppendingLinkage,
++          llvm::ConstantArray::get(ATy, UsedArray), "llvm.compiler.used");
++  NewUsed->setSection("llvm.metadata");
++}
+diff --git a/llvm/lib/LTO/LTOBackend.cpp b/llvm/lib/LTO/LTOBackend.cpp
+index 926c419e34a..d92fd24b477 100644
+--- a/llvm/lib/LTO/LTOBackend.cpp
++++ b/llvm/lib/LTO/LTOBackend.cpp
+@@ -14,6 +14,7 @@
+ //
+ //===----------------------------------------------------------------------===//
+ 
++#include <llvm/Support/SmallVectorMemoryBuffer.h>
+ #include "llvm/LTO/LTOBackend.h"
+ #include "llvm/Analysis/AliasAnalysis.h"
+ #include "llvm/Analysis/CGSCCPassManager.h"
+@@ -296,11 +297,25 @@ bool opt(Config &Conf, TargetMachine *TM, unsigned Task, Module &Mod,
+   return !Conf.PostOptModuleHook || Conf.PostOptModuleHook(Task, Mod);
+ }
+ 
++static void EmitBitcodeSection(Module &M, Config &Conf) {
++  if (Conf.EmbedBitcode == Embed_Off)
++      return;
++  SmallVector<char, 0> Buffer;
++  raw_svector_ostream OS(Buffer);
++  WriteBitcodeToFile(M, OS);
++
++  std::unique_ptr<MemoryBuffer> Buf(new SmallVectorMemoryBuffer(std::move(Buffer)));
++  std::vector<uint8_t> CmdArgs;
++  llvm::EmbedBitcodeInModule(M, Buf->getMemBufferRef(), Conf.EmbedBitcode == EmbedBitcodeKind::Embed_Marker, &CmdArgs);
++}
++
+ void codegen(Config &Conf, TargetMachine *TM, AddStreamFn AddStream,
+              unsigned Task, Module &Mod) {
+   if (Conf.PreCodeGenModuleHook && !Conf.PreCodeGenModuleHook(Task, Mod))
+     return;
+ 
++  EmitBitcodeSection(Mod, Conf);
++
+   std::unique_ptr<ToolOutputFile> DwoOut;
+   SmallString<1024> DwoFile(Conf.DwoPath);
+   if (!Conf.DwoDir.empty()) {
+-- 
+2.20.1
+

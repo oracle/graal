@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class LLVMDispatchNode extends LLVMNode {
@@ -294,13 +295,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMInteropType.Function functionType) {
             assert arguments.length == type.getArgumentTypes().length;
             Object[] args = new Object[dataEscapeNodes.length];
-            if (functionType == null) {
-                for (int i = 0; i < args.length; i++) {
-                    args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
-                }
-            } else {
+            int i = 0;
+            if (functionType != null) {
                 assert arguments.length == functionType.getParameterLength() + LLVMCallNode.USER_ARGUMENT_OFFSET;
-                for (int i = 0; i < args.length; i++) {
+                for (; i < functionType.getParameterLength(); i++) {
                     LLVMInteropType argType = functionType.getParameter(i);
                     if (argType instanceof LLVMInteropType.Value) {
                         LLVMInteropType.Structured baseType = ((LLVMInteropType.Value) argType).getBaseType();
@@ -311,6 +309,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     }
                 }
             }
+
+            // handle remaining arguments (varargs or functionType == null)
+            for (; i < args.length; i++) {
+                args[i] = dataEscapeNodes[i].executeWithTarget(arguments[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
+            }
             return args;
         }
 
@@ -320,9 +323,10 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
         @TruffleBoundary
         protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
-            LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
-            for (int i = 0; i < type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET; i++) {
-                args[i] = LLVMDataEscapeNode.create();
+            Type[] argTypes = type.getArgumentTypes();
+            LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[argTypes.length - LLVMCallNode.USER_ARGUMENT_OFFSET];
+            for (int i = 0; i < args.length; i++) {
+                args[i] = LLVMDataEscapeNode.create(argTypes[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
             }
             return args;
         }

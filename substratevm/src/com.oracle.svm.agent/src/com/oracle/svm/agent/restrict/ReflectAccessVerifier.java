@@ -74,6 +74,13 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         return field.isNull() || typeAccessChecker.isFieldAccessible(env, clazz, () -> fromJniString(env, name), field, declaring);
     }
 
+    public boolean verifyObjectFieldOffset(JNIEnvironment env, JNIObjectHandle name, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        return typeAccessChecker.isFieldUnsafeAccessible(() -> fromJniString(env, name), declaring);
+    }
+
     public boolean verifyGetMethod(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
         if (shouldApproveWithoutChecks(env, callerClass)) {
             return true;

@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import java.io.Closeable;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TraceTruffleStackTraceLimit;
 import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleFunctionInlining;
@@ -36,6 +35,7 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.Truff
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIterativePartialEscape;
 
+import java.io.Closeable;
 import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -105,10 +105,10 @@ import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
+import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentBranchesPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentTruffleBoundariesPhase;
-import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
@@ -717,20 +717,24 @@ public abstract class PartialEvaluator {
                 }
             }
 
-            EconomicMap<String, ArrayList<ValueNode>> groupedByType = EconomicMap.create(Equivalence.DEFAULT);
+            EconomicMap<ResolvedJavaType, ArrayList<ValueNode>> groupedByType = EconomicMap.create(Equivalence.DEFAULT);
             for (InstanceOfNode instanceOf : graph.getNodes().filter(InstanceOfNode.class)) {
                 if (!instanceOf.type().isExact()) {
-                    warnings.add(instanceOf);
-                    String name = instanceOf.type().getType().getName();
-                    if (!groupedByType.containsKey(name)) {
-                        groupedByType.put(name, new ArrayList<>());
+                    ResolvedJavaType type = instanceOf.type().getType();
+                    if (isSecondaryType(type)) {
+                        warnings.add(instanceOf);
+                        if (!groupedByType.containsKey(type)) {
+                            groupedByType.put(type, new ArrayList<>());
+                        }
+                        groupedByType.get(type).add(instanceOf);
                     }
-                    groupedByType.get(name).add(instanceOf);
                 }
             }
-            MapCursor<String, ArrayList<ValueNode>> entry = groupedByType.getEntries();
+            MapCursor<ResolvedJavaType, ArrayList<ValueNode>> entry = groupedByType.getEntries();
             while (entry.advance()) {
-                logPerformanceInfo(target.getName(), entry.getValue(), String.format("non-leaf type check: %s", entry.getKey()), Collections.singletonMap("Nodes", entry.getValue()));
+                ResolvedJavaType type = entry.getKey();
+                String reason = type.isInterface() ? String.format("interface type check: %s", type) : String.format("too deep in class hierarchy: %s", type);
+                logPerformanceInfo(target.getName(), entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
             }
 
             if (debug.areScopesEnabled() && !warnings.isEmpty()) {
@@ -744,6 +748,27 @@ public abstract class PartialEvaluator {
             if (instance.get().hasWarnings() && TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal)) {
                 throw new AssertionError("Performance warning detected and is fatal.");
             }
+        }
+
+        /**
+         * On HotSpot, a type check against a class that is at a depth <= 8 in the class hierarchy
+         * (including Object) is just one extra memory load.
+         */
+        private static boolean isPrimarySupertype(ResolvedJavaType type) {
+            if (type.isInterface()) {
+                return false;
+            }
+            ResolvedJavaType supr = type;
+            int depth = 0;
+            while (supr != null) {
+                depth++;
+                supr = supr.getSuperclass();
+            }
+            return depth <= 8;
+        }
+
+        private static boolean isSecondaryType(ResolvedJavaType type) {
+            return !isPrimarySupertype(type);
         }
 
         static void reportDecisionIsNull(JavaConstant target, JavaConstant callNode) {

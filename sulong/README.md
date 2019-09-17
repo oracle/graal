@@ -173,7 +173,7 @@ Next, use git to clone the Sulong project and its dependencies:
     git clone https://github.com/oracle/graal
 
 Next, you need to download a recent
-[JVMCI-enabled JDK 8](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
+[JVMCI-enabled JDK 8](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
 Extract it inside the `sulong-dev` directory:
 
     tar -zxf oraclejdk-8u212-jvmci-20-b01-linux-amd64.tar.gz

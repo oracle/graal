@@ -43,15 +43,28 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.polyglot.GuestToHostRootNode.createGuestToHost;
 import static com.oracle.truffle.polyglot.GuestToHostRootNode.guestToHostCall;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyDate;
+import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyNativeObject;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.graalvm.polyglot.proxy.ProxyTime;
+import org.graalvm.polyglot.proxy.ProxyTimeZone;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
@@ -389,14 +402,19 @@ final class PolyglotProxy implements TruffleObject {
             }
             Object guestValue = languageContext.toGuestValue(result);
             if (!InteropLibrary.getFactory().getUncached().hasArrayElements(guestValue)) {
-                throw PolyglotImpl.wrapHostException(languageContext, new IllegalStateException(
-                                String.format("getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
-                                                languageContext.asValue(guestValue).toString())));
+                throw illegalProxy("getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
+                                languageContext.asValue(guestValue).toString());
             }
             return guestValue;
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @TruffleBoundary
+    RuntimeException illegalProxy(String message, Object... parameters) {
+        throw PolyglotImpl.wrapHostException(languageContext, new IllegalStateException(
+                        String.format(message, parameters)));
     }
 
     static class GetMemberNode extends GuestToHostRootNode {
@@ -587,6 +605,173 @@ final class PolyglotProxy implements TruffleObject {
         } else {
             return false;
         }
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    boolean isDate() {
+        return proxy instanceof ProxyDate;
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    boolean isTime() {
+        return proxy instanceof ProxyTime;
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    boolean isTimeZone() {
+        return proxy instanceof ProxyTimeZone;
+    }
+
+    static class AsTimeZoneNode extends GuestToHostRootNode {
+
+        protected AsTimeZoneNode() {
+            super(ProxyTimeZone.class, "asTimeZone");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            ZoneId zone = ((ProxyTimeZone) proxy).asTimeZone();
+            if (zone == null) {
+                throw new AssertionError("The returned zone must not be null.");
+            }
+            return zone;
+        }
+    }
+
+    private static final CallTarget AS_TIMEZONE = createGuestToHost(new AsTimeZoneNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    ZoneId asTimeZone(@CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyTimeZone) {
+            return (ZoneId) guestToHostCall(library, AS_TIMEZONE, languageContext, proxy);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    static class AsDateNode extends GuestToHostRootNode {
+
+        protected AsDateNode() {
+            super(ProxyDate.class, "asDate");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            LocalDate date = ((ProxyDate) proxy).asDate();
+            if (date == null) {
+                throw new AssertionError("The returned date must not be null.");
+            }
+            return date;
+        }
+    }
+
+    private static final CallTarget AS_DATE = createGuestToHost(new AsDateNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    LocalDate asDate(@CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyDate) {
+            return (LocalDate) guestToHostCall(library, AS_DATE, languageContext, proxy);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    static class AsTimeNode extends GuestToHostRootNode {
+
+        protected AsTimeNode() {
+            super(ProxyTime.class, "asTime");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            LocalTime time = ((ProxyTime) proxy).asTime();
+            if (time == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError("The returned time must not be null.");
+            }
+            return time;
+        }
+    }
+
+    private static final CallTarget AS_TIME = createGuestToHost(new AsTimeNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    LocalTime asTime(@CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyTime) {
+            return (LocalTime) guestToHostCall(library, AS_TIME, languageContext, proxy);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    static class AsInstantNode extends GuestToHostRootNode {
+
+        protected AsInstantNode() {
+            super(ProxyInstant.class, "asInstant");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            Instant instant = ((ProxyInstant) proxy).asInstant();
+            if (instant == null) {
+                throw new AssertionError("The returned instant must not be null.");
+            }
+            return instant;
+        }
+    }
+
+    private static final CallTarget AS_INSTANT = createGuestToHost(new AsInstantNode());
+
+    @TruffleBoundary
+    @ExportMessage
+    Instant asInstant(@CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyInstant) {
+            return (Instant) guestToHostCall(library, AS_INSTANT, languageContext, proxy);
+        } else if (isDate() && isTime() && isTimeZone()) {
+            return ZonedDateTime.of(asDate(library), asTime(library), asTimeZone(library)).toInstant();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    boolean isDuration() {
+        return proxy instanceof ProxyDuration;
+    }
+
+    static class AsDurationNode extends GuestToHostRootNode {
+
+        protected AsDurationNode() {
+            super(ProxyDuration.class, "asDuration");
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            Duration duration = ((ProxyDuration) proxy).asDuration();
+            if (duration == null) {
+                throw new AssertionError("The returned duration must not be null.");
+            }
+            return duration;
+        }
+    }
+
+    private static final CallTarget AS_DURATION = createGuestToHost(new AsDurationNode());
+
+    @ExportMessage
+    @TruffleBoundary
+    Duration asDuration(@CachedLibrary("this") InteropLibrary library) throws UnsupportedMessageException {
+        if (proxy instanceof ProxyDuration) {
+            return (Duration) guestToHostCall(library, AS_DURATION, languageContext, proxy);
+        }
+        throw UnsupportedMessageException.create();
     }
 
     public static boolean isProxyGuestObject(TruffleObject value) {

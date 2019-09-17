@@ -45,6 +45,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.oracle.truffle.llvm.parser.binary.BinaryParser;
+import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -488,7 +490,7 @@ final class Runner {
         List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(context.getEnv());
         for (String external : externals) {
             // assume that the library is a native one until we parsed it and can say for sure
-            ExternalLibrary lib = context.addExternalLibrary(external, true);
+            ExternalLibrary lib = context.addExternalLibrary(external, true, "<command line>");
             if (lib != null) {
                 parse(parserResults, dependencyQueue, lib);
             }
@@ -662,13 +664,15 @@ final class Runner {
 
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
                     ExternalLibrary library, ByteSequence bytes) {
-        ModelModule module = LLVMScanner.parse(bytes, source, context);
-        if (module != null) {
+        BinaryParserResult binaryParserResult = BinaryParser.parse(bytes, source, context);
+        if (binaryParserResult != null) {
+            ModelModule module = new ModelModule();
+            LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source, context);
             library.setIsNative(false);
-            context.addLibraryPaths(module.getLibraryPaths());
-            List<String> libraries = module.getLibraries();
+            context.addLibraryPaths(binaryParserResult.getLibraryPaths());
+            List<String> libraries = binaryParserResult.getLibraries();
             for (String lib : libraries) {
-                ExternalLibrary dependency = context.addExternalLibrary(lib, true);
+                ExternalLibrary dependency = context.addExternalLibrary(lib, true, library, binaryParserResult.getLocator());
                 if (dependency != null) {
                     dependencyQueue.addLast(dependency);
                 }

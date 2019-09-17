@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ struct container {
 };
 
 void printPointerToArray(int **a) {
-  
+
   fprintf(stderr, "Native: a = %p\n", a);
   fprintf(stderr, "Native: *a = %p\n", *a);
 
@@ -47,7 +47,7 @@ void printPointerToArray(int **a) {
 }
 
 void printArray(int *a) {
-  
+
   fprintf(stderr, "Native: a = %p\n", a);
 
   fprintf(stderr, "Native: a[0] = %i\n", a[0]);
@@ -83,6 +83,11 @@ int call_callback(void *container, int p2) {
 int call_callback2(void *container) {
   struct container *c = (struct container *) container;
   return c->callback(20, 22);
+}
+
+int call_typecast(int (*fn)(void)) {
+  int (*fn_cast)(int) = (int (*)(int)) fn;
+  return fn_cast(42);
 }
 
 

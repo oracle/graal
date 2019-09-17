@@ -71,7 +71,7 @@ public class MatcherBuilderTest {
     }
 
     private static void checkInverse(CharSet a, char... values) {
-        checkMatch("inverse(" + a + ")", a.createInverse(new CompilationBuffer()), values);
+        checkMatch("inverse(" + a + ")", a.createInverse(), values);
     }
 
     private static void checkIntersection(CharSet a, CharSet b, char... values) {

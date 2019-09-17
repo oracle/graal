@@ -144,14 +144,12 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
     static class ForeignWriteNode extends LLVMNode implements LLVMObjectWriteNode {
 
         @Child LLVMInteropWriteNode write = LLVMInteropWriteNode.create();
-        @Child LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
         @Child ForeignGetTypeNode getType = ForeignGetTypeNodeGen.create();
 
         @Override
-        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) {
+        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType writeType) {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
-            Object escapedValue = dataEscape.executeWithTarget(value);
-            write.execute(getType.execute(object), object.getForeign(), offset, escapedValue);
+            write.execute(getType.execute(object), object.getForeign(), offset, value, writeType);
         }
 
         @Override

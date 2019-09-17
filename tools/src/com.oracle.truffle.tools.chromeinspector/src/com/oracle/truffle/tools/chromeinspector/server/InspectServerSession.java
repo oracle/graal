@@ -94,13 +94,14 @@ public final class InspectServerSession implements MessageEndpoint {
     @Override
     public void sendClose() {
         Runnable onCloseRunnable = null;
-        domainLock.writeLock().lock();
+        Lock lock = domainLock.writeLock();
+        lock.lock();
         try {
             runtime.disable();
             debugger.disable();
             profiler.disable();
         } finally {
-            domainLock.writeLock().unlock();
+            lock.unlock();
         }
         context.reset();
         synchronized (this) {

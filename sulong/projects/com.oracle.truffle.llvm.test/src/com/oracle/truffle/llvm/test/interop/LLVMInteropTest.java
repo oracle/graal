@@ -772,8 +772,8 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test060() {
-        try (Runner runner = new Runner("interop060")) {
+    public void testForeignImport() {
+        try (Runner runner = new Runner("foreignImport")) {
             Map<String, Object> a = new HashMap<>();
             a.put("a", 0);
             a.put("b", 1);

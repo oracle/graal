@@ -327,7 +327,7 @@ public class LanguageSPIOrderTest {
 
         protected void useLanguage(OrderContext context, String id) {
             // initializes the language
-            context.env.parse(Source.newBuilder(id, "", "").build());
+            context.env.parseInternal(Source.newBuilder(id, "", "").build());
         }
     }
 

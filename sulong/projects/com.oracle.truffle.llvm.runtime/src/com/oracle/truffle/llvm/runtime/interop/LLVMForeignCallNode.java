@@ -31,39 +31,43 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeFactory.PackForeignArgumentsNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.SlowPathForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
  * Used when an LLVM bitcode method is called from another language.
  */
-@GenerateUncached
-public abstract class LLVMForeignCallNode extends LLVMNode {
+public class LLVMForeignCallNode extends RootNode {
 
-    static class PackForeignArgumentsNode extends LLVMNode {
-        @Children private final ForeignToLLVM[] toLLVM;
+    abstract static class PackForeignArgumentsNode extends LLVMNode {
 
-        PackForeignArgumentsNode(NodeFactory nodeFactory, Type[] parameterTypes, LLVMInteropType interopType, int argumentsLength) {
-            this.toLLVM = new ForeignToLLVM[argumentsLength];
+        abstract Object[] execute(Object[] arguments, StackPointer stackPointer) throws ArityException;
+
+        @Children final ForeignToLLVM[] toLLVM;
+
+        PackForeignArgumentsNode(Type[] parameterTypes, LLVMInteropType interopType) {
+            NodeFactory nodeFactory = getNodeFactory();
+            this.toLLVM = new ForeignToLLVM[parameterTypes.length];
             if (interopType instanceof LLVMInteropType.Function) {
                 LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
                 assert interopFunctionType.getParameterLength() == parameterTypes.length;
@@ -82,108 +86,115 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
                     toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
                 }
             }
-            for (int i = parameterTypes.length; i < argumentsLength; i++) {
-                toLLVM[i] = nodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
-            }
         }
 
+        @Specialization(guards = "arguments.length == toLLVM.length")
         @ExplodeLoop
-        Object[] pack(Object[] arguments, StackPointer stackPointer) {
-            assert arguments.length == toLLVM.length;
-            final Object[] packedArguments = new Object[1 + toLLVM.length];
+        Object[] packNonVarargs(Object[] arguments, StackPointer stackPointer) {
+            assert arguments.length >= toLLVM.length;
+            final Object[] packedArguments = new Object[1 + arguments.length];
             packedArguments[0] = stackPointer;
             for (int i = 0; i < toLLVM.length; i++) {
                 packedArguments[i + 1] = toLLVM[i].executeWithTarget(arguments[i]);
             }
             return packedArguments;
         }
-    }
 
-    public static LLVMForeignCallNode create() {
-        return LLVMForeignCallNodeGen.create();
-    }
-
-    protected PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) throws ArityException {
-        checkArgLength(descriptor.getType().getArgumentTypes().length, length);
-        return new PackForeignArgumentsNode(getNodeFactory(), descriptor.getType().getArgumentTypes(), descriptor.getInteropType(), length);
-    }
-
-    static Object[] slowPathPack(LLVMFunctionDescriptor function, Object[] arguments, StackPointer stackPointer) throws UnsupportedTypeException {
-        SlowPathForeignToLLVM slowConvert = ForeignToLLVM.getUncached();
-        Type[] argumentTypes = function.getType().getArgumentTypes();
-        int actualArgumentsLength = Math.max(arguments.length, argumentTypes.length);
-        final Object[] packedArguments = new Object[1 + actualArgumentsLength];
-        packedArguments[0] = stackPointer;
-        LLVMInteropType interopType = function.getInteropType();
-        if (interopType instanceof LLVMInteropType.Function) {
-            LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
-            assert interopFunctionType.getParameterLength() == argumentTypes.length;
-            for (int i = 0; i < argumentTypes.length; i++) {
-                LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
-                if (interopParameterType instanceof LLVMInteropType.Value) {
-                    LLVMInteropType.Value interopValueType = (LLVMInteropType.Value) interopParameterType;
-                    LLVMInteropType.Structured interopPointerType = interopValueType.getKind() == LLVMInteropType.ValueKind.POINTER ? interopValueType.getBaseType() : null;
-                    packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], interopPointerType);
-                } else {
-                    // interop only supported for value types
-                    packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
+        ForeignToLLVM[] createVarargsToLLVM(int argCount) {
+            int count = argCount - toLLVM.length;
+            if (count > 0) {
+                NodeFactory nodeFactory = LLVMNode.getNodeFactory();
+                ForeignToLLVM[] ret = new ForeignToLLVM[count];
+                for (int i = 0; i < count; i++) {
+                    ret[i] = nodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
                 }
-            }
-        } else {
-            for (int i = 0; i < argumentTypes.length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(argumentTypes[i], arguments[i], null);
+                return ret;
+            } else {
+                return new ForeignToLLVM[0];
             }
         }
-        for (int i = argumentTypes.length; i < arguments.length; i++) {
-            packedArguments[i + 1] = slowConvert.convert(ForeignToLLVMType.ANY, arguments[i], null);
+
+        boolean checkLength(int argCount, ForeignToLLVM[] varargsToLLVM) {
+            return argCount == toLLVM.length + varargsToLLVM.length;
         }
-        return packedArguments;
+
+        @Specialization(guards = "checkLength(arguments.length, varargsToLLVM)", replaces = "packNonVarargs")
+        @ExplodeLoop
+        Object[] packCachedArgCount(Object[] arguments, StackPointer stackPointer,
+                        @Cached("createVarargsToLLVM(arguments.length)") ForeignToLLVM[] varargsToLLVM) {
+            assert arguments.length >= toLLVM.length;
+            final Object[] packedArguments = packNonVarargs(arguments, stackPointer);
+            for (int i = toLLVM.length, j = 0; j < varargsToLLVM.length; i++, j++) {
+                packedArguments[i + 1] = varargsToLLVM[j].executeWithTarget(arguments[i]);
+            }
+            return packedArguments;
+        }
+
+        ForeignToLLVM createVarargsToLLVM() {
+            return LLVMNode.getNodeFactory().createForeignToLLVM(ForeignToLLVMType.ANY);
+        }
+
+        @Specialization(guards = "arguments.length >= toLLVM.length", replaces = "packCachedArgCount")
+        Object[] packGeneric(Object[] arguments, StackPointer stackPointer,
+                        @Cached("createVarargsToLLVM()") ForeignToLLVM varargsToLLVM) {
+            Object[] args = packNonVarargs(arguments, stackPointer);
+            for (int i = toLLVM.length; i < arguments.length; i++) {
+                args[i + 1] = varargsToLLVM.executeWithTarget(arguments[i]);
+            }
+            return args;
+        }
+
+        @Specialization(guards = "arguments.length < toLLVM.length")
+        Object[] error(Object[] arguments, @SuppressWarnings("unused") StackPointer stackPointer) throws ArityException {
+            CompilerDirectives.transferToInterpreter();
+            throw ArityException.create(toLLVM.length, arguments.length);
+        }
     }
 
-    public abstract Object executeCall(LLVMFunctionDescriptor function, Object[] arguments) throws ArityException, UnsupportedTypeException;
+    private final ContextReference<LLVMContext> ctxRef;
+    private final LLVMInteropType.Structured returnBaseType;
 
-    @SuppressWarnings("unused")
-    @Specialization(limit = "3", guards = {"function == cachedFunction", "cachedLength == arguments.length"})
-    Object callDirectCached(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("function") LLVMFunctionDescriptor cachedFunction,
-                    @Cached("create(getCallTarget(cachedFunction))") DirectCallNode callNode,
-                    @Cached("createFastPackArguments(cachedFunction, arguments.length)") PackForeignArgumentsNode packNode,
-                    @Cached("arguments.length") int cachedLength,
-                    @Cached LLVMDataEscapeNode prepareValueForEscape,
-                    @Cached("cachedFunction.getContext().getThreadingStack()") LLVMThreadingStack threadingStack,
-                    @Cached LLVMGetStackNode getStack) {
-        assert !(cachedFunction.getType().getReturnType() instanceof StructureType);
+    @Child LLVMGetStackNode getStack;
+    @Child DirectCallNode callNode;
+    @Child LLVMDataEscapeNode prepareValueForEscape;
+    @Child PackForeignArgumentsNode packArguments;
+
+    public LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType) {
+        super(language);
+        this.ctxRef = language.getContextReference();
+        this.returnBaseType = getReturnBaseType(interopType);
+        this.getStack = LLVMGetStackNode.create();
+        this.callNode = DirectCallNode.create(getCallTarget(function));
+        this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getType().getReturnType());
+        this.packArguments = PackForeignArgumentsNodeGen.create(function.getType().getArgumentTypes(), interopType);
+    }
+
+    @Override
+    public boolean isInternal() {
+        return true;
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
         Object result;
+        LLVMThreadingStack threadingStack = ctxRef.get().getThreadingStack();
         LLVMStack stack = getStack.executeWithTarget(threadingStack, Thread.currentThread());
         try (StackPointer stackPointer = stack.newFrame()) {
-            result = callNode.call(packNode.pack(arguments, stackPointer));
+            result = callNode.call(packArguments.execute(frame.getArguments(), stackPointer));
+        } catch (ArityException ex) {
+            throw silenceException(RuntimeException.class, ex);
         }
-        return prepareReturnValue(cachedFunction, prepareValueForEscape, result);
+        return prepareValueForEscape.executeWithType(result, returnBaseType);
     }
 
-    @Specialization(replaces = "callDirectCached")
-    static Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("create()") IndirectCallNode callNode,
-                    @Cached LLVMDataEscapeNode prepareValueForEscape,
-                    @Cached LLVMGetStackNode getStack) throws UnsupportedTypeException {
-        assert !(function.getType().getReturnType() instanceof StructureType);
-        LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
-        Object result;
-        try (StackPointer stackPointer = stack.newFrame()) {
-            result = callNode.call(getCallTarget(function), slowPathPack(function, arguments, stackPointer));
-        }
-        return prepareReturnValue(function, prepareValueForEscape, result);
-    }
-
-    private static Object prepareReturnValue(LLVMFunctionDescriptor function, LLVMDataEscapeNode prepareValueForEscape, Object result) {
-        LLVMInteropType functionType = function.getInteropType();
+    private static LLVMInteropType.Structured getReturnBaseType(LLVMInteropType functionType) {
         if (functionType instanceof LLVMInteropType.Function) {
             LLVMInteropType returnType = ((LLVMInteropType.Function) functionType).getReturnType();
             if (returnType instanceof LLVMInteropType.Value) {
-                return prepareValueForEscape.executeWithType(result, ((LLVMInteropType.Value) returnType).getBaseType());
+                return ((LLVMInteropType.Value) returnType).getBaseType();
             }
         }
-        return prepareValueForEscape.executeWithTarget(result);
+        return null;
     }
 
     static CallTarget getCallTarget(LLVMFunctionDescriptor function) {
@@ -197,10 +208,8 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         }
     }
 
-    private static void checkArgLength(int minLength, int actualLength) throws ArityException {
-        if (actualLength < minLength) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(minLength, actualLength);
-        }
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
+        throw (E) ex;
     }
 }

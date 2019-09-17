@@ -486,7 +486,7 @@ public final class TruffleFile {
             return toUri();
         }
         try {
-            String strPath = "/".equals(fileSystemContext.fileSystem.getSeparator()) ? path.toString() : path.toString().replace(path.getFileSystem().getSeparator(), "/");
+            String strPath = "/".equals(fileSystemContext.fileSystem.getSeparator()) ? path.toString() : path.toString().replace(fileSystemContext.fileSystem.getSeparator(), "/");
             return new URI(null, null, strPath, null);
         } catch (Throwable t) {
             throw wrapHostException(t);
@@ -1953,10 +1953,10 @@ public final class TruffleFile {
     }
 
     static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystem fs) {
-        if (TruffleLanguage.AccessAPI.engineAccess().isDefaultFileSystem(fs)) {
+        if (LanguageAccessor.engineAccess().isDefaultFileSystem(fs)) {
             throw sthrow(t);
         }
-        throw TruffleLanguage.AccessAPI.engineAccess().wrapHostException(null, TruffleLanguage.AccessAPI.engineAccess().getCurrentHostContext(), t);
+        throw LanguageAccessor.engineAccess().wrapHostException(null, LanguageAccessor.engineAccess().getCurrentHostContext(), t);
     }
 
     @SuppressWarnings("unchecked")

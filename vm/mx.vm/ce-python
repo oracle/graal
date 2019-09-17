@@ -1,0 +1,4 @@
+DYNAMIC_IMPORTS=/substratevm,/tools,/sulong,/graal-nodejs,graalpython
+DISABLE_INSTALLABLES=js,njs,slg,rgx,nfi
+LIBGRAAL=true
+EXCLUDE_COMPONENTS=nju,ni,nil,llp

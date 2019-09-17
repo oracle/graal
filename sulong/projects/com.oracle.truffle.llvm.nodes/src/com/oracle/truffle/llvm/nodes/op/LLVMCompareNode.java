@@ -69,7 +69,7 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
 
         @Specialization
         protected boolean eq(LLVMIVarBit val1, LLVMIVarBit val2) {
-            return val1.compare(val2) == 0;
+            return val1.isEqual(val2);
         }
     }
 
@@ -101,7 +101,7 @@ public abstract class LLVMCompareNode extends LLVMAbstractCompareNode {
 
         @Specialization
         protected boolean nq(LLVMIVarBit val1, LLVMIVarBit val2) {
-            return val1.compare(val2) != 0;
+            return !val1.isEqual(val2);
         }
     }
 

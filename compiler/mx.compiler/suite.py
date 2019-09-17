@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "19.1.1",
+  "version" : "19.2.0.1",
   "release" : True,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -79,7 +79,6 @@ suite = {
     "DACAPO_SCALA" : {
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar",
-        "http://repo.scalabench.org/snapshots/org/scalabench/benchmarks/scala-benchmark-suite/0.1.0-SNAPSHOT/scala-benchmark-suite-0.1.0-20120216.103539-3.jar",
       ],
       "sha1" : "59b64c974662b5cf9dbd3cf9045d293853dd7a51",
     },
@@ -87,16 +86,16 @@ suite = {
     "DACAPO_D3S" : {
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-d3s.jar",
-        "http://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar",
+        "https://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar",
       ],
       "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
     },
 
     "RENAISSANCE" : {
       "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-0.9.0-eba17e460b41d60ac200c2d62d341df5fd26840d.jar"
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.10.0.jar"
       ],
-      "sha1" : "da36b15ba9a9af3a298847c891ae500bb3532a30",
+      "sha1" : "5f58e281bb5aae161854b036c7e49e593a81186a",
     },
 
     "JAVA_ALLOCATION_INSTRUMENTER" : {
@@ -1192,6 +1191,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.api.replacements",
         "org.graalvm.compiler.lir",
+        "sdk:GRAAL_SDK",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",

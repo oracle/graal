@@ -24,10 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.SortedListOfRanges;
 
 /**
  * Matcher for a single character range.
@@ -39,7 +38,7 @@ public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
 
     /**
      * Constructs a new {@link SingleRangeMatcher}.
-     * 
+     *
      * @param invert see {@link InvertibleCharMatcher}.
      * @param lo inclusive lower bound of range to match.
      * @param hi inclusive upper bound of range to match.
@@ -81,6 +80,6 @@ public abstract class SingleRangeMatcher extends InvertibleCharMatcher {
     @Override
     @TruffleBoundary
     public String toString() {
-        return modifiersToString() + CharSet.rangeToString(lo, hi);
+        return modifiersToString() + SortedListOfRanges.rangeToString(lo, hi);
     }
 }

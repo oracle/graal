@@ -121,7 +121,7 @@ public final class VectorPackNode extends FloatingNode implements Canonicalizabl
 
         replaceAtUsages(vectorValue);
         for (VectorExtractNode node : nodes) {
-            if (node.getUsageCount() == 1 && node.getUsageAt(0) == this) {
+            if (node.getUsageCount() == 1 && node.usages().first() == this) {
                 node.removeUsage(this);
                 node.safeDelete();
             }

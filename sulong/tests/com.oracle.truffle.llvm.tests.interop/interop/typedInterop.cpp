@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -142,6 +142,23 @@ extern "C" void fillFusedArray(void *arg) {
 
   for (i = 0; i < 7; i++) {
     fused->path[i].x = 2 * i;
-    fused->path[i].y = 5 * i;    
+    fused->path[i].y = 5 * i;
   }
+}
+
+struct Complex {
+  double re;
+  double im;
+};
+
+POLYGLOT_DECLARE_STRUCT(Complex)
+
+extern "C" long readTypeMismatch(struct Complex *c) {
+  long *ptr = (long*) c;
+  return *ptr;
+}
+
+extern "C" void writeTypeMismatch(struct Complex *c, long rawValue) {
+  long *ptr = (long*) c;
+  *ptr = rawValue;
 }

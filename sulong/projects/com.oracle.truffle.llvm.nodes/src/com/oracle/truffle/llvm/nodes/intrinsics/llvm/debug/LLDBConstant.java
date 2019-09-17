@@ -206,12 +206,7 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 }
             }
 
-            if (signed) {
-                return result.asBigInteger();
-
-            } else {
-                return result.asUnsignedBigInteger();
-            }
+            return result.getDebugValue(signed);
         }
 
         @Override
@@ -399,6 +394,29 @@ abstract class LLDBConstant implements LLVMDebugValue {
                 }
             } else {
                 throw new IllegalStateException("Unsupported Pointer: " + pointer);
+            }
+        }
+
+        @Override
+        public boolean isManagedPointer() {
+            return LLVMManagedPointer.isInstance(pointer);
+        }
+
+        @Override
+        public Object getManagedPointerBase() {
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                return LLVMManagedPointer.cast(pointer).getObject();
+            } else {
+                return null;
+            }
+        }
+
+        @Override
+        public long getManagedPointerOffset() {
+            if (LLVMManagedPointer.isInstance(pointer)) {
+                return LLVMManagedPointer.cast(pointer).getOffset();
+            } else {
+                return 0;
             }
         }
     }

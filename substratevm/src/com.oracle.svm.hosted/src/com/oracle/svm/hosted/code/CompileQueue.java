@@ -719,7 +719,7 @@ public class CompileQueue {
             if (plugin != null && !plugin.inlineOnly()) {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
                 // DebugContext debug = new DebugContext(options, providers.getSnippetReflection());
-                graph = new SubstrateIntrinsicGraphBuilder(debug.getOptions(), debug, providers, code).buildGraph(plugin);
+                graph = new SubstrateIntrinsicGraphBuilder(getCustomizedOptions(debug), debug, providers, code).buildGraph(plugin);
             }
         }
         if (graph == null && method.isNative() && NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
@@ -727,7 +727,7 @@ public class CompileQueue {
         }
         if (graph == null) {
             needParsing = true;
-            graph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
+            graph = new StructuredGraph.Builder(getCustomizedOptions(debug), debug).method(method).build();
         }
 
         try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {
@@ -771,6 +771,10 @@ public class CompileQueue {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    protected OptionValues getCustomizedOptions(DebugContext debug) {
+        return debug.getOptions();
     }
 
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
@@ -904,8 +908,9 @@ public class CompileQueue {
     class HostedCompilationResultBuilderFactory implements CompilationResultBuilderFactory {
         @Override
         public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder,
-                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, Register nullRegister) {
-            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, nullRegister, EconomicMap.wrapMap(dataCache));
+                        FrameContext frameContext, OptionValues options, DebugContext debug, CompilationResult compilationResult, Register uncompressedNullRegister) {
+            return new CompilationResultBuilder(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, uncompressedNullRegister,
+                            EconomicMap.wrapMap(dataCache));
         }
     }
 

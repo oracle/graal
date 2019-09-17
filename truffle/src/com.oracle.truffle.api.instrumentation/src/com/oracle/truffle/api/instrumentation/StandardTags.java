@@ -45,6 +45,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
 
 /**
  * Set of standard tags usable by language agnostic tools. Language should {@link ProvidedTags
@@ -123,11 +124,13 @@ public final class StandardTags {
      * Marks program locations as root of a function, method or closure. The root prolog should be
      * executed by this node. In particular, when the implementation copies
      * {@link Frame#getArguments()} into {@link FrameSlot}s, it should do it here for the
-     * instrumentation to work correctly.
+     * instrumentation to work correctly. As a result, local scope might be incomplete for
+     * instruments, as the prolog does not run before this node is entered and epilog may do
+     * destructions before this node is exited.
      * <p>
      * Use case descriptions:
      * <ul>
-     * <li><b>Profiler:</b> Marks every root that should be profiled.</li>
+     * <li><b>Debugger:</b> Use this tag to unwind frames.</li>
      * </ul>
      *
      * The RootTag uses the {@link Tag.Identifier identifier} <code>"ROOT"</code>. A node tagged
@@ -143,6 +146,37 @@ public final class StandardTags {
     @Tag.Identifier("ROOT")
     public static final class RootTag extends Tag {
         private RootTag() {
+            /* No instances */
+        }
+    }
+
+    /**
+     * Marks program locations as bodies of a function, method or closure. The root prolog and
+     * epilog is not a part of this node, what makes a difference from {@link RootTag}. In
+     * particular, when the implementation copies {@link Frame#getArguments()} into
+     * {@link FrameSlot}s, it should do it before this node for the instrumentation to work
+     * correctly.
+     * <p>
+     * Use case descriptions:
+     * <ul>
+     * <li><b>Profiler:</b> Marks body of every root that should be profiled and where
+     * {@link Scope#getArguments() arguments} and {@link Scope#getReceiver() receiver object} are
+     * initialized and ready to be retrieved.</li>
+     * </ul>
+     *
+     * The RootBodyTag uses the {@link Tag.Identifier identifier} <code>"ROOT_BODY"</code>. A node
+     * tagged with {@link RootBodyTag} must provide a {@link Node#getSourceSection() source section}
+     * , if its root node provides a source section.
+     * <p>
+     * If the a node tagged with {@link RootBodyTag root body} returns a non <code>null</code> value
+     * then it must be an interop value. There are assertions in place verifying this when Java
+     * assertions are enabled (-ea).
+     *
+     * @since 19.2.0
+     */
+    @Tag.Identifier("ROOT_BODY")
+    public static final class RootBodyTag extends Tag {
+        private RootBodyTag() {
             /* No instances */
         }
     }

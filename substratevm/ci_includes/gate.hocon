@@ -35,7 +35,7 @@ builds += [
   ${oraclejdk11} ${svm-common-linux-gate} {
     name: "gate-svm-build-11"
     run: [
-      ${svm-cmd-gate} ["build"]
+      ${svm-cmd-gate} ["build,helloworld,test"]
     ]
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {

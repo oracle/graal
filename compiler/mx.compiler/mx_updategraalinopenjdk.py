@@ -63,7 +63,7 @@ def _find_version_base_project(versioned_project):
 
 def _is_git_repo(jdkrepo):
     git_dir = join(jdkrepo, '.git')
-    return True if exists(git_dir) else False
+    return exists(git_dir)
 
 SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
 GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
@@ -145,7 +145,7 @@ def updategraalinopenjdk(args):
                 with open(filepath) as fp:
                     contents = fp.read()
                 new_contents = contents
-                for old_name, new_name in package_renamings.iteritems():
+                for old_name, new_name in package_renamings.items():
                     new_contents = new_contents.replace(old_name, new_name)
                 if new_contents != contents:
                     with open(filepath, 'w') as fp:
@@ -187,7 +187,7 @@ def updategraalinopenjdk(args):
                         else:
                             continue
 
-                    for old_name, new_name in package_renamings.iteritems():
+                    for old_name, new_name in package_renamings.items():
                         if new_project_name.startswith(old_name):
                             new_project_name = new_project_name.replace(old_name, new_name)
 
@@ -212,14 +212,14 @@ def updategraalinopenjdk(args):
                             contents = fp.read()
                         old_line_count = len(contents.split('\n'))
                         if filename.endswith('.java'):
-                            for old_name, new_name in package_renamings.iteritems():
+                            for old_name, new_name in package_renamings.items():
                                 old_name_as_dir = old_name.replace('.', os.sep)
                                 if old_name_as_dir in src_file:
                                     new_name_as_dir = new_name.replace('.', os.sep)
                                     dst = src_file.replace(old_name_as_dir, new_name_as_dir)
                                     dst_file = join(target_dir, os.path.relpath(dst, source_dir))
                                 contents = contents.replace(old_name, new_name)
-                            for old_line, new_line in replacements.iteritems():
+                            for old_line, new_line in replacements.items():
                                 contents = contents.replace(old_line, new_line)
 
                             match = java_package_re.search(contents)
@@ -250,7 +250,7 @@ def updategraalinopenjdk(args):
                             mx.log('       to: ' + target_dir)
                             if p.testProject or p.definedAnnotationProcessors:
                                 to_exclude = p.name
-                                for old_name, new_name in package_renamings.iteritems():
+                                for old_name, new_name in package_renamings.items():
                                     if to_exclude.startswith(old_name):
                                         sfx = '' if to_exclude == old_name else to_exclude[len(old_name):]
                                         to_exclude = new_name + sfx

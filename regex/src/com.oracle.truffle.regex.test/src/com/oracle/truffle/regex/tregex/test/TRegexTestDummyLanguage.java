@@ -39,7 +39,7 @@ public class TRegexTestDummyLanguage extends TruffleLanguage<TRegexTestDummyLang
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
-        return getCurrentContext(TRegexTestDummyLanguage.class).getEnv().parse(Source.newBuilder(RegexLanguage.ID, "", "TRegex Engine Builder Request").internal(true).build());
+        return getCurrentContext(TRegexTestDummyLanguage.class).getEnv().parseInternal(Source.newBuilder(RegexLanguage.ID, "", "TRegex Engine Builder Request").internal(true).build());
     }
 
     @Override

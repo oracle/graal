@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -59,6 +60,7 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         if (getElementCountForDebugger() == 0) {
             return SubElements.EMPTY;
@@ -69,12 +71,14 @@ public abstract class LLVMDebuggerValue implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     boolean isMemberReadable(String key) {
         Object element = getElementForDebugger(key);
         return element != null;
     }
 
     @ExportMessage
+    @TruffleBoundary
     Object readMember(String key,
                     @Cached BranchProfile exception) throws UnknownIdentifierException {
         Object element = getElementForDebugger(key);

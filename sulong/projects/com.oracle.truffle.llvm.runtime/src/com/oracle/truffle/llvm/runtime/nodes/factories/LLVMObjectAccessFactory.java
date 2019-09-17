@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.factories;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectRead
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.CachedReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.CachedWriteNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.FallbackWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.GetWriteIdentifierNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.UseLLVMObjectAccessNodeGen;
 
@@ -166,15 +168,14 @@ public abstract class LLVMObjectAccessFactory {
                 }
             }
 
-            return new FallbackWriteNode();
+            return FallbackWriteNodeGen.create();
         }
     }
 
-    static class FallbackWriteNode extends LLVMNode implements LLVMObjectWriteNode {
+    abstract static class FallbackWriteNode extends LLVMNode implements LLVMObjectWriteNode {
 
         @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
         @Child private GetWriteIdentifierNode getWriteIdentifier = GetWriteIdentifierNodeGen.create();
-        @Child private LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
         @Child private UseLLVMObjectAccessNode useLLVMObjectAccess = UseLLVMObjectAccessNodeGen.create();
 
         @Override
@@ -182,8 +183,21 @@ public abstract class LLVMObjectAccessFactory {
             return !useLLVMObjectAccess.executeWithTarget(obj) && interop.accepts(obj);
         }
 
-        @Override
-        public void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type) {
+        @Specialization(limit = "3", guards = "type == cachedType")
+        @SuppressWarnings("unused")
+        void doCachedType(Object obj, long offset, Object value, ForeignToLLVMType type,
+                        @Cached("type") ForeignToLLVMType cachedType,
+                        @Cached(parameters = "cachedType") LLVMDataEscapeNode dataEscape) {
+            doWrite(obj, offset, value, dataEscape);
+        }
+
+        @Specialization(replaces = "doCachedType")
+        @TruffleBoundary
+        void doUncached(Object obj, long offset, Object value, ForeignToLLVMType type) {
+            doWrite(obj, offset, value, LLVMDataEscapeNode.getUncached(type));
+        }
+
+        private void doWrite(Object obj, long offset, Object value, LLVMDataEscapeNode dataEscape) {
             long identifier = getWriteIdentifier.execute(offset, value);
             Object escaped = dataEscape.executeWithTarget(value);
             try {

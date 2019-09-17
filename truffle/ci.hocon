@@ -59,7 +59,7 @@ builds += [
     # currently, some truffle unittests fail on windows
     run : [
       ["mx", "build" ],
-      ["mx", "unittest", "truffle.nfi.test", "--verbose" ]
+      ["mx", "unittest", "--verbose" ]
     ]
     packages : {
       msvc : "==10.0"

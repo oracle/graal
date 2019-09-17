@@ -26,11 +26,20 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
+from __future__ import print_function
+
 import os, shutil, re
 from os.path import join, exists
 from argparse import ArgumentParser, REMAINDER
 
 import mx
+
+import sys
+
+if sys.version_info[0] < 3:
+    _long = long # pylint: disable=undefined-variable
+else:
+    _long = int
 
 _suite = mx.suite('compiler')
 
@@ -53,7 +62,7 @@ def run_netbeans_app(app_name, env=None, args=None):
 
     if mx.get_os() != 'windows':
         # Make sure that execution is allowed. The zip file does not always specfiy that correctly
-        os.chmod(executable, 0777)
+        os.chmod(executable, 0o777)
     launch = [executable]
     if not mx.get_opts().verbose:
         launch.append('-J-Dnetbeans.logger.console=false')
@@ -182,7 +191,7 @@ def hcfdis(args):
             if len(addressAndSymbol) == 2:
                 address, symbol = addressAndSymbol
                 if address.startswith('0x'):
-                    address = long(address, 16)
+                    address = _long(address, 16)
                     symbols[address] = symbol
         for f in args.files:
             with open(f) as fp:
@@ -192,7 +201,7 @@ def hcfdis(args):
                 l = lines[i]
                 for m in addressRE.finditer(l):
                     sval = m.group(0)
-                    val = long(sval, 16)
+                    val = _long(sval, 16)
                     sym = symbols.get(val)
                     if sym:
                         l = l.replace(sval, sym)
@@ -202,7 +211,7 @@ def hcfdis(args):
                 mx.log('updating ' + f)
                 with open('new_' + f, "w") as fp:
                     for l in lines:
-                        print >> fp, l
+                        print(l, file=fp)
 
 def jol(args):
     """Java Object Layout"""

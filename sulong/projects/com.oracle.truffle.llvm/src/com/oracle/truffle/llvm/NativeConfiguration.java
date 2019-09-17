@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.llvm.runtime.ToolchainConfig;
 import org.graalvm.options.OptionDescriptor;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -94,6 +95,8 @@ public final class NativeConfiguration implements Configuration {
             return type.cast(LLVMNativeMemory.getInstance());
         } else if (type == UnsafeArrayAccess.class) {
             return type.cast(UnsafeArrayAccess.getInstance());
+        } else if (type == ToolchainConfig.class) {
+            return type.cast(NativeToolchainConfig.getInstance());
         }
         return null;
     }

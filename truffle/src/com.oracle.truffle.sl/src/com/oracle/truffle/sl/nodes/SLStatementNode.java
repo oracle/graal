@@ -147,7 +147,7 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.StatementTag.class) {
             return hasStatementTag;
-        } else if (tag == StandardTags.RootTag.class) {
+        } else if (tag == StandardTags.RootTag.class || tag == StandardTags.RootBodyTag.class) {
             return hasRootTag;
         }
         return false;
@@ -170,7 +170,8 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
     }
 
     /**
-     * Marks this node as being a {@link StandardTags.RootTag} for instrumentation purposes.
+     * Marks this node as being a {@link StandardTags.RootTag} and {@link StandardTags.RootBodyTag}
+     * for instrumentation purposes.
      */
     public final void addRootTag() {
         hasRootTag = true;

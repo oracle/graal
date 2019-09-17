@@ -182,7 +182,7 @@ public final class SVMHost implements HostVM {
 
     @Override
     public Object getConfiguration() {
-        return ImageSingletonsSupportImpl.HostedManagement.get();
+        return ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
     }
 
     @Override

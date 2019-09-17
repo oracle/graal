@@ -34,8 +34,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexFlags;
@@ -57,7 +55,6 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
 
     private static final EagerCaptureGroupRegexSearchNode EAGER_SEARCH_BAILED_OUT = new EagerCaptureGroupRegexSearchNode(null);
 
-    private final FrameDescriptor frameDescriptor;
     private final LazyCaptureGroupRegexSearchNode lazySearchNode;
     private EagerCaptureGroupRegexSearchNode eagerSearchNode;
     private RegexProfile regexProfile;
@@ -76,7 +73,6 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                     TRegexDFAExecutorNode backwardExecutor,
                     TRegexDFAExecutorNode captureGroupExecutor) {
         super(language, source, flags.isUnicode());
-        this.frameDescriptor = forwardExecutor.getProperties().getFrameDescriptor();
         lazySearchNode = new LazyCaptureGroupRegexSearchNode(language, source, flags, preCalculatedResults, forwardExecutor, backwardExecutor, captureGroupExecutor, this);
         runRegexSearchNode = insert(lazySearchNode);
         this.tRegexCompiler = tRegexCompiler;
@@ -92,9 +88,9 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
     }
 
     @Override
-    public final RegexResult execute(VirtualFrame frame, Object input, int fromIndex) {
-        final RegexResult result = runRegexSearchNode.run(frame, input, fromIndex, inputLength(input));
-        assert !eagerCompilation || eagerAndLazySearchNodesProduceSameResult(frame, input, fromIndex, result);
+    public final RegexResult execute(Object input, int fromIndex) {
+        final RegexResult result = runRegexSearchNode.run(input, fromIndex, inputLength(input));
+        assert !eagerCompilation || eagerAndLazySearchNodesProduceSameResult(input, fromIndex, result);
         if (CompilerDirectives.inInterpreter() && canSwitchToEagerSearch() && runRegexSearchNode == lazySearchNode) {
             RegexProfile profile = getRegexProfile();
             if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {
@@ -114,11 +110,6 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
             regexProfile = new RegexProfile();
         }
         return regexProfile;
-    }
-
-    @Override
-    public FrameDescriptor getFrameDescriptor() {
-        return frameDescriptor;
     }
 
     private boolean canSwitchToEagerSearch() {
@@ -145,7 +136,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         }
     }
 
-    private boolean eagerAndLazySearchNodesProduceSameResult(VirtualFrame frame, Object input, int fromIndex, RegexResult resultOfCurrentSearchNode) {
+    private boolean eagerAndLazySearchNodesProduceSameResult(Object input, int fromIndex, RegexResult resultOfCurrentSearchNode) {
         if (lazySearchNode.captureGroupEntryNode == null || eagerSearchNode == EAGER_SEARCH_BAILED_OUT) {
             return true;
         }
@@ -153,9 +144,9 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         RegexResult eagerResult;
         if (runRegexSearchNode == lazySearchNode) {
             lazyResult = resultOfCurrentSearchNode;
-            eagerResult = eagerSearchNode.run(frame, input, fromIndex, inputLength(input));
+            eagerResult = eagerSearchNode.run(input, fromIndex, inputLength(input));
         } else {
-            lazyResult = lazySearchNode.run(frame, input, fromIndex, inputLength(input));
+            lazyResult = lazySearchNode.run(input, fromIndex, inputLength(input));
             eagerResult = resultOfCurrentSearchNode;
         }
         boolean equal;
@@ -178,7 +169,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
 
     abstract static class RunRegexSearchNode extends Node {
 
-        abstract RegexResult run(VirtualFrame frame, Object input, int fromIndexArg, int inputLength);
+        abstract RegexResult run(Object input, int fromIndexArg, int inputLength);
     }
 
     static final class LazyCaptureGroupRegexSearchNode extends RunRegexSearchNode {
@@ -209,30 +200,27 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
                 assert singlePreCalcResult();
                 backwardCallTarget = null;
             } else {
-                backwardCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, backwardNode.getProperties().getFrameDescriptor(),
-                                new TRegexLazyFindStartRootNode(language, source, forwardNode.getPrefixLength(), backwardNode)));
+                backwardCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new TRegexLazyFindStartRootNode(language, source, forwardNode.getPrefixLength(), backwardNode)));
             }
             this.captureGroupEntryNode = TRegexDFAExecutorEntryNode.create(captureGroupExecutor);
             if (captureGroupExecutor == null) {
                 captureGroupCallTarget = null;
             } else {
-                captureGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, captureGroupExecutor.getProperties().getFrameDescriptor(),
-                                new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupExecutor, profiler)));
+                captureGroupCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, new TRegexLazyCaptureGroupsRootNode(language, source, captureGroupExecutor, profiler)));
             }
         }
 
         @Override
-        RegexResult run(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
+        RegexResult run(Object input, int fromIndexArg, int inputLength) {
             if (backwardEntryNode != null && backwardEntryNode.getExecutor().isAnchored()) {
-                return executeBackwardAnchored(frame, input, fromIndexArg, inputLength);
+                return executeBackwardAnchored(input, fromIndexArg, inputLength);
             } else {
-                return executeForward(frame, input, fromIndexArg, inputLength);
+                return executeForward(input, fromIndexArg, inputLength);
             }
         }
 
-        private RegexResult executeForward(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
-            forwardEntryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLength);
-            final int end = forwardEntryNode.getExecutor().getResultInt(frame);
+        private RegexResult executeForward(Object input, int fromIndexArg, int inputLength) {
+            final int end = (int) forwardEntryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (end == TRegexDFAExecutorNode.NO_MATCH) {
                 return NoMatchResult.getInstance();
             }
@@ -260,10 +248,8 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
             }
         }
 
-        private RegexResult executeBackwardAnchored(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
-            backwardEntryNode.execute(frame, input, 0, inputLength - 1,
-                            Math.max(-1, fromIndexArg - 1 - forwardEntryNode.getExecutor().getPrefixLength()));
-            final int backwardResult = backwardEntryNode.getExecutor().getResultInt(frame);
+        private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
+            final int backwardResult = (int) backwardEntryNode.execute(input, 0, inputLength - 1, Math.max(-1, fromIndexArg - 1 - forwardEntryNode.getExecutor().getPrefixLength()));
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
                 return NoMatchResult.getInstance();
             }
@@ -298,9 +284,8 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         }
 
         @Override
-        RegexResult run(VirtualFrame frame, Object input, int fromIndexArg, int inputLength) {
-            entryNode.execute(frame, input, fromIndexArg, fromIndexArg, inputLength);
-            final int[] resultArray = entryNode.getExecutor().getResultCaptureGroups(frame);
+        RegexResult run(Object input, int fromIndexArg, int inputLength) {
+            final int[] resultArray = (int[]) entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (resultArray == null) {
                 return NoMatchResult.getInstance();
             }

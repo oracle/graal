@@ -31,29 +31,18 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 import static com.oracle.svm.core.snippets.SnippetRuntime.UNWIND_EXCEPTION;
 
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -64,8 +53,8 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.NeverInline;
-
-import jdk.vm.ci.meta.JavaKind;
+import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
+import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 
 public final class ExceptionSnippets extends SubstrateTemplates implements Snippets {
 
@@ -91,7 +80,6 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
         super(options, factories, providers, snippetReflection);
 
         lowerings.put(UnwindNode.class, new UnwindLowering());
-        lowerings.put(LoadExceptionObjectNode.class, new LoadExceptionObjectLowering());
     }
 
     protected class UnwindLowering implements NodeLoweringProvider<UnwindNode> {
@@ -106,7 +94,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
         }
     }
 
-    protected class LoadExceptionObjectLowering implements NodeLoweringProvider<LoadExceptionObjectNode> {
+    public static class LoadExceptionObjectLowering implements NodeLoweringProvider<LoadExceptionObjectNode> {
 
         @Override
         public void lower(LoadExceptionObjectNode node, LoweringTool tool) {
@@ -119,51 +107,5 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
 
             graph.addAfterFixed(readRegNode, graph.add(new ExceptionStateNode(exceptionState)));
         }
-    }
-}
-
-@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-final class ReadExceptionObjectNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<ReadExceptionObjectNode> TYPE = NodeClass.create(ReadExceptionObjectNode.class);
-
-    /*
-     * Make every node unique to prevent de-duplication. The node reads a fixed register, so it
-     * needs to remain the first node immediately after the InvokeWithExceptionNode.
-     */
-    @SuppressWarnings("unused")//
-    private final long uniqueId;
-    private static final AtomicLong nextUniqueId = new AtomicLong();
-
-    protected ReadExceptionObjectNode(Stamp stamp) {
-        super(TYPE, stamp);
-        uniqueId = nextUniqueId.getAndIncrement();
-    }
-
-    protected ReadExceptionObjectNode(JavaKind kind) {
-        this(StampFactory.forKind(kind));
-    }
-
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.emitReadExceptionObject(this);
-    }
-}
-
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-final class ExceptionStateNode extends AbstractStateSplit implements Canonicalizable {
-    public static final NodeClass<ExceptionStateNode> TYPE = NodeClass.create(ExceptionStateNode.class);
-
-    protected ExceptionStateNode(FrameState stateAfter) {
-        super(TYPE, StampFactory.forVoid(), stateAfter);
-        assert stateAfter != null;
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        if (stateAfter == null) {
-            /* After the FrameStateAssignmentPhase, the node is unnecessary. */
-            return null;
-        }
-        return this;
     }
 }

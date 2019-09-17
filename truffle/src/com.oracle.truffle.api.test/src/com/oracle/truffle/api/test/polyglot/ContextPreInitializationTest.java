@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -71,10 +69,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
+
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -85,16 +85,22 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class ContextPreInitializationTest {
 
     static final String FIRST = "ContextPreInitializationFirst";
     static final String SECOND = "ContextPreInitializationSecond";
     static final String INTERNAL = "ContextPreInitializationInternal";
+    static final String SHARED = "ContextPreInitializationShared";
     private static final AtomicInteger NEXT_ORDER_INDEX = new AtomicInteger();
     private static final String SYS_OPTION1_KEY = "polyglot." + FIRST + ".Option1";
     private static final String SYS_OPTION2_KEY = "polyglot." + FIRST + ".Option2";
@@ -537,6 +543,43 @@ public class ContextPreInitializationTest {
         assertTrue(context.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(context.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         ctx.close();
+    }
+
+    @SuppressWarnings("try")
+    @Test
+    public void testContextOptionsCompatibleAfterSuccessfulPatch() throws Exception {
+        setPatchable(SHARED);
+        doContextPreinitialize(SHARED);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        final CountingContext firstLangCtx = findContext(SHARED, contexts);
+        final BaseLanguage firstLang = firstLangCtx.language;
+        assertNotNull(firstLangCtx);
+        assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestSharedLanguage.Option1));
+        assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestSharedLanguage.Option2));
+
+        try (Context ctx = Context.newBuilder().option(SHARED + ".Option1", "true").build()) {
+            Value res = ctx.eval(Source.create(SHARED, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            CountingContext langCtx = contexts.get(0);
+            assertTrue(langCtx.optionValues.get(ContextPreInitializationTestSharedLanguage.Option1));
+            assertFalse(langCtx.optionValues.get(ContextPreInitializationTestSharedLanguage.Option2));
+            assertSame(firstLang, langCtx.language);
+            assertSame(firstLangCtx, langCtx);
+
+            ctx.enter();
+            try (TruffleContext truffleContext = langCtx.environment().newContextBuilder().build()) {
+                contexts = new ArrayList<>(emittedContexts);
+                assertEquals(2, contexts.size());
+                langCtx = contexts.get(1);
+                assertTrue(langCtx.optionValues.get(ContextPreInitializationTestSharedLanguage.Option1));
+                assertFalse(langCtx.optionValues.get(ContextPreInitializationTestSharedLanguage.Option2));
+                assertSame("Patched pre-initialized language should be shared with the second context since the options are compatible.", firstLang, langCtx.language);
+            } finally {
+                ctx.leave();
+            }
+        }
     }
 
     @Test
@@ -1010,7 +1053,7 @@ public class ContextPreInitializationTest {
     }
 
     private static void resetSystemPropertiesOptions() {
-        System.clearProperty("polyglot.engine.PreinitializeContexts");
+        System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
         System.clearProperty(SYS_OPTION1_KEY);
         System.clearProperty(SYS_OPTION2_KEY);
     }
@@ -1030,7 +1073,7 @@ public class ContextPreInitializationTest {
         }
         if (languagesOptionValue.length() > 0) {
             languagesOptionValue.replace(languagesOptionValue.length() - 1, languagesOptionValue.length(), "");
-            System.setProperty("polyglot.engine.PreinitializeContexts", languagesOptionValue.toString());
+            System.setProperty("polyglot.image-build-time.PreinitializeContexts", languagesOptionValue.toString());
         }
         final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
         preInitMethod.setAccessible(true);
@@ -1038,7 +1081,7 @@ public class ContextPreInitializationTest {
             preInitMethod.invoke(null);
         } finally {
             // PreinitializeContexts should only be set during pre-initialization, not at runtime
-            System.clearProperty("polyglot.engine.PreinitializeContexts");
+            System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
         }
     }
 
@@ -1090,10 +1133,12 @@ public class ContextPreInitializationTest {
         final List<String> arguments;
         String languageHome;
         boolean preInitialized;
+        final BaseLanguage language;
 
-        CountingContext(final String id, final TruffleLanguage.Env env) {
+        CountingContext(final String id, final TruffleLanguage.Env env, final BaseLanguage language) {
             this.id = id;
             this.env = env;
+            this.language = language;
             this.optionValues = new HashMap<>();
             this.arguments = new ArrayList<>();
         }
@@ -1123,7 +1168,7 @@ public class ContextPreInitializationTest {
                     return null;
                 }
             }.getLanguageInfo().getId();
-            final CountingContext ctx = new CountingContext(languageId, env);
+            final CountingContext ctx = new CountingContext(languageId, env, this);
             ctx.createContextCount++;
             ctx.createContextOrder = nextId();
             ctx.languageHome = getLanguageHome();
@@ -1198,8 +1243,8 @@ public class ContextPreInitializationTest {
         }
 
         protected void useLanguage(CountingContext context, String id) {
-            com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(id, "", "").build();
-            context.environment().parse(source);
+            com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(id, "", "").internal(true).build();
+            context.environment().parseInternal(source);
         }
 
         @CompilerDirectives.TruffleBoundary
@@ -1296,6 +1341,54 @@ public class ContextPreInitializationTest {
 
         @Override
         public void close() throws SecurityException {
+        }
+    }
+
+    @TruffleLanguage.Registration(id = SHARED, name = SHARED, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
+    public static final class ContextPreInitializationTestSharedLanguage extends BaseLanguage {
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 1") //
+        public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
+        @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Option 2") //
+        public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
+
+        static Consumer<TruffleLanguage.Env> onPreInitAction;
+        static Consumer<TruffleLanguage.Env> onPatchAction;
+
+        @Override
+        protected CountingContext createContext(Env env) {
+            final CountingContext ctx = super.createContext(env);
+            ctx.optionValues.put(Option1, env.getOptions().get(Option1));
+            ctx.optionValues.put(Option2, env.getOptions().get(Option2));
+            return ctx;
+        }
+
+        @Override
+        protected void initializeContext(CountingContext context) throws Exception {
+            super.initializeContext(context);
+            if (onPreInitAction != null) {
+                onPreInitAction.accept(context.env);
+            }
+        }
+
+        @Override
+        protected boolean patchContext(CountingContext context, Env newEnv) {
+            context.optionValues.put(Option1, newEnv.getOptions().get(Option1));
+            context.optionValues.put(Option2, newEnv.getOptions().get(Option2));
+            final boolean result = super.patchContext(context, newEnv);
+            if (onPatchAction != null) {
+                onPatchAction.accept(newEnv);
+            }
+            return result;
+        }
+
+        @Override
+        protected OptionDescriptors getOptionDescriptors() {
+            return new ContextPreInitializationTestSharedLanguageOptionDescriptors();
+        }
+
+        @Override
+        protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+            return firstOptions.equals(newOptions);
         }
     }
 }

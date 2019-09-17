@@ -41,6 +41,14 @@
 package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Array;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -70,6 +78,7 @@ final class HostObject implements TruffleObject {
 
     static final int LIMIT = 5;
 
+    private static final ZoneId UTC = ZoneId.of("UTC");
     static final HostObject NULL = new HostObject(null, null, false);
 
     final Object obj;
@@ -116,10 +125,6 @@ final class HostObject implements TruffleObject {
         } else {
             return false;
         }
-    }
-
-    boolean isPrimitive() {
-        return PolyglotImpl.isGuestPrimitive(obj);
     }
 
     static Object valueOf(Object value) {
@@ -837,6 +842,95 @@ final class HostObject implements TruffleObject {
         } else {
             throw UnsupportedMessageException.create();
         }
+    }
+
+    @ExportMessage
+    boolean isDate() {
+        return obj instanceof LocalDate || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    LocalDate asDate() throws UnsupportedMessageException {
+        if (obj instanceof LocalDate) {
+            return ((LocalDate) obj);
+        } else if (obj instanceof LocalDateTime) {
+            return ((LocalDateTime) obj).toLocalDate();
+        } else if (obj instanceof Instant) {
+            return ((Instant) obj).atZone(UTC).toLocalDate();
+        } else if (obj instanceof ZonedDateTime) {
+            return ((ZonedDateTime) obj).toLocalDate();
+        } else if (obj instanceof Date) {
+            return ((Date) obj).toInstant().atZone(UTC).toLocalDate();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isTime() {
+        return obj instanceof LocalTime || obj instanceof LocalDateTime || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    LocalTime asTime() throws UnsupportedMessageException {
+        if (obj instanceof LocalTime) {
+            return ((LocalTime) obj);
+        } else if (obj instanceof LocalDateTime) {
+            return ((LocalDateTime) obj).toLocalTime();
+        } else if (obj instanceof ZonedDateTime) {
+            return ((ZonedDateTime) obj).toLocalTime();
+        } else if (obj instanceof Instant) {
+            return ((Instant) obj).atZone(UTC).toLocalTime();
+        } else if (obj instanceof Date) {
+            return ((Date) obj).toInstant().atZone(UTC).toLocalTime();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isTimeZone() {
+        return obj instanceof ZoneId || obj instanceof Instant || obj instanceof ZonedDateTime || obj instanceof Date;
+    }
+
+    @ExportMessage
+    ZoneId asTimeZone() throws UnsupportedMessageException {
+        if (obj instanceof ZoneId) {
+            return (ZoneId) obj;
+        } else if (obj instanceof ZonedDateTime) {
+            return ((ZonedDateTime) obj).getZone();
+        } else if (obj instanceof Instant) {
+            return UTC;
+        } else if (obj instanceof Date) {
+            return UTC;
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Instant asInstant() throws UnsupportedMessageException {
+        if (obj instanceof ZonedDateTime) {
+            return ((ZonedDateTime) obj).toInstant();
+        } else if (obj instanceof Instant) {
+            return (Instant) obj;
+        } else if (obj instanceof Date) {
+            return ((Date) obj).toInstant();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    boolean isDuration() {
+        return obj instanceof Duration;
+    }
+
+    @ExportMessage
+    Duration asDuration() throws UnsupportedMessageException {
+        if (isDuration()) {
+            return (Duration) obj;
+        }
+        throw UnsupportedMessageException.create();
     }
 
     boolean isStaticClass() {

@@ -113,7 +113,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
             RegisterConfig registerConfig = ImageSingletons.lookup(SubstrateRegisterConfigFactory.class).newRegisterFactory(config, metaAccess, ConfigurationValues.getTarget(),
-                            SubstrateOptions.UseStackBasePointer.getValue());
+                            SubstrateOptions.PreserveFramePointer.getValue());
             CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfig);
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,

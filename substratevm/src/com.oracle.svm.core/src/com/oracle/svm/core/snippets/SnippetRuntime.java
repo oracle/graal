@@ -209,11 +209,11 @@ public class SnippetRuntime {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
         public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
-            CodePointer handlerPointer;
+            CodePointer handlerIP;
             if (deoptFrame != null) {
                 /* Deoptimization entry points always have an exception handler. */
                 deoptFrame.takeException();
-                handlerPointer = ip;
+                handlerIP = ip;
 
             } else {
                 long handler = CodeInfoTable.lookupExceptionOffset(ip);
@@ -222,7 +222,7 @@ public class SnippetRuntime {
                     return true;
                 }
 
-                handlerPointer = getExceptionHandlerPointer(ip, sp, handler);
+                handlerIP = (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handler));
             }
 
             Throwable exception = currentException.get();
@@ -230,20 +230,16 @@ public class SnippetRuntime {
 
             StackOverflowCheck.singleton().protectYellowZone();
 
-            KnownIntrinsics.farReturn(exception, sp, handlerPointer);
+            KnownIntrinsics.farReturn(exception, sp, handlerIP);
             /*
              * The intrinsic performs a jump to the specified instruction pointer, so this code is
              * unreachable.
              */
             return false;
         }
-
-        public CodePointer getExceptionHandlerPointer(CodePointer ip, @SuppressWarnings("unused") Pointer sp, long handlerOffset) {
-            return (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handlerOffset));
-        }
     }
 
-    protected static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
+    public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
 
     @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
     public static boolean isUnwindingForException() {
@@ -290,7 +286,7 @@ public class SnippetRuntime {
          * exception. So we can start looking for the exception handler immediately in that frame,
          * without skipping any frames in between.
          */
-        JavaStackWalker.walkCurrentThread(callerSP, callerIP, ImageSingletons.lookup(ExceptionStackFrameVisitor.class));
+        ImageSingletons.lookup(ExceptionUnwind.class).unwindException(callerSP, callerIP);
 
         /*
          * The stack walker does not return if an exception handler is found, but instead performs a
@@ -298,6 +294,14 @@ public class SnippetRuntime {
          * exception.
          */
         reportUnhandledExceptionRaw(exception);
+    }
+
+    public static class ExceptionUnwind {
+        private static final ExceptionStackFrameVisitor stackFrameVisitor = new ExceptionStackFrameVisitor();
+
+        public void unwindException(Pointer callerSP, CodePointer callerIP) {
+            JavaStackWalker.walkCurrentThread(callerSP, callerIP, stackFrameVisitor);
+        }
     }
 
     private static void reportUnhandledExceptionRaw(Throwable exception) {

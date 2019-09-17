@@ -38,22 +38,13 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings("static-method")
 public final class NullValue implements TruffleObject {
 
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof NullValue;
-    }
-
     @ExportMessage
     boolean isNull() {
         return true;
     }
 
-    @ExportMessage
-    boolean isPointer() {
-        return true;
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return 0;
+    @Override
+    public String toString() {
+        return "null";
     }
 }

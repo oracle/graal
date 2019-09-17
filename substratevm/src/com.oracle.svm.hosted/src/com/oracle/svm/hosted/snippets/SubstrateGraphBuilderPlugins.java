@@ -51,6 +51,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -67,6 +68,7 @@ import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.word.WordCastNode;
@@ -93,6 +95,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.graal.nodes.FormatObjectNode;
@@ -121,6 +124,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.GraalEdgeUnsafePartition;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -272,12 +276,14 @@ public class SubstrateGraphBuilderPlugins {
      * a null value is returned.
      */
     static Class<?>[] extractClassArray(AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection, ValueNode arrayNode, boolean exact) {
-        if (arrayNode.isConstant() && !exact) {
+        /* Use the original value in case we are in a deopt target method. */
+        ValueNode originalArrayNode = GraphUtil.originalValue(arrayNode);
+        if (originalArrayNode.isConstant() && !exact) {
             /*
              * The array is a constant, however that doesn't make the array immutable, i.e., its
              * elements can still be changed. We assume that will not happen.
              */
-            Class<?>[] classes = snippetReflection.asObject(Class[].class, arrayNode.asJavaConstant());
+            Class<?>[] classes = snippetReflection.asObject(Class[].class, originalArrayNode.asJavaConstant());
 
             /*
              * If any of the element is null just bailout, this is probably a situation where the
@@ -285,13 +291,13 @@ public class SubstrateGraphBuilderPlugins {
              */
             return classes == null ? null : Stream.of(classes).allMatch(Objects::nonNull) ? classes : null;
 
-        } else if (arrayNode instanceof NewArrayNode) {
+        } else if (originalArrayNode instanceof NewArrayNode) {
             /*
              * Find the elements written to the array. If the array length is a constant, all
              * written elements are constants and all array elements are filled then return the
              * array elements.
              */
-            NewArrayNode newArray = (NewArrayNode) arrayNode;
+            NewArrayNode newArray = (NewArrayNode) originalArrayNode;
             ValueNode newArrayLengthNode = newArray.length();
             if (!newArrayLengthNode.isJavaConstant()) {
                 /*
@@ -307,11 +313,10 @@ public class SubstrateGraphBuilderPlugins {
              * values written in the array.
              */
             List<Class<?>> classList = new ArrayList<>();
-            assert newArray.successors().count() <= 1 : "Detected node with multiple successors: " + newArray;
-            Node successor = newArray.successors().first();
+            FixedNode successor = newArray.next();
             while (successor instanceof StoreIndexedNode) {
                 StoreIndexedNode store = (StoreIndexedNode) successor;
-                assert store.array().equals(newArray);
+                assert GraphUtil.originalValue(store.array()).equals(newArray);
                 ValueNode valueNode = store.value();
                 if (valueNode.isConstant() && !valueNode.isNullConstant()) {
                     Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
@@ -326,8 +331,11 @@ public class SubstrateGraphBuilderPlugins {
                     classList = null;
                     break;
                 }
-                assert store.successors().count() <= 1 : "Detected node with multiple successors: " + store;
-                successor = store.successors().first();
+                successor = store.next();
+                if (successor instanceof DeoptEntryNode) {
+                    assert ((HostedMethod) successor.graph().method()).isDeoptTarget();
+                    successor = ((DeoptEntryNode) successor).next();
+                }
             }
 
             /*

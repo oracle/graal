@@ -46,7 +46,6 @@ public @interface HotSpotToSVM {
      */
     // Please keep sorted
     enum Id {
-        CleanReferences,
         CloseCompilation,
         CloseDebugContext,
         CloseDebugContextScope,

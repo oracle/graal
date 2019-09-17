@@ -68,6 +68,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -160,7 +161,6 @@ public final class Engine implements AutoCloseable {
      * {@link OptionDescriptor#getKey() groups}:
      * <ul>
      * <li><b>engine</b>: options to configure the behavior of this engine.
-     * <li><b>compiler</b>: options to configure the optimizing compiler.
      * </ul>
      * The language and instrument specific options need to be retrieved using
      * {@link Instrument#getOptions()} or {@link Language#getOptions()}.
@@ -635,6 +635,21 @@ public final class Engine implements AutoCloseable {
         @Override
         public void setHostAccessImpl(HostAccess conf, Object impl) {
             conf.impl = impl;
+        }
+
+        @Override
+        public UnmodifiableEconomicSet<String> getEvalAccess(PolyglotAccess access, String language) {
+            return access.getEvalAccess(language);
+        }
+
+        @Override
+        public UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access) {
+            return access.getBindingsAccess();
+        }
+
+        @Override
+        public void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
+            access.validate(languages);
         }
 
     }

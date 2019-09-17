@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMPointerDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(value = "name", type = LLVMExpressionNode.class)
@@ -48,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMPolyglotExport extends LLVMIntrinsic {
 
     @Child LLVMReadStringNode readString = LLVMReadStringNodeGen.create();
-    @Child LLVMDataEscapeNode escape = LLVMDataEscapeNode.create();
+    @Child LLVMDataEscapeNode escape = LLVMPointerDataEscapeNodeGen.create();
 
     @Specialization
     protected Object doExport(Object name, Object value,

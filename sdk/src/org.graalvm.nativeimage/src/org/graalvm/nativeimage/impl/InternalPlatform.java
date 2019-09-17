@@ -43,12 +43,21 @@ package org.graalvm.nativeimage.impl;
 import org.graalvm.nativeimage.Platform;
 
 public interface InternalPlatform {
+
+    /**
+     * Used for all platforms that make use of static JNI JDK libraries (libjava.a, libnio.a, ...).
+     *
+     * @since 19.2
+     */
+    interface PLATFORM_JNI extends Platform {
+    }
+
     /**
      * Supported operating system: Linux platform that uses JNI based native JDK libraries.
      *
      * @since 19.0
      */
-    interface LINUX_JNI extends Platform {
+    interface LINUX_JNI extends PLATFORM_JNI {
 
     }
 
@@ -57,7 +66,7 @@ public interface InternalPlatform {
      *
      * @since 19.0
      */
-    interface DARWIN_JNI extends Platform {
+    interface DARWIN_JNI extends PLATFORM_JNI {
 
     }
 

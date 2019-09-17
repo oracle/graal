@@ -171,4 +171,16 @@ public interface LLVMDebugValue {
     boolean isInteropValue();
 
     Object asInteropValue();
+
+    default boolean isManagedPointer() {
+        return false;
+    }
+
+    default Object getManagedPointerBase() {
+        return null;
+    }
+
+    default long getManagedPointerOffset() {
+        return 0;
+    }
 }

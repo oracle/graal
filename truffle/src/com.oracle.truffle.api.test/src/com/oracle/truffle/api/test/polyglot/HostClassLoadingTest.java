@@ -380,7 +380,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         String oldName = hostClass.getSimpleName();
         Path packagePath = Paths.get(hostClass.getPackage().getName().replace('.', '/'));
         Path classFilePath = packagePath.resolve(oldName + ".class");
-        URL classFileLocation = hostClass.getResource("/" + classFilePath.toString());
+        URL classFileLocation = hostClass.getResource("/" + pathToInternalName(classFilePath));
 
         Path tempDir = Files.createTempDirectory("testHostClassLoading");
         Path targetDir = tempDir.resolve(packagePath);
@@ -388,8 +388,8 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
         // replace class file name in class file bytes
         byte[] bytes = read(classFileLocation);
-        byte[] searchBytes = packagePath.resolve(oldName).toString().getBytes(StandardCharsets.UTF_8);
-        byte[] newBytes = packagePath.resolve(newName).toString().getBytes(StandardCharsets.UTF_8);
+        byte[] searchBytes = pathToInternalName(packagePath.resolve(oldName)).getBytes(StandardCharsets.UTF_8);
+        byte[] newBytes = pathToInternalName(packagePath.resolve(newName)).getBytes(StandardCharsets.UTF_8);
 
         // need to encode to the same number of bytes. otherwise more difficult to rename
         assert newBytes.length == searchBytes.length;
@@ -403,6 +403,10 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         // create the new class name with the new name
         Files.copy(new ByteArrayInputStream(bytes), targetDir.resolve(newName + ".class"));
         return tempDir;
+    }
+
+    private static String pathToInternalName(Path path) {
+        return path.toString().replace(path.getFileSystem().getSeparator(), "/");
     }
 
     private static byte[] read(URL file) throws IOException {

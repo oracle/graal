@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CleanReferences;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.HotSpotToSVM.Id.CloseDebugContextScope;
@@ -165,9 +164,6 @@ final class HotSpotToSVMCalls {
 
     @HotSpotToSVM(IsBasicDumpEnabled)
     static native boolean isBasicDumpEnabled(long isolateThreadId, long handle);
-
-    @HotSpotToSVM(CleanReferences)
-    static native void cleanReferences(long isolateThreadId);
 
     @HotSpotToSVM(CloseCompilation)
     static native void closeCompilation(long isolateThreadId, long compilationHandle);

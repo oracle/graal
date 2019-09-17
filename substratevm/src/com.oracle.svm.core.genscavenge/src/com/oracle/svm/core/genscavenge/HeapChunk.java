@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.util.function.IntUnaryOperator;
+
+import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -39,6 +42,7 @@ import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
  * HeapChunk is a superclass for the memory that makes up the Heap. HeapChunks are aggregated into
@@ -85,8 +89,25 @@ import com.oracle.svm.core.log.Log;
  */
 public class HeapChunk {
 
+    static class Options {
+        @Option(help = "Number of bytes at the beginning of each heap chunk that are not used for payload data, i.e., can be freely used as metadata by the heap chunk provider.") //
+        public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0);
+    }
+
+    static class HeaderPaddingSizeProvider implements IntUnaryOperator {
+        @Override
+        public int applyAsInt(int operand) {
+            assert operand == 0 : "padding structure does not declare any fields";
+            return Options.HeapChunkHeaderPadding.getValue();
+        }
+    }
+
+    @RawStructure(sizeProvider = HeaderPaddingSizeProvider.class)
+    private interface HeaderPadding extends PointerBase {
+    }
+
     @RawStructure
-    public interface Header<T extends Header<T>> extends PointerBase {
+    public interface Header<T extends Header<T>> extends HeaderPadding {
 
         /**
          * Pointer to the memory available for allocation, i.e., the end of the last allocated

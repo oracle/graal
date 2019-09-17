@@ -28,19 +28,24 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntUnaryOperator;
+
+import org.graalvm.nativeimage.c.struct.RawStructure;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.CInterfaceError;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
-import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
-import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
+import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
+import com.oracle.svm.hosted.c.info.StructFieldInfo;
+import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -170,7 +175,31 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
             currentOffset += fieldSize;
         }
 
-        info.getSizeInfo().setProperty(currentOffset);
+        int totalSize;
+        Class<? extends IntUnaryOperator> sizeProviderClass = info.getAnnotatedElement().getAnnotation(RawStructure.class).sizeProvider();
+        if (sizeProviderClass == IntUnaryOperator.class) {
+            /* No sizeProvider specified in the annotation, so no adjustment necessary. */
+            totalSize = currentOffset;
+
+        } else {
+            IntUnaryOperator sizeProvider;
+            try {
+                sizeProvider = ReflectionUtil.newInstance(sizeProviderClass);
+            } catch (ReflectionUtilError ex) {
+                throw UserError.abort(
+                                "The size provider of @" + RawStructure.class.getSimpleName() + " " + info.getAnnotatedElement().toJavaName(true) +
+                                                " cannot be instantiated via no-argument constructor",
+                                ex.getCause());
+            }
+
+            totalSize = sizeProvider.applyAsInt(currentOffset);
+            if (totalSize < currentOffset) {
+                throw UserError.abort("The size provider of @" + RawStructure.class.getSimpleName() + " " + info.getAnnotatedElement().toJavaName(true) + " computed size " + totalSize +
+                                " which is smaller than the minimum size of " + currentOffset);
+            }
+        }
+
+        info.getSizeInfo().setProperty(totalSize);
         info.setPlanned();
     }
 

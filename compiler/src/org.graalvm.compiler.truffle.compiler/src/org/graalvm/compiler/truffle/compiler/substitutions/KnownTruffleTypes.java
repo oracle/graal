@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getValue;
-
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 
@@ -36,9 +33,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
-    public final ResolvedJavaType classFrameClass = getValue(TruffleUseFrameWithoutBoxing) ? //
-                    lookupType("org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing") : //
-                    lookupType("org.graalvm.compiler.truffle.runtime.FrameWithBoxing");
+    public final ResolvedJavaType classFrameClass = lookupType("org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing");
     public final ResolvedJavaType classFrameDescriptor = lookupType("com.oracle.truffle.api.frame.FrameDescriptor");
     public final ResolvedJavaType classFrameSlot = lookupType("com.oracle.truffle.api.frame.FrameSlot");
     public final ResolvedJavaType classFrameSlotKind = lookupType("com.oracle.truffle.api.frame.FrameSlotKind");

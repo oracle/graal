@@ -116,8 +116,19 @@ final class JNIInvocationInterface {
                         CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EEXIST());
                     }
                 }
-                if (CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer()) != 0) {
+                int error = CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer());
+                if (error == CEntryPointErrors.NO_ERROR) {
+                    // success
+                } else if (error == CEntryPointErrors.UNSPECIFIED) {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
+                } else if (error == CEntryPointErrors.MAP_HEAP_FAILED) {
+                    CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ENOMEM());
+                } else { // return a (non-JNI) error that is more helpful for diagnosis
+                    error = -1000000000 - error;
+                    if (error == JNIErrors.JNI_OK() || error >= -100) {
+                        error = JNIErrors.JNI_ERR(); // non-negative or potential actual JNI error
+                    }
+                    CEntryPointActions.bailoutInPrologue(error);
                 }
             }
         }

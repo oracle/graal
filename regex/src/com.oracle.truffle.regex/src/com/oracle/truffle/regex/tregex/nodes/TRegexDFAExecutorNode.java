@@ -26,8 +26,6 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameUtil;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexRootNode;
@@ -118,35 +116,34 @@ public final class TRegexDFAExecutorNode extends Node {
      * records position of the END of the match found, or -1 if no match exists.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    protected void execute(final VirtualFrame frame, final boolean compactString) {
-        CompilerDirectives.ensureVirtualized(frame);
+    protected Object execute(final TRegexDFAExecutorLocals locals, final boolean compactString) {
+        CompilerDirectives.ensureVirtualized(locals);
         CompilerAsserts.compilationConstant(states);
         CompilerAsserts.compilationConstant(states.length);
-        if (!validArgs(frame)) {
+        if (!validArgs(locals)) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
-                            getFromIndex(frame), getIndex(frame), getMaxIndex(frame)));
+                            locals.getFromIndex(), locals.getIndex(), locals.getMaxIndex()));
         }
         if (props.isTrackCaptureGroups()) {
-            createCGData(frame);
-            initResultOrder(frame);
-            setResultObject(frame, null);
-            setLastTransition(frame, (short) -1);
+            initResultOrder(locals);
+            locals.setResultObject(null);
+            locals.setLastTransition((short) -1);
         } else {
-            setResultInt(frame, TRegexDFAExecutorNode.NO_MATCH);
+            locals.setResultInt(TRegexDFAExecutorNode.NO_MATCH);
         }
         // check if input is long enough for a match
-        if (props.getMinResultLength() > 0 && (isForward() ? getMaxIndex(frame) - getIndex(frame) : getIndex(frame) - getMaxIndex(frame)) < props.getMinResultLength()) {
+        if (props.getMinResultLength() > 0 && (isForward() ? locals.getMaxIndex() - locals.getIndex() : locals.getIndex() - locals.getMaxIndex()) < props.getMinResultLength()) {
             // no match possible, break immediately
-            return;
+            return props.isTrackCaptureGroups() ? null : TRegexDFAExecutorNode.NO_MATCH;
         }
         if (recordExecution()) {
-            debugRecorder.startRecording(frame, this);
+            debugRecorder.startRecording(locals);
         }
-        if (isBackward() && getFromIndex(frame) - 1 > getMaxIndex(frame)) {
-            setCurMaxIndex(frame, getFromIndex(frame) - 1);
+        if (isBackward() && locals.getFromIndex() - 1 > locals.getMaxIndex()) {
+            locals.setCurMaxIndex(locals.getFromIndex() - 1);
         } else {
-            setCurMaxIndex(frame, getMaxIndex(frame));
+            locals.setCurMaxIndex(locals.getMaxIndex());
         }
         int ip = 0;
         outer: while (true) {
@@ -162,13 +159,13 @@ public final class TRegexDFAExecutorNode extends Node {
             final short[] successors = curState.getSuccessors();
             CompilerAsserts.partialEvaluationConstant(successors);
             CompilerAsserts.partialEvaluationConstant(successors.length);
-            int prevIndex = getIndex(frame);
-            curState.executeFindSuccessor(frame, this, compactString);
+            int prevIndex = locals.getIndex();
+            curState.executeFindSuccessor(locals, this, compactString);
             if (recordExecution() && ip != 0) {
-                debugRecordTransition(frame, (DFAStateNode) curState, prevIndex);
+                debugRecordTransition(locals, (DFAStateNode) curState, prevIndex);
             }
             for (int i = 0; i < successors.length; i++) {
-                if (i == getSuccessorIndex(frame)) {
+                if (i == locals.getSuccessorIndex()) {
                     if (successors[i] != -1 && states[successors[i]] instanceof DFAStateNode) {
                         ((DFAStateNode) states[successors[i]]).getStateReachedProfile().enter();
                     }
@@ -176,154 +173,76 @@ public final class TRegexDFAExecutorNode extends Node {
                     continue outer;
                 }
             }
-            assert getSuccessorIndex(frame) == -1;
+            assert locals.getSuccessorIndex() == -1;
             break;
         }
         if (recordExecution()) {
             debugRecorder.finishRecording();
         }
+        return props.isTrackCaptureGroups() ? locals.getResultCaptureGroups() : locals.getResultInt();
     }
 
-    private void debugRecordTransition(VirtualFrame frame, DFAStateNode curState, int prevIndex) {
+    private void debugRecordTransition(TRegexDFAExecutorLocals locals, DFAStateNode curState, int prevIndex) {
         short ip = curState.getId();
-        boolean hasSuccessor = getSuccessorIndex(frame) != -1;
+        boolean hasSuccessor = locals.getSuccessorIndex() != -1;
         if (isForward()) {
-            for (int i = prevIndex; i < getIndex(frame) - (hasSuccessor ? 1 : 0); i++) {
+            for (int i = prevIndex; i < locals.getIndex() - (hasSuccessor ? 1 : 0); i++) {
                 if (curState.hasLoopToSelf()) {
                     debugRecorder.recordTransition(i, ip, curState.getLoopToSelf());
                 }
             }
         } else {
-            for (int i = prevIndex; i > getIndex(frame) + (hasSuccessor ? 1 : 0); i--) {
+            for (int i = prevIndex; i > locals.getIndex() + (hasSuccessor ? 1 : 0); i--) {
                 if (curState.hasLoopToSelf()) {
                     debugRecorder.recordTransition(i, ip, curState.getLoopToSelf());
                 }
             }
         }
         if (hasSuccessor) {
-            debugRecorder.recordTransition(getIndex(frame) + (isForward() ? -1 : 1), ip, getSuccessorIndex(frame));
+            debugRecorder.recordTransition(locals.getIndex() + (isForward() ? -1 : 1), ip, locals.getSuccessorIndex());
         }
     }
 
     /**
-     * The index pointing into {@link #getInput(VirtualFrame)}.
-     *
-     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @return the current index of {@link #getInput(VirtualFrame)} that is being processed.
-     */
-    public int getIndex(VirtualFrame frame) {
-        return FrameUtil.getIntSafe(frame, props.getIndexFS());
-    }
-
-    public void setIndex(VirtualFrame frame, int i) {
-        frame.setInt(props.getIndexFS(), i);
-    }
-
-    /**
-     * The {@code fromIndex} argument given to
-     * {@link TRegexExecRootNode#execute(VirtualFrame, Object, int)}.
-     *
-     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @return the {@code fromIndex} argument given to
-     *         {@link TRegexExecRootNode#execute(VirtualFrame, Object, int)}.
-     */
-    public int getFromIndex(VirtualFrame frame) {
-        return FrameUtil.getIntSafe(frame, props.getFromIndexFS());
-    }
-
-    public void setFromIndex(VirtualFrame frame, int fromIndex) {
-        frame.setInt(props.getFromIndexFS(), fromIndex);
-    }
-
-    /**
-     * The maximum index as given by the parent {@link TRegexExecRootNode}.
-     *
-     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @return the maximum index as given by the parent {@link TRegexExecRootNode}.
-     */
-    public int getMaxIndex(VirtualFrame frame) {
-        return FrameUtil.getIntSafe(frame, props.getMaxIndexFS());
-    }
-
-    public void setMaxIndex(VirtualFrame frame, int maxIndex) {
-        frame.setInt(props.getMaxIndexFS(), maxIndex);
-    }
-
-    /**
-     * The maximum index as checked by {@link #hasNext(VirtualFrame)}. In most cases this value is
-     * equal to {@link #getMaxIndex(VirtualFrame)}, but backward matching nodes change this value
-     * while matching.
-     *
-     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @return the maximum index as checked by {@link #hasNext(VirtualFrame)}.
-     *
-     * @see BackwardDFAStateNode
-     */
-    public int getCurMaxIndex(VirtualFrame frame) {
-        return FrameUtil.getIntSafe(frame, props.getCurMaxIndexFS());
-    }
-
-    public void setCurMaxIndex(VirtualFrame frame, int value) {
-        frame.setInt(props.getCurMaxIndexFS(), value);
-    }
-
-    /**
-     * The {@code input} argument given to
-     * {@link TRegexExecRootNode#execute(VirtualFrame, Object, int)}.
-     *
-     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @return the {@code input} argument given to
-     *         {@link TRegexExecRootNode#execute(VirtualFrame, Object, int)}.
-     */
-    public Object getInput(VirtualFrame frame) {
-        return FrameUtil.getObjectSafe(frame, props.getInputFS());
-    }
-
-    public void setInput(VirtualFrame frame, Object input) {
-        frame.setObject(props.getInputFS(), input);
-    }
-
-    /**
      * The length of the {@code input} argument given to
-     * {@link TRegexExecRootNode#execute(VirtualFrame, Object, int)}.
+     * {@link TRegexExecRootNode#execute(Object, int)}.
      *
-     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @return the length of the {@code input} argument given to
-     *         {@link TRegexExecRootNode#execute(VirtualFrame, Object, int)}.
+     *         {@link TRegexExecRootNode#execute(Object, int)}.
      */
-    public int getInputLength(VirtualFrame frame) {
-        return lengthNode.execute(getInput(frame));
+    public int getInputLength(TRegexDFAExecutorLocals locals) {
+        return lengthNode.execute(locals.getInput());
     }
 
-    public char getChar(VirtualFrame frame) {
-        return charAtNode.execute(getInput(frame), getIndex(frame));
+    public char getChar(TRegexDFAExecutorLocals locals) {
+        return charAtNode.execute(locals.getInput(), locals.getIndex());
     }
 
-    public void advance(VirtualFrame frame) {
-        setIndex(frame, props.isForward() ? getIndex(frame) + 1 : getIndex(frame) - 1);
+    public void advance(TRegexDFAExecutorLocals locals) {
+        locals.setIndex(props.isForward() ? locals.getIndex() + 1 : locals.getIndex() - 1);
     }
 
-    public boolean hasNext(VirtualFrame frame) {
-        return props.isForward() ? Integer.compareUnsigned(getIndex(frame), getCurMaxIndex(frame)) < 0 : getIndex(frame) > getCurMaxIndex(frame);
+    public boolean hasNext(TRegexDFAExecutorLocals locals) {
+        return props.isForward() ? Integer.compareUnsigned(locals.getIndex(), locals.getCurMaxIndex()) < 0 : locals.getIndex() > locals.getCurMaxIndex();
     }
 
-    public boolean atBegin(VirtualFrame frame) {
-        return getIndex(frame) == (props.isForward() ? 0 : getInputLength(frame) - 1);
+    public boolean atBegin(TRegexDFAExecutorLocals locals) {
+        return locals.getIndex() == (props.isForward() ? 0 : getInputLength(locals) - 1);
     }
 
-    public boolean atEnd(VirtualFrame frame) {
-        final int i = getIndex(frame);
+    public boolean atEnd(TRegexDFAExecutorLocals locals) {
+        final int i = locals.getIndex();
         if (props.isForward()) {
-            return i == getInputLength(frame);
+            return i == getInputLength(locals);
         } else {
             return i < 0;
         }
     }
 
-    public int rewindUpTo(VirtualFrame frame, int length) {
+    public int rewindUpTo(TRegexDFAExecutorLocals locals, int length) {
         if (props.isForward()) {
-            final int offset = Math.min(getIndex(frame), length);
-            setIndex(frame, getIndex(frame) - offset);
+            final int offset = Math.min(locals.getIndex(), length);
+            locals.setIndex(locals.getIndex() - offset);
             return offset;
         } else {
             assert length == 0;
@@ -331,54 +250,11 @@ public final class TRegexDFAExecutorNode extends Node {
         }
     }
 
-    public void setLastTransition(VirtualFrame frame, short lastTransition) {
-        frame.setInt(props.getLastTransitionFS(), lastTransition);
-    }
-
-    public short getLastTransition(VirtualFrame frame) {
-        return (short) FrameUtil.getIntSafe(frame, props.getLastTransitionFS());
-    }
-
-    public void setSuccessorIndex(VirtualFrame frame, int successorIndex) {
-        frame.setInt(props.getSuccessorIndexFS(), successorIndex);
-    }
-
-    public int getSuccessorIndex(VirtualFrame frame) {
-        return FrameUtil.getIntSafe(frame, props.getSuccessorIndexFS());
-    }
-
-    public int getResultInt(VirtualFrame frame) {
-        assert !props.isTrackCaptureGroups();
-        return FrameUtil.getIntSafe(frame, props.getResultFS());
-    }
-
-    public void setResultInt(VirtualFrame frame, int result) {
-        frame.setInt(props.getResultFS(), result);
-    }
-
-    public int[] getResultCaptureGroups(VirtualFrame frame) {
-        assert props.isTrackCaptureGroups();
-        return (int[]) FrameUtil.getObjectSafe(frame, props.getCaptureGroupResultFS());
-    }
-
-    public void setResultObject(VirtualFrame frame, Object result) {
-        frame.setObject(props.getCaptureGroupResultFS(), result);
-    }
-
-    public DFACaptureGroupTrackingData getCGData(VirtualFrame frame) {
-        return (DFACaptureGroupTrackingData) FrameUtil.getObjectSafe(frame, props.getCgDataFS());
-    }
-
-    private void createCGData(VirtualFrame frame) {
-        DFACaptureGroupTrackingData trackingData = new DFACaptureGroupTrackingData(maxNumberOfNFAStates, props.getNumberOfCaptureGroups());
-        frame.setObject(props.getCgDataFS(), trackingData);
-    }
-
-    private boolean validArgs(VirtualFrame frame) {
-        final int initialIndex = getIndex(frame);
-        final int inputLength = getInputLength(frame);
-        final int fromIndex = getFromIndex(frame);
-        final int maxIndex = getMaxIndex(frame);
+    private boolean validArgs(TRegexDFAExecutorLocals locals) {
+        final int initialIndex = locals.getIndex();
+        final int inputLength = getInputLength(locals);
+        final int fromIndex = locals.getFromIndex();
+        final int maxIndex = locals.getMaxIndex();
         if (props.isForward()) {
             return inputLength >= 0 && inputLength < Integer.MAX_VALUE - 20 &&
                             fromIndex >= 0 && fromIndex <= inputLength &&
@@ -395,8 +271,8 @@ public final class TRegexDFAExecutorNode extends Node {
     }
 
     @ExplodeLoop
-    private void initResultOrder(VirtualFrame frame) {
-        DFACaptureGroupTrackingData cgData = getCGData(frame);
+    private void initResultOrder(TRegexDFAExecutorLocals locals) {
+        DFACaptureGroupTrackingData cgData = locals.getCGData();
         for (int i = 0; i < maxNumberOfNFAStates; i++) {
             cgData.currentResultOrder[i] = i * props.getNumberOfCaptureGroups() * 2;
         }
@@ -404,6 +280,10 @@ public final class TRegexDFAExecutorNode extends Node {
 
     public TRegexDFAExecutorProperties getProperties() {
         return props;
+    }
+
+    public int getMaxNumberOfNFAStates() {
+        return maxNumberOfNFAStates;
     }
 
     public double getCGReorderRatio() {

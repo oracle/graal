@@ -35,7 +35,6 @@ import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfChar;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfString;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.RegionMatches;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.StartsWith;
-import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 
@@ -57,18 +56,17 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 public final class LiteralRegexEngine {
 
     public static LiteralRegexExecRootNode createNode(RegexLanguage language, RegexAST ast) {
-        RegexProperties p = ast.getProperties();
-        final boolean caret = ast.getRoot().startsWithCaret();
-        final boolean dollar = ast.getRoot().endsWithDollar();
-        if ((p.hasAlternations() || p.hasCharClasses() || p.hasLookAroundAssertions() || p.hasLoops()) ||
-                        ((caret || dollar) && ast.getFlags().isMultiline())) {
+        if (ast.isLiteralString()) {
+            return createLiteralNode(language, ast);
+        } else {
             return null;
         }
-        return createLiteralNode(language, ast, caret, dollar);
     }
 
-    private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast, boolean caret, boolean dollar) {
+    private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast) {
         PreCalcResultVisitor preCalcResultVisitor = PreCalcResultVisitor.run(ast, true);
+        boolean caret = ast.getRoot().startsWithCaret();
+        boolean dollar = ast.getRoot().endsWithDollar();
         if (preCalcResultVisitor.getLiteral().length() == 0) {
             if (caret) {
                 if (dollar) {

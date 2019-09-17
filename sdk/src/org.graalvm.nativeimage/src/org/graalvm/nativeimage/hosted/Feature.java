@@ -40,10 +40,12 @@
  */
 package org.graalvm.nativeimage.hosted;
 
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -182,6 +184,22 @@ public interface Feature {
          * @since 19.0
          */
         void registerAsUnsafeAccessed(Field field);
+
+        /**
+         * Registers a callback that is invoked once {@link Feature#duringAnalysis during analysis}
+         * when any of the provided elements is determined to be reachable at run time. The elements
+         * can only be of the following types:
+         * <p>
+         * <ul>
+         * <li>{@link Class} to specify reachability of the given class
+         * <li>{@link Field} to specify reachability of a field
+         * <li>{@link Executable} to specify reachability of a method or constructor
+         * </ul>
+         * <p>
+         *
+         * @since 19.2
+         */
+        void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements);
     }
 
     /**
@@ -190,7 +208,7 @@ public interface Feature {
      * @since 19.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface DuringAnalysisAccess extends BeforeAnalysisAccess {
+    interface DuringAnalysisAccess extends BeforeAnalysisAccess, QueryReachabilityAccess {
 
         /**
          * Notifies the static analysis that changes are made that enforce a new iteration of the
@@ -207,8 +225,40 @@ public interface Feature {
      * @since 19.0
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    interface AfterAnalysisAccess extends FeatureAccess {
+    interface AfterAnalysisAccess extends QueryReachabilityAccess {
+    }
 
+    /**
+     * Access reachability methods available for {@link Feature#afterAnalysis} and
+     * {@link Feature#duringAnalysis}.
+     *
+     * @since 19.2
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    interface QueryReachabilityAccess extends FeatureAccess {
+        /**
+         * Returns true if the static analysis determined that the provided class is reachable at
+         * run time.
+         *
+         * @since 19.2
+         */
+        boolean isReachable(Class<?> clazz);
+
+        /**
+         * Returns true if the static analysis determined that the provided field is reachable at
+         * run time.
+         *
+         * @since 19.2
+         */
+        boolean isReachable(Field field);
+
+        /**
+         * Returns true if the static analysis determined that the provided method is reachable at
+         * run time.
+         *
+         * @since 19.2
+         */
+        boolean isReachable(Executable method);
     }
 
     /**

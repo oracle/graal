@@ -72,7 +72,7 @@ public class InteropTestBase {
         } catch (IOException ex) {
             throw new AssertionError(ex);
         }
-        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parsePublic(source);
         return (TruffleObject) target.call();
     }
 

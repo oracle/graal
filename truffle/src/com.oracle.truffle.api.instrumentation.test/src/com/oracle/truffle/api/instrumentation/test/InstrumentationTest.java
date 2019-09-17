@@ -1570,6 +1570,65 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         }
     }
 
+    @Test
+    public void testRootBodies() throws IOException {
+        Instrument instrument = engine.getInstruments().get("testRootBodies");
+        TestRootBodies service = instrument.lookup(TestRootBodies.class);
+        assertEquals("", service.tags.toString());
+
+        run("ROOT(STATEMENT())");
+
+        assertEquals("InRBOutBR", service.tags.toString());
+        service.tags.delete(0, service.tags.length());
+
+        run("ROOT(STATEMENT(), ROOT_BODY(EXPRESSION()), EXPRESSION())");
+
+        assertEquals("InRInBOutBOutR", service.tags.toString());
+    }
+
+    @Registration(id = "testRootBodies", services = TestRootBodies.class)
+    public static class TestRootBodies extends TruffleInstrument {
+
+        final StringBuilder tags = new StringBuilder();
+
+        @Override
+        protected void onCreate(Env env) {
+            env.registerService(this);
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.RootBodyTag.class).build(),
+                            new ExecutionEventNodeFactory() {
+
+                                @Override
+                                public ExecutionEventNode create(EventContext context) {
+                                    boolean isRoot = context.hasTag(StandardTags.RootTag.class);
+                                    boolean isBody = context.hasTag(StandardTags.RootBodyTag.class);
+                                    return new ExecutionEventNode() {
+                                        @Override
+                                        protected void onEnter(VirtualFrame frame) {
+                                            tags.append("In");
+                                            if (isRoot) {
+                                                tags.append('R');
+                                            }
+                                            if (isBody) {
+                                                tags.append('B');
+                                            }
+                                        }
+
+                                        @Override
+                                        protected void onReturnValue(VirtualFrame frame, Object result) {
+                                            tags.append("Out");
+                                            if (isBody) {
+                                                tags.append('B');
+                                            }
+                                            if (isRoot) {
+                                                tags.append('R');
+                                            }
+                                        }
+                                    };
+                                }
+                            });
+        }
+    }
+
     private void setupEngine(Source initSource, boolean runInitAfterExec) {
         teardown();
         InstrumentationTestLanguage.envConfig.put("initSource", initSource);
@@ -1732,7 +1791,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public void testAccessInstrumentFromLanguage() {
         context.initialize(InstrumentationTestLanguage.ID);
         TruffleLanguage.Env env = InstrumentationTestLanguage.currentEnv();
-        LanguageInfo langInfo = env.getLanguages().get(InstrumentationTestLanguage.ID);
+        LanguageInfo langInfo = env.getInternalLanguages().get(InstrumentationTestLanguage.ID);
         assertNotNull(langInfo);
         assertEquals(InstrumentationTestLanguage.ID, langInfo.getId());
         assertEquals("2.0", langInfo.getVersion());

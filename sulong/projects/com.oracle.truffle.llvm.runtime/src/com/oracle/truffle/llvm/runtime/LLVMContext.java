@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
@@ -43,6 +44,7 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CallTarget;
@@ -251,16 +253,25 @@ public final class LLVMContext {
     }
 
     private static long parseStackSize(String v) {
-        String valueString = v.trim().toLowerCase();
+        String valueString = v.trim();
         long scale = 1;
-        if (valueString.endsWith("k")) {
-            scale = 1024L;
-        } else if (valueString.endsWith("m")) {
-            scale = 1024L * 1024L;
-        } else if (valueString.endsWith("g")) {
-            scale = 1024L * 1024L * 1024L;
-        } else if (valueString.endsWith("t")) {
-            scale = 1024L * 1024L * 1024L * 1024L;
+        switch (valueString.charAt(valueString.length() - 1)) {
+            case 'k':
+            case 'K':
+                scale = 1024L;
+                break;
+            case 'm':
+            case 'M':
+                scale = 1024L * 1024L;
+                break;
+            case 'g':
+            case 'G':
+                scale = 1024L * 1024L * 1024L;
+                break;
+            case 't':
+            case 'T':
+                scale = 1024L * 1024L * 1024L * 1024L;
+                break;
         }
 
         if (scale != 1) {
@@ -438,19 +449,27 @@ public final class LLVMContext {
         return Paths.get(lib);
     }
 
+    public ExternalLibrary addExternalLibrary(String lib, boolean isNative, Object reason) {
+        return addExternalLibrary(lib, isNative, reason, DefaultLibraryLocator.INSTANCE);
+    }
+
     /**
      * @return null if already loaded
      */
-    public ExternalLibrary addExternalLibrary(String lib, boolean isNative) {
+    public ExternalLibrary addExternalLibrary(String lib, boolean isNative, Object reason, LibraryLocator locator) {
         CompilerAsserts.neverPartOfCompilation();
         if (isInternalLibrary(lib)) {
             // Disallow loading internal libraries explicitly.
             return null;
         }
-        Path path = locateExternalLibrary(lib);
+        Path path = locator.locate(this, lib, reason);
         ExternalLibrary newLib = ExternalLibrary.external(path, isNative);
         ExternalLibrary existingLib = addExternalLibrary(newLib);
-        return existingLib == newLib ? newLib : null;
+        if (existingLib == newLib) {
+            return newLib;
+        }
+        LibraryLocator.traceAlreadyLoaded(this, existingLib.path);
+        return null;
     }
 
     private boolean isInternalLibrary(String lib) {
@@ -501,25 +520,9 @@ public final class LLVMContext {
         // failures at the moment, because the library path is not always set correctly
     }
 
-    @TruffleBoundary
-    private Path locateExternalLibrary(String lib) {
-        Path libPath = Paths.get(lib);
-        if (libPath.isAbsolute()) {
-            if (libPath.toFile().exists()) {
-                return libPath;
-            } else {
-                throw new LLVMLinkerException(String.format("Library \"%s\" does not exist.", lib));
-            }
-        }
-
-        for (Path p : libraryPaths) {
-            Path absPath = Paths.get(p.toString(), lib);
-            if (absPath.toFile().exists()) {
-                return absPath;
-            }
-        }
-
-        return libPath;
+    List<Path> getLibraryPaths() {
+        // TODO (je) should this be unmodifiable?
+        return libraryPaths;
     }
 
     public LLVMLanguage getLanguage() {
@@ -886,4 +889,27 @@ public final class LLVMContext {
             return scopes.contains(scope);
         }
     }
+
+    @CompilationFinal private boolean traceLoaderEnabled;
+    @CompilationFinal private PrintStream traceLoaderStream;
+
+    private void cacheTrace() {
+        if (traceLoaderStream == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            traceLoaderStream = SulongEngineOption.getStream(getEnv().getOptions().get(SulongEngineOption.LD_DEBUG));
+            traceLoaderEnabled = SulongEngineOption.isTrue(getEnv().getOptions().get(SulongEngineOption.LD_DEBUG));
+            assert traceLoaderStream != null;
+        }
+    }
+
+    boolean ldDebugEnabled() {
+        cacheTrace();
+        return traceLoaderEnabled;
+    }
+
+    PrintStream ldDebugStream() {
+        cacheTrace();
+        return traceLoaderStream;
+    }
+
 }

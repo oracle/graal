@@ -19,8 +19,8 @@ builds += [
   ${gateTest}          ${oraclejdk11}     ${gateLinuxAMD64}   {name: "gate-compiler-test-11-linux-amd64"}
   ${gateJavaBaseTest}  ${oraclejdk11}     ${gateLinuxAMD64}   {name: "weekly-test-compiler-javabasetest-11-linux-amd64"} ${graalWeekly}
   ${gateTestCTW}       ${oraclejdk8}      ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
-  ${gateTestCTW}       ${openjdk8}        ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-openjdk8-linux-amd64"} ${graalWeekly}
-  ${gateTestCTW}       ${oraclejdk11}     ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-11-linux-amd64"} ${graalWeekly}
+  ${gateTestCTWWeekly} ${openjdk8}        ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-openjdk8-linux-amd64", timelimit: "1:30:00"} ${graalWeekly}
+  ${gateTestCTWWeekly} ${oraclejdk11}     ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-11-linux-amd64"} ${graalWeekly}
   ${gateTest}          ${oraclejdk8Debug} ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-8-linux-amd64-fastdebug", timelimit: "1:50:00"} ${graalWeekly}
   ${gateTestBenchmark} ${oraclejdk8}      ${gateLinuxAMD64}   {name: "gate-compiler-benchmarktest-8-linux-amd64"}
   ${gateTestBenchmark} ${oraclejdk8Debug} ${gateLinuxAMD64}   {name: "weekly-test-compiler-benchmarktest-8-linux-amd64-fastdebug"} ${graalWeekly}
@@ -34,7 +34,7 @@ builds += [
   ${gateTest}          ${oraclejdk8}      ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}
   ${gateTest}          ${oraclejdk11}     ${gateSolarisSPARC} {name: "gate-compiler-test-11-solaris-sparcv9",                   timelimit: "1:00:00"}
   ${gateTestCTW}       ${oraclejdk8}      ${gateSolarisSPARC} {name: "gate-compiler-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"}
-  ${gateTestCTW}       ${oraclejdk11}     ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-11-solaris-sparcv9",             timelimit: "1:50:00"} ${graalWeekly}
+  ${gateTestCTWWeekly} ${oraclejdk11}     ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-11-solaris-sparcv9",             timelimit: "1:50:00"} ${graalWeekly}
   ${gateTest}          ${oraclejdk8Debug} ${gateSolarisSPARC} {name: "weekly-test-compiler-test-8-solaris-sparcv9-fastdebug",   timelimit: "1:50:00"} ${graalWeekly}
   ${gateTestBenchmark} ${oraclejdk8}      ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
 # ${gateTestBenchmark} ${oraclejdk8Debug} ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:50:00"}
@@ -44,5 +44,5 @@ builds += [
 
   # Linux AArch64
   ${gateTest}                            ${gateLinuxAArch64} {name: "weekly-compiler-test-11-linux-aarch64",                   timelimit: "1:50:00"} ${graalWeekly}
-  ${gateTestCTW}                         ${gateLinuxAArch64} {name: "weekly-test-compiler-ctw-11-linux-aarch64",               timelimit: "1:50:00"} ${graalWeekly}
+  ${gateTestCTWWeekly}                   ${gateLinuxAArch64} {name: "weekly-test-compiler-ctw-11-linux-aarch64",               timelimit: "1:50:00"} ${graalWeekly}
 ]

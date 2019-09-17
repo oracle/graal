@@ -104,7 +104,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(boolean finalIsWritable, Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(finalIsWritable, fields);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(finalIsWritable, false, fields);
     }
 
     /**

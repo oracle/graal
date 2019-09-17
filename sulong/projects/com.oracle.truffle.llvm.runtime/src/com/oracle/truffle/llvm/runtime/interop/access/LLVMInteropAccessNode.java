@@ -49,9 +49,9 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
 
         final Object base;
         final Object identifier;
-        final LLVMInteropType.Structured type;
+        final LLVMInteropType.Value type;
 
-        AccessLocation(Object base, Object identifier, LLVMInteropType.Structured type) {
+        AccessLocation(Object base, Object identifier, LLVMInteropType.Value type) {
             this.base = base;
             this.identifier = identifier;
             this.type = type;
@@ -111,7 +111,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("cannot read from non-structured type with offset " + restOffset);
             }
-            return new AccessLocation(foreign, identifier, type.baseType);
+            return new AccessLocation(foreign, identifier, type);
         }
 
         @Specialization(limit = "3")

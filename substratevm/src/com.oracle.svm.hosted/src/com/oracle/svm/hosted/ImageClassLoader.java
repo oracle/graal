@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -60,6 +61,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -67,6 +69,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
 
 public final class ImageClassLoader {
 
@@ -126,6 +129,14 @@ public final class ImageClassLoader {
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            for (String moduleResource : ModuleSupport.getJVMCIModuleResources()) {
+                if (moduleResource.endsWith(CLASS_EXTENSION)) {
+                    executor.execute(() -> handleClassFileName(moduleResource, '/'));
+                }
+            }
+        }
+
         Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
         uniquePaths.addAll(
                         Arrays.stream(classpath)
@@ -140,7 +151,7 @@ public final class ImageClassLoader {
         Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
         if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
             try {
-                return Files.list(entry.getParent()).filter(Files::isRegularFile);
+                return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
             } catch (IOException e) {
                 return Stream.empty();
             }
@@ -219,6 +230,19 @@ public final class ImageClassLoader {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
+    private void handleClassFileName(String unversionedClassFileName, char fileSystemSeparatorChar) {
+        String unversionedClassFileNameWithoutSuffix = unversionedClassFileName.substring(0, unversionedClassFileName.length() - CLASS_EXTENSION_LENGTH);
+        if (unversionedClassFileNameWithoutSuffix.equals("module-info")) {
+            return;
+        }
+        String className = unversionedClassFileNameWithoutSuffix.replace(fileSystemSeparatorChar, '.');
+        try {
+            handleClass(forName(className));
+        } catch (Throwable t) {
+            handleClassLoadingError(t);
+        }
+    }
+
     private void initAllClasses(final Path root, Set<Path> excludes, ForkJoinPool executor) {
         FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
             private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
@@ -236,18 +260,10 @@ public final class ImageClassLoader {
                 if (excludes.contains(file.getParent())) {
                     return FileVisitResult.SKIP_SIBLINGS;
                 }
-                executor.execute(() -> {
-                    String fileName = root.relativize(file).toString();
-                    if (fileName.endsWith(CLASS_EXTENSION)) {
-                        String unversionedClassName = unversionedFileName(fileName);
-                        String className = curtail(unversionedClassName, CLASS_EXTENSION_LENGTH).replace(fileSystemSeparatorChar, '.');
-                        try {
-                            handleClass(forName(className));
-                        } catch (Throwable t) {
-                            handleClassLoadingError(t);
-                        }
-                    }
-                });
+                String fileName = root.relativize(file).toString();
+                if (fileName.endsWith(CLASS_EXTENSION)) {
+                    executor.execute(() -> handleClassFileName(unversionedFileName(fileName), fileSystemSeparatorChar));
+                }
                 return FileVisitResult.CONTINUE;
             }
 
@@ -281,10 +297,6 @@ public final class ImageClassLoader {
                 return result;
             }
 
-            /** Remove the requested number of characters from the tail of the given string. */
-            private String curtail(String str, int tailLength) {
-                return str.substring(0, str.length() - tailLength);
-            }
         };
 
         try {
@@ -343,8 +355,8 @@ public final class ImageClassLoader {
         return false;
     }
 
-    public URL findResourceByName(String resource) {
-        return classLoader.getResource(resource);
+    public Enumeration<URL> findResourcesByName(String resource) throws IOException {
+        return classLoader.getResources(resource);
     }
 
     public InputStream findResourceAsStreamByName(String resource) {

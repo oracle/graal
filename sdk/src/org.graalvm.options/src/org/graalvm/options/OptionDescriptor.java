@@ -52,15 +52,15 @@ public final class OptionDescriptor {
     private final OptionKey<?> key;
     private final String name;
     private final String help;
-    private final OptionCategory kind;
+    private final OptionCategory category;
     private final OptionStability stability;
     private final boolean deprecated;
 
-    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory kind, OptionStability stability, boolean deprecated) {
+    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated) {
         this.key = key;
         this.name = name;
         this.help = help;
-        this.kind = kind;
+        this.category = category;
         this.stability = stability;
         this.deprecated = deprecated;
     }
@@ -94,12 +94,22 @@ public final class OptionDescriptor {
     }
 
     /**
+     * Returns <code>true</code> if this option is an option map. Options maps allow to collect
+     * key=value pairs whose keys are unknown beforehand e.g. user defined properties.
+     *
+     * @since 19.2
+     */
+    public boolean isOptionMap() {
+        return getKey().getType().isOptionMap();
+    }
+
+    /**
      * Returns the user category of this option.
      *
      * @since 19.0
      */
     public OptionCategory getCategory() {
-        return kind;
+        return category;
     }
 
     /**
@@ -127,7 +137,7 @@ public final class OptionDescriptor {
      */
     @Override
     public String toString() {
-        return "OptionDescriptor [key=" + key + ", help=" + help + ", kind=" + kind + ", deprecated=" + deprecated + "]";
+        return "OptionDescriptor [key=" + key + ", help=" + help + ", category=" + category + ", deprecated=" + deprecated + ", optionMap=" + isOptionMap() + "]";
     }
 
     /**
@@ -142,7 +152,7 @@ public final class OptionDescriptor {
         result = prime * result + (deprecated ? 1231 : 1237);
         result = prime * result + ((help == null) ? 0 : help.hashCode());
         result = prime * result + ((key == null) ? 0 : key.hashCode());
-        result = prime * result + ((kind == null) ? 0 : kind.hashCode());
+        result = prime * result + ((category == null) ? 0 : category.hashCode());
         result = prime * result + ((name == null) ? 0 : name.hashCode());
         return result;
     }
@@ -166,7 +176,7 @@ public final class OptionDescriptor {
                         Objects.equals(deprecated, other.deprecated) &&
                         Objects.equals(help, other.help) &&
                         Objects.equals(key, other.key) &&
-                        Objects.equals(kind, other.kind);
+                        Objects.equals(category, other.category);
     }
 
     /**
@@ -256,7 +266,6 @@ public final class OptionDescriptor {
         public OptionDescriptor build() {
             return new OptionDescriptor(key, name, help, category, stability, deprecated);
         }
-
     }
 
 }

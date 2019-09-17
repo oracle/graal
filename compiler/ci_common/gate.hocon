@@ -68,6 +68,19 @@ gateTestCTW : {
   ]
 }
 
+gateTestCTWWeekly : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    # At least one gate build should run without strict
+    # compliance as that's how Travis runs on JDK9
+    ["mx"] ${gateCmdSuffix} ["build,ctw", "--jacocout", "html"]
+    ["mx", "coverage-upload"]
+  ]
+  timelimit : "1:30:00"
+}
+
 gateTestBenchmark : {
   environment : {
     EXTRA_VM_ARGS : ""

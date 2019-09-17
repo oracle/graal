@@ -48,6 +48,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -60,14 +61,14 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
+import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
-import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -512,7 +513,7 @@ public class InstalledCodeBuilder {
         final Log trace = Log.noopLog();
         trace.string("[SubstrateInstalledCode.allocateAlignedMemory:");
         trace.string("  size: ").unsigned(size);
-        final Pointer result = CommittedMemoryProvider.get().allocate(size, CommittedMemoryProvider.UNALIGNED, true);
+        final Pointer result = CommittedMemoryProvider.get().allocate(size, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
         trace.string("  returns: ").hex(result);
         trace.string("]").newline();
         if (result.isNull()) {
@@ -526,7 +527,7 @@ public class InstalledCodeBuilder {
         trace.string("[SubstrateInstalledCode.freeOSMemory:");
         trace.string("  start: ").hex(start);
         trace.string("  size: ").unsigned(size);
-        CommittedMemoryProvider.get().free(start, size, CommittedMemoryProvider.UNALIGNED, true);
+        CommittedMemoryProvider.get().free(start, size, WordFactory.unsigned(SubstrateOptions.codeAlignment()), true);
         trace.string("]").newline();
     }
 }

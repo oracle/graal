@@ -7,6 +7,9 @@ hwloc.bench-common : {
     MACHINE_NODE: undefined
     BENCH_RESULTS_FILE_PATH: undefined
   }
+  setup : [
+    ["set", "-o", "pipefail"]
+  ]
   teardown : [
     ["bench-uploader.py", "node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
     ["bench-uploader.py", "node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
@@ -16,6 +19,7 @@ hwloc.bench-common : {
   ]
 }
 hwloc.scala.bench-common : ${hwloc.bench-common} {
+  setup: ${hwloc.bench-common.setup}
   teardown : ${hwloc.bench-common.teardown} [
     ["bench-uploader.py", "serial-node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
     ["bench-uploader.py", "serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
@@ -37,6 +41,7 @@ export.serial.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=serial-
 export.serial.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=serial-node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
 
 bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common} {
+  setup: ${bench-dacapo.setup} ${hwloc.bench-common.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -48,23 +53,13 @@ bench-dacapo-hwloc: ${bench-dacapo} ${hwloc.bench-common} {
 }
 
 bench-dacapo-timing-hwloc: ${bench-dacapo-timing} ${hwloc.bench-common} {
+  setup: ${bench-dacapo-timing.setup} ${hwloc.bench-common.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
     ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
     ${export.node1}
     ${hwloc.node} ${bench-jvmci.mx-dacapo-timing} ${bench-arguments} ${hwloc.cmd.suffix}
-    [wait]
-  ]
-}
-
-bench-dacapo-move-profiling-hwloc: ${bench-dacapo-move-profiling} ${hwloc.bench-common} {
-  run: [
-    [export, "LOGDIR=${PWD}"]
-    ${export.node0}
-    ${hwloc.node} ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
-    ${export.node1}
-    ${hwloc.node} ${bench-jvmci.mx-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
     [wait]
   ]
 }
@@ -73,16 +68,15 @@ bench-dacapo-move-profiling-hwloc: ${bench-dacapo-move-profiling} ${hwloc.bench-
 bench-hwloc-without-scala-actors : {
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:~actors"]
   mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:~actors"]
-  mx-scala-dacapo-move-profiling : ${bench-jvmci.mx-benchmark} ["scala-dacapo-move-profiling:~actors"]
 }
 bench-hwloc-only-scala-actors : {
   mx-scala-dacapo : ${bench-jvmci.mx-benchmark} ["scala-dacapo:actors"]
   mx-scala-dacapo-timing : ${bench-jvmci.mx-benchmark} ["scala-dacapo-timing:actors"]
-  mx-scala-dacapo-move-profiling : ${bench-jvmci.mx-benchmark} ["scala-dacapo-move-profiling:actors"]
 }
 
 
 bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.scala.bench-common} {
+  setup: ${bench-scala-dacapo.setup} ${hwloc.scala.bench-common.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -98,6 +92,7 @@ bench-scala-dacapo-hwloc: ${bench-scala-dacapo} ${hwloc.scala.bench-common} {
 }
 
 bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.scala.bench-common} {
+  setup: ${bench-scala-dacapo-timing.setup} ${hwloc.scala.bench-common.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}
@@ -109,21 +104,6 @@ bench-scala-dacapo-timing-hwloc: ${bench-scala-dacapo-timing} ${hwloc.scala.benc
     ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
     ${export.serial.node1}
     ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo-timing} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
-  ]
-}
-
-bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${hwloc.scala.bench-common} {
-  run: [
-    [export, "LOGDIR=${PWD}"]
-    ${export.node0}
-    ${hwloc.node} ${bench-hwloc-without-scala-actors.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
-    ${export.node1}
-    ${hwloc.node} ${bench-hwloc-without-scala-actors.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.suffix}
-    [wait]
-    ${export.serial.node0}
-    ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
-    ${export.serial.node1}
-    ${hwloc.node} ${bench-hwloc-only-scala-actors.mx-scala-dacapo-move-profiling} ${bench-arguments} ${hwloc.cmd.nobackground.suffix}
   ]
 }
 
@@ -131,6 +111,7 @@ bench-scala-dacapo-move-profiling-hwloc: ${bench-scala-dacapo-move-profiling} ${
 bench-renaissance-hwloc: ${bench-renaissance}
 # Parallel executions of renaissance not yet supported : https://github.com/renaissance-benchmarks/renaissance/issues/13
 #bench-renaissance-hwloc: ${bench-renaissance} ${hwloc.bench-common} {
+#  setup: ${bench-renaissance.setup} ${hwloc.bench-common.setup}
 #  run: [
 #    [export, "LOGDIR=${PWD}"]
 #    ${export.node0}
@@ -143,6 +124,7 @@ bench-renaissance-hwloc: ${bench-renaissance}
 
 
 bench-renaissance-legacy-hwloc: ${bench-renaissance-legacy} ${hwloc.bench-common} {
+  setup: ${bench-renaissance-legacy.setup} ${hwloc.bench-common.setup}
   run: [
     [export, "LOGDIR=${PWD}"]
     ${export.node0}

@@ -80,7 +80,8 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
 
     // also update list in PolyglotEngineImpl#RESERVED_IDS
     private static final Set<String> RESERVED_IDS = new HashSet<>(
-                    Arrays.asList("host", "graal", "truffle", "engine", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "log"));
+                    Arrays.asList("host", "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
+                                    "engine", "log", "image-build-time"));
 
     @Override
     public SourceVersion getSupportedSourceVersion() {

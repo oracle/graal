@@ -38,9 +38,12 @@ import java.util.Deque;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.svm.hosted.code.CEntryPointData;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -135,14 +138,25 @@ public class FeatureImpl {
 
     public static class AfterRegistrationAccessImpl extends FeatureAccessImpl implements Feature.AfterRegistrationAccess {
         private final MetaAccessProvider metaAccess;
+        private Pair<Method, CEntryPointData> mainEntryPoint;
 
-        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, DebugContext debugContext) {
+        AfterRegistrationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, Pair<Method, CEntryPointData> mainEntryPoint,
+                        DebugContext debugContext) {
             super(featureHandler, imageClassLoader, debugContext);
             this.metaAccess = metaAccess;
+            this.mainEntryPoint = mainEntryPoint;
         }
 
         public MetaAccessProvider getMetaAccess() {
             return metaAccess;
+        }
+
+        public void setMainEntryPoint(Pair<Method, CEntryPointData> mainEntryPoint) {
+            this.mainEntryPoint = mainEntryPoint;
+        }
+
+        public Pair<Method, CEntryPointData> getMainEntryPoint() {
+            return mainEntryPoint;
         }
     }
 
@@ -165,6 +179,30 @@ public class FeatureImpl {
 
         public AnalysisMetaAccess getMetaAccess() {
             return bb.getMetaAccess();
+        }
+
+        public boolean isReachable(Class<?> clazz) {
+            return isReachable(getMetaAccess().lookupJavaType(clazz));
+        }
+
+        public boolean isReachable(AnalysisType type) {
+            return type.isInTypeCheck() || type.isInstantiated();
+        }
+
+        public boolean isReachable(Field field) {
+            return isReachable(getMetaAccess().lookupJavaField(field));
+        }
+
+        public boolean isReachable(AnalysisField field) {
+            return field.isAccessed();
+        }
+
+        public boolean isReachable(Executable method) {
+            return isReachable(getMetaAccess().lookupJavaMethod(method));
+        }
+
+        public boolean isReachable(AnalysisMethod method) {
+            return method.isImplementationInvoked();
         }
     }
 
@@ -320,6 +358,11 @@ public class FeatureImpl {
 
         public void registerHierarchyForReflectiveInstantiation(Class<?> c) {
             findSubclasses(c).stream().filter(clazz -> !Modifier.isAbstract(clazz.getModifiers())).forEach(clazz -> RuntimeReflection.registerForReflectiveInstantiation(clazz));
+        }
+
+        @Override
+        public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
+            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, elements);
         }
     }
 

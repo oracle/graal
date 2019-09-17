@@ -36,19 +36,21 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
-    private static final byte FLAG_PREFIX = 1;
-    private static final byte FLAG_DEAD = 1 << 1;
-    private static final byte FLAG_CARET = 1 << 2;
-    private static final byte FLAG_DOLLAR = 1 << 3;
-    protected static final byte FLAG_GROUP_LOOP = 1 << 4;
-    protected static final byte FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 5;
-    protected static final byte FLAG_LOOK_AROUND_NEGATED = 1 << 6;
-    protected static final byte FLAG_EMPTY_GUARD = (byte) (1 << 7);
+    private static final short FLAG_PREFIX = 1;
+    private static final short FLAG_DEAD = 1 << 1;
+    private static final short FLAG_CARET = 1 << 2;
+    private static final short FLAG_DOLLAR = 1 << 3;
+    protected static final short FLAG_GROUP_LOOP = 1 << 4;
+    protected static final short FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 5;
+    protected static final short FLAG_LOOK_AROUND_NEGATED = 1 << 6;
+    protected static final short FLAG_EMPTY_GUARD = 1 << 7;
+    protected static final short FLAG_HAS_LOOPS = 1 << 8;
 
     private short id = -1;
     private RegexASTNode parent;
-    private byte flags;
+    private short flags;
     private short minPath = 0;
+    private short maxPath = 0;
     private SourceSection sourceSection;
 
     protected RegexASTNode() {
@@ -100,22 +102,22 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
     /**
      * Sets the syntactic parent of this AST node.
-     * 
+     *
      * @param parent
      */
     public void setParent(RegexASTNode parent) {
         this.parent = parent;
     }
 
-    protected boolean isFlagSet(byte flag) {
+    protected boolean isFlagSet(short flag) {
         return (flags & flag) != 0;
     }
 
-    protected void setFlag(byte flag) {
+    protected void setFlag(short flag) {
         setFlag(flag, true);
     }
 
-    protected void setFlag(byte flag, boolean value) {
+    protected void setFlag(short flag, boolean value) {
         if (value) {
             flags |= flag;
         } else {
@@ -145,7 +147,7 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     /**
      * This flag marks all nodes that were inserted into the AST for look-behind matching, see
      * {@link MarkLookBehindEntriesVisitor} and {@link RegexAST#createPrefix()}.
-     * 
+     *
      * @return true if this node belongs to an inserted prefix construct, otherwise false.
      */
     public boolean isPrefix() {
@@ -154,7 +156,7 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
     /**
      * Sets the {@link #isPrefix} flag to true.
-     * 
+     *
      * @see #isPrefix()
      */
     public void setPrefix() {
@@ -185,9 +187,21 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
         setFlag(FLAG_DOLLAR, endsWithDollar);
     }
 
+    public void setHasLoops() {
+        setHasLoops(true);
+    }
+
+    public void setHasLoops(boolean hasLoops) {
+        setFlag(FLAG_HAS_LOOPS, hasLoops);
+    }
+
+    public boolean hasLoops() {
+        return isFlagSet(FLAG_HAS_LOOPS);
+    }
+
     /**
      * Indicates whether or not this node should be allowed to match the empty string.
-     * 
+     *
      * @return true if this node is <em>not</em> allowed to match the empty string
      */
     public boolean hasEmptyGuard() {
@@ -212,6 +226,22 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
     public void incMinPath(int n) {
         minPath += n;
+    }
+
+    public int getMaxPath() {
+        return maxPath;
+    }
+
+    public void setMaxPath(int n) {
+        maxPath = (short) n;
+    }
+
+    public void incMaxPath() {
+        incMaxPath(1);
+    }
+
+    public void incMaxPath(int n) {
+        maxPath += n;
     }
 
     public void setSourceSection(SourceSection sourceSection) {

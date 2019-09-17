@@ -207,8 +207,9 @@ builds += [
   }
   ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites_no_fastr}, "--exclude-components=nju", "--disable-installables=true", build]
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites_no_fastr}, "--exclude-components=nju", "--disable-installables=true"] ${maven_deploy_vm}
+      [set-export, VM_ENV, "${VM_ENV}-complete"]
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_vm}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -230,8 +231,9 @@ builds += [
   }
   ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites_no_fastr}, "--exclude-components=nju", "--disable-installables=true", build]
-      ${mx_vm_common} [--dynamicimports, ${vm_extra_suites_no_fastr}, "--exclude-components=nju", "--disable-installables=true"] ${maven_deploy_vm}
+      [set-export, VM_ENV, "${VM_ENV}-complete"]
+      ${mx_vm_common} [build]
+      ${mx_vm_common} ${maven_deploy_vm}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:45:00"

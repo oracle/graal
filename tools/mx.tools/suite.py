@@ -4,7 +4,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "19.1.1",
+    "version" : "19.2.0.1",
     "release" : True,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -101,21 +101,15 @@ suite = {
     "libraries": {
        "NanoHTTPD" : {
           "path" : "lib/nanohttpd-2.3.1.jar",
-          "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/nanohttpd/nanohttpd/2.3.1/nanohttpd-2.3.1.jar",
-          ],
           "sha1" : "a8d54d1ca554a77f377eff6bf9e16ca8383c8f6c",
           "maven" : {
             "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd-webserver",
+            "artifactId" : "nanohttpd",
             "version" : "2.3.1",
           }
         },
        "NanoHTTPD-WebSocket" : {
           "path" : "lib/nanohttpd-websocket-2.3.1.jar",
-          "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/nanohttpd/nanohttpd-websocket/2.3.1/nanohttpd-websocket-2.3.1.jar",
-          ],
           "sha1" : "f2cfb09cee12469ff64f0d698b13de19903bb4f7",
           "maven" : {
             "groupId" : "org.nanohttpd",
@@ -131,9 +125,6 @@ suite = {
         },
         "Java-WebSocket" : {
             "path" : "lib/Java-WebSocket-1.3.9.jar",
-            "urls" : [
-                "https://search.maven.org/remotecontent?filepath=org/java-websocket/Java-WebSocket/1.3.9/Java-WebSocket-1.3.9.jar",
-            ],
             "sha1" : "e6e60889b7211a80b21052a249bd7e0f88f79fee",
             "maven" : {
                 "groupId" : "org.java-websocket",
@@ -142,27 +133,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11.tar.gz"],
-            "sha1" : "158ba6f2b346469b5f8083d1700c3f55b8b9082c",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20.tar.gz"],
+            "sha1" : "8dc5a90bed5f51d7538d05b8c31c31b7dfddbd66",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11-linux-amd64.tar.gz"],
-                        "sha1" : "eb5ffa476ed2f6fac0ecd4bb2ae32741f9646932",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-linux-amd64.tar.gz"],
+                        "sha1" : "fd1a723d62cbbc591041d303e8b151d89f131643",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11-macosx-x86_64.tar.gz"],
-                        "sha1" : "8b4b56cafb8ddc257305d0b68801e46e9fa53c14",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-macosx-x86_64.tar.gz"],
+                        "sha1" : "ae23bb365930f720acc88c62640bae6852a37d67",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-11-2-windows-amd64.tar.gz"],
-                        "sha1" : "4cf41228f9530ed65e477aa99f41c52f65dbf9e2",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-windows-amd64.tar.gz"],
+                        "sha1" : "555ec5171d430112f14676217b27e1b0b7a49e53",
                     }
                 },
             }

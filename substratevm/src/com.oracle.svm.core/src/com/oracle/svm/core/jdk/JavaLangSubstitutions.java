@@ -35,10 +35,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -47,6 +49,7 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -54,7 +57,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -62,6 +67,7 @@ import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -71,6 +77,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
@@ -246,7 +253,7 @@ final class Target_java_lang_Runtime {
     }
 
     @Substitute
-    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
+    @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return Jvm.JVM_ActiveProcessorCount();
@@ -710,6 +717,101 @@ final class Target_java_lang_Package {
             return SubstrateUtil.cast(pkg, Package.class);
         } else {
             return null;
+        }
+    }
+}
+
+@TargetClass(className = "jdk.internal.loader.BootLoader", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_loader_BootLoader {
+    @Substitute
+    static String[] getSystemPackageNames() {
+        return BootLoaderStaticUtils.packageNames.toArray(new String[BootLoaderStaticUtils.packageNames.size()]);
+    }
+
+    @Substitute
+    static Package getDefinedPackage(String name) {
+        if (BootLoaderStaticUtils.packageNames.contains(name.replace('.', '/'))) {
+            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                            null, null, null, null, null);
+            return SubstrateUtil.cast(pkg, Package.class);
+        } else {
+            return null;
+        }
+    }
+}
+
+final class BootLoaderStaticUtils {
+    static final Set<String> packageNames;
+
+    static {
+        final Package[] packages = new Helper().getPackages();
+        Set<String> set = new HashSet<>();
+        for (Package pkg : packages) {
+            set.add(pkg.getName());
+        }
+        packageNames = set;
+    }
+
+    static final class Helper extends ClassLoader {
+        @Override
+        protected Package[] getPackages() {
+            return super.getPackages();
+        }
+    }
+}
+
+@AutomaticFeature
+class JavaLangSubstituteFeature11 implements Feature {
+    @Override
+    public void duringSetup(final DuringSetupAccess access) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(BootLoaderStaticUtils.class, "Needed for getPackage() to work");
+        }
+    }
+}
+
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
+@AutomaticFeature
+class JavaLangSubstituteFeature implements Feature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.io.RandomAccessFile"), "required for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.lang.ProcessEnvironment"), "ensure runtime environment");
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        JNIRuntimeAccess.register(byte[].class); /* used by ProcessEnvironment.environ() */
+
+        try {
+            JNIRuntimeAccess.register(java.lang.String.class);
+            JNIRuntimeAccess.register(java.lang.System.class);
+            JNIRuntimeAccess.register(java.lang.System.class.getDeclaredMethod("getProperty", String.class));
+            JNIRuntimeAccess.register(java.nio.charset.Charset.class);
+            JNIRuntimeAccess.register(java.nio.charset.Charset.class.getDeclaredMethod("isSupported", String.class));
+            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredConstructor(byte[].class, String.class));
+            JNIRuntimeAccess.register(access.findClassByName("java.lang.String").getDeclaredMethod("getBytes", String.class));
+            JNIRuntimeAccess.register(java.io.File.class);
+            JNIRuntimeAccess.register(java.io.File.class.getDeclaredField("path"));
+            JNIRuntimeAccess.register(java.io.FileOutputStream.class);
+            JNIRuntimeAccess.register(java.io.FileOutputStream.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileInputStream.class);
+            JNIRuntimeAccess.register(java.io.FileInputStream.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.FileDescriptor.class);
+            JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("fd"));
+            if (JavaVersionUtil.JAVA_SPEC > 8) {
+                JNIRuntimeAccess.register(java.io.FileDescriptor.class.getDeclaredField("append"));
+            }
+            JNIRuntimeAccess.register(java.io.RandomAccessFile.class);
+            JNIRuntimeAccess.register(java.io.RandomAccessFile.class.getDeclaredField("fd"));
+            JNIRuntimeAccess.register(java.io.IOException.class);
+            JNIRuntimeAccess.register(java.io.IOException.class.getDeclaredConstructor(String.class));
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
+            }
+        } catch (NoSuchFieldException | NoSuchMethodException e) {
+            VMError.shouldNotReachHere("JavaLangSubstituteFeature: Error registering class or method: ", e);
         }
     }
 }

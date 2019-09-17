@@ -72,7 +72,6 @@ public final class MachOLoadCommandTable {
         MachOLoadCommand cmd = null;
 
         int cmdID = buffer.getInt(buffer.getPosition());
-        int cmdSize = buffer.getInt(buffer.getPosition() + MachOLoadCommand.CMD_ID_SIZE);
 
         switch (cmdID) {
             case MachOLoadCommand.LC_SEGMENT:
@@ -82,7 +81,11 @@ public final class MachOLoadCommandTable {
             case MachOLoadCommand.LC_LOAD_DYLIB:
                 cmd = MachODylibCommand.create(buffer);
                 break;
+            case MachOLoadCommand.LC_RPATH:
+                cmd = MachORPathCommand.create(buffer);
+                break;
             default:
+                int cmdSize = buffer.getInt(buffer.getPosition() + MachOLoadCommand.CMD_ID_SIZE);
                 cmd = new MachOLoadCommand(cmdID, cmdSize);
                 buffer.setPosition(buffer.getPosition() + cmdSize);
         }

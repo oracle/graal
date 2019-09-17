@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
@@ -55,6 +56,7 @@ import org.bytedeco.javacpp.LLVM.LLVMSymbolIteratorRef;
 import org.bytedeco.javacpp.Pointer;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.llvm.LLVMUtils;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -87,7 +89,6 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
-import jdk.vm.ci.code.site.ExceptionHandler;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 
@@ -196,10 +197,20 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     private void storeMethodOffsets(long codeSize) throws IOException {
         List<Integer> sortedMethodOffsets = textSymbolOffsets.values().stream().distinct().sorted().collect(Collectors.toList());
-        Integer gcRegisterOffset = textSymbolOffsets.get(SYMBOL_PREFIX + "__svm_gc_register");
-        if (gcRegisterOffset != null) {
-            sortedMethodOffsets.remove(gcRegisterOffset);
-        }
+
+        /*
+         * Functions added by the LLVM backend have to be removed before computing function offsets,
+         * because as they are not linked to a function known to Native Image, keeping them would
+         * create gaps in the CodeInfoTable. Removing these offsets includes them as part of the
+         * previously defined function instead. Stack walking will never see an address belonging to
+         * one of these LLVM functions, as these are executing in native mode, so this will not
+         * cause incorrect queries at runtime.
+         */
+        textSymbolOffsets.forEach((symbol, offset) -> {
+            if (symbol.startsWith(SYMBOL_PREFIX + LLVMUtils.JNI_WRAPPER_PREFIX)) {
+                sortedMethodOffsets.remove(offset);
+            }
+        });
 
         sortedMethodOffsets.add(NumUtil.safeToInt(codeSize));
 
@@ -251,6 +262,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             if (stackMapDump != null) {
                 patchpointsDump = new StringBuilder();
                 patchpointsDump.append(methodSymbolName);
+                patchpointsDump.append(" -> f");
+                patchpointsDump.append(id);
                 patchpointsDump.append(" (");
                 patchpointsDump.append(totalFrameSize);
                 patchpointsDump.append(")\n");
@@ -288,33 +301,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
             newInfopoints.forEach(compilation::addInfopoint);
 
-            Map<Integer, Integer> newExceptionHandlers = new HashMap<>();
-            for (ExceptionHandler handler : compilation.getExceptionHandlers()) {
-                for (int actualPCOffset : info.getPatchpointOffsets(handler.pcOffset)) {
-                    assert handler.handlerPos == startPatchpointID;
-                    int handlerOffset = info.getAllocaOffset(handler.handlerPos);
-                    assert handlerOffset >= 0 && handlerOffset < info.getFunctionStackSize(startPatchpointID);
-
-                    if (stackMapDump != null) {
-                        patchpointsDump.append("  {");
-                        patchpointsDump.append(actualPCOffset);
-                        patchpointsDump.append("} -> ");
-                        patchpointsDump.append(handlerOffset);
-                        patchpointsDump.append("\n");
-                    }
-
-                    /*
-                     * handlerPos is the position of the setjmp buffer relative to the stack
-                     * pointer, plus 1 to avoid having 0 as an offset.
-                     */
-                    newExceptionHandlers.put(actualPCOffset, actualPCOffset + handlerOffset + 1);
-                }
-            }
-
-            compilation.clearExceptionHandlers();
-
-            newExceptionHandlers.forEach(compilation::recordExceptionHandler);
-
             if (stackMapDump != null) {
                 try {
                     stackMapDump.write(patchpointsDump.toString());
@@ -329,24 +315,24 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         return basePath.resolve(getBitcodeFilename(id));
     }
 
-    private static String getBitcodeFilename(int id) {
+    private String getBitcodeFilename(int id) {
         return "f" + id + ".bc";
     }
 
-    private static String getBatchBitcodeFilename(int id) {
-        return "b" + id + ".bc";
+    private String getBatchBitcodeFilename(int id) {
+        return ((batchSize == 1) ? "f" : "b") + id + ".bc";
     }
 
-    private static String getBatchOptimizedFilename(int id) {
-        return "b" + id + "o.bc";
+    private String getBatchOptimizedFilename(int id) {
+        return ((batchSize == 1) ? "f" : "b") + id + "o.bc";
     }
 
     private Path getBatchCompiledPath(int id) {
         return basePath.resolve(getBatchCompiledFilename(id));
     }
 
-    private static String getBatchCompiledFilename(int id) {
-        return "b" + id + ".o";
+    private String getBatchCompiledFilename(int id) {
+        return ((batchSize == 1) ? "f" : "b") + id + ".o";
     }
 
     private Path getLinkedPath() {
@@ -434,15 +420,18 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
 
         batchSize = methodIndex.length / numBatches + ((methodIndex.length % numBatches == 0) ? 0 : 1);
-        /* Avoid empty batches with small batch sizes */
-        numBatches -= (numBatches * batchSize - methodIndex.length) / batchSize;
 
-        IntStream.range(0, numBatches).parallel()
-                        .forEach(batchId -> {
-                            List<String> batchInputs = IntStream.range(getBatchStart(batchId), getBatchEnd(batchId)).mapToObj(LLVMNativeImageCodeCache::getBitcodeFilename)
-                                            .collect(Collectors.toList());
-                            llvmLink(debug, getBatchBitcodeFilename(batchId), batchInputs);
-                        });
+        if (parallelismLevel != -1) {
+            /* Avoid empty batches with small batch sizes */
+            numBatches -= (numBatches * batchSize - methodIndex.length) / batchSize;
+
+            IntStream.range(0, numBatches).parallel()
+                            .forEach(batchId -> {
+                                List<String> batchInputs = IntStream.range(getBatchStart(batchId), getBatchEnd(batchId)).mapToObj(this::getBitcodeFilename)
+                                                .collect(Collectors.toList());
+                                llvmLink(debug, getBatchBitcodeFilename(batchId), batchInputs);
+                            });
+        }
 
         return numBatches;
     }
@@ -462,7 +451,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     private void linkCompiledBatches(DebugContext debug, int numBatches) throws IOException {
-        List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(LLVMNativeImageCodeCache::getBatchCompiledFilename).collect(Collectors.toList());
+        List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(this::getBatchCompiledFilename).collect(Collectors.toList());
         nativeLink(debug, getLinkedFilename(), compiledBatches);
 
         long codeSize = readSection(getLinkedPath(), SectionName.TEXT, this::readTextSection);
@@ -477,11 +466,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
              */
-            if (Platform.AMD64.class.isInstance(targetPlatform)) {
-                cmd.add("-mem2reg");
-                cmd.add("-rewrite-statepoints-for-gc");
-                cmd.add("-always-inline");
-            }
+            cmd.add("-mem2reg");
+            cmd.add("-rewrite-statepoints-for-gc");
+            cmd.add("-always-inline");
+
             cmd.add("-o");
             cmd.add(outputPath);
             cmd.add(inputPath);
@@ -496,7 +484,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM optimization failed for " + inputPath + ": " + status);
+                throw new GraalError("LLVM optimization failed for " + getFunctionName(inputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
@@ -510,11 +498,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             cmd.add("-relocation-model=pic");
 
             /* X86 call frame optimization causes variable sized stack frames */
-            if (Platform.AMD64.class.isInstance(targetPlatform)) {
+            if (targetPlatform instanceof Platform.AMD64) {
                 cmd.add("-no-x86-call-frame-opt");
-            }
-            if (Platform.AArch64.class.isInstance(targetPlatform)) {
-                cmd.add("-march=arm64");
             }
             cmd.add("-O2");
             cmd.add("-filetype=obj");
@@ -532,7 +517,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM compilation failed for " + inputPath + ": " + status);
+                throw new GraalError("LLVM compilation failed for " + getFunctionName(inputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
@@ -559,7 +544,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("LLVM linking failed into " + outputPath + ": " + status);
+                throw new GraalError("LLVM linking failed into " + getFunctionName(outputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
@@ -586,11 +571,37 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             int status = p.waitFor();
             if (status != 0) {
                 debug.log("%s", output.toString());
-                throw new GraalError("Native linking failed into " + outputPath + ": " + status);
+                throw new GraalError("Native linking failed into " + getFunctionName(outputPath) + ": " + status);
             }
         } catch (IOException | InterruptedException e) {
             throw new GraalError(e);
         }
+    }
+
+    private String getFunctionName(String fileName) {
+        String function;
+        if (fileName.equals("llvm.o")) {
+            function = "the final object file";
+        } else {
+            char type = fileName.charAt(0);
+            String idString = fileName.substring(1, fileName.indexOf('.'));
+            if (idString.charAt(idString.length() - 1) == 'o') {
+                idString = idString.substring(0, idString.length() - 1);
+            }
+            int id = Integer.parseInt(idString);
+
+            switch (type) {
+                case 'f':
+                    function = methodIndex[id].getQualifiedName();
+                    break;
+                case 'b':
+                    function = "batch " + id + " (f" + getBatchStart(id) + "-f" + getBatchEnd(id) + "). Use -H:LLVMBatchesPerThread=-1 to compile each method individually.";
+                    break;
+                default:
+                    throw shouldNotReachHere();
+            }
+        }
+        return function + " (" + basePath.resolve(fileName).toString() + ")";
     }
 
     @Override

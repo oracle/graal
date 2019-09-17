@@ -41,6 +41,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import java.util.Locale;
 
 public final class LLVMTracerInstrument {
 
@@ -77,7 +78,7 @@ public final class LLVMTracerInstrument {
         final String target = targetOptionString;
         assert target != null : "Invalid modification of tracing target!";
 
-        switch (target.toLowerCase()) {
+        switch (target.toLowerCase(Locale.ROOT)) {
             case "true":
             case "out":
             case "stdout":
@@ -99,7 +100,7 @@ public final class LLVMTracerInstrument {
         }
 
         final OutputStream targetStream;
-        switch (target.toLowerCase()) {
+        switch (target.toLowerCase(Locale.ROOT)) {
             case "true":
             case "out":
             case "stdout":

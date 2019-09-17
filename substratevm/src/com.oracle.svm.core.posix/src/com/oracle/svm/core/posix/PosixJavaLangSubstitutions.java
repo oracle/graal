@@ -33,41 +33,41 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LibCHelper;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
+import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
-import org.graalvm.nativeimage.hosted.Feature;
+import com.oracle.svm.core.util.VMError;
 
 @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class})
 @AutomaticFeature
@@ -146,7 +146,7 @@ final class Target_java_lang_ProcessEnvironment {
         int count = 0;
         for (int i = 0; environ.read(i).isNonNull(); i++) {
             /* Ignore corrupted environment variables */
-            if (LibC.strchr(environ.read(i), '=').isNonNull()) {
+            if (SubstrateUtil.strchr(environ.read(i), '=').isNonNull()) {
                 count++;
             }
         }
@@ -155,12 +155,12 @@ final class Target_java_lang_ProcessEnvironment {
         int j = 0;
         for (int i = 0; environ.read(i).isNonNull(); i++) {
             CCharPointer varBeg = environ.read(i);
-            CCharPointer varEnd = LibC.strchr(varBeg, '=');
+            CCharPointer varEnd = SubstrateUtil.strchr(varBeg, '=');
             /* Ignore corrupted environment variables */
             if (varEnd.isNonNull()) {
                 CCharPointer valBeg = varEnd.addressOf(1);
                 int varLength = (int) PointerUtils.absoluteDifference(varEnd, varBeg).rawValue();
-                int valLength = (int) LibC.strlen(valBeg).rawValue();
+                int valLength = (int) SubstrateUtil.strlen(valBeg).rawValue();
 
                 byte[] var = new byte[varLength];
                 CTypeConversion.asByteBuffer(varBeg, varLength).get(var);

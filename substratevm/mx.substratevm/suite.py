@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.223.0",
     "name": "substratevm",
-    "version" : "19.1.1",
+    "version" : "19.2.0.1",
     "release" : True,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -40,6 +40,14 @@ suite = {
                 ]
             },
         ]
+    },
+
+    "libraries" : {
+        "RENAISSANCE_HARNESS_11" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
+            "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
+            "packedResource": True,
+        }
     },
 
     "projects": {
@@ -281,6 +289,7 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
+                "mx:ASM_7.1",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
@@ -457,6 +466,23 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.test.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "javaCompliance": "11+",
+            "spotbugs": "false",
+            "testProject": True,
+        },
+
         "com.oracle.svm.reflect": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -518,7 +544,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.hosted",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "8+",
@@ -734,6 +760,9 @@ suite = {
             "overlaps" : [
                 "SVM_CORE", "SVM_HOSTED",
             ],
+            "manifestEntries" : {
+                "Premain-Class": "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent",
+            },
             "distDependencies": [
                 "SVM_HOSTED_NATIVE",
                 "sdk:GRAAL_SDK",
@@ -751,6 +780,7 @@ suite = {
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal",
                 "com.oracle.svm.core.graal.amd64",
+                "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.genscavenge",
             ],
             "distDependencies": [
@@ -917,6 +947,7 @@ suite = {
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
+            "com.oracle.svm.test.jdk11",
           ],
           "distDependencies": [
             "mx:JUNIT_TOOL",

@@ -40,6 +40,13 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -56,8 +63,12 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyDate;
+import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.graalvm.polyglot.proxy.ProxyTime;
+import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import org.graalvm.polyglot.tck.LanguageProvider;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
@@ -86,6 +97,32 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         primitives.put(Float.class, Primitive.create("float", Float.MAX_VALUE, TypeDescriptor.NUMBER));
         primitives.put(Double.class, Primitive.create("double", Double.MAX_VALUE, TypeDescriptor.NUMBER));
         primitives.put(String.class, Primitive.create("java.lang.String", "TEST", TypeDescriptor.STRING));
+
+        primitives.put(Instant.class, Primitive.create("java.time.Instant", Instant.now(),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.DATE, TypeDescriptor.TIME, TypeDescriptor.TIME_ZONE)));
+        primitives.put(LocalDate.class, Primitive.create("java.time.LocalDate", LocalDate.now(), TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.DATE)));
+        primitives.put(LocalTime.class, Primitive.create("java.time.LocalTime", LocalTime.now(), TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME)));
+        primitives.put(LocalDateTime.class, Primitive.create("java.time.LocalDateTime", LocalDateTime.now(),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME, TypeDescriptor.DATE)));
+        primitives.put(ZonedDateTime.class, Primitive.create("java.time.ZonedDateTime", ZonedDateTime.now(),
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME, TypeDescriptor.DATE, TypeDescriptor.TIME_ZONE)));
+        primitives.put(ZoneId.class,
+                        Primitive.create("java.time.ZoneId", ZoneId.systemDefault(),
+                                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.TIME_ZONE)));
+        primitives.put(Duration.class,
+                        Primitive.create("java.time.Duration", Duration.ofMillis(42), TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.DURATION)));
+        primitives.put(ProxyDate.class,
+                        Primitive.create("ProxyDate", ProxyDate.from(LocalDate.now()),
+                                        TypeDescriptor.intersection(TypeDescriptor.DATE)));
+        primitives.put(ProxyTime.class,
+                        Primitive.create("ProxyTime", ProxyTime.from(LocalTime.now()),
+                                        TypeDescriptor.intersection(TypeDescriptor.TIME)));
+        primitives.put(ProxyTimeZone.class,
+                        Primitive.create("ProxyTimeZone", ProxyTimeZone.from(ZoneId.of("UTC")),
+                                        TypeDescriptor.intersection(TypeDescriptor.TIME_ZONE)));
+        primitives.put(ProxyDuration.class,
+                        Primitive.create("ProxyDuration", ProxyDuration.from(Duration.ofMillis(100)),
+                                        TypeDescriptor.intersection(TypeDescriptor.DURATION)));
 
         // Java primitives
         for (Primitive primitive : primitives.values()) {

@@ -1,0 +1,422 @@
+From a4188558ad8d61db636533799f3328bad3d8eced Mon Sep 17 00:00:00 2001
+From: Josef Eisl <josef.eisl@oracle.com>
+Date: Tue, 18 Dec 2018 12:58:34 +0100
+Subject: [PATCH 1/4] [GR-15965] [llvm-objcopy] add --set-section-flags
+ functionality
+
+---
+ .../set-section-flags-osproc-mask.test        | 115 ++++++++++++++++++
+ .../set-section-flags-preserved.test          |  74 +++++++++++
+ .../tools/llvm-objcopy/set-section-flags.test |  60 +++++++++
+ llvm/tools/llvm-objcopy/CopyConfig.cpp        |  46 +++++++
+ llvm/tools/llvm-objcopy/CopyConfig.h          |   6 +
+ llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp    |  17 +++
+ llvm/tools/llvm-objcopy/ObjcopyOpts.td        |   6 +
+ 7 files changed, 324 insertions(+)
+ create mode 100644 llvm/test/tools/llvm-objcopy/set-section-flags-osproc-mask.test
+ create mode 100644 llvm/test/tools/llvm-objcopy/set-section-flags-preserved.test
+ create mode 100644 llvm/test/tools/llvm-objcopy/set-section-flags.test
+
+diff --git a/llvm/test/tools/llvm-objcopy/set-section-flags-osproc-mask.test b/llvm/test/tools/llvm-objcopy/set-section-flags-osproc-mask.test
+new file mode 100644
+index 00000000000..ca4870d539d
+--- /dev/null
++++ b/llvm/test/tools/llvm-objcopy/set-section-flags-osproc-mask.test
+@@ -0,0 +1,115 @@
++# Test that cpu/processor-specific SHF_* flags are preserved.
++
++# ===== x86_64 =====
++
++# RUN: yaml2obj -docnum 1 %s > %t-x86_64.o
++# RUN: llvm-objcopy --set-section-flags=.foo=alloc %t-x86_64.o
++# RUN: llvm-readobj -sections %t-x86_64.o | FileCheck %s --check-prefix=X86_64
++
++--- !ELF
++FileHeader:
++  Class:           ELFCLASS64
++  Data:            ELFDATA2LSB
++  Type:            ET_REL
++  Machine:         EM_X86_64
++Sections:
++  - Name:          .foo
++    Type:          SHT_PROGBITS
++    Flags:         [ SHF_X86_64_LARGE ]
++
++# X86_64:        Name: .foo
++# X86_64-NEXT:   Type: SHT_PROGBITS
++# X86_64-NEXT:   Flags [
++# X86_64-NEXT:     SHF_ALLOC (0x2)
++# X86_64-NEXT:     SHF_WRITE (0x1)
++# X86_64-NEXT:     SHF_X86_64_LARGE (0x10000000)
++# X86_64-NEXT:   ]
++
++# ===== hex =====
++
++# RUN: yaml2obj -docnum 2 %s > %t-hex.o
++# RUN: llvm-objcopy --set-section-flags=.foo=alloc %t-hex.o
++# RUN: llvm-readobj -sections %t-hex.o | FileCheck %s --check-prefix=HEX
++
++--- !ELF
++FileHeader:
++  Class:           ELFCLASS64
++  Data:            ELFDATA2LSB
++  Type:            ET_REL
++  Machine:         EM_HEXAGON
++Sections:
++  - Name:          .foo
++    Type:          SHT_PROGBITS
++    Flags:         [ SHF_HEX_GPREL ]
++
++# HEX:        Name: .foo
++# HEX-NEXT:   Type: SHT_PROGBITS
++# HEX-NEXT:   Flags [
++# HEX-NEXT:     SHF_ALLOC (0x2)
++# HEX-NEXT:     SHF_HEX_GPREL (0x10000000)
++# HEX-NEXT:     SHF_WRITE (0x1)
++# HEX-NEXT:   ]
++
++# ===== mips =====
++
++# RUN: yaml2obj -docnum 3 %s > %t-mips.o
++# RUN: llvm-objcopy --set-section-flags=.foo=alloc %t-mips.o
++# RUN: llvm-readobj -sections %t-mips.o | FileCheck %s --check-prefix=MIPS
++
++--- !ELF
++FileHeader:
++  Class:           ELFCLASS64
++  Data:            ELFDATA2LSB
++  Type:            ET_REL
++  Machine:         EM_MIPS
++Sections:
++  - Name:          .foo
++    Type:          SHT_PROGBITS
++    Flags:         [ SHF_MIPS_NODUPES, SHF_MIPS_NAMES, SHF_MIPS_LOCAL,
++                     SHF_MIPS_NOSTRIP, SHF_MIPS_GPREL, SHF_MIPS_MERGE,
++		     SHF_MIPS_ADDR, SHF_MIPS_STRING ]
++
++# Note: llvm-readobj prints SHF_EXCLUDE/SHF_MASKPROC since specifying all
++# SHF_MIPS_* flags covers the same bitset.
++
++# MIPS:        Name: .foo
++# MIPS-NEXT:   Type: SHT_PROGBITS
++# MIPS-NEXT:   Flags [
++# MIPS-NEXT:     SHF_ALLOC (0x2)
++# MIPS-NEXT:     SHF_EXCLUDE (0x80000000)
++# MIPS-NEXT:     SHF_MASKPROC (0xF0000000)
++# MIPS-NEXT:     SHF_MIPS_ADDR (0x40000000)
++# MIPS-NEXT:     SHF_MIPS_GPREL (0x10000000)
++# MIPS-NEXT:     SHF_MIPS_LOCAL (0x4000000)
++# MIPS-NEXT:     SHF_MIPS_MERGE (0x20000000)
++# MIPS-NEXT:     SHF_MIPS_NAMES (0x2000000)
++# MIPS-NEXT:     SHF_MIPS_NODUPES (0x1000000)
++# MIPS-NEXT:     SHF_MIPS_NOSTRIP (0x8000000)
++# MIPS-NEXT:     SHF_MIPS_STRING (0x80000000)
++# MIPS-NEXT:     SHF_WRITE (0x1)
++# MIPS-NEXT:   ]
++
++# ===== arm =====
++
++# RUN: yaml2obj -docnum 4 %s > %t-arm.o
++# RUN: llvm-objcopy --set-section-flags=.foo=alloc %t-arm.o
++# RUN: llvm-readobj -sections %t-arm.o | FileCheck %s --check-prefix=ARM
++
++--- !ELF
++FileHeader:
++  Class:           ELFCLASS64
++  Data:            ELFDATA2LSB
++  Type:            ET_REL
++  Machine:         EM_ARM
++Sections:
++  - Name:          .foo
++    Type:          SHT_PROGBITS
++    Flags:         [ SHF_ARM_PURECODE ]
++
++# ARM:        Name: .foo
++# ARM-NEXT:   Type: SHT_PROGBITS
++# ARM-NEXT:   Flags [
++# ARM-NEXT:     SHF_ALLOC (0x2)
++# ARM-NEXT:     SHF_ARM_PURECODE (0x20000000)
++# ARM-NEXT:     SHF_WRITE (0x1)
++# ARM-NEXT:   ]
+diff --git a/llvm/test/tools/llvm-objcopy/set-section-flags-preserved.test b/llvm/test/tools/llvm-objcopy/set-section-flags-preserved.test
+new file mode 100644
+index 00000000000..ac97e6e06c0
+--- /dev/null
++++ b/llvm/test/tools/llvm-objcopy/set-section-flags-preserved.test
+@@ -0,0 +1,74 @@
++# RUN: yaml2obj %s > %t
++
++# Single flags on a section with all flags:
++# RUN: llvm-objcopy --set-section-flags=.foo=alloc %t %t.alloc
++# RUN: llvm-readobj -sections %t.alloc | FileCheck %s --check-prefixes=CHECK,ALLOC,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=load %t %t.load
++# RUN: llvm-readobj -sections %t.load | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=noload %t %t.noload
++# RUN: llvm-readobj -sections %t.noload | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=readonly %t %t.readonly
++# RUN: llvm-readobj -sections %t.readonly | FileCheck %s --check-prefixes=CHECK
++# RUN: llvm-objcopy --set-section-flags=.foo=debug %t %t.debug
++# RUN: llvm-readobj -sections %t.debug | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=code %t %t.code
++# RUN: llvm-readobj -sections %t.code | FileCheck %s --check-prefixes=CHECK,EXEC,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=data %t %t.data
++# RUN: llvm-readobj -sections %t.data | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=rom %t %t.rom
++# RUN: llvm-readobj -sections %t.rom | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=contents %t %t.contents
++# RUN: llvm-readobj -sections %t.contents | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=merge %t %t.merge
++# RUN: llvm-readobj -sections %t.merge | FileCheck %s --check-prefixes=CHECK,MERGE,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=strings %t %t.strings
++# RUN: llvm-readobj -sections %t.strings | FileCheck %s --check-prefixes=CHECK,STRINGS,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=share %t %t.share
++# RUN: llvm-readobj -sections %t.share | FileCheck %s --check-prefixes=CHECK,WRITE
++
++!ELF
++FileHeader:
++  Class:           ELFCLASS64
++  Data:            ELFDATA2LSB
++  Type:            ET_REL
++  Machine:         EM_X86_64
++Sections:
++  - Name:            .infolink
++    Type:            SHT_NOBITS
++  - Name:            .group
++    Type:            SHT_GROUP
++    Link:            .symtab
++    Flags:           [ ]
++    Info:            dummy
++    Members:
++      - SectionOrType: GRP_COMDAT
++      - SectionOrType: .foo
++  - Name:            .foo
++    Type:            SHT_PROGBITS
++    Link:            .infolink
++    Flags:           [ SHF_ALLOC, SHF_COMPRESSED, SHF_EXCLUDE, SHF_EXECINSTR,
++                       SHF_GROUP, SHF_INFO_LINK, SHF_LINK_ORDER, SHF_MERGE,
++                       SHF_OS_NONCONFORMING, SHF_STRINGS, SHF_TLS, SHF_WRITE ]
++    Content:        "a4a4a4a4"
++Symbols:
++  Local:
++  - Name:            dummy
++    Section:         .group
++
++# CHECK:        Name: .foo
++# CHECK-NEXT:   Type: SHT_PROGBITS
++# CHECK-NEXT:   Flags [
++# ALLOC-NEXT:     SHF_ALLOC (0x2)
++# CHECK-NEXT:     SHF_COMPRESSED (0x800)
++# CHECK-NEXT:     SHF_EXCLUDE (0x80000000)
++# EXEC-NEXT:      SHF_EXECINSTR (0x4)
++# CHECK-NEXT:     SHF_GROUP (0x200)
++# CHECK-NEXT:     SHF_INFO_LINK (0x40)
++# CHECK-NEXT:     SHF_LINK_ORDER (0x80)
++# MERGE-NEXT:     SHF_MERGE (0x10)
++# STRINGS-NEXT:   SHF_STRINGS (0x20)
++# CHECK-NEXT:     SHF_TLS (0x400)
++# WRITE-NEXT:     SHF_WRITE (0x1)
++# CHECK-NEXT:   ]
++
++# BAD-FLAG: unrecognized section flag 'xyzzy'
+diff --git a/llvm/test/tools/llvm-objcopy/set-section-flags.test b/llvm/test/tools/llvm-objcopy/set-section-flags.test
+new file mode 100644
+index 00000000000..adc2a162f0b
+--- /dev/null
++++ b/llvm/test/tools/llvm-objcopy/set-section-flags.test
+@@ -0,0 +1,60 @@
++# RUN: yaml2obj %s > %t
++
++# Single flags on a section with no flags:
++# RUN: llvm-objcopy --set-section-flags=.foo=alloc %t %t.alloc
++# RUN: llvm-readobj -sections %t.alloc | FileCheck %s --check-prefixes=CHECK,ALLOC,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=load %t %t.load
++# RUN: llvm-readobj -sections %t.load | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=noload %t %t.noload
++# RUN: llvm-readobj -sections %t.noload | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=readonly %t %t.readonly
++# RUN: llvm-readobj -sections %t.readonly | FileCheck %s --check-prefixes=CHECK
++# RUN: llvm-objcopy --set-section-flags=.foo=debug %t %t.debug
++# RUN: llvm-readobj -sections %t.debug | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=code %t %t.code
++# RUN: llvm-readobj -sections %t.code | FileCheck %s --check-prefixes=CHECK,EXEC,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=data %t %t.data
++# RUN: llvm-readobj -sections %t.data | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=rom %t %t.rom
++# RUN: llvm-readobj -sections %t.rom | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=contents %t %t.contents
++# RUN: llvm-readobj -sections %t.contents | FileCheck %s --check-prefixes=CHECK,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=merge %t %t.merge
++# RUN: llvm-readobj -sections %t.merge | FileCheck %s --check-prefixes=CHECK,MERGE,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=strings %t %t.strings
++# RUN: llvm-readobj -sections %t.strings | FileCheck %s --check-prefixes=CHECK,STRINGS,WRITE
++# RUN: llvm-objcopy --set-section-flags=.foo=share %t %t.share
++# RUN: llvm-readobj -sections %t.share | FileCheck %s --check-prefixes=CHECK,WRITE
++
++# Multiple flags:
++# RUN: llvm-objcopy --set-section-flags=.foo=alloc,readonly,strings %t %t.alloc_ro_strings
++# RUN: llvm-readobj -sections %t.alloc_ro_strings | FileCheck %s --check-prefixes=CHECK,ALLOC,STRINGS
++# RUN: llvm-objcopy --set-section-flags=.foo=alloc,code %t %t.alloc_code
++# RUN: llvm-readobj -sections %t.alloc_code | FileCheck %s --check-prefixes=CHECK,ALLOC,EXEC,WRITE
++
++# Invalid flags:
++# RUN: not llvm-objcopy --set-section-flags=.foo=xyzzy %t %t.xyzzy 2>&1 | FileCheck %s --check-prefix=BAD-FLAG
++
++!ELF
++FileHeader:
++  Class:           ELFCLASS64
++  Data:            ELFDATA2LSB
++  Type:            ET_REL
++  Machine:         EM_X86_64
++Sections:
++  - Name:            .foo
++    Type:            SHT_PROGBITS
++    Flags:           [ ]
++    Content:        "c3c3c3c3"
++
++# CHECK:        Name: .foo
++# CHECK-NEXT:   Type: SHT_PROGBITS
++# CHECK-NEXT:   Flags [
++# ALLOC-NEXT:     SHF_ALLOC (0x2)
++# EXEC-NEXT:      SHF_EXECINSTR (0x4)
++# MERGE-NEXT:     SHF_MERGE (0x10)
++# STRINGS-NEXT:   SHF_STRINGS (0x20)
++# WRITE-NEXT:     SHF_WRITE (0x1)
++# CHECK-NEXT:   ]
++
++# BAD-FLAG: Unrecognized section flag 'xyzzy'. Flags supported for GNU compatibility: alloc, load, noload, readonly, debug, code, data, rom, share, contents, merge, strings.
+diff --git a/llvm/tools/llvm-objcopy/CopyConfig.cpp b/llvm/tools/llvm-objcopy/CopyConfig.cpp
+index 3737f571ae6..5347afca570 100644
+--- a/llvm/tools/llvm-objcopy/CopyConfig.cpp
++++ b/llvm/tools/llvm-objcopy/CopyConfig.cpp
+@@ -171,6 +171,47 @@ static SectionRename parseRenameSectionValue(StringRef FlagValue) {
+   return SR;
+ }
+ 
++static SectionFlags parseSectionAddFlagsValue(StringRef FlagValue) {
++  if (!FlagValue.contains('='))
++    error("Bad format for --section-add-flags: missing '='");
++
++  // Section split: ".foo" = "f1,f2,..."
++  auto Section2Flags = FlagValue.split('=');
++  SectionFlags SR;
++  SR.Name = Section2Flags.first;
++
++  // Flags split: "f1" "f2" ...
++  SmallVector<StringRef, 6> NameAndFlags;
++  Section2Flags.second.split(NameAndFlags, ',');
++
++  if (NameAndFlags.size() > 0) {
++    SectionFlag Flags = SectionFlag::SecNone;
++    for (size_t I = 0, Size = NameAndFlags.size(); I < Size; ++I) {
++      SectionFlag Flag = parseSectionRenameFlag(NameAndFlags[I]);
++      if (Flag == SectionFlag::SecNone)
++        error("Unrecognized section flag '" + NameAndFlags[I] +
++              "'. Flags supported for GNU compatibility: alloc, load, noload, "
++              "readonly, debug, code, data, rom, share, contents, merge, "
++              "strings.");
++      Flags |= Flag;
++    }
++
++    SR.NewFlags = 0;
++    if (Flags & SectionFlag::SecAlloc)
++      SR.NewFlags |= ELF::SHF_ALLOC;
++    if (!(Flags & SectionFlag::SecReadonly))
++      SR.NewFlags |= ELF::SHF_WRITE;
++    if (Flags & SectionFlag::SecCode)
++      SR.NewFlags |= ELF::SHF_EXECINSTR;
++    if (Flags & SectionFlag::SecMerge)
++      SR.NewFlags |= ELF::SHF_MERGE;
++    if (Flags & SectionFlag::SecStrings)
++      SR.NewFlags |= ELF::SHF_STRINGS;
++  }
++
++  return SR;
++}
++
+ static const StringMap<MachineInfo> ArchMap{
+     // Name, {EMachine, 64bit, LittleEndian}
+     {"aarch64", {ELF::EM_AARCH64, true, true}},
+@@ -328,6 +369,11 @@ DriverConfig parseObjcopyOptions(ArrayRef<const char *> ArgsArr) {
+     if (!Config.SectionsToRename.try_emplace(SR.OriginalName, SR).second)
+       error("Multiple renames of section " + SR.OriginalName);
+   }
++  for (auto Arg : InputArgs.filtered(OBJCOPY_set_section_flags)) {
++    SectionFlags SF = parseSectionAddFlagsValue(StringRef(Arg->getValue()));
++    if (!Config.SectionSetFlags.try_emplace(SF.Name, SF).second)
++      error("Multiple flags for section " + SF.Name);
++  }
+ 
+   for (auto Arg : InputArgs.filtered(OBJCOPY_remove_section))
+     Config.ToRemove.push_back(Arg->getValue());
+diff --git a/llvm/tools/llvm-objcopy/CopyConfig.h b/llvm/tools/llvm-objcopy/CopyConfig.h
+index 71a2423ae1c..bb5fbc1cb7d 100644
+--- a/llvm/tools/llvm-objcopy/CopyConfig.h
++++ b/llvm/tools/llvm-objcopy/CopyConfig.h
+@@ -38,6 +38,11 @@ struct SectionRename {
+   Optional<uint64_t> NewFlags;
+ };
+ 
++struct SectionFlags {
++  StringRef Name;
++  uint64_t NewFlags;
++};
++
+ // Configuration for copying/stripping a single file.
+ struct CopyConfig {
+   // Main input/output options
+@@ -75,6 +80,7 @@ struct CopyConfig {
+   // Map options
+   StringMap<SectionRename> SectionsToRename;
+   StringMap<StringRef> SymbolsToRename;
++  StringMap<SectionFlags> SectionSetFlags;
+ 
+   // Boolean options
+   bool DeterministicArchives = true;
+diff --git a/llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp b/llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp
+index f5ab8e70826..9b33c4b35c5 100644
+--- a/llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp
++++ b/llvm/tools/llvm-objcopy/ELF/ELFObjcopy.cpp
+@@ -517,6 +517,23 @@ static void handleArgs(const CopyConfig &Config, Object &Obj,
+     }
+   }
+ 
++  if (!Config.SectionSetFlags.empty()) {
++    for (auto &Sec : Obj.sections()) {
++      const auto Iter = Config.SectionSetFlags.find(Sec.Name);
++      if (Iter != Config.SectionSetFlags.end()) {
++        const SectionFlags &SF = Iter->second;
++        // Preserve some flags which should not be dropped when setting flags.
++        // Also, preserve anything OS/processor dependant.
++        const uint64_t PreserveMask = ELF::SHF_COMPRESSED | ELF::SHF_EXCLUDE |
++                                      ELF::SHF_GROUP | ELF::SHF_LINK_ORDER |
++                                      ELF::SHF_MASKOS | ELF::SHF_MASKPROC |
++                                      ELF::SHF_TLS | ELF::SHF_INFO_LINK;
++        Sec.Flags = (Sec.Flags & PreserveMask) |
++                    (SF.NewFlags & ~PreserveMask);
++      }
++    }
++  }
++
+   if (!Config.DumpSection.empty()) {
+     for (const auto &Flag : Config.DumpSection) {
+       std::pair<StringRef, StringRef> SecPair = Flag.split("=");
+diff --git a/llvm/tools/llvm-objcopy/ObjcopyOpts.td b/llvm/tools/llvm-objcopy/ObjcopyOpts.td
+index 1f7e64e4091..43debb1a0a7 100644
+--- a/llvm/tools/llvm-objcopy/ObjcopyOpts.td
++++ b/llvm/tools/llvm-objcopy/ObjcopyOpts.td
+@@ -73,6 +73,12 @@ defm rename_section
+          "Flags supported for GNU compatibility: alloc, load, noload, "
+          "readonly, debug, code, data, rom, share, contents, merge, strings.">,
+       MetaVarName<"old=new[,flag1,...]">;
++defm set_section_flags
++    : Eq<"set-section-flags",
++         "Sets flags for section"
++         "Flags supported for GNU compatibility: alloc, load, noload, "
++         "readonly, debug, code, data, rom, share, contents, merge, strings.">,
++      MetaVarName<"section=flag1,flag2,...">;
+ defm redefine_symbol
+     : Eq<"redefine-sym", "Change the name of a symbol old to new">,
+       MetaVarName<"old=new">;
+-- 
+2.20.1
+

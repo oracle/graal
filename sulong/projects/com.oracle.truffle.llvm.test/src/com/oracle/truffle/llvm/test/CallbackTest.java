@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -77,6 +77,8 @@ public final class CallbackTest extends BaseSulongOnlyHarness {
                         new RunConfiguration(10, null));
         runs.put(Paths.get(OTHER_DIR, "nativeCallbackInStruct", testSuffix),
                         new RunConfiguration(42, null));
+        runs.put(Paths.get(OTHER_DIR, "callbackCast", testSuffix),
+                        new RunConfiguration(0, "126\n"));
 
         return runs.keySet().stream().map(k -> new Object[]{k, runs.get(k), k.getFileName().toString()}).collect(Collectors.toList());
     }

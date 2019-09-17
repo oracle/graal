@@ -25,13 +25,10 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import static org.graalvm.compiler.truffle.common.TruffleOutputGroup.GROUP_ID;
-import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
-import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClassName;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilation;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleProfilingEnabled;
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getValue;
@@ -53,6 +50,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
@@ -164,7 +162,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
-    private final EconomicMap<String, Class<?>> lookupTypes;
+    private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
 
     public GraalTruffleRuntime(Iterable<Class<?>> extraLookupTypes) {
         this.lookupTypes = initLookupTypes(extraLookupTypes);
@@ -338,7 +336,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    private static EconomicMap<String, Class<?>> initLookupTypes(Iterable<Class<?>> extraTypes) {
+    private static UnmodifiableEconomicMap<String, Class<?>> initLookupTypes(Iterable<Class<?>> extraTypes) {
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
                         Node.class,
@@ -359,7 +357,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         ArrayList.class,
                         FrameSlotKind.class,
                         AbstractAssumption.class,
-                        MaterializedFrame.class
+                        MaterializedFrame.class,
+                        FrameWithoutBoxing.class,
         }) {
             m.put(c.getName(), c);
         }
@@ -376,7 +375,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public ResolvedJavaType resolveType(MetaAccessProvider metaAccess, String className, boolean required) {
-        Class<?> c = className.equals(FrameBoxingClassName) ? FrameBoxingClass : lookupTypes.get(className);
+        Class<?> c = lookupTypes.get(className);
         if (c == null) {
             if (!required) {
                 return null;
@@ -473,11 +472,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
-        if (LazyFrameBoxingQuery.useFrameWithoutBoxing) {
-            return new FrameWithoutBoxing(frameDescriptor, arguments);
-        } else {
-            return new FrameWithBoxing(frameDescriptor, arguments);
-        }
+        return new FrameWithoutBoxing(frameDescriptor, arguments);
     }
 
     @Override
@@ -1020,19 +1015,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public boolean isTruffleBoundary(ResolvedJavaMethod method) {
         return getAnnotation(TruffleBoundary.class, method) != null;
-    }
-
-    public static class LazyFrameBoxingQuery {
-        /**
-         * The flag is checked from within a Truffle compilation and we need to constant fold the
-         * decision. In addition, we want only one of {@link FrameWithoutBoxing} and
-         * {@link FrameWithBoxing} seen as reachable in AOT mode, so we need to be able to constant
-         * fold the decision as early as possible.
-         */
-        public static final boolean useFrameWithoutBoxing = TruffleRuntimeOptions.getValue(TruffleUseFrameWithoutBoxing);
-
-        static final Class<?> FrameBoxingClass = useFrameWithoutBoxing ? FrameWithoutBoxing.class : FrameWithBoxing.class;
-        static final String FrameBoxingClassName = FrameBoxingClass.getName();
     }
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535

@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.api.test.source;
 
-import java.io.File;
-import java.io.FileWriter;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.FileWriter;
 
 import org.junit.Test;
 
@@ -55,7 +56,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
-import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertFails;
 
 public class SourceSectionTest extends AbstractPolyglotTest {
 
