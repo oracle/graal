@@ -557,20 +557,9 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
         mx.logv('[Creating JDK image]')
         mx.run(jlink)
 
-        # Create lib/src.zip in new JDK
-        def add_to_zip(zf, path, zippath):
-            if os.path.isfile(path):
-                zf.write(path, zippath, ZIP_DEFLATED)
-            elif os.path.isdir(path):
-                if zippath:
-                    zf.write(path, zippath)
-                for nm in os.listdir(path):
-                    add_to_zip(zf,
-                            os.path.join(path, nm), os.path.join(zippath, nm))
-
         dst_src_zip = join(dst_jdk_dir, 'lib', 'src.zip')
         mx.logv('[Creating ' + dst_src_zip + ']')
-        with ZipFile(dst_src_zip, 'w', allowZip64=True) as zf:
+        with ZipFile(dst_src_zip, 'w', compression=ZIP_DEFLATED, allowZip64=True) as zf:
             for name, contents in sorted(dst_src_zip_contents.items()):
                 zf.writestr(name, contents)
 
