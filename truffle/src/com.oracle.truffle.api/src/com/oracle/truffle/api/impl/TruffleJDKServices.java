@@ -42,8 +42,6 @@ package com.oracle.truffle.api.impl;
 
 import java.util.List;
 
-import com.oracle.truffle.api.TruffleRuntimeAccess;
-
 /**
  * JDK version independent interface to JDK services used by Truffle.
  */
@@ -77,9 +75,11 @@ public final class TruffleJDKServices {
     }
 
     /**
-     * Gets the ordered list of loaders for {@link TruffleRuntimeAccess} providers.
+     * Gets the ordered list of loaders for {@link Service} providers.
+     *
+     * @param serviceClass defines service class
      */
-    public static List<Iterable<TruffleRuntimeAccess>> getTruffleRuntimeLoaders() {
+    public static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
         throw shouldNotReachHere();
     }
 

@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.233.5",
+  "mxversion" : "5.235.0",
   "name" : "truffle",
   "version" : "19.3.0",
   "release" : False,
@@ -131,10 +131,8 @@ suite = {
     "com.oracle.truffle.api.jdk8" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api",
-      ],
       "overlayTarget" : "com.oracle.truffle.api",
+      "checkPackagePrefix" : "false",
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8",
       "workingSets" : "API,Truffle",
@@ -143,10 +141,8 @@ suite = {
     "com.oracle.truffle.api.jdk11" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.api",
-      ],
       "overlayTarget" : "com.oracle.truffle.api",
+      "checkPackagePrefix" : "false",
       "multiReleaseJarVersion" : "11",
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "11+",
