@@ -552,7 +552,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in _library_config.jar_distributions], _component, with_sources=True)
                 if _library_config.jvm_library:
                     assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
-                    _library_dest = _component_jvmlib_base + mx.get_arch() + '/' if mx.get_os() == 'linux' else _component_jvmlib_base
+                    if _src_jdk_version < 9 and mx.get_os() not in ['darwin', 'windows']:
+                        _library_dest = _component_jvmlib_base + mx.get_arch() + '/'
+                    else:
+                        _library_dest = _component_jvmlib_base
                 else:
                     _library_dest = _component_base
                 _library_dest += _library_config.destination
