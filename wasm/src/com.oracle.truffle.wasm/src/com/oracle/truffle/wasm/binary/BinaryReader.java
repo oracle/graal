@@ -656,6 +656,8 @@ public class BinaryReader extends BinaryStreamReader {
 
                     // We deliberately do not create the call node during parsing,
                     // because the call target is only created after the code entry is parsed.
+                    // The code entry might not be yet parsed when we encounter this call.
+                    //
                     // Furthermore, if the call target is imported from another module,
                     // then that other module might not have been parsed yet.
                     // Therefore, the call node must be created lazily,

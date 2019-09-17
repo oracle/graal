@@ -428,7 +428,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     if (callNodeTable[callNodeOffset] instanceof WasmCallStubNode) {
                         // Lazily create the direct call node at this code position, and recompile to eliminate this check.
-                        final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().getCallTarget();
+                        final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().callTarget();
                         callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                     }
@@ -477,6 +477,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Extract the function object.
                     stackPointer--;
                     int tableIndex = popInt(frame, stackPointer);
+                    // TODO: Check if this validation should be performed at link time.
                     if (!wasmModule().table().validateIndex(tableIndex)) {
                         throw new WasmTrap("CALL_INDIRECT: Invalid table index", this);
                     }
@@ -492,6 +493,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += 1;  // For the 0x00 constant at the end of the CALL_INDIRECT instruction.
 
                     // Validate that the function type matches the expected type.
+                    // TODO: Check if this validation should be performed at link time.
                     if (expectedFunctionTypeIndex != function.typeIndex()) {
                         throw new WasmTrap(format("CALL_INDIRECT: Actual (%d) and expected (%d) function types differ", function.typeIndex(), expectedFunctionTypeIndex), this);
                     }
@@ -504,7 +506,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer -= args.length;
 
                     logger.finest(() -> "indirect call to function " + function + " (" + args.length + " args)");
-                    Object result = callNode.call(function.getCallTarget(), args);
+                    Object result = callNode.call(function.callTarget(), args);
                     logger.finest(() -> "return from indirect_call to function " + function + " : " + result);
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in the future.

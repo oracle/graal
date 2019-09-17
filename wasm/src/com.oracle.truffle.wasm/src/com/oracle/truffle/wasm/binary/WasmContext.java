@@ -38,9 +38,9 @@ import java.util.Map;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.binary.memory.UnsafeWasmMemory;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
+import com.oracle.truffle.wasm.emcc_env.WasmModules;
 
 public class WasmContext {
     private static final long DEFAULT_MEMORY_SIZE = 1 << 25;
@@ -49,7 +49,6 @@ public class WasmContext {
     private WasmLanguage language;
     private WasmMemory memory;
     private Map<String, WasmModule> modules;
-    private Map<String, ExternalModule> externalModules;
 
     public static WasmContext getCurrent() {
         return WasmLanguage.getCurrentContext();
@@ -60,8 +59,7 @@ public class WasmContext {
         this.language = language;
         this.memory = new UnsafeWasmMemory(DEFAULT_MEMORY_SIZE);
         this.modules = new HashMap<>();
-        this.externalModules = new HashMap<>();
-        initializeExternalModules(env);
+        initializePredefinedModules(env);
     }
 
     public CallTarget parse(Source source) {
@@ -70,6 +68,10 @@ public class WasmContext {
 
     public WasmLanguage language() {
         return language;
+    }
+
+    public WasmMemory memory() {
+        return memory;
     }
 
     public Iterable<Scope> getTopScopes() {
@@ -86,45 +88,19 @@ public class WasmContext {
         modules.put(module.name(), module);
     }
 
-    public ExternalModule externalModule(String moduleName) {
-        ExternalModule module = externalModules.get(moduleName);
-        return module;
-    }
-
-    public ExternalModule createExternalModule(String moduleName) {
-        ExternalModule module = externalModules.get(moduleName);
-        if (module == null) {
-            module = new ExternalModule();
-            externalModules.put(moduleName, module);
-        }
-        return module;
-    }
-
-    public WasmMemory memory() {
-        return memory;
-    }
-
-    private void initializeExternalModules(Env env) {
-        final String[] moduleSpecs = env.getEnvironment().get("external-modules").split(",");
+    private void initializePredefinedModules(Env env) {
+        // TODO: Readd.
+        // final String extraModuleValue = WasmOptions.PredefinedModules.getValue(env.getOptions());
+        final String extraModuleValue = "";
+        final String[] moduleSpecs = extraModuleValue.split(",");
         for (String moduleSpec : moduleSpecs) {
             final String[] parts = moduleSpec.split(":");
             if (parts.length == 2) {
                 final String name = parts[0];
                 final String key = parts[1];
-                final ExternalModule module = createExternalModule(name);
-                initializeExternalModule(key, module);
+                final WasmModule module = WasmModules.createPredefined(language, name, key);
+                modules.put(name, module);
             }
-        }
-    }
-
-    private void initializeExternalModule(String key, ExternalModule module) {
-        // This is a list of predefined external modules
-        // that TruffleWasm knows how to instantiate.
-        switch (key) {
-            case "emscripten":
-                // TODO: Add external modules that Emscripten-generated code expects.
-            default:
-                throw new RuntimeException("Unknown key or module.");
         }
     }
 

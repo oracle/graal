@@ -173,10 +173,18 @@ public class SymbolTable {
         }
     }
 
-    public void allocateFunction(WasmLanguage language, int typeIndex) {
+    public WasmFunction allocateFunction(WasmLanguage language, int typeIndex) {
         ensureFunctionsCapacity(numFunctions);
-        functions[numFunctions] = new WasmFunction(this, language, numFunctions, typeIndex);
+        final WasmFunction function = new WasmFunction(this, language, numFunctions, typeIndex);
+        functions[numFunctions] = function;
         numFunctions++;
+        return function;
+    }
+
+    public WasmFunction allocateExportedFunction(WasmLanguage language, int typeIndex, String exportedName) {
+        final WasmFunction function = allocateFunction(language, typeIndex);
+        markFunctionAsExported(exportedName, function.index());
+        return function;
     }
 
     public void setStartFunction(int functionIndex) {
@@ -254,12 +262,9 @@ public class SymbolTable {
     public void importFunction(WasmLanguage language, String moduleName, String functionName, int typeIndex) {
         ensureFunctionsCapacity(numFunctions);
         WasmFunction function = new WasmFunction(this, language, numFunctions, typeIndex);
-
         WasmCodeEntry codeEntry = new WasmCodeEntry(numFunctions, null);
         function.setCodeEntry(codeEntry);
-
         WasmRootNode rootNode = new WasmRootNode(language, codeEntry);
-
         ByteArrayList argumentTypes = getFunctionTypeArgumentTypes(typeIndex);
         codeEntry.setLocalTypes(argumentTypes.toArray());
         codeEntry.initLocalSlots(rootNode.getFrameDescriptor());

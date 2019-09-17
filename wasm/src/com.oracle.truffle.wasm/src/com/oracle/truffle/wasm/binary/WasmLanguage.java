@@ -51,7 +51,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     protected CallTarget parse(ParsingRequest request) {
         BinaryReader reader = new BinaryReader(this, request.getSource().getName(), request.getSource().getBytes().toByteArray());
         reader.readModule();
-        return Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootCallNode(this));
+        return Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(this));
     }
 
     @Override

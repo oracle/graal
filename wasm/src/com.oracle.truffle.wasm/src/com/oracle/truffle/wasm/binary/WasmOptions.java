@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2019, Oracle and/or its affiliates.
  *
+ *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are
@@ -29,23 +30,12 @@
  */
 package com.oracle.truffle.wasm.binary;
 
-import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Option;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
 
-import java.util.HashMap;
-import java.util.Map;
-
-public class ExternalModule {
-    private Map<String, CallTarget> callTargets;
-
-    public ExternalModule() {
-        this.callTargets = new HashMap<>();
-    }
-
-    public void addTarget(String name, CallTarget target) {
-        callTargets.put(name, target);
-    }
-
-    public CallTarget target(String name) {
-        return callTargets.get(name);
-    }
+@Option.Group("wasm")
+public class WasmOptions {
+    @Option(help = "A comma-separated list of predefined modules: <linked-name>:<predefined-module-name>.", category = OptionCategory.USER)
+    public static final OptionKey<String> PredefinedModules = new OptionKey<>("");
 }

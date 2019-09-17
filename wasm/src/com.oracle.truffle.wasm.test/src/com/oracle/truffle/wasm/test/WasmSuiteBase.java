@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.wasm.binary.WasmContext;
+import com.oracle.truffle.wasm.binary.WasmOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -62,7 +63,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             if (WasmTestOptions.LOG_LEVEL != null) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
-            contextBuilder.environment("external-modules", includedExternalModules());
+            // TODO: Readd.
+            // contextBuilder.option("wasm.PredefinedModules", includedExternalModules());
             Context context = contextBuilder.build();
             Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);

@@ -44,12 +44,13 @@ public class WasmFunction implements TruffleObject {
     private final int typeIndex;
     private RootCallTarget callTarget;
 
-    public WasmFunction(SymbolTable symbolTable, WasmLanguage language, int functionIndex, int typeIndex) {
+    public WasmFunction(SymbolTable symbolTable, WasmLanguage language, int index, int typeIndex) {
         this.symbolTable = symbolTable;
         this.codeEntry = null;
-        this.name = String.valueOf(functionIndex);
+        // TODO: Establish a valid naming convention (integers are not valid identifiers), or remove this.
+        this.name = String.valueOf(index);
         this.typeIndex = typeIndex;
-        this.callTarget = Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootCallNode(language));
+        this.callTarget = Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(language));
     }
 
     public int numArguments() {
@@ -58,10 +59,6 @@ public class WasmFunction implements TruffleObject {
 
     public byte argumentTypeAt(int index) {
         return symbolTable.getFunctionTypeArgumentTypeAt(typeIndex, index);
-    }
-
-    public byte returnTypeAt(int index) {
-        return symbolTable.getFunctionTypeReturnTypeAt(typeIndex, index);
     }
 
     public byte returnType() {
@@ -76,7 +73,7 @@ public class WasmFunction implements TruffleObject {
         this.callTarget = callTarget;
     }
 
-    public RootCallTarget getCallTarget() {
+    public RootCallTarget callTarget() {
         return callTarget;
     }
 
@@ -92,7 +89,7 @@ public class WasmFunction implements TruffleObject {
 
     @ExportMessage
     Object execute(Object[] arguments) {
-        return getCallTarget().call(arguments);
+        return callTarget().call(arguments);
     }
 
     public WasmCodeEntry codeEntry() {
@@ -105,5 +102,9 @@ public class WasmFunction implements TruffleObject {
 
     public int typeIndex() {
         return typeIndex;
+    }
+
+    public int index() {
+        return codeEntry.functionIndex();
     }
 }

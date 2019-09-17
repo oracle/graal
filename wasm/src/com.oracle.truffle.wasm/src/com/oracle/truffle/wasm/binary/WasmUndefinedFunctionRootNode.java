@@ -32,9 +32,9 @@ package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class WasmUndefinedFunctionRootCallNode extends WasmRootNode {
+public class WasmUndefinedFunctionRootNode extends WasmRootNode {
 
-    public WasmUndefinedFunctionRootCallNode(WasmLanguage language) {
+    public WasmUndefinedFunctionRootNode(WasmLanguage language) {
         super(language, null);
     }
 

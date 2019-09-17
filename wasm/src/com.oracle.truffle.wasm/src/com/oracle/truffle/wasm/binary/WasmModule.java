@@ -46,17 +46,17 @@ import com.oracle.truffle.wasm.collection.LongArrayList;
 public class WasmModule implements TruffleObject {
     @CompilationFinal private final String name;
     @CompilationFinal private final SymbolTable symbolTable;
-    @CompilationFinal private final ModuleGlobals globals;
-    @CompilationFinal private final ModuleTable table;
+    @CompilationFinal private final Globals globals;
+    @CompilationFinal private final Table table;
 
     public WasmModule(String name) {
         this.name = name;
         this.symbolTable = new SymbolTable(this);
-        this.globals = new ModuleGlobals();
-        this.table = new ModuleTable();
+        this.globals = new Globals();
+        this.table = new Table();
     }
 
-    static final class ModuleGlobals {
+    static final class Globals {
         // Temporary objects to store globals as they come.
         // This is necessary as there may be imported globals before the module globals.
         LongArrayList globals;
@@ -80,7 +80,7 @@ public class WasmModule implements TruffleObject {
 
         private boolean madeFinal;
 
-        private ModuleGlobals() {
+        private Globals() {
             globals = new LongArrayList();
             globalTypes = new ByteArrayList();
             globalMut = new BooleanArrayList();
@@ -89,7 +89,7 @@ public class WasmModule implements TruffleObject {
 
         public void makeFinal() {
             if (madeFinal) {
-                throw new RuntimeException("ModuleGlobals has already been made final.");
+                throw new RuntimeException("Globals has already been made final.");
             }
 
             finalGlobals = globals.toArray();
@@ -170,7 +170,7 @@ public class WasmModule implements TruffleObject {
         }
     }
 
-    static final class ModuleTable {
+    static final class Table {
         /**
          * A table is an array of u32 values, indexing the module functions (imported or defined).
          */
@@ -178,7 +178,7 @@ public class WasmModule implements TruffleObject {
         private int maxSize;
         private boolean initialized = false;
 
-        private ModuleTable() {
+        private Table() {
         }
 
         public void initialize(int initSize) {
@@ -187,7 +187,7 @@ public class WasmModule implements TruffleObject {
 
         public void initialize(int initSize, int maxSize) {
             if (initialized) {
-                throw new RuntimeException("ModuleTable has already been initialized.");
+                throw new RuntimeException("Table has already been initialized.");
             }
             this.functionIndices = new int[initSize];
             this.maxSize = maxSize;
@@ -216,11 +216,11 @@ public class WasmModule implements TruffleObject {
         return name;
     }
 
-    public ModuleGlobals globals() {
+    public Globals globals() {
         return globals;
     }
 
-    public ModuleTable table() {
+    public Table table() {
         return table;
     }
 
