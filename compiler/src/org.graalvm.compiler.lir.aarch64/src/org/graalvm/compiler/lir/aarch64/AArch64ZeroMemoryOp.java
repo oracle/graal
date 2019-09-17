@@ -105,19 +105,19 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
 
                 Label baseAlignedTo2Bytes = new Label();
                 masm.tbz(alignmentBits, 0, baseAlignedTo2Bytes);
-                masm.subs(64, size, size, 1);
+                masm.sub(64, size, size, 1);
                 masm.str(8, zr, AArch64Address.createPostIndexedImmediateAddress(base, 1));
                 masm.bind(baseAlignedTo2Bytes);
 
                 Label baseAlignedTo4Bytes = new Label();
                 masm.tbz(alignmentBits, 1, baseAlignedTo4Bytes);
-                masm.subs(64, size, size, 2);
+                masm.sub(64, size, size, 2);
                 masm.str(16, zr, AArch64Address.createPostIndexedImmediateAddress(base, 2));
                 masm.bind(baseAlignedTo4Bytes);
 
                 Label baseAlignedTo8Bytes = new Label();
                 masm.tbz(alignmentBits, 2, baseAlignedTo8Bytes);
-                masm.subs(64, size, size, 4);
+                masm.sub(64, size, size, 4);
                 masm.str(32, zr, AArch64Address.createPostIndexedImmediateAddress(base, 4));
                 masm.bind(baseAlignedTo8Bytes);
                 // At this point base is 8-byte aligned.
