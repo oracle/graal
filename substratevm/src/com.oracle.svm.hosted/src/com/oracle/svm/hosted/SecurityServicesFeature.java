@@ -221,7 +221,7 @@ public class SecurityServicesFeature implements Feature {
             /* We statically link sunec thus we classify it as builtIn library */
             PlatformNativeLibrarySupport.singleton().addBuiltInLibrary("sunec");
             /* and ensure native calls to sun_security_* will be resolved as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security");
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
 
             nativeLibraries.addLibrary("sunec", true);
             /* Library sunec depends on stdc++ */
