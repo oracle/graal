@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.ComponentCollection;
@@ -58,6 +59,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.persist.MetadataLoader;
+import org.graalvm.component.installer.remote.CatalogIterable;
 
 /**
  * Drives the GraalVM core upgrade process.
@@ -534,7 +536,13 @@ public class UpgradeProcess implements AutoCloseable {
 
                 @Override
                 public ComponentParam createParam(String cmdString, ComponentInfo info) {
-                    return input.existingFiles().createParam(cmdString, info);
+                    return new CatalogIterable.CatalogItemParam(
+                                    getRegistry().getDownloadInterceptor(),
+                                    info,
+                                    info.getName(),
+                                    cmdString,
+                                    feedback,
+                                    input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null);
                 }
 
                 @Override

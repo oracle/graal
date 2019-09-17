@@ -32,39 +32,11 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.ServiceLoader;
-import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
-import org.graalvm.component.installer.remote.CatalogIterable;
-import org.graalvm.component.installer.remote.RemoteComponentParam;
 
-public class FileIterable implements ComponentIterable {
-    private final CommandInput input;
-    private final Feedback feedback;
-    private boolean verifyJars;
-    private SoftwareChannel factory;
-
+public class FileIterable extends AbstractIterable {
     public FileIterable(CommandInput input, Feedback fb) {
-        this.input = input;
-        this.feedback = fb;
-    }
-
-    public boolean isVerifyJars() {
-        return verifyJars;
-    }
-
-    @Override
-    public void setVerifyJars(boolean verifyJars) {
-        this.verifyJars = verifyJars;
-    }
-
-    @Override
-    public ComponentIterable matchVersion(Version.Match m) {
-        return this;
-    }
-
-    @Override
-    public ComponentIterable allowIncompatible() {
-        return this;
+        super(input, fb);
     }
 
     private File getFile(String pathSpec) {
@@ -85,29 +57,9 @@ public class FileIterable implements ComponentIterable {
 
             @Override
             public ComponentParam next() {
-                return new FileComponent(getFile(input.requiredParameter()), verifyJars, feedback);
+                return new FileComponent(getFile(input.requiredParameter()), isVerifyJars(), feedback);
             }
         };
-    }
-
-    public void setSoftwareChannel(SoftwareChannel factory) {
-        this.factory = factory;
-    }
-
-    @Override
-    public ComponentParam createParam(String cmdString, ComponentInfo info) {
-        if (factory == null) {
-            return null;
-        }
-        RemoteComponentParam param = new CatalogIterable.CatalogItemParam(
-                        factory,
-                        info,
-                        info.getName(),
-                        cmdString,
-                        feedback,
-                        input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null);
-        param.setVerifyJars(verifyJars);
-        return param;
     }
 
     public static class FileComponent implements ComponentParam {

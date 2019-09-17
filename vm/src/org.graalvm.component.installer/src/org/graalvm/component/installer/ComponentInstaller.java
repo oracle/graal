@@ -51,6 +51,7 @@ import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.graalvm.component.installer.CommandInput.CatalogFactory;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
 import org.graalvm.component.installer.commands.AvailableCommand;
 import org.graalvm.component.installer.commands.InfoCommand;
@@ -273,11 +274,17 @@ public final class ComponentInstaller {
                             env,
                             getCatalogURL());
             downloader.setDefaultCatalog(env.l10n("Installer_BuiltingCatalogURL")); // NOI18N
+            CatalogFactory cFactory = (CommandInput input, ComponentRegistry lreg) -> {
+                RemoteCatalogDownloader nDownloader = new RemoteCatalogDownloader(downloader, input, env);
+                CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
+                return col;
+            };
+            env.setCatalogFactory(cFactory);
 
             boolean setIterable = true;
             if (optValues.containsKey(Commands.OPTION_FILES)) {
                 FileIterable fi = new FileIterable(env, env);
-                fi.setSoftwareChannel(downloader);
+                fi.setCatalogFactory(cFactory);
                 env.setFileIterable(fi);
                 while (env.hasParameter()) {
                     String s = env.nextParameter();
@@ -293,19 +300,13 @@ public final class ComponentInstaller {
                 setIterable = false;
             } else if (optValues.containsKey(Commands.OPTION_URLS)) {
                 DownloadURLIterable dit = new DownloadURLIterable(env, env);
-                dit.setSoftwareChannel(downloader);
+                dit.setCatalogFactory(cFactory);
                 env.setFileIterable(dit);
                 setIterable = false;
             }
 
-            env.setCatalogFactory((CommandInput input, ComponentRegistry lreg) -> {
-                RemoteCatalogDownloader nDownloader = new RemoteCatalogDownloader(downloader, input, env);
-                CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
-                return col;
-            });
-
             if (setIterable) {
-                env.setFileIterable(new CatalogIterable(env, env, downloader));
+                env.setFileIterable(new CatalogIterable(env, env));
             }
 
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));

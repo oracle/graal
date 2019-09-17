@@ -47,8 +47,8 @@ import org.graalvm.component.installer.remote.FileDownloader;
  * Implements ComponentStorage over a local directory. It assumes that the directory contains JAR
  * (or simply recognized formats) Components and turns them into a Storage.
  * <p/>
- * It is then used as a part of {@link MergeStorage} to provide source for a potential dependency of
- * an installed Component.
+ * It is then used as a part of {@link org.graalvm.component.installer.remote.MergeStorage} to
+ * provide source for a potential dependency of an installed Component.
  * <p/>
  * This local storages should be added last, so that 'official' distributions win.
  * 

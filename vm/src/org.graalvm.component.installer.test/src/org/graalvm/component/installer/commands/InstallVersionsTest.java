@@ -104,7 +104,7 @@ public class InstallVersionsTest extends CommandTestBase {
                         catalogPath.toUri().toURL());
 
         registry = new CatalogContents(this, downloader.getStorage(), localRegistry);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this);
         return v;
     }
 

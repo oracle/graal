@@ -57,6 +57,7 @@ public final class CatalogContents implements ComponentCatalog {
     private final Version graalVersion;
     private final ComponentRegistry installed;
     private final Verifier verifier;
+    private final DownloadInterceptor downloadInterceptor;
 
     /**
      * Allows update to a newer distribution, not just patches. This will cause components from
@@ -80,6 +81,12 @@ public final class CatalogContents implements ComponentCatalog {
         verifier.setSilent(true);
         verifier.setCollectErrors(true);
         verifier.setVersionMatch(graalVersion.match(Version.Match.Type.SATISFIES));
+
+        if (storage instanceof DownloadInterceptor) {
+            this.downloadInterceptor = (DownloadInterceptor) storage;
+        } else {
+            this.downloadInterceptor = (a, b) -> b;
+        }
     }
 
     public boolean compatibleVersion(ComponentInfo info) {
@@ -341,5 +348,10 @@ public final class CatalogContents implements ComponentCatalog {
             }
         }
         return missing.isEmpty() ? null : missing;
+    }
+
+    @Override
+    public DownloadInterceptor getDownloadInterceptor() {
+        return downloadInterceptor;
     }
 }

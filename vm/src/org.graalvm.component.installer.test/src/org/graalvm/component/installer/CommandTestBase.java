@@ -53,7 +53,7 @@ import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
-public class CommandTestBase extends TestBase implements CommandInput, SoftwareChannel {
+public class CommandTestBase extends TestBase implements CommandInput, SoftwareChannel, ComponentCatalog.DownloadInterceptor {
     @Rule public ExpectedException exception = ExpectedException.none();
     protected JarFile componentJarFile;
     @Rule public TemporaryFolder folder = new TemporaryFolder();
@@ -255,6 +255,11 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
         storage = new MockStorage();
         catalogStorage = new MockStorage();
         fileOps.setRootPath(targetPath);
+    }
+
+    @Override
+    public FileDownloader processDownloader(ComponentInfo info, FileDownloader dn) {
+        return dn;
     }
 
     @Override

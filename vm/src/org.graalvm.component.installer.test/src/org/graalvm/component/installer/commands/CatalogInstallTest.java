@@ -119,7 +119,7 @@ public class CatalogInstallTest extends CommandTestBase {
 
         setupCatalog(null);
         textParams.add("ruby");
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this);
         paramIterable.iterator().next();
     }
 
@@ -147,7 +147,7 @@ public class CatalogInstallTest extends CommandTestBase {
         exception.expectMessage("VERIFY_ObsoleteGraalVM");
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this,
@@ -163,7 +163,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this, withBundle(InstallCommand.class));
@@ -185,7 +185,7 @@ public class CatalogInstallTest extends CommandTestBase {
         Handler.bind(rubyURL.toString(), x);
 
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this);
         textParams.add("ruby");
         InstallCommand cmd = new InstallCommand();
         cmd.init(this, withBundle(InstallCommand.class));
@@ -209,7 +209,7 @@ public class CatalogInstallTest extends CommandTestBase {
     public void testInstallWithDepsSingleLevel() throws Exception {
         setupVersion("19.3-dev");
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this);
         textParams.add("r");
 
         InstallCommand cmd = new InstallCommand();
@@ -227,7 +227,7 @@ public class CatalogInstallTest extends CommandTestBase {
     public void testInstallWithBrokenDeps() throws Exception {
         setupVersion("19.3-dev");
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this);
         textParams.add("additional");
 
         InstallCommand cmd = new InstallCommand();
@@ -257,7 +257,7 @@ public class CatalogInstallTest extends CommandTestBase {
 
         setupVersion("19.3-dev");
         setupCatalog(null);
-        paramIterable = new CatalogIterable(this, this, downloader);
+        paramIterable = new CatalogIterable(this, this);
         textParams.add("r");
 
         InstallCommand cmd = new InstallCommand();
@@ -297,7 +297,7 @@ public class CatalogInstallTest extends CommandTestBase {
                         new SoftwareChannelSource(ruby193Source.getParent().toFile().toURI().toString()));
         catalogFactory = (input, registry) -> new CatalogContents(this, downloader.getStorage(), registry);
         FileIterable fit = new FileIterable(this, this);
-        fit.setSoftwareChannel(downloader);
+        fit.setCatalogFactory(catalogFactory);
         paramIterable = fit;
 
         InstallCommand cmd = new InstallCommand();

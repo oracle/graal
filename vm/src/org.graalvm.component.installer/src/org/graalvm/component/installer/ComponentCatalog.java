@@ -26,6 +26,7 @@ package org.graalvm.component.installer;
 
 import java.util.Set;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.remote.FileDownloader;
 
 /**
  *
@@ -53,4 +54,19 @@ public interface ComponentCatalog extends ComponentCollection {
      *         instead of empty collection for easier test.
      */
     Set<String> findDependencies(ComponentInfo start, boolean closure, Boolean installed, Set<ComponentInfo> result);
+
+    DownloadInterceptor getDownloadInterceptor();
+
+    public interface DownloadInterceptor {
+        /**
+         * Configures the downloader, as appropriate for the catalog item. Note that the Catalog may
+         * reject configuration for a ComponentInfo it knows nothing about - will return
+         * {@code null}
+         * 
+         * @param info component for which the Downloader should be configured
+         * @param dn the downloader instance
+         * @return the configured Downloader or {@code null}, if the ComponentInfo is not known.
+         */
+        FileDownloader processDownloader(ComponentInfo info, FileDownloader dn);
+    }
 }

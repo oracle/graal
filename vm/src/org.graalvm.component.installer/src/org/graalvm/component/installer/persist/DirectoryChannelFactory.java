@@ -35,7 +35,7 @@ import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
 
 /**
- * Creates {@link DirectoryCatalogProvier}s over a directory.
+ * Creates {@link DirectoryCatalogProvider}s over a directory.
  * 
  * @author sdedic
  */
