@@ -30,6 +30,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.graalvm.component.installer.CommandInput;
+import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
@@ -43,18 +44,21 @@ public class DirectoryChannelFactory implements SoftwareChannel.Factory {
     @Override
     public SoftwareChannel createChannel(SoftwareChannelSource source, CommandInput input, Feedback output) {
         String u = source.getLocationURL();
-        if (!u.startsWith("file:")) {
+        if (!u.startsWith("file:")) { // NOI18N
             return null;
         }
+        Feedback out2 = output.withBundle(DirectoryChannelFactory.class);
         try {
             Path p = new File(new URI(u)).toPath();
             if (!Files.isDirectory(p) || !Files.isReadable(p)) {
-                output.error("ERR_DirectoryURLNotDirectory", null, u, null);
+                out2.error("ERR_DirectoryURLNotDirectory", null, u, null);
                 return null;
             }
-            return new DirectoryCatalogProvider(p, output);
+            DirectoryCatalogProvider dp = new DirectoryCatalogProvider(p, out2);
+            dp.setVerifyJars(input.optValue(Commands.OPTION_NO_VERIFY_JARS) == null);
+            return dp;
         } catch (URISyntaxException ex) {
-            output.error("ERR_DirectoryURLInvalid", ex, u, ex.getMessage());
+            out2.error("ERR_DirectoryURLInvalid", ex, u, ex.getMessage());
             return null;
         }
     }

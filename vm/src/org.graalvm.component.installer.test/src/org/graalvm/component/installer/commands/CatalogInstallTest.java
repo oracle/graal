@@ -295,7 +295,7 @@ public class CatalogInstallTest extends CommandTestBase {
         downloader = new RemoteCatalogDownloader(this, this, (URL) null);
         downloader.addLocalChannelSource(
                         new SoftwareChannelSource(ruby193Source.getParent().toFile().toURI().toString()));
-        catalogFactory = (input, registry) -> new CatalogContents(this, downloader.getStorage(), registry);
+        catalogFactory = (input, reg) -> new CatalogContents(this, downloader.getStorage(), reg);
         FileIterable fit = new FileIterable(this, this);
         fit.setCatalogFactory(catalogFactory);
         paramIterable = fit;

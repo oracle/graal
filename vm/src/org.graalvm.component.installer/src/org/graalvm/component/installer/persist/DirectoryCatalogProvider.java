@@ -57,7 +57,7 @@ import org.graalvm.component.installer.remote.FileDownloader;
 public class DirectoryCatalogProvider implements ComponentStorage, SoftwareChannel {
     private final Path directory;
     private final Feedback feedback;
-    private boolean verifyJars;
+    private boolean verifyJars = true;
 
     /**
      * Map componentID -> ComponentInfo. Lazy populated from {@link #initComponents()}.
@@ -67,6 +67,10 @@ public class DirectoryCatalogProvider implements ComponentStorage, SoftwareChann
     public DirectoryCatalogProvider(Path directory, Feedback feedback) {
         this.directory = directory;
         this.feedback = feedback;
+    }
+
+    public void setVerifyJars(boolean verifyJars) {
+        this.verifyJars = verifyJars;
     }
 
     @Override

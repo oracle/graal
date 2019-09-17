@@ -59,16 +59,7 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
         this.input = in;
         this.feedback = out.withBundle(RemoteCatalogDownloader.class);
         this.overrideCatalogSpec = overrideCatalogSpec;
-        factories = ServiceLoader.load(SoftwareChannel.Factory.class);
-    }
-
-    public RemoteCatalogDownloader(RemoteCatalogDownloader config, CommandInput in, Feedback out) {
-        this.input = in;
-        this.feedback = out.withBundle(RemoteCatalogDownloader.class);
-        this.overrideCatalogSpec = null;
-
-        factories = config.factories;
-        channelSources = new ArrayList<>(config.channelSources);
+        this.factories = ServiceLoader.load(SoftwareChannel.Factory.class);
     }
 
     // tests only
@@ -87,6 +78,10 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
 
     public void setDefaultCatalog(String defaultCatalogSpec) {
         this.defaultCatalogSpec = defaultCatalogSpec;
+    }
+
+    public String getOverrideCatalogSpec() {
+        return overrideCatalogSpec;
     }
 
     private MergeStorage mergedStorage;

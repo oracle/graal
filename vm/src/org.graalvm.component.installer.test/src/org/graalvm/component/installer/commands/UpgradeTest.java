@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -40,14 +41,17 @@ import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.MetadataLoader;
+import org.graalvm.component.installer.persist.ProxyResource;
+import org.graalvm.component.installer.persist.test.Handler;
 import org.graalvm.component.installer.remote.CatalogIterable;
 import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
+import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.junit.Rule;
 import org.junit.Test;
 
 /**
@@ -608,7 +612,8 @@ public class UpgradeTest extends CommandTestBase {
         assertTrue(installed);
 
         factory = (in, reg) -> {
-            RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(downloader, in, this);
+            RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(in, this, downloader.getOverrideCatalogSpec());
+            // carry over the override spec
             return new CatalogContents(this, dnl.getStorage(), reg);
         };
 
@@ -624,6 +629,13 @@ public class UpgradeTest extends CommandTestBase {
         assertEquals("org.graalvm.llvm-toolchain", ldr.getComponentInfo().getId());
     }
 
+    @Rule public ProxyResource proxyResource = new ProxyResource();
+
+    @After
+    public void clearHandlerBindings() {
+        Handler.clear();
+    }
+
     /**
      * The target GraalVM installation may have configured the catalog URLs differently. When
      * installing components or dependencies to the target, the target's URLs / release file
@@ -633,6 +645,30 @@ public class UpgradeTest extends CommandTestBase {
      */
     @Test
     public void testUpgradeRespectsTargetCatalogURLs() throws Exception {
-        fail("Not implemented poperly yet");
+        URL u = new URL("test://catalog-19.3.properties");
+        Handler.bind(u.toString(), dataFile("../repo/catalog-19.3.properties").toUri().toURL());
+
+        initVersion("1.0.0.0", "../repo/catalog-19.3.properties");
+
+        ComponentInfo ci = new ComponentInfo("org.graalvm.r", "Installed R", "1.0.0.0");
+        storage.installed.add(ci);
+        UpgradeCommand cmd = new UpgradeCommand();
+        cmd.init(this, this);
+        ComponentInfo graalInfo = cmd.configureProcess();
+        boolean installed = cmd.getProcess().installGraalCore(graalInfo);
+        assertTrue(installed);
+        factory = (in, reg) -> {
+            // creating a downloader WITHOUT explicit catalog value - will be read from the
+            // installation.
+            RemoteCatalogDownloader dnl = new RemoteCatalogDownloader(in, this, (String) null);
+            return new CatalogContents(this, dnl.getStorage(), reg);
+        };
+        InstallTrampoline targetInstall = new InstallTrampoline();
+        cmd.getProcess().configureInstallCommand(targetInstall);
+        targetInstall.executionInit();
+        targetInstall.prepareInstallation();
+
+        // verify the URL from the target installation was visited.
+        assertTrue(Handler.isVisited(u));
     }
 }

@@ -24,6 +24,7 @@
  */
 package org.graalvm.component.installer.commands;
 
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -55,10 +56,11 @@ public class UninstallTest extends CommandTestBase {
 
     CatalogContents componentCatalog;
 
-    private void setupComponentsWithDeps() {
+    private void setupComponentsWithDeps() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "19.3-dev");
+        Path catalogFile = dataFile("cataloginstallDeps.properties");
         RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(this, this,
-                        getClass().getResource("cataloginstallDeps.properties"));
+                        catalogFile.toUri().toURL());
         componentCatalog = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
 
         ComponentInfo ruby = componentCatalog.findComponent("org.graalvm.ruby");
@@ -122,7 +124,7 @@ public class UninstallTest extends CommandTestBase {
      * Library is to be uninstalled together with a feature it is using the library. Should succeed
      */
     @Test
-    public void testUninstallLibraryWithUsers() {
+    public void testUninstallLibraryWithUsers() throws Exception {
         setupComponentsWithDeps();
 
         UninstallCommand uc = new UninstallCommand();
@@ -142,7 +144,7 @@ public class UninstallTest extends CommandTestBase {
      * Force flag allows to broken components. Check that warning is printed.
      */
     @Test
-    public void testUninstallBreakForced() {
+    public void testUninstallBreakForced() throws Exception {
         setupComponentsWithDeps();
 
         UninstallCommand uc = new UninstallCommand();
@@ -192,7 +194,7 @@ public class UninstallTest extends CommandTestBase {
      * Verifies the order of uninstallation.
      */
     @Test
-    public void testUninstallLibraryImplyDependents() {
+    public void testUninstallLibraryImplyDependents() throws Exception {
         setupComponentsWithDeps();
 
         UninstallCommand uc = new UninstallCommand();

@@ -312,7 +312,7 @@ public class ComponentRegistryTest extends TestBase {
         fastr = new ComponentInfo("org.graalvm.r", "R", Version.fromString("19.3"));
         fastr.setDependencies(Collections.singleton(llvm.getId()));
         ruby = new ComponentInfo("org.graalvm.ruby", "Ruby", Version.fromString("19.3"));
-        ruby.setDependencies(new HashSet(Arrays.asList(image.getId())));
+        ruby.setDependencies(new HashSet<>(Arrays.asList(image.getId())));
 
         mockStorage.installed.add(llvm);
         mockStorage.installed.add(image);

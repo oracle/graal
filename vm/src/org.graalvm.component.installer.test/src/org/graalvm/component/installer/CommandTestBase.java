@@ -258,7 +258,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     }
 
     @Override
-    public FileDownloader processDownloader(ComponentInfo info, FileDownloader dn) {
+    public FileDownloader processDownloader(ComponentInfo ci, FileDownloader dn) {
         return dn;
     }
 

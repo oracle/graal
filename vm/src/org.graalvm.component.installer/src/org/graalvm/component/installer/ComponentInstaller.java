@@ -275,7 +275,8 @@ public final class ComponentInstaller {
                             getCatalogURL());
             downloader.setDefaultCatalog(env.l10n("Installer_BuiltingCatalogURL")); // NOI18N
             CatalogFactory cFactory = (CommandInput input, ComponentRegistry lreg) -> {
-                RemoteCatalogDownloader nDownloader = new RemoteCatalogDownloader(downloader, input, env);
+                RemoteCatalogDownloader nDownloader = new RemoteCatalogDownloader(input, env,
+                                downloader.getOverrideCatalogSpec());
                 CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
                 return col;
             };
