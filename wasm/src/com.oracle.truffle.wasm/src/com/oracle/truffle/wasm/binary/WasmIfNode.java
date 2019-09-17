@@ -31,10 +31,13 @@
 package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
 public class WasmIfNode extends WasmNode {
+    private static final TruffleLogger logger = TruffleLogger.getLogger("wasm");
+
     @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final int initialStackPointer;
     @Child private WasmNode trueBranch;
@@ -54,8 +57,10 @@ public class WasmIfNode extends WasmNode {
     public int execute(WasmContext context, VirtualFrame frame) {
         int stackPointer = initialStackPointer - 1;
         if (condition.profile(popInt(frame, stackPointer) != 0)) {
+            logger.finest("taking if branch");
             return trueBranch.execute(context, frame);
         } else {
+            logger.finest("taking else branch");
             return falseBranch.execute(context, frame);
         }
     }

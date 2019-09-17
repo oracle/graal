@@ -31,9 +31,12 @@ package com.oracle.truffle.wasm.binary.memory;
 
 import java.lang.reflect.Field;
 
+import com.oracle.truffle.api.TruffleLogger;
 import sun.misc.Unsafe;
 
 public class UnsafeWasmMemory implements WasmMemory {
+    private static final TruffleLogger logger = TruffleLogger.getLogger("wasm");
+
     private final Unsafe unsafe;
     private final long start;
     private final long memorySize;
@@ -64,118 +67,155 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public int load_i32(long address) {
-        return unsafe.getInt(start + address);
+        int value = unsafe.getInt(start + address);
+        logger.finest(() -> String.format("load.i32 address = %d, value = 0x%08X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public long load_i64(long address) {
-        return unsafe.getLong(start + address);
+        long value = unsafe.getLong(start + address);
+        logger.finest(() -> String.format("load.i64 address = %d, value = 0x%16X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public float load_f32(long address) {
-        return unsafe.getFloat(start + address);
+        float value = unsafe.getFloat(start + address);
+        logger.finest(() -> String.format("load.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value));
+        return value;
     }
 
     @Override
     public double load_f64(long address) {
-        return unsafe.getDouble(start + address);
+        double value = unsafe.getDouble(start + address);
+        logger.finest(() -> String.format("load.f64 address = %d, value = 0x%16X (%f)", address, Double.doubleToRawLongBits(value), value));
+        return value;
     }
 
     @Override
     public int load_i32_8s(long address) {
-        return unsafe.getByte(start + address);
+        int value = unsafe.getByte(start + address);
+        logger.finest(() -> String.format("load.i32_8s address = %d, value = 0x%02X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public int load_i32_8u(long address) {
-        return 0x0000_00ff & unsafe.getByte(start + address);
+        int value = 0x0000_00ff & unsafe.getByte(start + address);
+        logger.finest(() -> String.format("load.i32_8u address = %d, value = 0x%02X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public int load_i32_16s(long address) {
-        return unsafe.getShort(start + address);
+        int value = unsafe.getShort(start + address);
+        logger.finest(() -> String.format("load.i32_16s address = %d, value = 0x%04X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public int load_i32_16u(long address) {
-        return 0x0000_ffff & unsafe.getShort(start + address);
+        int value = 0x0000_ffff & unsafe.getShort(start + address);
+        logger.finest(() -> String.format("load.i32_16u address = %d, value = 0x%04X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public long load_i64_8s(long address) {
-        return unsafe.getByte(start + address);
+        long value = unsafe.getByte(start + address);
+        logger.finest(() -> String.format("load.i64_8s address = %d, value = 0x%02X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public long load_i64_8u(long address) {
-        return 0x0000_0000_0000_00ffL & unsafe.getByte(start + address);
+        long value = 0x0000_0000_0000_00ffL & unsafe.getByte(start + address);
+        logger.finest(() -> String.format("load.i64_8u address = %d, value = 0x%02X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public long load_i64_16s(long address) {
-        return unsafe.getShort(start + address);
+        long value = unsafe.getShort(start + address);
+        logger.finest(() -> String.format("load.i64_16s address = %d, value = 0x%04X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public long load_i64_16u(long address) {
-        return 0x0000_0000_0000_ffffL & unsafe.getShort(start + address);
+        long value = 0x0000_0000_0000_ffffL & unsafe.getShort(start + address);
+        logger.finest(() -> String.format("load.i64_16u address = %d, value = 0x%04X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public long load_i64_32s(long address) {
-        return unsafe.getInt(start + address);
+        long value = unsafe.getInt(start + address);
+        logger.finest(() -> String.format("load.i64_32s address = %d, value = 0x%08X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public long load_i64_32u(long address) {
-        return 0x0000_0000_ffff_ffffL & unsafe.getInt(start + address);
+        long value = 0x0000_0000_ffff_ffffL & unsafe.getInt(start + address);
+        logger.finest(() -> String.format("load.i64_32u address = %d, value = 0x%08X (%d)", address, value, value));
+        return value;
     }
 
     @Override
     public void store_i32(long address, int value) {
+        logger.finest(() -> String.format("store.i32 address = %d, value = 0x%08X (%d)", address, value, value));
         unsafe.putInt(start + address, value);
     }
 
     @Override
     public void store_i64(long address, long value) {
+        logger.finest(() -> String.format("store.i64 address = %d, value = 0x%16X (%d)", address, value, value));
         unsafe.putLong(start + address, value);
 
     }
 
     @Override
     public void store_f32(long address, float value) {
+        logger.finest(() -> String.format("store.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value));
         unsafe.putFloat(start + address, value);
 
     }
 
     @Override
     public void store_f64(long address, double value) {
+        logger.finest(() -> String.format("store.f64 address = %d, value = 0x%16X (%f)", address, Double.doubleToRawLongBits(value), value));
         unsafe.putDouble(start + address, value);
     }
 
     @Override
     public void store_i32_8(long address, byte value) {
+        logger.finest(() -> String.format("store.i32_8 address = %d, value = 0x%02X (%d)", address, value, value));
         unsafe.putByte(start + address, value);
     }
 
     @Override
     public void store_i32_16(long address, short value) {
+        logger.finest(() -> String.format("store.i32_16 address = %d, value = 0x%04X (%d)", address, value, value));
         unsafe.putShort(start + address, value);
     }
 
     @Override
     public void store_i64_8(long address, byte value) {
+        logger.finest(() -> String.format("store.i64_8 address = %d, value = 0x%02X (%d)", address, value, value));
         unsafe.putByte(start + address, value);
     }
 
     @Override
     public void store_i64_16(long address, short value) {
+        logger.finest(() -> String.format("store.i64_16 address = %d, value = 0x%04X (%d)", address, value, value));
         unsafe.putShort(start + address, value);
     }
 
     @Override
     public void store_i64_32(long address, int value) {
+        logger.finest(() -> String.format("store.i64_32 address = %d, value = 0x%08X (%d)", address, value, value));
         unsafe.putInt(start + address, value);
     }
 }
