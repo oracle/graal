@@ -75,7 +75,7 @@ public class UnsafeWasmMemory implements WasmMemory {
     @Override
     public long load_i64(long address) {
         long value = unsafe.getLong(start + address);
-        logger.finest(() -> String.format("load.i64 address = %d, value = 0x%16X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i64 address = %d, value = 0x%016X (%d)", address, value, value));
         return value;
     }
 
@@ -89,7 +89,7 @@ public class UnsafeWasmMemory implements WasmMemory {
     @Override
     public double load_f64(long address) {
         double value = unsafe.getDouble(start + address);
-        logger.finest(() -> String.format("load.f64 address = %d, value = 0x%16X (%f)", address, Double.doubleToRawLongBits(value), value));
+        logger.finest(() -> String.format("load.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value));
         return value;
     }
 
@@ -171,7 +171,7 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public void store_i64(long address, long value) {
-        logger.finest(() -> String.format("store.i64 address = %d, value = 0x%16X (%d)", address, value, value));
+        logger.finest(() -> String.format("store.i64 address = %d, value = 0x%016X (%d)", address, value, value));
         unsafe.putLong(start + address, value);
 
     }
@@ -185,7 +185,7 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public void store_f64(long address, double value) {
-        logger.finest(() -> String.format("store.f64 address = %d, value = 0x%16X (%f)", address, Double.doubleToRawLongBits(value), value));
+        logger.finest(() -> String.format("store.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value));
         unsafe.putDouble(start + address, value);
     }
 
