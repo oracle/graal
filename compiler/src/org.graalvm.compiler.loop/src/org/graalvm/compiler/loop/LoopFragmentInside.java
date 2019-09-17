@@ -245,60 +245,43 @@ public class LoopFragmentInside extends LoopFragment {
         // Discard the segment entry and its flow, after if merging it into the loop
         StructuredGraph graph = mainLoopBegin.graph();
         IfNode loopTest = mainCounted.getLimitTest();
-        IfNode newSegmentTest = getDuplicatedNode(loopTest);
-        AbstractBeginNode trueSuccessor = loopTest.trueSuccessor();
-        AbstractBeginNode falseSuccessor = loopTest.falseSuccessor();
-        FixedNode firstNode;
-        boolean codeInTrueSide = false;
-        if (trueSuccessor == mainCounted.getBody()) {
-            firstNode = trueSuccessor.next();
-            codeInTrueSide = true;
-        } else {
-            assert (falseSuccessor == mainCounted.getBody());
-            firstNode = falseSuccessor.next();
-        }
-        trueSuccessor = newSegmentTest.trueSuccessor();
-        falseSuccessor = newSegmentTest.falseSuccessor();
+        IfNode newSegmentLoopTest = getDuplicatedNode(loopTest);
+
+        // Redirect anchors
+        AbstractBeginNode falseSuccessor = newSegmentLoopTest.falseSuccessor();
         for (Node usage : falseSuccessor.anchored().snapshot()) {
             usage.replaceFirstInput(falseSuccessor, loopTest.falseSuccessor());
         }
+        AbstractBeginNode trueSuccessor = newSegmentLoopTest.trueSuccessor();
         for (Node usage : trueSuccessor.anchored().snapshot()) {
             usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
         }
-        AbstractBeginNode startBlockNode;
-        if (codeInTrueSide) {
-            startBlockNode = trueSuccessor;
-        } else {
-            graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "before");
-            startBlockNode = falseSuccessor;
-        }
-        FixedNode lastNode = getBlockEnd(startBlockNode);
-        LoopEndNode loopEndNode = mainLoopBegin.getSingleLoopEnd();
-        FixedWithNextNode lastCodeNode = (FixedWithNextNode) loopEndNode.predecessor();
-        FixedNode newSegmentFirstNode = getDuplicatedNode(firstNode);
-        FixedWithNextNode newSegmentLastNode = getDuplicatedNode(lastCodeNode);
-        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, loopEndNode.graph(), "Before placing segment");
-        if (firstNode instanceof LoopEndNode) {
+
+        // remove if test
+        graph.removeSplitPropagate(newSegmentLoopTest, loopTest.trueSuccessor() == mainCounted.getBody() ? trueSuccessor : falseSuccessor);
+
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before placing segment");
+        if (mainCounted.getBody().next() instanceof LoopEndNode) {
             GraphUtil.killCFG(getDuplicatedNode(mainLoopBegin));
         } else {
+            AbstractBeginNode newSegmentBegin = getDuplicatedNode(mainLoopBegin);
+            FixedNode newSegmentEnd = getBlockEnd(newSegmentBegin);
+            LoopEndNode loopEndNode = mainLoopBegin.getSingleLoopEnd();
+            FixedWithNextNode lastCodeNode = (FixedWithNextNode) loopEndNode.predecessor();
+            FixedNode newSegmentFirstNode = newSegmentBegin.next();
+            FixedWithNextNode newSegmentLastNode = getDuplicatedNode(lastCodeNode);
+
             newSegmentLastNode.clearSuccessors();
-            startBlockNode.setNext(lastNode);
+            newSegmentBegin.setNext(newSegmentEnd);
             lastCodeNode.replaceFirstSuccessor(loopEndNode, newSegmentFirstNode);
-            newSegmentLastNode.replaceFirstSuccessor(lastNode, loopEndNode);
+            newSegmentLastNode.replaceFirstSuccessor(newSegmentEnd, loopEndNode);
             lastCodeNode.setNext(newSegmentFirstNode);
             newSegmentLastNode.setNext(loopEndNode);
-            startBlockNode.clearSuccessors();
-            lastNode.safeDelete();
-            Node newSegmentTestStart = newSegmentTest.predecessor();
-            LogicNode newSegmentIfTest = newSegmentTest.condition();
-            newSegmentTestStart.clearSuccessors();
-            newSegmentTest.safeDelete();
-            newSegmentIfTest.safeDelete();
-            trueSuccessor.safeDelete();
-            falseSuccessor.safeDelete();
-            newSegmentTestStart.safeDelete();
+            newSegmentBegin.clearSuccessors();
+            newSegmentBegin.safeDelete();
+            newSegmentEnd.safeDelete();
         }
-        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, loopEndNode.graph(), "After placing segment");
+        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
     }
 
     private static EndNode getBlockEnd(FixedNode node) {
