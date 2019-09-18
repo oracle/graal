@@ -202,7 +202,6 @@ public class SymbolTable {
 
     public WasmFunction function(String exportName) {
         WasmFunction function = exportedFunctions.get(exportName);
-        assert function != null;
         return function;
     }
 

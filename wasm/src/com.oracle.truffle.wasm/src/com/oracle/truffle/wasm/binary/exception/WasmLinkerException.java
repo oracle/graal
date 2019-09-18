@@ -34,22 +34,15 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Thrown when a WebAssembly program encounters a trap, as defined by the specification.
+ * Thrown when it is not possible to link a WebAssembly module.
  */
-public class WasmTrap extends RuntimeException implements TruffleException {
+public class WasmLinkerException extends RuntimeException {
 
     private static final long serialVersionUID = 8195809219857028793L;
-    private final Node location;
 
     @TruffleBoundary
-    public WasmTrap(String message, Node location) {
+    public WasmLinkerException(String message) {
         super(message);
-        this.location = location;
-    }
-
-    @Override
-    public Node getLocation() {
-        return location;
     }
 
     @Override
