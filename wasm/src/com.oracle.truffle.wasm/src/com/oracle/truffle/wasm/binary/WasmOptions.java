@@ -33,9 +33,10 @@ package com.oracle.truffle.wasm.binary;
 import com.oracle.truffle.api.Option;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
 
 @Option.Group("wasm")
 public class WasmOptions {
-    @Option(help = "A comma-separated list of predefined modules: <linked-name>:<predefined-module-name>.", category = OptionCategory.USER)
+    @Option(help = "A comma-separated list of predefined modules: <linked-name>:<predefined-module-name>.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     public static final OptionKey<String> PredefinedModules = new OptionKey<>("");
 }
