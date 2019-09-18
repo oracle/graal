@@ -737,10 +737,6 @@ CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$Aft
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$QueryReachabilityAccess
 
-CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$AfterAnalysisAccess
- outer org.graalvm.nativeimage.hosted.Feature
-intf org.graalvm.nativeimage.hosted.Feature$QueryReachabilityAccess
-
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$AfterCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$CompilationAccess
