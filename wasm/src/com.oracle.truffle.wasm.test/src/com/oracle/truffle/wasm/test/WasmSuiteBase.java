@@ -120,14 +120,24 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         System.out.println("--------------------------------------------------------------------------------");
         System.out.println("Using runtime: " + Truffle.getRuntime().toString());
         for (WasmTestCase testCase : qualifyingTestCases) {
+            String statusIcon = "\u003F";
             try {
+                System.out.print(" ");
+                System.out.print(testCase.name);
+                System.out.flush();
                 runTestCase(testCase);
-                System.out.print("\uD83D\uDE0D");
-                System.out.flush();
+                statusIcon = "\uD83D\uDE0D";
             } catch (Throwable e) {
-                System.out.print("\uD83D\uDE21");
-                System.out.flush();
+                statusIcon = "\uD83D\uDE21";
                 errors.put(testCase, e);
+            } finally {
+                for (int i = 0; i < testCase.name.length() + 1; i++) {
+                    System.out.print("\u001b[1D");
+                    System.out.print(" ");
+                    System.out.print("\u001b[1D");
+                }
+                System.out.print(statusIcon);
+                System.out.flush();
             }
         }
         System.out.println();
