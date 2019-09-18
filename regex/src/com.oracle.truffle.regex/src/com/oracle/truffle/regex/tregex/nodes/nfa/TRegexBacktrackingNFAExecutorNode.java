@@ -102,9 +102,8 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                         firstMatch = i;
                     }
                 }
-            } else if (curState.hasTransitionToAnchoredFinalState(true) || curState.hasTransitionToUnAnchoredFinalState(true)) {
-                firstMatch = Math.min(Short.toUnsignedInt(curState.getTransitionToAnchoredFinalStateId(true)),
-                                Short.toUnsignedInt(curState.getTransitionToUnAnchoredFinalStateId(true)));
+            } else if (curState.hasTransitionToFinalState(true)) {
+                firstMatch = curState.getFirstTransitionToFinalStateIndex(true);
             }
             if (firstMatch < 0) {
                 if (locals.canPopResult()) {

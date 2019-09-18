@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.regex.charset.CharSet;
 import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -67,13 +68,13 @@ public class NFAState implements IndexedState, JsonConvertible {
 
     private final short id;
     private final ASTNodeSet<? extends RegexASTNode> stateSet;
-    private byte flags;
-    private short transitionToAnchoredFinalState = -1;
-    private short transitionToUnAnchoredFinalState = -1;
-    private short revTransitionToAnchoredFinalState = -1;
-    private short revTransitionToUnAnchoredFinalState = -1;
-    private NFAStateTransition[] next;
-    private NFAStateTransition[] prev;
+    @CompilationFinal private byte flags;
+    @CompilationFinal private short transitionToAnchoredFinalState = -1;
+    @CompilationFinal private short transitionToUnAnchoredFinalState = -1;
+    @CompilationFinal private short revTransitionToAnchoredFinalState = -1;
+    @CompilationFinal private short revTransitionToUnAnchoredFinalState = -1;
+    @CompilationFinal(dimensions = 1) private NFAStateTransition[] next;
+    @CompilationFinal(dimensions = 1) private NFAStateTransition[] prev;
     private short prevLength = 0;
     private List<Integer> possibleResults;
     private final CharSet matcherBuilder;
@@ -230,6 +231,19 @@ public class NFAState implements IndexedState, JsonConvertible {
 
     public short getTransitionToUnAnchoredFinalStateId(boolean forward) {
         return forward ? transitionToUnAnchoredFinalState : revTransitionToUnAnchoredFinalState;
+    }
+
+    public boolean hasTransitionToFinalState(boolean forward) {
+        return hasTransitionToAnchoredFinalState(forward) || hasTransitionToUnAnchoredFinalState(forward);
+    }
+
+    public int getFirstTransitionToFinalStateIndex(boolean forward) {
+        assert hasTransitionToFinalState(forward);
+        return Math.min(Short.toUnsignedInt(getTransitionToAnchoredFinalStateId(forward)), Short.toUnsignedInt(getTransitionToUnAnchoredFinalStateId(forward)));
+    }
+
+    public NFAStateTransition getFirstTransitionToFinalState(boolean forward) {
+        return getNext(forward)[getFirstTransitionToFinalStateIndex(forward)];
     }
 
     /**

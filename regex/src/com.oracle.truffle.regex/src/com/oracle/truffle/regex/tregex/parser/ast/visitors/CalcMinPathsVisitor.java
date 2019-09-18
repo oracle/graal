@@ -124,11 +124,15 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
                 caret = false;
                 dollar = false;
             }
+            // group.minPath and group.maxPath are summed up from the beginning of the regex to the
+            // beginning of the group.
+            // the min and max path of the sequences are further summed up with min and max path of
+            // the group, so sequence.minPath - group.minPath == the sequence's "own" minPath
             minPath = group.getMinPath() + ((minPath - group.getMinPath()) * group.getQuantifier().getMin());
             if (group.getQuantifier().isInfiniteLoop()) {
                 hasLoops = true;
             } else {
-                maxPath = group.getMaxPath() + ((minPath - group.getMaxPath()) * group.getQuantifier().getMax());
+                maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
             }
         }
         group.setStartsWithCaret(caret);
@@ -233,7 +237,6 @@ public class CalcMinPathsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (characterClass.hasQuantifier()) {
             characterClass.getParent().incMinPath(characterClass.getQuantifier().getMin());
             if (characterClass.getQuantifier().isInfiniteLoop()) {
-                characterClass.getParent().incMaxPath(characterClass.getQuantifier().getMin());
                 characterClass.setHasLoops();
                 characterClass.getParent().setHasLoops();
             } else {

@@ -34,13 +34,15 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 /**
  * Provides information about a transition from one NFAState to another state.
  */
 public class NFAStateTransition implements JsonConvertible {
 
     private final short id;
-    private NFAState source;
+    @CompilationFinal private NFAState source;
     private final NFAState target;
     private final GroupBoundaries groupBoundaries;
 

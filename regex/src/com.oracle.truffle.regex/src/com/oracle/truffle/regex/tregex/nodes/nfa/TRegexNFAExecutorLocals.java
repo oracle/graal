@@ -25,7 +25,6 @@
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import java.util.Arrays;
-import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -40,8 +39,9 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     int curStatesLength = 0;
     int nextStatesLength = 0;
     int iCurStates = 0;
-    private final BitSet marks;
+    private long[] marks;
     private int[] result;
+    private boolean resultPushed = false;
 
     public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates) {
         super(input, fromIndex, maxIndex, index);
@@ -49,7 +49,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         this.maxSize = nStates * frameSize;
         this.curStates = new int[frameSize * 8];
         this.nextStates = new int[frameSize * 8];
-        this.marks = new BitSet(nStates);
+        this.marks = new long[((nStates - 1) >> 6) + 1];
     }
 
     public void addInitialState(int stateId) {
@@ -71,16 +71,8 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         return curStates[iCurStates - frameSize];
     }
 
-    public void clearMarks() {
-        marks.clear();
-    }
-
-    public void markState(int i) {
-        marks.set(i);
-    }
-
-    public boolean isMarked(int i) {
-        return marks.get(i);
+    public long[] getMarks() {
+        return marks;
     }
 
     public void pushSuccessor(NFAStateTransition t, boolean copy) {
@@ -105,9 +97,12 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         nextStatesLength = 0;
         iCurStates = 0;
         incIndex(1);
+        Arrays.fill(marks, 0);
+        resultPushed = false;
     }
 
     public void pushResult(NFAStateTransition t, boolean copy) {
+        resultPushed = true;
         if (result == null) {
             result = new int[frameSize - 1];
         }
@@ -121,6 +116,10 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
     public boolean hasResult() {
         return result != null;
+    }
+
+    public boolean isResultPushed() {
+        return resultPushed;
     }
 
     public int[] getResult() {

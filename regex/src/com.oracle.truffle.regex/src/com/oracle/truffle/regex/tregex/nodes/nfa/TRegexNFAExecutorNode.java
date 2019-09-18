@@ -25,8 +25,10 @@
 
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
+import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
@@ -49,6 +51,11 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
         nfa.setInitialLoopBack(false);
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
+        for (int i = 0; i < nfa.getNumberOfTransitions(); i++) {
+            if (nfa.getTransitions()[i] != null) {
+                nfa.getTransitions()[i].getGroupBoundaries().materializeArrays();
+            }
+        }
     }
 
     public NFA getNFA() {
@@ -67,6 +74,7 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
+        CompilerDirectives.ensureVirtualized(locals);
 
         final int offset = Math.min(locals.getIndex(), nfa.getAnchoredEntry().length - 1);
         locals.setIndex(locals.getIndex() - offset);
@@ -83,21 +91,13 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
             return null;
         }
         while (true) {
-            locals.clearMarks();
             if (locals.getIndex() < getInputLength(locals)) {
                 findNextStates(locals);
                 if (locals.successorsEmpty() && (!searching || locals.hasResult())) {
                     return locals.getResult();
                 }
             } else {
-                while (locals.hasNext()) {
-                    if (expandStateAtEnd(locals, locals.next(), false)) {
-                        return locals.getResult();
-                    }
-                }
-                if (searching && !locals.hasResult()) {
-                    expandStateAtEnd(locals, nfa.getInitialLoopBackTransition().getTarget().getId(), true);
-                }
+                findNextStatesAtEnd(locals);
                 return locals.getResult();
             }
             locals.nextChar();
@@ -107,7 +107,8 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
     private void findNextStates(TRegexNFAExecutorLocals locals) {
         char c = getChar(locals);
         while (locals.hasNext()) {
-            if (expandState(locals, locals.next(), c, false)) {
+            expandState(locals, locals.next(), c, false);
+            if (locals.isResultPushed()) {
                 return;
             }
         }
@@ -116,30 +117,44 @@ public class TRegexNFAExecutorNode extends TRegexExecutorNode {
         }
     }
 
-    private boolean expandState(TRegexNFAExecutorLocals locals, int stateId, char c, boolean isLoopBack) {
-        for (NFAStateTransition t : nfa.getState(stateId).getNext()) {
-            if (locals.isMarked(t.getTarget().getId()) || t.getTarget().isAnchoredFinalState(true)) {
-                continue;
-            }
-            locals.markState(t.getTarget().getId());
-            if (t.getTarget().isUnAnchoredFinalState(true)) {
-                locals.pushResult(t, !isLoopBack);
-                return true;
-            }
-            if (t.getTarget().getCharSet().contains(c)) {
-                locals.pushSuccessor(t, !isLoopBack);
+    private void expandState(TRegexNFAExecutorLocals locals, int stateId, char c, boolean isLoopBack) {
+        NFAState state = nfa.getState(stateId);
+        for (int i = 0; i < maxTransitionIndex(state); i++) {
+            NFAStateTransition t = state.getNext()[i];
+            NFAState target = t.getTarget();
+            int targetId = t.getTarget().getId();
+            int markIndex = targetId >> 6;
+            long markBit = 1L << targetId;
+            if (!t.getTarget().isAnchoredFinalState(true) && (locals.getMarks()[markIndex] & markBit) == 0) {
+                locals.getMarks()[markIndex] |= markBit;
+                if (t.getTarget().isUnAnchoredFinalState(true)) {
+                    locals.pushResult(t, !isLoopBack);
+                } else if (target.getCharSet().contains(c)) {
+                    locals.pushSuccessor(t, !isLoopBack);
+                }
             }
         }
-        return false;
     }
 
-    private boolean expandStateAtEnd(TRegexNFAExecutorLocals locals, int stateId, boolean isLoopBack) {
-        for (NFAStateTransition t : nfa.getState(stateId).getNext()) {
-            if (t.getTarget().isFinalState(true)) {
-                locals.pushResult(t, !isLoopBack);
-                return true;
+    private static int maxTransitionIndex(NFAState state) {
+        return state.hasTransitionToUnAnchoredFinalState(true) ? state.getTransitionToUnAnchoredFinalStateId(true) + 1 : state.getNext().length;
+    }
+
+    private void findNextStatesAtEnd(TRegexNFAExecutorLocals locals) {
+        while (locals.hasNext()) {
+            expandStateAtEnd(locals, nfa.getState(locals.next()), false);
+            if (locals.isResultPushed()) {
+                return;
             }
         }
-        return false;
+        if (searching && !locals.hasResult()) {
+            expandStateAtEnd(locals, nfa.getInitialLoopBackTransition().getTarget(), true);
+        }
+    }
+
+    private static void expandStateAtEnd(TRegexNFAExecutorLocals locals, NFAState state, boolean isLoopBack) {
+        if (state.hasTransitionToFinalState(true)) {
+            locals.pushResult(state.getFirstTransitionToFinalState(true), !isLoopBack);
+        }
     }
 }

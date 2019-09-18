@@ -117,11 +117,11 @@ public final class RegexProfile {
      *         <li>most searches led to a match</li>
      *         <li>the capture groups of most search results were queried</li>
      *         <li>the match often covered a big part of the part of the input string that had to be
-     *         traversed in order to find it, or the match was usually very short</li>
+     *         traversed in order to find it.</li>
      *         </ul>
      */
     public boolean shouldUseEagerMatching() {
-        return matchRatio() > 0.5 && cgAccessRatio() > 0.5 && (avgMatchLength < 5 || avgMatchedPortionOfSearchSpace > 0.4);
+        return matchRatio() > 0.5 && cgAccessRatio() > 0.5 && avgMatchedPortionOfSearchSpace > 0.4;
     }
 
     @TruffleBoundary
