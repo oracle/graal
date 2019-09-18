@@ -265,19 +265,16 @@ public class LoopFragmentInside extends LoopFragment {
             GraphUtil.killCFG(getDuplicatedNode(mainLoopBegin));
         } else {
             AbstractBeginNode newSegmentBegin = getDuplicatedNode(mainLoopBegin);
-            FixedNode newSegmentEnd = getBlockEnd(newSegmentBegin);
+            FixedNode newSegmentFirstNode = newSegmentBegin.next();
+            EndNode newSegmentEnd = getBlockEnd(newSegmentBegin);
+            FixedWithNextNode newSegmentLastNode = (FixedWithNextNode) newSegmentEnd.predecessor();
             LoopEndNode loopEndNode = mainLoopBegin.getSingleLoopEnd();
             FixedWithNextNode lastCodeNode = (FixedWithNextNode) loopEndNode.predecessor();
-            FixedNode newSegmentFirstNode = newSegmentBegin.next();
-            FixedWithNextNode newSegmentLastNode = getDuplicatedNode(lastCodeNode);
 
-            newSegmentLastNode.clearSuccessors();
-            newSegmentBegin.setNext(newSegmentEnd);
+            newSegmentBegin.clearSuccessors();
             lastCodeNode.replaceFirstSuccessor(loopEndNode, newSegmentFirstNode);
             newSegmentLastNode.replaceFirstSuccessor(newSegmentEnd, loopEndNode);
-            lastCodeNode.setNext(newSegmentFirstNode);
-            newSegmentLastNode.setNext(loopEndNode);
-            newSegmentBegin.clearSuccessors();
+
             newSegmentBegin.safeDelete();
             newSegmentEnd.safeDelete();
         }
