@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.classfile.ConstantPool.classFormatErro
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
@@ -34,6 +35,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNCHRONIZED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
@@ -104,6 +106,8 @@ public final class ClassfileParser {
     public static final char JAVA_MIN_SUPPORTED_VERSION = JAVA_1_1_VERSION;
     public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_8_VERSION;
     public static final char JAVA_MAX_SUPPORTED_MINOR_VERSION = 0;
+
+    private final boolean verify = false;
 
     private final ClasspathFile classfile;
 
@@ -246,6 +250,33 @@ public final class ClassfileParser {
         throw new UnsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
     }
 
+    /**
+     * Verifies that the flags for a class are valid.
+     *
+     * @param flags the flags to test
+     * @throws ClassFormatError if the flags are invalid
+     */
+    public static void verifyClassFlags(int flags) {
+        boolean valid;
+        final int finalAndAbstract = ACC_FINAL | ACC_ABSTRACT;
+        if ((flags & ACC_INTERFACE) != 0) {
+            // If the ACC_INTERFACE flag is set, the ACC_ABSTRACT flag must also be set.
+            valid = (flags & ACC_ABSTRACT) != 0;
+            // And the ACC_FINAL, ACC_SUPER, and ACC_ENUM flags set must not be set.
+            valid &= (flags & (ACC_FINAL | ACC_SUPER | ACC_ENUM)) == 0;
+        } else {
+            // If the ACC_INTERFACE flag of this class file is not set, it may have any of the other
+            // flags in Table 4.1
+            // set. However, such a class file cannot have both its ACC_FINAL and ACC_ABSTRACT flags
+            // set (2.8.2).
+            valid = (flags & finalAndAbstract) != finalAndAbstract;
+        }
+        if (valid) {
+            return;
+        }
+        throw classFormatError("Invalid class flags 0x" + Integer.toHexString(flags));
+    }
+
     public ParserKlass parseClassImpl() {
         readMagic();
 
@@ -283,6 +314,8 @@ public final class ClassfileParser {
             throw classfile.classFormatError("Unknown constant tag %s", badConstantSeen);
         }
 
+        verifyClassFlags(classFlags);
+
         // this class
         thisKlassIndex = stream.readU2();
 
@@ -319,7 +352,13 @@ public final class ClassfileParser {
         ParserMethod[] methods = new ParserMethod[methodCount];
         for (int i = 0; i < methodCount; ++i) {
             methods[i] = parseMethod(isInterface);
+            for (int j = 0; j < i; ++j) {
+                if (methods[j].getName().equals(methods[i].getName()) && methods[j].getSignature().equals(methods[i].getSignature())) {
+                    throw classFormatError("Duplicate method name and signature: " + methods[j].getName() + " " + methods[j].getSignature());
+                }
+            }
         }
+
         return methods;
     }
 
@@ -351,7 +390,7 @@ public final class ClassfileParser {
         if ((flags & ACC_ABSTRACT) != 0) {
             valid &= (flags & (ACC_PRIVATE | ACC_STATIC | ACC_FINAL | Constants.ACC_NATIVE)) == 0;
             if (majorVersion >= JAVA_1_5_VERSION) {
-                valid &= (flags & (Constants.ACC_SYNCHRONIZED | ACC_STRICT)) == 0;
+                valid &= (flags & (ACC_SYNCHRONIZED | ACC_STRICT)) == 0;
             }
         }
 
@@ -451,8 +490,11 @@ public final class ClassfileParser {
             CodeAttribute codeAttribute = null;
             Attribute checkedExceptions = null;
             Attribute runtimeVisibleAnnotations = null;
+            Attribute runtimeVisibleTypeAnnotations = null;
+            Attribute runtimeInvisibleTypeAnnotations = null;
             Attribute runtimeVisibleParameterAnnotations = null;
             Attribute annotationDefault = null;
+            MethodParametersAttribute methodParameters = null;
 
             for (int i = 0; i < attributeCount; ++i) {
                 final int attributeNameIndex = stream.readU2();
@@ -478,8 +520,23 @@ public final class ClassfileParser {
                     } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
                         assert runtimeVisibleAnnotations == null;
                         methodAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                    } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
+                        if (runtimeVisibleTypeAnnotations != null) {
+                            throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
+                        }
+                        methodAttributes[i] = runtimeVisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                    } else if (attributeName.equals(Name.RuntimeInvisibleTypeAnnotations)) {
+                        if (runtimeInvisibleTypeAnnotations != null) {
+                            throw classFormatError("Duplicate RuntimeInvisibleTypeAnnotations attribute");
+                        }
+                        methodAttributes[i] = runtimeInvisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
                     } else if (attributeName.equals(Name.RuntimeVisibleParameterAnnotations)) {
                         methodAttributes[i] = runtimeVisibleParameterAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                    } else if (attributeName.equals(Name.MethodParameters)) {
+                        if (methodParameters != null) {
+                            throw classFormatError("Duplicate MethodParameters attribute");
+                        }
+                        methodAttributes[i] = methodParameters = parseMethodParameters(attributeName);
                     } else if (attributeName.equals(Name.AnnotationDefault)) {
                         methodAttributes[i] = annotationDefault = new Attribute(attributeName, stream.readByteArray(attributeSize));
                     } else {
@@ -509,7 +566,7 @@ public final class ClassfileParser {
             }
         }
 
-        return new ParserMethod(methodFlags, nameIndex, signatureIndex, methodAttributes);
+        return ParserMethod.create(methodFlags, name, signature, methodAttributes);
     }
 
     private Attribute[] parseClassAttributes() {
@@ -521,6 +578,8 @@ public final class ClassfileParser {
         SourceFileAttribute sourceFileName = null;
         SignatureAttribute genericSignature = null;
         Attribute runtimeVisibleAnnotations = null;
+        Attribute runtimeVisibleTypeAnnotations = null;
+        Attribute runtimeInvisibleTypeAnnotations = null;
         EnclosingMethodAttribute enclosingMethod = null;
         BootstrapMethodsAttribute bootstrapMethods = null;
 
@@ -545,6 +604,16 @@ public final class ClassfileParser {
                     classAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
                 } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
                     classAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
+                    if (runtimeVisibleTypeAnnotations != null) {
+                        throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
+                    }
+                    classAttributes[i] = runtimeVisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else if (attributeName.equals(Name.RuntimeInvisibleTypeAnnotations)) {
+                    if (runtimeInvisibleTypeAnnotations != null) {
+                        throw classFormatError("Duplicate RuntimeInvisibleTypeAnnotations attribute");
+                    }
+                    classAttributes[i] = runtimeInvisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
                 } else if (majorVersion >= JAVA_7_VERSION && attributeName.equals(Name.BootstrapMethods)) {
                     if (bootstrapMethods != null) {
                         throw classFormatError("Duplicate BootstrapMethods attribute");
@@ -567,6 +636,10 @@ public final class ClassfileParser {
             if (attributeSize != stream.getPosition() - startPosition) {
                 throw classFormatError("Invalid attribute length for " + attributeName + " attribute");
             }
+        }
+
+        if (maxBootstrapMethodAttrIndex > 0 && bootstrapMethods == null) {
+            throw classFormatError("BootstrapMethods attribute is missing");
         }
 
         return classAttributes;
@@ -684,6 +757,15 @@ public final class ClassfileParser {
         int[] entries = new int[entryCount];
         for (int i = 0; i < entryCount; ++i) {
             int index = stream.readU2();
+            if (index >= pool.length()) {
+                throw classFormatError("Invalid exception_index_table: out of bounds.");
+            }
+            if (index == 0) {
+                throw classFormatError("Invalid exception_index_table: 0.");
+            }
+            if (pool.tagAt(index) != Tag.CLASS) {
+                throw classFormatError("Invalid exception_index_table: not a CONSTANT_Class_info structure.");
+            }
             entries[i] = index;
         }
         return new ExceptionsAttribute(name, entries);
@@ -694,6 +776,15 @@ public final class ClassfileParser {
         BootstrapMethodsAttribute.Entry[] entries = new BootstrapMethodsAttribute.Entry[entryCount];
         for (int i = 0; i < entryCount; ++i) {
             int bootstrapMethodRef = stream.readU2();
+            if (bootstrapMethodRef == 0) {
+                throw classFormatError("Invalid bootstrapMethodRefIndex: 0");
+            }
+            if (bootstrapMethodRef >= pool.length()) {
+                throw classFormatError("Invalid bootstrapMethodRefIndex: out of bounds.");
+            }
+            if (pool.tagAt(bootstrapMethodRef) != Tag.METHODHANDLE) {
+                throw classFormatError("Invalid bootstrapMethodRefIndex: not a CONSTANT_MethodHandle_info structure.");
+            }
             int numBootstrapArguments = stream.readU2();
             char[] bootstrapArguments = new char[numBootstrapArguments];
             for (int j = 0; j < numBootstrapArguments; ++j) {
@@ -811,11 +902,59 @@ public final class ClassfileParser {
     private CodeAttribute parseCodeAttribute(Symbol<Name> name) {
         int maxStack = stream.readU2();
         int maxLocals = stream.readU2();
-        int codeLength = stream.readS4();
+
+        final int codeLength = stream.readS4();
+        if (codeLength <= 0) {
+            throw classFormatError("code_length must be > than 0");
+        } else if (codeLength >= 0xFFFF) {
+            throw classFormatError("code_length > than 64 KB");
+        }
+
         byte[] code = stream.readByteArray(codeLength);
         ExceptionHandler[] entries = parseExceptionHandlerEntries();
-        Attribute[] codeAttributes = parseAttributes();
+
+        int attributeCount = stream.readU2();
+        final Attribute[] codeAttributes = new Attribute[attributeCount];
+
+        for (int i = 0; i < attributeCount; i++) {
+            final int attributeNameIndex = stream.readU2();
+            final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
+            final int attributeSize = stream.readS4();
+            final int startPosition = stream.getPosition();
+
+            Attribute runtimeVisibleTypeAnnotations = null;
+            Attribute runtimeInvisibleTypeAnnotations = null;
+            StackMapTableAttribute stackMapTable = null;
+
+            if (attributeName.equals(Name.LineNumberTable)) {
+                codeAttributes[i] = parseLineNumberTable(attributeName);
+            } else if (attributeName.equals(Name.StackMapTable)) {
+                if (stackMapTable != null) {
+                    throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
+                }
+                codeAttributes[i] = stackMapTable = parseStackMapTableAttribute(attributeName);
+            } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
+                if (runtimeVisibleTypeAnnotations != null) {
+                    throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
+                }
+                codeAttributes[i] = runtimeVisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+            } else if (attributeName.equals(Name.RuntimeInvisibleTypeAnnotations)) {
+                if (runtimeInvisibleTypeAnnotations != null) {
+                    throw classFormatError("Duplicate RuntimeInvisibleTypeAnnotations attribute");
+                }
+                codeAttributes[i] = runtimeInvisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+            } else {
+                // stream.skip(attributeSize);
+                codeAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
+            }
+
+            if (attributeSize != stream.getPosition() - startPosition) {
+                throw classFormatError("Invalid attribute length for " + attributeName + " attribute");
+            }
+        }
+
         return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, majorVersion);
+
     }
 
     private ExceptionHandler[] parseExceptionHandlerEntries() {
@@ -937,6 +1076,8 @@ public final class ClassfileParser {
         ConstantValueAttribute constantValue = null;
         SignatureAttribute genericSignature = null;
         Attribute runtimeVisibleAnnotations = null;
+        Attribute runtimeVisibleTypeAnnotations = null;
+        Attribute runtimeInvisibleTypeAnnotations = null;
 
         for (int i = 0; i < attributeCount; ++i) {
             final int attributeNameIndex = stream.readU2();
@@ -959,6 +1100,16 @@ public final class ClassfileParser {
                     fieldAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
                 } else if (attributeName.equals(Name.RuntimeVisibleAnnotations)) {
                     fieldAttributes[i] = runtimeVisibleAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
+                    if (runtimeVisibleTypeAnnotations != null) {
+                        throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
+                    }
+                    fieldAttributes[i] = runtimeVisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
+                } else if (attributeName.equals(Name.RuntimeInvisibleTypeAnnotations)) {
+                    if (runtimeInvisibleTypeAnnotations != null) {
+                        throw classFormatError("Duplicate RuntimeInvisibleTypeAnnotations attribute");
+                    }
+                    fieldAttributes[i] = runtimeInvisibleTypeAnnotations = new Attribute(attributeName, stream.readByteArray(attributeSize));
                 } else {
                     // stream.skip(attributeSize);
                     fieldAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
@@ -1011,8 +1162,12 @@ public final class ClassfileParser {
         ParserField[] fields = new ParserField[fieldCount];
         for (int i = 0; i < fieldCount; i++) {
             fields[i] = parseField(isInterface);
+            for (int j = 0; j < i; ++j) {
+                if (fields[j].getName().equals(fields[i].getName()) && fields[j].getType().equals(fields[i].getType())) {
+                    throw classFormatError("Duplicate field name and signature: " + fields[j].getName() + " " + fields[j].getType());
+                }
+            }
         }
-        // verifyNoDuplicates(fields);
         return fields;
     }
 

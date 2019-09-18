@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
 /**
@@ -35,8 +36,8 @@ public final class ParserMethod {
     public static final ParserMethod[] EMPTY_ARRAY = new ParserMethod[0];
 
     private final int flags;
-    private final int nameIndex;
-    private final int signatureIndex;
+    private final Symbol<Name> name;
+    private final Symbol<Signature> signature;
 
     public int getFlags() {
         return flags;
@@ -50,16 +51,16 @@ public final class ParserMethod {
     @CompilationFinal(dimensions = 1) //
     private long[] recipes;
 
-    public static ParserMethod create(int flags, int nameIndex, int signatureIndex, Attribute[] attributes) {
-        return new ParserMethod(flags, nameIndex, signatureIndex, attributes);
+    public static ParserMethod create(int flags, Symbol<Name> name, Symbol<Signature> signature, Attribute[] attributes) {
+        return new ParserMethod(flags, name, signature, attributes);
     }
 
-    public int getNameIndex() {
-        return nameIndex;
+    public Symbol<Name> getName() {
+        return name;
     }
 
-    public int getSignatureIndex() {
-        return signatureIndex;
+    public Symbol<Signature> getSignature() {
+        return signature;
     }
 
     public Attribute getAttribute(Symbol<Name> name) {
@@ -75,10 +76,10 @@ public final class ParserMethod {
         return recipes;
     }
 
-    public ParserMethod(int flags, int nameIndex, int signatureIndex, Attribute[] attributes) {
+    ParserMethod(int flags, Symbol<Name> name, Symbol<Signature> signature, Attribute[] attributes) {
         this.flags = flags;
-        this.nameIndex = nameIndex;
-        this.signatureIndex = signatureIndex;
+        this.name = name;
+        this.signature = signature;
         this.attributes = attributes;
     }
 }

@@ -37,12 +37,8 @@ public final class LinkedMethod {
         return parserMethod.getFlags();
     }
 
-    ConstantPool getConstantPool() {
-        return declaringLinkedKlass.getConstantPool();
-    }
-
     protected Symbol<Signature> getRawSignature() {
-        return getConstantPool().utf8At(parserMethod.getSignatureIndex(), "signature");
+        return parserMethod.getSignature();
     }
 
     ParserMethod getParserMethod() {
@@ -50,7 +46,7 @@ public final class LinkedMethod {
     }
 
     protected Symbol<Name> getName() {
-        return getConstantPool().utf8At(parserMethod.getNameIndex(), "name");
+        return parserMethod.getName();
     }
 
     LinkedMethod(ParserMethod parserMethod, LinkedKlass declaringLinkedKlass) {

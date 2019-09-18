@@ -232,6 +232,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> ConstantValue = StaticSymbols.putName("ConstantValue");
         public static final Symbol<Name> RuntimeVisibleAnnotations = StaticSymbols.putName("RuntimeVisibleAnnotations");
         public static final Symbol<Name> RuntimeVisibleTypeAnnotations = StaticSymbols.putName("RuntimeVisibleTypeAnnotations");
+        public static final Symbol<Name> RuntimeInvisibleTypeAnnotations = StaticSymbols.putName("RuntimeInvisibleTypeAnnotations");
         public static final Symbol<Name> RuntimeVisibleParameterAnnotations = StaticSymbols.putName("RuntimeVisibleParameterAnnotations");
         public static final Symbol<Name> AnnotationDefault = StaticSymbols.putName("AnnotationDefault");
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
