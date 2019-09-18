@@ -29,6 +29,8 @@ import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
+import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
+import org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -73,6 +75,8 @@ class SubstrateAMD64Feature implements Feature {
                     return new SubstrateAMD64LoweringProvider(metaAccess, foreignCalls, target);
                 }
             });
+
+            ImageSingletons.add(TargetGraphBuilderPlugins.class, new AMD64GraphBuilderPlugins());
         }
     }
 }

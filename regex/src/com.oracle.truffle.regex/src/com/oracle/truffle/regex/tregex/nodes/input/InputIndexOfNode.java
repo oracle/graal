@@ -56,4 +56,8 @@ public abstract class InputIndexOfNode extends Node {
         }
         return -1;
     }
+
+    static boolean maskIsZero(char mask) {
+        return mask == 0;
+    }
 }

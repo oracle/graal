@@ -178,18 +178,31 @@ def _path_args(depNames=None):
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
-    if mx.get_jdk(tag='default').javaCompliance > '1.8':
+    jdk = mx.get_jdk(tag='default')
+    if jdk.javaCompliance > '1.8':
         # This is required to access jdk.internal.module.Modules which
         # in turn allows us to dynamically open fields/methods to reflection.
         vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # Needed for om.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
+        # The arguments below are only actually needed if Truffle is deployed as a
+        # module. However, that's determined by the compiler suite which may not
+        # be present. In that case, adding these options results in annoying
+        # but harmless messages from the VM:
+        #
+        #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
+        #
+
+        # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
         vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
 
         # This is required for the call to setAccessible in
         # TruffleTCK.testValueWithSource to work.
         vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
-    return (vmArgs, mainClass, mainClassArgs)
+
+    config = (vmArgs, mainClass, mainClassArgs)
+    if _shouldRunTCKParticipant:
+        config = _unittest_config_participant_tck(config)
+    return config
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
@@ -405,9 +418,6 @@ class TruffleArchiveParticipant:
             self.arc.zf.writestr(arcname, content + os.linesep)
 
 def mx_post_parse_cmd_line(opts):
-
-    if _shouldRunTCKParticipant:
-        mx_unittest.add_config_participant(_unittest_config_participant_tck)
 
     def _uses_truffle_dsl_processor(dist):
         for dep in dist.deps:
@@ -757,13 +767,32 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Graal SDK'],
+    jar_distributions=[
+        'truffle:TRUFFLE_DSL_PROCESSOR',
+        'truffle:TRUFFLE_TCK',
+    ],
+    jvmci_parent_jars=[
+        'truffle:TRUFFLE_API',
+    ],
+))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
+    suite=_suite,
+    name='Truffle Macro',
+    short_name='tflm',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
 
@@ -775,8 +804,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     dir_name='nfi',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['truffle:TRUFFLE_NFI'],
-    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT']
+    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
+    support_headers_distributions=['truffle:TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT']
 ))
 
 

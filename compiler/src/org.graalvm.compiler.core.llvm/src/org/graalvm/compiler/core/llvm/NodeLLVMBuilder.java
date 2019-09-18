@@ -95,7 +95,6 @@ import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -117,7 +116,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
         this.builder = gen.getBuilder();
         this.debugInfoBuilder = debugInfoProvider.apply(this, graph.getDebug());
 
-        gen.getBuilder().addMainFunction(gen.getLLVMFunctionType(graph.method()));
+        gen.getBuilder().addMainFunction(gen.getLLVMFunctionType(graph.method(), true));
 
         for (Block block : graph.getLastSchedule().getCFG().getBlocks()) {
             gen.appendBasicBlock(block);
@@ -269,7 +268,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
     }
 
     void finish() {
-        gen.getLLVMResult().setModule(builder.getModule());
+        gen.getLLVMResult().setBitcode(builder.getBitcode());
     }
 
     @Override
@@ -398,7 +397,7 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
         long patchpointId = LLVMIRBuilder.nextPatchpointId.getAndIncrement();
         if (callTarget instanceof DirectCallTargetNode) {
             callee = gen.getFunction(targetMethod);
-            isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod));
+            isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod, false));
             gen.getLLVMResult().recordDirectCall(targetMethod, patchpointId, debugInfo);
         } else if (callTarget instanceof IndirectCallTargetNode) {
             LLVMValueRef computedAddress = llvmOperand(((IndirectCallTargetNode) callTarget).computedAddress());
@@ -407,12 +406,12 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
             }
             if (targetMethod != null) {
                 callee = builder.buildIntToPtr(computedAddress,
-                                builder.pointerType(gen.getLLVMFunctionType(targetMethod), false));
-                isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod));
+                                builder.pointerType(gen.getLLVMFunctionType(targetMethod, false), false));
+                isVoid = isVoidType(gen.getLLVMFunctionReturnType(targetMethod, false));
             } else {
                 LLVMTypeRef returnType = gen.getLLVMType(callTarget.returnStamp().getTrustedStamp());
                 isVoid = isVoidType(returnType);
-                LLVMTypeRef[] argTypes = Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMStackType(gen.getTypeKind(argType.resolve(null)))).toArray(LLVMTypeRef[]::new);
+                LLVMTypeRef[] argTypes = getUnknownCallArgumentTypes(arguments, callTarget);
                 assert args.length == argTypes.length;
 
                 callee = builder.buildIntToPtr(computedAddress,
@@ -455,13 +454,14 @@ public abstract class NodeLLVMBuilder implements NodeLIRBuilderTool {
         return arguments.stream().map(this::llvmOperand).toArray(LLVMValueRef[]::new);
     }
 
+    @SuppressWarnings("unused")
+    protected LLVMTypeRef[] getUnknownCallArgumentTypes(NodeInputList<ValueNode> arguments, LoweredCallTargetNode callTarget) {
+        return Arrays.stream(callTarget.signature()).map(argType -> builder.getLLVMStackType(gen.getTypeKind(argType.resolve(null), false))).toArray(LLVMTypeRef[]::new);
+    }
+
     @Override
     public void emitReadExceptionObject(ValueNode node) {
         builder.buildLandingPad();
-
-        Register exceptionRegister = gen.getRegisterConfig().getReturnRegister(JavaKind.Object);
-        LLVMValueRef exception = builder.buildInlineGetRegister(exceptionRegister.name);
-        setResult(node, builder.buildRegisterObject(exception));
     }
 
     @Override

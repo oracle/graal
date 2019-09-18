@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -44,6 +45,14 @@ public class JNIRegistrationUtil {
 
     protected static boolean isPosix() {
         return Platform.includedIn(InternalPlatform.LINUX_JNI.class) || Platform.includedIn(InternalPlatform.DARWIN_JNI.class);
+    }
+
+    protected static boolean isLinux() {
+        return Platform.includedIn(InternalPlatform.LINUX_JNI.class);
+    }
+
+    protected static boolean isDarwin() {
+        return Platform.includedIn(InternalPlatform.DARWIN_JNI.class);
     }
 
     protected static boolean isWindows() {
@@ -76,5 +85,12 @@ public class JNIRegistrationUtil {
             result[i] = ReflectionUtil.lookupField(clazz, fieldNames[i]);
         }
         return result;
+    }
+
+    protected static void registerForThrowNew(FeatureAccess access, String... exceptionClassNames) {
+        for (String exceptionClassName : exceptionClassNames) {
+            JNIRuntimeAccess.register(clazz(access, exceptionClassName));
+            JNIRuntimeAccess.register(constructor(access, exceptionClassName, String.class));
+        }
     }
 }

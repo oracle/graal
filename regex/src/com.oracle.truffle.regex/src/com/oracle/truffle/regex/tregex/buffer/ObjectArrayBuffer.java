@@ -35,7 +35,7 @@ import java.util.Iterator;
  * <p>
  * Usage Example:
  * </p>
- * 
+ *
  * <pre>
  * SomeClass[] typedArray = new SomeClass[0];
  * ObjectArrayBuffer buf = new ObjectArrayBuffer();
@@ -81,6 +81,13 @@ public final class ObjectArrayBuffer extends AbstractArrayBuffer implements Iter
         }
         buf[length] = o;
         length++;
+    }
+
+    public void addAll(Object[] arr, int fromIndex, int toIndex) {
+        int len = toIndex - fromIndex;
+        ensureCapacity(length + len);
+        System.arraycopy(arr, fromIndex, buf, length, len);
+        length += len;
     }
 
     @SuppressWarnings("unchecked")

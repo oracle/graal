@@ -26,6 +26,7 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -43,7 +44,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     private final boolean trackCaptureGroups;
 
     public DFAInitialStateNode(short[] successors, boolean searching, boolean trackCaptureGroups) {
-        super(successors);
+        super((short) 0, successors);
         this.searching = searching;
         this.trackCaptureGroups = trackCaptureGroups;
     }
@@ -75,11 +76,6 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     }
 
     @Override
-    public short getId() {
-        return 0;
-    }
-
-    @Override
     public void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
         if (searching) {
             locals.setSuccessorIndex(executor.rewindUpTo(locals, getPrefixLength()));
@@ -91,6 +87,10 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
         }
         if (trackCaptureGroups) {
             locals.setLastTransition((short) 0);
+        }
+        if (executor.recordExecution()) {
+            CompilerAsserts.neverPartOfCompilation();
+            executor.getDebugRecorder().setInitialIndex(locals.getIndex());
         }
     }
 

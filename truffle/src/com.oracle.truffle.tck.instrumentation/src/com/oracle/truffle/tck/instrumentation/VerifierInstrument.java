@@ -92,6 +92,9 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
                         new NodePropertyChecker());
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(
+                        SourceSectionFilter.newBuilder().build(),
+                        new EmptyExecutionEventListener());
     }
 
     @Override
@@ -274,6 +277,20 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                 return true;
             }
             return hasParentRootTag(parent);
+        }
+
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+        }
+    }
+
+    private static final class EmptyExecutionEventListener implements ExecutionEventListener {
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
         }
 
         @Override

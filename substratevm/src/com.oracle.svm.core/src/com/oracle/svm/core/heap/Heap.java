@@ -37,12 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 public abstract class Heap {
-
-    /**
-     * Retuns the singleton {@link Heap} implementation that is created during image generation.
-     */
     @Fold
-    // Lookup is @Fold, so inlining is safe.
     public static Heap getHeap() {
         return ImageSingletons.lookup(Heap.class);
     }
@@ -57,24 +52,15 @@ public abstract class Heap {
 
     public abstract void disableAllocation(IsolateThread vmThread);
 
-    /** Allocation is disallowed if ... */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isAllocationDisallowed();
 
-    /** Create a PinnedAllocator. */
-    public abstract PinnedAllocator createPinnedAllocator();
-
-    /*
-     * Collection methods.
-     */
-
     public abstract GC getGC();
 
-    /*
-     * Other interface methods for the rest of the virtual machine.
+    /**
+     * Walk all the Objects in the Heap, passing each to the visitor. Must only be executed as part
+     * of a VM operation that causes a safepoint.
      */
-
-    /** Walk all the Objects in the Heap, passing each to the visitor. */
     public abstract void walkObjects(ObjectVisitor visitor);
 
     /** Return a list of all the classes in the heap. */
@@ -89,6 +75,7 @@ public abstract class Heap {
      *
      * TODO: Would an "Unsigned getBootImageObjectHeaderBits()" method be sufficient?
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
 
     /** Get the MemoryMXBean for this heap. */
@@ -107,4 +94,10 @@ public abstract class Heap {
      * Returns a suitable {@link GCProvider} for the garbage collector that is used for this heap.
      */
     public abstract GCProvider getGCProvider();
+
+    /**
+     * Returns true if the given object is located in the image heap.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract boolean isInImageHeap(Object object);
 }

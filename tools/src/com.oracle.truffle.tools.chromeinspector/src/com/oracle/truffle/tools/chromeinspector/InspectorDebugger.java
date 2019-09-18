@@ -43,9 +43,11 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
@@ -84,7 +86,7 @@ import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 import com.oracle.truffle.tools.chromeinspector.types.Scope;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
-import java.util.concurrent.locks.Lock;
+import com.oracle.truffle.tools.chromeinspector.util.LineSearch;
 
 import org.graalvm.collections.Pair;
 
@@ -256,6 +258,12 @@ public final class InspectorDebugger extends DebuggerDomain {
                 l2 = l1;
                 c2 = source.getLineLength(l2);
             }
+            if (c2 == 0) {
+                c2 = 1; // 1-based column on zero-length line
+            }
+            if (l1 == l2 && c2 < c1) {
+                c1 = c2;
+            }
             SourceSection range = source.createSection(l1, c1, l2, c2);
             Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, debuggerSession, context.getEnv());
             for (SourceSection ss : locations) {
@@ -271,6 +279,13 @@ public final class InspectorDebugger extends DebuggerDomain {
         if (scriptId == null) {
             throw new CommandProcessException("A scriptId required.");
         }
+        CharSequence characters = getScript(scriptId).getCharacters();
+        JSONObject json = new JSONObject();
+        json.put("scriptSource", characters.toString());
+        return new Params(json);
+    }
+
+    private Script getScript(String scriptId) throws CommandProcessException {
         Script script;
         try {
             script = scriptsHandler.getScript(Integer.parseInt(scriptId));
@@ -280,9 +295,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         } catch (NumberFormatException nfe) {
             throw new CommandProcessException(nfe.getMessage());
         }
-        JSONObject json = new JSONObject();
-        json.put("scriptSource", script.getCharacters().toString());
-        return new Params(json);
+        return script;
     }
 
     @Override
@@ -461,6 +474,23 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
+    public Params searchInContent(String scriptId, String query, boolean caseSensitive, boolean isRegex) throws CommandProcessException {
+        if (scriptId.isEmpty() || query.isEmpty()) {
+            throw new CommandProcessException("Must specify both scriptId and query.");
+        }
+        Source source = getScript(scriptId).getSource();
+        JSONArray matchLines;
+        try {
+            matchLines = LineSearch.matchLines(source, query, caseSensitive, isRegex);
+        } catch (PatternSyntaxException ex) {
+            throw new CommandProcessException(ex.getDescription());
+        }
+        JSONObject match = new JSONObject();
+        match.put("properties", matchLines);
+        return new Params(match);
+    }
+
+    @Override
     public void setBreakpointsActive(Optional<Boolean> active) throws CommandProcessException {
         if (!active.isPresent()) {
             throw new CommandProcessException("Must specify active argument.");
@@ -548,11 +578,15 @@ public final class InspectorDebugger extends DebuggerDomain {
                     }
                     CallFrame cf = suspendedInfo.getCallFrames()[frameId];
                     JSONObject json = new JSONObject();
-                    LanguageInfo languageInfo = cf.getFrame().getLanguage();
-                    DebugValue value = null;
-                    if (languageInfo == null || !languageInfo.isInteractive()) {
+                    DebugValue value;
+                    try {
+                        value = cf.getFrame().eval(expression);
+                    } catch (IllegalStateException ex) {
                         value = getVarValue(expression, cf);
-                        if (value == null) {
+                    }
+                    if (value == null) {
+                        LanguageInfo languageInfo = cf.getFrame().getLanguage();
+                        if (languageInfo == null || !languageInfo.isInteractive()) {
                             String errorMessage = getEvalNonInteractiveMessage();
                             ExceptionDetails exceptionDetails = new ExceptionDetails(errorMessage);
                             json.put("exceptionDetails", exceptionDetails.createJSON(context, generatePreview));
@@ -561,8 +595,6 @@ public final class InspectorDebugger extends DebuggerDomain {
                             err.putOpt("type", "string");
                             json.put("result", err);
                         }
-                    } else {
-                        value = cf.getFrame().eval(expression);
                     }
                     if (value != null) {
                         RemoteObject ro = new RemoteObject(value, generatePreview, context);

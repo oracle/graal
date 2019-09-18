@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -33,13 +33,101 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 
-public interface PlatformNativeLibrarySupport {
+public abstract class PlatformNativeLibrarySupport {
 
-    static PlatformNativeLibrarySupport singleton() {
+    public static final String[] defaultBuiltInLibraries = {
+                    "java",
+                    "nio",
+                    "net",
+                    "zip"
+    };
+
+    private static final String[] defaultBuiltInPkgNatives = {
+                    "com_sun_demo_jvmti_hprof",
+                    "com_sun_java_util_jar_pack",
+                    "com_sun_net_ssl",
+                    "com_sun_nio_file",
+                    "com_sun_security_cert_internal_x509",
+                    "java_io",
+                    "java_lang",
+                    "java_math",
+                    "java_net",
+                    "java_nio",
+                    "java_security",
+                    "java_text",
+                    "java_time",
+                    "java_util",
+                    "javax_net",
+                    "javax_script",
+                    "javax_security",
+                    "jdk_internal_org",
+                    "jdk_internal_util",
+                    "jdk_net",
+                    "sun_invoke",
+                    "sun_launcher",
+                    "sun_misc",
+                    "sun_net",
+                    "sun_nio",
+                    "sun_reflect",
+                    "sun_text",
+                    "sun_util",
+
+                    /* SVM Specific packages */
+                    "com_oracle_svm_core_jdk"
+    };
+
+    private static final String[] defaultBuiltInPkgNativesBlacklist = {
+                    "sun_security_krb5_SCDynamicStoreConfig_getKerberosConfig",
+                    "sun_security_krb5_Config_getWindowsDirectory"
+    };
+
+    public static PlatformNativeLibrarySupport singleton() {
         return ImageSingletons.lookup(PlatformNativeLibrarySupport.class);
     }
 
-    interface NativeLibrary {
+    protected PlatformNativeLibrarySupport() {
+        builtInPkgNatives = new ArrayList<>();
+        if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
+            builtInPkgNatives.addAll(Arrays.asList(defaultBuiltInPkgNatives));
+        }
+    }
+
+    private List<String> builtInLibraries = new ArrayList<>(Arrays.asList(defaultBuiltInLibraries));
+
+    public void addBuiltInLibrary(String libName) {
+        builtInLibraries.add(libName);
+    }
+
+    public boolean isBuiltinLibrary(String name) {
+        return builtInLibraries.contains(name);
+    }
+
+    private List<String> builtInPkgNatives;
+
+    public void addBuiltinPkgNativePrefix(String name) {
+        builtInPkgNatives.add(name);
+    }
+
+    public boolean isBuiltinPkgNative(String name) {
+        String commonPrefix = "Java_";
+        if (name.startsWith(commonPrefix)) {
+            String strippedName = name.substring(commonPrefix.length());
+            for (String str : defaultBuiltInPkgNativesBlacklist) {
+                if (strippedName.startsWith(str)) {
+                    return false;
+                }
+            }
+            for (String str : builtInPkgNatives) {
+                if (strippedName.startsWith(str)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public interface NativeLibrary {
+
         String getCanonicalIdentifier();
 
         boolean isBuiltin();
@@ -47,66 +135,12 @@ public interface PlatformNativeLibrarySupport {
         boolean load();
 
         PointerBase findSymbol(String name);
+
     }
 
-    NativeLibrary createLibrary(String canonical, boolean builtIn);
+    public abstract NativeLibrary createLibrary(String canonical, boolean builtIn);
 
-    PointerBase findBuiltinSymbol(String name);
+    public abstract PointerBase findBuiltinSymbol(String name);
 
-    List<String> defaultBuiltInLibraries = Collections.unmodifiableList(Arrays.asList("java", "nio", "net", "zip"));
-
-    default boolean isBuiltinLibrary(String name) {
-        return defaultBuiltInLibraries.contains(name);
-    }
-
-    String[] builtInPkgNatives = {
-                    "Java_com_sun_demo_jvmti_hprof",
-                    "Java_com_sun_java_util_jar_pack",
-                    "Java_com_sun_net_ssl",
-                    "Java_com_sun_nio_file",
-                    "Java_com_sun_security_cert_internal_x509",
-                    "Java_java_io",
-                    "Java_java_lang",
-                    "Java_java_math",
-                    "Java_java_net",
-                    "Java_java_nio",
-                    "Java_java_security",
-                    "Java_java_text",
-                    "Java_java_time",
-                    "Java_java_util",
-                    "Java_javax_net",
-                    "Java_javax_script",
-                    "Java_javax_security",
-                    "Java_jdk_internal_org",
-                    "Java_jdk_internal_util",
-                    "Java_jdk_net",
-                    "Java_sun_invoke",
-                    "Java_sun_launcher",
-                    "Java_sun_misc",
-                    "Java_sun_net",
-                    "Java_sun_nio",
-                    "Java_sun_reflect",
-                    "Java_sun_security",
-                    "Java_sun_text",
-                    "Java_sun_util",
-
-                    /* SVM Specific packages */
-                    "Java_com_oracle_svm_core_jdk"
-    };
-
-    default boolean isBuiltinPkgNative(String name) {
-        if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
-            // Do a quick check first
-            if (name.startsWith("Java_")) {
-                for (String str : builtInPkgNatives) {
-                    if (name.startsWith(str)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    boolean initializeBuiltinLibraries();
+    public abstract boolean initializeBuiltinLibraries();
 }

@@ -165,6 +165,7 @@ public class LLVMForeignCallNode extends RootNode {
         this.returnBaseType = getReturnBaseType(interopType);
         this.getStack = LLVMGetStackNode.create();
         this.callNode = DirectCallNode.create(getCallTarget(function));
+        this.callNode.forceInlining();
         this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getType().getReturnType());
         this.packArguments = PackForeignArgumentsNodeGen.create(function.getType().getArgumentTypes(), interopType);
     }
@@ -204,7 +205,7 @@ public class LLVMForeignCallNode extends RootNode {
             return function.getIntrinsic().cachedCallTarget(function.getType());
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("native function not supported at this point");
+            throw new AssertionError("native function not supported at this point: " + function.getFunction());
         }
     }
 

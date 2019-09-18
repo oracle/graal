@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.graal.llvm.LLVMOptions.KeepLLVMBitcodeFiles;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.FALSE;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.TRUE;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -57,6 +59,7 @@ import org.bytedeco.javacpp.Pointer;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.llvm.LLVMUtils;
+import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -70,7 +73,6 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
@@ -167,6 +169,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
 
         LLVM.LLVMDisposeSectionIterator(sectionIterator);
+        LLVM.LLVMDisposeObjectFile(objectFile);
 
         return result;
     }
@@ -255,7 +258,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             CompilationResult compilation = compilations.get(method);
             long startPatchpointID = compilation.getInfopoints().stream().filter(ip -> ip.reason == InfopointReason.METHOD_START).findFirst()
                             .orElseThrow(() -> new GraalError("no method start infopoint: " + methodSymbolName)).pcOffset;
-            int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + FrameAccess.returnAddressSize());
+            int totalFrameSize = NumUtil.safeToInt(info.getFunctionStackSize(startPatchpointID) + TargetSpecific.get().getCallFrameSeparation());
             compilation.setTotalFrameSize(totalFrameSize);
 
             StringBuilder patchpointsDump = null;
@@ -462,6 +465,16 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         try {
             List<String> cmd = new ArrayList<>();
             cmd.add("opt");
+
+            /*
+             * The x86 backend of LLVM has a bug which prevents the use of bitcode-level
+             * optimizations. This bug will be fixed in the LLVM 9.0.0 release.
+             */
+            if (!Platform.includedIn(Platform.AMD64.class)) {
+                cmd.add("-disable-inlining");
+                cmd.add("-O2");
+            }
+
             /*
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
@@ -494,13 +507,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private void llvmCompile(DebugContext debug, String outputPath, String inputPath) {
         try {
             List<String> cmd = new ArrayList<>();
-            cmd.add("llc");
+            cmd.add((LLVMOptions.CustomLLC.hasBeenSet()) ? LLVMOptions.CustomLLC.getValue() : "llc");
             cmd.add("-relocation-model=pic");
-
-            /* X86 call frame optimization causes variable sized stack frames */
-            if (targetPlatform instanceof Platform.AMD64) {
-                cmd.add("-no-x86-call-frame-opt");
-            }
+            cmd.add("-march=" + TargetSpecific.get().getLLVMArchName());
+            cmd.addAll(TargetSpecific.get().getLLCAdditionalOptions());
             cmd.add("-O2");
             cmd.add("-filetype=obj");
             cmd.add("-o");
@@ -618,16 +628,25 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     public String[] getCCInputFiles(Path tempDirectory, String imageName) {
         String bitcodeFileName = getLinkedPath().toString();
         String relocatableFileName = tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()).toString();
+        Path movedBitcodeFile;
         try {
-            Path src = Paths.get(bitcodeFileName);
+            Path bitcodeFile = Paths.get(bitcodeFileName);
             Path parent = Paths.get(relocatableFileName).getParent();
-            if (parent != null) {
-                Path dst = parent.resolve(src.getFileName());
-                Files.copy(src, dst, StandardCopyOption.REPLACE_EXISTING);
-            }
+            assert parent != null;
+            movedBitcodeFile = parent.resolve(bitcodeFile.getFileName());
+            Files.copy(bitcodeFile, movedBitcodeFile, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new GraalError("Error copying " + bitcodeFileName + ": " + e);
         }
-        return new String[]{relocatableFileName, bitcodeFileName};
+        if (!KeepLLVMBitcodeFiles.getValue()) {
+            File[] files = basePath.toFile().listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    file.delete();
+                }
+            }
+            basePath.toFile().delete();
+        }
+        return new String[]{relocatableFileName, movedBitcodeFile.toString()};
     }
 }

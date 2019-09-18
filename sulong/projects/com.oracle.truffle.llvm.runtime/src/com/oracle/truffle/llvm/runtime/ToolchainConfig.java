@@ -29,7 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-public interface ToolchainConfig {
+import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+
+public interface ToolchainConfig extends LLVMCapability {
 
     /**
      * Gets the overridden toolchain root, or {@code null} if the default location should be used.
@@ -40,4 +42,9 @@ public interface ToolchainConfig {
      * Relative toolchain path.
      */
     String getToolchainSubdir();
+
+    /**
+     * Returns true if C++ support is enabled.
+     */
+    boolean enableCXX();
 }

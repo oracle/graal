@@ -38,11 +38,8 @@ grammar InlineAssembly;
 {
 // DO NOT MODIFY - generated from InlineAssembly.g4 using "mx create-asm-parser"
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 }
 
@@ -65,11 +62,11 @@ private static final class BailoutErrorListener extends BaseErrorListener {
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
         String location = "-- line " + line + " col " + (charPositionInLine + 1) + ": ";
-        throw new LLVMParserException(String.format("ASM error in %s:\n%s%s", snippet, location, msg));
+        throw new AsmParseException(String.format("ASM error in %s:\n%s%s", snippet, location, msg));
     }
 }
 
-public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, LLVMSourceLocation sourceSection, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
+public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
     InlineAssemblyLexer lexer = new InlineAssemblyLexer(CharStreams.fromString(asmSnippet));
     InlineAssemblyParser parser = new InlineAssemblyParser(new CommonTokenStream(lexer));
     lexer.removeErrorListeners();
@@ -78,7 +75,7 @@ public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage langua
     lexer.addErrorListener(listener);
     parser.addErrorListener(listener);
     parser.snippet = asmSnippet;
-    parser.factory = new AsmFactory(language, sourceSection, argTypes, asmFlags, retType, retTypes, retOffsets);
+    parser.factory = new AsmFactory(language, argTypes, asmFlags, retType, retTypes, retOffsets);
     parser.inline_assembly();
     if (parser.root == null) {
         throw new IllegalStateException("no roots produced by inline assembly snippet");
@@ -899,4 +896,4 @@ BIN_NUMBER : '0b' BIN_DIGIT+;
 HEX_NUMBER : '0x' HEX_DIGIT+;
 NUMBER : '-'? DIGIT+;
 
-WS : ' '+ -> skip;
+WS : ( ' ' | '\t' )+ -> skip;

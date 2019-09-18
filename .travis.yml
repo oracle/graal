@@ -18,8 +18,8 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-19.2-b01"
-    - JDK8_UPDATE_VERSION="212"
+    - JVMCI_VERSION="jvmci-19.3-b02"
+    - JDK8_UPDATE_VERSION="222"
     - JDK8_UPDATE_VERSION_SUFFIX=""
 
 matrix:
@@ -28,27 +28,21 @@ matrix:
   - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong" LLVM_VERSION="3.8" NO_FEMBED_BITCODE="true"
+  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
     addons:
       apt:
         packages:
           - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - clang-format-3.8
           - libc++1
-          - libc++-dev
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
+          - libc++abi1
+  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
     addons:
       apt:
         sources:
           - ubuntu-toolchain-r-test
-          - llvm-toolchain-trusty-6.0
         packages:
-          - clang-6.0
-          - llvm-6.0
           - libc++1
-          - libc++-dev
+          - libc++abi1
   - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
@@ -93,15 +87,6 @@ install:
         wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
-      fi
-  - |
-      if [ "${LLVM_VERSION}" != "" ]
-      then
-        export CLANG=clang-$LLVM_VERSION
-        export CLANGXX=clang++-$LLVM_VERSION
-        export OPT=opt-$LLVM_VERSION
-        export LLVM_AS=llvm-as-$LLVM_VERSION
-        export LLVM_LINK=llvm-link-$LLVM_VERSION
       fi
 
 script:

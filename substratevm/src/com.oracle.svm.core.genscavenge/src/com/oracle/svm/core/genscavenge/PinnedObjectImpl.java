@@ -89,7 +89,7 @@ public class PinnedObjectImpl implements PinnedObject {
      * collector.
      */
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void close() {
         assert open : "Should not call close() on a closed PinnedObject.";
         open = false;

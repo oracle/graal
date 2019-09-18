@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -173,7 +175,7 @@ public final class TRegexDFAExecutorNode extends Node {
                     continue outer;
                 }
             }
-            assert locals.getSuccessorIndex() == -1;
+            assert locals.getSuccessorIndex() == -1 : "successorIndex: " + locals.getSuccessorIndex() + ", successors: " + Arrays.toString(successors);
             break;
         }
         if (recordExecution()) {

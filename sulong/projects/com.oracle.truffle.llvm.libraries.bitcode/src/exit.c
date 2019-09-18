@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,13 +27,10 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "syscall.h"
-
-#ifndef __linux__
-#define SYS_exit_group 231
-#endif
+#include "exit.h"
 
 struct entry {
   struct entry *next;
@@ -89,20 +86,18 @@ int atexit(void (*func)(void)) {
 void __sulong_destructor_functions();
 
 void exit(int status) {
-  int64_t result;
   __sulong_funcs_on_exit();
   __sulong_destructor_functions();
-  __SYSCALL_1(result, SYS_exit_group, status);
+  _EXIT(status);
   for (;;) { // this should never be executed
-    __SYSCALL_1(result, SYS_exit_group, status);
+    _EXIT(status);
   }
 }
 
 void _exit(int status) {
-  int64_t result;
-  __SYSCALL_1(result, SYS_exit_group, status);
+  _EXIT(status);
   for (;;) { // this should never be executed
-    __SYSCALL_1(result, SYS_exit_group, status);
+    _EXIT(status);
   }
 }
 

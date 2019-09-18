@@ -89,9 +89,6 @@ public class PointstoOptions {
     @Option(help = "The maximum size of type and method profiles returned by the static analysis. -1 indicates no limitation.")//
     public static final OptionKey<Integer> AnalysisSizeCutoff = new OptionKey<>(8);
 
-    @Option(help = "Unsupported features are fatal.")//
-    public static final OptionKey<Boolean> ReportUnsupportedFeaturesDuringAnalysis = new OptionKey<>(true);
-
     @Option(help = "Report unresolved elements as errors.")//
     public static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);
 

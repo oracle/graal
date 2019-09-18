@@ -41,6 +41,7 @@ import static jdk.vm.ci.aarch64.AArch64.r27;
 import static jdk.vm.ci.aarch64.AArch64.r28;
 import static jdk.vm.ci.aarch64.AArch64.r29;
 import static jdk.vm.ci.aarch64.AArch64.r3;
+import static jdk.vm.ci.aarch64.AArch64.r31;
 import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
@@ -120,6 +121,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         regs.remove(r8);
         regs.remove(r9);
         regs.remove(r29);
+        regs.remove(r31);
         regs.remove(heapBaseRegister);
         regs.remove(threadRegister);
         allocatableRegs = new RegisterArray(regs);

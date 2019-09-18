@@ -477,8 +477,6 @@ hcls AbstractLoggerRef,ChildLoggerRef,LoggerCache,PolyglotLogHandlerProvider
 CLSS public final com.oracle.truffle.api.TruffleOptions
 fld public final static boolean AOT
 fld public final static boolean DetailedRewriteReasons
-fld public final static boolean TraceASTJSON
- anno 0 java.lang.Deprecated()
 fld public final static boolean TraceRewrites
 fld public final static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterFromCost
 fld public final static com.oracle.truffle.api.nodes.NodeCost TraceRewritesFilterToCost

@@ -49,7 +49,7 @@ class PosixNativeLibraryFeature implements Feature {
     }
 }
 
-class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
+class PosixNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
     static void initialize() {
         ImageSingletons.add(PlatformNativeLibrarySupport.class, new PosixNativeLibrarySupport());
@@ -68,7 +68,10 @@ class PosixNativeLibrarySupport implements PlatformNativeLibrarySupport {
             if (!PosixJavaLangSubstitutions.initIDs()) {
                 return false;
             }
-            if (!PosixJavaNetSubstitutions.initIDs()) {
+
+            try {
+                System.loadLibrary("net");
+            } catch (UnsatisfiedLinkError e) {
                 return false;
             }
         }

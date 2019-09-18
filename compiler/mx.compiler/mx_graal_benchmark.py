@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -93,8 +93,8 @@ _IMAGE_JMH_BENCHMARK_ARGS = [
     # JMH does not support forks with native-image. In the distant future we can capture this case.
     '-Dnative-image.benchmark.extra-run-arg=-f0',
 
-    # GR-17177 should remove this from args.
-    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh'
+    # JMH does HotSpot-specific field offset checks in class initializers
+    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal',
 
     # Don't waste time and energy collecting reflection config.
     '-Dnative-image.benchmark.extra-agent-run-arg=-f0',
@@ -211,6 +211,7 @@ _graal_variants = [
     ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
     ('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
+    ('la-inline', ['-Dgraal.TruffleLanguageAgnosticInlining=true'], 0),
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
@@ -1657,6 +1658,9 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def subgroup(self):
         return "graal-compiler"
 
+    def benchSuiteName(self):
+        return self.name()
+
     def renaissanceLibraryName(self):
         return "RENAISSANCE"
 
@@ -1676,12 +1680,12 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         if args.r:
             if args.r.isdigit():
                 return ["-r", args.r] + remaining
-            if args.n == "-1":
-                return None
+            if args.r == "-1":
+                return remaining
         else:
             iterations = self.renaissanceIterations()[benchname]
             if iterations == -1:
-                return None
+                return remaining
             else:
                 return ["-r", str(iterations)] + remaining
 
@@ -1711,6 +1715,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
                 {
                     "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "warmup",
@@ -1726,6 +1731,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
                 {
                     "benchmark": ("<benchmark>", str),
+                    "bench-suite": self.benchSuiteName(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "final-time",

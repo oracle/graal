@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
@@ -41,7 +42,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
  * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
  */
 @NodeInfo
-public final class OptimizedDirectCallNode extends DirectCallNode {
+public final class OptimizedDirectCallNode extends DirectCallNode implements TruffleCallNode {
 
     private int callCount;
     private boolean inliningForced;
@@ -74,16 +75,19 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean isInlinable() {
+        CompilerAsserts.neverPartOfCompilation();
         return true;
     }
 
     @Override
     public void forceInlining() {
+        CompilerAsserts.neverPartOfCompilation();
         inliningForced = true;
     }
 
     @Override
     public boolean isInliningForced() {
+        CompilerAsserts.neverPartOfCompilation();
         return inliningForced;
     }
 
@@ -97,6 +101,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         return (OptimizedCallTarget) super.getCallTarget();
     }
 
+    @Override
     public int getCallCount() {
         return callCount;
     }
@@ -125,7 +130,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         if (calls == 1) {
             getCurrentCallTarget().incrementKnownCallSites();
         }
-        TruffleSplittingStrategy.beforeCall(this, OptimizedCallTarget.runtime().getTvmci());
+        TruffleSplittingStrategy.beforeCall(this);
     }
 
     /** Used by the splitting strategy to install new targets. */
@@ -147,12 +152,12 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
             if (callCount >= 1) {
                 currentTarget.decrementKnownCallSites();
-                if (!TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
+                if (!currentTarget.getOptionValue(PolyglotCompilerOptions.LegacySplitting)) {
                     currentTarget.removeKnownCallSite(this);
                 }
                 splitTarget.incrementKnownCallSites();
             }
-            if (!TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLegacySplitting)) {
+            if (!currentTarget.getOptionValue(PolyglotCompilerOptions.LegacySplitting)) {
                 splitTarget.addKnownCallNode(this);
             }
 
@@ -167,7 +172,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean cloneCallTarget() {
-        TruffleSplittingStrategy.forceSplitting(this, OptimizedCallTarget.runtime().getTvmci());
+        TruffleSplittingStrategy.forceSplitting(this);
         return true;
     }
 }

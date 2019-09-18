@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,7 +44,6 @@ import org.graalvm.compiler.phases.common.vectorization.AutovectorizationPolicie
 import org.graalvm.compiler.phases.common.vectorization.DefaultAutovectorizationPolicies;
 import org.graalvm.compiler.phases.common.vectorization.IsomorphicPackingPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.ProfileCompiledMethodsPhase;
 import org.graalvm.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
@@ -90,8 +89,6 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER));
-
-        appendPhase(new OptimizeDivPhase());
 
         appendPhase(new ExpandLogicPhase());
 

@@ -34,14 +34,13 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.llvm.LLVMUtils;
+import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.compiler.core.llvm.LLVMUtils;
 
 public class LLVMStackMapInfo {
-    private static final int AMD64_RSP_IDX = 7;
-    private static final int AMD64_RBP_IDX = 6;
     private StackMap stackMap;
 
     static class StackMap {
@@ -232,6 +231,11 @@ public class LLVMStackMapInfo {
         return patchpointToFunction.get(startPatchpointID).stackSize;
     }
 
+    private long getFunctionOffset(long startPatchpointID) {
+        assert patchpointToFunction.containsKey(startPatchpointID);
+        return patchpointToFunction.get(startPatchpointID).address;
+    }
+
     public int[] getPatchpointOffsets(long patchpointID) {
         if (patchpointsByID.containsKey(patchpointID)) {
             return patchpointsByID.get(patchpointID).stream().mapToInt(r -> r.instructionOffset).toArray();
@@ -260,7 +264,16 @@ public class LLVMStackMapInfo {
             Location ref = locations[i + 1];
 
             if (base.type == Location.Type.Constant || ref.type == Location.Type.Constant) {
-                assert base.type == ref.type && base.offset == 0 && ref.offset == 0;
+                assert base.type == ref.type && base.offset == ref.offset;
+                if (base.offset != 0) {
+                    /*
+                     * We are seeing a hard-coded pointer. This will most probably cause a segfault
+                     * at runtime, but we have to emit it either way and not fail during
+                     * compilation.
+                     */
+                    seenBases.add((int) (base.offset - getFunctionOffset(patchpointID)));
+                    seenOffsets.add((int) (ref.offset - getFunctionOffset(patchpointID)));
+                }
                 continue;
             }
 
@@ -297,13 +310,13 @@ public class LLVMStackMapInfo {
         assert location.size == 8;
 
         int offset;
-        if (location.regNum == AMD64_RSP_IDX) {
+        if (location.regNum == TargetSpecific.get().getStackPointerDwarfRegNum()) {
             offset = location.offset;
-        } else if (location.regNum == AMD64_RBP_IDX) {
+        } else if (location.regNum == TargetSpecific.get().getFramePointerDwarfRegNum()) {
             /*
              * Convert frame-relative offset (negative) to a stack-relative offset (positive).
              */
-            offset = location.offset + NumUtil.safeToInt(getFunctionStackSize(patchpointID)) - FrameAccess.wordSize();
+            offset = location.offset + NumUtil.safeToInt(getFunctionStackSize(patchpointID)) + TargetSpecific.get().getFramePointerOffset();
         } else {
             throw shouldNotReachHere("found other register " + patchpointID + " " + location.regNum);
         }

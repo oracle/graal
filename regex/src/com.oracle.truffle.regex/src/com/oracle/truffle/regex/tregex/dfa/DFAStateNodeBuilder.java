@@ -43,15 +43,17 @@ import java.util.List;
 
 public final class DFAStateNodeBuilder implements JsonConvertible {
 
+    private static final byte FLAG_INITIAL_STATE = 1;
+    private static final byte FLAG_OVERRIDE_FINAL_STATE = 1 << 1;
+    private static final byte FLAG_FINAL_STATE_SUCCESSOR = 1 << 2;
+    private static final byte FLAG_BACKWARD_PREFIX_STATE = 1 << 3;
+
     private static final List<DFACaptureGroupTransitionBuilder> NODE_SPLIT_TAINTED = new ArrayList<>();
     private static final String NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG = "this state node builder was altered by the node splitter and does not have valid information about preceding transitions!";
 
     private final short id;
-    private NFATransitionSet nfaStateSet;
-    private boolean initialState = false;
-    private boolean overrideFinalState = false;
-    private boolean isFinalStateSuccessor = false;
-    private boolean isBackwardPrefixState;
+    private byte flags;
+    private NFATransitionSet nfaTransitionSet;
     private short backwardPrefixState = -1;
     private DFAStateTransitionBuilder[] transitions;
     private List<DFACaptureGroupTransitionBuilder> precedingTransitions;
@@ -62,8 +64,8 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
 
     DFAStateNodeBuilder(short id, NFATransitionSet nfaStateSet, boolean isBackwardPrefixState) {
         this.id = id;
-        this.nfaStateSet = nfaStateSet;
-        this.isBackwardPrefixState = isBackwardPrefixState;
+        this.nfaTransitionSet = nfaStateSet;
+        setFlag(FLAG_BACKWARD_PREFIX_STATE, isBackwardPrefixState);
         if (isBackwardPrefixState) {
             this.backwardPrefixState = this.id;
         }
@@ -71,11 +73,8 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
 
     private DFAStateNodeBuilder(DFAStateNodeBuilder copy, short copyID) {
         id = copyID;
-        nfaStateSet = copy.nfaStateSet;
-        initialState = copy.initialState;
-        overrideFinalState = copy.overrideFinalState;
-        isFinalStateSuccessor = copy.isFinalStateSuccessor;
-        isBackwardPrefixState = copy.isBackwardPrefixState;
+        flags = copy.flags;
+        nfaTransitionSet = copy.nfaTransitionSet;
         backwardPrefixState = copy.backwardPrefixState;
         transitions = new DFAStateTransitionBuilder[copy.transitions.length];
         for (int i = 0; i < transitions.length; i++) {
@@ -109,28 +108,48 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         return id;
     }
 
-    public void setNfaStateSet(NFATransitionSet nfaStateSet) {
-        this.nfaStateSet = nfaStateSet;
+    public void setNfaTransitionSet(NFATransitionSet nfaTransitionSet) {
+        this.nfaTransitionSet = nfaTransitionSet;
     }
 
-    public NFATransitionSet getNfaStateSet() {
-        return nfaStateSet;
+    public NFATransitionSet getNfaTransitionSet() {
+        return nfaTransitionSet;
     }
 
     public void setInitialState(boolean initialState) {
-        this.initialState = initialState;
+        setFlag(FLAG_INITIAL_STATE, initialState);
     }
 
     public boolean isInitialState() {
-        return initialState;
-    }
-
-    public boolean isFinalState() {
-        return unAnchoredFinalStateTransition != null || overrideFinalState;
+        return isFlagSet(FLAG_INITIAL_STATE);
     }
 
     public void setOverrideFinalState(boolean overrideFinalState) {
-        this.overrideFinalState = overrideFinalState;
+        setFlag(FLAG_OVERRIDE_FINAL_STATE, overrideFinalState);
+    }
+
+    /**
+     * Used in pruneUnambiguousPaths mode. States that are NOT final states or successors of final
+     * states may have their last matcher replaced with an AnyMatcher.
+     */
+    public boolean isFinalStateSuccessor() {
+        return isFlagSet(FLAG_FINAL_STATE_SUCCESSOR);
+    }
+
+    public void setFinalStateSuccessor() {
+        setFlag(FLAG_FINAL_STATE_SUCCESSOR);
+    }
+
+    public boolean isBackwardPrefixState() {
+        return isFlagSet(FLAG_BACKWARD_PREFIX_STATE);
+    }
+
+    public void setIsBackwardPrefixState(boolean backwardPrefixState) {
+        setFlag(FLAG_BACKWARD_PREFIX_STATE, backwardPrefixState);
+    }
+
+    public boolean isFinalState() {
+        return unAnchoredFinalStateTransition != null || isFlagSet(FLAG_OVERRIDE_FINAL_STATE);
     }
 
     public boolean isAnchoredFinalState() {
@@ -149,16 +168,20 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         this.transitions = transitions;
     }
 
-    /**
-     * Used in pruneUnambiguousPaths mode. States that are NOT final states or successors of final
-     * states may have their last matcher replaced with an AnyMatcher.
-     */
-    public boolean isFinalStateSuccessor() {
-        return isFinalStateSuccessor;
+    private boolean isFlagSet(byte flag) {
+        return (flags & flag) != 0;
     }
 
-    public void setFinalStateSuccessor() {
-        isFinalStateSuccessor = true;
+    private void setFlag(byte flag) {
+        setFlag(flag, true);
+    }
+
+    private void setFlag(byte flag, boolean value) {
+        if (value) {
+            flags |= flag;
+        } else {
+            flags &= ~flag;
+        }
     }
 
     /**
@@ -219,14 +242,6 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         return precedingTransitions;
     }
 
-    public boolean isBackwardPrefixState() {
-        return isBackwardPrefixState;
-    }
-
-    public void setIsBackwardPrefixState(boolean backwardPrefixState) {
-        isBackwardPrefixState = backwardPrefixState;
-    }
-
     public boolean hasBackwardPrefixState() {
         return backwardPrefixState >= 0;
     }
@@ -285,8 +300,8 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     }
 
     public void updateFinalStateData(DFAGenerator dfaGenerator) {
-        boolean forward = nfaStateSet.isForward();
-        for (NFAStateTransition t : nfaStateSet) {
+        boolean forward = nfaTransitionSet.isForward();
+        for (NFAStateTransition t : nfaTransitionSet) {
             NFAState target = t.getTarget(forward);
             if (target.hasTransitionToAnchoredFinalState(forward)) {
                 if (anchoredFinalStateTransition == null) {
@@ -316,7 +331,7 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     }
 
     public String stateSetToString() {
-        StringBuilder sb = new StringBuilder(nfaStateSet.toString());
+        StringBuilder sb = new StringBuilder(nfaTransitionSet.toString());
         if (preCalculatedUnAnchoredResult != TraceFinderDFAStateNode.NO_PRE_CALC_RESULT) {
             sb.append("_r").append(preCalculatedUnAnchoredResult);
         }
@@ -328,8 +343,8 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
 
     @Override
     public int hashCode() {
-        int hashCode = nfaStateSet.hashCode();
-        if (isBackwardPrefixState) {
+        int hashCode = nfaTransitionSet.hashCode();
+        if (isBackwardPrefixState()) {
             hashCode *= 31;
         }
         return hashCode;
@@ -344,7 +359,7 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
             return false;
         }
         DFAStateNodeBuilder o = (DFAStateNodeBuilder) obj;
-        return nfaStateSet.equals(o.nfaStateSet) && isBackwardPrefixState == o.isBackwardPrefixState;
+        return nfaTransitionSet.equals(o.nfaTransitionSet) && isBackwardPrefixState() == o.isBackwardPrefixState();
     }
 
     @TruffleBoundary
@@ -358,7 +373,7 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     @Override
     public JsonValue toJson() {
         return Json.obj(Json.prop("id", id),
-                        Json.prop("stateSet", Json.array(nfaStateSet.stream().map(x -> Json.val(x.getTarget().getId())))),
+                        Json.prop("stateSet", Json.array(nfaTransitionSet.stream().map(x -> Json.val(x.getTarget().getId())))),
                         Json.prop("finalState", isFinalState()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
                         Json.prop("transitions", Arrays.stream(transitions).map(x -> Json.val(x.getId()))));

@@ -24,24 +24,24 @@
  */
 package org.graalvm.compiler.core.llvm;
 
-import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isObject;
-import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isVoidType;
-import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.typeOf;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpValues;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.getType;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.debug.GraalError.unimplemented;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiFunction;
-
+import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterAttributes;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.PlatformKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 import org.bytedeco.javacpp.LLVM.LLVMBasicBlockRef;
 import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
@@ -67,12 +67,12 @@ import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMVariable;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
-import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -80,25 +80,23 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.phases.util.Providers;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
-import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterAttributes;
-import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
+
+import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isObject;
+import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isVoidType;
+import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.typeOf;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpValues;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.getType;
+import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
 public abstract class LLVMGenerator implements LIRGeneratorTool {
     private final ArithmeticLLVMGenerator arithmetic;
@@ -173,15 +171,15 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         if (stamp instanceof RawPointerStamp) {
             return builder.rawPointerType();
         }
-        return builder.getLLVMType(getTypeKind(stamp.javaType(getMetaAccess())));
+        return builder.getLLVMType(getTypeKind(stamp.javaType(getMetaAccess()), false));
     }
 
-    protected JavaKind getTypeKind(@SuppressWarnings("unused") ResolvedJavaType type) {
+    protected JavaKind getTypeKind(@SuppressWarnings("unused") ResolvedJavaType type, @SuppressWarnings("unused") boolean forMainFunction) {
         throw unimplemented();
     }
 
     public LLVMValueRef getFunction(ResolvedJavaMethod method) {
-        LLVMTypeRef functionType = getLLVMFunctionType(method);
+        LLVMTypeRef functionType = getLLVMFunctionType(method, false);
         return builder.getFunction(getFunctionName(method), functionType);
     }
 
@@ -191,19 +189,19 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         return method.getName();
     }
 
-    LLVMTypeRef getLLVMFunctionReturnType(ResolvedJavaMethod method) {
+    LLVMTypeRef getLLVMFunctionReturnType(ResolvedJavaMethod method, boolean forMainFunction) {
         ResolvedJavaType returnType = method.getSignature().getReturnType(null).resolve(null);
-        return builder.getLLVMStackType(getTypeKind(returnType));
+        return builder.getLLVMStackType(getTypeKind(returnType, forMainFunction));
     }
 
-    protected LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method) {
+    protected LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
         ResolvedJavaType receiver = method.hasReceiver() ? method.getDeclaringClass() : null;
         JavaType[] parameterTypes = method.getSignature().toParameterTypes(receiver);
-        return Arrays.stream(parameterTypes).map(type -> builder.getLLVMStackType(getTypeKind(type.resolve(null)))).toArray(LLVMTypeRef[]::new);
+        return Arrays.stream(parameterTypes).map(type -> builder.getLLVMStackType(getTypeKind(type.resolve(null), forMainFunction))).toArray(LLVMTypeRef[]::new);
     }
 
-    public LLVMTypeRef getLLVMFunctionType(ResolvedJavaMethod method) {
-        return builder.functionType(getLLVMFunctionReturnType(method), getLLVMFunctionArgTypes(method));
+    public LLVMTypeRef getLLVMFunctionType(ResolvedJavaMethod method, boolean forMainFunction) {
+        return builder.functionType(getLLVMFunctionReturnType(method, forMainFunction), getLLVMFunctionArgTypes(method, forMainFunction));
     }
 
     private long nextConstantId = 0L;
@@ -461,12 +459,14 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         LLVMValueRef[] callArguments = getCallArguments(args, getCallingConventionType(linkage.getOutgoingCallingConvention()), targetMethod);
 
         LLVMValueRef call = builder.buildCall(callee, patchpointId, callArguments);
-        return (isVoidType(getLLVMFunctionReturnType(targetMethod))) ? null : new LLVMVariable(call);
+        return (isVoidType(getLLVMFunctionReturnType(targetMethod, false))) ? null : new LLVMVariable(call);
     }
 
     protected abstract CallingConvention.Type getCallingConventionType(CallingConvention callingConvention);
 
     public abstract LLVMValueRef[] getCallArguments(LLVMValueRef[] args, CallingConvention.Type callType, ResolvedJavaMethod targetMethod);
+
+    public abstract LLVMTypeRef[] getUnknownCallArgumentTypes(LLVMTypeRef[] args, CallingConvention.Type callType);
 
     protected abstract ResolvedJavaMethod findForeignCallTarget(@SuppressWarnings("unused") ForeignCallDescriptor descriptor);
 
@@ -570,11 +570,16 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
                 }
             } else if (returnsEnum && javaKind == JavaKind.Long) {
                 /* Enum values are returned as long */
-                retVal = builder.buildIntToPtr(retVal, builder.rawPointerType());
-                retVal = builder.buildRegisterObject(retVal);
+                retVal = convertEnumReturnValue(retVal);
             }
             builder.buildRet(retVal);
         }
+    }
+
+    protected LLVMValueRef convertEnumReturnValue(LLVMValueRef longValue) {
+        LLVMValueRef retVal = builder.buildIntToPtr(longValue, builder.rawPointerType());
+        retVal = builder.buildRegisterObject(retVal);
+        return retVal;
     }
 
     void indent() {
@@ -718,7 +723,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, int constantLength, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind, Value array1, Value array2, Value length, boolean directPointers) {
         LLVMTypeRef elemType = builder.getLLVMType(kind);
 
         LLVMValueRef inArray1;
@@ -737,7 +742,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
             inArray2 = builder.buildGEP(inArray2, builder.constantInt(arrayBaseOffset));
             inArray2 = builder.buildBitcast(inArray2, builder.pointerType(elemType, false));
         }
-
+        int constantLength = LIRValueUtil.isJavaConstant(length) ? LIRValueUtil.asJavaConstant(length).asInt() : -1;
         if (constantLength == 0) {
             return new LLVMVariable(builder.constantBoolean(true));
         }
@@ -786,162 +791,6 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         LLVMValueRef arrayEquals = builder.buildPhi(builder.booleanType(), incomingArrayEqualsValues, incomingArrayEqualsBlocks);
 
         return new LLVMVariable(builder.buildSelect(arrayEquals, builder.constantInt(1), builder.constantInt(0)));
-    }
-
-    @Override
-    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, Value array1, Value array2, Value length1, Value length2) {
-        LLVMValueRef inArray1 = builder.buildAddrSpaceCast(getVal(array1), builder.rawPointerType());
-        int arrayBaseOffset1 = getProviders().getMetaAccess().getArrayBaseOffset(kind1);
-        inArray1 = builder.buildGEP(inArray1, builder.constantInt(arrayBaseOffset1));
-        LLVMTypeRef elemType1 = builder.getLLVMType(kind1);
-        inArray1 = builder.buildBitcast(inArray1, builder.pointerType(elemType1, false));
-
-        LLVMValueRef inArray2 = builder.buildAddrSpaceCast(getVal(array2), builder.rawPointerType());
-        int arrayBaseOffset2 = getProviders().getMetaAccess().getArrayBaseOffset(kind2);
-        inArray2 = builder.buildGEP(inArray2, builder.constantInt(arrayBaseOffset2));
-        LLVMTypeRef elemType2 = builder.getLLVMType(kind2);
-        inArray2 = builder.buildBitcast(inArray2, builder.pointerType(elemType2, false));
-
-        LLVMValueRef count1 = builder.buildDiv(getVal(length1), builder.constantInt(kind1.getByteCount()));
-        LLVMValueRef count2 = builder.buildDiv(getVal(length2), builder.constantInt(kind2.getByteCount()));
-
-        LLVMBasicBlockRef startBlock = getBlockEnd(currentBlock);
-        LLVMBasicBlockRef loopBlock = builder.appendBasicBlock(currentBlock.toString() + "array_compareto_loop");
-        LLVMBasicBlockRef endBlock = builder.appendBasicBlock(currentBlock.toString() + "array_compareto_end");
-        splitBlockEndMap.put(currentBlock, endBlock);
-
-        /* Loop prologue */
-        LLVMValueRef countDiff = builder.buildSub(count1, count2);
-        LLVMValueRef minCount = builder.buildSelect(builder.buildICmp(Condition.BE, count1, count2), count1, count2);
-
-        LLVMValueRef zeroLength = builder.buildIsNull(minCount);
-        builder.buildIf(zeroLength, endBlock, loopBlock);
-
-        /* Loop body (will be vectorized by LLVM) */
-        builder.positionAtEnd(loopBlock);
-
-        LLVMBasicBlockRef[] incomingBlocks = {startBlock};
-        LLVMValueRef[] incomingIValues = {builder.constantInt(0)};
-        LLVMValueRef i = builder.buildPhi(builder.intType(), incomingIValues, incomingBlocks);
-
-        LLVMValueRef elem1 = builder.buildLoad(builder.buildGEP(inArray1, i));
-        LLVMValueRef elem2 = builder.buildLoad(builder.buildGEP(inArray2, i));
-
-        assert kind1 == kind2;
-        LLVMValueRef different = builder.buildCompare(Condition.NE, elem1, elem2, false);
-        LLVMValueRef compare = builder.buildCompare(Condition.LT, elem1, elem2, false);
-
-        LLVMValueRef newI = builder.buildAdd(i, builder.constantInt(1));
-
-        LLVMValueRef[] newIncomingIValues = new LLVMValueRef[]{newI};
-        LLVMBasicBlockRef[] newIncomingBlocks = new LLVMBasicBlockRef[]{loopBlock};
-        builder.addIncoming(i, newIncomingIValues, newIncomingBlocks);
-
-        LLVMValueRef atEnd = builder.buildCompare(Condition.EQ, newI, minCount, false);
-        LLVMValueRef exitLoop = builder.buildOr(atEnd, different);
-        builder.buildIf(exitLoop, endBlock, loopBlock);
-
-        /* Loop end */
-        builder.positionAtEnd(endBlock);
-
-        LLVMBasicBlockRef[] incomingEndBlocks = new LLVMBasicBlockRef[]{startBlock, loopBlock};
-        LLVMValueRef[] incomingDifferentValues = new LLVMValueRef[]{builder.constantBoolean(false), different};
-        LLVMValueRef differentPhi = builder.buildPhi(builder.booleanType(), incomingDifferentValues, incomingEndBlocks);
-        LLVMValueRef[] incomingCompareValues = new LLVMValueRef[]{builder.constantBoolean(false), compare};
-        LLVMValueRef comparePhi = builder.buildPhi(builder.booleanType(), incomingCompareValues, incomingEndBlocks);
-
-        LLVMValueRef valCmp = builder.buildSelect(comparePhi, builder.constantInt(-1), builder.constantInt(1));
-        LLVMValueRef arrayCompare = builder.buildSelect(differentPhi, valCmp, countDiff);
-
-        return new LLVMVariable(arrayCompare);
-    }
-
-    @Override
-    public Variable emitArrayIndexOf(JavaKind arrayKind, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayCount, Value fromIndexVal, Value... searchValues) {
-        JavaKind comparisonKind;
-        switch (valueKind) {
-            case Byte:
-                comparisonKind = findTwoConsecutive ? JavaKind.Short : JavaKind.Byte;
-                break;
-            case Short:
-            case Char:
-                comparisonKind = findTwoConsecutive ? JavaKind.Int : JavaKind.Short;
-                break;
-            default:
-                throw shouldNotReachHere("invalid array index of kind " + valueKind.toString());
-        }
-        LLVMTypeRef comparisonType = builder.getLLVMType(comparisonKind);
-        LLVMTypeRef elemType = builder.getLLVMType(valueKind);
-
-        LLVMValueRef array = builder.buildAddrSpaceCast(getVal(arrayPointer), builder.rawPointerType());
-        array = builder.buildGEP(array, builder.constantInt(getProviders().getMetaAccess().getArrayBaseOffset(arrayKind)));
-        array = builder.buildBitcast(array, builder.pointerType(elemType, false));
-
-        LLVMValueRef fromIndex = getVal(fromIndexVal);
-
-        LLVMValueRef count = getVal(arrayCount);
-        assert LLVMIRBuilder.isIntegerType(typeOf(count)) && LLVMIRBuilder.integerTypeWidth(typeOf(count)) == 32;
-        if (findTwoConsecutive) {
-            count = builder.buildSub(count, builder.constantInt(1));
-        }
-
-        assert searchValues.length <= 4;
-        int valueWidth = LLVMIRBuilder.integerTypeWidth(comparisonType);
-        LLVMValueRef[] values = Arrays.stream(searchValues).map(LLVMUtils::getVal).map(value -> {
-            assert LLVMIRBuilder.isIntegerType(typeOf(value));
-            return builder.buildIntegerConvert(value, valueWidth);
-        }).toArray(LLVMValueRef[]::new);
-
-        LLVMBasicBlockRef startBlock = getBlockEnd(currentBlock);
-        LLVMBasicBlockRef loopBlock = builder.appendBasicBlock(getCurrentBlock().toString() + "_array_indexof_loop");
-        LLVMBasicBlockRef endBlock = builder.appendBasicBlock(getCurrentBlock().toString() + "array_indexof_end");
-        splitBlockEndMap.put(currentBlock, endBlock);
-
-        /* Loop prologue */
-        LLVMValueRef zeroLength = builder.buildIsNull(count);
-        builder.buildIf(zeroLength, endBlock, loopBlock);
-
-        /* Loop body (will be vectorized by LLVM) */
-        builder.positionAtEnd(loopBlock);
-
-        LLVMBasicBlockRef[] incomingBlocks = {startBlock};
-        LLVMValueRef[] incomingIValues = {fromIndex};
-        LLVMValueRef i = builder.buildPhi(builder.intType(), incomingIValues, incomingBlocks);
-        LLVMValueRef[] incomingIndexValues = {builder.constantInt(-1)};
-        LLVMValueRef index = builder.buildPhi(builder.intType(), incomingIndexValues, incomingBlocks);
-
-        LLVMValueRef pointer = builder.buildGEP(array, i);
-        if (findTwoConsecutive) {
-            pointer = builder.buildBitcast(pointer, builder.pointerType(comparisonType, false));
-        }
-        LLVMValueRef elem = builder.buildLoad(pointer, comparisonType);
-        LLVMValueRef equal = builder.constantBoolean(false);
-        for (LLVMValueRef value : values) {
-            LLVMValueRef thisCompare = builder.buildCompare(Condition.EQ, elem, value, false);
-            equal = builder.buildOr(equal, thisCompare);
-        }
-
-        LLVMValueRef newI = builder.buildAdd(i, builder.constantInt(1));
-        LLVMValueRef newIndex = builder.buildSelect(equal, i, index);
-
-        LLVMBasicBlockRef[] newIncomingBlocks = new LLVMBasicBlockRef[]{loopBlock};
-        LLVMValueRef[] newIncomingIValues = new LLVMValueRef[]{newI};
-        builder.addIncoming(i, newIncomingIValues, newIncomingBlocks);
-        LLVMValueRef[] newIncomingIndexValues = new LLVMValueRef[]{newIndex};
-        builder.addIncoming(index, newIncomingIndexValues, newIncomingBlocks);
-
-        LLVMValueRef atEnd = builder.buildCompare(Condition.EQ, newI, count, false);
-        LLVMValueRef exitLoop = builder.buildOr(atEnd, equal);
-        builder.buildIf(exitLoop, endBlock, loopBlock);
-
-        /* Loop exit */
-        builder.positionAtEnd(endBlock);
-
-        LLVMBasicBlockRef[] incomingEndBlocks = new LLVMBasicBlockRef[]{startBlock, loopBlock};
-        LLVMValueRef[] incomingReturnValues = new LLVMValueRef[]{builder.constantInt(-1), newIndex};
-        LLVMValueRef indexPhi = builder.buildPhi(builder.intType(), incomingReturnValues, incomingEndBlocks);
-
-        return new LLVMVariable(indexPhi);
     }
 
     @Override
@@ -996,12 +845,17 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     }
 
     @Override
-    public StandardOp.SaveRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         throw unimplemented();
     }
 
     @Override
-    public StandardOp.SaveRegistersOp createZapRegisters() {
+    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters) {
+        throw unimplemented();
+    }
+
+    @Override
+    public StandardOp.ZapRegistersOp createZapRegisters() {
         throw unimplemented();
     }
 
@@ -1037,6 +891,8 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         return new LLVMVariable(builder.buildPtrToInt(returnAddress, builder.longType()));
     }
 
+    public abstract LLVMValueRef getRetrieveExceptionFunction();
+
     @Override
     public Variable emitPackConst(LIRKind resultKind, ByteBuffer serializedValues) {
       throw unimplemented();
@@ -1060,7 +916,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         return debugLevel;
     }
 
-    public static class ArithmeticLLVMGenerator implements ArithmeticLIRGeneratorTool, AArch64ArithmeticLIRGeneratorTool {
+    public static class ArithmeticLLVMGenerator implements ArithmeticLIRGeneratorTool {
         private final LLVMIRBuilder builder;
 
         ArithmeticLLVMGenerator(LLVMIRBuilder builder) {
@@ -1307,6 +1163,28 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
             return new LLVMVariable(pow);
         }
 
+        public Value emitMathCeil(Value input) {
+            LLVMValueRef ceil = builder.buildCeil(getVal(input));
+            return new LLVMVariable(ceil);
+        }
+
+        public Value emitMathFloor(Value input) {
+            LLVMValueRef floor = builder.buildFloor(getVal(input));
+            return new LLVMVariable(floor);
+        }
+
+        public Value emitCountLeadingZeros(Value input) {
+            LLVMValueRef ctlz = builder.buildCtlz(getVal(input));
+            ctlz = builder.buildIntegerConvert(ctlz, Integer.SIZE);
+            return new LLVMVariable(ctlz);
+        }
+
+        public Value emitCountTrailingZeros(Value input) {
+            LLVMValueRef cttz = builder.buildCttz(getVal(input));
+            cttz = builder.buildIntegerConvert(cttz, Integer.SIZE);
+            return new LLVMVariable(cttz);
+        }
+
         @Override
         public Value emitBitCount(Value operand) {
             LLVMValueRef op = getVal(operand);
@@ -1349,6 +1227,27 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         }
 
         @Override
+        public Value emitFusedMultiplyAdd(Value a, Value b, Value c) {
+            LLVMValueRef fma = builder.buildFma(getVal(a), getVal(b), getVal(c));
+            return new LLVMVariable(fma);
+        }
+
+        public Value emitMathMin(Value a, Value b) {
+            LLVMValueRef min = builder.buildMin(getVal(a), getVal(b));
+            return new LLVMVariable(min);
+        }
+
+        public Value emitMathMax(Value a, Value b) {
+            LLVMValueRef max = builder.buildMax(getVal(a), getVal(b));
+            return new LLVMVariable(max);
+        }
+
+        public Value emitMathCopySign(Value a, Value b) {
+            LLVMValueRef copySign = builder.buildCopysign(getVal(a), getVal(b));
+            return new LLVMVariable(copySign);
+        }
+
+        @Override
         public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
             LLVMValueRef load = builder.buildLoad(getVal(address), getType(kind));
             return new LLVMVariable(load);
@@ -1367,34 +1266,6 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         @Override
         public void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state) {
             builder.buildStore(getVal(input), getVal(address));
-        }
-
-        @Override
-        public Value emitCountLeadingZeros(Value value) {
-            LLVMValueRef op = getVal(value);
-            LLVMValueRef answer = builder.buildCtlz(op);
-            answer = builder.buildIntegerConvert(answer, LLVMIRBuilder.integerTypeWidth(builder.intType()));
-            return new LLVMVariable(answer);
-        }
-
-        @Override
-        public Value emitCountTrailingZeros(Value value) {
-            LLVMValueRef op = getVal(value);
-            LLVMValueRef answer = builder.buildCttz(op);
-            answer = builder.buildIntegerConvert(answer, LLVMIRBuilder.integerTypeWidth(builder.intType()));
-            return new LLVMVariable(answer);
-        }
-
-        @Override
-        @SuppressWarnings("unused")
-        public Value emitRound(Value value, RoundingMode mode) {
-            // This should be implemented, see #1168
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        public void emitCompareOp(AArch64Kind cmpKind, Variable left, Value right) {
-            // This should be implemented, see #1168
         }
     }
 }

@@ -28,28 +28,34 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.getVal;
 
-import org.bytedeco.javacpp.LLVM;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.bytedeco.javacpp.LLVM.LLVMContextRef;
+import org.bytedeco.javacpp.LLVM.LLVMTypeRef;
 import org.bytedeco.javacpp.LLVM.LLVMValueRef;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.llvm.LLVMGenerationResult;
 import org.graalvm.compiler.core.llvm.LLVMGenerator;
+import org.graalvm.compiler.core.llvm.LLVMIRBuilder;
 import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMKindTool;
 import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMVariable;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointBuiltins;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 
@@ -72,21 +78,41 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     private LLVMValueRef[] registerStackSlots = new LLVMValueRef[LLVMFeature.SPECIAL_REGISTER_COUNT];
 
     private final boolean isEntryPoint;
+    private List<String> aliases;
     private final boolean canModifySpecialRegisters;
+    private final boolean returnsCEnum;
 
     SubstrateLLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
-        super(providers, generationResult, method, new SubstrateLLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context, shouldTrackPointers(method)),
+        super(providers, generationResult, method, new LLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context),
                         new LLVMKindTool(context), debugLevel);
         this.isEntryPoint = isEntryPoint(method);
         this.canModifySpecialRegisters = canModifySpecialRegisters(method);
+
+        aliases = new ArrayList<>();
+        if (isEntryPoint) {
+            aliases.add(SubstrateUtil.mangleName(builder.getFunctionName()));
+
+            Object entryPointData = ((HostedMethod) method).getWrapped().getEntryPointData();
+            if (entryPointData instanceof CEntryPointData) {
+                CEntryPointData cEntryPointData = (CEntryPointData) entryPointData;
+                String entryPointSymbolName = cEntryPointData.getSymbolName();
+                assert !entryPointSymbolName.isEmpty();
+                if (cEntryPointData.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
+                    aliases.add(entryPointSymbolName);
+                }
+            }
+        }
+
+        ResolvedJavaType returnType = method.getSignature().getReturnType(null).resolve(null);
+        this.returnsCEnum = returnType.isEnum() && GuardedAnnotationAccess.isAnnotationPresent(returnType, CEnum.class);
     }
 
     boolean isEntryPoint() {
         return isEntryPoint;
     }
 
-    private static boolean shouldTrackPointers(ResolvedJavaMethod method) {
-        return !GuardedAnnotationAccess.isAnnotationPresent(method, Uninterruptible.class);
+    List<String> getAliases() {
+        return aliases;
     }
 
     private static boolean isEntryPoint(ResolvedJavaMethod method) {
@@ -124,6 +150,14 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     @Override
+    protected LLVMValueRef convertEnumReturnValue(LLVMValueRef longValue) {
+        if (returnsCEnum) {
+            return builder.buildTrunc(longValue, JavaKind.Int.getBitCount());
+        }
+        return super.convertEnumReturnValue(longValue);
+    }
+
+    @Override
     public void emitFarReturn(AllocatableValue result, Value sp, Value setjmpBuffer) {
         /* Exception unwinding is handled by libunwind */
         throw unimplemented();
@@ -146,16 +180,19 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     @Override
-    protected JavaKind getTypeKind(ResolvedJavaType type) {
+    protected JavaKind getTypeKind(ResolvedJavaType type, boolean forMainFunction) {
+        if (forMainFunction && isEntryPoint && type.isEnum() && GuardedAnnotationAccess.isAnnotationPresent(type, CEnum.class)) {
+            return JavaKind.Int;
+        }
         return ((HostedType) type).getStorageKind();
     }
 
     @Override
-    protected LLVM.LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method) {
-        LLVM.LLVMTypeRef[] parameterTypes = super.getLLVMFunctionArgTypes(method);
-        LLVM.LLVMTypeRef[] newParameterTypes = parameterTypes;
+    protected LLVMTypeRef[] getLLVMFunctionArgTypes(ResolvedJavaMethod method, boolean forMainFunction) {
+        LLVMTypeRef[] parameterTypes = super.getLLVMFunctionArgTypes(method, forMainFunction);
+        LLVMTypeRef[] newParameterTypes = parameterTypes;
         if (!isEntryPoint(method) && registerStackSlots.length > 0) {
-            newParameterTypes = new LLVM.LLVMTypeRef[registerStackSlots.length + parameterTypes.length];
+            newParameterTypes = new LLVMTypeRef[registerStackSlots.length + parameterTypes.length];
             for (int i = 0; i < registerStackSlots.length; ++i) {
                 newParameterTypes[i] = canModifySpecialRegisters(method) ? builder.rawPointerType() : builder.longType();
             }
@@ -216,7 +253,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     private LLVMValueRef getSpecialRegisterArgument(int index, ResolvedJavaMethod targetMethod) {
         LLVMValueRef specialRegisterArg;
-        if (canModifySpecialRegisters(targetMethod)) {
+        if (targetMethod != null && canModifySpecialRegisters(targetMethod)) {
             assert (isEntryPoint || canModifySpecialRegisters);
             specialRegisterArg = builder.buildBitcast(getSpecialRegisterPointer(index), builder.rawPointerType());
         } else if (isEntryPoint || canModifySpecialRegisters) {
@@ -232,7 +269,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     public LLVMValueRef[] getCallArguments(LLVMValueRef[] args, CallingConvention.Type callType, ResolvedJavaMethod targetMethod) {
         LLVMValueRef[] newArgs = args;
 
-        if (targetMethod != null && !((SubstrateCallingConventionType) callType).nativeABI && registerStackSlots.length > 0) {
+        if (!((SubstrateCallingConventionType) callType).nativeABI && registerStackSlots.length > 0) {
             newArgs = new LLVMValueRef[registerStackSlots.length + args.length];
             for (int i = 0; i < registerStackSlots.length; ++i) {
                 newArgs[i] = getSpecialRegisterArgument(i, targetMethod);
@@ -243,7 +280,26 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     }
 
     @Override
+    public LLVMTypeRef[] getUnknownCallArgumentTypes(LLVMTypeRef[] types, CallingConvention.Type callType) {
+        LLVMTypeRef[] newTypes = types;
+
+        if (!((SubstrateCallingConventionType) callType).nativeABI && registerStackSlots.length > 0) {
+            newTypes = new LLVMTypeRef[registerStackSlots.length + types.length];
+            for (int i = 0; i < registerStackSlots.length; ++i) {
+                newTypes[i] = builder.longType();
+            }
+            System.arraycopy(types, 0, newTypes, LLVMFeature.SPECIAL_REGISTER_COUNT, types.length);
+        }
+        return newTypes;
+    }
+
+    @Override
     protected CallingConvention.Type getCallingConventionType(CallingConvention callingConvention) {
         return ((SubstrateCallingConvention) callingConvention).getType();
+    }
+
+    @Override
+    public LLVMValueRef getRetrieveExceptionFunction() {
+        return getFunction(LLVMFeature.retrieveExceptionMethod);
     }
 }

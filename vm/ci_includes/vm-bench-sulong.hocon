@@ -54,7 +54,7 @@ bench-llvm-sulong-core: ${bench-llvm-sulong-common} ${bench-llvm-linux} {
   setup: ${bench-llvm-linux.setup} [
     [cd, ${compiler-suite-root}]
     [mx, --dynamicimport, "/sulong", build]
-  ]
+  ] ${download-hsdis.setup}
   run: [
     ${bench-llvm-linux.cmd} [--, --native-vm, sulong, --native-vm-config, default, --jvm, server, --jvm-config, "hosted-${JVM_CONFIG}"]
   ]
@@ -66,6 +66,7 @@ bench_vm_ce_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_li
     [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog"]]
     [cd, vm]
     [mx, --no-sources, --env, ce, build]
+    [mx, --dynamicimport, "/compiler", hsdis]
   ]
   teardown: [
     [bench-uploader.py, ${bench_vm_ce_linux_base.resultFile}]
@@ -79,7 +80,7 @@ bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-comm
     [git, clone, --depth, "1", ${repoBase}"${BENCH_REPO_NAME}.git", "../../${BENCH_REPO_NAME}"]
   ]
   run: [
-    [mx, --no-sources, --dynamicimport, sulong-benchmarks, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, "--vm.Dgraal.CompilationExpirationPeriod=600", --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
+    [mx, --no-sources, --dynamicimport, sulong-benchmarks, --env, ce, benchmark, --results-file, ${bench_vm_ce_linux_base.resultFile}, "csuite:*", --, --native-vm, sulong, --native-vm-config, default, --jvm, graalvm-ce, --jvm-config, "${JVM_CONFIG}"]
   ]
   timelimit: "10:00:01"
 }
@@ -95,6 +96,8 @@ bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-noti
 builds += [
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-csuite", environment: { JVM_CONFIG: jvm } }
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-csuite", environment: { JVM_CONFIG: native } }
+  ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-jvm-la-inline-csuite", environment: { JVM_CONFIG: jvm-la-inline } }
+  ${bench-llvm-sulong-graalvm-ce} {targets: [bench], name: "daily-bench-sulong-graalvm-ce-native-la-inline-csuite", environment: { JVM_CONFIG: native-la-inline } } # failing (GR-17937)
   ${bench-llvm-sulong-core} {name: daily-bench-sulong-graal-core-csuite}
   # sulong reference benchmark
   ${bench-llvm-native} {name: "daily-bench-clangO3-csuite"}

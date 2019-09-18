@@ -27,7 +27,6 @@ package com.oracle.svm.core.jdk;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
 
@@ -40,9 +39,9 @@ public class StackTraceUtils {
     private static final Class<?>[] NO_CLASSES = new Class<?>[0];
     private static final StackTraceElement[] NO_ELEMENTS = new StackTraceElement[0];
 
-    public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP, CodePointer startIP) {
+    public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP) {
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions);
-        JavaStackWalker.walkCurrentThread(startSP, startIP, visitor);
+        JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
@@ -52,18 +51,22 @@ public class StackTraceUtils {
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
-    public static Class<?>[] getClassContext(int skip, Pointer startSP, CodePointer startIP) {
+    public static Class<?>[] getClassContext(int skip, Pointer startSP) {
         GetClassContextVisitor visitor = new GetClassContextVisitor(skip);
-        JavaStackWalker.walkCurrentThread(startSP, startIP, visitor);
+        JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.trace.toArray(NO_CLASSES);
     }
 
     /**
      * Implements the shared semantic of Reflection.getCallerClass and StackWalker.getCallerClass.
      */
-    public static Class<?> getCallerClass(Pointer startSP, CodePointer startIP) {
-        GetCallerClassVisitor visitor = new GetCallerClassVisitor();
-        JavaStackWalker.walkCurrentThread(startSP, startIP, visitor);
+    public static Class<?> getCallerClass(Pointer startSP) {
+        return getCallerClass(startSP, 0);
+    }
+
+    public static Class<?> getCallerClass(Pointer startSP, int depth) {
+        GetCallerClassVisitor visitor = new GetCallerClassVisitor(depth);
+        JavaStackWalker.walkCurrentThread(startSP, visitor);
         return visitor.result;
     }
 
@@ -132,8 +135,13 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 }
 
 class GetCallerClassVisitor extends JavaStackFrameVisitor {
+    private int depth;
     private boolean foundCallee;
     Class<?> result;
+
+    GetCallerClassVisitor(final int depth) {
+        this.depth = depth;
+    }
 
     @Override
     public boolean visitFrame(FrameInfoQueryResult frameInfo) {
@@ -155,6 +163,11 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
              * Always ignore the frame. It is an internal frame of the VM or a frame related to
              * reflection.
              */
+            return true;
+
+        } else if (depth > 0) {
+            /* Skip the number of frames specified by "depth". */
+            depth--;
             return true;
 
         } else {

@@ -1045,7 +1045,8 @@ public final class ProbeNode extends Node {
                     setSeenUnwind();
                 }
                 unwind = (UnwindException) exception;
-                assert unwind.getBinding() != null;
+                assert unwind.getBinding() != null : String.format("UnwindException[binding: %s, thrownFromBindingCalled: %b, hasPreferredBindingSet: %b]",
+                                unwind.getBinding(), unwind.isThrownFromBinding(), unwind.hasPreferredBinding());
             }
             if (next != null) {
                 try {

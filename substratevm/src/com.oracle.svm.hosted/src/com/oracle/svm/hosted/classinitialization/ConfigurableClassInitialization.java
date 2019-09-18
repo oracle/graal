@@ -315,7 +315,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                 return " Object has been initialized through the following trace:\n" + getTraceString(instantiatedObjects.get(obj)) + ". " + action;
             }
         } else {
-            return "Object has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked.";
+            return " Object has been initialized without the native-image initialization instrumentation and the stack trace can't be tracked.";
         }
     }
 
@@ -537,14 +537,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         }
 
-        /* GR-14698 Lambdas get eagerly initialized in the method code. */
-        if (clazz.getTypeName().contains("$$Lambda$")) {
-            if (memoize) {
-                forceInitializeHosted(clazz, "lambdas must be initialized", false);
-            }
-            return InitKind.BUILD_TIME;
-        }
-
         InitKind result = computeInitKindForClass(clazz);
 
         if (clazz.getSuperclass() != null) {
@@ -600,9 +592,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         } else if (Proxy.isProxyClass(clazz)) {
             /* Proxy classes end up as constants in heap. */
-            return InitKind.BUILD_TIME;
-        } else if (clazz.getTypeName().contains("$$Lambda$")) {
-            /* GR-14698 Lambdas get eagerly initialized in the method code. */
             return InitKind.BUILD_TIME;
         } else if (clazz.getTypeName().contains("$$StringConcat")) {
             return InitKind.BUILD_TIME;

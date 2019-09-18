@@ -62,10 +62,24 @@ public class CommonConstants {
      */
     public static final String SYSPROP_CATALOG_URL = "org.graalvm.component.catalog"; // NOI18N
 
+    public static final String ENV_VARIABLE_PREFIX = "GRAAVLM_"; // NOI18N
+
     /**
      * Env variable that controls catalog URL.
      */
-    public static final String ENV_CATALOG_URL = "GRAALVM_CATALOG"; // NOI18N
+    public static final String ENV_CATALOG_URL = ENV_VARIABLE_PREFIX + "CATALOG"; // NOI18N
+
+    /**
+     * Prefix for env variables that define catalog list.
+     */
+    public static final String ENV_CATALOG_PREFIX = ENV_VARIABLE_PREFIX + "CATALOG_"; // NOI18N
+    /**
+     * Prefix for env variables that define catalog list.
+     */
+    public static final String CAP_CATALOG_PREFIX = "component_catalog_"; // NOI18N
+
+    public static final String CAP_CATALOG_URL = "url"; // NOI18N
+    public static final String CAP_CATALOG_LABEL = "label"; // NOI18N
 
     /**
      * Warns the user to rebuild the polyglot image and/or libraries.

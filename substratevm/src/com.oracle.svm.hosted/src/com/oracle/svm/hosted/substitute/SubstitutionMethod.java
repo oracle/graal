@@ -28,13 +28,16 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -48,7 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
+public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider, OriginalMethodProvider {
 
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;
@@ -218,6 +221,11 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
     }
 
     @Override
+    public Parameter[] getParameters() {
+        return original.getParameters();
+    }
+
+    @Override
     public Type[] getGenericParameterTypes() {
         return original.getGenericParameterTypes();
     }
@@ -275,5 +283,10 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
     @Override
     public SpeculationLog getSpeculationLog() {
         throw shouldNotReachHere();
+    }
+
+    @Override
+    public Executable getJavaMethod() {
+        return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
     }
 }

@@ -35,6 +35,7 @@ import java.util.zip.ZipException;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
+import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.ComponentParam;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
@@ -73,6 +74,8 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_VALIDATE_DOWNLOAD, "");
         OPTIONS.put(Commands.OPTION_IGNORE_FAILURES, "");
         OPTIONS.put(Commands.OPTION_FAIL_EXISTING, "");
+        OPTIONS.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
+        OPTIONS.put(Commands.OPTION_NO_VERIFY_JARS, "");
 
         OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
         OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
@@ -82,6 +85,10 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.LONG_OPTION_VALIDATE_DOWNLOAD, Commands.OPTION_VALIDATE_DOWNLOAD);
         OPTIONS.put(Commands.LONG_OPTION_IGNORE_FAILURES, Commands.OPTION_IGNORE_FAILURES);
         OPTIONS.put(Commands.LONG_OPTION_FAIL_EXISTING, Commands.OPTION_FAIL_EXISTING);
+        OPTIONS.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
+        OPTIONS.put(Commands.LONG_OPTION_NO_VERIFY_JARS, Commands.OPTION_NO_VERIFY_JARS);
+
+        OPTIONS.putAll(ComponentInstaller.componentOptions);
     }
 
     @Override
@@ -92,7 +99,7 @@ public class InstallCommand implements InstallerCommand {
         ignoreFailures = this.input.optValue(Commands.OPTION_IGNORE_FAILURES) != null;
         validateBeforeInstall = this.input.optValue(Commands.OPTION_VALIDATE) != null;
         validateDownload = this.input.optValue(Commands.OPTION_VALIDATE_DOWNLOAD) != null;
-
+        verifyJar = input.optValue(Commands.OPTION_NO_VERIFY_JARS) == null;
         postinstHelper = new PostInstProcess(input, feedBack);
     }
 

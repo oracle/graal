@@ -42,6 +42,7 @@ package com.oracle.truffle.api.dsl.test.processor;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInterface;
 
 /**
  * Verify errors emitted by the processor.
@@ -54,5 +55,45 @@ public class TruffleProcessorTest {
         MyNode(MyNode n) {
             this.first = n;
         }
+    }
+
+    abstract class CorrectChildType extends Node {
+        @Child MyNode first;
+    }
+
+    abstract class CorrectChildType2 extends Node {
+        @Child NodeInterface first;
+    }
+
+    abstract class CorrectChildrenType extends Node {
+        @Children MyNode[] first;
+    }
+
+    abstract class CorrectChildrenType2 extends Node {
+        @Children NodeInterface[] first;
+    }
+
+    abstract class IncorrectChildType extends Node {
+        @ExpectError("@Child field must implement NodeInterface") @Child String first;
+    }
+
+    abstract class IncorrectChildType2 extends Node {
+        @ExpectError("@Child field must implement NodeInterface") @Child Object first;
+    }
+
+    class IncorrectChildOwner {
+        @ExpectError("@Child field is allowed only in Node sub-class") @Node.Child MyNode first;
+    }
+
+    abstract class IncorrectChildrenType extends Node {
+        @ExpectError("@Children field must be an array of NodeInerface sub-types") @Children String[] first;
+    }
+
+    abstract class IncorrectChildrenType2 extends Node {
+        @ExpectError("@Children field must be an array of NodeInerface sub-types") @Children Object[] first;
+    }
+
+    class IncorrectChildrenOwner {
+        @ExpectError("@Children field is allowed only in Node sub-class") @Node.Children MyNode[] first;
     }
 }

@@ -118,6 +118,10 @@ final class SuspendableLocationFinder {
         if (section != null) {
             return section;
         }
+        if (!sectionsCollector.isOffsetInRoot) {
+            // The offset position is not in any RootNode.
+            return null;
+        }
         InstrumentableNode contextNode = sectionsCollector.getContainsNode();
         if (contextNode == null) {
             contextNode = sectionsCollector.getNextNode();
@@ -149,6 +153,7 @@ final class SuspendableLocationFinder {
         private LinkedNodes previousNode;
         private SourceSection nextMatch;
         private LinkedNodes nextNode;
+        private boolean isOffsetInRoot = false;
 
         NearestSections(Set<Class<? extends Tag>> elementTags, int line, int offset, SuspendAnchor anchor) {
             this.elementTags = elementTags;
@@ -162,6 +167,12 @@ final class SuspendableLocationFinder {
             Node eventNode = event.getNode();
             if (!(eventNode instanceof InstrumentableNode && ((InstrumentableNode) eventNode).isInstrumentable())) {
                 return;
+            }
+            if (!isOffsetInRoot) {
+                SourceSection rootSection = eventNode.getRootNode().getSourceSection();
+                if (rootSection != null) {
+                    isOffsetInRoot = rootSection.getCharIndex() <= offset && offset < rootSection.getCharEndIndex();
+                }
             }
             InstrumentableNode node = (InstrumentableNode) eventNode;
             SourceSection sourceSection = event.getSourceSection();

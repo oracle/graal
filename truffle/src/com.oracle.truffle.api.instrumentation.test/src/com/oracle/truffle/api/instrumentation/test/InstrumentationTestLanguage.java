@@ -783,7 +783,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     static class TryCatchNode extends InstrumentedNode {
 
-        @Child TryNode tryNode;
+        @Child InstrumentedNode tryNode;
         @Children private final CatchNode[] catchNodes;
 
         TryCatchNode(BaseNode[] children) {
@@ -907,6 +907,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
     }
 
+    @GenerateWrapper
     static class CatchNode extends BlockNode {
 
         private final String exceptionName;
@@ -916,8 +917,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             this.exceptionName = exceptionName;
         }
 
+        CatchNode() {
+            super(null);
+            this.exceptionName = null;
+        }
+
         String getExceptionName() {
             return exceptionName;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return new CatchNodeWrapper(this, probe);
         }
     }
 
@@ -1626,7 +1637,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         public Object execute(VirtualFrame frame) {
             frame.setObject(getResult(), Null.INSTANCE);
             frame.setInt(getLoopIndex(), 0);
-            loop.executeLoop(frame);
+            loop.execute(frame);
             try {
                 return frame.getObject(loopResultSlot);
             } catch (FrameSlotTypeException e) {

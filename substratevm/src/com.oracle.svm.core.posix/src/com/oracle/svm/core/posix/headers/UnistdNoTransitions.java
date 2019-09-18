@@ -63,7 +63,7 @@ public class UnistdNoTransitions {
     public static native int fork();
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int fsync(int fd);
+    public static native SignedWord read(int fd, PointerBase buf, UnsignedWord nbytes);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native SignedWord write(int fd, PointerBase buf, UnsignedWord n);
@@ -73,5 +73,4 @@ public class UnistdNoTransitions {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native SignedWord lseek(int fd, SignedWord offset, int whence);
-
 }

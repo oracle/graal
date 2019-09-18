@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
-import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.net.URL;
 import java.security.AccessControlContext;
@@ -33,12 +32,15 @@ import java.security.AccessControlException;
 import java.security.DomainCombiner;
 import java.security.Permission;
 import java.security.PrivilegedAction;
+import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+
+import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -51,8 +53,6 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
 
 // Checkstyle: allow reflection
 
@@ -65,43 +65,75 @@ import org.graalvm.word.Pointer;
 final class Target_java_security_AccessController {
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action) {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedAction<T> action) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedAction<T> action) {
-        return action.run();
+    private static <T> T doPrivilegedWithCombiner(PrivilegedAction<T> action) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context, Permission... perms) {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context, Permission... perms) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Exception {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action) throws Exception {
-        return action.run();
+    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action, AccessControlContext context, Permission... perms) throws Exception {
-        return action.run();
+    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action, AccessControlContext context, Permission... perms) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
-    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Exception {
-        return action.run();
+    private static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Throwable {
+        try {
+            return action.run();
+        } catch (Throwable ex) {
+            throw AccessControllerUtil.wrapCheckedException(ex);
+        }
     }
 
     @Substitute
@@ -125,6 +157,17 @@ final class Target_java_security_AccessController {
     }
 }
 
+@InternalVMMethod
+class AccessControllerUtil {
+    static Throwable wrapCheckedException(Throwable ex) {
+        if (ex instanceof Exception && !(ex instanceof RuntimeException)) {
+            return new PrivilegedActionException((Exception) ex);
+        } else {
+            return ex;
+        }
+    }
+}
+
 @TargetClass(java.security.AccessControlContext.class)
 final class Target_java_security_AccessControlContext {
 
@@ -137,9 +180,8 @@ final class Target_java_lang_SecurityManager {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     protected Class<?>[] getClassContext() {
-        final CodePointer startIP = readReturnAddress();
         final Pointer startSP = readCallerStackPointer();
-        return StackTraceUtils.getClassContext(1, startSP, startIP);
+        return StackTraceUtils.getClassContext(1, startSP);
     }
 }
 

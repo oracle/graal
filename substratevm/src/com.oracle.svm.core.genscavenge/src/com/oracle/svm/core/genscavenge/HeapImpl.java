@@ -52,24 +52,24 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.MemoryWalker.CodeAccess;
 import com.oracle.svm.core.MemoryWalker.HeapChunkAccess;
-import com.oracle.svm.core.MemoryWalker.ImageCodeAccess;
 import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
-import com.oracle.svm.core.MemoryWalker.RuntimeCompiledMethodAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.heap.GC;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
@@ -86,17 +86,6 @@ import sun.management.Util;
 /** An implementation of a card remembered set generational heap. */
 public class HeapImpl extends Heap {
 
-    /**
-     * The unordered list of PinnedAllocators. Field is managed by {@link PinnedAllocatorImpl}, but
-     * declared as an instance field here to avoid a static field in {@link PinnedAllocatorImpl}.
-     */
-    PinnedAllocatorImpl pinnedAllocatorListHead;
-
-    /*
-     * Final state.
-     */
-
-    /* The Generations, etc. */
     private final YoungGeneration youngGeneration;
     private final OldGeneration oldGeneration;
     final HeapChunkProvider chunkProvider;
@@ -126,8 +115,6 @@ public class HeapImpl extends Heap {
             this.stackVerifier = null;
         }
         chunkProvider = new HeapChunkProvider();
-        this.pinnedAllocatorListHead = null;
-        this.objectVisitorWalkerOperation = new ObjectVisitorWalkerOperation();
         this.gcProvider = new GenScavengeGCProvider();
         this.memoryMXBean = new HeapImplMemoryMXBean();
         this.classList = null;
@@ -146,6 +133,12 @@ public class HeapImpl extends Heap {
         return (HeapImpl) heap;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public boolean isInImageHeap(Object object) {
+        return objectHeaderImpl.isNonHeapAllocated(object);
+    }
+
     @Override
     public void suspendAllocation() {
         ThreadLocalAllocation.suspendThreadLocalAllocation();
@@ -161,60 +154,10 @@ public class HeapImpl extends Heap {
         ThreadLocalAllocation.disableThreadLocalAllocation(vmThread);
     }
 
-    /*
-     * Allocation methods from Heap.
-     */
-
-    @Override
-    public PinnedAllocator createPinnedAllocator() {
-        return new PinnedAllocatorImpl();
-    }
-
-    /*
-     * Other interface methods from Heap.
-     */
-
-    /* Object walking. */
-
-    /* State. */
-    private final ObjectVisitorWalkerOperation objectVisitorWalkerOperation;
-
-    private ObjectVisitorWalkerOperation getObjectVisitorWalkerOperation() {
-        return objectVisitorWalkerOperation;
-    }
-
-    /* Walk the objects of the heap. */
     @Override
     public void walkObjects(ObjectVisitor visitor) {
-        try (ObjectVisitorWalkerOperation operation = getObjectVisitorWalkerOperation().open(visitor)) {
-            operation.enqueue();
-        }
-    }
-
-    static class ObjectVisitorWalkerOperation extends VMOperation implements AutoCloseable {
-
-        /** A lazily-initialized visitor. */
-        private ObjectVisitor visitor = null;
-
-        ObjectVisitorWalkerOperation() {
-            super("ObjectVisitorWalker", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
-        }
-
-        ObjectVisitorWalkerOperation open(ObjectVisitor value) {
-            this.visitor = value;
-            return this;
-        }
-
-        @Override
-        public void operate() {
-            assert visitor != null : "HeapImpl.ObjectVisitorWalkerOperation.operate: null visitor";
-            HeapImpl.getHeapImpl().doWalkObjects(visitor);
-        }
-
-        @Override
-        public void close() {
-            visitor = null;
-        }
+        VMOperation.guaranteeInProgressAtSafepoint("must only be executed by the GC");
+        HeapImpl.getHeapImpl().doWalkObjects(visitor);
     }
 
     private void doWalkObjects(ObjectVisitor visitor) {
@@ -262,8 +205,9 @@ public class HeapImpl extends Heap {
     private final ObjectHeaderImpl objectHeaderImpl;
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public ObjectHeader getObjectHeader() {
-        return getObjectHeaderImpl();
+        return objectHeaderImpl;
     }
 
     public ObjectHeaderImpl getObjectHeaderImpl() {
@@ -350,7 +294,7 @@ public class HeapImpl extends Heap {
             final HeapChunk.Header<?> chunk = getEnclosingHeapChunk(obj);
             final Space space = chunk.getSpace();
             final OldGeneration oldGen = getOldGeneration();
-            return ((space == oldGen.getToSpace()) || (space == oldGen.getPinnedToSpace()));
+            return space == oldGen.getToSpace();
         }
         return false;
     }
@@ -393,28 +337,9 @@ public class HeapImpl extends Heap {
 
     public boolean isPinned(Object instance) {
         final ObjectHeaderImpl ohi = getObjectHeaderImpl();
-        final UnsignedWord headerBits = ObjectHeaderImpl.readHeaderBitsFromObject(instance);
         /* The instance is pinned if it is in the image heap. */
-        if (ohi.isBootImageHeaderBits(headerBits)) {
+        if (ohi.isBootImage(instance)) {
             return true;
-        }
-        final Space pinnedFromSpace = getOldGeneration().getPinnedFromSpace();
-        final Space pinnedToSpace = getOldGeneration().getPinnedToSpace();
-        if (ohi.isAlignedHeader(headerBits)) {
-            final AlignedHeapChunk.AlignedHeader aChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(instance);
-            final Space space = aChunk.getSpace();
-            /* The instance is pinned if it is in the pinned from space. */
-            if ((space == pinnedFromSpace) || (space == pinnedToSpace)) {
-                return true;
-            }
-        }
-        if (ohi.isUnalignedHeader(headerBits)) {
-            final UnalignedHeapChunk.UnalignedHeader uChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(instance);
-            final Space space = uChunk.getSpace();
-            /* The instance is pinned if it is in the pinned from space. */
-            if ((space == pinnedFromSpace) || (space == pinnedToSpace)) {
-                return true;
-            }
         }
         /* Look down the list of individually pinned objects. */
         for (PinnedObjectImpl pinnedObject = getPinHead().get(); pinnedObject != null; pinnedObject = pinnedObject.getNext()) {
@@ -453,21 +378,13 @@ public class HeapImpl extends Heap {
         final UnsignedWord fromBytes = from.getAlignedChunkBytes().add(from.getUnalignedChunkBytes());
         final Space.Accounting to = getOldGeneration().getToSpace().getAccounting();
         final UnsignedWord toBytes = to.getAlignedChunkBytes().add(to.getUnalignedChunkBytes());
-        final Space.Accounting pinnedFrom = getOldGeneration().getPinnedFromSpace().getAccounting();
-        final UnsignedWord pinnedFromBytes = pinnedFrom.getAlignedChunkBytes().add(pinnedFrom.getUnalignedChunkBytes());
-        final Space.Accounting pinnedTo = getOldGeneration().getPinnedFromSpace().getAccounting();
-        final UnsignedWord pinnedToBytes = pinnedTo.getAlignedChunkBytes().add(pinnedTo.getUnalignedChunkBytes());
-        final UnsignedWord result = fromBytes.add(toBytes).add(pinnedFromBytes).add(pinnedToBytes);
+        final UnsignedWord result = fromBytes.add(toBytes);
         if (trace.isEnabled()) {
             trace
                             .string("  fromAligned: ").unsigned(from.getAlignedChunkBytes())
                             .string("  fromUnaligned: ").signed(from.getUnalignedChunkBytes())
                             .string("  toAligned: ").unsigned(to.getAlignedChunkBytes())
                             .string("  toUnaligned: ").signed(to.getUnalignedChunkBytes())
-                            .string("  pinnedFromAligned: ").unsigned(pinnedFrom.getAlignedChunkBytes())
-                            .string("  pinnedFromUnaligned: ").signed(pinnedFrom.getUnalignedChunkBytes())
-                            .string("  pinnedToAligned: ").unsigned(pinnedTo.getAlignedChunkBytes())
-                            .string("  pinnedToUnaligned: ").signed(pinnedTo.getUnalignedChunkBytes())
                             .string("  returns: ").unsigned(result).string(" ]").newline();
         }
         return result;
@@ -479,10 +396,7 @@ public class HeapImpl extends Heap {
         final UnsignedWord youngBytes = youngSpace.getObjectBytes();
         final Space fromSpace = getOldGeneration().getFromSpace();
         final UnsignedWord fromBytes = fromSpace.getObjectBytes();
-        final Space pinnedSpace = getOldGeneration().getPinnedFromSpace();
-        final UnsignedWord pinnedBytes = pinnedSpace.getObjectBytes();
-        final UnsignedWord result = youngBytes.add(fromBytes).add(pinnedBytes);
-        return result;
+        return youngBytes.add(fromBytes);
     }
 
     protected void report(Log log) {
@@ -630,7 +544,7 @@ public class HeapImpl extends Heap {
         }
         if (getVerifyStackBeforeGC()) {
             assert stackVerifier != null : "No stack verifier!";
-            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress(), "before collection")) {
+            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), "before collection")) {
                 Log.log().string("[HeapImpl.verifyBeforeGC:").string("  cause: ").string(cause).string("  stack fails to verify epoch: ").unsigned(epoch).string("]").newline();
                 assert false;
             }
@@ -649,7 +563,7 @@ public class HeapImpl extends Heap {
         }
         if (getVerifyStackAfterGC()) {
             assert stackVerifier != null : "No stack verifier!";
-            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress(), "after collection")) {
+            if (!stackVerifier.verifyInAllThreads(KnownIntrinsics.readCallerStackPointer(), "after collection")) {
                 Log.log().string("[HeapImpl.verifyAfterGC:").string("  cause: ").string(cause).string("  stack fails to verify after epoch: ").unsigned(epoch).string("]").newline();
                 assert false;
             }
@@ -891,19 +805,10 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
     }
 
     @Override
-    public <T> boolean visitImageCode(T imageCode, ImageCodeAccess<T> access) {
-        final UnsignedWord size = access.getSize(imageCode);
+    public <T extends CodeInfo> boolean visitCode(T codeInfo, CodeAccess<T> access) {
+        final UnsignedWord size = access.getSize(codeInfo).add(access.getMetadataSize(codeInfo));
         nonHeapUsed = nonHeapUsed.add(size);
         nonHeapCommitted = nonHeapCommitted.add(size);
-        return true;
-    }
-
-    @Override
-    public <T> boolean visitRuntimeCompiledMethod(T runtimeMethod, RuntimeCompiledMethodAccess<T> access) {
-        /* Is a runtime method allocated in some larger block of committed memory? */
-        final UnsignedWord size = access.getSize(runtimeMethod);
-        nonHeapUsed = nonHeapUsed.add(size);
-        nonHeapCommitted = nonHeapUsed.add(size);
         return true;
     }
 }
@@ -939,6 +844,6 @@ final class Target_java_lang_Runtime {
      */
     @Substitute
     private void gc() {
-        HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection("java.lang.Runtime.gc()");
+        HeapImpl.getHeapImpl().getHeapPolicy().getUserRequestedGCPolicy().maybeCauseCollection(GCCause.JavaLangSystemGC);
     }
 }

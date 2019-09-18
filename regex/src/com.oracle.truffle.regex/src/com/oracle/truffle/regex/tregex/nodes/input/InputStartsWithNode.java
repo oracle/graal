@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.input;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -35,22 +36,39 @@ public abstract class InputStartsWithNode extends Node {
         return InputStartsWithNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, String prefix);
+    public abstract boolean execute(Object input, String prefix, String mask);
 
-    @Specialization
-    public boolean startsWith(String input, String prefix) {
+    @Specialization(guards = "mask == null")
+    public boolean startsWith(String input, String prefix, @SuppressWarnings("unused") String mask) {
         return input.startsWith(prefix);
     }
 
-    @Specialization
-    public boolean startsWith(TruffleObject input, String prefix,
+    @Specialization(guards = "mask != null")
+    public boolean startsWithWithMask(String input, String prefix, String mask) {
+        return ArrayUtils.regionEqualsWithOrMask(input, 0, prefix, 0, mask.length(), mask);
+    }
+
+    @Specialization(guards = "mask == null")
+    public boolean startsWithTruffleObjNoMask(TruffleObject input, String prefix, String mask,
                     @Cached("create()") InputLengthNode lengthNode,
                     @Cached("create()") InputCharAtNode charAtNode) {
+        return startsWithTruffleObj(input, prefix, mask, lengthNode, charAtNode);
+    }
+
+    @Specialization(guards = "mask != null")
+    public boolean startsWithTruffleObjWithMask(TruffleObject input, String prefix, String mask,
+                    @Cached("create()") InputLengthNode lengthNode,
+                    @Cached("create()") InputCharAtNode charAtNode) {
+        assert mask.length() == prefix.length();
+        return startsWithTruffleObj(input, prefix, mask, lengthNode, charAtNode);
+    }
+
+    private static boolean startsWithTruffleObj(TruffleObject input, String prefix, String mask, InputLengthNode lengthNode, InputCharAtNode charAtNode) {
         if (lengthNode.execute(input) < prefix.length()) {
             return false;
         }
         for (int i = 0; i < prefix.length(); i++) {
-            if (charAtNode.execute(input, i) != prefix.charAt(i)) {
+            if (InputCharAtNode.charAtWithMask(input, i, mask, i, charAtNode) != prefix.charAt(i)) {
                 return false;
             }
         }

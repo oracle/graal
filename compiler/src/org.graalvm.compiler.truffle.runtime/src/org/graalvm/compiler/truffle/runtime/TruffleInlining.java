@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,7 +63,8 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     }
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
-        if (!sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) || sourceTarget.getOptionValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY) {
+        if (!sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) || sourceTarget.getOptionValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY ||
+                        TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleLanguageAgnosticInlining)) {
             return Collections.emptyList();
         }
         int[] visitedNodes = {0};
@@ -236,8 +237,13 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
 
     @Override
     public Decision findDecision(JavaConstant callNodeConstant) {
-        OptimizedDirectCallNode callNode = runtime().asObject(OptimizedDirectCallNode.class, callNodeConstant);
+        OptimizedDirectCallNode callNode = findCallNode(callNodeConstant);
         return findByCall(callNode);
+    }
+
+    @Override
+    public OptimizedDirectCallNode findCallNode(JavaConstant callNodeConstant) {
+        return runtime().asObject(OptimizedDirectCallNode.class, callNodeConstant);
     }
 
     static class TruffleSourceLanguagePosition implements org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition {

@@ -35,11 +35,6 @@ import org.graalvm.word.PointerBase;
 public class Sysctl {
     // { Allow names with underscores: Checkstyle: stop
 
-    /**
-     * A generic declaration of sysctl. The "names" that can be asked about are platform-specific.
-     *
-     * int sysctl(int* name, int nlen, void* oldval, size_t* oldlenp, void* newval, size_t newlen);
-     */
     @CFunction
     public static native int sysctl(CIntPointer name, long nlen, PointerBase oldval, WordPointer oldlenp, PointerBase newval, long newlen);
 

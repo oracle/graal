@@ -28,9 +28,9 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.word.WordFactory.zero;
 
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -43,7 +43,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
@@ -73,7 +72,6 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static void tearDownVirtualMemoryConsumers() {
-        CodeInfoTable.getRuntimeCodeCache().tearDown();
         Heap.getHeap().tearDown();
     }
 
@@ -84,6 +82,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             return CEntryPointErrors.NO_ERROR;
         }
 
+        CommittedMemoryProvider.tearDownUnmanagedMemoryConsumers();
         tearDownVirtualMemoryConsumers();
 
         PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());

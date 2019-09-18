@@ -135,21 +135,15 @@ class LinuxPhysicalMemory extends PhysicalMemory {
         long sizeFromCGroup() {
             assert !Heap.getHeap().isAllocationDisallowed() : "LinuxPhysicalMemory.PhysicalMemorySupportImpl.sizeFromCGroup: Allocation disallowed.";
             long result = Long.MAX_VALUE;
-            try {
-                /* Read digits out of the file and convert them a long. */
-                final FileInputStream stream = new FileInputStream(cgroupMemoryFileName);
-                /* Enough characters to hold a long: 9,223,372,036,854,775,807. */
-                final int maxIndex = 31;
-                final char[] charBuffer = new char[maxIndex + 1];
-                int index = 0;
+            /* Read digits out of the file and convert them a long. */
+            try (FileInputStream stream = new FileInputStream(cgroupMemoryFileName)) {
+                StringBuilder sb = new StringBuilder(32);
                 int read = stream.read();
-                while ((index < maxIndex) && (read >= '0') && (read <= '9')) {
-                    charBuffer[index] = (char) read;
-                    index += 1;
+                while (read >= '0' && read <= '9') {
+                    sb.append((char) read);
                     read = stream.read();
                 }
-                final String stringBuffer = new String(charBuffer, 0, index);
-                result = Long.parseLong(stringBuffer);
+                result = Long.parseLong(sb.toString());
             } catch (IOException | NumberFormatException e) {
                 /* Ignore exceptions. */
             }

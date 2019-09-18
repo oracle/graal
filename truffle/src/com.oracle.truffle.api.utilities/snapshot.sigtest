@@ -42,16 +42,6 @@ innr public final static JSONArrayBuilder
 innr public final static JSONObjectBuilder
 meth public static com.oracle.truffle.api.utilities.JSONHelper$JSONArrayBuilder array()
 meth public static com.oracle.truffle.api.utilities.JSONHelper$JSONObjectBuilder object()
-meth public static java.lang.String getResult()
- anno 0 java.lang.Deprecated()
-meth public static void dumpNewChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated()
-meth public static void dumpNewNode(com.oracle.truffle.api.nodes.Node)
- anno 0 java.lang.Deprecated()
-meth public static void dumpReplaceChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
- anno 0 java.lang.Deprecated()
-meth public static void restart()
- anno 0 java.lang.Deprecated()
 supr java.lang.Object
 hfds ACCESSOR,AstJsonDumpBuilder
 hcls DumpAccessor

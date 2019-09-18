@@ -1,4 +1,4 @@
-common_vm: ${common} ${vm_java} ${vm_setup} {
+common_vm: ${common} ${vm_setup} {
   logs: [
     "*/mxbuild/dists/stripped/*.map"
     "../fastr/libdownloads/*/gnur_configure.log"
@@ -42,7 +42,7 @@ common_vm_windows: ${common_vm} ${windows} {
 sulong_linux: {
   packages: {
     llvm: "==6.0.1"
-    ruby: "==2.1.0" # for mdl
+    ruby: "==2.6.3" # for mdl
   }
   downloads: {
     LIBGMP: {name: libgmp, version: 6.1.0, platformspecific: true}
@@ -63,7 +63,7 @@ sulong_darwin: {
 truffleruby_linux: {
   packages: {
     llvm: "==6.0.1"
-    ruby: "==2.1.0"
+    ruby: "==2.6.3"
   }
 }
 
@@ -104,6 +104,12 @@ fastr_darwin: ${fastr} {
     F77: "/usr/local/bin/gfortran-4.9"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
+  }
+}
+
+fastr_no_recommended: {
+  environment: {
+    FASTR_NO_RECOMMENDED: "true"
   }
 }
 
@@ -199,13 +205,13 @@ full_vm_build_linux: ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_lin
 full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
 
 builds += [
-  ${eclipse} ${jdt} ${gate_vm_linux} {
+  ${vm_java_8} ${eclipse} ${jdt} ${gate_vm_linux} {
     run: [
       [mx, gate, "-B=--force-deprecation-as-warning", --tags, "style,fullbuild"]
     ]
     name: gate-vm-style-linux-amd64
   }
-  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [build]
@@ -215,7 +221,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-no-fastr-linux-amd64
   }
-  ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
+  ${vm_java_8} ${scan_malware} ${malware_definition_archived} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju", build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju"] ${maven_deploy_vm}
@@ -229,7 +235,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-linux-amd64
   }
-  ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+  ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-complete"]
       ${mx_vm_common} [build]
@@ -239,7 +245,7 @@ builds += [
     timelimit: "1:45:00"
     name: deploy-vm-no-fastr-darwin-amd64
   }
-  ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+  ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: [
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju", build]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites}, "--exclude-components=nju"] ${maven_deploy_vm}
@@ -248,7 +254,7 @@ builds += [
     timelimit: "2:00:00"
     name: deploy-vm-installable-darwin-amd64
   }
-  ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
+  ${vm_java_8} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} {
     run: ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_vm}
@@ -257,7 +263,7 @@ builds += [
     timelimit: "1:45:00"
     name: deploy-vm-base-darwin-amd64
   }
-  ${svm-common-windows} ${deploy_daily_vm_windows} {
+  ${vm_java_8} ${svm-common-windows} ${deploy_daily_vm_windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_common} [build]
@@ -267,7 +273,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-windows-amd64
   }
-  ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
+  ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     run: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
       [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-ea", build]
@@ -277,17 +283,18 @@ builds += [
     targets: [gate]
     name: gate-vm-libgraal-compiler
   }
-  ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
+  ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     run: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
       [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-ea", build]
       [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
     ]
+    logs: ${common_vm.logs} ["*/graal-compiler.log"]
     timelimit: "45:00"
     targets: [gate]
     name: gate-vm-libgraal-truffle
   }
-  ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
+  ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE,/sulong", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,sulong"]

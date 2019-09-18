@@ -207,24 +207,33 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     }
 
     private VariableElement resolveVariable(Variable variable) {
-        if (variable.getName().equals("null")) {
-            return new CodeVariableElement(new CodeTypeMirror(TypeKind.NULL), "null");
-        } else {
-            List<VariableElement> vars = variables.get(variable.getName());
-            if (vars != null && vars.size() > 0) {
-                for (VariableElement var : vars) {
-                    if (ElementUtils.isVisible(accessType, var)) {
-                        return var;
+        final String name = variable.getName();
+
+        switch (name) {
+            case "null":
+                return new CodeVariableElement(new CodeTypeMirror(TypeKind.NULL), "null");
+            case "false":
+                return new CodeVariableElement(new CodeTypeMirror(TypeKind.BOOLEAN), "false");
+            case "true":
+                return new CodeVariableElement(new CodeTypeMirror(TypeKind.BOOLEAN), "true");
+            default:
+                List<VariableElement> vars = variables.get(name);
+                if (vars != null && vars.size() > 0) {
+                    for (VariableElement var : vars) {
+                        if (ElementUtils.isVisible(accessType, var)) {
+                            return var;
+                        }
                     }
+                    // fail in visibility check later
+                    return vars.iterator().next();
                 }
-                // fail in visibility check later
-                return vars.iterator().next();
-            }
+
+                if (parent != null) {
+                    return parent.resolveVariable(variable);
+                }
+
+                return null;
         }
-        if (parent != null) {
-            return parent.resolveVariable(variable);
-        }
-        return null;
     }
 
     public void visitCall(Call call) {

@@ -48,12 +48,13 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -193,7 +194,7 @@ public abstract class NativeImageCodeCache {
     public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         FrameInfoCustomization frameInfoCustomization = new FrameInfoCustomization();
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, null);
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization);
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
             final HostedMethod method = entry.getKey();
             final CompilationResult compilation = entry.getValue();
@@ -205,10 +206,10 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        ImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache();
-        codeInfoEncoder.encodeAll();
-        codeInfoEncoder.install(imageCodeInfo);
-        imageCodeInfo.setData(firstMethod, codeSize);
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
+        codeInfoEncoder.encodeAllAndInstall(codeInfo);
+        codeInfo.setCodeStart(firstMethod);
+        codeInfo.setCodeSize(codeSize);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             for (Counter counter : ImageSingletons.lookup(CodeInfoEncoder.Counters.class).group.getCounters()) {
@@ -221,13 +222,13 @@ public abstract class NativeImageCodeCache {
              * Missing deoptimization entry points lead to hard-to-debug transient failures, so we
              * want the verification on all the time and not just when assertions are on.
              */
-            verifyDeoptEntries(imageCodeInfo);
+            verifyDeoptEntries(codeInfo);
         }
 
-        assert verifyMethods(codeInfoEncoder);
+        assert verifyMethods(codeInfo);
     }
 
-    private void verifyDeoptEntries(ImageCodeInfo imageCodeInfo) {
+    private void verifyDeoptEntries(CodeInfo codeInfo) {
         boolean hasError = false;
         List<Entry<AnalysisMethod, Set<Long>>> deoptEntries = new ArrayList<>(CompilationInfoSupport.singleton().getDeoptEntries().entrySet());
         deoptEntries.sort((e1, e2) -> e1.getKey().format("%H.%n(%p)").compareTo(e2.getKey().format("%H.%n(%p)")));
@@ -238,7 +239,7 @@ public abstract class NativeImageCodeCache {
             encodedBcis.sort((v1, v2) -> Long.compare(v1, v2));
 
             for (long encodedBci : encodedBcis) {
-                hasError |= verifyDeoptEntry(imageCodeInfo, method, encodedBci);
+                hasError |= verifyDeoptEntry(codeInfo, method, encodedBci);
             }
         }
         if (hasError) {
@@ -246,14 +247,14 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    private static boolean verifyDeoptEntry(ImageCodeInfo imageCodeInfo, HostedMethod method, long encodedBci) {
+    private static boolean verifyDeoptEntry(CodeInfo codeInfo, HostedMethod method, long encodedBci) {
         int deoptOffsetInImage = method.getDeoptOffsetInImage();
         if (deoptOffsetInImage <= 0) {
             return error(method, encodedBci, "entry point method not compiled");
         }
 
         CodeInfoQueryResult result = new CodeInfoQueryResult();
-        long relativeIP = imageCodeInfo.lookupDeoptimizationEntrypoint(deoptOffsetInImage, encodedBci, result);
+        long relativeIP = CodeInfoAccess.lookupDeoptimizationEntrypoint(codeInfo, deoptOffsetInImage, encodedBci, result);
         if (relativeIP < 0) {
             return error(method, encodedBci, "entry point not found");
         }
@@ -268,9 +269,9 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder) {
+    private boolean verifyMethods(CodeInfo codeInfo) {
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            codeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset());
+            CodeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset(), codeInfo);
         }
         return true;
     }

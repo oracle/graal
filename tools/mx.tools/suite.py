@@ -4,8 +4,8 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "19.2.0.1",
-    "release" : True,
+    "version" : "19.3.0",
+    "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
       "name" : "Truffle and Graal developers",
@@ -99,29 +99,23 @@ suite = {
     },
 
     "libraries": {
-       "NanoHTTPD" : {
-          "path" : "lib/nanohttpd-2.3.1.jar",
-          "sha1" : "a8d54d1ca554a77f377eff6bf9e16ca8383c8f6c",
-          "maven" : {
-            "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd",
-            "version" : "2.3.1",
-          }
+        "NanoHTTPD" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar",
+            ],
+            "sha1" : "7d28e2828bfe2ac04dcb8779aded934ac7dc1e52",
         },
-       "NanoHTTPD-WebSocket" : {
-          "path" : "lib/nanohttpd-websocket-2.3.1.jar",
-          "sha1" : "f2cfb09cee12469ff64f0d698b13de19903bb4f7",
-          "maven" : {
-            "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd-websocket",
-            "version" : "2.3.1",
-          }
+        "NanoHTTPD-WebSocket" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-websocket-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar",
+            ],
+            "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
         "TruffleJSON" : {
           "urls" : [
-            "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180130.jar",
+            "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180813.jar",
           ],
-          "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
+          "sha1" : "c556821b83878d3a327bc07dedc1bf2998f99a8f",
         },
         "Java-WebSocket" : {
             "path" : "lib/Java-WebSocket-1.3.9.jar",
@@ -133,27 +127,27 @@ suite = {
             }
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20.tar.gz"],
-            "sha1" : "8dc5a90bed5f51d7538d05b8c31c31b7dfddbd66",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683.tar.gz"],
+            "sha1" : "28b4ffc31ca729c93be77f6e66d9c5c67032c12f",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-linux-amd64.tar.gz"],
-                        "sha1" : "fd1a723d62cbbc591041d303e8b151d89f131643",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-linux-amd64.tar.gz"],
+                        "sha1" : "9598ec2f792d42ff95a398e2d8af448bb6707449",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-macosx-x86_64.tar.gz"],
-                        "sha1" : "ae23bb365930f720acc88c62640bae6852a37d67",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-macosx-x86_64.tar.gz"],
+                        "sha1" : "7428020503044bd6652eeb292aead587b0508984",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-19_0_0-20-windows-amd64.tar.gz"],
-                        "sha1" : "555ec5171d430112f14676217b27e1b0b7a49e53",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-683-windows-amd64.tar.gz"],
+                        "sha1" : "f7c7c67a887002a208cff79a11088aa75c9defcc",
                     }
                 },
             }

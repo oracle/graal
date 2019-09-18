@@ -1,4 +1,5 @@
-vm_java: ${openjdk8}
+vm_java_8: ${openjdk8}
+vm_java_11: ${openjdk11}
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr"
 custom_vm_linux: {}
@@ -26,21 +27,21 @@ maven_base: ${linux-deploy} {
 }
 
 builds += [
-  ${gate_vm_linux} {
+  ${vm_java_8} ${gate_vm_linux} {
     run: [
       [mx, build]
       [mx, unittest, --suite, vm]
     ]
     name: gate-vm-unittest-linux-amd64
   }
-  ${gate_vm_linux} ${maven_base} {
+  ${vm_java_11} ${gate_vm_linux} ${maven_base} {
     run: [
       ${maven_base.build}
       ${maven_base.deploy} [--dry-run, ${binaries-repository}]
     ]
     name: gate-vm-maven-dry-run-jdk11-linux-amd64
   }
-  ${deploy_vm_linux} ${maven_base} {
+  ${vm_java_11} ${deploy_vm_linux} ${maven_base} {
     run: [
       ${maven_base.build}
       ${maven_base.deploy} [${binaries-repository}]

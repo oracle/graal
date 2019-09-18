@@ -36,6 +36,7 @@ public class RegexProperties implements JsonConvertible {
     private boolean backReferences = false;
     private boolean captureGroups = false;
     private boolean charClasses = false;
+    private boolean quantifiers = false;
     private boolean lookAheadAssertions = false;
     private boolean complexLookAheadAssertions = false;
     private boolean negativeLookAheadAssertions = false;
@@ -44,7 +45,9 @@ public class RegexProperties implements JsonConvertible {
     private boolean complexLookBehindAssertions = false;
     private boolean negativeLookBehindAssertions = false;
     private boolean largeCountedRepetitions = false;
-    private String innerLiteral = null;
+    private boolean charClassesCanBeMatchedWithMask = true;
+    private int innerLiteralStart = -1;
+    private int innerLiteralEnd = -1;
 
     public boolean hasAlternations() {
         return alternations;
@@ -76,6 +79,14 @@ public class RegexProperties implements JsonConvertible {
 
     public void setCharClasses() {
         charClasses = true;
+    }
+
+    public boolean hasQuantifiers() {
+        return quantifiers;
+    }
+
+    public void setQuantifiers() {
+        quantifiers = true;
     }
 
     public boolean hasLookAroundAssertions() {
@@ -146,16 +157,29 @@ public class RegexProperties implements JsonConvertible {
         largeCountedRepetitions = true;
     }
 
-    public void setInnerLiteral(String containedLiteral) {
-        this.innerLiteral = containedLiteral;
+    public boolean charClassesCanBeMatchedWithMask() {
+        return charClassesCanBeMatchedWithMask;
+    }
+
+    public void unsetCharClassesCanBeMatchedWithMask() {
+        charClassesCanBeMatchedWithMask = false;
+    }
+
+    public void setInnerLiteral(int start, int end) {
+        this.innerLiteralStart = start;
+        this.innerLiteralEnd = end;
     }
 
     public boolean hasInnerLiteral() {
-        return innerLiteral != null;
+        return innerLiteralStart >= 0;
     }
 
-    public String getInnerLiteral() {
-        return innerLiteral;
+    public int getInnerLiteralStart() {
+        return innerLiteralStart;
+    }
+
+    public int getInnerLiteralEnd() {
+        return innerLiteralEnd;
     }
 
     @TruffleBoundary

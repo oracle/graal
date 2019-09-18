@@ -416,7 +416,7 @@ public class SourceSectionTest extends AbstractPolyglotTest {
         try (FileWriter w = new FileWriter(rawFile)) {
             w.write("Hello world!");
         }
-        TruffleFile sample = languageEnv.getTruffleFile(rawFile.getPath());
+        TruffleFile sample = languageEnv.getPublicTruffleFile(rawFile.getPath());
 
         Source complexHello = Source.newBuilder("", sample).build();
         SourceSection helloTo = complexHello.createSection(6, 5);

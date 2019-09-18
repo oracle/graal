@@ -40,7 +40,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public class NFAStateTransition implements JsonConvertible {
 
     private final short id;
-    private final NFAState source;
+    private NFAState source;
     private final NFAState target;
     private final GroupBoundaries groupBoundaries;
 
@@ -57,6 +57,10 @@ public class NFAStateTransition implements JsonConvertible {
 
     public NFAState getSource() {
         return source;
+    }
+
+    public void setSource(NFAState source) {
+        this.source = source;
     }
 
     public NFAState getTarget() {

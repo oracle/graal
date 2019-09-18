@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.test.OSUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -82,6 +81,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -121,15 +121,22 @@ public final class MemoryFileSystem implements FileSystem {
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;
     private final Path root;
+    private final Path tmpDir;
     private volatile Path userDir;
     private long nextInode = 0;
 
     public MemoryFileSystem() throws IOException {
+        this("/tmp");
+    }
+
+    public MemoryFileSystem(String tmpDirPath) throws IOException {
         this.inodes = new HashMap<>();
         this.blocks = new HashMap<>();
         root = MemoryPath.getRootDirectory();
         userDir = root;
         createDirectoryImpl();
+        tmpDir = root.resolve(tmpDirPath);
+        createDirectory(tmpDir);
     }
 
     @Override
@@ -407,6 +414,11 @@ public final class MemoryFileSystem implements FileSystem {
     @Override
     public String getSeparator() {
         return ((MemoryPath) root).delegate.getFileSystem().getSeparator();
+    }
+
+    @Override
+    public Path getTempDirectory() {
+        return tmpDir;
     }
 
     private static Object[] parse(String attributesSelector) {
@@ -1119,20 +1131,11 @@ public final class MemoryFileSystem implements FileSystem {
         }
 
         static Path getRootDirectory() {
-            Path delegate;
-            if (OSUtils.isUnix()) {
-                delegate = Paths.get("/");
-            } else {
-                delegate = null;
-                for (Path root : Paths.get("").getFileSystem().getRootDirectories()) {
-                    delegate = root;
-                    break;
-                }
+            List<? extends Path> rootDirectories = FileSystemsTest.getRootDirectories();
+            if (rootDirectories.isEmpty()) {
+                throw new IllegalStateException("No root directory.");
             }
-            if (delegate == null) {
-                throw new IllegalStateException("No root found.");
-            }
-            return new MemoryPath(delegate);
+            return new MemoryPath(rootDirectories.get(0));
         }
     }
 }

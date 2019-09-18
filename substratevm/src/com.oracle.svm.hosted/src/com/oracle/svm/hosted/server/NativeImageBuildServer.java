@@ -78,6 +78,7 @@ import com.oracle.svm.hosted.ImageBuildTask;
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -152,6 +153,10 @@ public final class NativeImageBuildServer {
     }
 
     public static void main(String[] argsArray) {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+
         if (!verifyValidJavaVersionAndPlatform()) {
             System.exit(FAILED_EXIT_STATUS);
         }

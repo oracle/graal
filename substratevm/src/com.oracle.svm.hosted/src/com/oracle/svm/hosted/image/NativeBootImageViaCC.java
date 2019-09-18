@@ -58,12 +58,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NativeBootImageViaCC extends NativeBootImage {
 
-    protected final HostedMethod mainEntryPoint;
-
     public NativeBootImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader imageClassLoader) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, imageClassLoader);
-        this.mainEntryPoint = mainEntryPoint;
+                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
     }
 
     public NativeImageKind getOutputKind() {
@@ -128,6 +125,13 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
+
+            additionalPreOptions.add("-arch");
+            if (Platform.includedIn(Platform.AMD64.class)) {
+                additionalPreOptions.add("x86_64");
+            } else if (Platform.includedIn(Platform.AArch64.class)) {
+                additionalPreOptions.add("arm64");
+            }
         }
 
         @Override
@@ -183,7 +187,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         @Override
         public List<String> getCommand() {
             ArrayList<String> cmd = new ArrayList<>();
-            cmd.add(compilerCommand);
+            cmd.add(getCompilerCommand());
 
             setOutputKind(cmd);
 
@@ -268,15 +272,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addInputFile(staticLibraryPath.toString());
         }
 
-        addMainEntryPoint(inv);
-
         return inv;
-    }
-
-    protected void addMainEntryPoint(CCLinkerInvocation inv) {
-        if (mainEntryPoint != null) {
-            inv.addSymbolAlias(mainEntryPoint, "main");
-        }
     }
 
     @Override
@@ -300,6 +296,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 }
             } else {
                 write(tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
+            }
+            if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+                return null;
             }
             // 2. run a command to make an executable of it
             int status;

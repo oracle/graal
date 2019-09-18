@@ -179,7 +179,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
 
         File file = File.createTempFile("Hello", ".bin").getCanonicalFile();
         file.deleteOnExit();
-        TruffleFile truffleFile = languageEnv.getTruffleFile(file.getPath());
+        TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getPath());
 
         // mime-type not specified + invalid langauge -> characters
         source = Source.newBuilder("", truffleFile).build();
@@ -200,7 +200,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     public void testNoContentSource() throws Exception {
         setupEnv();
         // Relative file
-        TruffleFile truffleFile = languageEnv.getTruffleFile("some/path");
+        TruffleFile truffleFile = languageEnv.getPublicTruffleFile("some/path");
         URI uri = new URI("some/path");
         Source source = Source.newBuilder("", truffleFile).content(Source.CONTENT_NONE).build();
         assertFalse(source.hasBytes());
@@ -217,7 +217,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         tempFile.toFile().deleteOnExit();
         String content = "// Test";
         Files.write(tempFile, content.getBytes("UTF-8"));
-        truffleFile = languageEnv.getTruffleFile(tempFile.toString());
+        truffleFile = languageEnv.getPublicTruffleFile(tempFile.toString());
         Source source2 = Source.newBuilder("", truffleFile).content(Source.CONTENT_NONE).mimeType("text/x-java").build();
         assertFalse(source2.hasBytes());
         assertFalse(source2.hasCharacters());
@@ -240,7 +240,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             try (SeekableByteChannel c = file.newByteChannel(EnumSet.of(WRITE, CREATE))) {
                 c.write(ByteBuffer.wrap(content.getBytes("UTF-8")));
             }
-            TruffleFile relativeFile = languageEnv.getTruffleFile(relativeName);
+            TruffleFile relativeFile = languageEnv.getPublicTruffleFile(relativeName);
             Source source = Source.newBuilder("", relativeFile).build();
             assertFalse(source.hasBytes());
             assertTrue(source.hasCharacters());
@@ -296,7 +296,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
 
         String nonCannonical = file.getParent() + File.separatorChar + ".." + File.separatorChar + file.getParentFile().getName() + File.separatorChar + file.getName();
 
-        final TruffleFile nonCannonicalFile = languageEnv.getTruffleFile(nonCannonical);
+        final TruffleFile nonCannonicalFile = languageEnv.getPublicTruffleFile(nonCannonical);
         assertTrue("Exists, as it is the same file", nonCannonicalFile.exists());
         SourceBuilder builder = Source.newBuilder("lang", nonCannonicalFile).mimeType("text/x-java");
 
@@ -323,7 +323,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             w.write(0x04);
             w.write(0x05);
         }
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(file.getAbsolutePath());
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getAbsolutePath());
 
         Source source = Source.newBuilder("lang", truffleFile).build();
         assertEither(source.getMimeType(), null, "application/octet-stream", "text/plain", "application/macbinary");
@@ -350,7 +350,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.delete();
         assertFalse("Doesn't exist", file.exists());
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(file.getAbsolutePath());
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getAbsolutePath());
 
         SourceBuilder builder = Source.newBuilder("lang", truffleFile);
 
@@ -394,7 +394,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         setupEnv();
         File file = File.createTempFile("Hello", ".java").getCanonicalFile();
         file.deleteOnExit();
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(file.getAbsolutePath());
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getAbsolutePath());
 
         String text = "// Hello";
         SourceBuilder builder = Source.newBuilder("java", truffleFile).content(text).mimeType("text/x-java");
@@ -416,7 +416,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         File file = new File("some.tjs");
 
         String text = "// Hello";
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(file.getAbsolutePath());
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getAbsolutePath());
 
         Source source = Source.newBuilder("lang", truffleFile).content(text).mimeType("text/javascript").build();
         assertEquals("The content has been changed", text, source.getCharacters());
@@ -485,7 +485,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         final String path = "test.input";
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(path);
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(path);
 
         final Source source1 = Source.newBuilder("lang", truffleFile).content(code1).build();
         assertEquals(source1.getCharacters(), code1);
@@ -503,7 +503,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         final String path = new File("test.input").getAbsolutePath();
         final String code1 = "test\ntest";
         final String code2 = "test\ntest\nlonger\ntest";
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(path);
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(path);
 
         final Source source1 = Source.newBuilder("lang", truffleFile).content(code1).build();
         assertEquals(source1.getCharacters(), code1);
@@ -591,7 +591,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     public void testBuiltFromSourceFile() {
         setupEnv();
         File file = new File("some.tjs");
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(file.getAbsolutePath());
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getAbsolutePath());
         Source source1 = Source.newBuilder("Lang", truffleFile).content("Empty").build();
         Source source2 = Source.newBuilder(source1).build();
         assertSameProperties(source1, source2);
@@ -612,7 +612,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     public void testBuiltFromNoContentSource() {
         setupEnv();
         // Relative file
-        TruffleFile truffleFile = languageEnv.getTruffleFile("some/path");
+        TruffleFile truffleFile = languageEnv.getPublicTruffleFile("some/path");
         Source source1 = Source.newBuilder("Lang", truffleFile).content(Source.CONTENT_NONE).build();
         Source source2 = Source.newBuilder(source1).build();
         assertSameProperties(source1, source2);
@@ -684,7 +684,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             w.write(text);
         }
 
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(file.getAbsolutePath());
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getAbsolutePath());
 
         Source original = Source.newBuilder("lang", truffleFile).build();
         assertEquals(text, original.getCharacters());
@@ -735,7 +735,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(content.getBytes(StandardCharsets.UTF_16LE));
         }
-        TruffleFile file = languageEnv.getTruffleFile(testFile.getPath());
+        TruffleFile file = languageEnv.getPublicTruffleFile(testFile.getPath());
         Source src = Source.newBuilder("lang", file).encoding(StandardCharsets.UTF_16LE).build();
         assertEquals(content, src.getCharacters().toString());
 
@@ -743,7 +743,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
         }
-        file = languageEnv.getTruffleFile(testFile.getPath());
+        file = languageEnv.getPublicTruffleFile(testFile.getPath());
         src = Source.newBuilder("lang", file).build();
         assertEquals(xmlContent, src.getCharacters().toString());
 
@@ -751,7 +751,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(content.getBytes(StandardCharsets.UTF_8));
         }
-        file = languageEnv.getTruffleFile(testFile.getPath());
+        file = languageEnv.getPublicTruffleFile(testFile.getPath());
         src = Source.newBuilder("lang", file).build();
         assertEquals(content, src.getCharacters().toString());
     }
@@ -828,8 +828,8 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             w.write("function test() {\n" + "  return 1;\n" + "}\n");
         }
 
-        final TruffleFile truffleFile1 = languageEnv.getTruffleFile(f1.getAbsolutePath());
-        final TruffleFile truffleFile2 = languageEnv.getTruffleFile(f2.getAbsolutePath());
+        final TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(f1.getAbsolutePath());
+        final TruffleFile truffleFile2 = languageEnv.getPublicTruffleFile(f2.getAbsolutePath());
 
         Source s1 = Source.newBuilder("lang", truffleFile1).build();
         Source s2 = Source.newBuilder("lang", truffleFile2).build();
@@ -879,7 +879,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     @Test
     public void throwsErrorIfLangIsNull1() {
         try {
-            TruffleFile file = languageEnv.getTruffleFile("foo.bar");
+            TruffleFile file = languageEnv.getPublicTruffleFile("foo.bar");
             Source.newBuilder(null, file);
             fail();
         } catch (NullPointerException ex) {
@@ -946,7 +946,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         String path = file.getPath();
         File compareFile = new File(path);
 
-        final TruffleFile truffleFile = languageEnv.getTruffleFile(path);
+        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(path);
 
         String name = "foobar";
         String mimeType = "text/x-java";
@@ -969,8 +969,8 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     @Test
     public void testFindLaguage() throws IOException {
         setupEnv();
-        TruffleFile knownMimeTypeFile = languageEnv.getTruffleFile("test.tjs");
-        TruffleFile unknownMimeTypeFile = languageEnv.getTruffleFile("test.unknown");
+        TruffleFile knownMimeTypeFile = languageEnv.getPublicTruffleFile("test.tjs");
+        TruffleFile unknownMimeTypeFile = languageEnv.getPublicTruffleFile("test.unknown");
         assertEquals("application/test-js", Source.findMimeType(knownMimeTypeFile));
         assertNull(Source.findMimeType(unknownMimeTypeFile));
     }

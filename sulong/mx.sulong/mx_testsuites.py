@@ -30,7 +30,6 @@
 from __future__ import print_function
 
 import fnmatch
-import glob
 
 import mx
 import mx_unittest
@@ -154,6 +153,12 @@ class SulongTestSuite(mx.NativeProject):  # pylint: disable=too-many-ancestors
         env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
         env['SO_EXT'] = mx.add_lib_suffix("")
         env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
+        env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
+        env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
+        env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
+        env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
+        env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
             env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
@@ -207,7 +212,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         return run(vmArgs, testClasses)
 
     def defaultTestClasses(self):
-        return ["com.oracle.truffle.llvm.test.GCCSuite"]
+        return ["com.oracle.truffle.llvm.tests.GCCSuite"]
 
     def getTestFile(self):
         if not hasattr(self, '_testfile'):
@@ -272,30 +277,4 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         roots = [d.get_path(resolve=True) for d in self.buildDependencies if d.isPackedResourceLibrary()]
         env['VPATH'] = ':'.join(roots)
         env['TESTFILE'] = self.getTestFile()
-        return env
-
-
-class GlobNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
-    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
-        projectDir = args.pop('dir', None)
-        if projectDir:
-            d = os.path.join(suite.dir, projectDir)
-        elif subDir is None:
-            d = os.path.join(suite.dir, name)
-        else:
-            d = os.path.join(suite.dir, subDir, name)
-        super(GlobNativeProject, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
-
-    def getResults(self, replaceVar=mx_subst.results_substitutions):
-        results = super(GlobNativeProject, self).getResults(replaceVar)
-
-        def _glob(pathname):
-            return glob.glob(pathname) or mx.abort(
-                'Glob pattern "{}" did not return any file'.format(os.path.relpath(pathname, self.getOutput(replaceVar))))
-        results = [expanded for entry in results for expanded in _glob(entry)]
-        return results
-
-    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
-        env = super(GlobNativeProject, self).getBuildEnv(replaceVar=replaceVar)
-        env['SRC_DIR'] = self.dir
         return env

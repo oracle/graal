@@ -33,8 +33,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
-import com.oracle.svm.core.heap.PinnedAllocator;
 import com.oracle.svm.core.meta.SharedMethod;
 
 public final class InstalledCodeObserverSupport {
@@ -57,11 +57,11 @@ public final class InstalledCodeObserverSupport {
         return observers;
     }
 
-    public static InstalledCodeObserver.InstalledCodeObserverHandle[] installObservers(InstalledCodeObserver[] observers, PinnedAllocator metaInfoAllocator) {
+    public static InstalledCodeObserver.InstalledCodeObserverHandle[] installObservers(InstalledCodeObserver[] observers) {
         InstalledCodeObserver.InstalledCodeObserverHandle[] observerHandles = new InstalledCodeObserver.InstalledCodeObserverHandle[observers.length];
         int index = 0;
         for (InstalledCodeObserver observer : observers) {
-            observerHandles[index++] = observer.install(metaInfoAllocator);
+            observerHandles[index++] = observer.install();
         }
         return observerHandles;
     }
@@ -78,6 +78,15 @@ public final class InstalledCodeObserverSupport {
         for (InstalledCodeObserverHandle handle : observerHandles) {
             if (handle != null) {
                 handle.release();
+            }
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public static void removeObserversOnTearDown(InstalledCodeObserverHandle[] observerHandles) {
+        for (InstalledCodeObserverHandle handle : observerHandles) {
+            if (handle != null) {
+                handle.releaseOnTearDown();
             }
         }
     }

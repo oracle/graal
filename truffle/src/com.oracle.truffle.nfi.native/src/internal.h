@@ -71,6 +71,7 @@ struct __TruffleContextInternal {
     jfieldID LibFFIType_type;
     jclass LibFFIType_EnvType;
     jclass LibFFIType_ObjectType;
+    jclass LibFFIType_NullableType;
     jclass LibFFIType_StringType;
 
     jclass NativeString;

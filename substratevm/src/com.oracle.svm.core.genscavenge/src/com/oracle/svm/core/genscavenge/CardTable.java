@@ -30,7 +30,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -375,32 +374,20 @@ public final class CardTable {
 
     protected static class ReferenceToYoungObjectVisitor implements ObjectVisitor {
 
-        /* Final state. */
         private final ReferenceToYoungObjectReferenceVisitor visitor;
 
         protected ReferenceToYoungObjectVisitor(ReferenceToYoungObjectReferenceVisitor visitor) {
-            super();
             this.visitor = visitor;
         }
 
         @Override
         public boolean visitObject(Object obj) {
             final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).newline();
-            if (!visitor.prologue()) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
-                witness.string("[[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).string("  fails prologue").string("]").newline();
-                return false;
-            }
-            trace.string("  past prologue; calling walkObject").newline();
+            visitor.reset();
+            trace.string("  calling walkObject").newline();
             if (!InteriorObjRefWalker.walkObject(obj, visitor)) {
                 final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
                 witness.string("[[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).string("  fails InteriorObjRefWalker.walkObject").string("]").newline();
-                return false;
-            }
-            trace.string("  past walkObject; calling epilogue").newline();
-            if (!visitor.epilogue()) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog();
-                witness.string("[[ReferenceToYoungObjectVisitor.visitObject:").string("  obj: ").object(obj).string("  fails prologue").string("]").newline();
                 return false;
             }
             trace.string("  visitor.getFound(): ").bool(visitor.found).string("  returns true").string("]").newline();
@@ -437,13 +424,10 @@ public final class CardTable {
         private boolean witnessForDebugging;
 
         ReferenceToYoungObjectReferenceVisitor() {
-            super();
         }
 
-        @Override
-        public boolean prologue() {
+        public void reset() {
             found = false;
-            return true;
         }
 
         @Override
@@ -463,7 +447,7 @@ public final class CardTable {
             final boolean paranoid = true;
             if (paranoid) {
                 /* Carefully check out the object. */
-                final UnsignedWord header = ObjectHeader.readHeaderFromPointer(p);
+                final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointer(p);
                 /* It should *not* be a zapped value. */
                 if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
                     final Log paranoidLog = Log.log().string("[CardTable.ReferenceToYoungObjectReferenceVisitor.visitObjectReference:");

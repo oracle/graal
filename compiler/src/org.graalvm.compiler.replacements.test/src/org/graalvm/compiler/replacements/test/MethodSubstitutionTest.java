@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,13 +56,21 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         return testGraph(snippet, null);
     }
 
-    @SuppressWarnings("try")
+    protected StructuredGraph testGraph(final String snippet, boolean assertInvoke) {
+        return testGraph(snippet, null, assertInvoke);
+    }
+
     protected StructuredGraph testGraph(final String snippet, String name) {
-        return testGraph(getResolvedJavaMethod(snippet), name);
+        return testGraph(snippet, name, false);
     }
 
     @SuppressWarnings("try")
-    protected StructuredGraph testGraph(final ResolvedJavaMethod method, String name) {
+    protected StructuredGraph testGraph(final String snippet, String name, boolean assertInvoke) {
+        return testGraph(getResolvedJavaMethod(snippet), name, assertInvoke);
+    }
+
+    @SuppressWarnings("try")
+    protected StructuredGraph testGraph(final ResolvedJavaMethod method, String name, boolean assertInvoke) {
         DebugContext debug = getDebugContext();
         try (DebugContext.Scope s = debug.scope("MethodSubstitutionTest", method)) {
             StructuredGraph graph = parseEager(method, AllowAssumptions.YES, debug);
@@ -86,13 +94,22 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
                         Invoke invoke = (Invoke) node;
                         if (invoke.callTarget() instanceof MethodCallTargetNode) {
                             MethodCallTargetNode call = (MethodCallTargetNode) invoke.callTarget();
-                            assertTrue(!call.targetMethod().getName().equals(name), "Unexpected invoke of intrinsic %s", call.targetMethod());
+                            boolean found = call.targetMethod().getName().equals(name);
+                            if (assertInvoke) {
+                                assertTrue(found, "Expected to find a call to %s", name);
+                            } else {
+                                assertFalse(found, "Unexpected call to %s", name);
+                            }
                         }
                     }
 
                 }
             } else {
-                assertNotInGraph(graph, Invoke.class);
+                if (assertInvoke) {
+                    assertInGraph(graph, Invoke.class);
+                } else {
+                    assertNotInGraph(graph, Invoke.class);
+                }
             }
             return graph;
         } catch (Throwable e) {
