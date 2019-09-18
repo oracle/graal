@@ -268,11 +268,11 @@ public class RuntimeCodeInfo {
         logTable(Log.log());
     }
 
+    private static final RingBuffer.Consumer<String> consumer = (context, s) -> Log.log().newline().string(s);
+
     public void logRecentOperations(Log log) {
         log.string("== [Recent RuntimeCodeCache operations: ");
-        recentCodeCacheOperations.foreach((context, entry) -> {
-            Log.log().newline().string(entry);
-        });
+        recentCodeCacheOperations.foreach(consumer);
         log.string("]").newline();
     }
 
