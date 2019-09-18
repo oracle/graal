@@ -100,6 +100,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-client":
                 case "-server":
                 case "-d64":
+                case "-Xdebug": // only for backward compatibility
                     // ignore
                     break;
 
@@ -115,6 +116,9 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     } else if (arg.startsWith("-Xverify:")) {
                         String mode = arg.substring("-Xverify:".length());
                         espressoOptions.put("java.Verify", mode);
+                    } else if (arg.startsWith("-Xrunjdwp:")) {
+                        String value = arg.substring("-Xrunjdwp:".length());
+                        espressoOptions.put("java.JDWPOptions", value);
                     } else
                     // -Dsystem.property=value
                     if (arg.startsWith("-D")) {
