@@ -272,7 +272,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     private String classInitializationErrorMessage(Class<?> clazz, String action) {
         if (!TraceClassInitialization.getValue()) {
-            return " To see why " + clazz.getTypeName() + " got initialized use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+");
+            return "To see why " + clazz.getTypeName() + " got initialized use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+");
         } else if (initializedClasses.containsKey(clazz)) {
 
             StackTraceElement[] trace = initializedClasses.get(clazz);
@@ -496,12 +496,14 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                     detailedMessage.append(c.getTypeName()).append(" was unintentionally initialized at build time. ");
                     detailedMessage.append(classInitializationErrorMessage(c,
                                     "Try marking this class for build-time initialization with " + SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization,
-                                                    c.getTypeName(), "initialize-at-build-time")));
+                                                    c.getTypeName(), "initialize-at-build-time")))
+                                    .append("\n");
                 } else {
                     assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind";
                     String reason = classInitializationConfiguration.lookupReason(c.getTypeName());
                     detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at build time (").append(reason).append("). ")
-                                    .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()));
+                                    .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()))
+                                    .append("\n");
                 }
             });
 
