@@ -428,7 +428,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
                     if (callNodeTable[callNodeOffset] instanceof WasmCallStubNode) {
                         // Lazily create the direct call node at this code position, and recompile to eliminate this check.
-                        final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().callTarget();
+                        final RootCallTarget target = ((WasmCallStubNode) callNodeTable[callNodeOffset]).function().resolveCallTarget();
                         callNodeTable[callNodeOffset] = Truffle.getRuntime().createDirectCallNode(target);
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                     }
@@ -506,7 +506,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer -= args.length;
 
                     logger.finest(() -> "indirect call to function " + function + " (" + args.length + " args)");
-                    Object result = callNode.call(function.callTarget(), args);
+                    Object result = callNode.call(function.resolveCallTarget(), args);
                     logger.finest(() -> "return from indirect_call to function " + function + " : " + result);
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in the future.

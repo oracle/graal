@@ -73,7 +73,9 @@ public class WasmFunction implements TruffleObject {
         this.callTarget = callTarget;
     }
 
-    public RootCallTarget callTarget() {
+    public RootCallTarget resolveCallTarget() {
+        // TODO: If this is an imported function, the call target might not yet be resolved.
+        //  Check this, and wait until the call target is resolved.
         return callTarget;
     }
 
@@ -89,7 +91,7 @@ public class WasmFunction implements TruffleObject {
 
     @ExportMessage
     Object execute(Object[] arguments) {
-        return callTarget().call(arguments);
+        return resolveCallTarget().call(arguments);
     }
 
     public WasmCodeEntry codeEntry() {
@@ -98,6 +100,10 @@ public class WasmFunction implements TruffleObject {
 
     public void setCodeEntry(WasmCodeEntry codeEntry) {
         this.codeEntry = codeEntry;
+    }
+
+    public boolean isImported() {
+        return codeEntry == null;
     }
 
     public int typeIndex() {
