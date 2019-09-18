@@ -64,7 +64,7 @@ public class LowTier extends PhaseSuite<LowTierContext> {
         public static final OptionKey<Boolean> ProfileCompiledMethods = new OptionKey<>(false);
 
         @Option(help = "Enable autovectorization", type = OptionType.Expert)
-        public static final OptionKey<Boolean> Autovectorize = new OptionKey<>(true);
+        public static final OptionKey<Boolean> Autovectorize = new OptionKey<>(false);
 
         @Option(help = "Substring of methods and/or classes that should be ex/included", type = OptionType.Debug)
         public static final OptionKey<String> AVList = new OptionKey<>("");
