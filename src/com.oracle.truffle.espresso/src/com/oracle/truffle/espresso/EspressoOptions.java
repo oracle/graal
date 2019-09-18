@@ -139,6 +139,79 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> InlineFieldAccessors = new OptionKey<>(false);
 
+    public static class JDWPOptions {
+        public final String transport;
+        public final String address;
+        public final boolean server;
+        public final boolean suspend;
+
+        JDWPOptions(String transport, String address, boolean server, boolean suspend) {
+            this.transport = transport;
+            this.address = address;
+            this.server = server;
+            this.suspend = suspend;
+        }
+
+        @Override
+        public String toString() {
+            return "JDWPOptions{" +
+                            "transport=" + transport + "," +
+                            "address=" + address + "," +
+                            "server=" + server + "," +
+                            "suspend=" + suspend + "}";
+        }
+    }
+
+    private static final OptionType<JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
+                    new Function<String, JDWPOptions>() {
+
+                        private boolean yesOrNo(String key, String value) {
+                            if (!"y".equals(value) && !"n".equals(value)) {
+                                throw new IllegalArgumentException("Invalid option value: -Xrunjwdp:" + key + " can be only 'y' or 'n'.");
+                            }
+                            return "y".equals(value);
+                        }
+
+                        @Override
+                        public JDWPOptions apply(String s) {
+                            final String[] options = s.split(",");
+                            String transport = null;
+                            String address = null;
+                            boolean server = false;
+                            boolean suspend = true;
+
+                            for (String keyValue : options) {
+                                String[] parts = keyValue.split("=");
+                                if (parts.length != 2) {
+                                    throw new IllegalArgumentException("-Xrunjdwp: options must be a comma separated list of key=value pairs.");
+                                }
+                                String key = parts[0];
+                                String value = parts[1];
+                                switch (key) {
+                                    case "address":
+                                        address = value;
+                                        break;
+                                    case "transport":
+                                        transport = value;
+                                        break;
+                                    case "server":
+                                        server = yesOrNo(key, value);
+                                        break;
+                                    case "suspend":
+                                        suspend = yesOrNo(key, value);
+                                        break;
+                                    default:
+                                        throw new IllegalArgumentException("Invalid option -Xrunjdwp:" + key + ". Supported options: 'transport', 'address', 'server' and 'suspend'.");
+                                }
+                            }
+                            return new JDWPOptions(transport, address, server, suspend);
+                        }
+                    });
+
+    @Option(help = "JDWP Options. e.g. JDWPOptions=transport=dt_socket,server=y,address=8000,suspend=y", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    public static final OptionKey<JDWPOptions> JDWPOptions = new OptionKey<>(null, JDWP_OPTIONS_OPTION_TYPE);
+
     // Threads are enabled by default.
     public static final boolean ENABLE_THREADS = (System.getProperty("espresso.EnableThreads") == null) || Boolean.getBoolean("espresso.EnableThreads");
 
