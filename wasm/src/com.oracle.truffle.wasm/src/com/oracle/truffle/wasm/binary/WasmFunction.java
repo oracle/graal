@@ -38,19 +38,31 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmFunction implements TruffleObject {
+    public static class ImportSpecifier {
+        public final String moduleName;
+        public final String functionName;
+
+        public ImportSpecifier(String moduleName, String functionName) {
+            this.moduleName = moduleName;
+            this.functionName = functionName;
+        }
+    }
+
     private final SymbolTable symbolTable;
+    private ImportSpecifier importSpecifier;
     private WasmCodeEntry codeEntry;
     private final String name;
     private final int typeIndex;
     private RootCallTarget callTarget;
 
-    public WasmFunction(SymbolTable symbolTable, WasmLanguage language, int index, int typeIndex) {
+    public WasmFunction(SymbolTable symbolTable, WasmLanguage language, int index, int typeIndex, ImportSpecifier importSpecifier) {
         this.symbolTable = symbolTable;
+        this.importSpecifier = importSpecifier;
         this.codeEntry = null;
         // TODO: Establish a valid naming convention (integers are not valid identifiers), or remove this.
         this.name = String.valueOf(index);
         this.typeIndex = typeIndex;
-        this.callTarget = Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(language));
+        this.callTarget = null;
     }
 
     public int numArguments() {
@@ -74,8 +86,11 @@ public class WasmFunction implements TruffleObject {
     }
 
     public RootCallTarget resolveCallTarget() {
-        // TODO: If this is an imported function, the call target might not yet be resolved.
-        //  Check this, and wait until the call target is resolved.
+        if (callTarget == null) {
+            // TODO: If this is an imported function, the call target might not yet be resolved.
+            //  Check this, and wait until the call target gets resolved.
+            throw new RuntimeException("Call target was not resolved.");
+        }
         return callTarget;
     }
 
@@ -99,11 +114,22 @@ public class WasmFunction implements TruffleObject {
     }
 
     public void setCodeEntry(WasmCodeEntry codeEntry) {
+        if (isImported()) {
+            throw new RuntimeException("Cannot set the code entry for an imported function.");
+        }
         this.codeEntry = codeEntry;
     }
 
     public boolean isImported() {
-        return codeEntry == null;
+        return importSpecifier != null;
+    }
+
+    public String importedModuleName() {
+        return isImported() ? importSpecifier.moduleName : null;
+    }
+
+    public String importedFunctionName() {
+        return isImported() ? importSpecifier.functionName : null;
     }
 
     public int typeIndex() {

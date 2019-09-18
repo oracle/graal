@@ -84,6 +84,10 @@ public class WasmContext {
         return scopes;
     }
 
+    public Map<String, WasmModule> modules() {
+        return modules;
+    }
+
     void registerModule(WasmModule module) {
         modules.put(module.name(), module);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,21 @@
  */
 package com.oracle.truffle.wasm.binary;
 
-public enum Result {
-    OK,
-    ERROR;
+import java.util.Map;
+
+public class Linker {
+    private final WasmLanguage language;
+
+    public Linker(WasmLanguage language) {
+        this.language = language;
+    }
+
+    public void link(WasmModule module) {
+        final WasmContext context = language.getContextReference().get();
+        for (WasmFunction function : module.symbolTable().importedFunctions()) {
+            final WasmModule importedModule = context.modules().get(function.importedModuleName());
+            final WasmFunction importedFunction = (WasmFunction) importedModule.readMember(function.importedFunctionName());
+            function.setCallTarget(importedFunction.resolveCallTarget());
+        }
+    }
 }
