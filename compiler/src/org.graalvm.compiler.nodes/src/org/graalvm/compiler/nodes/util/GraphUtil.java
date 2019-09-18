@@ -742,8 +742,8 @@ public class GraphUtil {
 
     /**
      * Tries to find an original value of the given node by traversing through proxies and
-     * unambiguous phis. Note that this method will perform an exhaustive search through phis. It is
-     * intended to be used during graph building, when phi nodes aren't yet canonicalized.
+     * unambiguous phis. Note that this method will perform an exhaustive search through phis. This
+     * method must not be used during graph building as phi nodes may not yet have all their inputs.
      *
      * @param value The node whose original value should be determined.
      * @return The original value (which might be the input value itself).
