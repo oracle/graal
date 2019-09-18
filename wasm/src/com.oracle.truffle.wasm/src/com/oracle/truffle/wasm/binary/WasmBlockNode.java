@@ -1070,7 +1070,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, y < x ? 1 : 0);
                     stackPointer++;
-                    logger.finest(() -> String.format("0x%08X <= 0x%08X ? [i32]", y, x));
+                    logger.finest(() -> String.format("0x%08X < 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_LT_U: {
@@ -1080,7 +1080,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int y = popInt(frame, stackPointer);
                     pushInt(frame, stackPointer, Integer.compareUnsigned(y, x) < 0 ? 1 : 0);
                     stackPointer++;
-                    logger.finest(() -> String.format("0x%08X <=u 0x%08X ? [i32]", y, x));
+                    logger.finest(() -> String.format("0x%08X <u 0x%08X ? [i32]", y, x));
                     break;
                 }
                 case I32_GT_S: {
