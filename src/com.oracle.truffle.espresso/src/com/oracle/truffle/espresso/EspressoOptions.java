@@ -113,6 +113,10 @@ public final class EspressoOptions {
                     category = OptionCategory.USER, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
+    @Option(help = "JDWP Options. e.g. JDWPOptions=transport=dt_socket,server=y,address=8000,suspend=y", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
+    public static final OptionKey<String> JDWPOptions = new OptionKey<>("");
+
     public enum VerifyMode {
         NONE,
         REMOTE, // Verifies all bytecodes not loaded by the bootstrap class loader.
