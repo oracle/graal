@@ -55,7 +55,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
     @Temp({REG}) protected Value addressValueTemp;
     @Temp({REG}) protected Value lengthValueTemp;
 
-    private final boolean isUnaligned;
+    private final boolean isAligned;
     private final boolean useDcZva;
     private final int zvaLength;
 
@@ -64,12 +64,12 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
      *
      * @param address starting address of the memory chunk to be zeroed.
      * @param length size of the memory chunk to be zeroed, in bytes.
-     * @param isUnaligned whether both address and size are aligned to 8 bytes.
+     * @param isAligned whether both address and size are aligned to 8 bytes.
      * @param useDcZva is DC ZVA instruction is able to use.
      * @param zvaLength the ZVA length info of current AArch64 CPU, negative value indicates length
      *            is unknown at compile time.
      */
-    public AArch64ZeroMemoryOp(Value address, Value length, boolean isUnaligned, boolean useDcZva, int zvaLength) {
+    public AArch64ZeroMemoryOp(Value address, Value length, boolean isAligned, boolean useDcZva, int zvaLength) {
         super(TYPE);
         this.addressValue = address;
         this.lengthValue = length;
@@ -77,7 +77,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
         this.lengthValueTemp = length;
         this.useDcZva = useDcZva;
         this.zvaLength = zvaLength;
-        this.isUnaligned = isUnaligned;
+        this.isAligned = isAligned;
     }
 
     @Override
@@ -94,7 +94,11 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
             // Jump to DONE if size is zero.
             masm.cbz(64, size, done);
 
-            if (isUnaligned) {
+            if (!isAligned) {
+                Label baseAlignedTo2Bytes = new Label();
+                Label baseAlignedTo4Bytes = new Label();
+                Label baseAlignedTo8Bytes = new Label();
+
                 // Jump to per-byte zeroing loop if the zeroing size is less than 8
                 masm.cmp(64, size, 8);
                 masm.branchConditionally(ConditionFlag.LT, tail);
@@ -103,19 +107,16 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 masm.neg(64, alignmentBits, base);
                 masm.and(64, alignmentBits, alignmentBits, 7);
 
-                Label baseAlignedTo2Bytes = new Label();
                 masm.tbz(alignmentBits, 0, baseAlignedTo2Bytes);
                 masm.sub(64, size, size, 1);
                 masm.str(8, zr, AArch64Address.createPostIndexedImmediateAddress(base, 1));
                 masm.bind(baseAlignedTo2Bytes);
 
-                Label baseAlignedTo4Bytes = new Label();
                 masm.tbz(alignmentBits, 1, baseAlignedTo4Bytes);
                 masm.sub(64, size, size, 2);
                 masm.str(16, zr, AArch64Address.createPostIndexedImmediateAddress(base, 2));
                 masm.bind(baseAlignedTo4Bytes);
 
-                Label baseAlignedTo8Bytes = new Label();
                 masm.tbz(alignmentBits, 2, baseAlignedTo8Bytes);
                 masm.sub(64, size, size, 4);
                 masm.str(32, zr, AArch64Address.createPostIndexedImmediateAddress(base, 4));
@@ -128,21 +129,25 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 // A valid ZVA length should be a power-of-2 value in [4, 2048]
                 assert (CodeUtil.isPowerOf2(zvaLength) && 4 <= zvaLength && zvaLength <= 2048);
 
+                Label preCheck = new Label();
+                Label preLoop = new Label();
+                Label mainCheck = new Label();
+                Label mainLoop = new Label();
+                Label postCheck = new Label();
+                Label postLoop = new Label();
+
                 masm.neg(64, alignmentBits, base);
                 masm.and(64, alignmentBits, alignmentBits, zvaLength - 1);
 
-                // Is size less than number of bytes to be pre-zeroed? Jump to post loop if so.
-                Label postCheck = new Label();
+                // Is size less than number of bytes to be pre-zeroed? Jump to post check if so.
                 masm.cmp(64, size, alignmentBits);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.LE, postCheck);
                 masm.sub(64, size, size, alignmentBits);
 
                 // Pre loop: align base according to the supported bulk zeroing stride.
-                Label preCheck = new Label();
                 masm.jmp(preCheck);
 
                 masm.align(crb.target.wordSize * 2);
-                Label preLoop = new Label();
                 masm.bind(preLoop);
                 masm.str(64, zr, AArch64Address.createPostIndexedImmediateAddress(base, 8));
                 masm.bind(preCheck);
@@ -150,11 +155,9 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.GE, preLoop);
 
                 // Main loop: bulk zeroing
-                Label mainCheck = new Label();
                 masm.jmp(mainCheck);
 
                 masm.align(crb.target.wordSize * 2);
-                Label mainLoop = new Label();
                 masm.bind(mainLoop);
                 masm.dc(AArch64Assembler.DataCacheOperationType.ZVA, base);
                 masm.add(64, base, base, zvaLength);
@@ -168,32 +171,33 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 masm.jmp(postCheck);
 
                 masm.align(crb.target.wordSize * 2);
-                Label postLoop = new Label();
                 masm.bind(postLoop);
                 masm.str(64, zr, AArch64Address.createPostIndexedImmediateAddress(base, 8));
                 masm.bind(postCheck);
                 masm.subs(64, size, size, 8);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.GE, postLoop);
 
-                if (isUnaligned) {
+                if (!isAligned) {
                     // Restore size for tail zeroing
                     masm.add(64, size, size, 8);
                 }
             } else {
-                if (isUnaligned) {
+                Label mainCheck = new Label();
+                Label mainLoop = new Label();
+
+                if (!isAligned) {
                     // After aligning base, we may have size less than 8. Need to check again.
                     masm.cmp(64, size, 8);
                     masm.branchConditionally(ConditionFlag.LT, tail);
                 }
 
-                Label mainCheck = new Label();
                 masm.tbz(base, 3, mainCheck);
                 masm.sub(64, size, size, 8);
                 masm.str(64, zr, AArch64Address.createPostIndexedImmediateAddress(base, 8));
+                masm.jmp(mainCheck);
 
                 // The STP loop that zeros 16 bytes in each iteration.
                 masm.align(crb.target.wordSize * 2);
-                Label mainLoop = new Label();
                 masm.bind(mainLoop);
                 masm.stp(64, zr, zr, AArch64Address.createPostIndexedImmediateAddress(base, 2));
                 masm.bind(mainCheck);
@@ -205,18 +209,19 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 masm.tbz(size, 3, tail);
                 masm.str(64, zr, AArch64Address.createPostIndexedImmediateAddress(base, 8));
 
-                if (isUnaligned) {
+                if (!isAligned) {
                     // Adjust size for tail zeroing
                     masm.sub(64, size, size, 8);
                 }
             }
 
             masm.bind(tail);
-            if (isUnaligned) {
+            if (!isAligned) {
+                Label perByteZeroingLoop = new Label();
+
                 masm.cbz(64, size, done);
                 // We have to ensure size > 0 when entering the following loop
                 masm.align(crb.target.wordSize * 2);
-                Label perByteZeroingLoop = new Label();
                 masm.bind(perByteZeroingLoop);
                 masm.str(8, zr, AArch64Address.createPostIndexedImmediateAddress(base, 1));
                 masm.subs(64, size, size, 1);

@@ -586,15 +586,15 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitZeroMemory(Value address, Value length, boolean isUnaligned) {
-        emitZeroMemory(address, length, isUnaligned, false, -1);
+    public void emitZeroMemory(Value address, Value length, boolean isAligned) {
+        emitZeroMemory(address, length, isAligned, false, -1);
     }
 
-    protected final void emitZeroMemory(Value address, Value length, boolean isUnaligned, boolean useDcZva, int zvaLength) {
+    protected final void emitZeroMemory(Value address, Value length, boolean isAligned, boolean useDcZva, int zvaLength) {
         RegisterValue regAddress = AArch64.r0.asValue(address.getValueKind());
         RegisterValue regLength = AArch64.r1.asValue(length.getValueKind());
         emitMove(regAddress, address);
         emitMove(regLength, length);
-        append(new AArch64ZeroMemoryOp(regAddress, regLength, isUnaligned, useDcZva, zvaLength));
+        append(new AArch64ZeroMemoryOp(regAddress, regLength, isAligned, useDcZva, zvaLength));
     }
 }

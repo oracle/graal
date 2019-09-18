@@ -543,7 +543,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    public void emitZeroMemory(Value address, Value length, boolean isUnaligned) {
+    public void emitZeroMemory(Value address, Value length, boolean isAligned) {
         int dczidValue = config.psrInfoDczidValue;
         EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
 
@@ -562,6 +562,6 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             useDcZva = false;
         }
 
-        emitZeroMemory(address, length, isUnaligned, useDcZva, zvaLength);
+        emitZeroMemory(address, length, isAligned, useDcZva, zvaLength);
     }
 }
