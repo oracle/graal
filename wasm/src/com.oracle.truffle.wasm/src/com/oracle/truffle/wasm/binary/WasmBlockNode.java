@@ -2200,7 +2200,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
     @ExplodeLoop
     private Object[] createArgumentsForCall(VirtualFrame frame, WasmFunction function, int numArgs, int stackPointer) {
         Object[] args = new Object[numArgs];
-        for (int i = 0; i != numArgs; ++i) {
+        for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
             byte type = wasmModule().symbolTable().getFunctionTypeArgumentTypeAt(function.typeIndex(), i);
             switch (type) {
