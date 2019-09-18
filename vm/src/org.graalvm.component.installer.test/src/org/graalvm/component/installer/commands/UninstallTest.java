@@ -184,8 +184,6 @@ public class UninstallTest extends CommandTestBase {
         FD fd = new FD();
         delegateFeedback(fd);
         uc.checkBrokenDependencies();
-
-        assertTrue(fd.source);
         assertTrue(fd.target);
     }
 

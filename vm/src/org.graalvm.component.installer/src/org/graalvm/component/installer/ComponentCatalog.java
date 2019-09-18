@@ -33,7 +33,7 @@ import org.graalvm.component.installer.remote.FileDownloader;
  * @author sdedic
  */
 public interface ComponentCatalog extends ComponentCollection {
-    ComponentInfo findComponent(String id, Version.Match vmatch, boolean localOnly);
+    ComponentInfo findComponentMatch(String id, Version.Match vmatch, boolean localOnly, boolean exact);
 
     /**
      * Attempts to resolve dependencies or create dependency closure. The 'installed' parameter

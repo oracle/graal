@@ -170,11 +170,11 @@ public final class CatalogContents implements ComponentCatalog {
     }
 
     @Override
-    public ComponentInfo findComponent(String id, Version.Match vm) {
+    public ComponentInfo findComponentMatch(String id, Version.Match vm, boolean exact) {
         if (id == null) {
             return null;
         }
-        List<ComponentInfo> infos = doLoadComponents(id, false);
+        List<ComponentInfo> infos = doLoadComponents(id, false, exact);
         if (infos == null) {
             return null;
         }
@@ -194,7 +194,7 @@ public final class CatalogContents implements ComponentCatalog {
             }
             String shortId = id.substring(l + 1);
             try {
-                Collection<ComponentInfo> regs = doLoadComponents(shortId, false);
+                Collection<ComponentInfo> regs = doLoadComponents(shortId, false, false);
                 if (regs == null) {
                     return shortId;
                 }
@@ -245,7 +245,7 @@ public final class CatalogContents implements ComponentCatalog {
 
     @Override
     public Collection<ComponentInfo> loadComponents(String id, Version.Match vmatch, boolean filelist) {
-        List<ComponentInfo> v = doLoadComponents(id, filelist);
+        List<ComponentInfo> v = doLoadComponents(id, filelist, false);
         if (v == null) {
             return null;
         }
@@ -264,8 +264,8 @@ public final class CatalogContents implements ComponentCatalog {
         return versions;
     }
 
-    private List<ComponentInfo> doLoadComponents(String id, boolean filelist) {
-        String fid = findAbbreviatedId(id);
+    private List<ComponentInfo> doLoadComponents(String id, boolean filelist, boolean exact) {
+        String fid = exact ? id : findAbbreviatedId(id);
         if (fid == null) {
             return null;
         }
@@ -299,7 +299,7 @@ public final class CatalogContents implements ComponentCatalog {
     }
 
     @Override
-    public ComponentInfo findComponent(String id, Version.Match vmatch, boolean localOnly) {
+    public ComponentInfo findComponentMatch(String id, Version.Match vmatch, boolean localOnly, boolean exact) {
         ComponentInfo ci = installed.loadSingleComponent(id, false);
         if (ci != null) {
             if (vmatch.test(ci.getVersion())) {
@@ -309,16 +309,16 @@ public final class CatalogContents implements ComponentCatalog {
         if (localOnly) {
             return null;
         }
-        return findComponent(id, vmatch);
+        return findComponentMatch(id, vmatch, exact);
     }
 
     @Override
     public Set<String> findDependencies(ComponentInfo start, boolean closure, Boolean inst, Set<ComponentInfo> result) {
-        return findDependencies(start, closure, inst, result, this::findComponent);
+        return findDependencies(start, closure, inst, result, this::findComponentMatch);
     }
 
     public interface ComponentQuery {
-        ComponentInfo findComponent(String id, Version.Match vmatch, boolean localOnly);
+        ComponentInfo findComponent(String id, Version.Match vmatch, boolean localOnly, boolean exact);
     }
 
     public static Set<String> findDependencies(ComponentInfo start, boolean closure, Boolean inst, Set<ComponentInfo> result, ComponentQuery q) {
@@ -334,7 +334,7 @@ public final class CatalogContents implements ComponentCatalog {
                 if (!known.add(d)) {
                     continue;
                 }
-                ComponentInfo res = q.findComponent(d, vm, localOnly);
+                ComponentInfo res = q.findComponent(d, vm, localOnly, true);
                 if (res == null) {
                     missing.add(d);
                 } else {

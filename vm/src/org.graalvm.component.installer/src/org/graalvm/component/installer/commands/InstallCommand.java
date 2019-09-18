@@ -248,7 +248,7 @@ public class InstallCommand implements InstallerCommand {
             if (!knownDeps.add(i)) {
                 continue;
             }
-            ComponentParam p = input.existingFiles().createParam("install", i);
+            ComponentParam p = input.existingFiles().createParam(i.getId(), i);
             dependencies.add(p);
         }
     }
@@ -328,9 +328,9 @@ public class InstallCommand implements InstallerCommand {
         throw feedback.failure("INSTALL_UnresolvedDependencies", null);
     }
 
-    protected void prepareInstallation() throws IOException {
-        for (ComponentParam p : componentsWithDependencies()) {
-            feedback.output("INSTALL_VerboseProcessingArchive", p.getDisplayName());
+    protected void processComponents(Iterable<ComponentParam> toProcess) throws IOException {
+        for (ComponentParam p : toProcess) {
+            feedback.output(p.isComplete() ? "INSTALL_VerboseProcessingArchive" : "INSTALL_VerboseProcessingComponent", p.getDisplayName());
             current = p.getSpecification();
             MetadataLoader ldr = validateDownload ? p.createFileLoader() : p.createMetaLoader();
             Installer inst = createInstaller(p, ldr);
@@ -354,8 +354,20 @@ public class InstallCommand implements InstallerCommand {
                 i.validateAll();
             }
         }
+    }
+
+    protected void prepareInstallation() throws IOException {
+        processComponents(input.existingFiles());
+        // first check after explicit components have been processed.
         checkDependencyErrors();
         printRequiredComponents();
+        if (dependencies.isEmpty()) {
+            return;
+        }
+        // dependencies were scanned recursively; so just one additional pass should
+        // be sufficient
+        processComponents(new ArrayList<>(dependencies));
+        checkDependencyErrors();
     }
 
     public void setIgnoreFailures(boolean ignoreFailures) {

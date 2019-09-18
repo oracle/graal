@@ -1,7 +1,7 @@
 Bundle-Name: FastR
 Bundle-Symbolic-Name: org.graalvm.R
 Bundle-Version: 19.3.0.0
-Require-Bundle: llvm-toolchain
+Require-Bundle: org.graalvm.llvm-toolchain
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=19.3.0.0
  )(os_arch=amd64))"
 x-GraalVM-Polyglot-Part: False

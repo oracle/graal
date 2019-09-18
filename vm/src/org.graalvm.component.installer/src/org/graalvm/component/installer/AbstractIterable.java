@@ -102,7 +102,7 @@ abstract class AbstractIterable implements ComponentIterable {
     private static class NullCatalog implements ComponentCatalog, DownloadInterceptor {
 
         @Override
-        public ComponentInfo findComponent(String id, Version.Match vmatch, boolean localOnly) {
+        public ComponentInfo findComponentMatch(String id, Version.Match vmatch, boolean localOnly, boolean exact) {
             return null;
         }
 
@@ -126,7 +126,7 @@ abstract class AbstractIterable implements ComponentIterable {
         }
 
         @Override
-        public ComponentInfo findComponent(String id, Version.Match vm) {
+        public ComponentInfo findComponentMatch(String id, Version.Match vm, boolean exact) {
             return null;
         }
 

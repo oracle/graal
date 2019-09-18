@@ -45,6 +45,7 @@ import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -293,6 +294,16 @@ public class DirectoryStorage implements ManagementStorage {
                 }
                 ci.provideValue(k, o);
             }
+        }
+        Set<String> deps = new LinkedHashSet<>();
+        for (String s : loaded.getProperty(BundleConstants.BUNDLE_DEPENDENCY, "").split(",")) {
+            String p = s.trim();
+            if (!p.isEmpty()) {
+                deps.add(s.trim());
+            }
+        }
+        if (!deps.isEmpty()) {
+            ci.setDependencies(deps);
         }
         if (Boolean.TRUE.toString().equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, ""))) { // NOI18N
             ci.setPolyglotRebuild(true);

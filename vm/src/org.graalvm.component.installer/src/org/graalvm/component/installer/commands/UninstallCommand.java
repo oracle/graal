@@ -171,7 +171,8 @@ public class UninstallCommand implements InstallerCommand {
 
         List<ComponentInfo> sorted = new ArrayList<>(brokenDependencies.keySet());
         P printer;
-        if (removeDependent || breakDependent) {
+        boolean warning = removeDependent || breakDependent;
+        if (warning) {
             printer = feedback::output;
             feedback.output(removeDependent ? "UNINSTALL_BrokenDependenciesRemove" : "UNINSTALL_BrokenDependenciesWarn");
         } else {
@@ -188,12 +189,14 @@ public class UninstallCommand implements InstallerCommand {
             }
             Collections.sort(sorted, c);
 
-            printer.print("UNINSTALL_BreakDepSource", i.getName(), i.getId());
+            if (!warning) {
+                printer.print("UNINSTALL_BreakDepSource", i.getName(), i.getId());
+            }
             for (ComponentInfo d : deps) {
                 printer.print("UNINSTALL_BreakDepTarget", d.getName(), d.getId());
             }
         }
-        if (removeDependent || breakDependent) {
+        if (warning) {
             return;
         }
         throw feedback.failure("UNINSTALL_BreakDependenciesTerminate", null);
@@ -201,20 +204,22 @@ public class UninstallCommand implements InstallerCommand {
 
     void includeAndOrderComponents() {
         Set<ComponentInfo> allBroken = new LinkedHashSet<>();
-        for (Collection<ComponentInfo> ii : brokenDependencies.values()) {
-            allBroken.addAll(ii);
-        }
-        for (ComponentInfo ci : allBroken) {
-            Set<ComponentInfo> br = registry.findDependentComponents(ci, true);
-            if (!br.isEmpty()) {
-                allBroken.addAll(br);
-                brokenDependencies.put(ci, br);
+        if (!breakDependent) {
+            for (Collection<ComponentInfo> ii : brokenDependencies.values()) {
+                allBroken.addAll(ii);
             }
-        }
+            for (ComponentInfo ci : allBroken) {
+                Set<ComponentInfo> br = registry.findDependentComponents(ci, true);
+                if (!br.isEmpty()) {
+                    allBroken.addAll(br);
+                    brokenDependencies.put(ci, br);
+                }
+            }
 
-        if (removeDependent) {
-            for (ComponentInfo i : allBroken) {
-                toUninstall.put(i.getId(), i);
+            if (removeDependent) {
+                for (ComponentInfo i : allBroken) {
+                    toUninstall.put(i.getId(), i);
+                }
             }
         }
 
@@ -227,7 +232,7 @@ public class UninstallCommand implements InstallerCommand {
         int top = leaves.size();
         for (ComponentInfo ci : allBroken) {
             Set<ComponentInfo> check = new HashSet<>();
-            CatalogContents.findDependencies(ci, true, Boolean.TRUE, check, (a, b, c) -> registry.findComponent(a, b));
+            CatalogContents.findDependencies(ci, true, Boolean.TRUE, check, (a, b, c, d) -> registry.findComponentMatch(a, b, true));
             int i;
             for (i = ordered.size(); i > top; i--) {
                 ComponentInfo c = ordered.get(i - 1);
@@ -257,7 +262,8 @@ public class UninstallCommand implements InstallerCommand {
             return 1;
         }
         prepareUninstall();
-
+        checkBrokenDependencies();
+        includeAndOrderComponents();
         try {
             for (ComponentInfo info : uninstallSequence) {
                 try {

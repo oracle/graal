@@ -275,8 +275,13 @@ public final class ComponentInstaller {
                             getCatalogURL());
             downloader.setDefaultCatalog(env.l10n("Installer_BuiltingCatalogURL")); // NOI18N
             CatalogFactory cFactory = (CommandInput input, ComponentRegistry lreg) -> {
-                RemoteCatalogDownloader nDownloader = new RemoteCatalogDownloader(input, env,
-                                downloader.getOverrideCatalogSpec());
+                RemoteCatalogDownloader nDownloader;
+                if (lreg == input.getLocalRegistry()) {
+                    nDownloader = downloader;
+                } else {
+                    nDownloader = new RemoteCatalogDownloader(input, env,
+                                    downloader.getOverrideCatalogSpec());
+                }
                 CatalogContents col = new CatalogContents(env, nDownloader.getStorage(), lreg);
                 return col;
             };
@@ -298,6 +303,7 @@ public final class ComponentInstaller {
                         }
                     }
                 }
+                env.resetParameters();
                 setIterable = false;
             } else if (optValues.containsKey(Commands.OPTION_URLS)) {
                 DownloadURLIterable dit = new DownloadURLIterable(env, env);
