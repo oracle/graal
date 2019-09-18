@@ -29,10 +29,6 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.wasm.binary.WasmFunction;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
 import com.oracle.truffle.wasm.predefined.PredefinedModule;
@@ -44,6 +40,8 @@ public class EmscriptenModule extends PredefinedModule {
     protected WasmModule createModule(WasmLanguage language, String name) {
         WasmModule module = new WasmModule(name);
         defineFunction(module, "abort", types(I32_TYPE), types(), new AbortNode(language, null));
+        defineFunction(module, "_emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBig(language, null));
+        defineFunction(module, "___wasi_fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, null));
         return module;
     }
 }

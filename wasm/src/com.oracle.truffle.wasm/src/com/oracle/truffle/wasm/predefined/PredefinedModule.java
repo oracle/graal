@@ -48,27 +48,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class PredefinedModule {
-    private static final Map<String, PredefinedModule> predefinedModules = new HashMap<String, PredefinedModule>() {
-        {
-            put("emscripten", new EmscriptenModule());
-        }
-    };
+    private static final Map<String, PredefinedModule> predefinedModules = new HashMap<>();
 
-    public static void importFunction(String functionName, WasmModule module, WasmRootNode rootNode, WasmCodeEntry codeEntry) {
-        switch (functionName) {
-            case "_emscripten_memcpy_big": {
-                rootNode.setBody(new EmscriptenMemcpyBig(module, codeEntry));
-                break;
-            }
-            case "___wasi_fd_write": {
-                rootNode.setBody(new WasiFdWrite(module, codeEntry));
-                break;
-            }
-            default: {
-                rootNode.setBody(new NoOp(module, codeEntry));
-                codeEntry.initStackSlots(rootNode.getFrameDescriptor(), 1);
-            }
-        }
+    static {
+        final Map<String, PredefinedModule> pm = predefinedModules;
+        pm.put("emscripten", new EmscriptenModule());
     }
 
     public static WasmModule createPredefined(WasmLanguage language, String name, String predefinedModuleName) {

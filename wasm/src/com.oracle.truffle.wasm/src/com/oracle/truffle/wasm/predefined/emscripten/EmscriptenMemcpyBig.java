@@ -30,24 +30,18 @@
 package com.oracle.truffle.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.binary.ValueTypes;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public class EmscriptenMemcpyBig extends ImportedFunctionNode {
-    public EmscriptenMemcpyBig(WasmModule wasmModule, WasmCodeEntry codeEntry) {
-        super(wasmModule, codeEntry);
+public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
+    public EmscriptenMemcpyBig(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
     }
 
     @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         return 0;
-    }
-
-    @Override
-    public byte returnTypeId() {
-        return ValueTypes.I32_TYPE;
     }
 
     @Override

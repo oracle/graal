@@ -33,10 +33,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
-import com.oracle.truffle.wasm.binary.WasmRootNode;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
+import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public class AbortNode extends WasmRootNode {
+public class AbortNode extends WasmPredefinedRootNode {
     public AbortNode(WasmLanguage language, WasmCodeEntry codeEntry) {
         super(language, codeEntry);
     }
@@ -45,6 +45,11 @@ public class AbortNode extends WasmRootNode {
     public Object execute(VirtualFrame frame) {
         final int code = (int) frame.getArguments()[0];
         throw fail(code);
+    }
+
+    @Override
+    public String name() {
+        return "abort";
     }
 
     @CompilerDirectives.TruffleBoundary

@@ -29,30 +29,25 @@
  */
 package com.oracle.truffle.wasm.predefined;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmRootNode;
-import com.oracle.truffle.wasm.predefined.emscripten.AbortNode;
-import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenMemcpyBig;
-import com.oracle.truffle.wasm.predefined.emscripten.NoOp;
-import com.oracle.truffle.wasm.predefined.emscripten.WasiFdWrite;
 
-public class WasmEnv {
-    public static void importFunction(String functionName, WasmModule module, WasmRootNode rootNode, WasmCodeEntry codeEntry) {
-        switch (functionName) {
-            case "_emscripten_memcpy_big": {
-                rootNode.setBody(new EmscriptenMemcpyBig(module, codeEntry));
-                break;
-            }
-            case "___wasi_fd_write": {
-                rootNode.setBody(new WasiFdWrite(module, codeEntry));
+public abstract class WasmPredefinedRootNode extends WasmRootNode {
+    public WasmPredefinedRootNode(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
+    }
 
-                break;
-            }
-            default: {
-                rootNode.setBody(new NoOp(module, codeEntry));
-                codeEntry.initStackSlots(rootNode.getFrameDescriptor(), 1);
-            }
-        }
+    @Override
+    public Object execute(VirtualFrame frame) {
+        return 0;
+    }
+
+    public abstract String name();
+
+    @Override
+    public String toString() {
+        return "wasm-function:" + name();
     }
 }
