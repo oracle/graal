@@ -51,6 +51,7 @@ public class UnsafeWasmMemory implements WasmMemory {
         }
         this.memorySize = memorySize;
         this.start = unsafe.allocateMemory(memorySize);
+        unsafe.setMemory(start, memorySize, (byte) 0);
     }
 
     @Override
