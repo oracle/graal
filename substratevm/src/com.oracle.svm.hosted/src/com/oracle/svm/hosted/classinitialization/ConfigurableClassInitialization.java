@@ -498,7 +498,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                                     "Try marking this class for build-time initialization with " + SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization,
                                                     c.getTypeName(), "initialize-at-build-time")));
                 } else {
-                    assert specifiedKind.isDelayed();
+                    assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind";
                     String reason = classInitializationConfiguration.lookupReason(c.getTypeName());
                     detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at build time (").append(reason).append("). ")
                                     .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()));
