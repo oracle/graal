@@ -39,7 +39,6 @@ import static org.graalvm.compiler.core.phases.LowTier.Options.Autovectorize;
 
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
-import org.graalvm.compiler.loop.VectorizationLoopPolicies;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.loop.phases.ReassociateInvariantPhase;
@@ -102,9 +101,7 @@ public class MidTier extends PhaseSuite<MidTierContext> {
 
         LoopPolicies loopPolicies = createLoopPolicies();
         if (OptLoopTransform.getValue(options)) {
-            if (Autovectorize.getValue(options)) {
-                appendPhase(new LoopPartialUnrollPhase(new VectorizationLoopPolicies(), canonicalizer));
-            } else if (PartialUnroll.getValue(options)) {
+            if (PartialUnroll.getValue(options)) {
                 appendPhase(new LoopPartialUnrollPhase(loopPolicies, canonicalizer));
             }
         }
