@@ -1,0 +1,30 @@
+{
+    "Polyglot_eval": {
+        "prefix": "eval.polyglot",
+        "body": [
+            "eval.polyglot('${1|js,ruby,python|}', ${2|'',path='file'|})"
+        ],
+        "description": "Executes code in a foreign language identified by its ID"
+    },
+    "Polyglot_export": {
+        "prefix": "export",
+        "body": [
+            "export('${1:name}', ${2:value})"
+        ],
+        "description": "Exports a value with a given name to other languages"
+    },
+    "Polyglot_import": {
+        "prefix": "import",
+        "body": [
+            "import('${1:name}')"
+        ],
+        "description": "Imports and returns a value with a given name exported by other languages"
+    },
+    "Java_type": {
+        "prefix": "java.type",
+        "body": [
+            "java.type('${1:name}')"
+        ],
+        "description": "Returns a Java class object, given its name"
+    }
+}

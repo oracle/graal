@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * A plan to be consulted when partial evaluating or compiling a Truffle AST as to whether a given
  * call should be inlined.
  */
-public interface TruffleInliningPlan {
+public interface TruffleInliningPlan extends CallNodeProvider {
 
     /**
      * Gets the decision of whether or not to inline the Truffle AST called by {@code callNode}.

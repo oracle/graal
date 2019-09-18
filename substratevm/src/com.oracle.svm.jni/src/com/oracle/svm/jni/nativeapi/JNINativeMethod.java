@@ -35,12 +35,21 @@ import org.graalvm.word.PointerBase;
 @CStruct(value = "JNINativeMethod")
 public interface JNINativeMethod extends PointerBase {
 
-    @CField
+    @CField("name")
     CCharPointer name();
 
-    @CField
+    @CField("name")
+    void setName(CCharPointer name);
+
+    @CField("signature")
     CCharPointer signature();
 
-    @CField
+    @CField("signature")
+    void setSignature(CCharPointer signature);
+
+    @CField("fnPtr")
     CFunctionPointer fnPtr();
+
+    @CField("fnPtr")
+    void setFnPtr(CFunctionPointer value);
 }

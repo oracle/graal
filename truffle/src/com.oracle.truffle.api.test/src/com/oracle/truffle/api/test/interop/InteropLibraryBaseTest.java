@@ -60,9 +60,10 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @RunWith(Parameterized.class)
-public abstract class InteropLibraryBaseTest {
+public abstract class InteropLibraryBaseTest extends AbstractPolyglotTest {
 
     public enum TestRun {
         CACHED,

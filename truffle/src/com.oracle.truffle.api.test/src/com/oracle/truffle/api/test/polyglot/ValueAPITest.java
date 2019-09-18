@@ -43,13 +43,18 @@ package com.oracle.truffle.api.test.polyglot;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DATE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.EXECUTABLE;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIME;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.TIMEZONE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -64,6 +69,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -78,10 +90,17 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyDate;
+import org.graalvm.polyglot.proxy.ProxyDuration;
+import org.graalvm.polyglot.proxy.ProxyTime;
+import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
@@ -105,8 +124,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.HostAccess.Implementable;
 
 public class ValueAPITest {
 
@@ -153,6 +170,24 @@ public class ValueAPITest {
         }
     }
 
+    @Test
+    public void testDatesTimesZonesAndDuration() {
+        assertValue(context.asValue(LocalDate.now()), HOST_OBJECT, MEMBERS, DATE, EXECUTABLE);
+        assertValue(context.asValue(LocalTime.now()), HOST_OBJECT, MEMBERS, TIME, EXECUTABLE);
+        assertValue(context.asValue(LocalDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, EXECUTABLE);
+        assertValue(context.asValue(Instant.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, EXECUTABLE);
+        assertValue(context.asValue(ZonedDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE);
+        assertValue(context.asValue(ZoneId.of("UTC")), HOST_OBJECT, MEMBERS, TIMEZONE);
+        assertValue(context.asValue(Date.from(Instant.now())), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE);
+        assertValue(context.asValue(Duration.ofMillis(100)), HOST_OBJECT, MEMBERS, DURATION);
+
+        assertValue(context.asValue(ProxyDate.from(LocalDate.now())), DATE, PROXY_OBJECT);
+        assertValue(context.asValue(ProxyTime.from(LocalTime.now())), TIME, PROXY_OBJECT);
+        assertValue(context.asValue(ProxyInstant.from(Instant.now())), DATE, TIME, TIMEZONE, PROXY_OBJECT);
+        assertValue(context.asValue(ProxyTimeZone.from(ZoneId.of("UTC"))), TIMEZONE, PROXY_OBJECT);
+        assertValue(context.asValue(ProxyDuration.from(Duration.ofMillis(100))), DURATION, PROXY_OBJECT);
+    }
+
     private static final Number[] NUMBERS = new Number[]{
                     (byte) 0, (byte) 1, Byte.MAX_VALUE, Byte.MIN_VALUE,
                     (short) 0, (short) 1, Short.MAX_VALUE, Short.MIN_VALUE,
@@ -192,7 +227,6 @@ public class ValueAPITest {
     private static final Object[] HOST_OBJECTS = new Object[]{
                     new ArrayList<>(),
                     new HashMap<>(),
-                    new Date(),
                     new EmptyObject(),
                     new PrivateObject(),
                     new FieldAccess(),

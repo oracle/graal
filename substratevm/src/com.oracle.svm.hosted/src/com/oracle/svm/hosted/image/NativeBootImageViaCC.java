@@ -58,16 +58,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NativeBootImageViaCC extends NativeBootImage {
 
-    protected final HostedMethod mainEntryPoint;
-
     public NativeBootImageViaCC(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader imageClassLoader) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, imageClassLoader);
-        this.mainEntryPoint = mainEntryPoint;
+                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
     }
 
     public NativeImageKind getOutputKind() {
         return kind;
+    }
+
+    private static boolean removeUnusedSymbols() {
+        if (SubstrateOptions.RemoveUnusedSymbols.hasBeenSet()) {
+            return SubstrateOptions.RemoveUnusedSymbols.getValue();
+        }
+        return Platform.includedIn(InternalPlatform.PLATFORM_JNI.class);
     }
 
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
@@ -76,7 +80,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
 
-            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+            if (removeUnusedSymbols()) {
                 /* Perform garbage collection of unused input sections. */
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
@@ -113,13 +117,20 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
 
         DarwinCCLinkerInvocation() {
-            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+            if (removeUnusedSymbols()) {
                 /* Remove functions and data unreachable by entry points. */
                 additionalPreOptions.add("-Wl,-dead_strip");
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
+            }
+
+            additionalPreOptions.add("-arch");
+            if (Platform.includedIn(Platform.AMD64.class)) {
+                additionalPreOptions.add("x86_64");
+            } else if (Platform.includedIn(Platform.AArch64.class)) {
+                additionalPreOptions.add("arm64");
             }
         }
 
@@ -176,14 +187,14 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         @Override
         public List<String> getCommand() {
             ArrayList<String> cmd = new ArrayList<>();
-            cmd.add(compilerCommand);
+            cmd.add(getCompilerCommand());
 
             setOutputKind(cmd);
 
             // Add debugging info
             cmd.add("/Zi");
 
-            if (SubstrateOptions.RemoveUnusedSymbols.getValue()) {
+            if (removeUnusedSymbols()) {
                 additionalPreOptions.add("/OPT:REF");
             }
 
@@ -261,15 +272,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             inv.addInputFile(staticLibraryPath.toString());
         }
 
-        addMainEntryPoint(inv);
-
         return inv;
-    }
-
-    protected void addMainEntryPoint(CCLinkerInvocation inv) {
-        if (mainEntryPoint != null) {
-            inv.addSymbolAlias(mainEntryPoint, "main");
-        }
     }
 
     @Override
@@ -293,6 +296,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 }
             } else {
                 write(tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
+            }
+            if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+                return null;
             }
             // 2. run a command to make an executable of it
             int status;

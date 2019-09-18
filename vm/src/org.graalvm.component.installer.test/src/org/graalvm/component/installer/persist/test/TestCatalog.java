@@ -27,6 +27,7 @@ package org.graalvm.component.installer.persist.test;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.ce.WebCatalog;
 
 /**
@@ -41,9 +42,9 @@ public class TestCatalog implements SoftwareChannel.Factory {
     }
 
     @Override
-    public SoftwareChannel createChannel(String urlSpec, CommandInput input, Feedback fb) {
-        if (urlSpec.startsWith("test://")) {
-            WebCatalog c = new WebCatalog(urlSpec);
+    public SoftwareChannel createChannel(SoftwareChannelSource spec, CommandInput input, Feedback fb) {
+        if (spec.getLocationURL().startsWith("test://")) {
+            WebCatalog c = new WebCatalog(spec.getLocationURL(), spec);
             c.init(input, fb);
             return c;
         }

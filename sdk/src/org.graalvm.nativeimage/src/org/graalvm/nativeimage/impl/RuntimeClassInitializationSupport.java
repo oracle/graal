@@ -53,4 +53,8 @@ public interface RuntimeClassInitializationSupport {
     void rerunInitialization(Class<?> aClass, String reason);
 
     void initializeAtBuildTime(Class<?> aClass, String reason);
+
+    void reportClassInitialized(Class<?> aClass);
+
+    void reportObjectInstantiated(Object o);
 }

@@ -38,11 +38,8 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 public class ExecutableViaCCBootImage extends NativeBootImageViaCC {
 
     public ExecutableViaCCBootImage(AbstractBootImage.NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
-                    NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints,
-                    HostedMethod mainEntryPoint,
-                    ClassLoader classLoader) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
+                    NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader classLoader) {
+        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
     }
 
     @Override

@@ -1,4 +1,4 @@
-bench_vm_linux_base: ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${common_vm_linux} { # repeat 'common_vm_linux' to override packages loaded by 'svm-common-linux'
+bench_vm_linux_base: ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${common_vm_linux} { # repeat 'common_vm_linux' to override packages loaded by 'svm-common-linux'
   resultFile: results.json
   setup: ${common_vm.setup} [
     [mx, --strip-jars, --no-sources, --env, "${VM_ENV}", build]

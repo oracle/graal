@@ -96,7 +96,7 @@ public interface LanguageProvider {
      *
      * @param context the context for a guest language code literal evaluation
      * @return the {@link Snippet} representing the identity function
-     * @since 20.0.0 beta 1
+     * @since 19.1.0
      */
     default Snippet createIdentityFunctionSnippet(Context context) {
         Value value = createIdentityFunction(context);

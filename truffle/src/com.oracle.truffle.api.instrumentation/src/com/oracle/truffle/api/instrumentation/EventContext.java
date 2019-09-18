@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -91,7 +90,7 @@ public final class EventContext {
             return true;
         }
         if (object != null) {
-            assert AccessorInstrumentHandler.interopAccess().isValidNodeObject(object);
+            assert InstrumentAccessor.interopAccess().isValidNodeObject(object);
         }
         boolean foundStandardTag = false;
         for (Class<?> clazz : StandardTags.ALL_TAGS) {
@@ -131,7 +130,7 @@ public final class EventContext {
             return ((InstrumentableNode) node).hasTag(tag);
         } else {
             // legacy support
-            return AccessorInstrumentHandler.nodesAccess().isTaggedWith(node, tag);
+            return InstrumentAccessor.nodesAccess().isTaggedWith(node, tag);
         }
     }
 
@@ -155,9 +154,9 @@ public final class EventContext {
                 return null;
             }
             if (object == null) {
-                object = AccessorInstrumentHandler.interopAccess().createDefaultNodeObject(node);
+                object = InstrumentAccessor.interopAccess().createDefaultNodeObject(node);
             } else {
-                assert AccessorInstrumentHandler.interopAccess().isValidNodeObject(object);
+                assert InstrumentAccessor.interopAccess().isValidNodeObject(object);
             }
             this.nodeObject = object;
         }
@@ -212,8 +211,8 @@ public final class EventContext {
             return true;
         }
         LanguageInfo languageInfo = root.getLanguageInfo();
-        Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
-        return AccessorInstrumentHandler.langAccess().isContextInitialized(env);
+        Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
+        return InstrumentAccessor.langAccess().isContextInitialized(env);
     }
 
     /**

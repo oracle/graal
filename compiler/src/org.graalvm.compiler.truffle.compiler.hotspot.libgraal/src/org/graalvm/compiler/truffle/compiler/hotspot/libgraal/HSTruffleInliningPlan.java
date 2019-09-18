@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindDecision;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetDescription;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLanguage;
@@ -37,6 +38,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsTargetStable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.ShouldInline;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callFindCallNode;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callFindDecision;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetDescription;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetLanguage;
@@ -53,6 +55,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.JNIUtil.cre
 
 import java.net.URI;
 
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot;
@@ -87,6 +90,18 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
         return new HSDecision(scope, res);
     }
 
+    @SVMToHotSpot(FindCallNode)
+    @Override
+    public TruffleCallNode findCallNode(JavaConstant callNode) {
+        long nodeHandle = LibGraal.translate(runtime(), callNode);
+        JNIEnv env = scope.getEnv();
+        JObject res = callFindCallNode(env, getHandle(), nodeHandle);
+        if (res.isNull()) {
+            return null;
+        }
+        return new HSTruffleCallNode(scope, res);
+    }
+
     @SVMToHotSpot(GetPosition)
     @Override
     public TruffleSourceLanguagePosition getPosition(JavaConstant node) {
@@ -96,7 +111,7 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
         if (res.isNull()) {
             return null;
         }
-        return new HSTruffleSourceLanguagePosition(env, res);
+        return new HSTruffleSourceLanguagePosition(scope, res);
     }
 
     /**
@@ -141,50 +156,47 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
      */
     private static final class HSTruffleSourceLanguagePosition extends HSObject implements TruffleSourceLanguagePosition {
 
-        private final JNIEnv env;
-
-        HSTruffleSourceLanguagePosition(JNIEnv env, JObject handle) {
-            super(env, handle);
-            this.env = env;
+        HSTruffleSourceLanguagePosition(HotSpotToSVMScope scope, JObject handle) {
+            super(scope, handle);
         }
 
         @SVMToHotSpot(GetOffsetStart)
         @Override
         public int getOffsetStart() {
-            return callGetOffsetStart(env, getHandle());
+            return callGetOffsetStart(HotSpotToSVMScope.env(), getHandle());
         }
 
         @SVMToHotSpot(GetOffsetEnd)
         @Override
         public int getOffsetEnd() {
-            return callGetOffsetEnd(env, getHandle());
+            return callGetOffsetEnd(HotSpotToSVMScope.env(), getHandle());
         }
 
         @SVMToHotSpot(GetLineNumber)
         @Override
         public int getLineNumber() {
-            return callGetLineNumber(env, getHandle());
+            return callGetLineNumber(HotSpotToSVMScope.env(), getHandle());
         }
 
         @SVMToHotSpot(GetLanguage)
         @Override
         public String getLanguage() {
-            JString res = callGetLanguage(env, getHandle());
-            return createString(env, res);
+            JString res = callGetLanguage(HotSpotToSVMScope.env(), getHandle());
+            return createString(HotSpotToSVMScope.env(), res);
         }
 
         @SVMToHotSpot(GetDescription)
         @Override
         public String getDescription() {
-            JString res = callGetDescription(env, getHandle());
-            return createString(env, res);
+            JString res = callGetDescription(HotSpotToSVMScope.env(), getHandle());
+            return createString(HotSpotToSVMScope.env(), res);
         }
 
         @SVMToHotSpot(GetURI)
         @Override
         public URI getURI() {
-            JString res = callGetURI(env, getHandle());
-            String stringifiedURI = createString(env, res);
+            JString res = callGetURI(HotSpotToSVMScope.env(), getHandle());
+            String stringifiedURI = createString(HotSpotToSVMScope.env(), res);
             return stringifiedURI == null ? null : URI.create(stringifiedURI);
         }
     }

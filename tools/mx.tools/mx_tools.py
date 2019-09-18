@@ -37,11 +37,18 @@ import mx
 from mx_unittest import unittest
 from mx_jackpot import jackpot
 from mx_gate import Task
-from urlparse import urljoin
 import mx_gate
 import mx_unittest
 import mx_benchmark
 import mx_sdk
+
+import sys
+
+if sys.version_info[0] < 3:
+    from urlparse import urljoin
+else:
+    from urllib.parse import urljoin # pylint: disable=no-name-in-module
+
 
 _suite = mx.suite('tools')
 
@@ -94,7 +101,7 @@ def checkLinks(javadocDir):
                     minIndex = sectionIndex
                     if minIndex < 0:
                         minIndex = len(full)
-                    if questionIndex >= 0 and questionIndex < minIndex:
+                    if 0 <= questionIndex < minIndex:
                         minIndex = questionIndex
                     path = full[0:minIndex]
 
@@ -117,7 +124,7 @@ def checkLinks(javadocDir):
         else:
             content = open(referencedfile, 'r').read()
             for path, s in sections:
-                if not s == None:
+                if not s is None:
                     whereName = content.find('name="' + s + '"')
                     whereId = content.find('id="' + s + '"')
                     if whereName == -1 and whereId == -1:
@@ -156,6 +163,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     dir_name='chromeinspector',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['tools:CHROMEINSPECTOR'],
     support_distributions=['tools:CHROMEINSPECTOR_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -168,6 +176,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     dir_name='profiler',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['tools:TRUFFLE_PROFILER'],
     support_distributions=['tools:TRUFFLE_PROFILER_GRAALVM_SUPPORT'],
     include_by_default=True,
@@ -180,6 +189,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
     dir_name='visualvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=[],
     support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
     provided_executables=['bin/<exe:jvisualvm>']
 ))

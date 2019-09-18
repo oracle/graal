@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 
 /**
- * JDK 11 and later versioned overlay for the {@code jdk.internal.vm.compiler.management} module.
+ * LabsJDK 11 versioned overlay for the {@code jdk.internal.vm.compiler.management} module.
  * This cannot be used in JDK 10 where {@code jdk.internal.vm.compiler.management} is a
  * non-upgradeable module.
  */

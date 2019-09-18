@@ -94,13 +94,14 @@ public final class InspectServerSession implements MessageEndpoint {
     @Override
     public void sendClose() {
         Runnable onCloseRunnable = null;
-        domainLock.writeLock().lock();
+        Lock lock = domainLock.writeLock();
+        lock.lock();
         try {
             runtime.disable();
             debugger.disable();
             profiler.disable();
         } finally {
-            domainLock.writeLock().unlock();
+            lock.unlock();
         }
         context.reset();
         synchronized (this) {
@@ -368,6 +369,14 @@ public final class InspectServerSession implements MessageEndpoint {
                 break;
             case "Debugger.stepOut":
                 debugger.stepOut(postProcessor);
+                break;
+            case "Debugger.searchInContent":
+                json = cmd.getParams().getJSONObject();
+                resultParams = debugger.searchInContent(
+                                json.optString("scriptId"),
+                                json.optString("query"),
+                                json.optBoolean("caseSensitive", false),
+                                json.optBoolean("isRegex", false));
                 break;
             case "Debugger.setAsyncCallStackDepth":
                 debugger.setAsyncCallStackDepth(cmd.getParams().getMaxDepth());

@@ -15,7 +15,7 @@ language launchers. Some tools have their [APIs](http://www.graalvm.org/tools/ja
 
 Graal uses the [MX build tool](https://github.com/graalvm/mx/), which must be downloaded
 and put onto your PATH. Also, point `JAVA_HOME` to a
-[JVMCI-enabled JDK 8](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
+[JVMCI-enabled JDK 8](https://github.com/graalvm/openjdk8-jvmci-builder/releases).
 
 ```bash
 git clone https://github.com/graalvm/mx.git
@@ -47,4 +47,4 @@ and start a [pull request](https://help.github.com/articles/using-pull-requests/
 
 ## License
 
-The Tools are is licensed under the [GPL 2 with Classpath exception](LICENSE.GPL.md).
+The Tools are is licensed under the GPL 2 with Classpath Exception.

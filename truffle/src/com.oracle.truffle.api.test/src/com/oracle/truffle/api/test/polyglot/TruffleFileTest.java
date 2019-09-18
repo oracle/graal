@@ -46,6 +46,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.test.OSUtils;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -63,7 +64,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testToAbsolutePath() {
-        TruffleFile file = languageEnv.getTruffleFile("/a/b");
+        TruffleFile file = languageEnv.getPublicTruffleFile(OSUtils.isUnix() ? "/a/b" : "C:/a/b");
+        Assert.assertTrue(file.isAbsolute());
         Assert.assertEquals(file, file.getAbsoluteFile());
         testToAbsolutePathImpl("");
         testToAbsolutePathImpl("a");
@@ -76,7 +78,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         testToAbsolutePathImpl("a/../b");
         testToAbsolutePathImpl("a/../../");
 
-        languageEnv.setCurrentWorkingDirectory(languageEnv.getTruffleFile("/"));
+        languageEnv.setCurrentWorkingDirectory(languageEnv.getPublicTruffleFile(OSUtils.isUnix() ? "/" : "C:/"));
         testToAbsolutePathImpl("");
         testToAbsolutePathImpl("a");
         testToAbsolutePathImpl("a/b");
@@ -90,7 +92,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     }
 
     private void testToAbsolutePathImpl(String path) {
-        TruffleFile relativeFile = languageEnv.getTruffleFile(path);
+        TruffleFile relativeFile = languageEnv.getPublicTruffleFile(path);
         Assert.assertFalse(relativeFile.isAbsolute());
         TruffleFile absoluteFile = relativeFile.getAbsoluteFile();
         TruffleFile cwd = languageEnv.getCurrentWorkingDirectory();
@@ -101,23 +103,23 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testGetName() {
-        TruffleFile file = languageEnv.getTruffleFile("/folder/filename");
+        TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename");
         Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getTruffleFile("/filename");
+        file = languageEnv.getPublicTruffleFile("/filename");
         Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getTruffleFile("folder/filename");
+        file = languageEnv.getPublicTruffleFile("folder/filename");
         Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getTruffleFile("filename");
+        file = languageEnv.getPublicTruffleFile("filename");
         Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getTruffleFile("");
+        file = languageEnv.getPublicTruffleFile("");
         Assert.assertEquals("", file.getName());
-        file = languageEnv.getTruffleFile("/");
+        file = languageEnv.getPublicTruffleFile("/");
         Assert.assertNull(file.getName());
     }
 
     @Test
     public void testGetMimeType() throws IOException {
-        TruffleFile file = languageEnv.getTruffleFile("/folder/filename.duplicate");
+        TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename.duplicate");
         String result = file.getMimeType();
         assertNull(result);
         assertEquals(1, BaseDetector.getInstance(DuplicateMimeTypeLanguage1.Detector.class).resetFindMimeTypeCalled());
@@ -140,6 +142,29 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         // Order is not deterministic can be either 'text/x-duplicate-mime-1' or
         // 'text/x-duplicate-mime-2'
         assertTrue("text/x-duplicate-mime-1".equals(result) || "text/x-duplicate-mime-2".equals(result));
+    }
+
+    @Test
+    public void testCreateTempFileInvalidNames() throws IOException {
+        String separator = languageEnv.getFileNameSeparator();
+        try {
+            languageEnv.createTempFile(null, "a" + separator + "b", ".tmp");
+            Assert.fail("IllegalArgumentException expected.");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+        try {
+            languageEnv.createTempFile(null, "ab", ".tmp" + separator + "2");
+            Assert.fail("IllegalArgumentException expected.");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
+        try {
+            languageEnv.createTempDirectory(null, "a" + separator + "b");
+            Assert.fail("IllegalArgumentException expected.");
+        } catch (IllegalArgumentException e) {
+            // expected
+        }
     }
 
     public static class BaseDetector implements TruffleFile.FileTypeDetector {

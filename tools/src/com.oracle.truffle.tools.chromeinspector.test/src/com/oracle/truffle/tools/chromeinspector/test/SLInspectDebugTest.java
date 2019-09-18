@@ -1001,7 +1001,7 @@ public class SLInspectDebugTest {
         Context context = Context.newBuilder().allowIO(true).build();
         context.initialize("sl");
         context.enter();
-        TruffleFile truffleFile = SLLanguage.getCurrentContext().getEnv().getTruffleFile(file.toPath().toString());
+        TruffleFile truffleFile = SLLanguage.getCurrentContext().getEnv().getPublicTruffleFile(file.toPath().toString());
         com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", truffleFile).build();
 
         tester = InspectorTester.start(false);
@@ -1369,7 +1369,7 @@ public class SLInspectDebugTest {
                         "{\"method\":\"Debugger.resumed\"}\n"));
         // And check the result value printed out
         tester.receiveMessages(
-                        "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"args\":[{\"type\":\"string\",\"value\":\"30000000000\\n\"}],\"executionContextId\":" + id + ",\"type\":\"log\",\"timestamp\":",
+                        "{\"method\":\"Runtime.consoleAPICalled\",\"params\":{\"args\":[{\"type\":\"string\",\"value\":\"30000000000\"}],\"executionContextId\":" + id + ",\"type\":\"log\",\"timestamp\":",
                         "}}\n");
         tester.finish();
     }

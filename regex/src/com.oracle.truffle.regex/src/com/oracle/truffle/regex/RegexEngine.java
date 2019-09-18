@@ -36,7 +36,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.runtime.nodes.StringEqualsNode;
 import com.oracle.truffle.regex.runtime.nodes.ToStringNode;
-import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
@@ -82,10 +82,10 @@ public class RegexEngine extends AbstractConstantKeysObject {
             regexObject = new RegexObject(compiler, regexSource, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(), flavorProcessor.getNamedCaptureGroups());
         } else {
             RegexFlags flags = RegexFlags.parseFlags(regexSource.getFlags());
-            RegexParser regexParser = new RegexParser(regexSource, options);
-            regexParser.validate();
-            options.getFeatureSet().checkSupport(regexSource, regexParser.getFeatures());
-            regexObject = new RegexObject(compiler, regexSource, flags, regexParser.getNumberOfCaptureGroups(), regexParser.getNamedCaptureGroups());
+            RegexValidator validator = new RegexValidator(regexSource, flags, options);
+            validator.validate();
+            options.getFeatureSet().checkSupport(regexSource, validator.getFeatures());
+            regexObject = new RegexObject(compiler, regexSource, flags, validator.getNumberOfCaptureGroups(), validator.getNamedCaptureGroups());
         }
         if (options.isRegressionTestMode()) {
             // Force the compilation of the RegExp.

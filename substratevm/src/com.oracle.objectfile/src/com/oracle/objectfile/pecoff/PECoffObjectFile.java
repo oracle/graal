@@ -25,13 +25,13 @@
 package com.oracle.objectfile.pecoff;
 
 import java.nio.ByteOrder;
-import java.util.EnumSet;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
@@ -41,7 +41,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SymbolTable;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
-
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_FILE_HEADER;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_SECTION_HEADER;
 
@@ -68,7 +67,6 @@ public class PECoffObjectFile extends ObjectFile {
     private PECoffSymtab symtab;
     private PECoffDirectiveSection directives;
     private boolean runtimeDebugInfoGeneration;
-    private String mainEntryPoint;
 
     private PECoffObjectFile(boolean runtimeDebugInfoGeneration) {
         this.runtimeDebugInfoGeneration = runtimeDebugInfoGeneration;
@@ -105,15 +103,7 @@ public class PECoffObjectFile extends ObjectFile {
     @Override
     public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
         PECoffSymtab st = createSymbolTable();
-        String symName = name;
-
-        // Windows doesn't have symbol aliases, change the entrypoint symbol name to "main"
-        if (mainEntryPoint != null) {
-            if (mainEntryPoint.equals(symName)) {
-                symName = "main";
-            }
-        }
-        return st.newDefinedEntry(symName, (Section) baseSection, position, size, isGlobal, isCode);
+        return st.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode);
     }
 
     @Override
@@ -646,11 +636,6 @@ public class PECoffObjectFile extends ObjectFile {
     @Override
     public void setByteOrder(ByteOrder byteorder) {
         byteOrder = byteorder;
-    }
-
-    @Override
-    public void setMainEntryPoint(String name) {
-        mainEntryPoint = name;
     }
 
     public static ByteOrder getTargetByteOrder() {

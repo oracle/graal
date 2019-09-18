@@ -30,7 +30,6 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.hub.DynamicHub;
@@ -61,7 +60,7 @@ public class SubstrateIntrinsics {
     public static native void runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] message, Object object);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native void runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Throwable exception, Pointer sp, CodePointer ip);
+    public static native void runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Throwable exception, Pointer sp);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native void runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Throwable exception);

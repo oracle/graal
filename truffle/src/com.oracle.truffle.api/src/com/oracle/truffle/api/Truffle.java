@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.api;
 
-import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import com.oracle.truffle.api.impl.TruffleJDKServices;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.
@@ -70,8 +70,7 @@ public final class Truffle {
         return RUNTIME;
     }
 
-    @SafeVarargs
-    private static TruffleRuntimeAccess selectTruffleRuntimeAccess(Iterable<TruffleRuntimeAccess>... lookups) {
+    private static TruffleRuntimeAccess selectTruffleRuntimeAccess(List<Iterable<TruffleRuntimeAccess>> lookups) {
         TruffleRuntimeAccess selectedAccess = null;
         for (Iterable<TruffleRuntimeAccess> lookup : lookups) {
             if (lookup != null) {
@@ -104,53 +103,6 @@ public final class Truffle {
         return selectedAccess;
     }
 
-    @SuppressWarnings("unchecked")
-    private static Iterable<TruffleRuntimeAccess> reflectiveServiceLoaderLoad(Class<?> servicesClass) {
-        try {
-            Method m = servicesClass.getDeclaredMethod("load", Class.class);
-            return (Iterable<TruffleRuntimeAccess>) m.invoke(null, TruffleRuntimeAccess.class);
-        } catch (Throwable e) {
-            // Fail fast for other errors
-            throw (InternalError) new InternalError().initCause(e);
-        }
-    }
-
-    /**
-     * Gets the {@link TruffleRuntimeAccess} providers available on the JVMCI class path.
-     */
-    private static Iterable<TruffleRuntimeAccess> getJVMCIProviders() {
-        ClassLoader cl = Truffle.class.getClassLoader();
-        ClassLoader scl = ClassLoader.getSystemClassLoader();
-        while (cl != null) {
-            if (cl == scl) {
-                /*
-                 * If Truffle can see the app class loader, then it is not on the JVMCI class path.
-                 * This means providers of TruffleRuntimeAccess on the JVMCI class path must be
-                 * ignored as they will bind to the copy of Truffle resolved on the JVMCI class
-                 * path. Failing to ignore will result in ServiceConfigurationErrors (e.g.,
-                 * https://github.com/oracle/graal/issues/385#issuecomment-385313521).
-                 */
-                return null;
-            }
-            cl = cl.getParent();
-        }
-
-        // Go back through JVMCI renaming history...
-        String[] serviceClassNames = {
-                        "jdk.vm.ci.services.Services",
-                        "jdk.vm.ci.service.Services",
-                        "jdk.internal.jvmci.service.Services",
-                        "com.oracle.jvmci.service.Services"
-        };
-        for (String serviceClassName : serviceClassNames) {
-            try {
-                return reflectiveServiceLoaderLoad(Class.forName(serviceClassName));
-            } catch (ClassNotFoundException e) {
-            }
-        }
-        return null;
-    }
-
     private static TruffleRuntime initRuntime() {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
@@ -166,24 +118,11 @@ public final class Truffle {
                     }
                 }
 
-                TruffleRuntimeAccess access;
-                boolean jdk8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-                if (!jdk8OrEarlier) {
-                    // As of JDK9, the JVMCI Services class should only be used for service types
-                    // defined by JVMCI. Other services types should use ServiceLoader directly.
-                    ServiceLoader<TruffleRuntimeAccess> standardProviders = ServiceLoader.load(TruffleRuntimeAccess.class);
-                    access = selectTruffleRuntimeAccess(standardProviders);
-                } else {
-                    Iterable<TruffleRuntimeAccess> jvmciProviders = getJVMCIProviders();
-                    if (Boolean.getBoolean("truffle.TrustAllTruffleRuntimeProviders")) {
-                        ServiceLoader<TruffleRuntimeAccess> standardProviders = ServiceLoader.load(TruffleRuntimeAccess.class);
-                        access = selectTruffleRuntimeAccess(jvmciProviders, standardProviders);
-                    } else {
-                        access = selectTruffleRuntimeAccess(jvmciProviders);
-                    }
-                }
+                List<Iterable<TruffleRuntimeAccess>> loaders = TruffleJDKServices.getTruffleRuntimeLoaders();
+                TruffleRuntimeAccess access = selectTruffleRuntimeAccess(loaders);
 
                 if (access != null) {
+                    TruffleJDKServices.exportTo(access.getClass());
                     return access.getRuntime();
                 }
                 return new DefaultTruffleRuntime();

@@ -35,14 +35,12 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -58,6 +56,7 @@ public class FallbackFeature implements Feature {
 
     private final List<String> reflectionCalls = new ArrayList<>();
     private final List<String> resourceCalls = new ArrayList<>();
+    private final List<String> jniCalls = new ArrayList<>();
     private final List<String> proxyCalls = new ArrayList<>();
 
     private static class AutoProxyInvoke {
@@ -170,6 +169,8 @@ public class FallbackFeature implements Feature {
 
             addCheck(Proxy.class.getMethod("getProxyClass", ClassLoader.class, Class[].class), this::collectProxyInvokes);
             addCheck(Proxy.class.getMethod("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class), this::collectProxyInvokes);
+
+            addCheck(System.class.getMethod("loadLibrary", String.class), this::collectJNIInvokes);
         } catch (NoSuchMethodException e) {
             throw VMError.shouldNotReachHere("Registering ReflectionInvocationChecks failed", e);
         }
@@ -181,6 +182,10 @@ public class FallbackFeature implements Feature {
 
     private void collectResourceInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
         resourceCalls.add("Resource access method " + check.locationString(invoke));
+    }
+
+    private void collectJNIInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
+        jniCalls.add("System method " + check.locationString(invoke));
     }
 
     private void collectProxyInvokes(ReflectionInvocationCheck check, InvokeTypeFlow invoke) {
@@ -252,6 +257,7 @@ public class FallbackFeature implements Feature {
 
     public FallbackImageRequest reflectionFallback = null;
     public FallbackImageRequest resourceFallback = null;
+    public FallbackImageRequest jniFallback = null;
     public FallbackImageRequest proxyFallback = null;
 
     @Override
@@ -269,8 +275,7 @@ public class FallbackFeature implements Feature {
         AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         if (access.getBigBang().getUnsupportedFeatures().exist()) {
             /* If we detect use of unsupported features we trigger fallback image build. */
-            String optionString = SubstrateOptionsParser.commandArgument(PointstoOptions.ReportUnsupportedFeaturesDuringAnalysis, "+");
-            reportFallback(ABORT_MSG_PREFIX + " due to unsupported features (use " + optionString + " for report)");
+            reportFallback(ABORT_MSG_PREFIX + " due to unsupported features");
         }
 
         for (ReflectionInvocationCheck check : reflectionInvocationChecks) {
@@ -286,6 +291,10 @@ public class FallbackFeature implements Feature {
         if (!resourceCalls.isEmpty()) {
             resourceCalls.add(ABORT_MSG_PREFIX + " due to accessing resources without configuration.");
             resourceFallback = new FallbackImageRequest(resourceCalls);
+        }
+        if (!jniCalls.isEmpty()) {
+            jniCalls.add(ABORT_MSG_PREFIX + " due to loading native libraries without configuration.");
+            jniFallback = new FallbackImageRequest(jniCalls);
         }
         if (!proxyCalls.isEmpty()) {
             proxyCalls.add(ABORT_MSG_PREFIX + " due to dynamic proxy use without configuration.");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2017, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -72,6 +72,11 @@ public class AArch64ReadNode extends ReadNode {
         gen.setResult(this, arithgen.emitExtendMemory(isSigned, readKind, resultBits, (AArch64AddressValue) gen.operand(getAddress()), gen.state(this)));
     }
 
+    @Override
+    public Stamp getAccessStamp() {
+        return accessStamp;
+    }
+
     /**
      * replace a ReadNode with an AArch64-specific variant which knows how to merge a downstream
      * zero or sign extend into the read operation.
@@ -80,9 +85,9 @@ public class AArch64ReadNode extends ReadNode {
      */
     public static void replace(ReadNode readNode) {
         assert readNode.getUsageCount() == 1;
-        assert readNode.getUsageAt(0) instanceof ZeroExtendNode || readNode.getUsageAt(0) instanceof SignExtendNode;
+        assert readNode.usages().first() instanceof ZeroExtendNode || readNode.usages().first() instanceof SignExtendNode;
 
-        ValueNode usage = (ValueNode) readNode.getUsageAt(0);
+        ValueNode usage = (ValueNode) readNode.usages().first();
         boolean isSigned = usage instanceof SignExtendNode;
         IntegerStamp accessStamp = ((IntegerStamp) readNode.getAccessStamp());
 

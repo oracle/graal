@@ -41,11 +41,11 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.agent.Support;
-import com.oracle.svm.agent.Support.WordPredicate;
 import com.oracle.svm.agent.Support.WordSupplier;
 import com.oracle.svm.agent.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.trace.AccessAdvisor;
+import com.oracle.svm.core.util.WordPredicate;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
@@ -72,6 +72,13 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
         }
         JNIFieldId field = jniFunctions().getFromReflectedField().invoke(env, result);
         return field.isNull() || typeAccessChecker.isFieldAccessible(env, clazz, () -> fromJniString(env, name), field, declaring);
+    }
+
+    public boolean verifyObjectFieldOffset(JNIEnvironment env, JNIObjectHandle name, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
+        if (shouldApproveWithoutChecks(env, callerClass)) {
+            return true;
+        }
+        return typeAccessChecker.isFieldUnsafeAccessible(() -> fromJniString(env, name), declaring);
     }
 
     public boolean verifyGetMethod(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {

@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.runtime.pointer;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -46,8 +48,11 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode.LLVMPointerEqualsNode;
+import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
 @SuppressWarnings("static-method")
 abstract class CommonPointerLibraries {
 
@@ -218,6 +223,22 @@ abstract class CommonPointerLibraries {
                 exception.enter();
                 throw InvalidArrayIndexException.create(idx);
             }
+        }
+    }
+
+    @ExportMessage
+    static class IsSame {
+
+        @Specialization
+        static boolean doNative(LLVMPointerImpl receiver, LLVMPointerImpl other,
+                        @Cached LLVMPointerEqualsNode equals) {
+            return equals.execute(receiver, other);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean doOther(LLVMPointerImpl receiver, Object other) {
+            return false;
         }
     }
 }

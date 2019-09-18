@@ -31,20 +31,28 @@ package com.oracle.truffle.llvm.runtime.global;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToPointerNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ExportLibrary(InteropLibrary.class)
-public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternalTruffleObject {
+@ExportLibrary(LLVMManagedReadLibrary.class)
+@ExportLibrary(LLVMManagedWriteLibrary.class)
+public final class LLVMGlobalContainer implements LLVMInternalTruffleObject {
 
     private long address;
     private Object contents;
@@ -101,14 +109,290 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
         }
     }
 
-    @Override
-    public LLVMObjectReadNode createReadNode() {
-        return getNodeFactory().createGlobalContainerReadNode();
+    @ExportMessage(name = "isReadable")
+    @ExportMessage(name = "isWritable")
+    @SuppressWarnings("static-method")
+    boolean isAccessible() {
+        return true;
     }
 
-    @Override
-    public LLVMObjectWriteNode createWriteNode() {
-        return getNodeFactory().createGlobalContainerWriteNode();
+    @ExportMessage
+    static class ReadI8 {
+
+        @Specialization(guards = "self.isPointer()")
+        static byte readNative(LLVMGlobalContainer self, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getI8(self.getAddress() + offset);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static byte readManaged(LLVMGlobalContainer self, long offset,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedReadLibrary read) {
+            interop.toNative(self);
+            return read.readI8(self, offset);
+        }
+    }
+
+    @ExportMessage
+    static class ReadI16 {
+
+        @Specialization(guards = "self.isPointer()")
+        static short readNative(LLVMGlobalContainer self, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getI16(self.getAddress() + offset);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static short readManaged(LLVMGlobalContainer self, long offset,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedReadLibrary read) {
+            interop.toNative(self);
+            return read.readI16(self, offset);
+        }
+    }
+
+    @ExportMessage
+    static class ReadI32 {
+
+        @Specialization(guards = "self.isPointer()")
+        static int readNative(LLVMGlobalContainer self, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getI32(self.getAddress() + offset);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static int readManaged(LLVMGlobalContainer self, long offset,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedReadLibrary read) {
+            interop.toNative(self);
+            return read.readI32(self, offset);
+        }
+    }
+
+    @ExportMessage
+    static class ReadFloat {
+
+        @Specialization(guards = "self.isPointer()")
+        static float readNative(LLVMGlobalContainer self, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getFloat(self.getAddress() + offset);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static float readManaged(LLVMGlobalContainer self, long offset,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedReadLibrary read) {
+            interop.toNative(self);
+            return read.readFloat(self, offset);
+        }
+    }
+
+    @ExportMessage
+    static class ReadDouble {
+
+        @Specialization(guards = "self.isPointer()")
+        static double readNative(LLVMGlobalContainer self, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getDouble(self.getAddress() + offset);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static double readManaged(LLVMGlobalContainer self, long offset,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedReadLibrary read) {
+            interop.toNative(self);
+            return read.readDouble(self, offset);
+        }
+    }
+
+    @ExportMessage
+    static class ReadGenericI64 {
+
+        @Specialization(guards = "self.isPointer()")
+        static long readNative(LLVMGlobalContainer self, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getI64(self.getAddress() + offset);
+        }
+
+        @Specialization(guards = {"!self.isPointer()", "offset == 0"})
+        static Object readManaged(LLVMGlobalContainer self, long offset) {
+            assert offset == 0;
+            return self.get();
+        }
+
+        @Specialization(guards = {"!self.isPointer()", "offset != 0"})
+        static Object readFallback(LLVMGlobalContainer self, long offset,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedReadLibrary read) {
+            interop.toNative(self);
+            return read.readGenericI64(self, offset);
+        }
+    }
+
+    @ExportMessage
+    static class ReadPointer {
+
+        @Specialization(guards = "self.isPointer()")
+        static LLVMPointer readNative(LLVMGlobalContainer self, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getCapability(LLVMMemory.class).getPointer(self.getAddress() + offset);
+        }
+
+        @Specialization(guards = {"!self.isPointer()", "offset == 0"})
+        static LLVMPointer readManaged(LLVMGlobalContainer self, long offset,
+                        @Cached LLVMToPointerNode toPointer) {
+            assert offset == 0;
+            return toPointer.executeWithTarget(self.get());
+        }
+
+        @Specialization(guards = {"!self.isPointer()", "offset != 0"})
+        static LLVMPointer readFallback(LLVMGlobalContainer self, long offset,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedReadLibrary read) {
+            interop.toNative(self);
+            return read.readPointer(self, offset);
+        }
+    }
+
+    @ExportMessage
+    static class WriteI8 {
+
+        @Specialization(guards = "self.isPointer()")
+        static void writeNative(LLVMGlobalContainer self, long offset, byte value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(LLVMMemory.class).putI8(self.getAddress() + offset, value);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static void writeManaged(LLVMGlobalContainer self, long offset, byte value,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedWriteLibrary write) {
+            interop.toNative(self);
+            write.writeI8(self, offset, value);
+        }
+    }
+
+    @ExportMessage
+    static class WriteI16 {
+
+        @Specialization(guards = "self.isPointer()")
+        static void writeNative(LLVMGlobalContainer self, long offset, short value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(LLVMMemory.class).putI16(self.getAddress() + offset, value);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static void writeManaged(LLVMGlobalContainer self, long offset, short value,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedWriteLibrary write) {
+            interop.toNative(self);
+            write.writeI16(self, offset, value);
+        }
+    }
+
+    @ExportMessage
+    static class WriteI32 {
+
+        @Specialization(guards = "self.isPointer()")
+        static void writeNative(LLVMGlobalContainer self, long offset, int value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(LLVMMemory.class).putI32(self.getAddress() + offset, value);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static void writeManaged(LLVMGlobalContainer self, long offset, int value,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedWriteLibrary write) {
+            interop.toNative(self);
+            write.writeI32(self, offset, value);
+        }
+    }
+
+    @ExportMessage
+    static class WriteFloat {
+
+        @Specialization(guards = "self.isPointer()")
+        static void writeNative(LLVMGlobalContainer self, long offset, float value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(LLVMMemory.class).putFloat(self.getAddress() + offset, value);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static void writeManaged(LLVMGlobalContainer self, long offset, float value,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedWriteLibrary write) {
+            interop.toNative(self);
+            write.writeFloat(self, offset, value);
+        }
+    }
+
+    @ExportMessage
+    static class WriteDouble {
+
+        @Specialization(guards = "self.isPointer()")
+        static void writeNative(LLVMGlobalContainer self, long offset, double value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(LLVMMemory.class).putDouble(self.getAddress() + offset, value);
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static void writeManaged(LLVMGlobalContainer self, long offset, double value,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedWriteLibrary write) {
+            interop.toNative(self);
+            write.writeDouble(self, offset, value);
+        }
+    }
+
+    @ExportMessage
+    static class WriteI64 {
+
+        @Specialization(guards = "self.isPointer()")
+        static void writeNative(LLVMGlobalContainer self, long offset, long value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getCapability(LLVMMemory.class).putI64(self.getAddress() + offset, value);
+        }
+
+        @Specialization(guards = {"!self.isPointer()", "offset == 0"})
+        static void writeManaged(LLVMGlobalContainer self, long offset, long value) {
+            assert offset == 0;
+            self.set(value);
+        }
+
+        @Specialization(guards = {"!self.isPointer()", "offset != 0"})
+        static void writeFallback(LLVMGlobalContainer self, long offset, long value,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedWriteLibrary write) {
+            interop.toNative(self);
+            write.writeI64(self, offset, value);
+        }
+    }
+
+    @ExportMessage
+    static class WriteGenericI64 {
+
+        @Specialization(limit = "3", guards = "self.isPointer()")
+        static void writeNative(LLVMGlobalContainer self, long offset, Object value,
+                        @CachedLibrary("value") LLVMNativeLibrary toNative,
+                        @CachedLanguage LLVMLanguage language) {
+            long ptr = toNative.toNativePointer(value).asNative();
+            language.getCapability(LLVMMemory.class).putI64(self.getAddress() + offset, ptr);
+        }
+
+        @Specialization(guards = {"!self.isPointer()", "offset == 0"})
+        static void writeManaged(LLVMGlobalContainer self, long offset, Object value) {
+            assert offset == 0;
+            self.set(value);
+        }
+
+        @Specialization(guards = {"!self.isPointer()", "offset != 0"})
+        static void writeFallback(LLVMGlobalContainer self, long offset, Object value,
+                        @CachedLibrary("self") InteropLibrary interop,
+                        @CachedLibrary("self") LLVMManagedWriteLibrary write) {
+            interop.toNative(self);
+            write.writeGenericI64(self, offset, value);
+        }
     }
 
     public void dispose() {
@@ -123,9 +407,5 @@ public final class LLVMGlobalContainer implements LLVMObjectAccess, LLVMInternal
     @TruffleBoundary
     public String toString() {
         return String.format("LLVMGlobalContainer (address = 0x%x, contents = %s)", address, contents);
-    }
-
-    private static NodeFactory getNodeFactory() {
-        return LLVMLanguage.getLanguage().getNodeFactory();
     }
 }

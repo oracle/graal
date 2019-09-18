@@ -449,6 +449,16 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.33
      */
     public void assertLineBreakpointsResolution(String sourceWithMarks, String resolvedMarkName, String language) {
+        assertLineBreakpointsResolution(sourceWithMarks, null, resolvedMarkName, language);
+    }
+
+    /**
+     * @param positionPredicate <code>null</code> to test line breakpoints on all lines, or a
+     *            predicate that limits the testable lines.
+     * @see #assertLineBreakpointsResolution(java.lang.String, java.lang.String, java.lang.String)
+     * @since 19.3.0
+     */
+    public void assertLineBreakpointsResolution(String sourceWithMarks, PositionPredicate positionPredicate, String resolvedMarkName, String language) {
         Pattern br = Pattern.compile("(" + resolvedMarkName + "\\d+_|" + resolvedMarkName + "\\d+-\\d+_)");
         Map<Integer, Integer> bps = new HashMap<>();
         String sourceString = sourceWithMarks;
@@ -483,7 +493,7 @@ public final class DebuggerTester implements AutoCloseable {
         final Source source = Source.newBuilder(language, sourceString, "testMisplacedLineBreakpoint." + language).buildLiteral();
         com.oracle.truffle.api.source.Source tsource = DebuggerTester.getSourceImpl(source);
         for (int l = 1; l < source.getLineCount(); l++) {
-            if (!bps.containsKey(l)) {
+            if ((positionPredicate == null || positionPredicate.testLine(l)) && !bps.containsKey(l)) {
                 Assert.fail("Line " + l + " is missing.");
             }
         }
@@ -618,13 +628,13 @@ public final class DebuggerTester implements AutoCloseable {
                                 }).build());
 
                 expectSuspended((SuspendedEvent event) -> {
-                    Assert.assertEquals("Expected " + bp[0] + " => " + bp[1] + ", resolved at " + resolvedIndexPtr[0],
+                    Assert.assertEquals("B" + bpId + ": Expected " + bp[0] + " => " + bp[1] + ", resolved at " + resolvedIndexPtr[0],
                                     bp[1], event.getSourceSection().getCharIndex() + 1);
                     Assert.assertSame(breakpoint, event.getBreakpoints().iterator().next());
                     event.prepareContinue();
                 });
                 expectDone();
-                Assert.assertEquals("Expected resolved " + bp[0] + " => " + bp[1],
+                Assert.assertEquals("B" + bpId + ": Expected resolved " + bp[0] + " => " + bp[1],
                                 bp[1], resolvedIndexPtr[0]);
             }
         }
@@ -641,6 +651,24 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.33
      */
     public void assertBreakpointsBreakEverywhere(Source source) {
+        assertBreakpointsBreakEverywhere(source, null);
+    }
+
+    /**
+     * Utility method that tests if a breakpoint submitted to any location permitted by the
+     * {@link PositionPredicate} in the source code suspends the execution. A two-pass test is
+     * performed. In the first pass, line breakpoints are submitted to every testable line. In the
+     * second pass, breakpoints are submitted to every testable line and column combination, even
+     * outside the source scope, if permitted by the {@link PositionPredicate}. It is expected that
+     * the breakpoints resolve to a nearest suspendable location and it is checked that all
+     * submitted breakpoints are hit.
+     *
+     * @param source a source to evaluate with breakpoints submitted everywhere
+     * @param positionPredicate <code>null</code> to submit breakpoints everywhere, or a predicate
+     *            that limits the testable positions.
+     * @since 19.3.0
+     */
+    public void assertBreakpointsBreakEverywhere(Source source, PositionPredicate positionPredicate) {
         int numLines = source.getLineCount();
         int numColumns = 0;
         for (int i = 1; i <= numLines; i++) {
@@ -662,8 +690,10 @@ public final class DebuggerTester implements AutoCloseable {
         };
         // Test all line breakpoints
         for (int l = 1; l < (numLines + 5); l++) {
-            Breakpoint breakpoint = Breakpoint.newBuilder(tsource).lineIs(l).oneShot().resolveListener(resolveListener).build();
-            breakpoints.add(breakpoint);
+            if (positionPredicate == null || positionPredicate.testLine(l)) {
+                Breakpoint breakpoint = Breakpoint.newBuilder(tsource).lineIs(l).oneShot().resolveListener(resolveListener).build();
+                breakpoints.add(breakpoint);
+            }
         }
         assertBreakpoints(source, breakpoints, breakpointsResolved, breakpointsHit);
 
@@ -674,8 +704,10 @@ public final class DebuggerTester implements AutoCloseable {
         // Test all line/column breakpoints
         for (int l = 1; l < (numLines + 5); l++) {
             for (int c = 1; c < (numColumns + 5); c++) {
-                Breakpoint breakpoint = Breakpoint.newBuilder(tsource).lineIs(l).columnIs(c).oneShot().resolveListener(resolveListener).build();
-                breakpoints.add(breakpoint);
+                if (positionPredicate == null || positionPredicate.testLineColumn(l, c)) {
+                    Breakpoint breakpoint = Breakpoint.newBuilder(tsource).lineIs(l).columnIs(c).oneShot().resolveListener(resolveListener).build();
+                    breakpoints.add(breakpoint);
+                }
             }
         }
         assertBreakpoints(source, breakpoints, breakpointsResolved, breakpointsHit);
@@ -838,6 +870,28 @@ public final class DebuggerTester implements AutoCloseable {
             this.source = source;
         }
 
+    }
+
+    /**
+     * Predicate of testable positions.
+     *
+     * @since 19.3.0
+     */
+    public interface PositionPredicate {
+
+        /**
+         * Whether to test at the line.
+         *
+         * @since 19.3.0
+         */
+        boolean testLine(int line);
+
+        /**
+         * Whether to test at the line and column position.
+         *
+         * @since 19.3.0
+         */
+        boolean testLineColumn(int line, int column);
     }
 
     class ExecutingLoop implements Runnable {

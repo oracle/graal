@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,11 +31,13 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
+import com.oracle.truffle.llvm.parser.metadata.MDCommonBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
 import com.oracle.truffle.llvm.parser.metadata.MDEnumerator;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
+import com.oracle.truffle.llvm.parser.metadata.MDLabel;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDModule;
 import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
@@ -150,6 +152,16 @@ final class MDNameExtractor implements MetadataVisitor {
 
     @Override
     public void visit(MDTemplateValue md) {
+        md.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDCommonBlock md) {
+        md.getName().accept(this);
+    }
+
+    @Override
+    public void visit(MDLabel md) {
         md.getName().accept(this);
     }
 }

@@ -30,8 +30,10 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -40,6 +42,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
@@ -83,8 +86,8 @@ public class SubstrateOptions {
     @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
     public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
 
-    @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations.", type = OptionType.User)//
-    public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(1) {
+    @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
+    public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(2) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newValue < 1);
@@ -156,7 +159,10 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<>(true);
 
     @Option(help = "Trace VMOperation execution.")//
-    public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> TraceVMOperations = new HostedOptionKey<>(false);
+
+    @Option(help = "Instrument code to trace and report class initialization.")//
+    public static final HostedOptionKey<Boolean> TraceClassInitialization = new HostedOptionKey<>(false);
 
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
@@ -273,7 +279,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
 
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
-    public static final HostedOptionKey<Boolean> UseStackBasePointer = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, InTypeCheck).", type = OptionType.Debug)//
     public static final HostedOptionKey<String[]> ReportAnalysisForbiddenType = new HostedOptionKey<>(new String[0]);
@@ -282,14 +288,24 @@ public class SubstrateOptions {
     public static final HostedOptionKey<String> CompilerBackend = new HostedOptionKey<String>("lir") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
-            if ("llvm".equals(newValue) && JavaVersionUtil.JAVA_SPEC > 8) {
-                EmitStringEncodingSubstitutions.update(values, false);
+            if ("llvm".equals(newValue)) {
+                if (JavaVersionUtil.JAVA_SPEC > 8) {
+                    EmitStringEncodingSubstitutions.update(values, false);
+                }
+                /*
+                 * The code information is filled before linking, which means that stripping dead
+                 * functions makes it incoherent with the executable.
+                 */
+                RemoveUnusedSymbols.update(values, false);
             }
         }
     };
 
     @Option(help = "Emit substitutions for UTF16 and latin1 compression", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> EmitStringEncodingSubstitutions = new HostedOptionKey<>(true);
+
+    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Predicate<String> makeFilter(String[] definedFilters) {
@@ -308,7 +324,25 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
-    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(false);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+
+    @Option(help = "Fold SecurityManager getter.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> FoldSecurityManagerGetter = new HostedOptionKey<>(true);
+
+    @Option(help = "Provide custom path to C compiler used for query code compilation and linking.", type = OptionType.User)//
+    public static final HostedOptionKey<String> CCompilerPath = new HostedOptionKey<>(null);
+    @Option(help = "Provide custom C compiler option used for query code compilation.", type = OptionType.User)//
+    public static final HostedOptionKey<String[]> CCompilerOption = new HostedOptionKey<>(new String[0]);
+
+    /**
+     * The alignment for AOT and JIT compiled methods. The value is constant folded during image
+     * generation, i.e., cannot be changed at run time, so that it can be used in uninterruptible
+     * code.
+     */
+    @Fold
+    public static int codeAlignment() {
+        return GraalOptions.LoopHeaderAlignment.getValue(HostedOptionValues.singleton());
+    }
 }

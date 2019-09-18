@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -29,10 +29,37 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-CLANG?=clang
-CLANGXX?=clang++
-LLVM_AS?=llvm-as
-OPT?=opt
+.PHONY: default
+
+default: tool-info.txt
+
+ifdef CLANG_CC
+  CLANG=$(CLANG_CC)
+else
+  CLANG?=clang
+endif
+ifdef CLANG_CXX
+  CLANGXX=$(CLANG_CXX)
+else
+  CLANGXX?=clang++
+endif
+ifdef CLANG_LLVM_AS
+  LLVM_AS=$(CLANG_LLVM_AS)
+else
+  LLVM_AS?=llvm-as
+endif
+ifdef CLANG_LLVM_OPT
+  LLVM_OPT=$(CLANG_LLVM_OPT)
+  OPT=$(CLANG_LLVM_OPT)
+else
+  LLVM_OPT?=opt
+  OPT=$(LLVM_OPT)
+endif
+ifdef CLANG_LLVM_OBJCOPY
+  LLVM_OBJCOPY=$(CLANG_LLVM_OBJCOPY)
+else
+  LLVM_OBJCOPY?=llvm-objcopy
+endif
 FC?=gfortran
 
 CFLAGS+= $(SUITE_CFLAGS)
@@ -40,11 +67,30 @@ CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++
 CPPFLAGS+= $(SUITE_CPPFLAGS)
 LDFLAGS+= $(SUITE_LDFLAGS)
 
-ifeq ($(OS), darwin)
+ifndef NO_FEMBED_BITCODE
+BC_FILE=
 EMBED_BC=-fembed-bitcode
-else
+else # NO_FEMBED_BITCODE it set
+ifeq ($(OS), darwin)
+BC_FILE=
+EMBED_BC=-fembed-bitcode
+else # not darwin
 EMBED_BC=
-endif
+BC_FILE=%/O0.bc.o
+%.bc.o: %.bc
+	$(QUIETLY) $(LLVM_OBJCOPY) -I binary -O elf64-x86-64 -B i386:x86-64 --rename-section .data=.llvmbc $< $@
+endif # darwin
+endif # NO_FEMBED_BITCODE
+
+tool-info.txt:
+	@echo "Tools:" > $@
+	@echo "  CLANG: $(CLANG)" >> $@
+	@echo "  CLANGXX: $(CLANGXX)" >> $@
+	@echo "  LLVM_AS: $(LLVM_AS)" >> $@
+	@echo "  LLVM_OPT: $(LLVM_OPT)" >> $@
+	@echo "  LLVM_OBJCOPY: $(LLVM_OBJCOPY)" >> $@
+	@echo "  FC: $(FC)" >> $@
+	@cat $@
 
 %.c.dir/ref.out: %.c $(BC_FILE)
 	@mkdir -p $(shell dirname $@)

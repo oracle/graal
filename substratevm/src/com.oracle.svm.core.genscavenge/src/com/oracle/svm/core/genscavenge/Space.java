@@ -35,7 +35,6 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -73,7 +72,7 @@ public class Space {
     /**
      * The name of this Space. This method is used in logging and so should not require any work.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getName() {
         return name;
     }
@@ -266,11 +265,11 @@ public class Space {
         trace.string("  space: ").string(getName()).string("  original: ").object(original).newline();
         /* Move the chunk containing the object from the Space it is in to this Space. */
         if (ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original)) {
-            trace.string("  aligned header: ").hex(ObjectHeader.readHeaderFromObject(original)).newline();
+            trace.string("  aligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
             final AlignedHeapChunk.AlignedHeader aChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
             promoteAlignedHeapChunk(aChunk);
         } else {
-            trace.string("  unaligned header: ").hex(ObjectHeader.readHeaderFromObject(original)).newline();
+            trace.string("  unaligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
             final UnalignedHeapChunk.UnalignedHeader uChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
             promoteUnalignedHeapChunk(uChunk);
         }
@@ -332,7 +331,7 @@ public class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.THREAD_MUTEX.guaranteeIsLocked("Trying to append an aligned heap chunk but no mutual exclusion.");
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
         }
         final Log trace = Log.noopLog().string("[SpaceImpl.appendAlignedHeapChunk:").newline();
         if (trace.isEnabled()) {
@@ -435,7 +434,7 @@ public class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.THREAD_MUTEX.guaranteeIsLocked("Trying to append an unaligned chunk but no mutual exclusion.");
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
         }
         appendUnalignedHeapChunkUninterruptibly(uChunk);
         getAccounting().noteUnalignedHeapChunk(UnalignedHeapChunk.committedObjectMemoryOfUnalignedHeapChunk(uChunk));
@@ -515,42 +514,42 @@ public class Space {
      * The "get" methods are protected, but the "set" methods are private.
      */
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     AlignedHeapChunk.AlignedHeader getFirstAlignedHeapChunk() {
         return firstAlignedHeapChunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setFirstAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
         firstAlignedHeapChunk = chunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     AlignedHeapChunk.AlignedHeader getLastAlignedHeapChunk() {
         return lastAlignedHeapChunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setLastAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk) {
         lastAlignedHeapChunk = chunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnalignedHeapChunk.UnalignedHeader getFirstUnalignedHeapChunk() {
         return firstUnalignedHeapChunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setFirstUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
         this.firstUnalignedHeapChunk = chunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnalignedHeapChunk.UnalignedHeader getLastUnalignedHeapChunk() {
         return lastUnalignedHeapChunk;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setLastUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk) {
         lastUnalignedHeapChunk = chunk;
     }
@@ -605,14 +604,14 @@ public class Space {
         if (trace.isEnabled()) {
             /* ObjectHeader.readHeaderFromObject(original) is expensive. */
             trace.string("[Before installing forwarding pointer:");
-            trace.string("  original: ").object(original).string("  header: ").hex(ObjectHeader.readHeaderFromObject(original));
+            trace.string("  original: ").object(original).string("  header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original));
             trace.string("  copy: ").object(copy).string("]").newline();
         }
         ObjectHeaderImpl.getObjectHeaderImpl().installForwardingPointer(original, copy);
         if (trace.isEnabled()) {
             /* ObjectHeader.readHeaderFromObject(original) is expensive. */
             trace.string("[After installing forwarding pointer:");
-            trace.string("  original header: ").hex(ObjectHeader.readHeaderFromObject(original));
+            trace.string("  original header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original));
             trace.string("  SpaceImpl.promoteAlignedObject returns copy]").newline();
         }
         return copy;
@@ -634,7 +633,7 @@ public class Space {
             /* I am about to fail, but first log some things about the object. */
             final Log failureLog = Log.log().string("[! SpaceImpl.copyAlignedObject:").indent(true);
             failureLog.string("  failure to allocate ").unsigned(copySize).string(" bytes").newline();
-            ObjectHeaderImpl.getObjectHeaderImpl().objectHeaderToLog(originalObj, failureLog);
+            ObjectHeaderImpl.getObjectHeaderImpl().logObjectHeader(originalObj, failureLog);
             failureLog.string(" !]").indent(false);
             throw VMError.shouldNotReachHere("Promotion failure");
         }

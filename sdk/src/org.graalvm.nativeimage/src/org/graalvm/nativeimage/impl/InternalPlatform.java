@@ -43,12 +43,21 @@ package org.graalvm.nativeimage.impl;
 import org.graalvm.nativeimage.Platform;
 
 public interface InternalPlatform {
+
+    /**
+     * Used for all platforms that make use of static JNI JDK libraries (libjava.a, libnio.a, ...).
+     *
+     * @since 19.2
+     */
+    interface PLATFORM_JNI extends Platform {
+    }
+
     /**
      * Supported operating system: Linux platform that uses JNI based native JDK libraries.
      *
      * @since 19.0
      */
-    interface LINUX_JNI extends Platform {
+    interface LINUX_JNI extends PLATFORM_JNI {
 
     }
 
@@ -57,7 +66,7 @@ public interface InternalPlatform {
      *
      * @since 19.0
      */
-    interface DARWIN_JNI extends Platform {
+    interface DARWIN_JNI extends PLATFORM_JNI {
 
     }
 
@@ -118,17 +127,35 @@ public interface InternalPlatform {
     }
 
     /**
+     * Temporary leaf platform that is used to mark classes or methods that are used for LINUX_JNI
+     * platforms.
+     *
+     * @since 19.1.0
+     */
+    class LINUX_JNI_AArch64 implements LINUX_JNI, LINUX_AND_JNI, Platform.AArch64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 19.1.0
+         */
+        public LINUX_JNI_AArch64() {
+        }
+
+    }
+
+    /**
      * Temporary leaf platform that is used to mark classes or methods that are used for DARWIN_JNI
      * platforms.
      *
-     * @since 20.0
+     * @since 19.1.0
      */
     class DARWIN_JNI_AArch64 implements DARWIN_JNI, DARWIN_AND_JNI, Platform.AArch64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
-         * @since 20.0
+         * @since 19.1.0
          */
         public DARWIN_JNI_AArch64() {
         }

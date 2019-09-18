@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.amd64.AMD64.rax;
+import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
@@ -56,6 +56,7 @@ import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
@@ -107,20 +108,15 @@ import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
@@ -160,25 +156,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
-
-@AutomaticFeature
-@Platforms(Platform.AMD64.class)
-class SubstrateAMD64BackendFeature implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Platform.includedIn(Platform.AMD64.class) && CompilerBackend.getValue().equals("lir");
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
-            @Override
-            public SubstrateBackend newBackend(Providers newProviders) {
-                return new SubstrateAMD64Backend(newProviders);
-            }
-        });
-    }
-}
 
 public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenerationProvider {
 
@@ -313,8 +290,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         private final SharedMethod method;
 
-        public SubstrateLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention, SharedMethod method) {
-            super(compilationId, lir, frameMapBuilder, callingConvention);
+        public SubstrateLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, FrameMapBuilder frameMapBuilder, CallingConvention callingConvention,
+                        RegisterAllocationConfig registerAllocationConfig, SharedMethod method) {
+            super(compilationId, lir, frameMapBuilder, registerAllocationConfig, callingConvention);
             this.method = method;
 
             if (method.canDeoptimize() || method.isDeoptTarget()) {
@@ -624,7 +602,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public void emitBranch(LogicNode node, LabelRef trueSuccessor, LabelRef falseSuccessor, double trueSuccessorProbability) {
             if (node instanceof SafepointCheckNode) {
                 append(new AMD64DecrementingSafepointCheckOp());
-                append(new BranchOp(ConditionFlag.Zero, trueSuccessor, falseSuccessor, trueSuccessorProbability));
+                append(new BranchOp(ConditionFlag.LessEqual, trueSuccessor, falseSuccessor, trueSuccessorProbability));
             } else {
                 super.emitBranch(node, trueSuccessor, falseSuccessor, trueSuccessorProbability);
             }
@@ -652,10 +630,15 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             int frameSize = tasm.frameMap.frameSize();
 
             if (((SubstrateAMD64RegisterConfig) tasm.frameMap.getRegisterConfig()).shouldUseBasePointer()) {
-                asm.enter(frameSize);
-            } else {
-                asm.decrementq(rsp, frameSize);
+                /*
+                 * Note that we never use the `enter` instruction so that we have a predictable code
+                 * pattern at each method prologue. And `enter` seems to be slower than the explicit
+                 * code.
+                 */
+                asm.push(rbp);
+                asm.movq(rbp, rsp);
             }
+            asm.decrementq(rsp, frameSize);
 
             tasm.recordMark(MARK_PROLOGUE_DECD_RSP);
             tasm.recordMark(MARK_PROLOGUE_END);
@@ -669,7 +652,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             tasm.recordMark(MARK_EPILOGUE_START);
 
             if (((SubstrateAMD64RegisterConfig) tasm.frameMap.getRegisterConfig()).shouldUseBasePointer()) {
-                asm.leave();
+                asm.movq(rsp, rbp);
+                asm.pop(rbp);
             } else {
                 asm.incrementq(rsp, frameSize);
             }
@@ -860,11 +844,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     @Override
-    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterConfig registerConfig, StructuredGraph graph, Object stub) {
+    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterAllocationConfig registerAllocationConfig, StructuredGraph graph, Object stub) {
         SharedMethod method = (SharedMethod) graph.method();
         CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), method.isEntryPoint() ? SubstrateCallingConventionType.NativeCallee
                         : SubstrateCallingConventionType.JavaCallee, method, this);
-        return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerConfig), callingConvention, method);
+        return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), callingConvention, registerAllocationConfig, method);
     }
 
     protected AMD64ArithmeticLIRGenerator createArithmeticLIRGen(RegisterValue nullRegisterValue) {

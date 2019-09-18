@@ -50,6 +50,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.ExecutableNode;
@@ -61,7 +62,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
  * Reusable language for testing that allows wrap all methods.
  */
 @TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
-@ProvidedTags({ExpressionTag.class, StatementTag.class, RootTag.class})
+@ProvidedTags({ExpressionTag.class, StatementTag.class, RootBodyTag.class, RootTag.class})
 public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
     public static final String ID = "proxyLanguage";

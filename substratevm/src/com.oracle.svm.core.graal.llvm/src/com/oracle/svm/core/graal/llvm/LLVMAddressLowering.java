@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.SubstrateOptions.CompilerBackend;
-
-import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMAddressValue;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -36,35 +34,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.code.SubstrateAddressLoweringPhaseFactory;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import org.graalvm.compiler.core.llvm.LLVMUtils.LLVMAddressValue;
-
-@AutomaticFeature
-class SubstrateLLVMAddressLoweringPhaseFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(SubstrateAddressLoweringPhaseFactory.class, new SubstrateAddressLoweringPhaseFactory() {
-
-            @Override
-            public Phase newAddressLowering(CompressEncoding compressEncoding, SubstrateRegisterConfig registerConfig) {
-                LLVMAddressLowering addressLowering = new LLVMAddressLowering();
-                return new AddressLoweringPhase(addressLowering);
-            }
-        });
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return CompilerBackend.getValue().equals("llvm");
-    }
-}
 
 public class LLVMAddressLowering extends AddressLoweringPhase.AddressLowering {
 

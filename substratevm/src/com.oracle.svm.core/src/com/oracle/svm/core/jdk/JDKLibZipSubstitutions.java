@@ -25,8 +25,8 @@
 
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -36,11 +36,12 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
 @CLibrary(value = JDKLibZipSubstitutions.CLibraryName, requireStatic = true)
 public class JDKLibZipSubstitutions {
     static final String CLibraryName = "zip";
@@ -48,8 +49,10 @@ public class JDKLibZipSubstitutions {
     public static boolean initIDs() {
         try {
             System.loadLibrary(CLibraryName);
-            Target_java_util_zip_Inflater.initIDs();
-            Target_java_util_zip_Deflater.initIDs();
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
+                Target_java_util_zip_Inflater.initIDs();
+                Target_java_util_zip_Deflater.initIDs();
+            }
             return true;
         } catch (UnsatisfiedLinkError e) {
             Log.log().string("System.loadLibrary failed, " + e).newline();
@@ -59,18 +62,20 @@ public class JDKLibZipSubstitutions {
 
     @TargetClass(className = "java.util.zip.Inflater")
     static final class Target_java_util_zip_Inflater {
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         @Alias
         static native void initIDs();
     }
 
     @TargetClass(className = "java.util.zip.Deflater")
     static final class Target_java_util_zip_Deflater {
+        @TargetElement(onlyWith = JDK8OrEarlier.class)
         @Alias
         static native void initIDs();
     }
 }
 
-@Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
+@Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
 class JDKLibZipFeature implements Feature {
     @Override
@@ -85,30 +90,27 @@ class JDKLibZipFeature implements Feature {
         try {
             JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("needDict"));
             JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("finished"));
-            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("buf"));
-            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("off"));
-            JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("len"));
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("inputConsumed"));
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("outputConsumed"));
+            } else {
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("buf"));
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("off"));
+                JNIRuntimeAccess.register(java.util.zip.Inflater.class.getDeclaredField("len"));
+            }
 
             JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("level"));
             JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("strategy"));
             JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("setParams"));
             JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("finish"));
             JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("finished"));
-            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("buf"));
-            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("off"));
-            JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("len"));
+            if (JavaVersionUtil.JAVA_SPEC < 11) {
+                JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("buf"));
+                JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("off"));
+                JNIRuntimeAccess.register(java.util.zip.Deflater.class.getDeclaredField("len"));
+            }
         } catch (NoSuchFieldException e) {
             VMError.shouldNotReachHere("LibZipFeature: Error in registering jni access:", e);
         }
     }
-}
-
-/**
- * Temporary workaround for DARWIN_JNI. Contrary to Linux, on Darwin libzip.a does currently NOT
- * contain the zlib object files it depends on. This requires that we link to the system-provided
- * zlib also for DARWIN_JNI. Once GR-16462 is implemented (and JDKs updated) this can be removed.
- */
-@Platforms({InternalPlatform.DARWIN_JNI.class})
-@CLibrary("z")
-class ZLib {
 }

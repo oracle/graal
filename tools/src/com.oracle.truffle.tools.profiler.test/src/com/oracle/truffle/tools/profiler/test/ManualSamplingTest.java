@@ -47,6 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
@@ -60,6 +61,7 @@ import com.oracle.truffle.tools.profiler.StackTraceEntry;
 public class ManualSamplingTest extends AbstractPolyglotTest {
 
     protected static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().sourceIs(s -> !s.isInternal()).tagIs(RootTag.class, StatementTag.class).build();
+    private static final Class<?>[] ROOT_TAGS = new Class<?>[]{RootTag.class, RootBodyTag.class};
 
     @Test
     @SuppressWarnings("unchecked")
@@ -129,7 +131,7 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         }, (samples) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "", 0, RootTag.class);
+            assertEntry(iterator, "", 0, ROOT_TAGS);
             assertFalse(iterator.hasNext());
         }, true);
     }
@@ -142,7 +144,7 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
             assertEntry(iterator, "", 5, StatementTag.class);
-            assertEntry(iterator, "", 0, RootTag.class);
+            assertEntry(iterator, "", 0, ROOT_TAGS);
             assertFalse(iterator.hasNext());
         }, true);
     }
@@ -153,7 +155,7 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         }, (samples) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "", 0, RootTag.class);
+            assertEntry(iterator, "", 0, ROOT_TAGS);
             assertFalse(iterator.hasNext());
         }, false);
     }
@@ -167,9 +169,9 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
         }, (samples) -> {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-            assertEntry(iterator, "bar", 16, RootTag.class);
-            assertEntry(iterator, "baz", 66, RootTag.class);
-            assertEntry(iterator, "", 0, RootTag.class);
+            assertEntry(iterator, "bar", 16, ROOT_TAGS);
+            assertEntry(iterator, "baz", 66, ROOT_TAGS);
+            assertEntry(iterator, "", 0, ROOT_TAGS);
             assertFalse(iterator.hasNext());
         }, false);
     }
@@ -185,10 +187,10 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
             assertEquals(1, samples.size());
             Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
             assertEntry(iterator, "bar", 21, StatementTag.class);
-            assertEntry(iterator, "bar", 16, RootTag.class);
+            assertEntry(iterator, "bar", 16, ROOT_TAGS);
             assertEntry(iterator, "baz", 63, StatementTag.class);
-            assertEntry(iterator, "baz", 58, RootTag.class);
-            assertEntry(iterator, "", 0, RootTag.class);
+            assertEntry(iterator, "baz", 58, ROOT_TAGS);
+            assertEntry(iterator, "", 0, ROOT_TAGS);
             assertFalse(iterator.hasNext());
         }, false);
     }
@@ -214,9 +216,9 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
             for (Entry<Thread, List<StackTraceEntry>> entry : samples.entrySet()) {
                 String threadName = entry.getKey().getName();
                 Iterator<StackTraceEntry> iterator = entry.getValue().iterator();
-                assertEntry(iterator, threadName + "_bar", 19, RootTag.class);
-                assertEntry(iterator, threadName + "_baz", 72, RootTag.class);
-                assertEntry(iterator, "", 0, RootTag.class);
+                assertEntry(iterator, threadName + "_bar", 19, ROOT_TAGS);
+                assertEntry(iterator, threadName + "_baz", 72, ROOT_TAGS);
+                assertEntry(iterator, "", 0, ROOT_TAGS);
                 assertFalse(iterator.hasNext());
             }
         }, false);

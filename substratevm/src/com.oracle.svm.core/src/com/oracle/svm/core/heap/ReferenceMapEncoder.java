@@ -36,6 +36,8 @@ import java.util.Set;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.util.ByteArrayReader;
 
@@ -79,7 +81,7 @@ public abstract class ReferenceMapEncoder {
         usageCounts.put(input, newCount);
     }
 
-    public byte[] encodeAll(PinnedAllocator allocator) {
+    public NonmovableArray<Byte> encodeAll() {
         assert writeBuffer.getBytesWritten() == 0 : "encodeAll() must not be called multiple times";
 
         /*
@@ -92,7 +94,9 @@ public abstract class ReferenceMapEncoder {
         encodeAll(sortedEntries);
 
         int length = TypeConversion.asS4(writeBuffer.getBytesWritten());
-        return writeBuffer.toArray(newByteArray(allocator, length));
+        NonmovableArray<Byte> array = NonmovableArrays.createByteArray(length);
+        writeBuffer.toByteBuffer(NonmovableArrays.asByteBuffer(array));
+        return array;
     }
 
     public long lookupEncoding(ReferenceMapEncoder.Input referenceMap) {
@@ -109,7 +113,4 @@ public abstract class ReferenceMapEncoder {
 
     protected abstract void encodeAll(List<Entry<Input, Long>> sortedEntries);
 
-    private static byte[] newByteArray(PinnedAllocator allocator, int length) {
-        return allocator == null ? new byte[length] : (byte[]) allocator.newArray(byte.class, length);
-    }
 }

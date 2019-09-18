@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutA
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
 import static org.graalvm.compiler.core.GraalCompilerOptions.MaxCompilationProblemsPerAction;
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.debug.DebugContext.VERBOSE_LEVEL;
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
@@ -274,7 +275,8 @@ public abstract class CompilationWrapper<T> {
                 OptionValues retryOptions = new OptionValues(initialOptions,
                                 Dump, ":" + VERBOSE_LEVEL,
                                 MethodFilter, null,
-                                DumpPath, dumpPath.getPath());
+                                DumpPath, dumpPath.getPath(),
+                                TrackNodeSourcePosition, true);
 
                 ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
                 PrintStream ps = new PrintStream(logBaos);
@@ -302,10 +304,16 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
+    /**
+     * Calls {@link System#exit(int)} in the runtime embedding the Graal compiler. This will be a
+     * different runtime than Graal's runtime in the case of libgraal.
+     */
+    protected abstract void exitHostVM(int status);
+
     private void maybeExitVM(ExceptionAction action) {
         if (action == ExitVM) {
             TTY.println("Exiting VM after retry compilation of " + this);
-            System.exit(-1);
+            exitHostVM(-1);
         }
     }
 

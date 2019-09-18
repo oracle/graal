@@ -80,6 +80,54 @@ public final class OptionKey<T> {
     }
 
     /**
+     * Constructs a new option key to group/accumulate options with common prefixes. This type of
+     * options allow to collect key=value pairs whose keys are unknown beforehand e.g. user defined
+     * properties. See {@link OptionMap}.
+     *
+     * Example usage:
+     * 
+     * <pre>
+     * &#64;Option.Group("mylang")
+     * public class MiscOptions {
+     *     &#64;Option(help = &quot;User-defined properties&quot;, category = OptionCategory.USER) //
+     *     public static final OptionKey&lt;OptionMap&lt;String&gt;&gt; Properties = OptionKey.mapOf(String.class);
+     *
+     *     ...
+     * }
+     * </pre>
+     *
+     * Properties can be set using the {@code mylang.Properties} prefix.
+     * 
+     * <pre>
+     * Context context = Context.newBuilder() //
+     *                 .option(&quot;mylang.Properties.key&quot;, &quot;value&quot;) //
+     *                 .option(&quot;mylang.Properties.user.name&quot;, &quot;guest&quot;) //
+     *                 .build();
+     * </pre>
+     *
+     * The option map can be consumed as follows:
+     * 
+     * <pre>
+     * OptionMap&lt;String&gt; properties = getOptions().get(MiscOptions.Properties);
+     * properties.get(&quot;key&quot;);       // value
+     * properties.get(&quot;user.name&quot;); // guest
+     * properties.get(&quot;undefined&quot;); // null
+     * </pre>
+     *
+     * Throws {@link IllegalArgumentException} if no default {@link OptionType} could be
+     * {@link OptionType#defaultType(Object) resolved} for the value type.
+     * 
+     * @since 19.2
+     */
+    public static <V> OptionKey<OptionMap<V>> mapOf(Class<V> valueClass) {
+        OptionType<OptionMap<V>> type = OptionType.mapOf(valueClass);
+        if (type == null) {
+            throw new IllegalArgumentException("No default type specified for type " + valueClass.getName());
+        }
+        return new OptionKey<>(OptionMap.empty(), type);
+    }
+
+    /**
      * Returns the option type of this key.
      *
      * @since 19.0

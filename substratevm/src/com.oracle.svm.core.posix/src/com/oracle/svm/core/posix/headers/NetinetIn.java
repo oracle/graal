@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform.DARWIN;
 import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
@@ -44,7 +44,6 @@ import org.graalvm.word.PointerBase;
 @CContext(PosixDirectives.class)
 public class NetinetIn {
 
-    /** Private constructor: No instances. */
     private NetinetIn() {
     }
 
@@ -92,6 +91,28 @@ public class NetinetIn {
 
     @CConstant
     public static native int IP_MULTICAST_TTL();
+
+    @CConstant
+    public static native int IP_ADD_MEMBERSHIP();
+
+    @CConstant
+    public static native int IP_DROP_MEMBERSHIP();
+
+    @Platforms({LINUX.class})
+    @CConstant
+    public static native int IPV6_ADD_MEMBERSHIP();
+
+    @Platforms({LINUX.class})
+    @CConstant
+    public static native int IPV6_DROP_MEMBERSHIP();
+
+    @Platforms({DARWIN.class})
+    @CConstant
+    public static native int IPV6_JOIN_GROUP();
+
+    @Platforms({DARWIN.class})
+    @CConstant
+    public static native int IPV6_LEAVE_GROUP();
 
     // @formatter:off
     // sys/_types/_sa_family_t.h:typedef __uint8_t      sa_family_t;
@@ -227,9 +248,6 @@ public class NetinetIn {
     public static native int LITTLE_ENDIAN();
 
     @CConstant
-    public static native int BIG_ENDIAN();
-
-    @CConstant
     public static native int BYTE_ORDER();
 
     // These are macros in C, rather than functions,
@@ -237,7 +255,6 @@ public class NetinetIn {
     // TODO: These methods are used only occasionally from the SubstrateVM Java code,
     // so I am not so worried about whether this is the most efficient way to write them.
 
-    /** Host to Network Short: Converts a host-byte-order short to a network-byte-order short. */
     public static int htons(int hostshort) {
         // An expansion of the htons macro on little-endian machines
         // takes a short with 0xA1B0 and turns it into 0xB0A1.
@@ -250,7 +267,6 @@ public class NetinetIn {
         return result;
     }
 
-    /** Host to Network Short: Converts a host-byte-order short to a network-byte-order short. */
     public static int ntohs(int hostshort) {
         // An expansion of the ntohs macro on little-endian machines
         // takes a short with 0xA1B0 and turns it into 0xB0A1.
@@ -263,7 +279,6 @@ public class NetinetIn {
         return result;
     }
 
-    /** Host to Network Long: Converts a host-byte-order int to a network-byte-order int. */
     public static int htonl(int hostlong) {
         // An expansion of the htonl macro on little-endian machines
         // takes an int with 0xA3B2C1D0 and turns it into 0xD0C1B2A3.
@@ -289,7 +304,7 @@ public class NetinetIn {
     }
 
     // This traffics in int rather than short, but it contains the values to the range of uint16_t.
-    public static int swap_uint16_t(int value) {
+    private static int swap_uint16_t(int value) {
         // @formatter:off
         return NetinetIn.int_to_uint16_t(NetinetIn.insertByte(NetinetIn.extractByte(value, 1), 0) |
                                NetinetIn.insertByte(NetinetIn.extractByte(value, 0), 1));
@@ -298,11 +313,11 @@ public class NetinetIn {
     }
 
     // This traffics in int rather than short, but it contains the values to the range of uint16_t.
-    public static int int_to_uint16_t(int value) {
+    private static int int_to_uint16_t(int value) {
         return (value & 0xFFFF);
     }
 
-    public static int swap_uint32_t(int value) {
+    private static int swap_uint32_t(int value) {
         // @formatter:off
         return NetinetIn.insertByte(NetinetIn.extractByte(value, 3), 0) |
                NetinetIn.insertByte(NetinetIn.extractByte(value, 2), 1) |
@@ -313,16 +328,59 @@ public class NetinetIn {
     }
 
     /** Extract a byte from an int. Bytes are numbered from 0 from the low-order. */
-    public static int extractByte(int value, int whichByte) {
+    private static int extractByte(int value, int whichByte) {
         assert ((0 <= whichByte) && (whichByte <= 3)) : "Which byte not in [0..3]";
         return ((value >>> (whichByte * 8)) & 0xFF);
     }
 
     /** Insert a byte into an int. */
-    public static int insertByte(int value, int whichByte) {
+    private static int insertByte(int value, int whichByte) {
         assert ((0 <= whichByte) && (whichByte <= 3)) : "Which byte not in [0..3]";
         assert ((0 <= value) && (value <= 255)) : "Value not in [0..255]";
         return (value << (whichByte * 8));
+    }
+
+    // @formatter:off
+    // struct ip_mreq
+    //  {
+    //    /* IP multicast address of group.  */
+    //    struct in_addr imr_multiaddr;
+    //
+    //    /* Local IP address of interface.  */
+    //    struct in_addr imr_interface;
+    //  };
+    // @formatter:on
+    @CStruct(addStructKeyword = true)
+    public interface ip_mreq extends PointerBase {
+
+        @CFieldAddress
+        in_addr imr_multiaddr();
+
+        @CFieldAddress
+        in_addr imr_interface();
+    }
+
+    // @formatter:off
+    // struct ipv6_mreq
+    //  {
+    //    /* IP multicast address of group.  */
+    //    struct in6_addr ipv6mr_multiaddr;
+    //
+    //    /* Local IPv6 address of interface.  */
+    //    int ipv6mr_ifindex;
+    //  };
+    // @formatter:on
+    @CStruct(addStructKeyword = true)
+    public interface ipv6_mreq extends PointerBase {
+
+        @CFieldAddress
+        in6_addr ipv6mr_multiaddr();
+
+        @CField
+        int ipv6mr_interface();
+
+        @CField
+        void set_ipv6mr_interface(int value);
     }
 }
 

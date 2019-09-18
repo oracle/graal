@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,22 +31,17 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
 
-public final class MDTemplateTypeParameter extends MDName implements MDBaseNode {
+public final class MDTemplateTypeParameter extends MDNamedLocation implements MDBaseNode {
 
-    private final long line;
     private final long column;
 
     private MDBaseNode baseType;
-    private MDBaseNode scope;
-    private MDBaseNode file;
 
     private MDTemplateTypeParameter(long line, long column) {
-        this.line = line;
+        super(line);
         this.column = column;
 
         this.baseType = MDVoidNode.INSTANCE;
-        this.scope = MDVoidNode.INSTANCE;
-        this.file = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -58,18 +53,6 @@ public final class MDTemplateTypeParameter extends MDName implements MDBaseNode 
         return baseType;
     }
 
-    public MDBaseNode getScope() {
-        return scope;
-    }
-
-    public MDBaseNode getFile() {
-        return file;
-    }
-
-    public long getLine() {
-        return line;
-    }
-
     public long getColumn() {
         return column;
     }
@@ -79,12 +62,6 @@ public final class MDTemplateTypeParameter extends MDName implements MDBaseNode 
         super.replace(oldValue, newValue);
         if (baseType == oldValue) {
             baseType = newValue;
-        }
-        if (scope == oldValue) {
-            scope = newValue;
-        }
-        if (file == oldValue) {
-            file = newValue;
         }
     }
 
@@ -101,9 +78,9 @@ public final class MDTemplateTypeParameter extends MDName implements MDBaseNode 
 
         final MDTemplateTypeParameter parameter = new MDTemplateTypeParameter(line, column);
 
-        parameter.scope = ParseUtil.resolveReference(args, ARGINDEX_SCOPE, parameter, md);
+        parameter.setScope(ParseUtil.resolveReference(args, ARGINDEX_SCOPE, parameter, md));
         parameter.baseType = ParseUtil.resolveReference(args, ARGINDEX_TYPE, parameter, md);
-        parameter.file = ParseUtil.resolveReference(args, ARGINDEX_FILE, parameter, md);
+        parameter.setFile(ParseUtil.resolveReference(args, ARGINDEX_FILE, parameter, md));
         parameter.setName(ParseUtil.resolveReference(args, ARGINDEX_NAME, parameter, md));
 
         return parameter;

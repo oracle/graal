@@ -50,6 +50,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -60,6 +62,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -67,6 +70,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ModuleSupport;
 
 public final class ImageClassLoader {
 
@@ -97,6 +101,14 @@ public final class ImageClassLoader {
     }
 
     public static ImageClassLoader create(Platform platform, String[] classpathAll, NativeImageClassLoader classLoader) {
+        /*
+         * Iterating all classes can already trigger class initialization: We need annotation
+         * information, which triggers class initialization of annotation classes and enum classes
+         * referenced by annotations. Therefore, we need to have the system properties that indicate
+         * "during image build" set up already at this time.
+         */
+        NativeImageGenerator.setSystemPropertiesForImageEarly();
+
         ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
         classpathFiltered.addAll(Arrays.asList(classpathAll));
 
@@ -126,6 +138,28 @@ public final class ImageClassLoader {
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            Set<String> modules = new HashSet<>();
+            modules.add("jdk.internal.vm.ci");
+            Path javaHome = Paths.get(System.getProperty("java.home"));
+            if (!Files.exists(javaHome)) {
+                throw new AssertionError("Java home is not reachable.");
+            }
+            Path list = javaHome.resolve(Paths.get("lib", "native-image-modules.list"));
+            if (Files.exists(list)) {
+                try {
+                    Files.readAllLines(list).stream().map(s -> s.trim()).filter(s -> !s.isEmpty() && !s.startsWith("#")).forEach(modules::add);
+                } catch (IOException e) {
+                    throw shouldNotReachHere(e);
+                }
+            }
+            for (String moduleResource : ModuleSupport.getModuleResources(modules)) {
+                if (moduleResource.endsWith(CLASS_EXTENSION)) {
+                    executor.execute(() -> handleClassFileName(moduleResource, '/'));
+                }
+            }
+        }
+
         Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
         uniquePaths.addAll(
                         Arrays.stream(classpath)
@@ -140,7 +174,7 @@ public final class ImageClassLoader {
         Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
         if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
             try {
-                return Files.list(entry.getParent()).filter(Files::isRegularFile);
+                return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
             } catch (IOException e) {
                 return Stream.empty();
             }
@@ -190,33 +224,70 @@ public final class ImageClassLoader {
     }
 
     private void findSystemElements(Class<?> systemClass) {
+        Method[] declaredMethods = null;
         try {
-            for (Method systemMethod : systemClass.getDeclaredMethods()) {
-                if (NativeImageGenerator.includedIn(platform, systemMethod.getAnnotation(Platforms.class))) {
+            declaredMethods = systemClass.getDeclaredMethods();
+        } catch (Throwable t) {
+            handleClassLoadingError(t);
+        }
+        if (declaredMethods != null) {
+            for (Method systemMethod : declaredMethods) {
+                if (annotationsAvailable(systemMethod) && NativeImageGenerator.includedIn(platform, systemMethod.getAnnotation(Platforms.class))) {
                     synchronized (systemMethods) {
                         systemMethods.add(systemMethod);
                     }
                 }
             }
+        }
+
+        Field[] declaredFields = null;
+        try {
+            declaredFields = systemClass.getDeclaredFields();
         } catch (Throwable t) {
             handleClassLoadingError(t);
         }
-        try {
-            for (Field systemField : systemClass.getDeclaredFields()) {
-                if (NativeImageGenerator.includedIn(platform, systemField.getAnnotation(Platforms.class))) {
+        if (declaredFields != null) {
+            for (Field systemField : declaredFields) {
+                if (annotationsAvailable(systemField) && NativeImageGenerator.includedIn(platform, systemField.getAnnotation(Platforms.class))) {
                     synchronized (systemFields) {
                         systemFields.add(systemField);
                     }
                 }
             }
+        }
+    }
+
+    private static boolean annotationsAvailable(AnnotatedElement element) {
+        try {
+            element.getAnnotations();
+            return true;
         } catch (Throwable t) {
             handleClassLoadingError(t);
+            return false;
         }
     }
 
     @SuppressWarnings("unused")
-    private void handleClassLoadingError(Throwable t) {
+    private static void handleClassLoadingError(Throwable t) {
         /* we ignore class loading errors due to incomplete paths that people often have */
+    }
+
+    private void handleClassFileName(String unversionedClassFileName, char fileSystemSeparatorChar) {
+        String unversionedClassFileNameWithoutSuffix = unversionedClassFileName.substring(0, unversionedClassFileName.length() - CLASS_EXTENSION_LENGTH);
+        if (unversionedClassFileNameWithoutSuffix.equals("module-info")) {
+            return;
+        }
+        String className = unversionedClassFileNameWithoutSuffix.replace(fileSystemSeparatorChar, '.');
+
+        Class<?> clazz = null;
+        try {
+            clazz = forName(className);
+        } catch (Throwable t) {
+            handleClassLoadingError(t);
+        }
+        if (clazz != null) {
+            handleClass(clazz);
+        }
     }
 
     private void initAllClasses(final Path root, Set<Path> excludes, ForkJoinPool executor) {
@@ -236,18 +307,10 @@ public final class ImageClassLoader {
                 if (excludes.contains(file.getParent())) {
                     return FileVisitResult.SKIP_SIBLINGS;
                 }
-                executor.execute(() -> {
-                    String fileName = root.relativize(file).toString();
-                    if (fileName.endsWith(CLASS_EXTENSION)) {
-                        String unversionedClassName = unversionedFileName(fileName);
-                        String className = curtail(unversionedClassName, CLASS_EXTENSION_LENGTH).replace(fileSystemSeparatorChar, '.');
-                        try {
-                            handleClass(forName(className));
-                        } catch (Throwable t) {
-                            handleClassLoadingError(t);
-                        }
-                    }
-                });
+                String fileName = root.relativize(file).toString();
+                if (fileName.endsWith(CLASS_EXTENSION)) {
+                    executor.execute(() -> handleClassFileName(unversionedFileName(fileName), fileSystemSeparatorChar));
+                }
                 return FileVisitResult.CONTINUE;
             }
 
@@ -281,10 +344,6 @@ public final class ImageClassLoader {
                 return result;
             }
 
-            /** Remove the requested number of characters from the tail of the given string. */
-            private String curtail(String str, int tailLength) {
-                return str.substring(0, str.length() - tailLength);
-            }
         };
 
         try {
@@ -299,7 +358,13 @@ public final class ImageClassLoader {
         boolean isHostedOnly = false;
 
         AnnotatedElement cur = clazz.getPackage();
+        if (cur == null) {
+            cur = clazz;
+        }
         do {
+            if (!annotationsAvailable(cur)) {
+                return;
+            }
             Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
             if (containsHostedOnly(platformsAnnotation)) {
                 isHostedOnly = true;
@@ -310,7 +375,12 @@ public final class ImageClassLoader {
             if (cur instanceof Package) {
                 cur = clazz;
             } else {
-                cur = ((Class<?>) cur).getEnclosingClass();
+                try {
+                    cur = ((Class<?>) cur).getEnclosingClass();
+                } catch (Throwable t) {
+                    handleClassLoadingError(t);
+                    cur = null;
+                }
             }
         } while (cur != null);
 
@@ -340,8 +410,8 @@ public final class ImageClassLoader {
         return false;
     }
 
-    public URL findResourceByName(String resource) {
-        return classLoader.getResource(resource);
+    public Enumeration<URL> findResourcesByName(String resource) throws IOException {
+        return classLoader.getResources(resource);
     }
 
     public InputStream findResourceAsStreamByName(String resource) {

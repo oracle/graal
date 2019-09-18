@@ -37,9 +37,6 @@ import org.graalvm.word.PointerBase;
 public class Times {
     /* Allow lower-case type names: Checkstyle: stop. */
 
-    /**
-     * A structure containing four clock_t instances, where clock_t is a long.
-     */
     @CStruct(addStructKeyword = true)
     public interface tms extends PointerBase {
 
@@ -68,12 +65,6 @@ public class Times {
         void set_tms_cstime(long value);
     }
 
-    /**
-     * The times() function returns the value of time in CLK_TCK's of a second since 0 hours, 0
-     * minutes, 0 seconds, January 1, 1970, Coordinated Universal Time.
-     *
-     * It also fills in the structure pointed to by tp with time-accounting information.
-     */
     @CFunction
     public static native long times(tms tp);
 

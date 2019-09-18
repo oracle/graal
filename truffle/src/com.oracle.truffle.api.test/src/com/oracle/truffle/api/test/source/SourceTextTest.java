@@ -54,6 +54,7 @@ public class SourceTextTest {
     private final Source emptyLineSource = Source.newBuilder("", "\n", "emptyLineSource").build();
     private final Source shortSource = Source.newBuilder("", "01", "shortSource").build();
     private final Source longSource = Source.newBuilder("", "01234\n67\n9\n", "long").build();
+    private final Source lineDelimitersSource = Source.newBuilder("", "\rA\r\rB\nC\n\nD\r\nE\r\n\r\nF", "lineDelimiters").build();
 
     @Test
     public void emptyTextTest0() {
@@ -289,6 +290,35 @@ public class SourceTextTest {
     @Test(expected = IllegalArgumentException.class)
     public void longTextTest8() {
         longSource.getLineLength(5);
+    }
+
+    @Test
+    public void lineDelimiters0() {
+        assertEquals(10, lineDelimitersSource.getLineCount());
+    }
+
+    @Test
+    public void lineDelimiters1() {
+        int[] lineLengths = new int[]{0, 1, 0, 1, 1, 0, 1, 1, 0, 1};
+        for (int i = 0; i < lineLengths.length; i++) {
+            assertEquals("Wrong length of line " + (i + 1), lineLengths[i], lineDelimitersSource.getLineLength(i + 1));
+        }
+    }
+
+    @Test
+    public void lineDelimiters2() {
+        int[] lineNumbers = new int[]{1, 2, 2, 3, 4, 4, 5, 5, 6, 7, 7, 7, 8, 8, 8, 9, 9, 10, 10};
+        for (int i = 0; i < lineNumbers.length; i++) {
+            assertEquals("Wrong line number at " + i, lineNumbers[i], lineDelimitersSource.getLineNumber(i));
+        }
+    }
+
+    @Test
+    public void lineDelimiters3() {
+        int[] lineStartOffsets = new int[]{0, 1, 3, 4, 6, 8, 9, 12, 15, 17};
+        for (int i = 0; i < lineStartOffsets.length; i++) {
+            assertEquals("Wrong start offset of line " + (i + 1), lineStartOffsets[i], lineDelimitersSource.getLineStartOffset(i + 1));
+        }
     }
 
     @Test

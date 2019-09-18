@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     dir_name='regex',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['regex:TREGEX'],
     support_distributions=['regex:TREGEX_GRAALVM_SUPPORT'],
 ))

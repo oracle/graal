@@ -25,7 +25,6 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -34,9 +33,11 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
 
     static final int FS_RESULT_NO_SUCCESSOR = -1;
 
+    private final short id;
     @CompilationFinal(dimensions = 1) protected final short[] successors;
 
-    DFAAbstractStateNode(short[] successors) {
+    DFAAbstractStateNode(short id, short[] successors) {
+        this.id = id;
         this.successors = successors;
     }
 
@@ -50,7 +51,9 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
      */
     public abstract DFAAbstractStateNode createNodeSplitCopy(short copyID);
 
-    public abstract short getId();
+    public final short getId() {
+        return id;
+    }
 
     public final short[] getSuccessors() {
         return successors;
@@ -58,13 +61,13 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
 
     /**
      * Calculates this state's successor and returns its ID ({@link DFAStateNode#getId()}) via
-     * {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. This return value is
-     * called "successor index" and may either be an index of the successors array (between 0 and
+     * {@link TRegexDFAExecutorLocals#setSuccessorIndex(int)}. This return value is called
+     * "successor index" and may either be an index of the successors array (between 0 and
      * {@link #getSuccessors()}{@code .length}) or {@link #FS_RESULT_NO_SUCCESSOR}.
      *
-     * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
+     * @param locals a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
      * @param compactString
      */
-    public abstract void executeFindSuccessor(VirtualFrame frame, TRegexDFAExecutorNode executor, boolean compactString);
+    public abstract void executeFindSuccessor(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString);
 }

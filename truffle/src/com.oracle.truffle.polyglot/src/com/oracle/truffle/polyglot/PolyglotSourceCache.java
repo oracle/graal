@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.VMAccessor.LANGUAGE;
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -66,11 +66,11 @@ final class PolyglotSourceCache {
 
         CallTarget target;
         if (source.isCached()) {
-            Object sourceId = VMAccessor.SOURCE.getSourceIdentifier(source);
+            Object sourceId = EngineAccessor.SOURCE.getSourceIdentifier(source);
             WeakSourceKey ref = new WeakSourceKey(sourceId, source, argumentNames, deadSources);
             target = sourceCache.get(ref);
             if (target == null) {
-                target = parseImpl(context, argumentNames, VMAccessor.SOURCE.copySource(source));
+                target = parseImpl(context, argumentNames, EngineAccessor.SOURCE.copySource(source));
                 CallTarget prev = sourceCache.putIfAbsent(ref, target);
                 if (prev != null) {
                     /*
@@ -86,7 +86,7 @@ final class PolyglotSourceCache {
     }
 
     private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
-        if (!VMAccessor.SOURCE.isLegacySource(source)) {
+        if (!EngineAccessor.SOURCE.isLegacySource(source)) {
             validateSource(context, source);
         }
         CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, null, argumentNames);

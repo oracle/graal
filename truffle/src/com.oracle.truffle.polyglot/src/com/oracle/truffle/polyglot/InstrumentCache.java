@@ -51,14 +51,15 @@ import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.impl.TruffleJDKServices;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import java.util.Map;
-import java.util.WeakHashMap;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
 final class InstrumentCache {
@@ -128,7 +129,7 @@ final class InstrumentCache {
             this.services.add(serviceName);
         }
         if (TruffleOptions.AOT) {
-            loadClass();
+            initializeInstrumentClass();
         }
     }
 
@@ -228,7 +229,7 @@ final class InstrumentCache {
 
     Class<?> getInstrumentationClass() {
         if (!TruffleOptions.AOT && instrumentClass == null) {
-            loadClass();
+            initializeInstrumentClass();
         }
         return instrumentClass;
     }
@@ -241,8 +242,15 @@ final class InstrumentCache {
         return services.toArray(new String[0]);
     }
 
-    private void loadClass() {
+    private void initializeInstrumentClass() {
         try {
+            if (!TruffleOptions.AOT) {
+                // In JDK 9+, the Truffle API packages must be dynamically exported to
+                // a Truffle instrument since the Truffle API module descriptor only
+                // exports the packages to modules known at build time (such as the
+                // Graal module).
+                TruffleJDKServices.exportTo(loader, null);
+            }
             instrumentClass = Class.forName(className, true, loader).asSubclass(TruffleInstrument.class);
         } catch (Exception ex) {
             throw new IllegalStateException("Cannot initialize " + getName() + " instrument with implementation " + className, ex);

@@ -74,7 +74,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -327,7 +326,7 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public <S> S lookup(LanguageInfo language, Class<S> type) {
-            return AccessorInstrumentHandler.engineAccess().lookup(language, type);
+            return InstrumentAccessor.engineAccess().lookup(language, type);
         }
 
         /**
@@ -344,11 +343,11 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
-            Object vm = AccessorInstrumentHandler.langAccess().getVMObject(instrument);
+            Object vm = InstrumentAccessor.langAccess().getVMObject(instrument);
             if (vm == this.vmObject) {
                 throw new IllegalArgumentException("Not allowed to lookup services from the currrent instrument.");
             }
-            return AccessorInstrumentHandler.engineAccess().lookup(instrument, type);
+            return InstrumentAccessor.engineAccess().lookup(instrument, type);
         }
 
         /**
@@ -358,7 +357,7 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public Map<String, LanguageInfo> getLanguages() {
-            return AccessorInstrumentHandler.engineAccess().getLanguages(vmObject);
+            return InstrumentAccessor.engineAccess().getInternalLanguages(vmObject);
         }
 
         /**
@@ -368,7 +367,7 @@ public abstract class TruffleInstrument {
          * @since 0.26
          */
         public Map<String, InstrumentInfo> getInstruments() {
-            return AccessorInstrumentHandler.engineAccess().getInstruments(vmObject);
+            return InstrumentAccessor.engineAccess().getInstruments(vmObject);
         }
 
         Object[] onCreate(TruffleInstrument instrument) {
@@ -407,8 +406,8 @@ public abstract class TruffleInstrument {
          * @since 0.12
          */
         public CallTarget parse(Source source, String... argumentNames) throws IOException {
-            TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(vmObject, source.getLanguage(), source.getMimeType());
-            return AccessorInstrumentHandler.langAccess().parse(env, source, null, argumentNames);
+            TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(vmObject, source.getLanguage(), source.getMimeType());
+            return InstrumentAccessor.langAccess().parse(env, source, null, argumentNames);
         }
 
         /**
@@ -428,12 +427,12 @@ public abstract class TruffleInstrument {
             if (node == null) {
                 throw new IllegalArgumentException("Node must not be null.");
             }
-            TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(vmObject, source.getLanguage(), source.getMimeType());
+            TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(vmObject, source.getLanguage(), source.getMimeType());
             // Assert that the languages match:
-            assert AccessorInstrumentHandler.langAccess().getLanguageInfo(env) == node.getRootNode().getLanguageInfo();
-            ExecutableNode fragment = AccessorInstrumentHandler.langAccess().parseInline(env, source, node, frame);
+            assert InstrumentAccessor.langAccess().getLanguageInfo(env) == node.getRootNode().getLanguageInfo();
+            ExecutableNode fragment = InstrumentAccessor.langAccess().parseInline(env, source, node, frame);
             if (fragment != null) {
-                TruffleLanguage<?> languageSPI = AccessorInstrumentHandler.langAccess().getSPI(env);
+                TruffleLanguage<?> languageSPI = InstrumentAccessor.langAccess().getSPI(env);
                 fragment = new GuardedExecutableNode(languageSPI, fragment, frame);
             }
             return fragment;
@@ -448,7 +447,7 @@ public abstract class TruffleInstrument {
          * @since 19.0
          */
         public TruffleFile getTruffleFile(String path) {
-            return AccessorInstrumentHandler.engineAccess().getTruffleFile(path);
+            return InstrumentAccessor.engineAccess().getTruffleFile(path);
         }
 
         /**
@@ -460,7 +459,7 @@ public abstract class TruffleInstrument {
          * @since 19.0
          */
         public TruffleFile getTruffleFile(URI uri) {
-            return AccessorInstrumentHandler.engineAccess().getTruffleFile(uri);
+            return InstrumentAccessor.engineAccess().getTruffleFile(uri);
         }
 
         private static class GuardedExecutableNode extends ExecutableNode {
@@ -495,7 +494,7 @@ public abstract class TruffleInstrument {
             if (obj == null) {
                 return true;
             }
-            AccessorInstrumentHandler.interopAccess().checkInteropType(obj);
+            InstrumentAccessor.interopAccess().checkInteropType(obj);
             return true;
         }
 
@@ -512,7 +511,7 @@ public abstract class TruffleInstrument {
          * @since 0.17
          */
         public boolean isEngineRoot(RootNode root) {
-            return AccessorInstrumentHandler.engineAccess().isEvalRoot(root);
+            return InstrumentAccessor.engineAccess().isEvalRoot(root);
         }
 
         /**
@@ -527,9 +526,9 @@ public abstract class TruffleInstrument {
          * @since 0.27
          */
         public String toString(LanguageInfo language, Object value) {
-            AccessorInstrumentHandler.interopAccess().checkInteropType(value);
-            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
-            return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
+            InstrumentAccessor.interopAccess().checkInteropType(value);
+            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(language);
+            return InstrumentAccessor.langAccess().toStringIfVisible(env, value, false);
         }
 
         /**
@@ -548,9 +547,9 @@ public abstract class TruffleInstrument {
          * @since 0.27
          */
         public Object findMetaObject(LanguageInfo language, Object value) {
-            AccessorInstrumentHandler.interopAccess().checkInteropType(value);
-            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
-            Object metaObject = AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
+            InstrumentAccessor.interopAccess().checkInteropType(value);
+            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(language);
+            Object metaObject = InstrumentAccessor.langAccess().findMetaObject(env, value);
             assert checkNullOrInterop(metaObject);
             return metaObject;
         }
@@ -568,9 +567,9 @@ public abstract class TruffleInstrument {
          * @since 0.27
          */
         public SourceSection findSourceLocation(LanguageInfo language, Object value) {
-            AccessorInstrumentHandler.interopAccess().checkInteropType(value);
-            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
-            return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
+            InstrumentAccessor.interopAccess().checkInteropType(value);
+            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(language);
+            return InstrumentAccessor.langAccess().findSourceLocation(env, value);
         }
 
         /**
@@ -596,7 +595,7 @@ public abstract class TruffleInstrument {
                             value instanceof String) {
                 return null;
             }
-            return AccessorInstrumentHandler.engineAccess().getObjectLanguage(value, vmObject);
+            return InstrumentAccessor.engineAccess().getObjectLanguage(value, vmObject);
         }
 
         /**
@@ -606,7 +605,7 @@ public abstract class TruffleInstrument {
          * @since 0.30
          */
         public Map<String, ? extends Object> getExportedSymbols() {
-            return AccessorInstrumentHandler.engineAccess().getExportedSymbols(vmObject);
+            return InstrumentAccessor.engineAccess().getExportedSymbols(vmObject);
         }
 
         /**
@@ -639,8 +638,8 @@ public abstract class TruffleInstrument {
             if (languageInfo == null) {
                 throw new IllegalArgumentException("The root node " + rootNode + " does not have a language associated.");
             }
-            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
-            Iterable<Scope> langScopes = AccessorInstrumentHandler.langAccess().findLocalScopes(env, node, frame);
+            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
+            Iterable<Scope> langScopes = InstrumentAccessor.langAccess().findLocalScopes(env, node, frame);
             assert langScopes != null : languageInfo.getId();
             return langScopes;
         }
@@ -660,7 +659,7 @@ public abstract class TruffleInstrument {
             if (languageInfo == null) {
                 throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
             }
-            final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(languageInfo);
+            final TruffleLanguage.Env env = InstrumentAccessor.engineAccess().getEnvForInstrument(languageInfo);
             return findTopScopes(env);
         }
 
@@ -687,7 +686,7 @@ public abstract class TruffleInstrument {
          * @since 19.0
          */
         public TruffleLogger getLogger(String loggerName) {
-            return AccessorInstrumentHandler.engineAccess().getLogger(vmObject, loggerName);
+            return InstrumentAccessor.engineAccess().getLogger(vmObject, loggerName);
         }
 
         /**
@@ -718,8 +717,8 @@ public abstract class TruffleInstrument {
         }
 
         static Iterable<Scope> findTopScopes(TruffleLanguage.Env env) {
-            Iterable<Scope> langScopes = AccessorInstrumentHandler.langAccess().findTopScopes(env);
-            assert langScopes != null : AccessorInstrumentHandler.langAccess().getLanguageInfo(env).getId();
+            Iterable<Scope> langScopes = InstrumentAccessor.langAccess().findTopScopes(env);
+            assert langScopes != null : InstrumentAccessor.langAccess().getLanguageInfo(env).getId();
             return langScopes;
         }
 

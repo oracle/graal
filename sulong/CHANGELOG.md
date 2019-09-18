@@ -1,3 +1,52 @@
+# Version 19.3.0
+
+New features:
+
+* Added `mx extract-bitcode` command for extracting embedded bitcode.
+  Usage: `mx extract-bitcode inputFile.so outputFile.bc`, where `inputFile` can
+  be can be a file of any supported format such as wrapped bitcode or ELF/Mach-O
+  with an embedded bitcode sections.
+
+* Added preliminary support for parsing bitcode produced by LLVM 9.
+
+Improvements:
+
+* Clang and other LLVM tools are no longer required to be installed for building
+  the GraalVM LLVM runtime. Instead, the LLVM distribution bundled with the
+  [Toolchain](docs/TOOLCHAIN.md) is used.
+
+# Version 19.2.0
+
+New features:
+
+* Support locating dynamic libraries relatively using (`rpath`).
+* Preliminary support for compiling to bitcode using the LLVM toolchain.
+  See [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md) for more details.
+  *WARNING*: The toolchain is experimental. Functionality may be added,
+  changed or removed without prior notice.
+* Support for simple pointer arithmetics with foreign objects.
+  In addition to offset arithmetics, GraalVM now supports "negated" pointers and
+  simple bitmask operations (typically used for alignment operations).
+
+Improvements:
+
+* Improved display of pointers to foreign objects in the LLVM debugger.
+  When inspecting pointer values that point somewhere inside a foreign object,
+  the debugger now allows inspecting the original foreign object, not just the
+  contents of the pointer itself.
+
+# Version 19.1.0
+
+Fixes:
+
+* Calling exit(...) in an embedded context is now a catchable PolyglotException.
+* Skip source path entries that we're not allowed to access.
+  Previously, when running in an embedded context with restricted access to the
+  file system, the LLVM engine threw an exception when it could not read the
+  source files, even if no debugger was attached. Now it will still run. Only
+  when a debugger is attached, an error is reported when the source file can't
+  be accessed.
+
 # Version 19.0.0
 
 Changes:

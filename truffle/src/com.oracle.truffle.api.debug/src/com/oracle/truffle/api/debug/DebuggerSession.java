@@ -45,6 +45,7 @@ import java.net.URI;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -191,6 +192,9 @@ public final class DebuggerSession implements Closeable {
     private final boolean hasExpressionElement;
     private final boolean hasRootElement;
     private final List<Breakpoint> breakpoints = Collections.synchronizedList(new ArrayList<>());
+    // We keep a set of unresolved breakpoints to call just those for resolution.
+    private final Collection<Breakpoint> breakpointsUnresolved = ConcurrentHashMap.newKeySet();
+    private volatile boolean breakpointsUnresolvedEmpty = true;
 
     private EventBinding<? extends ExecutionEventNodeFactory> syntaxElementsBinding;
     final Set<EventBinding<? extends ExecutionEventNodeFactory>> allBindings = Collections.synchronizedSet(new HashSet<>());
@@ -513,28 +517,41 @@ public final class DebuggerSession implements Closeable {
     }
 
     private void addBindings(boolean includeInternalCode, Predicate<Source> sFilter) {
-        if (syntaxElementsBinding == null && !sourceElements.isEmpty()) {
-            Class<?>[] syntaxTags = new Class<?>[this.sourceElements.size() + (hasRootElement ? 0 : 1)];
-            Iterator<SourceElement> elementsIterator = this.sourceElements.iterator();
-            int i = 0;
-            while (elementsIterator.hasNext()) {
-                syntaxTags[i++] = elementsIterator.next().getTag();
-            }
-            assert i == sourceElements.size();
-            if (!hasRootElement) {
-                syntaxTags[i] = RootTag.class;
-            }
-            this.syntaxElementsBinding = createBinding(includeInternalCode, sFilter, new ExecutionEventNodeFactory() {
-                @Override
-                public ExecutionEventNode create(EventContext context) {
-                    if (context.hasTag(RootTag.class)) {
-                        return new RootSteppingDepthNode(context);
-                    } else {
-                        return new SteppingNode(context);
-                    }
+        if (syntaxElementsBinding == null) {
+            if (!sourceElements.isEmpty()) {
+                Class<?>[] syntaxTags = new Class<?>[this.sourceElements.size() + (hasRootElement ? 0 : 1)];
+                int i = 0;
+                for (SourceElement element : this.sourceElements) {
+                    syntaxTags[i++] = element.getTag();
                 }
-            }, hasExpressionElement, syntaxTags);
-            allBindings.add(syntaxElementsBinding);
+                assert i == sourceElements.size();
+                if (!hasRootElement) {
+                    syntaxTags[i] = RootTag.class;
+                }
+                this.syntaxElementsBinding = createBinding(includeInternalCode, sFilter, new ExecutionEventNodeFactory() {
+                    @Override
+                    public ExecutionEventNode create(EventContext context) {
+                        if (context.hasTag(RootTag.class)) {
+                            resolveUnresolvedBreakpoints(context.getInstrumentedNode());
+                            return new RootSteppingDepthNode(context);
+                        } else {
+                            return new SteppingNode(context);
+                        }
+                    }
+                }, hasExpressionElement, syntaxTags);
+                allBindings.add(syntaxElementsBinding);
+            } else {
+                // Create binding for breakpoints resolution
+                this.syntaxElementsBinding = createBinding(includeInternalCode, sFilter, new ExecutionEventNodeFactory() {
+                    @Override
+                    public ExecutionEventNode create(EventContext context) {
+                        if (context.hasTag(RootTag.class)) {
+                            resolveUnresolvedBreakpoints(context.getInstrumentedNode());
+                        }
+                        return null;
+                    }
+                }, false, RootTag.class);
+            }
         }
     }
 
@@ -730,7 +747,15 @@ public final class DebuggerSession implements Closeable {
                 return;
             }
         }
+        if (!global) {
+            if (breakpoint.isResolvable() && !breakpoint.isResolved()) {
+                this.breakpointsUnresolved.add(breakpoint);
+                this.breakpointsUnresolvedEmpty = breakpointsUnresolved.isEmpty();
+            }
+        }
         if (!breakpoint.install(this, !global)) {
+            this.breakpointsUnresolved.remove(breakpoint);
+            this.breakpointsUnresolvedEmpty = breakpointsUnresolved.isEmpty();
             return;
         }
         if (!global) { // Do not keep global breakpoints in the list
@@ -739,6 +764,27 @@ public final class DebuggerSession implements Closeable {
         if (Debugger.TRACE) {
             trace("installed session breakpoint %s", breakpoint);
         }
+    }
+
+    private void resolveUnresolvedBreakpoints(Node node) {
+        if (breakpointsUnresolvedEmpty) {
+            return;
+        }
+        SourceSection sourceSection = node.getSourceSection();
+        if (sourceSection != null) {
+            Source source = sourceSection.getSource();
+            for (Breakpoint breakpoint : breakpointsUnresolved) {
+                if (breakpoint.isEnabled()) {
+                    breakpoint.doResolve(source);
+                }
+            }
+        }
+    }
+
+    void breakpointResolved(Breakpoint breakpoint) {
+        assert breakpoint.isResolved();
+        breakpointsUnresolved.remove(breakpoint);
+        breakpointsUnresolvedEmpty = breakpointsUnresolved.isEmpty();
     }
 
     synchronized void disposeBreakpoint(Breakpoint breakpoint) {
@@ -1218,6 +1264,8 @@ public final class DebuggerSession implements Closeable {
             return evalInContext(ev, node, frame, code);
         } catch (KillException kex) {
             throw new DebugException(ev.getSession(), "Evaluation was killed.", null, true, null);
+        } catch (IllegalStateException ex) {
+            throw ex;
         } catch (Throwable ex) {
             LanguageInfo language = null;
             RootNode root = node.getRootNode();
@@ -1231,15 +1279,12 @@ public final class DebuggerSession implements Closeable {
     private static Object evalInContext(SuspendedEvent ev, Node node, MaterializedFrame frame, String code) {
         RootNode rootNode = node.getRootNode();
         if (rootNode == null) {
-            throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopated using a RootNode.");
+            throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopted using a RootNode.");
         }
 
         LanguageInfo info = rootNode.getLanguageInfo();
         if (info == null) {
             throw new IllegalArgumentException("Cannot evaluate in context using a without an associated TruffleLanguage.");
-        }
-        if (!info.isInteractive()) {
-            throw new IllegalStateException("Can not evaluate in a non-interactive language.");
         }
 
         final Source source = Source.newBuilder(info.getId(), code, "eval in context").internal(true).build();
@@ -1248,6 +1293,9 @@ public final class DebuggerSession implements Closeable {
             ev.getInsertableNode().setParentOf(fragment);
             return fragment.execute(frame);
         } else {
+            if (!info.isInteractive()) {
+                throw new IllegalStateException("Can not evaluate in a non-interactive language.");
+            }
             return Debugger.ACCESSOR.evalInContext(source, node, frame);
         }
     }

@@ -97,7 +97,7 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import org.graalvm.polyglot.TypeLiteral;
+import java.util.Random;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -181,9 +181,7 @@ public final class TruffleFile {
      *
      * @since 19.0
      */
-    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<>(AttributeGroup.POSIX, "permissions",
-                    new TypeLiteral<Set<PosixFilePermission>>() {
-                    });
+    public static final AttributeDescriptor<Set<PosixFilePermission>> UNIX_PERMISSIONS = new AttributeDescriptor<Set<PosixFilePermission>>(AttributeGroup.POSIX, Set.class, "permissions");
 
     /**
      * The file's mode containing the protection and file type bits. Supported only by UNIX native
@@ -264,6 +262,10 @@ public final class TruffleFile {
 
     Path getSPIPath() {
         return normalizedPath;
+    }
+
+    FileSystem getSPIFileSystem() {
+        return fileSystemContext.fileSystem;
     }
 
     /**
@@ -486,7 +488,7 @@ public final class TruffleFile {
             return toUri();
         }
         try {
-            String strPath = "/".equals(fileSystemContext.fileSystem.getSeparator()) ? path.toString() : path.toString().replace(path.getFileSystem().getSeparator(), "/");
+            String strPath = "/".equals(fileSystemContext.fileSystem.getSeparator()) ? path.toString() : path.toString().replace(fileSystemContext.fileSystem.getSeparator(), "/");
             return new URI(null, null, strPath, null);
         } catch (Throwable t) {
             throw wrapHostException(t);
@@ -1594,6 +1596,45 @@ public final class TruffleFile {
         }
     }
 
+    static TruffleFile createTempFile(TruffleFile targetDirectory, String prefix, String suffix, boolean dir, FileAttribute<?>... attrs) throws IOException {
+        Objects.requireNonNull(targetDirectory, "TargetDirectory must be non null.");
+        String usePrefix = prefix != null ? prefix : "";
+        String useSuffix = suffix != null ? suffix : (dir ? "" : ".tmp");
+        while (true) {
+            TruffleFile target;
+            try {
+                target = createUniquePath(targetDirectory, usePrefix, useSuffix);
+                if (!target.exists()) {
+                    if (dir) {
+                        target.createDirectory(attrs);
+                    } else {
+                        target.createFile(attrs);
+                    }
+                    return target;
+                }
+            } catch (InvalidPathException e) {
+                throw new IllegalArgumentException("Prefix (" + usePrefix + ") or suffix (" + useSuffix + ") are not valid file name components");
+            } catch (FileAlreadyExistsException e) {
+                // retry with different name
+            }
+        }
+    }
+
+    private static TruffleFile createUniquePath(TruffleFile targetDirectory, String prefix, String suffix) {
+        long n = TempFileRandomHolder.RANDOM.nextLong();
+        n = n == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(n);
+        String name = prefix + Long.toString(n) + suffix;
+        TruffleFile result = targetDirectory.resolve(name);
+        if (!targetDirectory.equals(result.getParent())) {
+            throw new InvalidPathException(name, "Must be a simple name");
+        }
+        return result;
+    }
+
+    private static final class TempFileRandomHolder {
+        static final Random RANDOM = new Random();
+    }
+
     private static final class AttributeGroup {
 
         static final AttributeGroup BASIC = new AttributeGroup("basic", null);
@@ -1651,10 +1692,11 @@ public final class TruffleFile {
             this.clazz = clazz;
         }
 
-        AttributeDescriptor(AttributeGroup group, String name, TypeLiteral<T> typeLiteral) {
+        @SuppressWarnings("unchecked")
+        AttributeDescriptor(AttributeGroup group, Class<?> rawType, String name) {
             this.group = group;
+            this.clazz = (Class<T>) rawType;
             this.name = name;
-            this.clazz = typeLiteral.getRawType();
         }
 
         /**
@@ -1742,7 +1784,7 @@ public final class TruffleFile {
      * @throws UnsupportedOperationException when the filesystem does not support given attribute
      * @throws IllegalArgumentException when the attribute value has an inappropriate value
      * @throws SecurityException if the {@link FileSystem} denied the operation
-     * @since 20.0.0 beta 1
+     * @since 19.1.0
      */
     @TruffleBoundary
     public <T> void setAttribute(AttributeDescriptor<T> attribute, T value, LinkOption... linkOptions) throws IOException {
@@ -1953,10 +1995,10 @@ public final class TruffleFile {
     }
 
     static <T extends Throwable> RuntimeException wrapHostException(T t, FileSystem fs) {
-        if (TruffleLanguage.AccessAPI.engineAccess().isDefaultFileSystem(fs)) {
+        if (LanguageAccessor.engineAccess().isDefaultFileSystem(fs)) {
             throw sthrow(t);
         }
-        throw TruffleLanguage.AccessAPI.engineAccess().wrapHostException(null, TruffleLanguage.AccessAPI.engineAccess().getCurrentHostContext(), t);
+        throw LanguageAccessor.engineAccess().wrapHostException(null, LanguageAccessor.engineAccess().getCurrentHostContext(), t);
     }
 
     @SuppressWarnings("unchecked")

@@ -198,22 +198,22 @@ final class Target_java_lang_ref_ReferenceQueue {
 
     @Substitute
     public Object remove() throws InterruptedException {
-        if (VMOperation.isInProgress()) {
-            throw new IllegalStateException("Calling ReferenceQueue.remove() inside a VMOperation would block.");
-        }
+        VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove() inside a VMOperation could block the VM operation thread and cause a deadlock.");
         return ReferenceWrapper.unwrap(feeble.remove());
     }
 
     @Substitute
     public Object remove(long timeoutMillis) throws InterruptedException {
-        if (VMOperation.isInProgress()) {
-            throw new IllegalStateException("Calling ReferenceQueue.remove(long) inside a VMOperation would block.");
-        }
+        VMOperation.guaranteeNotInProgress("Calling ReferenceQueue.remove(long) inside a VMOperation could block the VM operation thread and cause a deadlock.");
         return ReferenceWrapper.unwrap(feeble.remove(timeoutMillis));
     }
 
     @KeepOriginal
     native boolean enqueue(Reference<?> r);
+
+    public boolean isEmpty() {
+        return feeble.isEmpty();
+    }
 }
 
 /** SubstrateVM does not support Finalizer references. */

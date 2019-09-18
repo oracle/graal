@@ -44,6 +44,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -53,10 +58,15 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyDate;
+import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyNativeObject;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.graalvm.polyglot.proxy.ProxyTime;
+import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -426,6 +436,296 @@ public class ProxySPITest extends AbstractPolyglotTest {
         assertEquals(42, INTEROP.instantiate(proxyInner, 42));
     }
 
+    @Test
+    public void testProxyDate() throws Throwable {
+        LocalDate date = LocalDate.now();
+        ProxyDate proxyOuter = new ProxyDate() {
+            public LocalDate asDate() {
+                return date;
+            }
+        };
+
+        TruffleObject proxyInner = toInnerProxy(proxyOuter);
+
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.instantiate(proxyInner));
+        assertUnsupported(() -> INTEROP.asPointer(proxyInner));
+        assertUnsupported(() -> INTEROP.getArraySize(proxyInner));
+        assertUnsupported(() -> INTEROP.getMembers(proxyInner));
+        assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
+        assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
+        INTEROP.toNative(proxyInner);
+        assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.asTime(proxyInner));
+        assertUnsupported(() -> INTEROP.asTimeZone(proxyInner));
+        assertUnsupported(() -> INTEROP.asDuration(proxyInner));
+
+        assertFalse(INTEROP.isNumber(proxyInner));
+        assertFalse(INTEROP.isInstantiable(proxyInner));
+        assertFalse(INTEROP.isExecutable(proxyInner));
+        assertFalse(INTEROP.isNull(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
+        assertFalse(INTEROP.isPointer(proxyInner));
+        assertFalse(INTEROP.isTime(proxyInner));
+        assertFalse(INTEROP.isTimeZone(proxyInner));
+        assertFalse(INTEROP.isDuration(proxyInner));
+
+        assertTrue(INTEROP.isDate(proxyInner));
+        assertEquals(date, INTEROP.asDate(proxyInner));
+    }
+
+    @Test
+    public void testProxyTime() throws Throwable {
+        LocalTime time = LocalTime.now();
+        ProxyTime proxyOuter = new ProxyTime() {
+            public LocalTime asTime() {
+                return time;
+            }
+        };
+
+        TruffleObject proxyInner = toInnerProxy(proxyOuter);
+
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.instantiate(proxyInner));
+        assertUnsupported(() -> INTEROP.asPointer(proxyInner));
+        assertUnsupported(() -> INTEROP.getArraySize(proxyInner));
+        assertUnsupported(() -> INTEROP.getMembers(proxyInner));
+        assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
+        assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
+        INTEROP.toNative(proxyInner);
+        assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.asDate(proxyInner));
+        assertUnsupported(() -> INTEROP.asTimeZone(proxyInner));
+        assertUnsupported(() -> INTEROP.asDuration(proxyInner));
+
+        assertFalse(INTEROP.isNumber(proxyInner));
+        assertFalse(INTEROP.isInstantiable(proxyInner));
+        assertFalse(INTEROP.isExecutable(proxyInner));
+        assertFalse(INTEROP.isNull(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
+        assertFalse(INTEROP.isPointer(proxyInner));
+        assertFalse(INTEROP.isDate(proxyInner));
+        assertFalse(INTEROP.isTimeZone(proxyInner));
+        assertFalse(INTEROP.isDuration(proxyInner));
+
+        assertTrue(INTEROP.isTime(proxyInner));
+        assertEquals(time, INTEROP.asTime(proxyInner));
+    }
+
+    @Test
+    public void testProxyTimeZone() throws Throwable {
+        ZoneId zone = ZoneId.of("UTC+1");
+        ProxyTimeZone proxyOuter = new ProxyTimeZone() {
+
+            public ZoneId asTimeZone() {
+                return zone;
+            }
+        };
+
+        TruffleObject proxyInner = toInnerProxy(proxyOuter);
+
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.instantiate(proxyInner));
+        assertUnsupported(() -> INTEROP.asPointer(proxyInner));
+        assertUnsupported(() -> INTEROP.getArraySize(proxyInner));
+        assertUnsupported(() -> INTEROP.getMembers(proxyInner));
+        assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
+        assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
+        INTEROP.toNative(proxyInner);
+        assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.asDate(proxyInner));
+        assertUnsupported(() -> INTEROP.asTime(proxyInner));
+        assertUnsupported(() -> INTEROP.asDuration(proxyInner));
+
+        assertFalse(INTEROP.isNumber(proxyInner));
+        assertFalse(INTEROP.isInstantiable(proxyInner));
+        assertFalse(INTEROP.isExecutable(proxyInner));
+        assertFalse(INTEROP.isNull(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
+        assertFalse(INTEROP.isPointer(proxyInner));
+        assertFalse(INTEROP.isDate(proxyInner));
+        assertFalse(INTEROP.isTime(proxyInner));
+        assertFalse(INTEROP.isDuration(proxyInner));
+
+        assertTrue(INTEROP.isTimeZone(proxyInner));
+        assertEquals(zone, INTEROP.asTimeZone(proxyInner));
+    }
+
+    @Test
+    public void testProxyInstant() throws Throwable {
+        Instant instant = Instant.now();
+        ProxyInstant proxyOuter = new ProxyInstant() {
+            public Instant asInstant() {
+                return instant;
+            }
+        };
+
+        TruffleObject proxyInner = toInnerProxy(proxyOuter);
+
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.instantiate(proxyInner));
+        assertUnsupported(() -> INTEROP.asPointer(proxyInner));
+        assertUnsupported(() -> INTEROP.getArraySize(proxyInner));
+        assertUnsupported(() -> INTEROP.getMembers(proxyInner));
+        assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
+        assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
+        INTEROP.toNative(proxyInner);
+        assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.asDuration(proxyInner));
+
+        assertFalse(INTEROP.isNumber(proxyInner));
+        assertFalse(INTEROP.isInstantiable(proxyInner));
+        assertFalse(INTEROP.isExecutable(proxyInner));
+        assertFalse(INTEROP.isNull(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
+        assertFalse(INTEROP.isPointer(proxyInner));
+        assertFalse(INTEROP.isDuration(proxyInner));
+
+        assertTrue(INTEROP.isTimeZone(proxyInner));
+        assertTrue(INTEROP.isTime(proxyInner));
+        assertTrue(INTEROP.isDate(proxyInner));
+        assertTrue(INTEROP.isInstant(proxyInner));
+        assertEquals(instant.atZone(ZoneId.of("UTC")).toLocalDate(), INTEROP.asDate(proxyInner));
+        assertEquals(instant.atZone(ZoneId.of("UTC")).toLocalTime(), INTEROP.asTime(proxyInner));
+        assertEquals(ZoneId.of("UTC"), INTEROP.asTimeZone(proxyInner));
+        assertEquals(instant, INTEROP.asInstant(proxyInner));
+    }
+
+    @Test
+    public void testProxyDuration() throws Throwable {
+        Duration duration = Duration.ofMillis(100);
+        ProxyDuration proxyOuter = new ProxyDuration() {
+
+            public Duration asDuration() {
+                return duration;
+            }
+        };
+
+        TruffleObject proxyInner = toInnerProxy(proxyOuter);
+
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.instantiate(proxyInner));
+        assertUnsupported(() -> INTEROP.asPointer(proxyInner));
+        assertUnsupported(() -> INTEROP.getArraySize(proxyInner));
+        assertUnsupported(() -> INTEROP.getMembers(proxyInner));
+        assertUnsupported(() -> INTEROP.readMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.writeMember(proxyInner, "", ""));
+        assertUnsupported(() -> INTEROP.removeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.readArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.removeArrayElement(proxyInner, 0));
+        assertUnsupported(() -> INTEROP.writeArrayElement(proxyInner, 0, ""));
+        INTEROP.toNative(proxyInner);
+        assertUnsupported(() -> INTEROP.invokeMember(proxyInner, ""));
+        assertUnsupported(() -> INTEROP.execute(proxyInner));
+        assertUnsupported(() -> INTEROP.asDate(proxyInner));
+        assertUnsupported(() -> INTEROP.asTime(proxyInner));
+        assertUnsupported(() -> INTEROP.asTimeZone(proxyInner));
+
+        assertFalse(INTEROP.isNumber(proxyInner));
+        assertFalse(INTEROP.isInstantiable(proxyInner));
+        assertFalse(INTEROP.isExecutable(proxyInner));
+        assertFalse(INTEROP.isNull(proxyInner));
+        assertFalse(INTEROP.hasMembers(proxyInner));
+        assertFalse(INTEROP.hasArrayElements(proxyInner));
+        assertFalse(INTEROP.isPointer(proxyInner));
+        assertFalse(INTEROP.isDate(proxyInner));
+        assertFalse(INTEROP.isTime(proxyInner));
+        assertFalse(INTEROP.isTimeZone(proxyInner));
+
+        assertTrue(INTEROP.isDuration(proxyInner));
+        assertEquals(duration, INTEROP.asDuration(proxyInner));
+    }
+
+    static class Invalid0 implements ProxyDuration, ProxyDate {
+
+        public LocalDate asDate() {
+            return LocalDate.now();
+        }
+
+        public Duration asDuration() {
+            return Duration.ofMillis(100);
+        }
+
+    }
+
+    @Test
+    public void testInvalidCombination0() throws Throwable {
+        Invalid0 proxyOuter = new Invalid0();
+        TruffleObject proxyInner = toInnerProxy(proxyOuter);
+        assertInvalidState(() -> INTEROP.isDate(proxyInner));
+        assertInvalidState(() -> INTEROP.isDuration(proxyInner));
+        assertInvalidState(() -> INTEROP.asDuration(proxyInner));
+        assertInvalidState(() -> INTEROP.asDate(proxyInner));
+    }
+
+    static class Invalid1 implements ProxyDate, ProxyTimeZone {
+
+        public ZoneId asTimeZone() {
+            return ZoneId.of("UTC");
+        }
+
+        public LocalDate asDate() {
+            return LocalDate.now();
+        }
+
+    }
+
+    @Test
+    public void testInvalidCombination1() throws Throwable {
+        Invalid1 proxyOuter = new Invalid1();
+        TruffleObject proxyInner = toInnerProxy(proxyOuter);
+        assertInvalidState(() -> INTEROP.asDate(proxyInner));
+        assertInvalidState(() -> INTEROP.asTimeZone(proxyInner));
+        assertInvalidState(() -> INTEROP.isDate(proxyInner));
+        assertInvalidState(() -> INTEROP.isTimeZone(proxyInner));
+    }
+
+    static class Invalid2 implements ProxyTime, ProxyTimeZone {
+
+        public ZoneId asTimeZone() {
+            return ZoneId.of("UTC");
+        }
+
+        public LocalTime asTime() {
+            return LocalTime.now();
+        }
+
+    }
+
+    @Test
+    public void testInvalidCombination2() throws Throwable {
+        Invalid2 proxyOuter = new Invalid2();
+        TruffleObject proxyInner = toInnerProxy(proxyOuter);
+        assertInvalidState(() -> INTEROP.asTime(proxyInner));
+        assertInvalidState(() -> INTEROP.asTimeZone(proxyInner));
+        assertInvalidState(() -> INTEROP.isTime(proxyInner));
+        assertInvalidState(() -> INTEROP.isTimeZone(proxyInner));
+    }
+
     @SuppressWarnings("serial")
     static class TestError extends RuntimeException {
 
@@ -557,6 +857,20 @@ public class ProxySPITest extends AbstractPolyglotTest {
             Assert.assertFalse(te.isInternalError());
             Assert.assertEquals("Host Error", ((Exception) e).getMessage());
             Assert.assertTrue(languageEnv.asHostException(e) instanceof TestError);
+        }
+    }
+
+    private static void assertInvalidState(InteropCallable r) {
+        boolean valid = true;
+        try {
+            r.call();
+            valid = false;
+        } catch (InteropException e) {
+            Assert.fail();
+        } catch (AssertionError e) {
+        }
+        if (!valid) {
+            throw new AssertionError("assertion expected");
         }
     }
 

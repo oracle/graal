@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,13 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.test.SubprocessUtil.getPackageOpeningOptions;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,6 +50,13 @@ import org.junit.Test;
  * Tests support for dumping graphs and other info useful for debugging a compiler crash.
  */
 public class CompilationWrapperTest extends GraalCompilerTest {
+
+    private static List<String> join(List<String> l1, List<String> l2) {
+        ArrayList<String> result = new ArrayList<>(l1.size() + l2.size());
+        result.addAll(l1);
+        result.addAll(l2);
+        return result;
+    }
 
     /**
      * Tests compilation requested by the VM.
@@ -151,10 +160,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     public void testTruffleCompilation1() throws IOException, InterruptedException {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(),
-                        Arrays.asList(
-                                        "-Dgraal.CompilationFailureAction=ExitVM",
-                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
-                                        "-Dgraal.CrashAt=root test1"),
+                        join(getPackageOpeningOptions(),
+                                        Arrays.asList(
+                                                        "-Dgraal.CompilationFailureAction=ExitVM",
+                                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                                        "-Dgraal.CrashAt=root test1")),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
@@ -167,10 +177,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         new Probe("Exiting VM due to TruffleCompilationExceptionsAreFatal=true", 1),
         };
         testHelper(Arrays.asList(probes),
-                        Arrays.asList(
-                                        "-Dgraal.CompilationFailureAction=Silent",
-                                        "-Dgraal.TruffleCompilationExceptionsAreFatal=true",
-                                        "-Dgraal.CrashAt=root test1"),
+                        join(getPackageOpeningOptions(),
+                                        Arrays.asList(
+                                                        "-Dgraal.CompilationFailureAction=Silent",
+                                                        "-Dgraal.TruffleCompilationExceptionsAreFatal=true",
+                                                        "-Dgraal.CrashAt=root test1")),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
@@ -184,10 +195,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         new Probe("Exiting VM due to TrufflePerformanceWarningsAreFatal=true", 1),
         };
         testHelper(Arrays.asList(probes),
-                        Arrays.asList(
-                                        "-Dgraal.CompilationFailureAction=Silent",
-                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
-                                        "-Dgraal.CrashAt=root test1:PermanentBailout"),
+                        join(getPackageOpeningOptions(),
+                                        Arrays.asList(
+                                                        "-Dgraal.CompilationFailureAction=Silent",
+                                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                                        "-Dgraal.CrashAt=root test1:PermanentBailout")),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
@@ -209,10 +221,9 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             System.out.println(proc);
         }
 
-        List<Probe> probes = new ArrayList<>(initialProbes);
-        Probe diagnosticProbe = null;
-        if (!extraVmArgs.contains("-Dgraal.TruffleCompilationExceptionsAreFatal=true")) {
-            diagnosticProbe = new Probe("Graal diagnostic output saved in ", 1);
+        try {
+            List<Probe> probes = new ArrayList<>(initialProbes);
+            Probe diagnosticProbe = new Probe("Graal diagnostic output saved in ", 1);
             probes.add(diagnosticProbe);
             probes.add(new Probe("Forced crash after compiling", Integer.MAX_VALUE) {
                 @Override
@@ -220,22 +231,20 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     return actualOccurrences > 0 ? null : "expected at least 1 occurrence";
                 }
             });
-        }
 
-        for (String line : proc.output) {
-            for (Probe probe : probes) {
-                if (probe.matches(line)) {
-                    break;
+            for (String line : proc.output) {
+                for (Probe probe : probes) {
+                    if (probe.matches(line)) {
+                        break;
+                    }
                 }
             }
-        }
-        for (Probe probe : probes) {
-            String error = probe.test();
-            if (error != null) {
-                Assert.fail(String.format("Did not find expected occurences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
+            for (Probe probe : probes) {
+                String error = probe.test();
+                if (error != null) {
+                    Assert.fail(String.format("Did not find expected occurences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
+                }
             }
-        }
-        if (diagnosticProbe != null) {
             String line = diagnosticProbe.lastMatchingLine;
             int substringStart = line.indexOf(diagnosticProbe.substring);
             int substringLength = diagnosticProbe.substring.length();
@@ -263,8 +272,10 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                 }
             } finally {
                 zip.delete();
-                dumpPath.delete();
             }
+        } finally {
+            Path directory = dumpPath.toPath();
+            removeDirectory(directory);
         }
     }
 }

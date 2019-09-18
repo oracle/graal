@@ -42,6 +42,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.driver.NativeImage.BuildConfiguration;
+
 final class MacroOption {
     enum MacroOptionKind {
         Language("languages", true),
@@ -178,28 +180,29 @@ final class MacroOption {
             this.optionArg = optionArg;
         }
 
-        private String resolvePropertyValue(String val) {
-            return NativeImage.resolvePropertyValue(val, optionArg, getOption().optionDirectory.toString());
+        private String resolvePropertyValue(BuildConfiguration config, String val) {
+            return NativeImage.resolvePropertyValue(val, optionArg, getOption().optionDirectory, config);
         }
 
-        String getProperty(String key, String defaultVal) {
+        String getProperty(BuildConfiguration config, String key, String defaultVal) {
             String val = option.properties.get(key);
             if (val == null) {
                 return defaultVal;
             }
-            return resolvePropertyValue(val);
+            return resolvePropertyValue(config, val);
         }
 
-        String getProperty(String key) {
-            return getProperty(key, null);
+        String getProperty(BuildConfiguration config, String key) {
+            return getProperty(config, key, null);
         }
 
-        boolean forEachPropertyValue(String propertyKey, Consumer<String> target) {
-            return forEachPropertyValue(propertyKey, target, " ");
+        boolean forEachPropertyValue(BuildConfiguration config, String propertyKey, Consumer<String> target) {
+            return forEachPropertyValue(config, propertyKey, target, " ");
         }
 
-        boolean forEachPropertyValue(String propertyKey, Consumer<String> target, String separatorRegex) {
-            return NativeImage.forEachPropertyValue(option.properties.get(propertyKey), target, this::resolvePropertyValue, separatorRegex);
+        boolean forEachPropertyValue(BuildConfiguration config, String propertyKey, Consumer<String> target, String separatorRegex) {
+            Function<String, String> resolvePropertyValue = str -> resolvePropertyValue(config, str);
+            return NativeImage.forEachPropertyValue(option.properties.get(propertyKey), target, resolvePropertyValue, separatorRegex);
         }
 
         MacroOption getOption() {
@@ -284,7 +287,7 @@ final class MacroOption {
             return supported.get(kindPart).get(optionName);
         }
 
-        boolean enableOption(String optionString, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
+        boolean enableOption(BuildConfiguration config, String optionString, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
             String specString;
             if (context == null) {
                 if (optionString.startsWith(macroOptionPrefix)) {
@@ -330,7 +333,7 @@ final class MacroOption {
                     if (Boolean.parseBoolean(option.properties.getOrDefault("ExcludeFromAll", "false"))) {
                         continue;
                     }
-                    enableResolved(option, null, addedCheck, context, enabler);
+                    enableResolved(config, option, null, addedCheck, context, enabler);
                 }
                 return true;
             }
@@ -340,23 +343,23 @@ final class MacroOption {
             MacroOption option = getMacroOption(kindPart, optionName);
             if (option != null) {
                 String optionArg = parts.length == 2 ? parts[1] : null;
-                enableResolved(option, optionArg, addedCheck, context, enabler);
+                enableResolved(config, option, optionArg, addedCheck, context, enabler);
             } else {
                 throw new VerboseInvalidMacroException("Unknown name in option specification: " + kindPart + ":" + optionName, kindPart, context);
             }
             return true;
         }
 
-        private void enableResolved(MacroOption option, String optionArg, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
+        private void enableResolved(BuildConfiguration config, MacroOption option, String optionArg, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
             if (addedCheck.contains(option)) {
                 return;
             }
             addedCheck.add(option);
             EnabledOption enabledOption = new EnabledOption(option, optionArg);
-            String requires = enabledOption.getProperty("Requires", "");
+            String requires = enabledOption.getProperty(config, "Requires", "");
             if (!requires.isEmpty()) {
                 for (String specString : requires.split(" ")) {
-                    enableOption(specString, addedCheck, option, enabler);
+                    enableOption(config, specString, addedCheck, option, enabler);
                 }
             }
 
@@ -366,7 +369,7 @@ final class MacroOption {
                  * Every language requires Truffle. If it is not specified explicitly as a
                  * requirement, add it automatically.
                  */
-                enableResolved(truffleOption, null, addedCheck, context, enabler);
+                enableResolved(config, truffleOption, null, addedCheck, context, enabler);
             }
             enabler.accept(enabledOption);
             enabled.add(enabledOption);

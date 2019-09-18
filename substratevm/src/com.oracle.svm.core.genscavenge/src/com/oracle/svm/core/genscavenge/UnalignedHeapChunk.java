@@ -41,7 +41,6 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -77,8 +76,8 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * +=================+-------+-------------------------------------+
  * </pre>
  *
- * The HeapChunk fields and the isPinned field can be accessed as declared fields, but the card
- * "table" and the location of the Object are just computed as Pointers.
+ * The HeapChunk fields can be accessed as declared fields, but the card "table" and the location of
+ * the Object are just computed as Pointers.
  *
  * In this implementation, I am only implementing precise card remembered sets, so I only need one
  * entry for the whole Object. But for consistency I am treating it as a 1-element table.
@@ -354,7 +353,7 @@ public class UnalignedHeapChunk extends HeapChunk {
         // and should be the only object in the chunk.
         final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[UnalignedHeapChunk.verifyUnalignedHeapChunk");
         trace.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd()).newline();
-        final UnsignedWord objHeader = ObjectHeader.readHeaderFromPointer(start);
+        final UnsignedWord objHeader = ObjectHeaderImpl.readHeaderFromPointer(start);
         final ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         // The object should not be forwarded.
         if (ohi.isForwardedHeader(objHeader)) {

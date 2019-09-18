@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "19.2.0",
-    "mxversion" : "5.223.0",
+    "version" : "19.3.0",
+    "mxversion" : "5.229.5",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -32,7 +32,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "fdd7db0c12998cc1f6e8d66cdb4e5bbc92ca0ff4",
+                "version": "10e145d646da4b0338265b13ad32632d53ac8471",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -42,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "fdd7db0c12998cc1f6e8d66cdb4e5bbc92ca0ff4",
+                "version": "10e145d646da4b0338265b13ad32632d53ac8471",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -50,7 +50,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "d97b012c816bff2a6234826fe75396792dafeb2e",
+                "version": "1970686ee677bcf2d08c34371d1673f56cd96b3e",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -74,7 +74,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "2e0e90e5baa8605dfd1a3a559b682746c60c9b41",
+                "version": "cdf8af0645a171c2a2d553e049846c66ec5a171f",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -83,7 +83,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "ca439ce3fb317c67dfdcc90b44c7569685400d63",
+                "version": "151c746e5b87a3d44460acc50a900e2bc04db8cf",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -101,13 +101,13 @@ suite = {
                 "truffle:TRUFFLE_API",
             ],
             "checkstyleVersion" : "8.8",
-            "javaCompliance": "1.8",
+            "javaCompliance" : "1.8+",
             "license": "GPLv2-CPE",
         },
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8",
+            "javaCompliance" : "1.8+",
             "checkstyle": "com.oracle.graalvm.locator",
             "license" : "GPLv2-CPE",
         },
@@ -118,7 +118,7 @@ suite = {
                 "mx:JUNIT",
                 "org.graalvm.component.installer"
             ],
-            "javaCompliance" : "1.8",
+            "javaCompliance" : "1.8+",
             "checkstyle": "com.oracle.graalvm.locator",
             "license" : "GPLv2-CPE",
         },
@@ -127,6 +127,12 @@ suite = {
     "distributions": {
         "LOCATOR": {
             "subDir": "src",
+            "moduleInfo" : {
+                "name" : "org.graalvm.locator",
+                "exports" : [
+                    "com.oracle.graalvm.locator to jdk.internal.vm.compiler.management",
+                ],
+            },
             "dependencies": ["com.oracle.graalvm.locator"],
             "distDependencies": [
                 "truffle:TRUFFLE_API",
@@ -158,7 +164,6 @@ suite = {
             "platformDependent": True,
             "description": "GraalVM Installer support distribution for the GraalVM",
             "layout": {
-                "bin/": "file:mx.vm/<cmd:gu>",
                 "components/polyglot/.registry" : "string:",
             },
             "maven": False,
@@ -167,6 +172,7 @@ suite = {
             "native": True,
             "description": "VM support distribution for the GraalVM",
             "layout": {
+                "./": ["file:GRAALVM-README.md"],
                 "LICENSE.txt": "file:LICENSE_GRAALVM_CE",
                 "3rd_party_licenses.txt": "file:3rd_party_licenses_graalvm_ce.txt",
             },

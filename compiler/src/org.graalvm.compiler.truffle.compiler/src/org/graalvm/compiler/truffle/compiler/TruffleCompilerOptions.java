@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,6 +84,29 @@ public final class TruffleCompilerOptions {
 
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
+
+    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.")
+    public static final OptionKey<Integer> TruffleMaximumGraalNodeCount = new OptionKey<>(400000);
+
+    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.")
+    public static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(150000);
+
+    @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
+
+    // Language agnostic inlining
+
+    @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TraceTruffleInliningDetails = new OptionKey<>(false);
+
+    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", type = OptionType.Expert)
+    public static final OptionKey<String> TruffleInliningPolicy = new OptionKey<>("");
+
+    @Option(help = "The base expansion budget for language-agnostic inlining.", type = OptionType.Expert)
+    public static final OptionKey<Integer> TruffleInliningExpansionBudget = new OptionKey<>(50_000);
+
+    @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert)
+    public static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(45_000);
     // @formatter:on
 
     private TruffleCompilerOptions() {
@@ -146,6 +169,10 @@ public final class TruffleCompilerOptions {
             outer = Lazy.overrideScope.get();
             options = new OptionValues(outer == null ? getInitialOptions() : outer.options, overrides);
             Lazy.overrideScope.set(this);
+        }
+
+        public OptionValues getOptions() {
+            return options;
         }
 
         @Override

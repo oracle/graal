@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -126,7 +126,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             field.setAccessible(true);
             return (NodeClass<T>) field.get(null);
         } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Could not load Graal NodeClass TYPE field for " + clazz, e);
         }
     }
 
@@ -1217,8 +1217,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     return false;
                 }
             } else {
-                Object v1 = Edges.getNodeListUnsafe(node, offset);
-                Object v2 = Edges.getNodeListUnsafe(other, offset);
+                NodeList<Node> v1 = Edges.getNodeListUnsafe(node, offset);
+                NodeList<Node> v2 = Edges.getNodeListUnsafe(other, offset);
                 if (!Objects.equals(v1, v2)) {
                     return false;
                 }

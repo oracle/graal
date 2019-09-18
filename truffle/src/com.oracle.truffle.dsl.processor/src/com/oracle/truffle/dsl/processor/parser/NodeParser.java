@@ -644,7 +644,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
         List<ExecutableTypeData> validExecutableType = new ArrayList<>();
         for (ExecutableTypeData executableType : node.getExecutableTypes()) {
-            if (executableType.getMethod() != null && executableType.getEvaluatedCount() == node.getExecutionCount()) {
+            if (executableType.getMethod() != null && executableType.getEvaluatedCount() >= node.getExecutionCount()) {
                 validExecutableType.add(executableType);
                 break;
             }
@@ -2250,8 +2250,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
             }
 
-            seenDynamicParameterBound = specialization.isDynamicParameterBound(receiverExpression, false);
-
             if (substituteCachedExpression != null) {
                 if (substituteUncachedExpression == null) {
                     substituteUncachedExpression = substituteCachedExpression;
@@ -2259,8 +2257,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.setDefaultExpression(substituteCachedExpression);
                 cachedLibrary.setUncachedExpression(substituteUncachedExpression);
                 cachedLibrary.setAlwaysInitialized(true);
-                return null;
+                continue;
             } else {
+                seenDynamicParameterBound |= specialization.isDynamicParameterBound(receiverExpression, false);
                 cachedLibrary.setDefaultExpression(receiverExpression);
 
                 String receiverName = cachedLibrary.getParameter().getVariableElement().getSimpleName().toString();
@@ -2387,7 +2386,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 NodeData parsedNode = parser.parse(element);
                 if (parsedNode != null) {
                     List<CodeExecutableElement> executables = NodeFactoryFactory.createFactoryMethods(parsedNode, ElementFilter.constructorsIn(element.getEnclosedElements()));
-                    TypeElement type = ElementUtils.castTypeElement(NodeCodeGenerator.nodeType(parsedNode));
+                    TypeElement type = ElementUtils.castTypeElement(NodeCodeGenerator.factoryOrNodeType(parsedNode));
                     for (CodeExecutableElement executableElement : executables) {
                         executableElement.setEnclosingElement(type);
                     }

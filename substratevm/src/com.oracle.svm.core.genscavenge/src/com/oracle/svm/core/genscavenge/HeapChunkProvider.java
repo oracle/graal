@@ -39,10 +39,10 @@ import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicUnsigned;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.AtomicUnsigned;
 
 /**
  * Allocates and frees the memory for aligned and unaligned heap chunks. The methods are
@@ -181,18 +181,18 @@ class HeapChunkProvider {
     /**
      * Push a chunk to the global linked list of unused chunks.
      * <p>
-     * This method is <em>not</em> atomic. It only runs when the {@link VMThreads#THREAD_MUTEX} is
-     * held (or the virtual machine is single-threaded). However it must not be allowed to compete
-     * with pops from the global free-list, because it might cause them an ABA problem. Pushing is
-     * only used during garbage collection, so making popping uninterruptible prevents simultaneous
-     * pushing and popping.
+     * This method is <em>not</em> atomic. It only runs when the VMThreads.THREAD_MUTEX is held (or
+     * the virtual machine is single-threaded). However it must not be allowed to compete with pops
+     * from the global free-list, because it might cause them an ABA problem. Pushing is only used
+     * during garbage collection, so making popping uninterruptible prevents simultaneous pushing
+     * and popping.
      *
      * Note the asymmetry with {@link #popUnusedAlignedChunk()}, which does not use a global free
      * list.
      */
     private void pushUnusedAlignedChunk(AlignedHeader chunk) {
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.THREAD_MUTEX.assertIsLocked("Should hold the lock when pushing to the global list.");
+            VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
         }
         log().string("  old list top: ").hex(unusedAlignedChunks.get()).string("  list bytes ").signed(bytesInUnusedAlignedChunks.get()).newline();
 
@@ -299,7 +299,6 @@ class HeapChunkProvider {
     /** Reset the mutable state of a chunk. */
     private static void resetChunkHeader(Header<?> chunk, Pointer objectsStart) {
         chunk.setTop(objectsStart);
-        chunk.setPinned(false);
         chunk.setSpace(null);
         chunk.setNext(WordFactory.nullPointer());
         chunk.setPrevious(WordFactory.nullPointer());

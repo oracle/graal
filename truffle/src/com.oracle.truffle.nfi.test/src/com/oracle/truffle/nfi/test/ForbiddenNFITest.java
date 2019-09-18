@@ -54,8 +54,8 @@ public class ForbiddenNFITest {
     @Rule public TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(false));
 
     private TruffleObject eval(String format, Object... args) {
-        Source source = Source.newBuilder("nfi", String.format(format, args), "ForbiddenNFITest").build();
-        return (TruffleObject) runWithPolyglot.getTruffleTestEnv().parse(source).call();
+        Source source = Source.newBuilder("nfi", String.format(format, args), "ForbiddenNFITest").internal(true).build();
+        return (TruffleObject) runWithPolyglot.getTruffleTestEnv().parseInternal(source).call();
     }
 
     @Test(expected = UnsatisfiedLinkError.class)

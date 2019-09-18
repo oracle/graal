@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,11 +44,11 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -72,18 +72,23 @@ import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotSentinelConstant;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
 /**
  * HotSpot AArch64 specific backend.
@@ -94,7 +99,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         super(config, runtime, providers);
     }
 
-    private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
+    @Override
+    protected FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         FrameMap frameMap = new AArch64FrameMap(getCodeCache(), registerConfigNonNull, this);
         return new AArch64FrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
@@ -103,12 +109,6 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
         return new AArch64HotSpotLIRGenerator(getProviders(), config, lirGenRes);
-    }
-
-    @Override
-    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterConfig registerConfig, StructuredGraph graph, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerConfig), makeCallingConvention(graph, (Stub) stub), stub,
-                        config.requiresReservedStackCheck(graph.getMethods()));
     }
 
     @Override
@@ -124,6 +124,46 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /* allowOverwrite */false);
             masm.str(64, zr, address);
         }
+    }
+
+    @Override
+    public InstalledCode createInstalledCode(DebugContext debug,
+                    ResolvedJavaMethod method,
+                    CompilationRequest compilationRequest,
+                    CompilationResult compilationResult,
+                    InstalledCode predefinedInstalledCode,
+                    boolean isDefault,
+                    Object[] context) {
+        boolean isStub = (method == null);
+        boolean isAOT = compilationResult.isImmutablePIC();
+        if (!isStub && !isAOT) {
+            // Non-stub compilation results are installed into HotSpot as nmethods. As AArch64 has
+            // a constraint that the instruction at nmethod verified entry point should be a nop or
+            // jump, AArch64HotSpotBackend always generate a nop placeholder before the code body
+            // for non-AOT compilations. See AArch64HotSpotBackend.emitInvalidatePlaceholder(). This
+            // assert checks if the nop placeholder is generated at all required places, including
+            // in manually assembled code in CodeGenTest cases.
+            assert hasInvalidatePlaceholder(compilationResult);
+        }
+        return super.createInstalledCode(debug, method, compilationRequest, compilationResult, predefinedInstalledCode, isDefault, context);
+    }
+
+    private boolean hasInvalidatePlaceholder(CompilationResult compilationResult) {
+        byte[] targetCode = compilationResult.getTargetCode();
+        int verifiedEntryOffset = 0;
+        for (Mark mark : compilationResult.getMarks()) {
+            Object markId = mark.id;
+            if (markId instanceof Integer && (int) markId == config.MARKID_VERIFIED_ENTRY) {
+                // The nmethod verified entry is located at some pc offset.
+                verifiedEntryOffset = mark.pcOffset;
+                break;
+            }
+        }
+        Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+        int instruction = unsafe.getIntVolatile(targetCode, unsafe.arrayBaseOffset(byte[].class) + verifiedEntryOffset);
+        AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
+        masm.nop();
+        return instruction == masm.getInt(0);
     }
 
     private class HotSpotFrameContext implements FrameContext {
@@ -237,8 +277,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         }
 
         if (stub != null) {
-            EconomicSet<Register> destroyedCallerRegisters = gatherDestroyedCallerRegisters(lir);
-            updateStub(stub, destroyedCallerRegisters, gen.getCalleeSaveInfo(), frameMap);
+            updateStub(stub, gen, frameMap);
         }
         return crb;
     }

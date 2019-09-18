@@ -36,6 +36,7 @@ public class RegexProperties implements JsonConvertible {
     private boolean backReferences = false;
     private boolean captureGroups = false;
     private boolean charClasses = false;
+    private boolean quantifiers = false;
     private boolean lookAheadAssertions = false;
     private boolean complexLookAheadAssertions = false;
     private boolean negativeLookAheadAssertions = false;
@@ -43,8 +44,10 @@ public class RegexProperties implements JsonConvertible {
     private boolean nonLiteralLookBehindAssertions = false;
     private boolean complexLookBehindAssertions = false;
     private boolean negativeLookBehindAssertions = false;
-    private boolean loops = false;
     private boolean largeCountedRepetitions = false;
+    private boolean charClassesCanBeMatchedWithMask = true;
+    private int innerLiteralStart = -1;
+    private int innerLiteralEnd = -1;
 
     public boolean hasAlternations() {
         return alternations;
@@ -76,6 +79,14 @@ public class RegexProperties implements JsonConvertible {
 
     public void setCharClasses() {
         charClasses = true;
+    }
+
+    public boolean hasQuantifiers() {
+        return quantifiers;
+    }
+
+    public void setQuantifiers() {
+        quantifiers = true;
     }
 
     public boolean hasLookAroundAssertions() {
@@ -138,20 +149,37 @@ public class RegexProperties implements JsonConvertible {
         negativeLookBehindAssertions = true;
     }
 
-    public boolean hasLoops() {
-        return loops;
-    }
-
-    public void setLoops() {
-        loops = true;
-    }
-
     public boolean hasLargeCountedRepetitions() {
         return largeCountedRepetitions;
     }
 
     public void setLargeCountedRepetitions() {
         largeCountedRepetitions = true;
+    }
+
+    public boolean charClassesCanBeMatchedWithMask() {
+        return charClassesCanBeMatchedWithMask;
+    }
+
+    public void unsetCharClassesCanBeMatchedWithMask() {
+        charClassesCanBeMatchedWithMask = false;
+    }
+
+    public void setInnerLiteral(int start, int end) {
+        this.innerLiteralStart = start;
+        this.innerLiteralEnd = end;
+    }
+
+    public boolean hasInnerLiteral() {
+        return innerLiteralStart >= 0;
+    }
+
+    public int getInnerLiteralStart() {
+        return innerLiteralStart;
+    }
+
+    public int getInnerLiteralEnd() {
+        return innerLiteralEnd;
     }
 
     @TruffleBoundary
@@ -168,7 +196,6 @@ public class RegexProperties implements JsonConvertible {
                         Json.prop("nonLiteralLookBehindAssertions", nonLiteralLookBehindAssertions),
                         Json.prop("complexLookBehindAssertions", complexLookBehindAssertions),
                         Json.prop("negativeLookBehindAssertions", negativeLookBehindAssertions),
-                        Json.prop("loops", loops),
                         Json.prop("largeCountedRepetitions", largeCountedRepetitions));
     }
 }

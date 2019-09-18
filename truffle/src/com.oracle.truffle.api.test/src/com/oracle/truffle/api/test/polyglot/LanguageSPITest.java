@@ -112,10 +112,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService1;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService2;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService3;
+import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 
 public class LanguageSPITest {
 
@@ -516,7 +516,7 @@ public class LanguageSPITest {
                         boolean parsingFailed = false;
                         try {
                             // execute Truffle code in a fresh thread fails
-                            env.parse(source).call();
+                            env.parsePublic(source).call();
                         } catch (AssertionError e) {
                             // No current context available.
                             parsingFailed = true;
@@ -530,7 +530,7 @@ public class LanguageSPITest {
                         Object prev = truffleContext.enter();
                         try {
                             // execute Truffle code
-                            env.parse(source).call();
+                            env.parsePublic(source).call();
                         } finally {
                             // detach the Thread
                             truffleContext.leave(prev);
@@ -788,7 +788,7 @@ public class LanguageSPITest {
         TruffleContext innerContext = env.newContextBuilder().build();
         Object prev = innerContext.enter();
         Env innerEnv = MultiContextLanguage.getCurrentContext().env;
-        innerEnv.parse(truffleSource1);
+        innerEnv.parsePublic(truffleSource1);
         assertEquals(1, lang.parseCalled.size());
         assertEquals(1, lang.initializeMultiContextCalled.size());
         assertEquals(1, lang.initializeMultipleContextsCalled.size());
@@ -796,10 +796,10 @@ public class LanguageSPITest {
         assertEquals(4, (int) lang.initializeMultiContextCalled.get(0));
         assertEquals(2, lang.createContextCalled.size());
 
-        innerEnv.parse(truffleSource1);
+        innerEnv.parsePublic(truffleSource1);
         assertEquals(1, lang.parseCalled.size());
 
-        innerEnv.parse(truffleSource2);
+        innerEnv.parsePublic(truffleSource2);
         assertEquals(2, lang.parseCalled.size());
 
         innerContext.leave(prev);
@@ -844,15 +844,15 @@ public class LanguageSPITest {
         assertNotSame(innerLang, lang);
 
         Env innerEnv = innerLang.getContextReference().get().env;
-        innerEnv.parse(truffleSource1);
+        innerEnv.parsePublic(truffleSource1);
         assertEquals(1, innerLang.parseCalled.size());
         assertEquals(0, innerLang.initializeMultiContextCalled.size());
         assertEquals(1, innerLang.createContextCalled.size());
 
-        innerEnv.parse(truffleSource1);
+        innerEnv.parsePublic(truffleSource1);
         assertEquals(1, innerLang.parseCalled.size());
 
-        innerEnv.parse(truffleSource2);
+        innerEnv.parsePublic(truffleSource2);
         assertEquals(2, innerLang.parseCalled.size());
 
         innerContext.leave(prev);
@@ -1829,7 +1829,7 @@ public class LanguageSPITest {
 
     private static boolean lookupLanguage(Class<?> serviceClass) {
         Env env = ProxyLanguage.getCurrentContext().env;
-        LanguageInfo languageInfo = env.getLanguages().get(SERVICE_LANGUAGE);
+        LanguageInfo languageInfo = env.getInternalLanguages().get(SERVICE_LANGUAGE);
         return env.lookup(languageInfo, serviceClass) != null;
     }
 
@@ -2021,4 +2021,5 @@ public class LanguageSPITest {
         }
 
     }
+
 }

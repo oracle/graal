@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -238,7 +238,7 @@ class CompilationWatchDog implements Runnable, AutoCloseable {
                                             TTY.printf("======================= WATCH DOG THREAD =======================%n" +
                                                             "%s took %d identical stack traces, which indicates a stuck compilation (id=%d) of %s%n%sExiting VM%n", this,
                                                             numberOfIdenticalStackTraces, currentId, fmt(currentMethod), fmt(lastStackTrace));
-                                            System.exit(-1);
+                                            HotSpotGraalServices.exit(-1);
                                         }
                                     } else if (newStackTrace) {
                                         synchronized (CompilationWatchDog.class) {

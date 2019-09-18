@@ -4,7 +4,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "19.2.0",
+    "version" : "19.3.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -99,41 +99,26 @@ suite = {
     },
 
     "libraries": {
-       "NanoHTTPD" : {
-          "path" : "lib/nanohttpd-2.3.1.jar",
-          "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/nanohttpd/nanohttpd/2.3.1/nanohttpd-2.3.1.jar",
-          ],
-          "sha1" : "a8d54d1ca554a77f377eff6bf9e16ca8383c8f6c",
-          "maven" : {
-            "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd-webserver",
-            "version" : "2.3.1",
-          }
+        "NanoHTTPD" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar",
+            ],
+            "sha1" : "7d28e2828bfe2ac04dcb8779aded934ac7dc1e52",
         },
-       "NanoHTTPD-WebSocket" : {
-          "path" : "lib/nanohttpd-websocket-2.3.1.jar",
-          "urls" : [
-            "https://search.maven.org/remotecontent?filepath=org/nanohttpd/nanohttpd-websocket/2.3.1/nanohttpd-websocket-2.3.1.jar",
-          ],
-          "sha1" : "f2cfb09cee12469ff64f0d698b13de19903bb4f7",
-          "maven" : {
-            "groupId" : "org.nanohttpd",
-            "artifactId" : "nanohttpd-websocket",
-            "version" : "2.3.1",
-          }
+        "NanoHTTPD-WebSocket" : {
+            "urls" : [
+                "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-websocket-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar",
+            ],
+            "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
         "TruffleJSON" : {
           "urls" : [
-            "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180130.jar",
+            "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20180813.jar",
           ],
-          "sha1" : "8819cea8bfe22c9c63f55465e296b3855ea41786",
+          "sha1" : "c556821b83878d3a327bc07dedc1bf2998f99a8f",
         },
         "Java-WebSocket" : {
             "path" : "lib/Java-WebSocket-1.3.9.jar",
-            "urls" : [
-                "https://search.maven.org/remotecontent?filepath=org/java-websocket/Java-WebSocket/1.3.9/Java-WebSocket-1.3.9.jar",
-            ],
             "sha1" : "e6e60889b7211a80b21052a249bd7e0f88f79fee",
             "maven" : {
                 "groupId" : "org.java-websocket",

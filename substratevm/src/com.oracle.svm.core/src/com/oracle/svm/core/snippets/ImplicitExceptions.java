@@ -57,9 +57,15 @@ public class ImplicitExceptions {
 
     public static final SubstrateForeignCallDescriptor THROW_NEW_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewNullPointerException", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewOutOfBoundsException", true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewOutOfBoundsExceptionWithArgs",
+                    true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewClassCastException", true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewClassCastExceptionWithArgs", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArrayStoreException", true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArrayStoreExceptionWithArgs",
+                    true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArithmeticException", true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewDivisionByZeroException", true);
 
     public static final SubstrateForeignCallDescriptor GET_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedNullPointerException", false);
     public static final SubstrateForeignCallDescriptor GET_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedOutOfBoundsException", false);
@@ -76,6 +82,7 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
                     CREATE_NULL_POINTER_EXCEPTION, CREATE_OUT_OF_BOUNDS_EXCEPTION, CREATE_CLASS_CAST_EXCEPTION, CREATE_ARRAY_STORE_EXCEPTION, CREATE_DIVISION_BY_ZERO_EXCEPTION,
                     THROW_NEW_NULL_POINTER_EXCEPTION, THROW_NEW_OUT_OF_BOUNDS_EXCEPTION, THROW_NEW_CLASS_CAST_EXCEPTION, THROW_NEW_ARRAY_STORE_EXCEPTION, THROW_NEW_ARITHMETIC_EXCEPTION,
+                    THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS, THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS, THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS, THROW_NEW_DIVISION_BY_ZERO_EXCEPTION,
                     GET_CACHED_NULL_POINTER_EXCEPTION, GET_CACHED_OUT_OF_BOUNDS_EXCEPTION, GET_CACHED_CLASS_CAST_EXCEPTION, GET_CACHED_ARRAY_STORE_EXCEPTION, GET_CACHED_ARITHMETIC_EXCEPTION,
                     THROW_CACHED_NULL_POINTER_EXCEPTION, THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION, THROW_CACHED_CLASS_CAST_EXCEPTION, THROW_CACHED_ARRAY_STORE_EXCEPTION, THROW_CACHED_ARITHMETIC_EXCEPTION,
     };
@@ -160,11 +167,30 @@ public class ImplicitExceptions {
         throw new ArrayIndexOutOfBoundsException();
     }
 
+    /** Foreign call: {@link #THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS}. */
+    @SubstrateForeignCallTarget
+    private static void throwNewOutOfBoundsExceptionWithArgs(int index, int length) {
+        vmErrorIfImplicitExceptionsAreFatal();
+        /*
+         * JDK 11 added the length to the error message, we can do that for all Java versions to be
+         * consistent.
+         */
+        throw new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length);
+    }
+
     /** Foreign call: {@link #THROW_NEW_CLASS_CAST_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwNewClassCastException() {
         vmErrorIfImplicitExceptionsAreFatal();
         throw new ClassCastException();
+    }
+
+    /** Foreign call: {@link #THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS}. */
+    @SubstrateForeignCallTarget
+    private static void throwNewClassCastExceptionWithArgs(Object object, Class<?> expectedClass) {
+        assert object != null : "null can be cast to any type, so it cannot show up as a source of a ClassCastException";
+        vmErrorIfImplicitExceptionsAreFatal();
+        throw new ClassCastException(object.getClass().getTypeName() + " cannot be cast to " + expectedClass.getTypeName());
     }
 
     /** Foreign call: {@link #THROW_NEW_ARRAY_STORE_EXCEPTION}. */
@@ -174,11 +200,26 @@ public class ImplicitExceptions {
         throw new ArrayStoreException();
     }
 
+    /** Foreign call: {@link #THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS}. */
+    @SubstrateForeignCallTarget
+    private static void throwNewArrayStoreExceptionWithArgs(Object value) {
+        assert value != null : "null can be stored into any array, so it cannot show up as a source of an ArrayStoreException";
+        vmErrorIfImplicitExceptionsAreFatal();
+        throw new ArrayStoreException(value.getClass().getTypeName());
+    }
+
     /** Foreign call: {@link #THROW_NEW_ARITHMETIC_EXCEPTION}. */
     @SubstrateForeignCallTarget
     private static void throwNewArithmeticException() {
         vmErrorIfImplicitExceptionsAreFatal();
         throw new ArithmeticException();
+    }
+
+    /** Foreign call: {@link #THROW_NEW_DIVISION_BY_ZERO_EXCEPTION}. */
+    @SubstrateForeignCallTarget
+    private static void throwNewDivisionByZeroException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        throw new ArithmeticException("/ by zero");
     }
 
     /** Foreign call: {@link #GET_CACHED_NULL_POINTER_EXCEPTION}. */

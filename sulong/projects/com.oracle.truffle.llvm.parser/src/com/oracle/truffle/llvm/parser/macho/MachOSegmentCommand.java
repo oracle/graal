@@ -63,6 +63,11 @@ public final class MachOSegmentCommand extends MachOLoadCommand {
         this.cmdOffset = cmdOffset;
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "<" + getSegName() + ">";
+    }
+
     public int getOffset() {
         return cmdOffset;
     }
@@ -164,19 +169,6 @@ public final class MachOSegmentCommand extends MachOLoadCommand {
         }
 
         return new MachOSegmentCommand(cmd, cmdSize, segName, vmAddr, vmSize, fileOff, fileSize, maxProt, initProt, nSects, flags, sections, cmdOffset);
-    }
-
-    private static String getString(MachOReader buffer, int len) {
-        StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < len; i++) {
-            byte b = buffer.getByte();
-            if (b != 0) {
-                sb.append((char) b);
-            }
-        }
-
-        return sb.toString();
     }
 
     public static final class MachOSection {

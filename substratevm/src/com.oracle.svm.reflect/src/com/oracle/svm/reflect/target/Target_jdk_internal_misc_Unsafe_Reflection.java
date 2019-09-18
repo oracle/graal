@@ -43,19 +43,14 @@ public final class Target_jdk_internal_misc_Unsafe_Reflection {
 
     @Substitute
     public long objectFieldOffset(Target_java_lang_reflect_Field field) {
-
         int offset = field.root == null ? field.offset : field.root.offset;
-
         if (offset > 0) {
             return offset;
         }
-
         throw VMError.unsupportedFeature("The offset of " + field + " is accessed without the field being first registered as unsafe accessed. " +
-                        "Please register the field as unsafe accessed. You can do so by using a custom Feature. " +
-                        "First, create a class that implements the org.graalvm.nativeimage.hosted.Feature interface. " +
-                        "Then, implement the method beforeAnalysis(org.graalvm.nativeimage.BeforeAnalysisAccess config). " +
-                        "Next, use the config object to register the field for unsafe access by calling config.registerAsUnsafeAccessed(java.lang.reflect.Field) method. " +
-                        "Finally, specify the custom feature to the native image building tool using the -H:Features=MyCustomFeature option.");
+                        "Please register the field as unsafe accessed. You can do so with a reflection configuration that " +
+                        "contains an entry for the field with the attribute \"allowUnsafeAccess\": true. Such a configuration " +
+                        "file can be generated for you. Read CONFIGURE.md and REFLECTION.md for details.");
     }
 
     @Substitute

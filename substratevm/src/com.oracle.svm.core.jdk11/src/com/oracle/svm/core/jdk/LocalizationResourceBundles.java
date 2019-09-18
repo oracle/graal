@@ -93,6 +93,10 @@ public class LocalizationResourceBundles extends LocalizationSupport {
         final String cldrFormatDataKey = cldrLocaleProviderAdapterType.getTextResourcesPackage() + ".FormatData";
         final ResourceBundle cldrFormatDataBundle = cldrLocaleData.getDateFormatData(defaultLocale);
         localizationSupport.addBundleToCache(cldrFormatDataKey, cldrFormatDataBundle);
+        /* CalendarData in cldr bundle */
+        final String cldrCalendarDataKey = cldrLocaleProviderAdapterType.getUtilResourcesPackage() + ".CalendarData";
+        final ResourceBundle cldrCalendarDataBundle = cldrLocaleData.getCalendarData(defaultLocale);
+        localizationSupport.addBundleToCache(cldrCalendarDataKey, cldrCalendarDataBundle);
         /*
          * sun.util.logging.resources.logging.
          *

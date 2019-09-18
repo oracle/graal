@@ -123,9 +123,11 @@ public abstract class ExecutionEventNode extends Node {
     }
 
     /**
-     * Invoked immediately after an {@link EventContext#getInstrumentedNode() instrumented node} did
-     * not successfully execute. The order in which multiple event listeners are notified matches
-     * the order they are
+     * Invoked immediately after the execution of an {@link EventContext#getInstrumentedNode()
+     * instrumented node} resulted in an exception. Note that this could be a
+     * {@link com.oracle.truffle.api.nodes.ControlFlowException}, which is expected and considered a
+     * successful execution of the node. The order in which multiple event listeners are notified
+     * matches the order they are
      * {@link Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
      * attached}.
      *

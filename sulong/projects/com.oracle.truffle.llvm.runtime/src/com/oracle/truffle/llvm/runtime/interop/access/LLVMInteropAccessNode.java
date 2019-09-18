@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -42,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
+@GenerateUncached
 abstract class LLVMInteropAccessNode extends LLVMNode {
 
     @ValueType
@@ -49,9 +51,9 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
 
         final Object base;
         final Object identifier;
-        final LLVMInteropType.Structured type;
+        final LLVMInteropType.Value type;
 
-        AccessLocation(Object base, Object identifier, LLVMInteropType.Structured type) {
+        AccessLocation(Object base, Object identifier, LLVMInteropType.Value type) {
             this.base = base;
             this.identifier = identifier;
             this.type = type;
@@ -66,7 +68,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
 
     @Specialization
     AccessLocation doArray(LLVMInteropType.Array type, Object foreign, long offset,
-                    @Cached("create()") MakeAccessLocation makeAccessLocation) {
+                    @Cached MakeAccessLocation makeAccessLocation) {
         long index = Long.divideUnsigned(offset, type.elementSize);
         long restOffset = Long.remainderUnsigned(offset, type.elementSize);
         return makeAccessLocation.execute(foreign, index, type.elementType, restOffset);
@@ -81,7 +83,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
 
     @Specialization(replaces = "doStructMember")
     AccessLocation doStruct(LLVMInteropType.Struct type, Object foreign, long offset,
-                    @Cached("create()") MakeAccessLocation makeAccessLocation) {
+                    @Cached MakeAccessLocation makeAccessLocation) {
         StructMember member = findMember(type, offset);
         return makeAccessLocation.execute(foreign, member.name, member.type, offset - member.startOffset);
     }
@@ -101,6 +103,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         throw new IllegalStateException("invalid struct access");
     }
 
+    @GenerateUncached
     abstract static class MakeAccessLocation extends LLVMNode {
 
         protected abstract AccessLocation execute(Object foreign, Object identifier, LLVMInteropType type, long restOffset);
@@ -111,7 +114,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("cannot read from non-structured type with offset " + restOffset);
             }
-            return new AccessLocation(foreign, identifier, type.baseType);
+            return new AccessLocation(foreign, identifier, type);
         }
 
         @Specialization(limit = "3")

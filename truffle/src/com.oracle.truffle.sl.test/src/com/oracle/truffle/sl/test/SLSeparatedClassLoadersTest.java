@@ -78,6 +78,14 @@ public class SLSeparatedClassLoadersTest {
         ClassLoader parent = Engine.class.getClassLoader().getParent();
 
         URLClassLoader sdkLoader = new URLClassLoader(new URL[]{sdkURL}, parent);
+        boolean sdkLoaderLoadsTruffleLanguage;
+        try {
+            Class.forName("com.oracle.truffle.api.TruffleLanguage", false, sdkLoader);
+            sdkLoaderLoadsTruffleLanguage = true;
+        } catch (ClassNotFoundException cnf) {
+            sdkLoaderLoadsTruffleLanguage = false;
+        }
+        Assume.assumeFalse(sdkLoaderLoadsTruffleLanguage);
         URLClassLoader truffleLoader = new URLClassLoader(new URL[]{truffleURL}, sdkLoader);
         URLClassLoader slLoader = new URLClassLoader(new URL[]{slURL}, truffleLoader);
         Thread.currentThread().setContextClassLoader(slLoader);

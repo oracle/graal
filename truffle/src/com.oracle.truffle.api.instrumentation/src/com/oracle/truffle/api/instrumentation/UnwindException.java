@@ -58,6 +58,7 @@ final class UnwindException extends ThreadDeath {
     private EventBinding<?> binding;
     private UnwindException next;
     private final AtomicReference<Thread> thrownThread;
+    private boolean thrownFromBindingCalled;
 
     boolean notifiedOnReturnValue; // True if onReturnValue() was called when this was thrown.
 
@@ -71,6 +72,8 @@ final class UnwindException extends ThreadDeath {
     }
 
     void thrownFromBinding(EventBinding<?> unwindBinding) {
+        thrownFromBindingCalled = true;
+        assert unwindBinding != null;
         // Either we have a preferred binding set, or the binding that thrown it must be the same:
         assert this.hasPreferredBindingSet || (this.binding == null || this.binding == unwindBinding);
         if (this.binding == null) {
@@ -88,6 +91,14 @@ final class UnwindException extends ThreadDeath {
             throw new IllegalStateException("A single instance of UnwindException thrown in two threads: '" + oldThread + "' and '" + currentThread + "'");
         }
         return true;
+    }
+
+    boolean hasPreferredBinding() {
+        return hasPreferredBindingSet;
+    }
+
+    boolean isThrownFromBinding() {
+        return thrownFromBindingCalled;
     }
 
     EventBinding<?> getBinding() {

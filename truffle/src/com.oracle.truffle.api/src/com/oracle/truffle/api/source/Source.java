@@ -791,7 +791,7 @@ public abstract class Source {
      * after they were accessed for the first time.
      * <p>
      * Use this method for sources that do originate from a literal. For file or URL sources use the
-     * appropriate builder constructor and {@link SourceBuilder#content(CharSequence)}.
+     * appropriate builder constructor and {@link SourceBuilder#content(ByteSequence)}.
      * <p>
      * Example usage: {@link SourceSnippets#fromBytes}
      *
@@ -860,6 +860,17 @@ public abstract class Source {
      */
     public static SourceBuilder newBuilder(String language, Reader source, String name) {
         return EMPTY.new LiteralBuilder(language, source).name(name);
+    }
+
+    /**
+     * Creates a new source builder that inherits from the given Source. The Source properties can
+     * be modified using the builder methods.
+     *
+     * @param source the source to inherit the properties from
+     * @since 19.2.0
+     */
+    public static LiteralBuilder newBuilder(Source source) {
+        return EMPTY.new LiteralBuilder(source);
     }
 
     /**
@@ -1015,14 +1026,16 @@ public abstract class Source {
                     0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
     };
 
-    static Source buildSource(String language, Object origin, String name, String mimeType, Object content, URI uri, Charset encoding,
+    private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOAllowed();
+
+    static Source buildSource(String language, Object origin, String name, String path, String mimeType, Object content, URL url, URI uri, Charset encoding,
                     boolean internal, boolean interactive, boolean cached, boolean legacy, Supplier<Object> fileSystemContext) throws IOException {
         String useName = name;
         URI useUri = uri;
         Object useContent = content;
         String useMimeType = mimeType;
-        String usePath = null;
-        URL useUrl = null;
+        String usePath = path;
+        URL useUrl = url;
         Object useOrigin = origin;
         Charset useEncoding = encoding;
 
@@ -1032,7 +1045,9 @@ public abstract class Source {
             useOrigin = truffleFile;
         }
 
-        if (useOrigin instanceof TruffleFile) {
+        if (useOrigin == CONTENT_UNSET) {
+            useContent = useContent == CONTENT_UNSET ? null : useContent;
+        } else if (useOrigin instanceof TruffleFile) {
             TruffleFile file = (TruffleFile) useOrigin;
             if (!file.isAbsolute() && useContent == CONTENT_NONE) {
                 if (useUri == null) {
@@ -1092,7 +1107,7 @@ public abstract class Source {
                     }
                 }
             } catch (FileSystemNotFoundException fsnf) {
-                if (SourceAccessor.isDefaultFileSystem(fileSystemContext.get())) {
+                if (ALLOW_IO && SourceAccessor.isDefaultFileSystem(fileSystemContext.get())) {
                     // Not a recognized by FileSystem, fall back to URLConnection only for allowed
                     // IO without a custom FileSystem
                     URLConnection connection = useUrl.openConnection();
@@ -1368,7 +1383,7 @@ public abstract class Source {
             // swallow and go on
         }
 
-        if (!SourceAccessor.isDefaultFileSystem(fileSystemContext)) {
+        if (!ALLOW_IO || !SourceAccessor.isDefaultFileSystem(fileSystemContext)) {
             throw new SecurityException("Reading of URL " + url + " is not allowed.");
         }
 
@@ -1456,7 +1471,9 @@ public abstract class Source {
         private final String language;
         private final Object origin;
         private URI uri;
+        URL url;
         private String name;
+        String path;
         private String mimeType;
         private Object content = CONTENT_UNSET;
         private boolean internal;
@@ -1529,7 +1546,7 @@ public abstract class Source {
          * {@link Language#getDefaultMimeType() default MIME type} of the language will be used to
          * interpret the source. If set explicitly then the language needs to
          * {@link Language#getMimeTypes() support} the MIME type in order to
-         * {@link com.oracle.truffle.api.TruffleLanguage.Env#parse(Source, String...) parse} a
+         * {@link com.oracle.truffle.api.TruffleLanguage.Env#parsePublic(Source, String...) parse} a
          * source. If not <code>null</code> then the MIME type will be verified containing no spaces
          * and a '/' between group and sub-group. An example for a valid MIME type is:
          * <code>text/javascript</code>.
@@ -1647,8 +1664,8 @@ public abstract class Source {
          */
         public Source build() throws IOException {
             assert this.language != null;
-            Source source = buildSource(this.language, this.origin, this.name, this.mimeType, this.content, this.uri, this.fileEncoding, this.internal, this.interactive, this.cached, false,
-                            new FileSystemContextSupplier(embedderFileSystemContext));
+            Source source = buildSource(this.language, this.origin, this.name, this.path, this.mimeType, this.content, this.url, this.uri, this.fileEncoding, this.internal, this.interactive,
+                            this.cached, false, new FileSystemContextSupplier(embedderFileSystemContext));
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
@@ -1667,6 +1684,15 @@ public abstract class Source {
 
     }
 
+    private static Object getSourceContent(Source source) {
+        Object content = ((SourceImpl) source).toKey().content;
+        if (content == CONTENT_NONE) {
+            return CONTENT_UNSET;
+        } else {
+            return content;
+        }
+    }
+
     /**
      * Allows one to specify additional attribute before {@link #build() creating} new
      * {@link Source} instance.
@@ -1678,6 +1704,18 @@ public abstract class Source {
 
         LiteralBuilder(String language, Object origin) {
             super(language, origin);
+        }
+
+        LiteralBuilder(Source source) {
+            super(source.getLanguage(), getSourceContent(source));
+            cached(source.isCached());
+            interactive(source.isInteractive());
+            internal(source.isInternal());
+            mimeType(source.getMimeType());
+            name(source.getName());
+            uri(((SourceImpl) source).toKey().uri);
+            path = source.getPath();
+            url = source.getURL();
         }
 
         /**
@@ -1899,7 +1937,7 @@ public abstract class Source {
         @Deprecated
         public Source build() throws E1, E2, E3 {
             try {
-                Source source = buildSource(this.language, this.origin, this.name, this.mime, this.characters, this.uri, null, this.internal, this.interactive, this.cached, true,
+                Source source = buildSource(this.language, this.origin, this.name, null, this.mime, this.characters, null, this.uri, null, this.internal, this.interactive, this.cached, true,
                                 new FileSystemContextSupplier(null));
 
                 // legacy sources must have character sources

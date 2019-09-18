@@ -42,20 +42,22 @@ package com.oracle.truffle.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.time.ZoneId;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import java.util.Collections;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.io.ProcessHandler;
 
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
@@ -70,9 +72,10 @@ final class PolyglotContextConfig {
     final boolean createProcessAllowed;
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
-    final Set<String> allowedPublicLanguages;
+    final EconomicSet<String> allowedPublicLanguages;
     private final Map<String, OptionValuesImpl> optionsByLanguage;
     @CompilationFinal FileSystem fileSystem;
+    @CompilationFinal FileSystem internalFileSystem;
     final Map<String, Level> logLevels;    // effectively final
     final Handler logHandler;
     final PolyglotAccess polyglotAccess;
@@ -80,13 +83,14 @@ final class PolyglotContextConfig {
     final EnvironmentAccess environmentAccess;
     private final Map<String, String> environment;
     private volatile Map<String, String> configuredEnvironement;
+    private volatile ZoneId timeZone;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
-                    Set<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, Handler logHandler,
-                    boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment) {
+                    EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, FileSystem internalFileSystem, Handler logHandler,
+                    boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId timeZone) {
         assert out != null;
         assert err != null;
         assert in != null;
@@ -104,12 +108,14 @@ final class PolyglotContextConfig {
         this.applicationArguments = applicationArguments;
         this.allowedPublicLanguages = allowedPublicLanguages;
         this.fileSystem = fileSystem;
+        this.internalFileSystem = internalFileSystem;
         this.optionsByLanguage = new HashMap<>();
         this.logHandler = logHandler;
+        this.timeZone = timeZone;
         this.logLevels = new HashMap<>(engine.logLevels);
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
-            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+            if (group.equals(PolyglotEngineImpl.OPTION_GROUP_LOG)) {
                 logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(options.get(optionKey)));
                 continue;
             }
@@ -125,6 +131,14 @@ final class PolyglotContextConfig {
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
         this.environment = environment == null ? Collections.emptyMap() : environment;
+    }
+
+    public ZoneId getTimeZone() {
+        ZoneId zone = this.timeZone;
+        if (zone == null) {
+            zone = timeZone = ZoneId.systemDefault();
+        }
+        return zone;
     }
 
     boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {
@@ -145,6 +159,10 @@ final class PolyglotContextConfig {
                 }
             } else {
                 if (from == to) {
+                    return true;
+                }
+                UnmodifiableEconomicSet<String> configuredAccess = from.engine.getAPIAccess().getEvalAccess(polyglotAccess, from.getId());
+                if (configuredAccess != null && configuredAccess.contains(to.getId())) {
                     return true;
                 }
             }
@@ -179,7 +197,7 @@ final class PolyglotContextConfig {
                 if (result == null) {
                     if (environmentAccess == EnvironmentAccess.NONE) {
                         result = Collections.unmodifiableMap(environment);
-                    } else if (environmentAccess == EnvironmentAccess.INHERIT) {
+                    } else if (PolyglotEngineImpl.ALLOW_ENVIRONMENT_ACCESS && environmentAccess == EnvironmentAccess.INHERIT) {
                         result = System.getenv();  // System.getenv returns unmodifiable map.
                         if (!environment.isEmpty()) {
                             result = new HashMap<>(result);

@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -89,8 +90,8 @@ public final class NativeLibraries {
     private final ResolvedJavaType enumType;
     private final ResolvedJavaType locationIdentityType;
 
-    private final LinkedHashSet<String> libraries;
-    private final LinkedHashSet<String> staticLibraries;
+    private final List<String> libraries;
+    private final List<String> staticLibraries;
     private final LinkedHashSet<String> libraryPaths;
 
     private final List<CInterfaceError> errors;
@@ -119,8 +120,8 @@ public final class NativeLibraries {
         enumType = metaAccess.lookupJavaType(Enum.class);
         locationIdentityType = metaAccess.lookupJavaType(LocationIdentity.class);
 
-        libraries = new LinkedHashSet<>();
-        staticLibraries = new LinkedHashSet<>();
+        libraries = new ArrayList<>();
+        staticLibraries = new ArrayList<>();
         libraryPaths = initCLibraryPath();
 
         this.cache = new CAnnotationProcessorCache();
@@ -150,6 +151,7 @@ public final class NativeLibraries {
         try {
             Path jdkLibDir = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
             if (Files.isDirectory(jdkLibDir)) {
+                List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
                 if (Files.list(jdkLibDir).filter(path -> {
                     if (Files.isDirectory(path)) {
                         return false;
@@ -159,8 +161,8 @@ public final class NativeLibraries {
                         return false;
                     }
                     String lib = libName.substring(libPrefix.length(), libName.length() - libSuffix.length());
-                    return PlatformNativeLibrarySupport.defaultBuiltInLibraries.contains(lib);
-                }).count() == PlatformNativeLibrarySupport.defaultBuiltInLibraries.size()) {
+                    return defaultBuiltInLibraries.contains(lib);
+                }).count() == defaultBuiltInLibraries.size()) {
                     staticLibsDir = jdkLibDir;
                 }
             }
@@ -239,6 +241,27 @@ public final class NativeLibraries {
     }
 
     public Collection<Path> getStaticLibraries() {
+        Map<Path, Path> allStaticLibs = getAllStaticLibs();
+        List<Path> staticLibs = new ArrayList<>();
+        for (String staticLibraryName : staticLibraries) {
+            Path libraryPath = getStaticLibraryPath(allStaticLibs, staticLibraryName);
+            if (libraryPath == null) {
+                continue;
+            }
+            staticLibs.add(libraryPath);
+        }
+        return staticLibs;
+    }
+
+    public Path getStaticLibraryPath(String staticLibraryName) {
+        return getStaticLibraryPath(getAllStaticLibs(), staticLibraryName);
+    }
+
+    private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
+        return allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
+    }
+
+    private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
         for (String libraryPath : getLibraryPaths()) {
             try {
@@ -250,15 +273,7 @@ public final class NativeLibraries {
                 UserError.abort("Invalid library path " + libraryPath, e);
             }
         }
-        List<Path> staticLibs = new ArrayList<>();
-        for (String staticLibraryName : staticLibraries) {
-            Path libraryPath = allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
-            if (libraryPath == null) {
-                continue;
-            }
-            staticLibs.add(libraryPath);
-        }
-        return staticLibs;
+        return allStaticLibs;
     }
 
     public Collection<String> getLibraryPaths() {

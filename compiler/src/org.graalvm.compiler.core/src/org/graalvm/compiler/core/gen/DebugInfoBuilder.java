@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -156,10 +156,6 @@ public class DebugInfoBuilder {
                 }
                 assert checkValues(vobjValue.getType(), values, slotKinds);
                 vobjValue.setValues(values, slotKinds);
-
-                if (vobjNode instanceof VirtualBoxingNode) {
-                    GraalServices.markVirtualObjectAsAutoBox(vobjValue);
-                }
             }
 
             virtualObjectsArray = new VirtualObject[virtualObjects.size()];
@@ -323,7 +319,8 @@ public class DebugInfoBuilder {
                     assert obj.entryCount() == 0 || state instanceof VirtualObjectState;
                     VirtualObject vobject = virtualObjects.get(obj);
                     if (vobject == null) {
-                        vobject = VirtualObject.get(obj.type(), virtualObjects.size());
+                        boolean isAutoBox = obj instanceof VirtualBoxingNode;
+                        vobject = GraalServices.createVirtualObject(obj.type(), virtualObjects.size(), isAutoBox);
                         virtualObjects.put(obj, vobject);
                         pendingVirtualObjects.add(obj);
                     }

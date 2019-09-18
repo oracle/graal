@@ -35,10 +35,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -47,6 +49,7 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -54,7 +57,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -62,6 +67,7 @@ import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -193,7 +199,7 @@ final class Target_java_lang_Throwable {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private Object fillInStackTrace() {
-        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        stackTrace = StackTraceUtils.getStackTrace(true, KnownIntrinsics.readCallerStackPointer());
         return this;
     }
 
@@ -246,7 +252,7 @@ final class Target_java_lang_Runtime {
     }
 
     @Substitute
-    @Platforms({InternalPlatform.LINUX_JNI.class, InternalPlatform.DARWIN_JNI.class, Platform.WINDOWS.class})
+    @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             return Jvm.JVM_ActiveProcessorCount();
@@ -538,6 +544,26 @@ final class Target_java_lang_Compiler {
                         "with the first element being a String providing the name of the SVM command to run " +
                         "and subsequent elements being the arguments to the command");
     }
+
+    @SuppressWarnings({"unused"})
+    @Substitute
+    static boolean compileClass(Class<?> clazz) {
+        return false;
+    }
+
+    @SuppressWarnings({"unused"})
+    @Substitute
+    static boolean compileClasses(String string) {
+        return false;
+    }
+
+    @Substitute
+    static void enable() {
+    }
+
+    @Substitute
+    static void disable() {
+    }
 }
 
 final class IsSingleThreaded implements Predicate<Class<?>> {
@@ -714,11 +740,61 @@ final class Target_java_lang_Package {
     }
 }
 
+@TargetClass(className = "jdk.internal.loader.BootLoader", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_loader_BootLoader {
+    @Substitute
+    static String[] getSystemPackageNames() {
+        return BootLoaderStaticUtils.packageNames.toArray(new String[BootLoaderStaticUtils.packageNames.size()]);
+    }
+
+    @Substitute
+    static Package getDefinedPackage(String name) {
+        if (BootLoaderStaticUtils.packageNames.contains(name.replace('.', '/'))) {
+            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                            null, null, null, null, null);
+            return SubstrateUtil.cast(pkg, Package.class);
+        } else {
+            return null;
+        }
+    }
+}
+
+final class BootLoaderStaticUtils {
+    static final Set<String> packageNames;
+
+    static {
+        final Package[] packages = new Helper().getPackages();
+        Set<String> set = new HashSet<>();
+        for (Package pkg : packages) {
+            set.add(pkg.getName());
+        }
+        packageNames = set;
+    }
+
+    static final class Helper extends ClassLoader {
+        @Override
+        protected Package[] getPackages() {
+            return super.getPackages();
+        }
+    }
+}
+
+@AutomaticFeature
+class JavaLangSubstituteFeature11 implements Feature {
+    @Override
+    public void duringSetup(final DuringSetupAccess access) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(BootLoaderStaticUtils.class, "Needed for getPackage() to work");
+        }
+    }
+}
+
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
 
     public static class ClassLoaderSupport {
         public Target_java_lang_ClassLoader systemClassLoader;
+        public Target_java_lang_ClassLoader platformClassLoader;
 
         @Platforms(Platform.HOSTED_ONLY.class) public Map<ClassLoader, Target_java_lang_ClassLoader> classLoaders = Collections.synchronizedMap(new IdentityHashMap<>());
 

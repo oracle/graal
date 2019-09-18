@@ -31,15 +31,16 @@ import mx_subst
 import mx_unittest
 
 import functools
+import tempfile
 from mx_gate import Task
 
-from os import environ
-from os.path import join, exists, dirname
+from os import environ, listdir, remove
+from os.path import join, exists, dirname, isdir, isfile, getsize
 from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
 
 _suite = mx.suite('vm')
-
+env_tests = []
 
 class VmGateTasks:
     compiler = 'compiler'
@@ -58,6 +59,7 @@ class VmGateTasks:
     integration = 'integration'
     tools = 'tools'
     libgraal = 'libgraal'
+    svm_truffle_tck_js = 'svm-truffle-tck-js'
 
 
 def gate_body(args, tasks):
@@ -66,6 +68,15 @@ def gate_body(args, tasks):
             # 1. the build must be a GraalVM
             # 2. the build must be JVMCI-enabled since the 'GraalVM compiler' component is registered
             mx_vm.check_versions(mx_vm.graalvm_output(), graalvm_version_regex=mx_vm.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
+
+    with Task('Vm: GraalVM dist names', tasks, tags=[VmGateTasks.integration]) as t:
+        if t:
+            for suite, env_file_name, graalvm_dist_name in env_tests:
+                out = mx.LinesOutputCapture()
+                mx.run_mx(['--no-warning', '--env', env_file_name, 'graalvm-dist-name'], suite, out=out, err=out, env={})
+                mx.log("Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format(env_file_name, suite.name, graalvm_dist_name))
+                if len(out.lines) != 1 or out.lines[0] != graalvm_dist_name:
+                    mx.abort("Unexpected GraalVM dist name for env file '{}' in suite '{}'.\nExpected: '{}', actual: '{}'.\nDid you forget to update the registration of the GraalVM config?".format(env_file_name, suite.name, graalvm_dist_name, '\n'.join(out.lines)))
 
     if mx_vm.has_component('LibGraal'):
         libgraal_location = mx_vm.get_native_image_locations('LibGraal', 'jvmcicompiler')
@@ -113,7 +124,16 @@ def gate_body(args, tasks):
                     else:
                         unittest_args = []
                     unittest_args = unittest_args + ["--enable-timing", "--verbose"]
-                    mx_unittest.unittest(unittest_args + extra_vm_arguments + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleBackgroundCompilation=false", "truffle"])
+                    compiler_log_file = "graal-compiler.log"
+                    mx_unittest.unittest(unittest_args + extra_vm_arguments + [
+                        "-Dgraal.TruffleCompileImmediately=true",
+                        "-Dgraal.TruffleBackgroundCompilation=false",
+                        "-Dgraal.TraceTruffleCompilation=true",
+                        "-Dgraal.PrintCompilation=true",
+                        "-Dgraal.LogFile={0}".format(compiler_log_file),
+                        "truffle"])
+                    if exists(compiler_log_file):
+                        remove(compiler_log_file)
     else:
         mx.warn("Skipping libgraal tests: component not enabled")
 
@@ -121,6 +141,7 @@ def gate_body(args, tasks):
     gate_sulong(tasks)
     gate_ruby(tasks)
     gate_python(tasks)
+    gate_svm_truffle_tck_js(tasks)
 
 def graalvm_svm():
     """
@@ -189,3 +210,48 @@ def gate_python(tasks):
             python_svm_image_path = join(mx_vm.graalvm_output(), 'bin', 'graalpython')
             python_suite = mx.suite("graalpython")
             python_suite.extensions.run_python_unittests(python_svm_image_path)
+
+def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
+    cp = None
+    for dist in svm_suite.dists:
+        if dist.name == 'SVM_TRUFFLE_TCK':
+            cp = dist.classpath_repr()
+            break
+    if not cp:
+        mx.abort("Cannot resolve: SVM_TRUFFLE_TCK distribution.")
+    excludes = []
+    excludes_dir = join(language_suite.mxDir, 'truffle.tck.permissions')
+    if isdir(excludes_dir):
+        for excludes_file in listdir(excludes_dir):
+            excludes.append(join(excludes_dir, excludes_file))
+    with tempfile.NamedTemporaryFile() as report_file:
+        options = [
+            '--language:{}'.format(language_id),
+            '-H:ClassInitialization=:build_time',
+            '-H:+EnforceMaxRuntimeCompileMethods',
+            '-cp',
+            cp,
+            '--no-server',
+            '-H:-FoldSecurityManagerGetter',
+            '-H:TruffleTCKPermissionsReportFile={}'.format(report_file.name),
+            'com.oracle.svm.truffle.tck.MockMain'
+        ]
+        if excludes:
+            options.append('-H:TruffleTCKPermissionsExcludeFiles={}'.format(','.join(excludes)))
+        native_image(options)
+        if isfile(report_file.name) and getsize(report_file.name) > 0:
+            message = "Failed: Language {} performs following privileged calls:\n\n".format(language_id)
+            with open(report_file.name, "r") as f:
+                for line in f.readlines():
+                    message = message + line
+            mx.abort(message)
+
+def gate_svm_truffle_tck_js(tasks):
+    with Task('JavaScript SVM Truffle TCK', tasks, tags=[VmGateTasks.svm_truffle_tck_js]) as t:
+        if t:
+            js_suite = mx.suite('graal-js')
+            if not js_suite:
+                mx.abort("Cannot resolve graal-js suite.")
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                _svm_truffle_tck(native_image, svm.suite, js_suite, 'js')

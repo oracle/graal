@@ -110,7 +110,7 @@ public final class TckLanguage extends TruffleLanguage<Env> {
             }
             CallTarget call;
             try {
-                call = env.parse(code, (String) arguments[1], (String) arguments[2]);
+                call = env.parsePublic(code, (String) arguments[1], (String) arguments[2]);
             } catch (Exception ex) {
                 throw new AssertionError("Cannot parse " + code, ex);
             }

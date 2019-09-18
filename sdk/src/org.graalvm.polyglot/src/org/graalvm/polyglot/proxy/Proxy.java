@@ -52,11 +52,34 @@ import org.graalvm.polyglot.PolyglotException;
  * Exceptions thrown by proxies are wrapped with a {@link PolyglotException} when the proxy is
  * invoked in a guest language. It is possible to unwrap the {@link PolyglotException} using
  * {@link PolyglotException#asHostException()}.
+ * <p>
+ * The interfaces {@link Proxy}, {@link ProxyArray}, {@link ProxyExecutable},
+ * {@link ProxyInstantiable}, {@link ProxyNativeObject}, {@link ProxyObject} can be used in
+ * combination with any other proxy interfaces.
+ * <p>
+ * The following proxy interface combinations are exclusive and throw an {@link AssertionError} if
+ * used together:
+ * <ul>
+ * <li>{@link ProxyDuration}
+ * <li>{@link ProxyInstant}, {@link ProxyDate}, {@link ProxyTime} or {@link ProxyTimeZone}.
+ * </ul>
+ *
+ * The following proxy interface combinations are invalid and throw an {@link AssertionError} if
+ * used:
+ * <ul>
+ * <li>If {@link ProxyTimeZone} and {@link ProxyDate} without {@link ProxyTime}
+ * <li>If {@link ProxyTimeZone} and {@link ProxyTime} without {@link ProxyDate}.
+ * </ul>
  *
  * @see ProxyArray to mimic arrays
  * @see ProxyObject to mimic objects with members
  * @see ProxyExecutable to mimic objects that can be executed
  * @see ProxyNativeObject to mimic native objects
+ * @see ProxyDate to mimic date objects
+ * @see ProxyTime to mimic time objects
+ * @see ProxyTimeZone to mimic timezone objects
+ * @see ProxyDuration to mimic duration objects
+ * @see ProxyInstant to mimic timestamp objects
  *
  * @since 19.0
  */

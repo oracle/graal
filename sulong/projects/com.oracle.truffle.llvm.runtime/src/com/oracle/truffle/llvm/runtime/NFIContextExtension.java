@@ -66,12 +66,10 @@ public final class NFIContextExtension implements ContextExtension {
     // we use an EconomicMap because iteration order must match the insertion order
     private final EconomicMap<ExternalLibrary, TruffleObject> libraryHandles = EconomicMap.create();
     private final TruffleLanguage.Env env;
-    private final LLVMNativeFunctions nativeFunctions;
 
     public NFIContextExtension(Env env) {
         this.env = env;
         this.defaultLibrary = ExternalLibrary.external("NativeDefault", true);
-        this.nativeFunctions = new LLVMNativeFunctions(this);
     }
 
     @Override
@@ -112,10 +110,6 @@ public final class NFIContextExtension implements ContextExtension {
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException(e);
         }
-    }
-
-    public LLVMNativeFunctions getNativeSulongFunctions() {
-        return nativeFunctions;
     }
 
     @TruffleBoundary
@@ -175,8 +169,8 @@ public final class NFIContextExtension implements ContextExtension {
             throw new IllegalArgumentException("Filename path of " + lib.getPath() + " is null");
         }
         String fileName = fileNamePath.toString().trim();
-        if (fileName.startsWith("libc.")) {
-            // nothing to do, since libsulong.so already links against libc.so
+        if (fileName.startsWith("libc.") || fileName.startsWith("libSystem.")) {
+            // nothing to do, since libsulong.so already links against libc.so/libSystem.B.dylib
             return true;
         } else if (fileName.startsWith("libsulong++.") || fileName.startsWith("libc++.")) {
             /*
@@ -222,9 +216,9 @@ public final class NFIContextExtension implements ContextExtension {
         } else {
             loadExpression = String.format("load(%s) \"%s\"", flags, libName);
         }
-        final Source source = Source.newBuilder("nfi", loadExpression, "(load " + libName + ")").build();
+        final Source source = Source.newBuilder("nfi", loadExpression, "(load " + libName + ")").internal(true).build();
         try {
-            return (TruffleObject) env.parse(source).call();
+            return (TruffleObject) env.parseInternal(source).call();
         } catch (UnsatisfiedLinkError ex) {
             if (optional) {
                 return null;
@@ -236,9 +230,9 @@ public final class NFIContextExtension implements ContextExtension {
 
     private TruffleObject loadDefaultLibrary() {
         CompilerAsserts.neverPartOfCompilation();
-        final Source source = Source.newBuilder("nfi", "default", "default").build();
+        final Source source = Source.newBuilder("nfi", "default", "default").internal(true).build();
         try {
-            return (TruffleObject) env.parse(source).call();
+            return (TruffleObject) env.parseInternal(source).call();
         } catch (Exception ex) {
             throw new IllegalArgumentException(ex);
         }

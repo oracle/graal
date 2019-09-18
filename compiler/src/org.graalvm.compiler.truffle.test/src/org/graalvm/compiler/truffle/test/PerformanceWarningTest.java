@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
+import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
@@ -61,6 +62,9 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final VirtualObject1 object1 = new VirtualObject1();
     @SuppressWarnings("unused") private static final VirtualObject2 object2 = new VirtualObject2();
     @SuppressWarnings("unused") private static final SubClass object3 = new SubClass();
+    @SuppressWarnings("unused") private static final L9a object4 = new L9a();
+    @SuppressWarnings("unused") private static final L9b object5 = new L9b();
+    @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.inFirstTier();
 
     @Test
     public void testVirtualCall() {
@@ -93,13 +97,18 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     }
 
     @Test
-    public void testCast() {
-        testHelper(truffleCompiler, new RootNodeCast(), false, "perf info", "foo", "bar", "execute");
+    public void testInterfaceCast() {
+        testHelper(truffleCompiler, new RootNodeInterfaceCast(), false, "perf info", Interface.class.getSimpleName(), "foo", "bar", "execute");
     }
 
     @Test
     public void testSingleImplementor() {
-        testHelper(truffleCompiler, new RootNodeInterfaceSingleImplementorCall(), false, "perf info", "type check", "foo");
+        testHelper(truffleCompiler, new RootNodeInterfaceSingleImplementorCall(), false, EMPTY_PERF_WARNINGS);
+    }
+
+    @Test
+    public void testSlowClassCast() {
+        testHelper(truffleCompiler, new RootNodeDeepClass(), false, "perf info", L8.class.getSimpleName(), "foo", "execute");
     }
 
     @SuppressWarnings("try")
@@ -115,7 +124,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TraceTrufflePerformanceWarnings, Boolean.TRUE);
                             TruffleRuntimeOptionsOverrideScope scope2runtime = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal, Boolean.TRUE);
                             TruffleOptionsOverrideScope scope2compile = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, Boolean.TRUE)) {
-                OptionValues options = TruffleCompilerOptions.getOptions();
+                OptionValues options = scope2compile.getOptions();
                 DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
                 try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                     final OptimizedCallTarget compilable = target;
@@ -140,7 +149,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             Assert.assertEquals("", output);
         } else {
             for (String s : outputStrings) {
-                Assert.assertTrue(String.format("Root node class %s: \"%s\" not found in output \"%s\"", rootNode.getClass(), s, output), output.contains(s));
+                Assert.assertTrue(String.format("Root node class %s: \"%s\" not found in output \"%s\"", rootNode.getClass().getName(), s, output), output.contains(s));
             }
         }
     }
@@ -247,7 +256,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         }
     }
 
-    private final class RootNodeCast extends TestRootNode {
+    private final class RootNodeInterfaceCast extends TestRootNode {
         protected Object obj;
 
         @Override
@@ -322,4 +331,48 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     private static class SubClass extends SingleImplementorClass {
     }
 
+    private static class L1 {
+    }
+
+    private static class L2 extends L1 {
+    }
+
+    private static class L3 extends L2 {
+    }
+
+    private static class L4 extends L3 {
+    }
+
+    private static class L5 extends L4 {
+    }
+
+    private static class L6 extends L5 {
+    }
+
+    private static class L7 extends L6 {
+    }
+
+    private static class L8 extends L7 {
+    }
+
+    private static class L9a extends L8 {
+    }
+
+    private static class L9b extends L8 {
+    }
+
+    private final class RootNodeDeepClass extends TestRootNode {
+        protected Object obj;
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            foo();
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        private void foo() {
+            L8 c = (L8) obj;
+        }
+    }
 }

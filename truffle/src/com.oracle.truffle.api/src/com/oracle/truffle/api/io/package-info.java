@@ -49,6 +49,6 @@
  * This package contains I/O related classes used by {@link com.oracle.truffle.api.TruffleLanguage}
  * implementations.
  *
- * @since 20.0.0 beta 2
+ * @since 19.1.0
  */
 package com.oracle.truffle.api.io;

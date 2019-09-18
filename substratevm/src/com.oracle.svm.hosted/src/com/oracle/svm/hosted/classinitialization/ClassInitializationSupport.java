@@ -80,4 +80,8 @@ public interface ClassInitializationSupport extends RuntimeClassInitializationSu
     void setUnsupportedFeatures(UnsupportedFeatures o);
 
     List<ClassOrPackageConfig> getClassInitializationConfiguration();
+
+    void setConfigurationSealed(boolean sealed);
+
+    String objectInstantiationTraceMessage(Object obj, String action);
 }

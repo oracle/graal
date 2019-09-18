@@ -25,15 +25,12 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 
 public abstract class RegexExecRootNode extends RegexBodyNode {
-
-    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
 
     private final boolean mustCheckUnicodeSurrogates;
     private @Child InputLengthNode lengthNode;
@@ -50,7 +47,7 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
         assert args.length == 2;
         Object input = args[0];
         int fromIndex = (int) args[1];
-        return execute(frame, input, adjustFromIndex(fromIndex, input));
+        return execute(input, adjustFromIndex(fromIndex, input));
     }
 
     private int adjustFromIndex(int fromIndex, Object input) {
@@ -78,9 +75,5 @@ public abstract class RegexExecRootNode extends RegexBodyNode {
         return charAtNode.execute(input, i);
     }
 
-    public FrameDescriptor getFrameDescriptor() {
-        return SHARED_EMPTY_FRAMEDESCRIPTOR;
-    }
-
-    protected abstract RegexResult execute(VirtualFrame frame, Object input, int fromIndex);
+    protected abstract RegexResult execute(Object input, int fromIndex);
 }

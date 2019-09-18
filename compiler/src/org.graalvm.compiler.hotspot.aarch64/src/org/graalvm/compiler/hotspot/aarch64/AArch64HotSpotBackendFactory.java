@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -29,6 +29,7 @@ import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -154,7 +155,8 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                 replacements = createReplacements(target, p, snippetReflection, bytecodeProvider);
             }
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
-                plugins = createGraphBuilderPlugins(compilerConfiguration, config, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes, graalRuntime.getOptions());
+                plugins = createGraphBuilderPlugins(graalRuntime, compilerConfiguration, config, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes,
+                                graalRuntime.getOptions());
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
@@ -169,11 +171,27 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
         }
     }
 
-    protected Plugins createGraphBuilderPlugins(CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config, HotSpotConstantReflectionProvider constantReflection,
-                    HotSpotHostForeignCallsProvider foreignCalls, HotSpotMetaAccessProvider metaAccess, HotSpotSnippetReflectionProvider snippetReflection,
-                    HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options) {
-        Plugins plugins = HotSpotGraphBuilderPlugins.create(compilerConfiguration, config, wordTypes, metaAccess, constantReflection, snippetReflection, foreignCalls, replacements, options);
-        AArch64GraphBuilderPlugins.register(plugins, replacements.getDefaultReplacementBytecodeProvider(), false, //
+    protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider graalRuntime,
+                    CompilerConfiguration compilerConfiguration,
+                    GraalHotSpotVMConfig config,
+                    HotSpotConstantReflectionProvider constantReflection,
+                    HotSpotHostForeignCallsProvider foreignCalls,
+                    HotSpotMetaAccessProvider metaAccess,
+                    HotSpotSnippetReflectionProvider snippetReflection,
+                    HotSpotReplacementsImpl replacements,
+                    HotSpotWordTypes wordTypes,
+                    OptionValues options) {
+        Plugins plugins = HotSpotGraphBuilderPlugins.create(graalRuntime,
+                        compilerConfiguration,
+                        config,
+                        wordTypes,
+                        metaAccess,
+                        constantReflection,
+                        snippetReflection,
+                        foreignCalls,
+                        replacements,
+                        options);
+        AArch64GraphBuilderPlugins.register(plugins, replacements.getDefaultReplacementBytecodeProvider(), false,
                         /* registerMathPlugins */true);
         return plugins;
     }
@@ -193,7 +211,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
 
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     @SuppressWarnings("unused") Replacements replacements) {
-        AArch64SuitesCreator suitesCreator = new AArch64SuitesCreator(compilerConfiguration, plugins, SchedulePhase.class);
+        AArch64SuitesCreator suitesCreator = new AArch64SuitesCreator(compilerConfiguration, plugins, Arrays.asList(SchedulePhase.class));
         Phase addressLoweringPhase = new AddressLoweringByUsePhase(new AArch64AddressLoweringByUse(new AArch64LIRKindTool()));
         return new AddressLoweringHotSpotSuitesProvider(suitesCreator, config, runtime, addressLoweringPhase);
     }

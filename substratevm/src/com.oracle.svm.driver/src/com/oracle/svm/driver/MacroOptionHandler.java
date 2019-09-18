@@ -35,6 +35,7 @@ import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 import com.oracle.svm.driver.MacroOption.InvalidMacroException;
 import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
+import com.oracle.svm.driver.NativeImage.BuildConfiguration;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -47,7 +48,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String headArg = args.peek();
         boolean consumed = false;
         try {
-            consumed = nativeImage.optionRegistry.enableOption(headArg, new HashSet<>(), null, this::applyEnabled);
+            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, new HashSet<>(), null, this::applyEnabled);
         } catch (VerboseInvalidMacroException e1) {
             NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
         } catch (InvalidMacroException | AddedTwiceException e) {
@@ -76,37 +77,40 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return;
         }
 
-        enabledOption.forEachPropertyValue("ImageBuilderBootClasspath", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        BuildConfiguration config = nativeImage.config;
+        if (!config.useJavaModules()) {
+            enabledOption.forEachPropertyValue(config, "ImageBuilderBootClasspath8", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        }
 
-        if (!enabledOption.forEachPropertyValue("ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
+        if (!enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
             Path builderJarsDirectory = imageJarsDirectory.resolve("builder");
             if (Files.isDirectory(builderJarsDirectory)) {
                 NativeImage.getJars(builderJarsDirectory).forEach(nativeImage::addImageBuilderClasspath);
             }
         }
 
-        if (!enabledOption.forEachPropertyValue("ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
+        if (!enabledOption.forEachPropertyValue(config, "ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {
             NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
         }
 
-        String imageName = enabledOption.getProperty("ImageName");
+        String imageName = enabledOption.getProperty(config, "ImageName");
         if (imageName != null) {
             nativeImage.addPlainImageBuilderArg(nativeImage.oHName + imageName);
         }
 
-        String imagePath = enabledOption.getProperty("ImagePath");
+        String imagePath = enabledOption.getProperty(config, "ImagePath");
         if (imagePath != null) {
             nativeImage.addPlainImageBuilderArg(nativeImage.oHPath + imagePath);
         }
 
-        String imageClass = enabledOption.getProperty("ImageClass");
+        String imageClass = enabledOption.getProperty(config, "ImageClass");
         if (imageClass != null) {
             nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + imageClass);
         }
 
-        enabledOption.forEachPropertyValue("JavaArgs", nativeImage::addImageBuilderJavaArgs);
+        enabledOption.forEachPropertyValue(config, "JavaArgs", nativeImage::addImageBuilderJavaArgs);
         NativeImage.NativeImageArgsProcessor args = nativeImage.new NativeImageArgsProcessor();
-        enabledOption.forEachPropertyValue("Args", args);
+        enabledOption.forEachPropertyValue(config, "Args", args);
         args.apply(true);
     }
 }

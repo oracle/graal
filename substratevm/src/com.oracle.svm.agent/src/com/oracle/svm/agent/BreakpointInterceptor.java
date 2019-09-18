@@ -25,13 +25,16 @@
 package com.oracle.svm.agent;
 
 import static com.oracle.svm.agent.Support.check;
+import static com.oracle.svm.agent.Support.checkJni;
 import static com.oracle.svm.agent.Support.checkNoException;
 import static com.oracle.svm.agent.Support.clearException;
 import static com.oracle.svm.agent.Support.fromCString;
 import static com.oracle.svm.agent.Support.fromJniString;
 import static com.oracle.svm.agent.Support.getCallerClass;
+import static com.oracle.svm.agent.Support.getCallerMethod;
 import static com.oracle.svm.agent.Support.getClassNameOr;
 import static com.oracle.svm.agent.Support.getClassNameOrNull;
+import static com.oracle.svm.agent.Support.getMethodDeclaringClass;
 import static com.oracle.svm.agent.Support.getObjectArgument;
 import static com.oracle.svm.agent.Support.handles;
 import static com.oracle.svm.agent.Support.jniFunctions;
@@ -40,15 +43,18 @@ import static com.oracle.svm.agent.Support.jvmtiFunctions;
 import static com.oracle.svm.agent.Support.testException;
 import static com.oracle.svm.agent.Support.toCString;
 import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
+import static com.oracle.svm.agent.jvmti.JvmtiEvent.JVMTI_EVENT_NATIVE_METHOD_BIND;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.StackValue;
@@ -56,6 +62,8 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -77,11 +85,14 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallBooleanMethod0FunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallLongMethod1FunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallLongMethod2FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod0FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod1FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod2FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod3FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
+import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.vm.ci.meta.MetaUtil;
@@ -107,6 +118,25 @@ final class BreakpointInterceptor {
     private static ResourceAccessVerifier resourceVerifier;
 
     private static Map<Long, Breakpoint> installedBreakpoints;
+
+    /**
+     * A map from {@link JNIMethodId} to entry point addresses for bound Java {@code native}
+     * methods, NOT considering our intercepting functions, i.e., these are the original entry
+     * points for a native method from symbol resolution or {@code registerNatives}.
+     */
+    private static Map<Long, Long> boundNativeMethods;
+
+    /**
+     * Map from {@link JNIMethodId} to breakpoints in {@code native} methods. Not all of them may be
+     * installed if the native methods haven't been {@linkplain #bindNativeBreakpoint bound}.
+     */
+    private static Map<Long, NativeBreakpoint> nativeBreakpoints;
+
+    /**
+     * Guards access to {@link #boundNativeMethods} and {@link #nativeBreakpoints} to avoid races
+     * that cause breakpoints to not be installed.
+     */
+    private static final ReentrantLock nativeBreakpointsInitLock = new ReentrantLock();
 
     private static final ThreadLocal<Boolean> recursive = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
@@ -261,6 +291,98 @@ final class BreakpointInterceptor {
         return allowed;
     }
 
+    private static final CEntryPointLiteral<ObjectFieldOffsetFunctionPointer> nativeObjectFieldOffsetLiteral = CEntryPointLiteral.create(
+                    BreakpointInterceptor.class, "nativeObjectFieldOffset", JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
+
+    private interface ObjectFieldOffsetFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        long invoke(JNIEnvironment jni, JNIObjectHandle self, JNIObjectHandle field);
+    }
+
+    private static final NativeBreakpointSpecification NATIVE_OBJECTFIELDOFFSET_BREAKPOINT_SPEC = new NativeBreakpointSpecification(
+                    "sun/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/reflect/Field;)J", nativeObjectFieldOffsetLiteral);
+
+    /** Native breakpoint for the JDK 8 {@code sun.misc.Unsafe.objectFieldOffset} native method. */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    static long nativeObjectFieldOffset(JNIEnvironment jni, JNIObjectHandle self, JNIObjectHandle field) {
+        VMError.guarantee(NATIVE_OBJECTFIELDOFFSET_BREAKPOINT_SPEC.installed != null &&
+                        NATIVE_OBJECTFIELDOFFSET_BREAKPOINT_SPEC.installed.replacedFunction.isNonNull(), "incompletely installed");
+
+        ObjectFieldOffsetFunctionPointer original = (ObjectFieldOffsetFunctionPointer) NATIVE_OBJECTFIELDOFFSET_BREAKPOINT_SPEC.installed.replacedFunction;
+        long result = original.invoke(jni, self, field);
+        if (!Support.isInitialized()) { // in case of a (very) late call
+            return result;
+        }
+        boolean validResult = !clearException(jni);
+        JNIMethodId currentMethod = getCallerMethod(0);
+        JNIObjectHandle callerClass = getCallerClass(1);
+        JNIObjectHandle name = nullHandle();
+        JNIObjectHandle declaring = nullHandle();
+        if (field.notEqual(nullHandle())) {
+            name = jniFunctions().<CallObjectMethod0FunctionPointer> getCallObjectMethod().invoke(jni, field, handles().javaLangReflectMemberGetName);
+            if (clearException(jni)) {
+                name = nullHandle();
+            }
+            declaring = jniFunctions().<CallObjectMethod0FunctionPointer> getCallObjectMethod().invoke(jni, field, handles().javaLangReflectMemberGetDeclaringClass);
+            if (clearException(jni)) {
+                declaring = nullHandle();
+            }
+        }
+        if (!verifyAndTraceObjectFieldOffset(jni, validResult, name, declaring, currentMethod, callerClass)) {
+            return Long.MIN_VALUE; // (pending exception)
+        }
+        if (!validResult) { // invoke again for exception
+            return original.invoke(jni, self, field);
+        }
+        return result;
+    }
+
+    private static boolean objectFieldOffset(JNIEnvironment jni, JNIObjectHandle callerClass, Breakpoint bp) {
+        JNIObjectHandle self = getObjectArgument(0);
+        JNIObjectHandle field = getObjectArgument(1);
+        jniFunctions().<CallLongMethod1FunctionPointer> getCallLongMethod().invoke(jni, self, bp.method, field);
+        boolean validResult = !clearException(jni);
+        JNIObjectHandle name = nullHandle();
+        JNIObjectHandle declaring = nullHandle();
+        if (field.notEqual(nullHandle())) {
+            name = jniFunctions().<CallObjectMethod0FunctionPointer> getCallObjectMethod().invoke(jni, field, handles().javaLangReflectMemberGetName);
+            if (clearException(jni)) {
+                name = nullHandle();
+            }
+            declaring = jniFunctions().<CallObjectMethod0FunctionPointer> getCallObjectMethod().invoke(jni, field, handles().javaLangReflectMemberGetDeclaringClass);
+            if (clearException(jni)) {
+                declaring = nullHandle();
+            }
+        }
+        return verifyAndTraceObjectFieldOffset(jni, validResult, name, declaring, bp.method, callerClass);
+    }
+
+    private static boolean verifyAndTraceObjectFieldOffset(JNIEnvironment jni, boolean validResult, JNIObjectHandle name,
+                    JNIObjectHandle declaring, JNIMethodId currentMethod, JNIObjectHandle callerClass) {
+
+        JNIObjectHandle clazz = getMethodDeclaringClass(currentMethod);
+        boolean allowed = !validResult || accessVerifier == null || accessVerifier.verifyObjectFieldOffset(jni, name, declaring, callerClass);
+        traceBreakpoint(jni, clazz, declaring, callerClass, "objectFieldOffset", allowed && validResult, fromJniString(jni, name));
+        if (!allowed) {
+            try (CCharPointerHolder message = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit unsafe access to field: " +
+                            getClassNameOr(jni, declaring, "(null)", "(?)") + "." + fromJniString(jni, name))) {
+                jniFunctions().getThrowNew().invoke(jni, handles().javaLangRuntimeException, message.get());
+            }
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean objectFieldOffsetByName(JNIEnvironment jni, JNIObjectHandle callerClass, Breakpoint bp) {
+        JNIObjectHandle self = getObjectArgument(0);
+        JNIObjectHandle declaring = getObjectArgument(1);
+        JNIObjectHandle name = getObjectArgument(2);
+        jniFunctions().<CallLongMethod2FunctionPointer> getCallLongMethod().invoke(jni, self, bp.method, declaring, name);
+        boolean validResult = !clearException(jni);
+        return verifyAndTraceObjectFieldOffset(jni, validResult, name, declaring, bp.method, callerClass);
+    }
+
     private static boolean getConstructor(JNIEnvironment jni, JNIObjectHandle callerClass, Breakpoint bp) {
         JNIObjectHandle self = getObjectArgument(0);
         JNIObjectHandle paramTypesHandle = getObjectArgument(1);
@@ -342,7 +464,7 @@ final class BreakpointInterceptor {
             }
         }
         boolean allowed = enclosing.equal(nullHandle()) || accessVerifier == null || accessVerifier.verifyGetEnclosingMethod(jni, holder, name, signature, enclosing, callerClass);
-        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, allowed ? result : false);
+        traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, (allowed && enclosing.notEqual(nullHandle())) ? result : false);
         if (!allowed) {
             jvmtiFunctions().ForceEarlyReturnObject().invoke(jvmtiEnv(), nullHandle(), nullHandle());
         }
@@ -350,15 +472,17 @@ final class BreakpointInterceptor {
     }
 
     private static boolean newInstance(JNIEnvironment jni, JNIObjectHandle callerClass, Breakpoint bp) {
-        JNIObjectHandle self = getObjectArgument(0);
-        JNIMethodId result;
+        JNIMethodId result = nullPointer();
         String name = "<init>";
         String signature = "()V";
-        try (CCharPointerHolder ctorName = toCString(name); CCharPointerHolder ctorSignature = toCString(signature)) {
-            result = jniFunctions().getGetMethodID().invoke(jni, self, ctorName.get(), ctorSignature.get());
-        }
-        if (clearException(jni)) {
-            result = nullHandle();
+        JNIObjectHandle self = getObjectArgument(0);
+        if (self.notEqual(nullHandle())) {
+            try (CCharPointerHolder ctorName = toCString(name); CCharPointerHolder ctorSignature = toCString(signature)) {
+                result = jniFunctions().getGetMethodID().invoke(jni, self, ctorName.get(), ctorSignature.get());
+            }
+            if (clearException(jni)) {
+                result = nullPointer();
+            }
         }
         boolean allowed = result.equal(nullHandle()) || accessVerifier == null || accessVerifier.verifyNewInstance(jni, self, name, signature, result, callerClass);
         traceBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, allowed && result.notEqual(nullHandle()));
@@ -570,8 +694,34 @@ final class BreakpointInterceptor {
         }
     }
 
+    @CEntryPoint
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    private static void onNativeMethodBind(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
+                    @SuppressWarnings("unused") JNIObjectHandle thread, JNIMethodId method, CodePointer address, WordPointer newAddressPtr) {
+
+        if (recursive.get()) {
+            return;
+        }
+        nativeBreakpointsInitLock.lock();
+        try {
+            if (nativeBreakpoints != null) {
+                NativeBreakpoint bp = nativeBreakpoints.get(method.rawValue());
+                if (bp != null) {
+                    bindNativeBreakpoint(jni, bp, address, newAddressPtr);
+                }
+            } else { // breakpoints are not yet initialized, remember and install breakpoint later
+                boundNativeMethods.put(method.rawValue(), address.rawValue());
+            }
+        } finally {
+            nativeBreakpointsInitLock.unlock();
+        }
+    }
+
     private static final CEntryPointLiteral<CFunctionPointer> onBreakpointLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onBreakpoint",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class, long.class);
+
+    private static final CEntryPointLiteral<CFunctionPointer> onNativeMethodBindLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onNativeMethodBind",
+                    JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class, CodePointer.class, WordPointer.class);
 
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, ReflectAccessVerifier verifier,
                     ProxyAccessVerifier prverifier, ResourceAccessVerifier resverifier) {
@@ -581,15 +731,20 @@ final class BreakpointInterceptor {
         capabilities.setCanGenerateBreakpointEvents(1);
         capabilities.setCanAccessLocalVariables(1);
         capabilities.setCanForceEarlyReturn(1);
+        capabilities.setCanGenerateNativeMethodBindEvents(1);
         check(jvmti.getFunctions().AddCapabilities().invoke(jvmti, capabilities));
         UnmanagedMemory.free(capabilities);
 
         callbacks.setBreakpoint(onBreakpointLiteral.getFunctionPointer());
+        callbacks.setNativeMethodBind(onNativeMethodBindLiteral.getFunctionPointer());
 
         BreakpointInterceptor.traceWriter = writer;
         BreakpointInterceptor.accessVerifier = verifier;
         BreakpointInterceptor.proxyVerifier = prverifier;
         BreakpointInterceptor.resourceVerifier = resverifier;
+
+        BreakpointInterceptor.boundNativeMethods = Collections.synchronizedMap(new HashMap<>());
+        Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_NATIVE_METHOD_BIND, nullHandle()));
     }
 
     public static void onVMInit(JvmtiEnv jvmti, JNIEnvironment jni) {
@@ -602,37 +757,111 @@ final class BreakpointInterceptor {
             if (lastClassName != null && lastClassName.equals(br.className)) {
                 clazz = lastClass;
             } else {
-                try (CCharPointerHolder cname = toCString(br.className)) {
-                    clazz = jniFunctions().getFindClass().invoke(jni, cname.get());
-                    checkNoException(jni);
-                }
-                clazz = jniFunctions().getNewGlobalRef().invoke(jni, clazz);
-                checkNoException(jni);
+                clazz = resolveBreakpointClass(jni, br.className, br.optional);
                 lastClass = clazz;
                 lastClassName = br.className;
             }
-            guarantee(clazz.notEqual(nullHandle()));
-            JNIMethodId method;
-            try (CCharPointerHolder cname = toCString(br.methodName); CCharPointerHolder csignature = toCString(br.signature)) {
-                method = jniFunctions().getGetMethodID().invoke(jni, clazz, cname.get(), csignature.get());
-                if (method.isNull()) {
-                    clearException(jni);
-                    method = jniFunctions().getGetStaticMethodID().invoke(jni, clazz, cname.get(), csignature.get());
-                }
-                guarantee(!testException(jni) && method.isNonNull());
-                check(jvmtiFunctions().SetBreakpoint().invoke(jvmti, method, 0L));
+            JNIMethodId method = resolveBreakpointMethod(jni, clazz, br.methodName, br.signature, br.optional);
+            JvmtiError result = jvmtiFunctions().SetBreakpoint().invoke(jvmti, method, 0L);
+            if (result == JvmtiError.JVMTI_ERROR_NONE) {
+                breakpoints.put(method.rawValue(), new Breakpoint(br, clazz, method));
+            } else {
+                guarantee(br.optional, "Setting breakpoint failed");
             }
-            breakpoints.put(method.rawValue(), new Breakpoint(br, clazz, method));
+        }
+        installedBreakpoints = breakpoints;
+
+        nativeBreakpointsInitLock.lock();
+        try {
+            nativeBreakpoints = new HashMap<>(NATIVE_BREAKPOINT_SPECIFICATIONS.length);
+            for (NativeBreakpointSpecification br : NATIVE_BREAKPOINT_SPECIFICATIONS) {
+                JNIObjectHandle clazz;
+                if (lastClassName != null && lastClassName.equals(br.className)) {
+                    clazz = lastClass;
+                } else {
+                    clazz = resolveBreakpointClass(jni, br.className, br.optional);
+                    lastClass = clazz;
+                    lastClassName = br.className;
+                }
+                JNIMethodId method = resolveBreakpointMethod(jni, clazz, br.methodName, br.signature, br.optional);
+                if (method.isNonNull()) {
+                    NativeBreakpoint bp = new NativeBreakpoint(br, clazz, method);
+                    nativeBreakpoints.put(method.rawValue(), bp);
+                    Long original = boundNativeMethods.get(method.rawValue());
+                    if (original != null) { // already bound, replace
+                        bindNativeBreakpoint(jni, bp, WordFactory.pointer(original), nullPointer());
+                    }
+                }
+            }
+            boundNativeMethods = null;
+        } finally {
+            nativeBreakpointsInitLock.unlock();
         }
 
-        installedBreakpoints = breakpoints;
         Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullHandle()));
+    }
+
+    private static JNIObjectHandle resolveBreakpointClass(JNIEnvironment jni, String className, boolean optional) {
+        JNIObjectHandle clazz;
+        try (CCharPointerHolder cname = toCString(className)) {
+            clazz = jniFunctions().getFindClass().invoke(jni, cname.get());
+            if (optional && (clearException(jni) || clazz.equal(nullHandle()))) {
+                return nullHandle();
+            }
+            checkNoException(jni);
+        }
+        clazz = jniFunctions().getNewGlobalRef().invoke(jni, clazz);
+        checkNoException(jni);
+        return clazz;
+    }
+
+    private static JNIMethodId resolveBreakpointMethod(JNIEnvironment jni, JNIObjectHandle clazz, String methodName, String signature, boolean optional) {
+        if (optional && clazz.equal(nullHandle())) {
+            return nullPointer();
+        }
+        guarantee(clazz.notEqual(nullHandle()));
+        JNIMethodId method;
+        try (CCharPointerHolder cname = toCString(methodName); CCharPointerHolder csignature = toCString(signature)) {
+            method = jniFunctions().getGetMethodID().invoke(jni, clazz, cname.get(), csignature.get());
+            if (method.isNull()) {
+                clearException(jni);
+                method = jniFunctions().getGetStaticMethodID().invoke(jni, clazz, cname.get(), csignature.get());
+            }
+        }
+        if (optional && (clearException(jni) || method.isNull())) {
+            return nullPointer();
+        }
+        guarantee(!testException(jni) && method.isNonNull());
+        return method;
+    }
+
+    private static void bindNativeBreakpoint(JNIEnvironment jni, NativeBreakpoint bp, CodePointer originalAddress, WordPointer newAddressPtr) {
+        assert !recursive.get();
+        bp.replacedFunction = originalAddress;
+        CFunctionPointer breakpointMethod = bp.specification.handlerLiteral.getFunctionPointer();
+        if (newAddressPtr.isNonNull()) {
+            newAddressPtr.write(breakpointMethod);
+        } else {
+            recursive.set(true);
+            try (CCharPointerHolder cname = toCString(bp.specification.methodName);
+                            CCharPointerHolder csignature = toCString(bp.specification.signature)) {
+
+                JNINativeMethod nativeMethod = StackValue.get(JNINativeMethod.class);
+                nativeMethod.setName(cname.get());
+                nativeMethod.setSignature(csignature.get());
+                nativeMethod.setFnPtr(breakpointMethod);
+                checkJni(jni.getFunctions().getRegisterNatives().invoke(jni, bp.clazz, nativeMethod, 1));
+            } finally {
+                recursive.set(false);
+            }
+        }
     }
 
     public static void onUnload(JNIEnvironment env) {
         installedBreakpoints.values().stream().map(bp -> bp.clazz.rawValue()).distinct().forEach(
                         ref -> jniFunctions().getDeleteGlobalRef().invoke(env, WordFactory.pointer(ref)));
         installedBreakpoints = null;
+        nativeBreakpoints = null;
         accessVerifier = null;
         proxyVerifier = null;
         resourceVerifier = null;
@@ -678,35 +907,84 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", BreakpointInterceptor::getProxyClass),
                     brk("java/lang/reflect/Proxy", "newProxyInstance",
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
+
+                    // In Java 9+, these are Java methods that call private methods
+                    optionalBrk("sun/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/reflect/Field;)J", BreakpointInterceptor::objectFieldOffset),
+                    optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/reflect/Field;)J", BreakpointInterceptor::objectFieldOffset),
+                    optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/Class;Ljava/lang/String;)J", BreakpointInterceptor::objectFieldOffsetByName),
+    };
+
+    private static final NativeBreakpointSpecification[] NATIVE_BREAKPOINT_SPECIFICATIONS = {
+                    NATIVE_OBJECTFIELDOFFSET_BREAKPOINT_SPEC,
     };
 
     private static BreakpointSpecification brk(String className, String methodName, String signature, BreakpointHandler handler) {
-        return new BreakpointSpecification(className, methodName, signature, handler);
+        return new BreakpointSpecification(className, methodName, signature, handler, false);
     }
 
-    private static final class BreakpointSpecification {
+    private static BreakpointSpecification optionalBrk(String className, String methodName, String signature, BreakpointHandler handler) {
+        return new BreakpointSpecification(className, methodName, signature, handler, true);
+    }
+
+    private abstract static class AbstractBreakpointSpecification {
         final String className;
         final String methodName;
         final String signature;
-        final BreakpointHandler handler;
+        final boolean optional;
 
-        BreakpointSpecification(String className, String methodName, String signature, BreakpointHandler handler) {
+        AbstractBreakpointSpecification(String className, String methodName, String signature, boolean optional) {
             this.className = className;
             this.methodName = methodName;
             this.signature = signature;
+            this.optional = optional;
+        }
+    }
+
+    private static class BreakpointSpecification extends AbstractBreakpointSpecification {
+        final BreakpointHandler handler;
+
+        BreakpointSpecification(String className, String methodName, String signature, BreakpointHandler handler, boolean optional) {
+            super(className, methodName, signature, optional);
             this.handler = handler;
         }
     }
 
-    private static final class Breakpoint {
-        final BreakpointSpecification specification;
+    private static class NativeBreakpointSpecification extends AbstractBreakpointSpecification {
+        final CEntryPointLiteral<?> handlerLiteral;
+        NativeBreakpoint installed;
+
+        NativeBreakpointSpecification(String className, String methodName, String signature, CEntryPointLiteral<?> handlerLiteral) {
+            super(className, methodName, signature, true);
+            this.handlerLiteral = handlerLiteral;
+        }
+    }
+
+    private abstract static class AbstractBreakpoint<T extends AbstractBreakpointSpecification> {
+        final T specification;
         final JNIObjectHandle clazz;
         final JNIMethodId method;
 
-        Breakpoint(BreakpointSpecification specification, JNIObjectHandle clazz, JNIMethodId method) {
+        AbstractBreakpoint(T specification, JNIObjectHandle clazz, JNIMethodId method) {
             this.specification = specification;
             this.clazz = clazz;
             this.method = method;
+        }
+    }
+
+    private static final class Breakpoint extends AbstractBreakpoint<BreakpointSpecification> {
+        Breakpoint(BreakpointSpecification specification, JNIObjectHandle clazz, JNIMethodId method) {
+            super(specification, clazz, method);
+        }
+    }
+
+    private static final class NativeBreakpoint extends AbstractBreakpoint<NativeBreakpointSpecification> {
+        CodePointer replacedFunction;
+
+        NativeBreakpoint(NativeBreakpointSpecification specification, JNIObjectHandle clazz, JNIMethodId method) {
+            super(specification, clazz, method);
+
+            assert specification.installed == null : "must be installed exactly once";
+            specification.installed = this;
         }
     }
 

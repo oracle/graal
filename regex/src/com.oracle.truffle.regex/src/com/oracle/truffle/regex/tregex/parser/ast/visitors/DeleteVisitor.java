@@ -45,7 +45,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
  * order to update the relevant fields of {@link RegexAST}.
  *
  * @see RegexAST#getNodeCount()
- * @see RegexAST#getEndPoints()
  * @see RegexAST#getReachableCarets()
  * @see RegexAST#getReachableDollars()
  * @see RegexAST#getLookBehinds()
@@ -67,8 +66,8 @@ public class DeleteVisitor extends DepthFirstTraversalRegexASTVisitor {
     protected void visit(Group group) {
         ast.getNodeCount().dec();
         if (group.getParent() instanceof RegexASTSubtreeRootNode) {
+            // account for the MatchNode
             ast.getNodeCount().dec();
-            ast.getEndPoints().remove(group.getSubTreeParent().getMatchFound());
         }
     }
 

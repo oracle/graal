@@ -31,11 +31,9 @@ import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyIndexOf;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EmptyStartsWith;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.EndsWith;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.Equals;
-import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfChar;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.IndexOfString;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.RegionMatches;
 import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.StartsWith;
-import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 
@@ -47,7 +45,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
  * whenever possible:
  * <ul>
  * <li>{@link String#isEmpty()}: {@link EmptyEquals}</li>
- * <li>{@link String#indexOf(int)}: {@link IndexOfChar}</li>
+ * <li>{@link String#indexOf(String)}: {@link IndexOfString}</li>
  * <li>{@link String#startsWith(String)}: {@link StartsWith}</li>
  * <li>{@link String#endsWith(String)}: {@link EndsWith}</li>
  * <li>{@link String#equals(Object)}: {@link Equals}</li>
@@ -57,19 +55,18 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 public final class LiteralRegexEngine {
 
     public static LiteralRegexExecRootNode createNode(RegexLanguage language, RegexAST ast) {
-        RegexProperties p = ast.getProperties();
-        final boolean caret = ast.getRoot().startsWithCaret();
-        final boolean dollar = ast.getRoot().endsWithDollar();
-        if ((p.hasAlternations() || p.hasCharClasses() || p.hasLookAroundAssertions() || p.hasLoops()) ||
-                        ((caret || dollar) && ast.getFlags().isMultiline())) {
+        if (ast.isLiteralString()) {
+            return createLiteralNode(language, ast);
+        } else {
             return null;
         }
-        return createLiteralNode(language, ast, caret, dollar);
     }
 
-    private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast, boolean caret, boolean dollar) {
+    private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast) {
         PreCalcResultVisitor preCalcResultVisitor = PreCalcResultVisitor.run(ast, true);
-        if (preCalcResultVisitor.getLiteral().length() == 0) {
+        boolean caret = ast.getRoot().startsWithCaret();
+        boolean dollar = ast.getRoot().endsWithDollar();
+        if (ast.getRoot().getMinPath() == 0) {
             if (caret) {
                 if (dollar) {
                     return new EmptyEquals(language, ast, preCalcResultVisitor);
@@ -92,9 +89,6 @@ public final class LiteralRegexEngine {
         }
         if (ast.getFlags().isSticky()) {
             return new RegionMatches(language, ast, preCalcResultVisitor);
-        }
-        if (preCalcResultVisitor.getLiteral().length() == 1) {
-            return new IndexOfChar(language, ast, preCalcResultVisitor);
         }
         if (preCalcResultVisitor.getLiteral().length() <= 64) {
             return new IndexOfString(language, ast, preCalcResultVisitor);

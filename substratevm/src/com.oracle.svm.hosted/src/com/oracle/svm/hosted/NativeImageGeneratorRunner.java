@@ -42,6 +42,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -51,6 +52,7 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
 import com.oracle.graal.pointsto.util.ParallelExecutionException;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
@@ -66,8 +68,9 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.code.CEntryPointData;
-import com.oracle.svm.hosted.image.AbstractBootImage;
+import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -106,10 +109,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             java.util.Timer timer = new java.util.Timer("native-image pid watcher");
             timer.scheduleAtFixedRate(timerTask, 0, 1000);
         }
-        int exitStatus = 1;
+        int exitStatus;
         try {
             NativeImageClassLoader nativeImageClassLoader = installNativeImageClassLoader(classpath);
-            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[arguments.size()]), classpath, nativeImageClassLoader);
+            exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), classpath, nativeImageClassLoader);
         } finally {
             if (timerTask != null) {
                 timerTask.cancel();
@@ -226,10 +229,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             classlistTimer.print();
 
             Map<Method, CEntryPointData> entryPoints = new HashMap<>();
-            Method mainEntryPoint = null;
+            Pair<Method, CEntryPointData> mainEntryPointData = Pair.empty();
             JavaMainSupport javaMainSupport = null;
 
-            AbstractBootImage.NativeImageKind imageKind;
+            NativeImageKind imageKind;
             boolean isStaticExecutable = SubstrateOptions.StaticExecutable.getValue(parsedHostedOptions);
             boolean isSharedLibrary = SubstrateOptions.SharedLibrary.getValue(parsedHostedOptions);
             if (isStaticExecutable && isSharedLibrary) {
@@ -237,20 +240,21 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                                 SubstrateOptionsParser.commandArgument(SubstrateOptions.SharedLibrary, "+") + " and " +
                                 SubstrateOptionsParser.commandArgument(SubstrateOptions.StaticExecutable, "+"));
             } else if (isSharedLibrary) {
-                imageKind = AbstractBootImage.NativeImageKind.SHARED_LIBRARY;
+                imageKind = NativeImageKind.SHARED_LIBRARY;
             } else if (isStaticExecutable) {
-                imageKind = AbstractBootImage.NativeImageKind.STATIC_EXECUTABLE;
+                imageKind = NativeImageKind.STATIC_EXECUTABLE;
             } else {
-                imageKind = AbstractBootImage.NativeImageKind.EXECUTABLE;
+                imageKind = NativeImageKind.EXECUTABLE;
             }
 
             String className = SubstrateOptions.Class.getValue(parsedHostedOptions);
-            if (imageKind.executable && className.isEmpty()) {
+            if (imageKind.isExecutable && className.isEmpty()) {
                 throw UserError.abort("Must specify main entry point class when building " + imageKind + " native image. " +
                                 "Use '" + SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>") + "'.");
             }
 
             if (!className.isEmpty()) {
+                Method mainEntryPoint;
                 Class<?> mainClass;
                 try {
                     mainClass = Class.forName(className, false, classLoader);
@@ -280,11 +284,14 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                     }
 
                     if (javaMainMethod.getReturnType() != void.class) {
-                        throw UserError.abort("Java main method must have return type void. Change the return type of method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])'.");
+                        throw UserError.abort("Java main method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' does not have the return type 'void'.");
                     }
                     final int mainMethodModifiers = javaMainMethod.getModifiers();
+                    if (!Modifier.isStatic(mainMethodModifiers)) {
+                        throw UserError.abort("Java main method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not static.");
+                    }
                     if (!Modifier.isPublic(mainMethodModifiers)) {
-                        throw UserError.abort("Method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not accessible.  Please make it 'public'.");
+                        throw UserError.abort("Java main method '" + mainClass.getName() + "." + mainEntryPointName + "(String[])' is not public.");
                     }
                     javaMainSupport = new JavaMainSupport(javaMainMethod);
                     mainEntryPoint = JavaMainWrapper.class.getDeclaredMethod("run", int.class, CCharPointerPointer.class);
@@ -293,19 +300,19 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 if (annotation == null) {
                     throw UserError.abort("Entry point must have the '@" + CEntryPoint.class.getSimpleName() + "' annotation");
                 }
-                entryPoints.put(mainEntryPoint, CEntryPointData.create(mainEntryPoint));
 
                 Class<?>[] pt = mainEntryPoint.getParameterTypes();
                 if (pt.length != 2 || pt[0] != int.class || pt[1] != CCharPointerPointer.class || mainEntryPoint.getReturnType() != int.class) {
                     throw UserError.abort("Main entry point must have signature 'int main(int argc, CCharPointerPointer argv)'.");
                 }
+                mainEntryPointData = Pair.create(mainEntryPoint, CEntryPointData.create(mainEntryPoint, imageKind.mainEntryPointName));
             }
 
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
             analysisExecutor = Inflation.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
             compilationExecutor = Inflation.createExecutor(debug, maxConcurrentThreads);
-            generator = new NativeImageGenerator(imageClassLoader, optionParser);
-            generator.run(entryPoints, mainEntryPoint, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
+            generator = new NativeImageGenerator(imageClassLoader, optionParser, mainEntryPointData);
+            generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
                             compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames());
         } catch (InterruptImageBuilding e) {
             if (analysisExecutor != null) {
@@ -319,10 +326,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         } catch (FallbackFeature.FallbackImageRequest e) {
             reportUserException(e, parsedHostedOptions, NativeImageGeneratorRunner::warn);
             return 2;
-        } catch (UserException e) {
-            reportUserError(e, parsedHostedOptions);
+        } catch (ParsingError e) {
+            NativeImageGeneratorRunner.reportFatalError(e);
             return 1;
-        } catch (AnalysisError e) {
+        } catch (UserException | AnalysisError e) {
             reportUserError(e, parsedHostedOptions);
             return 1;
         } catch (ParallelExecutionException pee) {
@@ -331,7 +338,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 if (exception instanceof UserException) {
                     reportUserError(exception, parsedHostedOptions);
                     hasUserError = true;
-                } else if (exception instanceof AnalysisError) {
+                } else if (exception instanceof AnalysisError && !(exception instanceof ParsingError)) {
                     reportUserError(exception, parsedHostedOptions);
                     hasUserError = true;
                 }
@@ -351,6 +358,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             NativeImageGeneratorRunner.reportFatalError(e);
             return 1;
         } finally {
+            NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clearInThread();
         }
         totalTimer.print();
@@ -451,6 +459,24 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         final NativeImageGenerator generatorInstance = generator;
         if (generatorInstance != null) {
             generatorInstance.interruptBuild();
+        }
+    }
+
+    /**
+     * Command line entry point when running on JDK9+. This is required to dynamically export Graal
+     * to SVM and it requires {@code --add-exports=java.base/jdk.internal.module=ALL-UNNAMED} to be
+     * on the VM command line.
+     *
+     * Note: This is a workaround until GR-16855 is resolved.
+     */
+    public static class JDK9Plus {
+
+        public static void main(String[] args) {
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci", false);
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+            ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+            NativeImageGeneratorRunner.main(args);
         }
     }
 }

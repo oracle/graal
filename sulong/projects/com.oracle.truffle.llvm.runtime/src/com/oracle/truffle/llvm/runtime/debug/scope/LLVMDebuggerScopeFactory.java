@@ -53,7 +53,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
@@ -62,8 +62,8 @@ public final class LLVMDebuggerScopeFactory {
 
     private static LLVMSourceLocation findSourceLocation(Node suspendedNode) {
         for (Node node = suspendedNode; node != null; node = node.getParent()) {
-            if (node instanceof LLVMNode) {
-                final LLVMSourceLocation sourceLocation = ((LLVMNode) node).getSourceLocation();
+            if (node instanceof LLVMInstrumentableNode) {
+                final LLVMSourceLocation sourceLocation = ((LLVMInstrumentableNode) node).getSourceLocation();
                 if (sourceLocation != null) {
                     return sourceLocation;
                 }
@@ -84,7 +84,11 @@ public final class LLVMDebuggerScopeFactory {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
         for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
             final String identifier = String.valueOf(slot.getIdentifier());
-            final TruffleObject value = wrapperFactory.toGenericDebuggerValue(slot.getInfo(), frame.getValue(slot));
+            Object slotValue = frame.getValue(slot);
+            if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller
+                slotValue = "<unavailable>";
+            }
+            final TruffleObject value = wrapperFactory.toGenericDebuggerValue(slot.getInfo(), slotValue);
             entries.add(convertIdentifier(identifier, context), value);
         }
 

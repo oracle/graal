@@ -271,6 +271,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
@@ -363,12 +364,13 @@ import org.graalvm.compiler.nodes.calc.FloatDivNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
+import org.graalvm.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
-import org.graalvm.compiler.nodes.calc.NormalizeCompareNode;
+import org.graalvm.compiler.nodes.calc.FloatNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
@@ -391,7 +393,6 @@ import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
-import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
@@ -624,7 +625,6 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     static class IntrinsicScope extends InliningScope {
-        StateSplit returnStateSplit;
         ArrayList<StateSplit> invalidStateUsers;
 
         IntrinsicScope(BytecodeParser parser) {
@@ -635,6 +635,7 @@ public class BytecodeParser implements GraphBuilderContext {
             super(parser, callee, args);
         }
 
+        @SuppressWarnings("unlikely-arg-type")
         @Override
         public void close() {
             IntrinsicContext intrinsic = parser.intrinsicContext;
@@ -811,8 +812,9 @@ public class BytecodeParser implements GraphBuilderContext {
         this.parent = parent;
 
         ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
-        if (classInitializationPlugin != null && graphBuilderConfig.eagerResolving()) {
-            uninitializedIsError = eagerInitializing = !classInitializationPlugin.supportsLazyInitialization(constantPool);
+        if (classInitializationPlugin != null && graphBuilderConfig.eagerResolving() && classInitializationPlugin.supportsLazyInitialization(constantPool)) {
+            eagerInitializing = false;
+            uninitializedIsError = false;
         } else {
             eagerInitializing = graphBuilderConfig.eagerResolving();
             uninitializedIsError = graphBuilderConfig.unresolvedIsError();
@@ -1332,7 +1334,11 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected ValueNode genNormalizeCompare(ValueNode x, ValueNode y, boolean isUnorderedLess) {
-        return NormalizeCompareNode.create(x, y, isUnorderedLess, JavaKind.Int, getConstantReflection());
+        return FloatNormalizeCompareNode.create(x, y, isUnorderedLess, JavaKind.Int, getConstantReflection());
+    }
+
+    protected ValueNode genIntegerNormalizeCompare(ValueNode x, ValueNode y) {
+        return IntegerNormalizeCompareNode.create(x, y, false, JavaKind.Int, getConstantReflection());
     }
 
     protected ValueNode genFloatConvert(FloatConvert op, ValueNode input) {
@@ -1405,7 +1411,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (profile == null || profile.getNotRecordedProbability() > 0.0) {
             return null;
         } else {
-            return append(new ValueAnchorNode(null));
+            return BeginNode.prevBegin(lastInstr);
         }
     }
 
@@ -2483,7 +2489,8 @@ public class BytecodeParser implements GraphBuilderContext {
                         : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
                                         : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
-            FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph, graphBuilderConfig.retainLocalVariables());
+            boolean targetIsSubstitution = targetMethod.isAnnotationPresent(MethodSubstitution.class);
+            FrameStateBuilder startFrameState = new FrameStateBuilder(parser, parser.code, graph, graphBuilderConfig.retainLocalVariables() && !targetIsSubstitution);
             if (!targetMethod.isStatic()) {
                 args[0] = nullCheckedValue(args[0]);
             }
@@ -2946,7 +2953,17 @@ public class BytecodeParser implements GraphBuilderContext {
                  * placeholder that later can be replaced with a MergeNode when we see this block
                  * again.
                  */
-                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && (currentBlock.loops & ~block.loops) == 0) {
+                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && (currentBlock.loops & ~block.loops) == 0 &&
+                                currentBlock.getJsrScope() == block.getJsrScope()) {
+                    /*
+                     * If we know that no BeginNode is necessary, then we can avoid allocating and
+                     * later removing that node. This is strictly a performance optimization:
+                     * unnecessary BeginNode are allowed and will be removed later on. We need to be
+                     * careful though because the predecessor information is not always enough: when
+                     * the loop level changes, we always need a BeginNode. Also, JSR scope changes
+                     * required a BeginNode because the predecessors coming from RET bytecodes are
+                     * not reflected in the predecessor count.
+                     */
                     setFirstInstruction(block, lastInstr);
                     lastInstr = null;
                 } else {
@@ -4006,10 +4023,16 @@ public class BytecodeParser implements GraphBuilderContext {
         frameState.push(kind, append(v));
     }
 
-    private void genCompareOp(JavaKind kind, boolean isUnorderedLess) {
+    private void genFloatCompareOp(JavaKind kind, boolean isUnorderedLess) {
         ValueNode y = frameState.pop(kind);
         ValueNode x = frameState.pop(kind);
         frameState.push(JavaKind.Int, append(genNormalizeCompare(x, y, isUnorderedLess)));
+    }
+
+    private void genIntegerCompareOp(JavaKind kind) {
+        ValueNode y = frameState.pop(kind);
+        ValueNode x = frameState.pop(kind);
+        frameState.push(JavaKind.Int, append(genIntegerNormalizeCompare(x, y)));
     }
 
     private void genFloatConvert(FloatConvert op, JavaKind from, JavaKind to) {
@@ -4794,6 +4817,9 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
+    private static final int SWITCH_DEOPT_UNSEEN = -2;
+    private static final int SWITCH_DEOPT_SEEN = -1;
+
     private void genSwitch(BytecodeSwitch bs) {
         int bci = bci();
         ValueNode value = frameState.pop(JavaKind.Int);
@@ -4811,20 +4837,16 @@ public class BytecodeParser implements GraphBuilderContext {
         ArrayList<BciBlock> actualSuccessors = new ArrayList<>();
         int[] keys = new int[nofCases];
         int[] keySuccessors = new int[nofCasesPlusDefault];
-        int deoptSuccessorIndex = -1;
+        int deoptSuccessorIndex = SWITCH_DEOPT_UNSEEN;
         int nextSuccessorIndex = 0;
         boolean constantValue = value.isConstant();
         for (int i = 0; i < nofCasesPlusDefault; i++) {
             if (i < nofCases) {
                 keys[i] = bs.keyAt(i);
             }
-
             if (!constantValue && isNeverExecutedCode(keyProbabilities[i])) {
-                if (deoptSuccessorIndex < 0) {
-                    deoptSuccessorIndex = nextSuccessorIndex++;
-                    actualSuccessors.add(null);
-                }
-                keySuccessors[i] = deoptSuccessorIndex;
+                deoptSuccessorIndex = SWITCH_DEOPT_SEEN;
+                keySuccessors[i] = SWITCH_DEOPT_SEEN;
             } else {
                 int targetBci = i < nofCases ? bs.targetAt(i) : bs.defaultTarget();
                 SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
@@ -4859,20 +4881,31 @@ public class BytecodeParser implements GraphBuilderContext {
          *
          * The following code rewires deoptimization stub to existing resolved branch target if
          * the target is connected by more than 1 cases.
+         *
+         * If this operation rewires every deoptimization seen to an existing branch, care is
+         * taken that we do not spawn a branch that will never be taken.
          */
-        if (deoptSuccessorIndex >= 0) {
-            int[] connectedCases = new int[nextSuccessorIndex];
+        if (deoptSuccessorIndex == SWITCH_DEOPT_SEEN) {
+            int[] connectedCases = new int[nextSuccessorIndex + 1];
             for (int i = 0; i < nofCasesPlusDefault; i++) {
-                connectedCases[keySuccessors[i]]++;
+                connectedCases[keySuccessors[i] + 1]++;
             }
 
             for (int i = 0; i < nofCasesPlusDefault; i++) {
-                if (keySuccessors[i] == deoptSuccessorIndex) {
+                if (keySuccessors[i] == SWITCH_DEOPT_SEEN) {
                     int targetBci = i < nofCases ? bs.targetAt(i) : bs.defaultTarget();
                     SuccessorInfo info = bciToBlockSuccessorIndex.get(targetBci);
                     int rewiredIndex = info.actualIndex;
-                    if (rewiredIndex >= 0 && connectedCases[rewiredIndex] > 1) {
+                    if (rewiredIndex >= 0 && connectedCases[rewiredIndex + 1] > 1) {
+                        // Rewire
                         keySuccessors[i] = info.actualIndex;
+                    } else {
+                        if (deoptSuccessorIndex == SWITCH_DEOPT_SEEN) {
+                            // Spawn deopt successor if needed.
+                            deoptSuccessorIndex = nextSuccessorIndex++;
+                            actualSuccessors.add(null);
+                        }
+                        keySuccessors[i] = deoptSuccessorIndex;
                     }
                 }
             }
@@ -5076,11 +5109,11 @@ public class BytecodeParser implements GraphBuilderContext {
             case I2B            : genSignExtend(JavaKind.Byte, JavaKind.Int); break;
             case I2S            : genSignExtend(JavaKind.Short, JavaKind.Int); break;
             case I2C            : genZeroExtend(JavaKind.Char, JavaKind.Int); break;
-            case LCMP           : genCompareOp(JavaKind.Long, false); break;
-            case FCMPL          : genCompareOp(JavaKind.Float, true); break;
-            case FCMPG          : genCompareOp(JavaKind.Float, false); break;
-            case DCMPL          : genCompareOp(JavaKind.Double, true); break;
-            case DCMPG          : genCompareOp(JavaKind.Double, false); break;
+            case LCMP           : genIntegerCompareOp(JavaKind.Long); break;
+            case FCMPL          : genFloatCompareOp(JavaKind.Float, true); break;
+            case FCMPG          : genFloatCompareOp(JavaKind.Float, false); break;
+            case DCMPL          : genFloatCompareOp(JavaKind.Double, true); break;
+            case DCMPG          : genFloatCompareOp(JavaKind.Double, false); break;
             case IFEQ           : genIfZero(Condition.EQ); break;
             case IFNE           : genIfZero(Condition.NE); break;
             case IFLT           : genIfZero(Condition.LT); break;

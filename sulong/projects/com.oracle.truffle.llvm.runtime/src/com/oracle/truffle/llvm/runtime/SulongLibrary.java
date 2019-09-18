@@ -40,12 +40,13 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 /**
@@ -116,14 +117,14 @@ public final class SulongLibrary implements TruffleObject {
     @ExportMessage
     Object invokeMember(String member, Object[] arguments,
                     @Shared("lookup") @Cached LookupNode lookup,
-                    @Cached LLVMForeignCallNode call) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+                    @CachedLibrary(limit = "1") InteropLibrary interop) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         LLVMFunctionDescriptor fn = lookup.execute(this, member);
         if (fn == null) {
             CompilerDirectives.transferToInterpreter();
             throw UnknownIdentifierException.create(member);
         }
 
-        return call.executeCall(fn, arguments);
+        return interop.execute(fn, arguments);
     }
 
     @ExportMessage

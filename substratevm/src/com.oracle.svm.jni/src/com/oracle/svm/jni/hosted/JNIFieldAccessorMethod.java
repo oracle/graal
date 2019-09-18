@@ -166,8 +166,8 @@ public final class JNIFieldAccessorMethod extends JNIGeneratedMethod {
         kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
         JavaKind returnKind = isSetter ? JavaKind.Void : fieldKind;
         kit.createReturn(returnValue, returnKind);
-        assert graph.verify();
-        return graph;
+
+        return kit.finalizeGraph();
     }
 
     @Override

@@ -47,6 +47,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Predicate;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -187,6 +188,7 @@ public class Breakpoint {
     private volatile Assumption conditionExistsUnchanged;
 
     private volatile EventBinding<? extends ExecutionEventNodeFactory> breakpointBinding;
+    private volatile Predicate<Source> sourcePredicate;
     private final AtomicReference<EventBinding<?>> sourceBinding = new AtomicReference<>();
 
     Breakpoint(BreakpointLocation key, SuspendAnchor suspendAnchor) {
@@ -518,9 +520,9 @@ public class Breakpoint {
                     return true;
                 }
             }
-            install(d.getDebugger());
             this.sessions.add(d);
             sessionsAssumptionInvalidate();
+            install(d.getDebugger());
         }
         if (enabled) {
             install();
@@ -532,6 +534,7 @@ public class Breakpoint {
         SourceFilter filter;
         EventBinding<?> binding = sourceBinding.get();
         if (binding == null && (filter = locationKey.createSourceFilter()) != null) {
+            sourcePredicate = locationKey.createSourcePredicate();
             final boolean[] sourceResolved = new boolean[]{false};
             if (!sourceBinding.compareAndSet(null, binding = debugger.getInstrumenter().attachExecuteSourceListener(filter, new ExecuteSourceListener() {
                 @Override
@@ -539,17 +542,19 @@ public class Breakpoint {
                     if (sourceResolved[0]) {
                         return;
                     }
-                    sourceResolved[0] = true;
-                    EventBinding<?> eb = sourceBinding.get();
-                    if (eb != null) {
-                        eb.dispose();
-                    }
                     Source source = event.getSource();
                     SourceSection location = locationKey.adjustLocation(source, debugger.getEnv(), suspendAnchor);
-                    if (location != null) {
-                        resolveBreakpoint(location);
+                    if (location != null || !source.hasCharacters()) {
+                        if (location != null) {
+                            resolveBreakpoint(location);
+                        }
+                        sourceResolved[0] = true;
+                        EventBinding<?> eb = sourceBinding.get();
+                        if (eb != null) {
+                            eb.dispose();
+                        }
+                        assignBinding(locationKey.createLocationFilter(source, suspendAnchor));
                     }
-                    assignBinding(locationKey.createLocationFilter(source, suspendAnchor));
                 }
             }, true)) || sourceResolved[0]) {
                 binding.dispose();
@@ -557,6 +562,24 @@ public class Breakpoint {
         } else if (breakpointBinding == null && (binding == null || binding.isDisposed())) {
             // re-installing breakpoint
             assignBinding(locationKey.createLocationFilter(null, suspendAnchor));
+        }
+    }
+
+    boolean isResolvable() {
+        return locationKey.canAdjustLocation();
+    }
+
+    void doResolve(Source source) {
+        if (!resolved && sourcePredicate != null && sourcePredicate.test(source)) {
+            SourceSection location = locationKey.adjustLocation(source, debugger.getEnv(), suspendAnchor);
+            if (location != null) {
+                resolveBreakpoint(location);
+                EventBinding<?> eb = sourceBinding.get();
+                if (eb != null) {
+                    eb.dispose();
+                }
+                assignBinding(locationKey.createLocationFilter(source, suspendAnchor));
+            }
         }
     }
 
@@ -615,6 +638,9 @@ public class Breakpoint {
             if (!isResolved()) {
                 notifyResolved = true;
                 resolved = true;
+                for (DebuggerSession s : sessions) {
+                    s.breakpointResolved(this);
+                }
             }
         }
         if (notifyResolved && resolveListener != null) {

@@ -63,6 +63,8 @@ public final class CallTreePrinter {
 
         ReportUtils.report("call tree", path + File.separatorChar + "reports", "call_tree_" + reportName, "txt",
                         writer -> printer.printMethods(writer));
+        ReportUtils.report("list of used methods", path + File.separatorChar + "reports", "used_methods_" + reportName, "txt",
+                        writer -> printer.printUsedMethods(writer));
         ReportUtils.report("list of used classes", path + File.separatorChar + "reports", "used_classes_" + reportName, "txt",
                         writer -> printer.printClasses(writer, false));
         ReportUtils.report("list of used packages", path + File.separatorChar + "reports", "used_packages_" + reportName, "txt",
@@ -261,6 +263,17 @@ public final class CallTreePrinter {
                     }
                 }
             }
+        }
+    }
+
+    private void printUsedMethods(PrintWriter out) {
+        List<String> methodsList = new ArrayList<>();
+        for (ResolvedJavaMethod method : methodToNode.keySet()) {
+            methodsList.add(method.format("%H.%n(%p):%r"));
+        }
+        methodsList.sort(null);
+        for (String name : methodsList) {
+            out.println(name);
         }
     }
 

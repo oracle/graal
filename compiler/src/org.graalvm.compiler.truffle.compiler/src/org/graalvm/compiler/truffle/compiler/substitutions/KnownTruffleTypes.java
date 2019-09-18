@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
-import static org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getValue;
-
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 
@@ -36,9 +33,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
-    public final ResolvedJavaType classFrameClass = getValue(TruffleUseFrameWithoutBoxing) ? //
-                    lookupType("org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing") : //
-                    lookupType("org.graalvm.compiler.truffle.runtime.FrameWithBoxing");
+    public final ResolvedJavaType classFrameClass = lookupType("org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing");
     public final ResolvedJavaType classFrameDescriptor = lookupType("com.oracle.truffle.api.frame.FrameDescriptor");
     public final ResolvedJavaType classFrameSlot = lookupType("com.oracle.truffle.api.frame.FrameSlot");
     public final ResolvedJavaType classFrameSlotKind = lookupType("com.oracle.truffle.api.frame.FrameSlotKind");
@@ -50,6 +45,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField fieldFrameDescriptorVersion = findField(classFrameDescriptor, "version");
     public final ResolvedJavaField fieldFrameDescriptorMaterializeCalled = findField(classFrameDescriptor, "materializeCalled");
     public final ResolvedJavaField fieldFrameDescriptorSlots = findField(classFrameDescriptor, "slots");
+    public final ResolvedJavaField fieldFrameDescriptorSize = findField(classFrameDescriptor, "size");
 
     public final ResolvedJavaField fieldArrayListElementData = findField(lookupType(ArrayList.class), "elementData");
 

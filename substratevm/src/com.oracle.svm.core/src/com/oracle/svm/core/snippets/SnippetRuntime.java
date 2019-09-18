@@ -47,13 +47,17 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -64,8 +68,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SnippetRuntime {
 
-    public static final SubstrateForeignCallDescriptor UNREACHED_CODE = findForeignCall(SnippetRuntime.class, "unreachedCode", true, LocationIdentity.any());
-    public static final SubstrateForeignCallDescriptor UNRESOLVED = findForeignCall(SnippetRuntime.class, "unresolved", true, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor UNSUPPORTED_FEATURE = findForeignCall(SnippetRuntime.class, "unsupportedFeature", true, LocationIdentity.any());
 
     public static final SubstrateForeignCallDescriptor UNWIND_EXCEPTION = findForeignCall(SnippetRuntime.class, "unwindException", true, LocationIdentity.any());
 
@@ -188,16 +191,10 @@ public class SnippetRuntime {
         }
     }
 
-    /** Foreign call: {@link #UNREACHED_CODE}. */
+    /** Foreign call: {@link #UNSUPPORTED_FEATURE}. */
     @SubstrateForeignCallTarget
-    private static void unreachedCode() {
-        throw VMError.unsupportedFeature("Code that was considered unreachable by closed-world analysis was reached");
-    }
-
-    /** Foreign call: {@link #UNRESOLVED}. */
-    @SubstrateForeignCallTarget
-    private static void unresolved(String sourcePosition) {
-        throw VMError.unsupportedFeature("Unresolved element found " + (sourcePosition != null ? sourcePosition : ""));
+    private static void unsupportedFeature(String msg) {
+        throw VMError.unsupportedFeature(msg);
     }
 
     /*
@@ -205,32 +202,38 @@ public class SnippetRuntime {
      * can use them simultaneously. All state must be in separate VMThreadLocals.
      */
     public static class ExceptionStackFrameVisitor implements StackFrameVisitor {
-        @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
+        @Uninterruptible(reason = "Deoptimization; set currentException atomically with regard to the safepoint mechanism")
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
         @Override
-        public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
-            CodePointer handlerPointer;
-            if (deoptFrame != null) {
-                /* Deoptimization entry points always have an exception handler. */
-                deoptFrame.takeException();
-                handlerPointer = ip;
+        public boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame initialDeoptFrame) {
+            CodePointer handlerIP = WordFactory.nullPointer();
+            DeoptimizedFrame deoptFrame = initialDeoptFrame;
 
-            } else {
-                long handler = CodeInfoTable.lookupExceptionOffset(ip);
+            if (deoptFrame == null) {
+                long handler = lookupExceptionOffset(codeInfo, ip);
                 if (handler == 0) {
                     /* No handler found in this frame, walk to caller frame. */
                     return true;
                 }
+                handlerIP = (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handler));
 
-                handlerPointer = getExceptionHandlerPointer(ip, sp, handler);
+                // Frame could have been deoptimized during interruptible lookup above, check again
+                deoptFrame = Deoptimizer.checkDeoptimized(sp);
+            }
+
+            if (deoptFrame != null && DeoptimizationSupport.enabled()) {
+                /* Deoptimization entry points always have an exception handler. */
+                deoptTakeException(deoptFrame);
+                handlerIP = DeoptimizationSupport.getDeoptStubPointer();
             }
 
             Throwable exception = currentException.get();
             currentException.set(null);
 
+            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
             StackOverflowCheck.singleton().protectYellowZone();
 
-            KnownIntrinsics.farReturn(exception, sp, handlerPointer);
+            KnownIntrinsics.farReturn(exception, sp, handlerIP);
             /*
              * The intrinsic performs a jump to the specified instruction pointer, so this code is
              * unreachable.
@@ -238,17 +241,18 @@ public class SnippetRuntime {
             return false;
         }
 
-        public CodePointer getExceptionHandlerPointer(CodePointer ip, @SuppressWarnings("unused") Pointer sp, long handlerOffset) {
-            return (CodePointer) ((UnsignedWord) ip).add(WordFactory.signed(handlerOffset));
+        @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
+        private static void deoptTakeException(DeoptimizedFrame deoptFrame) {
+            deoptFrame.takeException();
+        }
+
+        @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
+        private static long lookupExceptionOffset(CodeInfo codeInfo, CodePointer ip) {
+            return CodeInfoAccess.lookupExceptionOffset(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
         }
     }
 
-    protected static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
-
-    @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
-    public static boolean isUnwindingForException() {
-        return currentException.get() != null;
-    }
+    public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class);
 
     @Uninterruptible(reason = "Called from uninterruptible callers.", mayBeInlined = true)
     static boolean exceptionsAreFatal() {
@@ -262,10 +266,16 @@ public class SnippetRuntime {
 
     /** Foreign call: {@link #UNWIND_EXCEPTION}. */
     @SubstrateForeignCallTarget
-    @Uninterruptible(reason = "Set currentException atomically with regard to the safepoint mechanism", calleeMustBe = false)
+    @Uninterruptible(reason = "Must not execute recurring callbacks or a stack overflow check.", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when unwinding the stack.")
-    private static void unwindException(Throwable exception, Pointer callerSP, CodePointer callerIP) {
+    private static void unwindException(Throwable exception, Pointer callerSP) {
+        /*
+         * Make the yellow zone available and pause recurring callbacks to avoid that unexpected
+         * exceptions are thrown. This is reverted before execution continues in the exception
+         * handler (see ExceptionStackFrameVisitor.visitFrame).
+         */
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        ThreadingSupportImpl.pauseRecurringCallback("Arbitrary code must not be executed while unwinding.");
 
         if (currentException.get() != null) {
             /*
@@ -285,12 +295,13 @@ public class SnippetRuntime {
             ImageSingletons.lookup(LogHandler.class).fatalError();
             return;
         }
+
         /*
          * callerSP and callerIP identify already the caller of the frame that wants to unwind an
          * exception. So we can start looking for the exception handler immediately in that frame,
          * without skipping any frames in between.
          */
-        JavaStackWalker.walkCurrentThread(callerSP, callerIP, ImageSingletons.lookup(ExceptionStackFrameVisitor.class));
+        ImageSingletons.lookup(ExceptionUnwind.class).unwindException(callerSP);
 
         /*
          * The stack walker does not return if an exception handler is found, but instead performs a
@@ -298,6 +309,14 @@ public class SnippetRuntime {
          * exception.
          */
         reportUnhandledExceptionRaw(exception);
+    }
+
+    public static class ExceptionUnwind {
+        private static final ExceptionStackFrameVisitor stackFrameVisitor = new ExceptionStackFrameVisitor();
+
+        public void unwindException(Pointer callerSP) {
+            JavaStackWalker.walkCurrentThread(callerSP, stackFrameVisitor);
+        }
     }
 
     private static void reportUnhandledExceptionRaw(Throwable exception) {

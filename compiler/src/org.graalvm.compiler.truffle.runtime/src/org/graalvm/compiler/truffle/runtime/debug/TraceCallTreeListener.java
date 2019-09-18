@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleCompilationCallTree;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,10 +36,10 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedIndirectCallNode;
+import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 
@@ -55,15 +53,15 @@ public final class TraceCallTreeListener extends AbstractGraalTruffleRuntimeList
     }
 
     public static void install(GraalTruffleRuntime runtime) {
-        if (TruffleRuntimeOptions.getValue(TraceTruffleCompilationCallTree)) {
-            runtime.addListener(new TraceCallTreeListener(runtime));
-        }
+        runtime.addListener(new TraceCallTreeListener(runtime));
     }
 
     @Override
     public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
-        runtime.logEvent(0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision));
-        logTruffleCallTree(target, inliningDecision);
+        if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationCallTree)) {
+            runtime.logEvent(0, "opt call tree", target.toString(), target.getDebugProperties(inliningDecision));
+            logTruffleCallTree(target, inliningDecision);
+        }
     }
 
     private void logTruffleCallTree(OptimizedCallTarget compilable, TruffleInlining inliningDecision) {

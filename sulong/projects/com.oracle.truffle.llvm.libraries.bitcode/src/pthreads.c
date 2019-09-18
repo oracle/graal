@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -154,57 +154,6 @@ int pthread_key_create(pthread_key_t *key, void (*destructor)(void *)) {
 }
 int pthread_key_delete(pthread_key_t key) {
   ERR_UNSUPPORTED(pthread_key_delete);
-}
-int pthread_mutex_destroy(pthread_mutex_t *mutex) {
-  ERR_UNSUPPORTED(pthread_mutex_destroy);
-}
-int pthread_mutex_getprioceiling(const pthread_mutex_t *restrict mutex, int *restrict prioceiling) {
-  ERR_UNSUPPORTED(pthread_mutex_getprioceiling);
-}
-int pthread_mutex_init(pthread_mutex_t *restrict mutex, const pthread_mutexattr_t *restrict attr) {
-  ERR_UNSUPPORTED(pthread_mutex_init);
-}
-int pthread_mutex_lock(pthread_mutex_t *mutex) {
-  ERR_UNSUPPORTED(pthread_mutex_lock);
-}
-int pthread_mutex_setprioceiling(pthread_mutex_t *restrict mutex, int prioceiling, int *restrict old_ceiling) {
-  ERR_UNSUPPORTED(pthread_mutex_setprioceiling);
-}
-int pthread_mutex_trylock(pthread_mutex_t *mutex) {
-  ERR_UNSUPPORTED(pthread_mutex_trylock);
-}
-int pthread_mutex_unlock(pthread_mutex_t *mutex) {
-  ERR_UNSUPPORTED(pthread_mutex_unlock);
-}
-int pthread_mutexattr_destroy(pthread_mutexattr_t *attr) {
-  ERR_UNSUPPORTED(pthread_mutexattr_destroy);
-}
-int pthread_mutexattr_getprioceiling(const pthread_mutexattr_t *restrict attr, int *restrict prioceiling) {
-  ERR_UNSUPPORTED(pthread_mutexattr_getprioceiling);
-}
-int pthread_mutexattr_getprotocol(const pthread_mutexattr_t *restrict attr, int *restrict protocol) {
-  ERR_UNSUPPORTED(pthread_mutexattr_getprotocol);
-}
-int pthread_mutexattr_getpshared(const pthread_mutexattr_t *restrict attr, int *restrict pshared) {
-  ERR_UNSUPPORTED(pthread_mutexattr_getpshared);
-}
-int pthread_mutexattr_gettype(const pthread_mutexattr_t *restrict attr, int *restrict type) {
-  ERR_UNSUPPORTED(pthread_mutexattr_gettype);
-}
-int pthread_mutexattr_init(pthread_mutexattr_t *attr) {
-  ERR_UNSUPPORTED(pthread_mutexattr_init);
-}
-int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int protocol) {
-  ERR_UNSUPPORTED(pthread_mutexattr_setprioceiling);
-}
-int pthread_mutexattr_setprotocol(pthread_mutexattr_t *attr, int protocol) {
-  ERR_UNSUPPORTED(pthread_mutexattr_setprotocol);
-}
-int pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared) {
-  ERR_UNSUPPORTED(pthread_mutexattr_setpshared);
-}
-int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type) {
-  ERR_UNSUPPORTED(pthread_mutexattr_settype);
 }
 int pthread_once(pthread_once_t *once_control, void (*init_routine)(void)) {
   ERR_UNSUPPORTED(pthread_once);

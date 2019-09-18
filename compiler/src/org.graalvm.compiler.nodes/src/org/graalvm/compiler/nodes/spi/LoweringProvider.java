@@ -50,15 +50,11 @@ public interface LoweringProvider {
     /**
      * Indicates the smallest width for comparing an integer value on the target platform.
      */
-    default Integer smallestCompareWidth() {
-        // most platforms only support 32 and 64 bit compares
-        return 32;
-    }
+    Integer smallestCompareWidth();
 
     /**
-     * Indicates whether the target platform supports bulk zeroing instruction.
+     * Returns the granularity in terms of bytes that this target platform's bulk zeroing supports.
+     * Returns 0 to indicate that this target platform does not support bulk zeroing instruction.
      */
-    default boolean supportBulkZeroing() {
-        return false;
-    }
+    int bulkZeroingStride();
 }

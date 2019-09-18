@@ -54,8 +54,8 @@ public class ParseLibraryDescriptorTest {
     @ClassRule public static RunWithPolyglotRule runWithPolyglot = new RunWithPolyglotRule();
 
     private static NativeLibraryDescriptor parseLibraryDescriptor(String descriptor) {
-        Source source = Source.newBuilder("nfi", String.format("with test %s", descriptor), "ParseLibraryDescriptorTest").build();
-        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        Source source = Source.newBuilder("nfi", String.format("with test %s", descriptor), "ParseLibraryDescriptorTest").internal(true).build();
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         TestLibrary library = (TestLibrary) target.call();
         return library.descriptor;
     }

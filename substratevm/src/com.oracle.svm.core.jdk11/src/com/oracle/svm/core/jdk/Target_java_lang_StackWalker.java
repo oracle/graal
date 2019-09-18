@@ -34,14 +34,18 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -63,7 +67,7 @@ final class Target_java_lang_StackWalker {
         boolean showHiddenFrames = options.contains(StackWalker.Option.SHOW_HIDDEN_FRAMES);
         boolean showReflectFrames = options.contains(StackWalker.Option.SHOW_REFLECT_FRAMES);
 
-        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress(), new JavaStackFrameVisitor() {
+        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), new JavaStackFrameVisitor() {
             @Override
             public boolean visitFrame(FrameInfoQueryResult frameInfo) {
                 if (StackTraceUtils.shouldShowFrame(frameInfo, showReflectFrames, showHiddenFrames)) {
@@ -95,7 +99,7 @@ final class Target_java_lang_StackWalker {
          * with.
          */
 
-        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer());
         if (result == null) {
             throw new IllegalCallerException("No calling frame");
         }
@@ -106,7 +110,7 @@ final class Target_java_lang_StackWalker {
     @NeverInline("Starting a stack walk in the caller frame")
     private <T> T walk(Function<? super Stream<StackFrame>, ? extends T> function) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
-        JavaStackWalker.initWalk(walk, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        JavaStackWalker.initWalk(walk, KnownIntrinsics.readCallerStackPointer(), WordFactory.nullPointer());
 
         StackFrameSpliterator spliterator = new StackFrameSpliterator(walk);
         try {
@@ -163,29 +167,48 @@ final class Target_java_lang_StackWalker {
                         return true;
                     }
 
-                } else if (walk.getSP().isNonNull() && walk.getIP().isNonNull()) {
+                } else if (walk.getSP().isNonNull()) {
                     /* No more virtual frames, but we have more physical frames. */
-
-                    DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(walk.getSP());
-                    if (deoptimizedFrame != null) {
-                        curDeoptimizedFrame = deoptimizedFrame.getTopFrame();
-                    } else {
-                        CodeInfoQueryResult codeInfo = CodeInfoTable.lookupCodeInfoQueryResult(walk.getIP());
-                        curRegularFrame = codeInfo.getFrameInfo();
-                    }
-
-                    /*
-                     * Now we have virtual frames to process in the next loop iteration. Update the
-                     * physical stack walker to the next physical frame to be ready when all virtual
-                     * frames are processed.
-                     */
-                    JavaStackWalker.continueWalk(walk);
+                    advancePhysically();
 
                 } else {
                     /* No more physical frames, we are done. */
                     return false;
                 }
             }
+        }
+
+        /**
+         * Get virtual frames to process in the next loop iteration, then update the physical stack
+         * walker to the next physical frame to be ready when all virtual frames are processed.
+         */
+        @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
+        private void advancePhysically() {
+            CodePointer ip = FrameAccess.singleton().readReturnAddress(walk.getSP());
+            walk.setPossiblyStaleIP(ip);
+
+            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(walk.getSP());
+            if (deoptimizedFrame != null) {
+                curDeoptimizedFrame = deoptimizedFrame.getTopFrame();
+                walk.setIPCodeInfo(WordFactory.nullPointer());
+                JavaStackWalker.continueWalk(walk);
+
+            } else {
+                CodeInfo info = CodeInfoTable.lookupCodeInfo(ip);
+                walk.setIPCodeInfo(info);
+                Object tether = CodeInfoAccess.acquireTether(info);
+                try {
+                    curRegularFrame = queryFrameInfo(info, ip);
+                    JavaStackWalker.continueWalk(walk);
+                } finally {
+                    CodeInfoAccess.releaseTether(info, tether);
+                }
+            }
+        }
+
+        @Uninterruptible(reason = "Wraps the now safe call to query frame information.", calleeMustBe = false)
+        private FrameInfoQueryResult queryFrameInfo(CodeInfo info, CodePointer ip) {
+            return CodeInfoTable.lookupCodeInfoQueryResult(info, ip).getFrameInfo();
         }
 
         @Override

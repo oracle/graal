@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.223.0",
+  "mxversion" : "5.231.0",
   "name" : "sdk",
-  "version" : "19.2.0",
+  "version" : "19.3.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -60,12 +60,12 @@ suite = {
   "repositories" : {
     "lafo-snapshots" : {
       "url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "NCSA"]
     },
     "lafo" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/releases",
-      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT"]
+      "licenses" : ["GPLv2-CPE", "UPL", "BSD-new", "MIT", "NCSA"]
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
@@ -87,10 +87,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
-      "uses" : [],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
@@ -101,13 +97,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.options",
         "org.graalvm.collections",
-      ],
-      "uses" : ["org.graalvm.polyglot.impl.AbstractPolyglotImpl"],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.polyglot.impl to org.graalvm.truffle", # exported to truffle
-        "org.graalvm.polyglot",
-        "org.graalvm.polyglot.proxy",
       ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
@@ -122,10 +111,6 @@ suite = {
       "javaCompliance" : "8+",
       "checkstyleVersion" : "8.8",
       "workingSets" : "API,SDK",
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-        "org.graalvm.word.impl to jdk.internal.vm.compiler",
-      ],
     },
 
     "org.graalvm.nativeimage" : {
@@ -135,12 +120,20 @@ suite = {
         "org.graalvm.word",
         "org.graalvm.options",
       ],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
+    },
+    "org.graalvm.nativeimage.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.nativeimage"
+      ],
+      "javaCompliance" : "8+",
+      "workingSets" : "SDK",
+      "checkstyle" : "org.graalvm.word",
     },
     "org.graalvm.launcher" : {
       "subDir" : "src",
@@ -171,9 +164,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
       ],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK,Test",
@@ -181,9 +171,6 @@ suite = {
     "org.graalvm.collections" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "exports" : [
-        "<package-info>",  # exports all packages containing package-info.java
-      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "8+",
       "workingSets" : "API,SDK",
@@ -204,13 +191,17 @@ suite = {
     "UPL" : {
       "name" : "Universal Permissive License, Version 1.0",
       "url" : "http://opensource.org/licenses/UPL",
-    }
+    },
+    "NCSA" : {
+      "name" : "University of Illinois/NCSA Open Source License",
+      "url" : "https://releases.llvm.org/8.0.0/LICENSE.TXT"
+    },
   },
+
   # ------------- Distributions -------------
   "distributions" : {
     "GRAAL_SDK" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.sdk",
       "dependencies" : [
         "org.graalvm.polyglot",
         "org.graalvm.nativeimage",
@@ -218,12 +209,39 @@ suite = {
       ],
       "distDependencies" : [],
       "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "org.graalvm.sdk",
+        "requires" : ["java.logging"],
+        "exports" : [
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage.hosted",
+          "org.graalvm.nativeimage.c.function",
+          "org.graalvm.nativeimage.c.struct",
+          "org.graalvm.nativeimage.c.type",
+          "org.graalvm.nativeimage.c.constant",
+          "org.graalvm.nativeimage.c",
+          "org.graalvm.nativeimage",
+          "org.graalvm.nativeimage.impl.clinit", # class initialization instrumentation
+          "org.graalvm.polyglot.proxy",
+          "org.graalvm.polyglot.io",
+          "org.graalvm.polyglot.management",
+          "org.graalvm.polyglot",
+          "org.graalvm.options",
+          "org.graalvm.word",
+          "org.graalvm.polyglot.impl to org.graalvm.truffle",
+          "org.graalvm.word.impl to jdk.internal.vm.compiler",
+        ],
+        "uses" : [
+          "org.graalvm.polyglot.impl.AbstractPolyglotImpl"
+        ],
+      },
       "description" : "GraalVM is an ecosystem for compiling and running applications written in multiple languages.\nGraalVM removes the isolation between programming languages and enables interoperability in a shared runtime.",
     },
     "SDK_TEST" : {
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.collections.test",
+        "org.graalvm.nativeimage.test",
         "org.graalvm.launcher.test",
       ],
       "distDependencies" : [
@@ -232,22 +250,11 @@ suite = {
       ],
       "maven" : False,
     },
-    "WORD_API" : {
-      "subDir" : "src",
-      "moduleName" : "org.graalvm.word",
-      "dependencies" : [
-        "org.graalvm.word",
-      ],
-      "distDependencies" : [
-      ],
-      "overlaps" : [
-        "GRAAL_SDK",
-      ],
-      "maven" : False,
-    },
     "LAUNCHER_COMMON" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.launcher",
+      "moduleInfo" : {
+        "name" : "org.graalvm.launcher",
+      },
       "dependencies" : [
         "org.graalvm.launcher",
       ],
@@ -259,7 +266,12 @@ suite = {
     },
     "POLYGLOT_TCK" : {
       "subDir" : "src",
-      "moduleName" : "org.graalvm.polyglot_tck",
+      "moduleInfo" : {
+        "name" : "org.graalvm.polyglot_tck",
+        "exports" : [
+          "org.graalvm.polyglot.tck"
+        ],
+      },
       "dependencies" : [
         "org.graalvm.polyglot.tck",
       ],

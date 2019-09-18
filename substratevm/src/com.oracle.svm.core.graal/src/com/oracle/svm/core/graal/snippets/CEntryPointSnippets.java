@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
+import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -72,6 +73,7 @@ import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -87,6 +89,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
@@ -155,7 +158,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Snippet
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters, @ConstantParameter int vmThreadSize) {
         if (MultiThreaded.getValue()) {
-            writeCurrentVMThread(VMThreads.nullThread());
+            writeCurrentVMThread(WordFactory.nullPointer());
         }
         int result = runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
 
@@ -182,6 +185,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (SpawnIsolates.getValue()) {
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
+        CodeInfoTable.prepareImageCodeInfo();
         if (MultiThreaded.getValue()) {
             if (!VMThreads.ensureInitialized()) {
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
@@ -203,13 +207,16 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!success) {
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
+        if (UseDedicatedVMOperationThread.getValue()) {
+            VMOperationControl.startVMOperationThread();
+        }
         return CEntryPointErrors.NO_ERROR;
     }
 
     @Snippet
     public static int attachThreadSnippet(Isolate isolate, boolean ensureJavaThread, @ConstantParameter int vmThreadSize) {
         if (MultiThreaded.getValue()) {
-            writeCurrentVMThread(VMThreads.nullThread());
+            writeCurrentVMThread(WordFactory.nullPointer());
         }
 
         int error = runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
@@ -241,7 +248,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
             IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread();
-            if (VMThreads.isNullThread(thread)) { // not attached
+            if (thread.isNull()) { // not attached
                 thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
                 StackOverflowCheck.singleton().initialize(thread);
                 VMThreads.singleton().attachThread(thread);
@@ -281,8 +288,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not (thread-local) allocate while detaching a thread.")
     private static int detachThreadMT(IsolateThread currentThread) {
         try {
-            VMThreads.detachThread(currentThread);
-            writeCurrentVMThread(VMThreads.nullThread());
+            VMThreads.singleton().detachThread(currentThread);
+            writeCurrentVMThread(WordFactory.nullPointer());
         } catch (Throwable t) {
             return CEntryPointErrors.UNCAUGHT_EXCEPTION;
         }
@@ -298,9 +305,11 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int tearDownIsolate() {
         try {
             RuntimeSupport.executeTearDownHooks();
-            if (!JavaThreads.singleton().tearDownVM()) {
+            if (!JavaThreads.singleton().tearDown()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
+
+            VMThreads.singleton().tearDown();
             return Isolates.tearDownCurrent();
         } catch (Throwable t) {
             logException(t);
@@ -312,7 +321,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     public static int enterIsolateSnippet(Isolate isolate) {
         int result;
         if (MultiThreaded.getValue()) {
-            writeCurrentVMThread(VMThreads.nullThread());
+            writeCurrentVMThread(WordFactory.nullPointer());
             result = runtimeCall(ENTER_ISOLATE_MT, isolate);
             if (result == CEntryPointErrors.NO_ERROR) {
                 Safepoint.transitionNativeToJava();
@@ -340,7 +349,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
         IsolateThread thread = VMThreads.singleton().findIsolateThreadforCurrentOSThread();
-        if (VMThreads.isNullThread(thread)) {
+        if (thread.isNull()) {
             return CEntryPointErrors.UNATTACHED_THREAD;
         }
         writeCurrentVMThread(thread);
@@ -381,6 +390,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         return CEntryPointErrors.NO_ERROR;
+
     }
 
     @Fold

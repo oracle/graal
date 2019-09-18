@@ -55,22 +55,7 @@ final class SourceAccessor extends Accessor {
 
     static final SourceAccessor ACCESSOR = new SourceAccessor();
 
-    protected SourceAccessor() {
-    }
-
-    @Override
-    protected SourceSupport sourceSupport() {
-        return new SourceSupportImpl();
-    }
-
-    @Override
-    protected LanguageSupport languageSupport() {
-        return super.languageSupport();
-    }
-
-    @Override
-    protected EngineSupport engineSupport() {
-        return super.engineSupport();
+    private SourceAccessor() {
     }
 
     static Collection<ClassLoader> allLoaders() {

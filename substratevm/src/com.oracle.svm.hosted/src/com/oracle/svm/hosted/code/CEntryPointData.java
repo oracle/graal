@@ -62,8 +62,13 @@ public final class CEntryPointData {
     }
 
     public static CEntryPointData create(Method method) {
+        return create(method, DEFAULT_NAME);
+    }
+
+    public static CEntryPointData create(Method method, String name) {
+        assert method.getAnnotation(CEntryPoint.class).name().isEmpty() || name.isEmpty();
         return create(method.getAnnotation(CEntryPoint.class), method.getAnnotation(CEntryPointOptions.class),
-                        () -> NativeBootImage.globalSymbolNameForMethod(method));
+                        () -> !name.isEmpty() ? name : NativeBootImage.globalSymbolNameForMethod(method));
     }
 
     public static CEntryPointData create(Method method, String name, Class<? extends Function<String, String>> nameTransformation,

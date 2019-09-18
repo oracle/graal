@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.Option;
 
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -42,11 +43,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
         @Option(help = "Pass the provided raw option to the linker command that produces the final binary. The possible options are platform specific and passed through without any validation.")//
-        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(new String[0]);
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
-    protected String compilerCommand = "cc";
+    private String compilerCommand = "cc";
     protected final List<String> inputFilenames = new ArrayList<>();
     protected final List<String> rpaths = new ArrayList<>();
     protected final List<String> libpaths = new ArrayList<>();
@@ -149,6 +150,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     @Override
     public String getCompilerCommand() {
+        String customCompiler = CCompilerInvoker.getCCompilerPath();
+        if (customCompiler != null) {
+            return customCompiler;
+        }
         return compilerCommand;
     }
 
@@ -164,7 +169,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     @Override
     public List<String> getCommand() {
         ArrayList<String> cmd = new ArrayList<>();
-        cmd.add(compilerCommand);
+        cmd.add(getCompilerCommand());
         cmd.add("-v");
         cmd.add("-o");
         cmd.add(outputFile.toString());
@@ -192,10 +197,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             }
         }
 
-        if (Options.NativeLinkerOption.getValue() != null) {
-            for (String nativeLinkerOption : Options.NativeLinkerOption.getValue()) {
-                cmd.add(nativeLinkerOption);
-            }
+        for (String nativeLinkerOption : Options.NativeLinkerOption.getValue()) {
+            cmd.add(nativeLinkerOption);
         }
         return cmd;
     }

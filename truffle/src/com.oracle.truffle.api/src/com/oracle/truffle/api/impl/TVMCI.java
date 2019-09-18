@@ -42,7 +42,7 @@ package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
 import java.util.Objects;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -56,6 +56,8 @@ import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
+import com.oracle.truffle.api.nodes.BlockNode;
+import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -147,14 +149,14 @@ public abstract class TVMCI {
      * @since 0.15
      */
     protected void onLoad(RootNode rootNode) {
-        InstrumentSupport support = Accessor.instrumentAccess();
+        InstrumentSupport support = TVMCIAccessor.instrumentAccess();
         if (support != null) {
             support.onLoad(rootNode);
         }
     }
 
     protected void setCallTarget(RootNode root, RootCallTarget callTarget) {
-        Accessor.nodesAccess().setCallTarget(root, callTarget);
+        TVMCIAccessor.nodesAccess().setCallTarget(root, callTarget);
     }
 
     /**
@@ -164,7 +166,7 @@ public abstract class TVMCI {
      * @since 0.12
      */
     protected void onFirstExecution(RootNode rootNode) {
-        final Accessor.InstrumentSupport accessor = Accessor.instrumentAccess();
+        final Accessor.InstrumentSupport accessor = TVMCIAccessor.instrumentAccess();
         if (accessor != null) {
             accessor.onFirstExecution(rootNode);
         }
@@ -176,7 +178,7 @@ public abstract class TVMCI {
      * @since 0.14
      */
     protected void markFrameMaterializeCalled(FrameDescriptor descriptor) {
-        Accessor.framesAccess().markMaterializeCalled(descriptor);
+        TVMCIAccessor.framesAccess().markMaterializeCalled(descriptor);
     }
 
     /**
@@ -185,7 +187,7 @@ public abstract class TVMCI {
      * @since 0.14
      */
     protected boolean getFrameMaterializeCalled(FrameDescriptor descriptor) {
-        return Accessor.framesAccess().getMaterializeCalled(descriptor);
+        return TVMCIAccessor.framesAccess().getMaterializeCalled(descriptor);
     }
 
     /**
@@ -194,11 +196,11 @@ public abstract class TVMCI {
      * @since 0.24
      */
     protected boolean isCloneUninitializedSupported(RootNode root) {
-        return Accessor.nodesAccess().isCloneUninitializedSupported(root);
+        return TVMCIAccessor.nodesAccess().isCloneUninitializedSupported(root);
     }
 
     protected void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame) {
-        final Accessor.LanguageSupport language = Accessor.languageAccess();
+        final Accessor.LanguageSupport language = TVMCIAccessor.languageAccess();
         if (language != null) {
             language.onThrowable(callNode, root, e, frame);
         }
@@ -210,11 +212,11 @@ public abstract class TVMCI {
      * @since 0.24
      */
     protected RootNode cloneUninitialized(RootNode root) {
-        return Accessor.nodesAccess().cloneUninitialized(root);
+        return TVMCIAccessor.nodesAccess().cloneUninitialized(root);
     }
 
     protected int adoptChildrenAndCount(RootNode root) {
-        return Accessor.nodesAccess().adoptChildrenAndCount(root);
+        return TVMCIAccessor.nodesAccess().adoptChildrenAndCount(root);
     }
 
     /**
@@ -224,18 +226,6 @@ public abstract class TVMCI {
      */
     protected OptionDescriptors getCompilerOptionDescriptors() {
         return OptionDescriptors.EMPTY;
-    }
-
-    /**
-     * Invoked when a call target is invoked to find out its option values.
-     * {@link OptionValues#getDescriptors()} must match the value returned by
-     * {@link #getCompilerOptionDescriptors()}.
-     *
-     * @since 0.27
-     */
-    protected OptionValues getCompilerOptionValues(RootNode rootNode) {
-        EngineSupport engine = Accessor.engineAccess();
-        return engine != null ? engine.getCompilerOptionValues(rootNode) : null;
     }
 
     /**
@@ -286,29 +276,34 @@ public abstract class TVMCI {
 
     private static volatile Object fallbackEngineData;
 
-    protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
-        Objects.requireNonNull(constructor);
-        final Accessor.Nodes nodesAccess = Accessor.nodesAccess();
-        final EngineSupport engineAccess = Accessor.engineAccess();
-        if (rootNode != null && nodesAccess != null && engineAccess != null) {
-            final Object sourceVM = nodesAccess.getSourceVM(rootNode);
-            if (sourceVM != null) {
-                final T runtimeData = engineAccess.getOrCreateRuntimeData(sourceVM, constructor);
-                if (runtimeData != null) {
-                    return runtimeData;
-                }
-            }
-
-        }
-        return getOrCreateFallbackEngineData(constructor);
-    }
-
+    /**
+     * Used to get an {@link org.graalvm.compiler.truffle.runtime.EngineData}, which contains the
+     * option values for --engine options, and other per-Engine data. Called in the
+     * {@link org.graalvm.compiler.truffle.runtime.OptimizedCallTarget} constructor.
+     * <p>
+     * The resulting instance is cached in the Engine.
+     */
     @SuppressWarnings("unchecked")
-    private static <T> T getOrCreateFallbackEngineData(Supplier<T> constructor) {
-        if (fallbackEngineData == null) {
-            fallbackEngineData = constructor.get();
+    protected static <T> T getOrCreateRuntimeData(RootNode rootNode, Function<OptionValues, T> constructor) {
+        Objects.requireNonNull(constructor);
+        final Accessor.NodeSupport nodesAccess = TVMCIAccessor.nodesAccess();
+        final EngineSupport engineAccess = TVMCIAccessor.engineAccess();
+
+        final Object sourceVM;
+        if (rootNode == null) {
+            sourceVM = engineAccess.getCurrentVM();
+        } else {
+            sourceVM = nodesAccess.getSourceVM(rootNode);
         }
-        return (T) fallbackEngineData;
+
+        if (sourceVM != null) {
+            return engineAccess.getOrCreateRuntimeData(sourceVM, constructor);
+        } else {
+            if (fallbackEngineData == null) {
+                fallbackEngineData = engineAccess.getOrCreateRuntimeData(null, constructor);
+            }
+            return (T) fallbackEngineData;
+        }
     }
 
     @SuppressWarnings("unused")
@@ -334,5 +329,7 @@ public abstract class TVMCI {
     protected CastUnsafe getCastUnsafe() {
         return null;
     }
+
+    protected abstract <T extends Node> BlockNode<T> createBlockNode(T[] elements, ElementExecutor<T> executor);
 
 }

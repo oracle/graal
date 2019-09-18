@@ -45,7 +45,8 @@ public final class LLVMUnsupportedException extends LLVMException {
          * setjmp and longjmp intrinsic.
          */
         SET_JMP_LONG_JMP("setjmp/longjmp"),
-        PARSER_ERROR_VOID_SLOT("parser error void slot");
+        PARSER_ERROR_VOID_SLOT("parser error void slot"),
+        UNSUPPORTED_SYSCALL("unsupported syscall");
 
         private final String description;
 

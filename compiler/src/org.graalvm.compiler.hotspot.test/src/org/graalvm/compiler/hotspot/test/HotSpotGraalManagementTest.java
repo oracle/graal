@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -378,12 +378,15 @@ public class HotSpotGraalManagementTest {
         MBeanAttributeInfo dumpPath = findAttributeInfo("DumpPath", info);
         MBeanAttributeInfo printGraphFile = findAttributeInfo("PrintGraphFile", info);
         MBeanAttributeInfo showDumpFiles = findAttributeInfo("ShowDumpFiles", info);
+        MBeanAttributeInfo methodFilter = findAttributeInfo("MethodFilter", info);
         Object originalDumpPath = server.getAttribute(mbeanName, dumpPath.getName());
         Object originalPrintGraphFile = server.getAttribute(mbeanName, printGraphFile.getName());
         Object originalShowDumpFiles = server.getAttribute(mbeanName, showDumpFiles.getName());
+        Object originalMethodFilter = server.getAttribute(mbeanName, methodFilter.getName());
         final File tmpDir = new File(HotSpotGraalManagementTest.class.getSimpleName() + "_" + System.currentTimeMillis()).getAbsoluteFile();
 
         server.setAttribute(mbeanName, new Attribute(dumpPath.getName(), quoted(tmpDir)));
+        server.setAttribute(mbeanName, new Attribute(methodFilter.getName(), ""));
         // Force output to a file even if there's a running IGV instance available.
         server.setAttribute(mbeanName, new Attribute(printGraphFile.getName(), true));
         server.setAttribute(mbeanName, new Attribute(showDumpFiles.getName(), false));
@@ -392,6 +395,7 @@ public class HotSpotGraalManagementTest {
             server.invoke(mbeanName, "dumpMethod", params, null);
             boolean found = false;
             String expectedIgvDumpSuffix = "[Arrays.asList(Object[])List].bgv";
+            Assert.assertTrue(tmpDir.toString() + " was not created or is not a directory", tmpDir.isDirectory());
             List<String> dumpPathEntries = Arrays.asList(tmpDir.list());
             for (String entry : dumpPathEntries) {
                 if (entry.endsWith(expectedIgvDumpSuffix)) {
@@ -403,8 +407,11 @@ public class HotSpotGraalManagementTest {
                                 dumpPathEntries.stream().collect(Collectors.joining(System.lineSeparator()))));
             }
         } finally {
-            deleteDirectory(tmpDir.toPath());
+            if (tmpDir.isDirectory()) {
+                deleteDirectory(tmpDir.toPath());
+            }
             server.setAttribute(mbeanName, new Attribute(dumpPath.getName(), originalDumpPath));
+            server.setAttribute(mbeanName, new Attribute(methodFilter.getName(), originalMethodFilter));
             server.setAttribute(mbeanName, new Attribute(printGraphFile.getName(), originalPrintGraphFile));
             server.setAttribute(mbeanName, new Attribute(showDumpFiles.getName(), originalShowDumpFiles));
         }

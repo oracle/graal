@@ -24,9 +24,6 @@
  */
 package com.oracle.truffle.regex.charset;
 
-import static com.oracle.truffle.regex.charset.Constants.MAX_CODEPOINT;
-import static com.oracle.truffle.regex.charset.Constants.MIN_CODEPOINT;
-
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -36,10 +33,10 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public final class CodePointSet extends SortedListOfRanges implements JsonConvertible {
+public final class CodePointSet implements ImmutableSortedListOfRanges, JsonConvertible {
 
     private static final CodePointSet CONSTANT_EMPTY = new CodePointSet(new int[0]);
-    private static final CodePointSet CONSTANT_FULL = new CodePointSet(new int[]{MIN_CODEPOINT, MAX_CODEPOINT});
+    private static final CodePointSet CONSTANT_FULL = new CodePointSet(new int[]{Character.MIN_CODE_POINT, Character.MAX_CODE_POINT});
 
     private static final CodePointSet[] CONSTANT_ASCII = new CodePointSet[128];
     private static final CodePointSet[] CONSTANT_INVERSE_ASCII = new CodePointSet[128];
@@ -47,10 +44,10 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
 
     static {
         CONSTANT_ASCII[0] = new CodePointSet(new int[]{0, 0});
-        CONSTANT_INVERSE_ASCII[0] = new CodePointSet(new int[]{1, MAX_CODEPOINT});
+        CONSTANT_INVERSE_ASCII[0] = new CodePointSet(new int[]{1, Character.MAX_CODE_POINT});
         for (int i = 1; i < 128; i++) {
             CONSTANT_ASCII[i] = new CodePointSet(new int[]{i, i});
-            CONSTANT_INVERSE_ASCII[i] = new CodePointSet(new int[]{0, i - 1, i + 1, MAX_CODEPOINT});
+            CONSTANT_INVERSE_ASCII[i] = new CodePointSet(new int[]{0, i - 1, i + 1, Character.MAX_CODE_POINT});
         }
         for (int i = 'A'; i <= 'Z'; i++) {
             CONSTANT_CASE_FOLD_ASCII[i - 'A'] = new CodePointSet(new int[]{i, i, Character.toLowerCase(i), Character.toLowerCase(i)});
@@ -89,6 +86,14 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
         return new CodePointSet(ranges);
     }
 
+    public static CodePointSet create(IntRangesBuffer buf) {
+        CodePointSet constant = checkConstants(buf.getBuffer(), buf.length());
+        if (constant == null) {
+            return new CodePointSet(buf.toArray());
+        }
+        return constant;
+    }
+
     private static CodePointSet checkConstants(int[] ranges, int length) {
         if (length == 0) {
             return CONSTANT_EMPTY;
@@ -103,7 +108,7 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
             if (ranges[0] == ranges[1] && ranges[0] < 128) {
                 return CONSTANT_ASCII[ranges[0]];
             }
-            if (ranges[0] == MIN_CODEPOINT && ranges[1] == MAX_CODEPOINT) {
+            if (ranges[0] == Character.MIN_CODE_POINT && ranges[1] == Character.MAX_CODE_POINT) {
                 return CONSTANT_FULL;
             }
         }
@@ -131,7 +136,7 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
     }
 
     private static CodePointSet checkInverseAndCaseFoldAscii(int lo0, int hi0, int lo1, int hi1) {
-        if (lo0 == MIN_CODEPOINT && hi1 == MAX_CODEPOINT && lo1 <= 128 && hi0 + 2 == lo1) {
+        if (lo0 == Character.MIN_CODE_POINT && hi1 == Character.MAX_CODE_POINT && lo1 <= 128 && hi0 + 2 == lo1) {
             return CONSTANT_INVERSE_ASCII[hi0 + 1];
         }
         if (lo0 == hi0 && lo0 >= 'A' && lo0 <= 'Z' && lo1 == hi1 && lo1 == Character.toLowerCase(lo0)) {
@@ -142,36 +147,31 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
 
     @SuppressWarnings("unchecked")
     @Override
-    protected CodePointSet createEmpty() {
+    public CodePointSet createEmpty() {
         return getEmpty();
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    protected CodePointSet createFull() {
+    public CodePointSet createFull() {
         return getFull();
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    protected CodePointSet create(RangesBuffer buffer) {
+    public CodePointSet create(RangesBuffer buffer) {
         assert buffer instanceof IntRangesBuffer;
-        IntRangesBuffer buf = (IntRangesBuffer) buffer;
-        CodePointSet constant = checkConstants(buf.getBuffer(), buf.length());
-        if (constant == null) {
-            return new CodePointSet(buf.toArray());
-        }
-        return constant;
+        return create((IntRangesBuffer) buffer);
     }
 
     @Override
-    protected int getMinValue() {
-        return MIN_CODEPOINT;
+    public int getMinValue() {
+        return Character.MIN_CODE_POINT;
     }
 
     @Override
-    protected int getMaxValue() {
-        return MAX_CODEPOINT;
+    public int getMaxValue() {
+        return Character.MAX_CODE_POINT;
     }
 
     @Override
@@ -190,27 +190,27 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
     }
 
     @Override
-    protected IntRangesBuffer getBuffer1(CompilationBuffer compilationBuffer) {
+    public IntRangesBuffer getBuffer1(CompilationBuffer compilationBuffer) {
         return compilationBuffer.getIntRangesBuffer1();
     }
 
     @Override
-    protected IntRangesBuffer getBuffer2(CompilationBuffer compilationBuffer) {
+    public IntRangesBuffer getBuffer2(CompilationBuffer compilationBuffer) {
         return compilationBuffer.getIntRangesBuffer2();
     }
 
     @Override
-    protected IntRangesBuffer getBuffer3(CompilationBuffer compilationBuffer) {
+    public IntRangesBuffer getBuffer3(CompilationBuffer compilationBuffer) {
         return compilationBuffer.getIntRangesBuffer3();
     }
 
     @Override
-    protected IntRangesBuffer createTempBuffer() {
+    public IntRangesBuffer createTempBuffer() {
         return new IntRangesBuffer();
     }
 
     @Override
-    protected void addRangeBulkTo(RangesBuffer buffer, int startIndex, int endIndex) {
+    public void appendRangesTo(RangesBuffer buffer, int startIndex, int endIndex) {
         int bulkLength = (endIndex - startIndex) * 2;
         if (bulkLength == 0) {
             return;
@@ -219,15 +219,50 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
         IntRangesBuffer buf = (IntRangesBuffer) buffer;
         int newSize = buf.length() + bulkLength;
         buf.ensureCapacity(newSize);
+        assert buf.isEmpty() || rightOf(startIndex, buf, buf.size() - 1);
         System.arraycopy(ranges, startIndex * 2, buf.getBuffer(), buf.length(), bulkLength);
         buf.setLength(newSize);
     }
 
     @Override
-    protected boolean equalsBuffer(RangesBuffer buffer) {
+    public boolean equalsBuffer(RangesBuffer buffer) {
         assert buffer instanceof IntRangesBuffer;
         IntRangesBuffer buf = (IntRangesBuffer) buffer;
         return ranges.length == buf.length() && rangesEqual(ranges, buf.getBuffer(), ranges.length);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public CodePointSet createInverse() {
+        return createInverse(this);
+    }
+
+    public static CodePointSet createInverse(SortedListOfRanges src) {
+        assert src.getMinValue() == Character.MIN_CODE_POINT;
+        assert src.getMaxValue() == Character.MAX_CODE_POINT;
+        if (src.matchesNothing()) {
+            return getFull();
+        }
+        if (src.matchesSingleAscii()) {
+            return CONSTANT_INVERSE_ASCII[src.getLo(0)];
+        }
+        int[] invRanges = new int[src.sizeOfInverse() * 2];
+        int i = 0;
+        if (src.getLo(0) > src.getMinValue()) {
+            setRange(invRanges, i++, src.getMinValue(), src.getLo(0) - 1);
+        }
+        for (int ia = 1; ia < src.size(); ia++) {
+            setRange(invRanges, i++, src.getHi(ia - 1) + 1, src.getLo(ia) - 1);
+        }
+        if (src.getHi(src.size() - 1) < src.getMaxValue()) {
+            setRange(invRanges, i++, src.getHi(src.size() - 1) + 1, src.getMaxValue());
+        }
+        return new CodePointSet(invRanges);
+    }
+
+    private static void setRange(int[] arr, int i, int lo, int hi) {
+        arr[i * 2] = lo;
+        arr[i * 2 + 1] = hi;
     }
 
     @Override
@@ -235,7 +270,10 @@ public final class CodePointSet extends SortedListOfRanges implements JsonConver
         if (obj instanceof CodePointSet) {
             return Arrays.equals(ranges, ((CodePointSet) obj).ranges);
         }
-        return super.equals(obj);
+        if (obj instanceof SortedListOfRanges) {
+            return equals((SortedListOfRanges) obj);
+        }
+        return false;
     }
 
     @Override

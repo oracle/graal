@@ -34,9 +34,6 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexExecRootNode;
 import com.oracle.truffle.regex.RegexLanguage;
@@ -73,7 +70,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
  * designed to be single-threaded, but multiple {@link TRegexCompilationRequest}s can be compiled in
  * parallel.
  */
-final class TRegexCompilationRequest {
+public final class TRegexCompilationRequest {
 
     private final DebugUtil.Timer timer = shouldLogPhases() ? new DebugUtil.Timer() : null;
 
@@ -125,7 +122,10 @@ final class TRegexCompilationRequest {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
         createNFA();
-        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !properties.hasLoops()) {
+        if (nfa.isDead()) {
+            return new DeadRegexExecRootNode(tRegexCompiler.getLanguage(), source);
+        }
+        if (preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops()) {
             try {
                 phaseStart("TraceFinder NFA");
                 traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
@@ -210,7 +210,7 @@ final class TRegexCompilationRequest {
             phaseEnd("Flavor");
         }
         phaseStart("Parser");
-        ast = new RegexParser(ecmascriptSource, options).parse();
+        ast = new RegexParser(ecmascriptSource, options, compilationBuffer).parse();
         phaseEnd("Parser");
         debugAST();
     }
@@ -222,54 +222,31 @@ final class TRegexCompilationRequest {
         debugNFA();
     }
 
-    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        DFAGenerator dfa = new DFAGenerator(nfaArg, createExecutorProperties(nfaArg, forward, searching, trackCaptureGroups), compilationBuffer, tRegexCompiler.getOptions());
-        phaseStart(dfa.getDebugDumpName() + " DFA");
-        dfa.calcDFA();
-        TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
-        phaseEnd(dfa.getDebugDumpName() + " DFA");
-        debugDFA(dfa);
-        return executorNode;
+    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
+        return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, trackCaptureGroups,
+                        tRegexCompiler.getOptions().isRegressionTestMode(), nfaArg.getAst().getNumberOfCaptureGroups(), nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
-    private TRegexDFAExecutorProperties createExecutorProperties(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FrameSlot inputFS = frameDescriptor.addFrameSlot("input", FrameSlotKind.Object);
-        FrameSlot fromIndexFS = frameDescriptor.addFrameSlot("fromIndex", FrameSlotKind.Int);
-        FrameSlot indexFS = frameDescriptor.addFrameSlot("index", FrameSlotKind.Int);
-        FrameSlot maxIndexFS = frameDescriptor.addFrameSlot("maxIndex", FrameSlotKind.Int);
-        FrameSlot curMaxIndexFS = frameDescriptor.addFrameSlot("curMaxIndex", FrameSlotKind.Int);
-        FrameSlot successorIndexFS = frameDescriptor.addFrameSlot("successorIndex", FrameSlotKind.Int);
-        FrameSlot resultFS = frameDescriptor.addFrameSlot("result", FrameSlotKind.Int);
-        FrameSlot captureGroupResultFS = frameDescriptor.addFrameSlot("captureGroupResult", FrameSlotKind.Object);
-        FrameSlot lastTransitionFS = frameDescriptor.addFrameSlot("lastTransition", FrameSlotKind.Int);
-        FrameSlot cgDataFS = frameDescriptor.addFrameSlot("cgData", FrameSlotKind.Object);
-        return new TRegexDFAExecutorProperties(
-                        frameDescriptor,
-                        inputFS,
-                        fromIndexFS,
-                        indexFS,
-                        maxIndexFS,
-                        curMaxIndexFS,
-                        successorIndexFS,
-                        resultFS,
-                        captureGroupResultFS,
-                        lastTransitionFS,
-                        cgDataFS,
-                        forward,
-                        searching,
-                        trackCaptureGroups,
-                        tRegexCompiler.getOptions().isRegressionTestMode(),
-                        nfaArg.getAst().getNumberOfCaptureGroups(),
-                        nfaArg.getAst().getRoot().getMinPath());
+    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props) {
+        return createDFAExecutor(nfaArg, props, null);
+    }
+
+    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {
+        DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer, tRegexCompiler.getOptions());
+        phaseStart(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        dfa.calcDFA();
+        TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
+        phaseEnd(dfa.getDebugDumpName(debugDumpName) + " DFA");
+        debugDFA(dfa, debugDumpName);
+        return executorNode;
     }
 
     private void debugAST() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getTruffleFile("./ast.tex");
+            TruffleFile file = env.getPublicTruffleFile("./ast.tex");
             ASTLaTexExportVisitor.exportLatex(ast, file);
-            file = env.getTruffleFile("ast.json");
+            file = env.getPublicTruffleFile("ast.json");
             ast.getWrappedRoot().toJson().dump(file);
         }
     }
@@ -277,13 +254,13 @@ final class TRegexCompilationRequest {
     private void debugNFA() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getTruffleFile("./nfa.gv");
+            TruffleFile file = env.getPublicTruffleFile("./nfa.gv");
             NFAExport.exportDot(nfa, file, true, false);
-            file = env.getTruffleFile("./nfa.tex");
+            file = env.getPublicTruffleFile("./nfa.tex");
             NFAExport.exportLaTex(nfa, file, false, true);
-            file = env.getTruffleFile("./nfa_reverse.gv");
+            file = env.getPublicTruffleFile("./nfa_reverse.gv");
             NFAExport.exportDotReverse(nfa, file, true, false);
-            file = env.getTruffleFile("nfa.json");
+            file = env.getPublicTruffleFile("nfa.json");
             nfa.toJson().dump(file);
         }
     }
@@ -291,19 +268,19 @@ final class TRegexCompilationRequest {
     private void debugTraceFinder() {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getTruffleFile("./trace_finder.gv");
+            TruffleFile file = env.getPublicTruffleFile("./trace_finder.gv");
             NFAExport.exportDotReverse(traceFinderNFA, file, true, false);
-            file = env.getTruffleFile("nfa_trace_finder.json");
+            file = env.getPublicTruffleFile("nfa_trace_finder.json");
             traceFinderNFA.toJson().dump(file);
         }
     }
 
-    private void debugDFA(DFAGenerator dfa) {
+    private void debugDFA(DFAGenerator dfa, String debugDumpName) {
         if (tRegexCompiler.getOptions().isDumpAutomata()) {
             Env env = RegexLanguage.getCurrentContext().getEnv();
-            TruffleFile file = env.getTruffleFile("dfa_" + dfa.getDebugDumpName() + ".gv");
+            TruffleFile file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".gv");
             DFAExport.exportDot(dfa, file, false);
-            file = env.getTruffleFile("dfa_" + dfa.getDebugDumpName() + ".json");
+            file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".json");
             Json.obj(Json.prop("dfa", dfa.toJson())).dump(file);
         }
     }

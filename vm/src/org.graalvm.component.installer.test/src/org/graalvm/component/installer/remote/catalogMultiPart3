@@ -1,0 +1,8 @@
+org.graalvm.linux_amd64/1.0.1.0: GraalVM 1.0.1
+Component.linux_amd64/1.0.1.0/r: graalvm-ruby.zip
+Component.linux_amd64/1.0.1.0/r-Bundle-Name: FastR
+Component.linux_amd64/1.0.1.0/r-Bundle-Symbolic-Name: r
+Component.linux_amd64/1.0.1.0/r-Bundle-Version: 1.0.1.0
+Component.linux_amd64/1.0.1.0/r-Bundle-RequireCapability: org.graalvm; \
+    filter:="(&(graalvm_version=1.0.1.0)(os_name=linux)(os_arch=amd64))"
+

@@ -55,7 +55,7 @@ public class DarwinEvent {
     //     void        *udata;     /* opaque user data identifier */
     // };
     /* } @formatter:on */
-    @CStruct("struct kevent")
+    @CStruct(addStructKeyword = true)
     public interface kevent extends PointerBase {
 
         @CField
@@ -131,7 +131,6 @@ public class DarwinEvent {
     @CFunction
     public static native int kqueue();
 
-    /* FIXME: Unused? */
     /* @formatter:off */
     @CFunction
     public static native int kevent(

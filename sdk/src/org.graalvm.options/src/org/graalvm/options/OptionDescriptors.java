@@ -40,6 +40,7 @@
  */
 package org.graalvm.options;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
@@ -121,15 +122,26 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
 class OptionDescriptorsMap implements OptionDescriptors {
 
     final Map<String, OptionDescriptor> descriptors = new LinkedHashMap<>();
+    final List<String> prefixes = new ArrayList<>();
 
     OptionDescriptorsMap(List<OptionDescriptor> descriptorList) {
         for (OptionDescriptor descriptor : descriptorList) {
+            if (descriptor.isOptionMap()) {
+                prefixes.add(descriptor.getName());
+            }
             descriptors.put(descriptor.getName(), descriptor);
         }
     }
 
     @Override
     public OptionDescriptor get(String optionName) {
+        if (!prefixes.isEmpty()) {
+            for (String prefix : prefixes) {
+                if (optionName.startsWith(prefix + ".") || optionName.equals(prefix)) {
+                    return descriptors.get(prefix);
+                }
+            }
+        }
         return descriptors.get(optionName);
     }
 

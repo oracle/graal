@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallBooleanMethodFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallLongMethodFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethodFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.DefineClassFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.DeleteGlobalRefFunctionPointer;
@@ -51,6 +52,7 @@ import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetSuperclassFunctio
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.IsAssignableFromFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.NewGlobalRefFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.NewObjectArrayFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.RegisterNativesFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ReleaseStringUTFCharsFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.SetObjectArrayElementFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ThrowFunctionPointer;
@@ -363,10 +365,10 @@ public interface JNINativeInterface extends PointerBase {
     void setCallIntMethodA(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getCallLongMethod();
+    <T extends CallLongMethodFunctionPointer> T getCallLongMethod();
 
     @CField
-    void setCallLongMethod(CFunctionPointer p);
+    void setCallLongMethod(CallLongMethodFunctionPointer p);
 
     @CField
     CFunctionPointer getCallLongMethodV();
@@ -1341,10 +1343,10 @@ public interface JNINativeInterface extends PointerBase {
     void setSetDoubleArrayRegion(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getRegisterNatives();
+    RegisterNativesFunctionPointer getRegisterNatives();
 
     @CField
-    void setRegisterNatives(CFunctionPointer p);
+    void setRegisterNatives(RegisterNativesFunctionPointer p);
 
     @CField
     CFunctionPointer getUnregisterNatives();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,15 +29,23 @@ import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.AsJavaConstant;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CallNodeHashCode;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CancelInstalledTask;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.ConsumeOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateException;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.CreateStringSupplier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.FindDecision;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallNodes;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetKnownCallSiteCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCallTargetForCallNode;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCompilableName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetConstantFieldInfo;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetCurrentCallTarget;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetDescription;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFailedSpeculationsAddress;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetFrameSlotKindTagForJavaKind;
@@ -46,6 +54,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLineNumber;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetLoopExplosionKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNodeRewritingAssumption;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetNonTrivialNodeCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetOffsetEnd;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetOffsetStart;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetPosition;
@@ -60,7 +69,9 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsCancelled;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsInliningForced;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsLastTier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsSameOrSplit;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsTargetStable;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsTruffleBoundary;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.SVMToHotSpot.Id.IsValueType;
@@ -112,6 +123,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.truffle.common.CallNodeProvider;
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
 
 /**
  * Entry points in HotSpot for {@linkplain SVMToHotSpot calls} from SVM.
@@ -286,7 +299,7 @@ final class SVMToHotSpotEntryPoints {
     static long getFailedSpeculationsAddress(CompilableTruffleAST compilable) {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
         HotSpotSpeculationLog log = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
-        return log.getFailedSpeculationsAddress();
+        return LibGraal.getFailedSpeculationsAddress(log);
     }
 
     /**
@@ -461,6 +474,62 @@ final class SVMToHotSpotEntryPoints {
     @SVMToHotSpot(GetThrowableMessage)
     static String getThrowableMessage(Throwable t) {
         return t.getMessage();
+    }
+
+    @SVMToHotSpot(CancelInstalledTask)
+    static void cancelInstalledTask(CompilableTruffleAST compilableTruffleAST) {
+        compilableTruffleAST.cancelInstalledTask();
+    }
+
+    @SVMToHotSpot(FindCallNode)
+    static TruffleCallNode findCallNode(CallNodeProvider provider, long callNodeHandle) {
+        JavaConstant callNode = LibGraal.unhand(jvmciRuntime, JavaConstant.class, callNodeHandle);
+        return provider.findCallNode(callNode);
+    }
+
+    @SVMToHotSpot(GetCallCount)
+    static int getCallCount(TruffleCallNode callNode) {
+        return callNode.getCallCount();
+    }
+
+    @SVMToHotSpot(GetCurrentCallTarget)
+    static CompilableTruffleAST getCurrentCallTarget(TruffleCallNode truffleCallNode) {
+        return truffleCallNode.getCurrentCallTarget();
+    }
+
+    @SVMToHotSpot(IsInliningForced)
+    static boolean isInliningForced(TruffleCallNode truffleCallNode) {
+        return truffleCallNode.isInliningForced();
+    }
+
+    @SVMToHotSpot(CallNodeHashCode)
+    static int callNodeHashCode(TruffleCallNode truffleCallNode) {
+        return truffleCallNode.hashCode();
+    }
+
+    @SVMToHotSpot(GetCompilableCallCount)
+    static int getCompilableCallCount(CompilableTruffleAST compilableTruffleAST) {
+        return compilableTruffleAST.getCallCount();
+    }
+
+    @SVMToHotSpot(GetCallNodes)
+    static TruffleCallNode[] getCallNodes(CompilableTruffleAST compilableTruffleAST) {
+        return compilableTruffleAST.getCallNodes();
+    }
+
+    @SVMToHotSpot(GetKnownCallSiteCount)
+    static int getKnownCallSiteCount(CompilableTruffleAST compilableTruffleAST) {
+        return compilableTruffleAST.getKnownCallSiteCount();
+    }
+
+    @SVMToHotSpot(IsSameOrSplit)
+    static boolean isSameOrSplit(CompilableTruffleAST compilableTruffleAST1, CompilableTruffleAST compilableTruffleAST2) {
+        return compilableTruffleAST1.isSameOrSplit(compilableTruffleAST2);
+    }
+
+    @SVMToHotSpot(GetNonTrivialNodeCount)
+    static int getNonTrivialNodeCount(CompilableTruffleAST compilableTruffleAST) {
+        return compilableTruffleAST.getNonTrivialNodeCount();
     }
 
     /*----------------------*/

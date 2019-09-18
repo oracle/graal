@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -220,6 +220,14 @@ public class OptionProcessor extends AbstractProcessor {
             char firstChar = help.charAt(0);
             if (!Character.isUpperCase(firstChar)) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "Option help text must start with an upper case letter", element);
+                return;
+            }
+        }
+
+        String optionStabilityName = getAnnotationValue(annotation, "stability", VariableElement.class).getSimpleName().toString();
+        if (optionStabilityName.equals("STABLE")) {
+            if (help.length() == 0) {
+                processingEnv.getMessager().printMessage(Kind.ERROR, "A stable option must have non-empty help text", element);
                 return;
             }
         }

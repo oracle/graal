@@ -25,6 +25,7 @@
 package com.oracle.svm.core.util;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.regex.Pattern;
@@ -59,4 +60,9 @@ public final class ClasspathUtils {
         return String.join(File.separator, components);
     }
 
+    public static boolean isJar(Path p) {
+        Path fn = p.getFileName();
+        assert fn != null;
+        return fn.toString().toLowerCase().endsWith(".jar") && Files.isRegularFile(p);
+    }
 }

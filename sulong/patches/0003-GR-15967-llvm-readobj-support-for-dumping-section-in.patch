@@ -1,0 +1,105 @@
+From edd6ba75b3ef55f49d85e99bb390ddcb12e59d6b Mon Sep 17 00:00:00 2001
+From: Josef Eisl <josef.eisl@oracle.com>
+Date: Fri, 25 Jan 2019 11:18:29 +0100
+Subject: [PATCH 3/4] [GR-15967] [llvm-readobj] support for dumping section in
+ binary format
+
+---
+ llvm/tools/llvm-readobj/ObjDumper.cpp    | 35 ++++++++++++++++++++++++
+ llvm/tools/llvm-readobj/ObjDumper.h      |  1 +
+ llvm/tools/llvm-readobj/llvm-readobj.cpp |  9 ++++++
+ 3 files changed, 45 insertions(+)
+
+diff --git a/llvm/tools/llvm-readobj/ObjDumper.cpp b/llvm/tools/llvm-readobj/ObjDumper.cpp
+index a725140c9d3..6b45530f7e6 100644
+--- a/llvm/tools/llvm-readobj/ObjDumper.cpp
++++ b/llvm/tools/llvm-readobj/ObjDumper.cpp
+@@ -17,6 +17,7 @@
+ #include "llvm-readobj.h"
+ #include "llvm/Object/ObjectFile.h"
+ #include "llvm/Support/Error.h"
++#include "llvm/Support/FileOutputBuffer.h"
+ #include "llvm/Support/ScopedPrinter.h"
+ #include "llvm/Support/raw_ostream.h"
+ 
+@@ -145,4 +146,38 @@ void ObjDumper::printSectionAsHex(const object::ObjectFile *Obj,
+   }
+ }
+ 
++void ObjDumper::printSectionAsBinary(const object::ObjectFile *Obj,
++                                  StringRef SecName, StringRef OptPath) {
++  Expected<object::SectionRef> SectionRefOrError =
++      getSecNameOrIndexAsSecRef(Obj, SecName);
++  if (!SectionRefOrError)
++    error(std::move(SectionRefOrError));
++  object::SectionRef Section = *SectionRefOrError;
++  StringRef SectionName;
++
++  if (std::error_code E = Section.getName(SectionName))
++    error(E);
++
++  StringRef Path;
++  if (OptPath.empty()) {
++    SmallString<256> Scratch;
++    Path = (SecName + ".section").toStringRef(Scratch);
++  } else
++    Path = OptPath;
++
++  W.startLine() << "Dumping section '" << SectionName << "' to " + Path + "\n";
++
++  StringRef SectionContent;
++  Section.getContents(SectionContent);
++
++  Expected<std::unique_ptr<FileOutputBuffer>> BufferOrErr =
++          FileOutputBuffer::create(Path, SectionContent.size());
++  if (!BufferOrErr)
++    error(std::move(BufferOrErr));
++  std::unique_ptr<FileOutputBuffer> Buffer = std::move(*BufferOrErr);
++  memcpy(Buffer->getBufferStart(), SectionContent.bytes_begin(), SectionContent.size());
++  if (auto E = Buffer->commit())
++    error(std::move(E));
++}
++
+ } // namespace llvm
+diff --git a/llvm/tools/llvm-readobj/ObjDumper.h b/llvm/tools/llvm-readobj/ObjDumper.h
+index 13de563469a..49f0f1375c1 100644
+--- a/llvm/tools/llvm-readobj/ObjDumper.h
++++ b/llvm/tools/llvm-readobj/ObjDumper.h
+@@ -90,6 +90,7 @@ public:
+ 
+   void printSectionAsString(const object::ObjectFile *Obj, StringRef SecName);
+   void printSectionAsHex(const object::ObjectFile *Obj, StringRef SecName);
++  void printSectionAsBinary(const object::ObjectFile *Obj, StringRef SecName, StringRef Path);
+ 
+ protected:
+   ScopedPrinter &W;
+diff --git a/llvm/tools/llvm-readobj/llvm-readobj.cpp b/llvm/tools/llvm-readobj/llvm-readobj.cpp
+index 81ce7a59036..68f4eee76fe 100644
+--- a/llvm/tools/llvm-readobj/llvm-readobj.cpp
++++ b/llvm/tools/llvm-readobj/llvm-readobj.cpp
+@@ -175,6 +175,11 @@ namespace opts {
+                                 cl::ZeroOrMore);
+   cl::alias HexDumpShort("x", cl::desc("Alias for --hex-dump"),
+                          cl::aliasopt(HexDump));
++  // -bin-dump
++  cl::list<std::string> BinDump("bin-dump", cl::desc("<number|name>"),
++                                cl::ZeroOrMore);
++  cl::opt<std::string> BinDumpFile("dump-file", cl::desc("Filename for dumping section"),
++                                   cl::Optional);
+ 
+   // -hash-table
+   cl::opt<bool> HashTable("hash-table",
+@@ -472,6 +477,10 @@ static void dumpObject(const ObjectFile *Obj, ScopedPrinter &Writer) {
+     llvm::for_each(opts::HexDump, [&Dumper, Obj](StringRef SectionName) {
+       Dumper->printSectionAsHex(Obj, SectionName);
+     });
++  if (!opts::BinDump.empty())
++    llvm::for_each(opts::BinDump, [&Dumper, Obj](StringRef SectionName) {
++        Dumper->printSectionAsBinary(Obj, SectionName, opts::BinDumpFile);
++    });
+   if (opts::HashTable)
+     Dumper->printHashTable();
+   if (opts::GnuHashTable)
+-- 
+2.20.1
+

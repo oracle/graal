@@ -77,8 +77,8 @@ public class NFITest {
             sourceString = lib;
         }
 
-        Source source = Source.newBuilder("nfi", sourceString, "loadLibrary").build();
-        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
+        Source source = Source.newBuilder("nfi", sourceString, "loadLibrary").internal(true).build();
+        CallTarget target = runWithPolyglot.getTruffleTestEnv().parseInternal(source);
         return (TruffleObject) target.call();
     }
 

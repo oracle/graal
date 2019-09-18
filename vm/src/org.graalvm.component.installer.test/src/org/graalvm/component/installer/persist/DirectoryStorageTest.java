@@ -577,4 +577,28 @@ public class DirectoryStorageTest extends TestBase {
             posix.setPermissions(PosixFilePermissions.fromString("rwxrwxr-x"));
         }
     }
+
+    @Test
+    public void testGraalVMCoreComponentNative() throws Exception {
+        // fake a release file
+        Files.copy(dataFile("release_simple.properties"), graalVMPath.resolve("release"));
+        Path meta = registryPath.resolve(BundleConstants.GRAAL_COMPONENT_ID + ".meta");
+        // create the component storage, tag core component with .meta file
+        Files.createFile(meta);
+
+        Set<ComponentInfo> infos = storage.loadComponentMetadata(BundleConstants.GRAAL_COMPONENT_ID);
+        assertEquals(1, infos.size());
+        ComponentInfo ci = infos.iterator().next();
+        assertTrue(ci.isNativeComponent());
+    }
+
+    @Test
+    public void testGraalVMCoreComponentRegular() throws Exception {
+        Files.copy(dataFile("release_simple.properties"), graalVMPath.resolve("release"));
+
+        Set<ComponentInfo> infos = storage.loadComponentMetadata(BundleConstants.GRAAL_COMPONENT_ID);
+        assertEquals(1, infos.size());
+        ComponentInfo ci = infos.iterator().next();
+        assertFalse(ci.isNativeComponent());
+    }
 }

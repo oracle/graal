@@ -35,6 +35,7 @@ import java.util.Set;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
+import com.oracle.truffle.llvm.parser.metadata.MDCommonBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDCompositeType;
 import com.oracle.truffle.llvm.parser.metadata.MDDerivedType;
@@ -46,6 +47,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDImportedEntity;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MDLabel;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlock;
 import com.oracle.truffle.llvm.parser.metadata.MDLexicalBlockFile;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
@@ -114,6 +116,8 @@ public final class Metadata implements ParserListener {
     private static final int METADATA_GLOBAL_VAR_EXPR = 37;
     private static final int METADATA_INDEX_OFFSET = 38;
     private static final int METADATA_INDEX = 39;
+    private static final int METADATA_LABEL = 40;
+    private static final int METADATA_COMMON_BLOCK = 44;
 
     public Type getTypeById(long id) {
         return types.get(id);
@@ -312,6 +316,14 @@ public final class Metadata implements ParserListener {
                 createAttachment(buffer, true);
                 break;
             }
+
+            case METADATA_COMMON_BLOCK:
+                metadata.add(MDCommonBlock.create(args, metadata));
+                break;
+
+            case METADATA_LABEL:
+                metadata.add(MDLabel.create(args, metadata));
+                break;
 
             case METADATA_INDEX_OFFSET:
             case METADATA_INDEX:

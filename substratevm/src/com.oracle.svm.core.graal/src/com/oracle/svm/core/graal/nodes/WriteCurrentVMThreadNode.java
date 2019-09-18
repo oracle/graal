@@ -54,7 +54,7 @@ public class WriteCurrentVMThreadNode extends FixedWithNextNode implements LIRLo
     public void generate(NodeLIRBuilderTool gen) {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) tool.getRegisterConfig();
-        gen.getLIRGeneratorTool().emitMove(registerConfig.getThreadRegister().asValue(tool.getLIRKind(FrameAccess.getWordStamp())), gen.operand(value));
+        gen.getLIRGeneratorTool().emitWriteRegister(registerConfig.getThreadRegister(), gen.operand(value), tool.getLIRKind(FrameAccess.getWordStamp()));
     }
 
     @NodeIntrinsic

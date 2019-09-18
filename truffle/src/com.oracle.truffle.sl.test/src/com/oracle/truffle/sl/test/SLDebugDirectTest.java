@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.sl.test;
 
+import static com.oracle.truffle.sl.test.SLJavaInteropTest.toUnixString;
 import static com.oracle.truffle.tck.DebuggerTester.getSourceImpl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -152,7 +153,7 @@ public class SLDebugDirectTest {
     }
 
     protected final String getOut() {
-        return new String(out.toByteArray());
+        return toUnixString(out);
     }
 
     protected final String getErr() {
@@ -160,7 +161,7 @@ public class SLDebugDirectTest {
             err.flush();
         } catch (IOException e) {
         }
-        return new String(err.toByteArray());
+        return toUnixString(err);
     }
 
     @Test

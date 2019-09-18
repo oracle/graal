@@ -164,9 +164,14 @@ public class ClassInitializationFeature implements Feature {
          * that the user cannot later manually register it as RERUN or RUN_TIME.
          */
         if (obj != null && classInitializationSupport.shouldInitializeAtRuntime(obj.getClass())) {
-            throw new UnsupportedFeatureException("No instances are allowed in the image heap for a class that is initialized or reinitialized at image runtime: " + obj.getClass().getTypeName() +
-                            ". Try marking this class for build-time initialization with " +
-                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time"));
+            String msg = "No instances of " + obj.getClass().getTypeName() + " are allowed in the image heap as this class should be initialized at image runtime.";
+            msg += classInitializationSupport.objectInstantiationTraceMessage(obj,
+                            " To fix the issue mark " + obj.getClass().getTypeName() + " for build-time initialization with " +
+                                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
+                                            " or use the the information from the trace to find the culprit and " +
+                                            SubstrateOptionsParser.commandArgument(ClassInitializationFeature.Options.ClassInitialization, "<culprit>", "initialize-at-run-time") +
+                                            " to prevent its instantiation.\n");
+            throw new UnsupportedFeatureException(msg);
         }
         return obj;
     }
@@ -230,7 +235,6 @@ public class ClassInitializationFeature implements Feature {
                 reportMethodInitializationInfo(path);
             }
         }
-
     }
 
     private static void reportSafeTypeInitiazliation(AnalysisUniverse universe, TypeInitializerGraph initGraph, String path, Set<AnalysisType> provenSafe) {
@@ -279,6 +283,7 @@ public class ClassInitializationFeature implements Feature {
      */
     private Set<AnalysisType> initializeSafeDelayedClasses(TypeInitializerGraph initGraph) {
         Set<AnalysisType> provenSafe = new HashSet<>();
+        classInitializationSupport.setConfigurationSealed(false);
         classInitializationSupport.classesWithKind(RUN_TIME).stream()
                         .filter(t -> metaAccess.optionalLookupJavaType(t).isPresent())
                         .filter(t -> metaAccess.lookupJavaType(t).isInTypeCheck())
@@ -383,4 +388,5 @@ public class ClassInitializationFeature implements Feature {
         }
         return false;
     }
+
 }

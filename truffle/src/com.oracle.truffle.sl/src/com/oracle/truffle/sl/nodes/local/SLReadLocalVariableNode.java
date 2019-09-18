@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -68,7 +67,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
      */
     protected abstract FrameSlot getSlot();
 
-    @Specialization(guards = "isLong(frame)")
+    @Specialization(guards = "frame.isLong(getSlot())")
     protected long readLong(VirtualFrame frame) {
         /*
          * When the FrameSlotKind is Long, we know that only primitive long values have ever been
@@ -78,7 +77,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
         return FrameUtil.getLongSafe(frame, getSlot());
     }
 
-    @Specialization(guards = "isBoolean(frame)")
+    @Specialization(guards = "frame.isBoolean(getSlot())")
     protected boolean readBoolean(VirtualFrame frame) {
         return FrameUtil.getBooleanSafe(frame, getSlot());
     }
@@ -100,21 +99,5 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
         }
 
         return FrameUtil.getObjectSafe(frame, getSlot());
-    }
-
-    /**
-     * Guard function that the local variable has the type {@code long}.
-     *
-     * @param frame The parameter seems unnecessary, but it is required: Without the parameter, the
-     *            Truffle DSL would not check the guard on every execution of the specialization.
-     *            Guards without parameters are assumed to be pure, but our guard depends on the
-     *            slot kind which can change.
-     */
-    protected boolean isLong(VirtualFrame frame) {
-        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Long;
-    }
-
-    protected boolean isBoolean(VirtualFrame frame) {
-        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Boolean;
     }
 }

@@ -36,10 +36,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 
 public final class RegexRootNode extends RootNode {
 
+    private static final FrameDescriptor SHARED_EMPTY_FRAMEDESCRIPTOR = new FrameDescriptor();
+
     @Child private RegexBodyNode body;
 
-    public RegexRootNode(RegexLanguage language, FrameDescriptor frameDescriptor, RegexBodyNode body) {
-        super(language, frameDescriptor);
+    public RegexRootNode(RegexLanguage language, RegexBodyNode body) {
+        super(language, SHARED_EMPTY_FRAMEDESCRIPTOR);
         this.body = body;
     }
 

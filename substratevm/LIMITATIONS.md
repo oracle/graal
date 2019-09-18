@@ -46,7 +46,7 @@ What: Calling `Class.forName()`; listing methods and fields of a class; invoking
 
 Individual classes, methods, and fields that should be accessible via reflection need to be known ahead-of-time.
 Native Image tries to resolve these elements through a static analysis that detects calls to the reflection API.
-Where the analysis fails the program elements reflectively accessed at run time must be specified during native image generation in a configuration file via the option `-H:ReflectionConfigurationFiles=`, or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/Feature.html).
+Where the analysis fails the program elements reflectively accessed at run time must be specified during native image generation in a configuration file via the option `-H:ReflectionConfigurationFiles=`, or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html).
 For more details, read our [documentation on reflection](REFLECTION.md).
 
 During native image generation, reflection can be used without restrictions during native image generation, for example in class initializers.

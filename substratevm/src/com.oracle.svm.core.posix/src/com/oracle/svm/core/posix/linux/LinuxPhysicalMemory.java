@@ -42,6 +42,7 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @Platforms(InternalPlatform.LINUX_AND_JNI.class)
@@ -64,8 +65,11 @@ class LinuxPhysicalMemory extends PhysicalMemory {
             if (hasSize()) {
                 return getSize();
             }
-            /* If I can not allocate, return MAX_VALUE. */
-            if (Heap.getHeap().isAllocationDisallowed() || !JavaThreads.currentJavaThreadInitialized() || !initializeSize.compareAndSet(0, 1)) {
+            /*
+             * The size initialization code below requires synchronized and therefore must not run
+             * inside a VMOperation. Also if we can't allocate we have to prevent it from running.
+             */
+            if (Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !JavaThreads.currentJavaThreadInitialized() || !initializeSize.compareAndSet(0, 1)) {
                 return UnsignedUtils.MAX_VALUE;
             }
             /* Compute and cache the physical memory size. Races are idempotent. */
@@ -131,21 +135,15 @@ class LinuxPhysicalMemory extends PhysicalMemory {
         long sizeFromCGroup() {
             assert !Heap.getHeap().isAllocationDisallowed() : "LinuxPhysicalMemory.PhysicalMemorySupportImpl.sizeFromCGroup: Allocation disallowed.";
             long result = Long.MAX_VALUE;
-            try {
-                /* Read digits out of the file and convert them a long. */
-                final FileInputStream stream = new FileInputStream(cgroupMemoryFileName);
-                /* Enough characters to hold a long: 9,223,372,036,854,775,807. */
-                final int maxIndex = 31;
-                final char[] charBuffer = new char[maxIndex + 1];
-                int index = 0;
+            /* Read digits out of the file and convert them a long. */
+            try (FileInputStream stream = new FileInputStream(cgroupMemoryFileName)) {
+                StringBuilder sb = new StringBuilder(32);
                 int read = stream.read();
-                while ((index < maxIndex) && (read >= '0') && (read <= '9')) {
-                    charBuffer[index] = (char) read;
-                    index += 1;
+                while (read >= '0' && read <= '9') {
+                    sb.append((char) read);
                     read = stream.read();
                 }
-                final String stringBuffer = new String(charBuffer, 0, index);
-                result = Long.parseLong(stringBuffer);
+                result = Long.parseLong(sb.toString());
             } catch (IOException | NumberFormatException e) {
                 /* Ignore exceptions. */
             }

@@ -47,6 +47,19 @@ import com.oracle.truffle.api.impl.HomeFinder;
 
 public final class DefaultHomeFinder extends HomeFinder {
 
+    private static int getJavaSpecificationVersion() {
+        String value = System.getProperty("java.specification.version");
+        if (value.startsWith("1.")) {
+            value = value.substring(2);
+        }
+        return Integer.parseInt(value);
+    }
+
+    /**
+     * The integer value corresponding to the value of the {@code java.specification.version} system
+     * property after any leading {@code "1."} has been stripped.
+     */
+    private static final int JAVA_SPEC = getJavaSpecificationVersion();
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("com.oracle.graalvm.locator.verbose");
 
     private static final Path FORCE_GRAAL_HOME;
@@ -166,11 +179,17 @@ public final class DefaultHomeFinder extends HomeFinder {
                     if (!Files.exists(javaHome)) {
                         throw new AssertionError("Java home is not reachable.");
                     }
-                    Path jre = javaHome.resolve("jre");
-                    if (Files.exists(jre)) {
-                        res = javaHome;
+                    if (JAVA_SPEC <= 8) {
+                        Path jre = javaHome.resolve("jre");
+                        if (Files.exists(jre)) {
+                            res = javaHome;
+                        } else {
+                            assert javaHome.endsWith("jre") : javaHome;
+                            res = javaHome.getParent();
+                        }
                     } else {
-                        res = javaHome.getParent();
+                        assert Files.exists(javaHome.resolve(Paths.get("lib", "modules"))) : "Missing jimage in java.home: " + javaHome;
+                        res = javaHome;
                     }
                     if (isVerbose()) {
                         System.err.println("GraalVM home found by java.home property as: " + res);
@@ -232,7 +251,8 @@ public final class DefaultHomeFinder extends HomeFinder {
             if (home == null) {
                 res = launcherLang != null ? Collections.unmodifiableMap(collectStandaloneHomes(launcherLang)) : Collections.emptyMap();
             } else {
-                res = Collections.unmodifiableMap(collectHomes(home.resolve(Paths.get("jre", "languages"))));
+                Path languages = JAVA_SPEC <= 8 ? Paths.get("jre", "languages") : Paths.get("languages");
+                res = Collections.unmodifiableMap(collectHomes(home.resolve(languages)));
             }
             if (!ImageInfo.inImageBuildtimeCode()) {
                 languageHomes = res;
@@ -249,7 +269,8 @@ public final class DefaultHomeFinder extends HomeFinder {
             if (home == null) {
                 res = Collections.emptyMap();
             } else {
-                res = Collections.unmodifiableMap(collectHomes(home.resolve(Paths.get("jre", "tools"))));
+                Path tools = JAVA_SPEC <= 8 ? Paths.get("jre", "tools") : Paths.get("tools");
+                res = Collections.unmodifiableMap(collectHomes(home.resolve(tools)));
             }
             if (!ImageInfo.inImageBuildtimeCode()) {
                 toolHomes = res;

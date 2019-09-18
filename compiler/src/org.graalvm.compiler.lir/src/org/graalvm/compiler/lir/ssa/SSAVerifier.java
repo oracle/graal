@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
 package org.graalvm.compiler.lir.ssa;
 
 import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 
 import java.util.BitSet;
@@ -137,7 +137,7 @@ final class SSAVerifier {
     }
 
     private static boolean shouldProcess(Value value) {
-        return !value.equals(Value.ILLEGAL) && !isJavaConstant(value) && !isRegister(value) && !isStackSlotValue(value);
+        return !value.equals(Value.ILLEGAL) && !isConstantValue(value) && !isRegister(value) && !isStackSlotValue(value);
     }
 
 }

@@ -43,14 +43,21 @@ package com.oracle.truffle.nfi.impl;
 final class LibFFISymbol extends NativePointer {
 
     protected final LibFFILibrary library;
+    private final String name;
 
-    static Object create(NFILanguageImpl language, LibFFILibrary library, long address) {
+    static Object create(NFILanguageImpl language, LibFFILibrary library, String name, long address) {
         assert address != 0;
-        return language.getTools().createBindableSymbol(new LibFFISymbol(library, address));
+        return language.getTools().createBindableSymbol(new LibFFISymbol(library, name, address));
     }
 
-    private LibFFISymbol(LibFFILibrary library, long address) {
+    private LibFFISymbol(LibFFILibrary library, String name, long address) {
         super(address);
         this.library = library;
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return name + "@" + super.toString();
     }
 }

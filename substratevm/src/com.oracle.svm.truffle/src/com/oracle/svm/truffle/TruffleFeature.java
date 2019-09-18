@@ -59,6 +59,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.annotate.Delete;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -159,6 +160,27 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         @Override
         public boolean getAsBoolean() {
             return ImageSingletons.contains(TruffleFeature.class);
+        }
+    }
+
+    public static final class IsCreateProcessDisabled implements BooleanSupplier {
+        static boolean query() {
+            try {
+                // Checkstyle: stop
+                Class<?> clazz = Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl");
+                // Checkstyle: resume
+                final boolean allowCreateProcess = ReflectionUtil.readField(clazz, "ALLOW_CREATE_PROCESS", null);
+                return !allowCreateProcess;
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        static final boolean ALLOW_CREATE_PROCESS = query();
+
+        @Override
+        public boolean getAsBoolean() {
+            return ALLOW_CREATE_PROCESS;
         }
     }
 
@@ -475,8 +497,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public void duringAnalysis(DuringAnalysisAccess access) {
         if (firstAnalysisRun) {
             firstAnalysisRun = false;
+            Object keep = invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "resetSingleContextState", Collections.singleton(boolean.class), false);
             invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine", Collections.emptyList());
             access.requireAnalysisIteration();
+            invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "restoreSingleContextState", Collections.singleton(Object.class), keep);
         }
 
         /*
@@ -777,6 +801,25 @@ final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl {
     static Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState singleContextState;
 }
 
+@TargetClass(className = "com.oracle.truffle.polyglot.ContextThreadLocal", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_ContextThreadLocal {
+
+    /**
+     * Don't store any threads in the image.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    Thread firstThread;
+}
+
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContextState {
+}
+
+// If allowProcess() is disabled at build time, then we ensure that ProcessBuilder is not reachable.
+// The main purpose of this is to test that ProcessBuilder is not part of the image when building
+// language images with allowProcess() disabled, which we interpret as "forbid shelling out to
+// external processes" (GR-14041).
+@Delete
+@TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleFeature.IsEnabled.class, TruffleFeature.IsCreateProcessDisabled.class})
+final class Target_java_lang_ProcessBuilder {
 }

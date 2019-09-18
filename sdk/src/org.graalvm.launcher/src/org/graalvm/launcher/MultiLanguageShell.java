@@ -156,7 +156,7 @@ class MultiLanguageShell {
 
                 if (input == null) {
                     break;
-                } else if (input.trim().equals("")) {
+                } else if (bufferSource == null && input.trim().equals("")) {
                     continue;
                 }
 

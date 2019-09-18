@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -257,7 +257,6 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
      * @throws BailoutException if the code installation failed
      */
     public InstalledCode createDefaultInstalledCode(DebugContext debug, ResolvedJavaMethod method, CompilationResult compilationResult) {
-        System.out.println(compilationResult.getSpeculationLog());
         return createInstalledCode(debug, method, compilationResult, null, true);
     }
 

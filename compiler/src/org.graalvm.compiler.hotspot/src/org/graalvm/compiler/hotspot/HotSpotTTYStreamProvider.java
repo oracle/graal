@@ -42,6 +42,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
+import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.Services;
 
@@ -52,7 +53,8 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
 
         // @formatter:off
         @Option(help = "File to which logging is sent.  A %p in the name will be replaced with a string identifying " +
-                       "the process, usually the process id and %t will be replaced by System.currentTimeMillis().", type = OptionType.Expert)
+                       "the process, usually the process id and %t will be replaced by System.currentTimeMillis().  " +
+                       "Using %o as filename sends logging to System.out whereas %e sends logging to System.err.", type = OptionType.Expert)
         public static final LogStreamOptionKey LogFile = new LogStreamOptionKey();
         // @formatter:on
     }
@@ -76,7 +78,8 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
         /**
          * @return {@code nameTemplate} with all instances of %p replaced by
          *         {@link GraalServices#getExecutionID()} and %t by
-         *         {@link System#currentTimeMillis()}
+         *         {@link System#currentTimeMillis()}. Checks %o and %e are not combined with any
+         *         other characters.
          */
         private static String makeFilename(String nameTemplate) {
             String name = nameTemplate;
@@ -86,6 +89,13 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
             if (name.contains("%t")) {
                 name = name.replaceAll("%t", String.valueOf(System.currentTimeMillis()));
             }
+
+            for (String subst : new String[]{"%o", "%e"}) {
+                if (name.contains(subst) && !name.equals(subst)) {
+                    throw new IllegalArgumentException("LogFile substitution " + subst + " cannot be combined with any other characters");
+                }
+            }
+
             return name;
         }
 
@@ -96,7 +106,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
          * initialization.
          */
         class DelayedOutputStream extends OutputStream {
-            private volatile OutputStream lazy;
+            @NativeImageReinitialize private volatile OutputStream lazy;
 
             private OutputStream lazy() {
                 if (lazy == null) {
@@ -105,19 +115,29 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                             String nameTemplate = LogStreamOptionKey.this.getValue(defaultOptions());
                             if (nameTemplate != null) {
                                 String name = makeFilename(nameTemplate);
-                                try {
-                                    final boolean enableAutoflush = true;
-                                    FileOutputStream result = new FileOutputStream(name);
-                                    if (!Services.IS_IN_NATIVE_IMAGE) {
-                                        printVMConfig(enableAutoflush, result);
-                                    } else {
-                                        // There are no VM arguments for the libgraal library.
-                                    }
-                                    lazy = result;
-                                    return lazy;
-                                } catch (FileNotFoundException e) {
-                                    throw new RuntimeException("couldn't open file: " + name, e);
+                                switch (name) {
+                                    case "%o":
+                                        lazy = System.out;
+                                        break;
+                                    case "%e":
+                                        lazy = System.err;
+                                        break;
+                                    default:
+                                        try {
+                                            final boolean enableAutoflush = true;
+                                            FileOutputStream result = new FileOutputStream(name);
+                                            if (!Services.IS_IN_NATIVE_IMAGE) {
+                                                printVMConfig(enableAutoflush, result);
+                                            } else {
+                                                // There are no VM arguments for the libgraal
+                                                // library.
+                                            }
+                                            lazy = result;
+                                        } catch (FileNotFoundException e) {
+                                            throw new RuntimeException("couldn't open file: " + name, e);
+                                        }
                                 }
+                                return lazy;
                             }
 
                             lazy = HotSpotJVMCIRuntime.runtime().getLogStream();

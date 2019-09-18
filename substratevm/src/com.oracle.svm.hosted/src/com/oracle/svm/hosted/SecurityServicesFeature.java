@@ -46,9 +46,11 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.security.jca.Providers;
@@ -205,6 +207,26 @@ public class SecurityServicesFeature implements Feature {
                 }
             }
         }
+
+        Class<?> classECDSASignature = access.findClassByName("sun.security.ec.ECDSASignature");
+        access.registerReachabilityHandler(SecurityServicesFeature::staticLinkSunEC,
+                        ReflectionUtil.lookupMethod(classECDSASignature, "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
+                        ReflectionUtil.lookupMethod(classECDSASignature, "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+    }
+
+    private static void staticLinkSunEC(DuringAnalysisAccess duringAnalysisAccess) {
+        FeatureImpl.DuringAnalysisAccessImpl a = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
+        NativeLibraries nativeLibraries = a.getNativeLibraries();
+        if (nativeLibraries.getStaticLibraryPath("sunec") != null) {
+            /* We statically link sunec thus we classify it as builtIn library */
+            PlatformNativeLibrarySupport.singleton().addBuiltInLibrary("sunec");
+            /* and ensure native calls to sun_security_* will be resolved as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security");
+
+            nativeLibraries.addLibrary("sunec", true);
+            /* Library sunec depends on stdc++ */
+            nativeLibraries.addLibrary("stdc++", false);
+        }
     }
 
     /**
@@ -346,5 +368,4 @@ public class SecurityServicesFeature implements Feature {
             // Checkstyle: resume
         }
     }
-
 }

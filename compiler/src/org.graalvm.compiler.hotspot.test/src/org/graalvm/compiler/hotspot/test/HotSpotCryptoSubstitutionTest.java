@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,11 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -91,7 +90,10 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testCipherBlockChainingIntrinsics() throws Exception {
-        if (compileAndInstall("com.sun.crypto.provider.CipherBlockChaining", HotSpotGraphBuilderPlugins.cbcEncryptName, HotSpotGraphBuilderPlugins.cbcDecryptName)) {
+        boolean implNames = HotSpotGraphBuilderPlugins.cbcUsesImplNames(runtime().getVMConfig());
+        String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
+        String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
+        if (compileAndInstall("com.sun.crypto.provider.CipherBlockChaining", cbcEncryptName, cbcDecryptName)) {
             ByteArrayOutputStream actual = new ByteArrayOutputStream();
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/NoPadding"));
             actual.write(runEncryptDecrypt(aesKey, "AES/CBC/PKCS5Padding"));

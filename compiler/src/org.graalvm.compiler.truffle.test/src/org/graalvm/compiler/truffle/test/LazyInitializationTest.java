@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -40,6 +41,7 @@ import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.nodes.Cancellable;
+import org.graalvm.compiler.options.ModuleSupport;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
@@ -89,7 +91,12 @@ public class LazyInitializationTest {
         List<String> vmCommandLine = getVMCommandLine();
         Assume.assumeFalse("Explicitly enables JVMCI compiler", vmCommandLine.contains("-XX:+UseJVMCINativeLibrary") || vmCommandLine.contains("-XX:+UseJVMCICompiler"));
         List<String> vmArgs = withoutDebuggerArguments(vmCommandLine);
-        vmArgs.add(JavaVersionUtil.JAVA_SPEC <= 8 ? "-XX:+TraceClassLoading" : "-Xlog:class+init=info");
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            vmArgs.add("-XX:+TraceClassLoading");
+        } else {
+            vmArgs.add("-Xlog:class+init=info");
+            vmArgs.addAll(SubprocessUtil.getPackageOpeningOptions());
+        }
         vmArgs.add("-dsa");
         vmArgs.add("-da");
         vmArgs.add("-XX:-UseJVMCICompiler");
@@ -225,7 +232,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (cls.equals(jvmciVersionCheck)) {
+        if (cls.equals(jvmciVersionCheck) || Objects.equals(cls.getEnclosingClass(), jvmciVersionCheck)) {
             // The Graal initialization needs to check the JVMCI version.
             return true;
         }
@@ -244,7 +251,8 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (cls == Assertions.class || cls == OptionsParser.class || cls == OptionValues.class || cls.getName().equals("org.graalvm.compiler.hotspot.HotSpotGraalOptionValues")) {
+        if (cls == Assertions.class || cls == OptionsParser.class || cls == ModuleSupport.class || cls == OptionValues.class ||
+                        cls.getName().equals("org.graalvm.compiler.hotspot.HotSpotGraalOptionValues")) {
             // Classes implementing Graal option loading
             return true;
         }

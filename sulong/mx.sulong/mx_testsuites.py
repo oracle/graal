@@ -39,6 +39,15 @@ import mx_buildtools
 
 import mx_sulong
 
+import sys
+
+if sys.version_info[0] < 3:
+    _unicode = unicode # pylint: disable=undefined-variable
+else:
+    _unicode = str
+
+_basestring = (str, _unicode)
+
 
 def run(vmArgs, unittests, extraOption=None, extraLibs=None):
     if not isinstance(unittests, list):
@@ -47,7 +56,7 @@ def run(vmArgs, unittests, extraOption=None, extraLibs=None):
         extraOption = []
     if mx.get_opts().verbose:
         command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + ['--very-verbose'] + unittests
-        print ('Running mx unittests ' + ' '.join(command))
+        print('Running mx unittests ' + ' '.join(command))
         return mx_unittest.unittest(command)
     else:
         command = mx_sulong.getCommonOptions(True, extraLibs) + extraOption + vmArgs + unittests
@@ -76,7 +85,7 @@ class SulongTestSuiteBuildTask(mx.NativeBuildTask):
             self.subject._is_needs_rebuild_call = False
 
 
-class SulongTestSuite(mx.NativeProject):
+class SulongTestSuite(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, **args):
         d = os.path.join(suite.dir, subDir) # use common Makefile for all test suites
@@ -144,6 +153,12 @@ class SulongTestSuite(mx.NativeProject):
         env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
         env['SO_EXT'] = mx.add_lib_suffix("")
         env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
+        env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
+        env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
+        env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
+        env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
+        env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
             env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
@@ -174,7 +189,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         else:
             self.testDir = ''
         if hasattr(self, 'fileExts'):
-            self.fileExts = self.fileExts if not isinstance(self.fileExts, basestring) else [self.fileExts]
+            self.fileExts = self.fileExts if not isinstance(self.fileExts, _basestring) else [self.fileExts]
         else:
             self.fileExts = ['.c', '.cpp', '.C']
         if not hasattr(self, 'configDir'):
@@ -197,7 +212,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         return run(vmArgs, testClasses)
 
     def defaultTestClasses(self):
-        return ["com.oracle.truffle.llvm.test.GCCSuite"]
+        return ["com.oracle.truffle.llvm.tests.GCCSuite"]
 
     def getTestFile(self):
         if not hasattr(self, '_testfile'):

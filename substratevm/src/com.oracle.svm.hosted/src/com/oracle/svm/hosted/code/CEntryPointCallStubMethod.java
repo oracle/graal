@@ -55,7 +55,6 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
-import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
@@ -86,7 +85,6 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.EnumLookupInfo;
-import com.oracle.svm.hosted.c.info.EnumValueInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
@@ -197,7 +195,6 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
-        StructuredGraph graph = kit.getGraph();
 
         JavaType[] parameterTypes = method.toParameterTypes();
         JavaType[] parameterLoadTypes = Arrays.copyOf(parameterTypes, parameterTypes.length);
@@ -237,8 +234,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
         inlinePrologueAndEpilogue(kit, prologueInvoke, epilogueInvoke, invoke.getStackKind());
 
-        assert graph.verify();
-        return graph;
+        return kit.finalizeGraph();
     }
 
     private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers) {
@@ -317,8 +313,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
 
         kit.createReturn(invoke, universeTargetMethod.getSignature().getReturnKind());
 
-        assert kit.getGraph().verify();
-        return kit.getGraph();
+        return kit.finalizeGraph();
     }
 
     private EnumInfo[] adaptParameterTypes(HostedProviders providers, NativeLibraries nativeLibraries, HostedGraphKit kit,
@@ -538,10 +533,6 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         JavaType returnType = method.getSignature().getReturnType(null);
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
-            UserError.guarantee(typeInfo.getChildren().stream().anyMatch(EnumValueInfo.class::isInstance), "Enum class " +
-                            returnType.toJavaName() + " needs a method that is annotated with @" + CEnumValue.class.getSimpleName() +
-                            " because it is used as the return type of an entry point method: " + targetMethod.format("%H.%n(%p)"));
-
             IsNullNode isNull = kit.unique(new IsNullNode(returnValue));
             kit.startIf(isNull, BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY);
             kit.thenPart();

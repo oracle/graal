@@ -46,13 +46,13 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
-import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
+import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -71,7 +71,7 @@ public class GraalConfiguration {
     }
 
     public LoweringProvider createLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
-        return new SubstrateBasicLoweringProvider(metaAccess, foreignCalls, ConfigurationValues.getTarget());
+        return ImageSingletons.lookup(SubstrateLoweringProviderFactory.class).newLoweringProvider(metaAccess, foreignCalls, ConfigurationValues.getTarget());
     }
 
     public Suites createSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted) {

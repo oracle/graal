@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform.DARWIN;
 import org.graalvm.nativeimage.Platform.LINUX;
@@ -39,5 +40,27 @@ public class NetinetTcp {
 
     @CConstant
     public static native int TCP_NODELAY();
+
+    @CConstant
+    public static native int TCP_KEEPINTVL();
+
+    @Platforms({Platform.DARWIN.class})
+    @CConstant
+    public static native int TCP_KEEPALIVE();
+
+    @Platforms({Platform.LINUX.class})
+    @CConstant
+    public static native int TCP_KEEPIDLE();
+
+    @CConstant
+    public static native int TCP_KEEPCNT();
+
+    @Platforms({Platform.LINUX.class})
+    @CConstant
+    public static native int SOL_TCP();
+
+    @Platforms({Platform.LINUX.class})
+    @CConstant
+    public static native int TCP_QUICKACK();
 
 }
