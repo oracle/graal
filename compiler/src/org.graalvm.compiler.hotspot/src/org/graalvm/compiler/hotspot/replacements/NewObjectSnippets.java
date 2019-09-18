@@ -634,9 +634,9 @@ public class NewObjectSnippets implements Snippets {
         fillMemory(0, memory, startOffset, endOffset, isEndOffsetConstant, manualUnroll, supportsBulkZeroing, counters);
     }
 
-    private static void fillMemory(long value, Word memory, int startOffset, long offsetLimit, boolean constantOffsetLimit, boolean manualUnroll,
+    private static void fillMemory(long value, Word memory, int startOffset, long endOffset, boolean constantOffsetLimit, boolean manualUnroll,
                     boolean supportsBulkZeroing, Counters counters) {
-        ReplacementsUtil.runtimeAssert((offsetLimit & 0x7) == 0, "unaligned object size");
+        ReplacementsUtil.runtimeAssert((endOffset & 0x7) == 0, "unaligned object size");
         int offset = startOffset;
         if ((offset & 0x7) != 0) {
             memory.writeInt(offset, (int) value, LocationIdentity.init());
@@ -644,7 +644,7 @@ public class NewObjectSnippets implements Snippets {
         }
         ReplacementsUtil.runtimeAssert((offset & 0x7) == 0, "unaligned offset");
         Counters theCounters = counters;
-        if (manualUnroll && ((offsetLimit - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
+        if (manualUnroll && ((endOffset - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
             ReplacementsUtil.staticAssert(!constantOffsetLimit, "size shouldn't be constant at instantiation time");
             // This case handles arrays of constant length. Instead of having a snippet variant for
             // each length, generate a chain of stores of maximum length. Once it's inlined the
@@ -655,7 +655,7 @@ public class NewObjectSnippets implements Snippets {
 
             explodeLoop();
             for (int i = 0; i < MAX_UNROLLED_OBJECT_ZEROING_STORES; i++, offset += 8) {
-                if (offset == offsetLimit) {
+                if (offset == endOffset) {
                     break;
                 }
                 memory.initializeLong(offset, value, LocationIdentity.init());
@@ -663,13 +663,13 @@ public class NewObjectSnippets implements Snippets {
         } else {
             // Use Word instead of int to avoid extension to long in generated code
             Word off = WordFactory.signed(offset);
-            if (supportsBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, (offsetLimit - offset) >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
+            if (supportsBulkZeroing && value == 0 && probability(SLOW_PATH_PROBABILITY, (endOffset - offset) >= getMinimalBulkZeroingSize(INJECTED_OPTIONVALUES))) {
                 if (theCounters != null && theCounters.instanceBulkInit != null) {
                     theCounters.instanceBulkInit.inc();
                 }
-                ZeroMemoryNode.zero(memory.add(off), offsetLimit - offset, false, LocationIdentity.init());
+                ZeroMemoryNode.zero(memory.add(off), endOffset - offset, true, LocationIdentity.init());
             } else {
-                if (constantOffsetLimit && ((offsetLimit - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
+                if (constantOffsetLimit && ((endOffset - offset) / 8) <= MAX_UNROLLED_OBJECT_ZEROING_STORES) {
                     if (theCounters != null && theCounters.instanceSeqInit != null) {
                         theCounters.instanceSeqInit.inc();
                     }
@@ -679,7 +679,7 @@ public class NewObjectSnippets implements Snippets {
                         theCounters.instanceLoopInit.inc();
                     }
                 }
-                for (; off.rawValue() < offsetLimit; off = off.add(8)) {
+                for (; off.rawValue() < endOffset; off = off.add(8)) {
                     memory.initializeLong(off, value, LocationIdentity.init());
                 }
             }
