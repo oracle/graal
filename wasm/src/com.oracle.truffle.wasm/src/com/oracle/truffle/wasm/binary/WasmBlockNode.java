@@ -215,7 +215,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.wasm.binary.exception.WasmException;
+import com.oracle.truffle.wasm.binary.exception.WasmExecutionException;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 
@@ -2233,7 +2233,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        throw new WasmException(this, "This method should never have been called.");
+        throw new WasmExecutionException(this, "This method should never have been called.");
     }
 
     @Override

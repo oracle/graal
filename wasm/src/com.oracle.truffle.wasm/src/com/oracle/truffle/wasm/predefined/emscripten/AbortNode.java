@@ -27,19 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary.exception;
+package com.oracle.truffle.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.wasm.binary.WasmCodeEntry;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.binary.WasmRootNode;
+import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 
-/**
- * Thrown on various errors that may occur in the WebAssembly engine.
- */
-public class WasmException extends RuntimeException {
+public class AbortNode extends WasmRootNode {
+    public AbortNode(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
+    }
 
-    private static final long serialVersionUID = 8195809219857028793L;
+    @Override
+    public Object execute(VirtualFrame frame) {
+        final int code = (int) frame.getArguments()[0];
+        throw fail(code);
+    }
 
-    @TruffleBoundary
-    public WasmException(String message) {
-        super(message);
+    @CompilerDirectives.TruffleBoundary
+    private WasmTrap fail(int code) {
+        throw new WasmTrap("Program aborted: " + code, this);
     }
 }

@@ -27,16 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.emcc_env.functions;
 
-import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.WasmNode;
+package com.oracle.truffle.wasm.binary.exception;
 
-public abstract class ImportedFunctionNode extends WasmNode {
-    public ImportedFunctionNode(WasmModule wasmModule, WasmCodeEntry codeEntry) {
-        super(wasmModule, codeEntry, 0, 0, 0);
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+
+/**
+ * Thrown when a WebAssembly program ends up in an unexpected exceptional state.
+ * This error likely indicates an internal engine issue.
+ */
+public class WasmExecutionException extends RuntimeException implements TruffleException {
+
+    private static final long serialVersionUID = 1787712823539392187L;
+    private Node location;
+
+    public WasmExecutionException(Node location, String message) {
+        super(message);
+        this.location = location;
     }
 
-    public abstract String name();
+    @Override
+    public Node getLocation() {
+        return location;
+    }
 }

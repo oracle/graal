@@ -27,30 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.emcc_env.functions;
+package com.oracle.truffle.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmContext;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.wasm.binary.WasmFunction;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.predefined.PredefinedModule;
 
-public class Print extends ImportedFunctionNode {
-    public Print(WasmModule wasmModule, WasmCodeEntry codeEntry) {
-        super(wasmModule, codeEntry);
-    }
+import static com.oracle.truffle.wasm.binary.ValueTypes.I32_TYPE;
 
+public class EmscriptenModule extends PredefinedModule {
     @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
-        return 0;
-    }
-
-    @Override
-    public byte returnTypeId() {
-        return 0;
-    }
-
-    @Override
-    public String name() {
-        return "print";
+    protected WasmModule createModule(WasmLanguage language, String name) {
+        WasmModule module = new WasmModule(name);
+        defineFunction(module, "abort", types(I32_TYPE), types(), new AbortNode(language, null));
+        return module;
     }
 }

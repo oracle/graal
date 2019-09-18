@@ -27,31 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.emcc_env.functions;
+package com.oracle.truffle.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.binary.ValueTypes;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.WasmNode;
 
-public class WasiFdWrite extends ImportedFunctionNode {
-    public WasiFdWrite(WasmModule wasmModule, WasmCodeEntry codeEntry) {
-        super(wasmModule, codeEntry);
+public abstract class ImportedFunctionNode extends WasmNode {
+    public ImportedFunctionNode(WasmModule wasmModule, WasmCodeEntry codeEntry) {
+        super(wasmModule, codeEntry, 0, 0, 0);
     }
 
-    @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
-        return 0;
-    }
-
-    @Override
-    public byte returnTypeId() {
-        return ValueTypes.I32_TYPE;
-    }
-
-    @Override
-    public String name() {
-        return "___wasi_fd_write";
-    }
+    // TODO: This is not being called -- should we remove it?
+    public abstract String name();
 }

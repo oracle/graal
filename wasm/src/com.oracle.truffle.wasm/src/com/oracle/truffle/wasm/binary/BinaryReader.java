@@ -338,7 +338,7 @@ public class BinaryReader extends BinaryStreamReader {
             switch (importType) {
                 case ImportIdentifier.FUNCTION: {
                     int typeIndex = readTypeIndex();
-                    module.symbolTable().importFunction(language, moduleName, importName, typeIndex);
+                    module.symbolTable().importFunction(moduleName, importName, typeIndex);
                     moduleFunctionIndex++;
                     break;
                 }
@@ -400,7 +400,7 @@ public class BinaryReader extends BinaryStreamReader {
         int numFunctions = readVectorLength();
         for (int i = 0; i != numFunctions; ++i) {
             int functionTypeIndex = readUnsignedInt32();
-            module.symbolTable().allocateFunction(language, functionTypeIndex);
+            module.symbolTable().allocateFunction(functionTypeIndex);
         }
     }
 
@@ -1247,7 +1247,7 @@ public class BinaryReader extends BinaryStreamReader {
     private void readParameterList(int funcTypeIdx, int numParams) {
         for (int paramIdx = 0; paramIdx != numParams; ++paramIdx) {
             byte type = readValueType();
-            module.symbolTable().registerFunctionTypeParameter(funcTypeIdx, paramIdx, type);
+            module.symbolTable().registerFunctionTypeParameterType(funcTypeIdx, paramIdx, type);
         }
     }
 

@@ -142,27 +142,38 @@ public class SymbolTable {
         }
     }
 
-    public int allocateFunctionType(int numArgTypes, int numReturnTypes) {
+    public int allocateFunctionType(int numParameterTypes, int numReturnTypes) {
         ensureOffsetsCapacity(offsetsSize);
         int typeIdx = offsetsSize++;
         offsets[typeIdx] = typeDataSize;
 
         assert 0 <= numReturnTypes && numReturnTypes <= 1;
-        int size = 2 + numArgTypes + numReturnTypes;
+        int size = 2 + numParameterTypes + numReturnTypes;
         ensureTypeDataCapacity(typeDataSize + size);
-        typeData[typeDataSize + 0] = numArgTypes;
+        typeData[typeDataSize + 0] = numParameterTypes;
         typeData[typeDataSize + 1] = numReturnTypes;
         typeDataSize += size;
         return typeIdx;
     }
 
-    public void registerFunctionTypeParameter(int funcTypeIdx, int paramIdx, byte type) {
+    public int allocateFunctionType(byte[] parameterTypes, byte[] returnTypes) {
+        final int typeIdx = allocateFunctionType(parameterTypes.length, returnTypes.length);
+        for (int i = 0; i < parameterTypes.length; i++) {
+            registerFunctionTypeParameterType(typeIdx, i, parameterTypes[i]);
+        }
+        for (int i = 0; i < returnTypes.length; i++) {
+            registerFunctionTypeReturnType(typeIdx, i, returnTypes[i]);
+        }
+        return typeIdx;
+    }
+
+    public void registerFunctionTypeParameterType(int funcTypeIdx, int paramIdx, byte type) {
         int idx = 2 + offsets[funcTypeIdx] + paramIdx;
         typeData[idx] = type;
     }
 
-    public void registerFunctionTypeReturnType(int funcTypeIdx, int paramIdx, byte type) {
-        int idx = 2 + offsets[funcTypeIdx] + typeData[offsets[funcTypeIdx]] + paramIdx;
+    public void registerFunctionTypeReturnType(int funcTypeIdx, int returnIdx, byte type) {
+        int idx = 2 + offsets[funcTypeIdx] + typeData[offsets[funcTypeIdx]] + returnIdx;
         typeData[idx] = type;
     }
 
@@ -173,16 +184,21 @@ public class SymbolTable {
         }
     }
 
-    public WasmFunction allocateFunction(WasmLanguage language, int typeIndex) {
+    public WasmFunction allocateFunction(int typeIndex) {
+        final WasmFunction function = allocateFunction(typeIndex, null);
+        return function;
+    }
+
+    private WasmFunction allocateFunction(int typeIndex, WasmFunction.ImportSpecifier importSpecifier) {
         ensureFunctionsCapacity(numFunctions);
-        final WasmFunction function = new WasmFunction(this, language, numFunctions, typeIndex, null);
+        final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importSpecifier);
         functions[numFunctions] = function;
         numFunctions++;
         return function;
     }
 
-    public WasmFunction allocateExportedFunction(WasmLanguage language, int typeIndex, String exportedName) {
-        final WasmFunction function = allocateFunction(language, typeIndex);
+    public WasmFunction allocateExportedFunction(int typeIndex, String exportedName) {
+        final WasmFunction function = allocateFunction(typeIndex);
         markFunctionAsExported(exportedName, function.index());
         return function;
     }
@@ -262,12 +278,10 @@ public class SymbolTable {
         return exportedFunctions;
     }
 
-    public void importFunction(WasmLanguage language, String moduleName, String functionName, int typeIndex) {
-        ensureFunctionsCapacity(numFunctions);
-        WasmFunction function = new WasmFunction(this, language, numFunctions, typeIndex, new WasmFunction.ImportSpecifier(moduleName, functionName));
+    public WasmFunction importFunction(String moduleName, String functionName, int typeIndex) {
+        WasmFunction function = allocateFunction(typeIndex, new WasmFunction.ImportSpecifier(moduleName, functionName));
         importedFunctions.add(function);
-        functions[numFunctions] = function;
-        numFunctions++;
+        return function;
     }
 
     public List<WasmFunction> importedFunctions() {

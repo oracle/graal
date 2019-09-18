@@ -27,23 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.emcc_env;
+package com.oracle.truffle.wasm.predefined;
 
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmModule;
 import com.oracle.truffle.wasm.binary.WasmRootNode;
-import com.oracle.truffle.wasm.emcc_env.functions.Abort;
-import com.oracle.truffle.wasm.emcc_env.functions.EmscriptenMemcpyBig;
-import com.oracle.truffle.wasm.emcc_env.functions.NoOp;
-import com.oracle.truffle.wasm.emcc_env.functions.WasiFdWrite;
+import com.oracle.truffle.wasm.predefined.emscripten.AbortNode;
+import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenMemcpyBig;
+import com.oracle.truffle.wasm.predefined.emscripten.NoOp;
+import com.oracle.truffle.wasm.predefined.emscripten.WasiFdWrite;
 
 public class WasmEnv {
     public static void importFunction(String functionName, WasmModule module, WasmRootNode rootNode, WasmCodeEntry codeEntry) {
         switch (functionName) {
-            case "abort": {
-                rootNode.setBody(new Abort(module, codeEntry));
-                break;
-            }
             case "_emscripten_memcpy_big": {
                 rootNode.setBody(new EmscriptenMemcpyBig(module, codeEntry));
                 break;

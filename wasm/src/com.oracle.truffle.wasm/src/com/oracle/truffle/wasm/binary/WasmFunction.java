@@ -49,14 +49,21 @@ public class WasmFunction implements TruffleObject {
     }
 
     private final SymbolTable symbolTable;
+    private int index;
     private ImportSpecifier importSpecifier;
     private WasmCodeEntry codeEntry;
     private final String name;
     private final int typeIndex;
     private RootCallTarget callTarget;
 
-    public WasmFunction(SymbolTable symbolTable, WasmLanguage language, int index, int typeIndex, ImportSpecifier importSpecifier) {
+    /**
+     * Represents a WebAssembly function.
+     *
+     * If a Wasm function has a
+     */
+    public WasmFunction(SymbolTable symbolTable, int index, int typeIndex, ImportSpecifier importSpecifier) {
         this.symbolTable = symbolTable;
+        this.index = index;
         this.importSpecifier = importSpecifier;
         this.codeEntry = null;
         // TODO: Establish a valid naming convention (integers are not valid identifiers), or remove this.
@@ -81,7 +88,7 @@ public class WasmFunction implements TruffleObject {
         return symbolTable.getFunctionTypeReturnTypeLength(typeIndex);
     }
 
-    void setCallTarget(RootCallTarget callTarget) {
+    public void setCallTarget(RootCallTarget callTarget) {
         this.callTarget = callTarget;
     }
 
@@ -137,6 +144,6 @@ public class WasmFunction implements TruffleObject {
     }
 
     public int index() {
-        return codeEntry.functionIndex();
+        return index;
     }
 }

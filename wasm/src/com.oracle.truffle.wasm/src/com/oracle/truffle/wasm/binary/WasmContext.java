@@ -40,7 +40,7 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.wasm.binary.memory.UnsafeWasmMemory;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
-import com.oracle.truffle.wasm.emcc_env.WasmModules;
+import com.oracle.truffle.wasm.predefined.PredefinedModule;
 
 public class WasmContext {
     private static final long DEFAULT_MEMORY_SIZE = 1 << 25;
@@ -102,7 +102,7 @@ public class WasmContext {
             final String[] parts = moduleSpec.split(":");
             final String name = parts[0];
             final String key = parts[1];
-            final WasmModule module = WasmModules.createPredefined(language, name, key);
+            final WasmModule module = PredefinedModule.createPredefined(language, name, key);
             modules.put(name, module);
         }
     }

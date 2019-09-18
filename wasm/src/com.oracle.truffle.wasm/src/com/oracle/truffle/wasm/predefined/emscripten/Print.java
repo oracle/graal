@@ -27,17 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.emcc_env.functions;
+package com.oracle.truffle.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.binary.ValueTypes;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmModule;
 
-public class Syscall146 extends ImportedFunctionNode {
-
-    public Syscall146(WasmModule wasmModule, WasmCodeEntry codeEntry) {
+public class Print extends ImportedFunctionNode {
+    public Print(WasmModule wasmModule, WasmCodeEntry codeEntry) {
         super(wasmModule, codeEntry);
     }
 
@@ -48,11 +46,11 @@ public class Syscall146 extends ImportedFunctionNode {
 
     @Override
     public byte returnTypeId() {
-        return ValueTypes.I32_TYPE;
+        return 0;
     }
 
     @Override
     public String name() {
-        return "__syscall146";
+        return "print";
     }
 }

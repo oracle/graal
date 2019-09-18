@@ -27,25 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.emcc_env;
+package com.oracle.truffle.wasm.predefined;
 
-import com.oracle.truffle.wasm.binary.SymbolTable;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
+import com.oracle.truffle.wasm.binary.WasmFunction;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
 import com.oracle.truffle.wasm.binary.WasmRootNode;
-import com.oracle.truffle.wasm.emcc_env.functions.Abort;
-import com.oracle.truffle.wasm.emcc_env.functions.EmscriptenMemcpyBig;
-import com.oracle.truffle.wasm.emcc_env.functions.NoOp;
-import com.oracle.truffle.wasm.emcc_env.functions.WasiFdWrite;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
+import com.oracle.truffle.wasm.predefined.emscripten.AbortNode;
+import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenMemcpyBig;
+import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenModule;
+import com.oracle.truffle.wasm.predefined.emscripten.NoOp;
+import com.oracle.truffle.wasm.predefined.emscripten.WasiFdWrite;
 
-public class WasmModules {
+import java.util.HashMap;
+import java.util.Map;
+
+public abstract class PredefinedModule {
+    private static final Map<String, PredefinedModule> predefinedModules = new HashMap<String, PredefinedModule>() {
+        {
+            put("emscripten", new EmscriptenModule());
+        }
+    };
+
     public static void importFunction(String functionName, WasmModule module, WasmRootNode rootNode, WasmCodeEntry codeEntry) {
         switch (functionName) {
-            case "abort": {
-                rootNode.setBody(new Abort(module, codeEntry));
-                break;
-            }
             case "_emscripten_memcpy_big": {
                 rootNode.setBody(new EmscriptenMemcpyBig(module, codeEntry));
                 break;
@@ -61,16 +71,28 @@ public class WasmModules {
         }
     }
 
-    public static WasmModule createPredefined(WasmLanguage language, String name, String predefinedModule) {
-        final WasmModule module = new WasmModule(name);
-        final SymbolTable symtab = module.symbolTable();
-        switch (predefinedModule) {
-            case "emscripten":
-                // TODO: Implement.
-                break;
-            default:
-                throw new RuntimeException("Unknown predefined module type: " + predefinedModule);
+    public static WasmModule createPredefined(WasmLanguage language, String name, String predefinedModuleName) {
+        final PredefinedModule predefinedModule = predefinedModules.get(predefinedModuleName);
+        if (predefinedModule == null) {
+            throw new WasmException("Unknown predefined module: " + predefinedModuleName);
         }
-        return module;
+        return predefinedModule.createModule(language, name);
+    }
+
+    protected abstract WasmModule createModule(WasmLanguage language, String name);
+
+    protected WasmFunction defineFunction(WasmModule module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
+        // We could check if the same function type had already been allocated,
+        // but this is just an optimization, and probably not very important,
+        // since predefined modules have a relatively small size.
+        final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
+        final WasmFunction function = module.symbolTable().allocateExportedFunction(typeIdx, name);
+        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        function.setCallTarget(callTarget);
+        return function;
+    }
+
+    protected byte[] types(byte... args) {
+        return args;
     }
 }

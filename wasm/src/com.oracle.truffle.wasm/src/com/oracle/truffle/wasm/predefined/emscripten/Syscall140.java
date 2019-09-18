@@ -27,31 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.emcc_env.functions;
+package com.oracle.truffle.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.ValueTypes;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 
-public class Abort extends ImportedFunctionNode {
-    public Abort(WasmModule wasmModule, WasmCodeEntry codeEntry) {
+public class Syscall140 extends ImportedFunctionNode {
+    public Syscall140(WasmModule wasmModule, WasmCodeEntry codeEntry) {
         super(wasmModule, codeEntry);
     }
 
     @Override
     public int execute(WasmContext context, VirtualFrame frame) {
-        throw new WasmTrap("aborted", this);
+        return 0;
     }
 
     @Override
     public byte returnTypeId() {
-        return ValueTypes.VOID_TYPE;
+        return ValueTypes.I32_TYPE;
     }
 
+    @Override
     public String name() {
-        return "abort";
+        return "__syscall140";
     }
 }

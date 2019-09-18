@@ -44,10 +44,4 @@ public class WasmLinkerException extends RuntimeException {
     public WasmLinkerException(String message) {
         super(message);
     }
-
-    @Override
-    public final Throwable fillInStackTrace() {
-        return this;
-    }
-
 }

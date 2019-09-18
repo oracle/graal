@@ -27,19 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary.exception;
+package com.oracle.truffle.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.wasm.binary.ValueTypes;
+import com.oracle.truffle.wasm.binary.WasmCodeEntry;
+import com.oracle.truffle.wasm.binary.WasmContext;
+import com.oracle.truffle.wasm.binary.WasmModule;
 
-/**
- * Thrown on various errors that may occur in the WebAssembly engine.
- */
-public class WasmException extends RuntimeException {
+public class WasiFdWrite extends ImportedFunctionNode {
+    public WasiFdWrite(WasmModule wasmModule, WasmCodeEntry codeEntry) {
+        super(wasmModule, codeEntry);
+    }
 
-    private static final long serialVersionUID = 8195809219857028793L;
+    @Override
+    public int execute(WasmContext context, VirtualFrame frame) {
+        return 0;
+    }
 
-    @TruffleBoundary
-    public WasmException(String message) {
-        super(message);
+    @Override
+    public byte returnTypeId() {
+        return ValueTypes.I32_TYPE;
+    }
+
+    @Override
+    public String name() {
+        return "___wasi_fd_write";
     }
 }

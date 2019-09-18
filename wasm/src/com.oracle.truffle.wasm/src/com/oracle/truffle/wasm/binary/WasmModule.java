@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.collection.BooleanArrayList;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 import com.oracle.truffle.wasm.collection.LongArrayList;
@@ -91,7 +92,7 @@ public class WasmModule implements TruffleObject {
 
         public void makeFinal() {
             if (madeFinal) {
-                throw new RuntimeException("Globals has already been made final.");
+                throw new WasmException("Globals has already been made final.");
             }
 
             finalGlobals = globals.toArray();
@@ -189,7 +190,7 @@ public class WasmModule implements TruffleObject {
 
         public void initialize(int initSize, int maxSize) {
             if (initialized) {
-                throw new RuntimeException("Table has already been initialized.");
+                throw new WasmException("Table has already been initialized.");
             }
             this.functionIndices = new int[initSize];
             this.maxSize = maxSize;
