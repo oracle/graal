@@ -25,9 +25,9 @@ package com.oracle.truffle.espresso.classfile;
 
 import static com.oracle.truffle.espresso.classfile.ConstantPool.classFormatError;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
@@ -40,6 +40,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNCHRONIZED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VOLATILE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
@@ -58,6 +59,7 @@ import java.util.Objects;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -126,7 +128,7 @@ public final class ClassfileParser {
 
     private Symbol<Type>[] classInnerClasses;
 
-    private int maxBootstrapMethodAttrIndex;
+    private int maxBootstrapMethodAttrIndex = -1;
     private Tag badConstantSeen;
 
     private ConstantPool pool;
@@ -187,14 +189,20 @@ public final class ClassfileParser {
         }
     }
 
+    void verifyMaxBootstrapMethodAttrIndex(int bsmAttrIndex) {
+        if (maxBootstrapMethodAttrIndex < bsmAttrIndex) {
+            throw classFormatError(".bsmAttrIndex > maxBootstrapMethodAttrIndex");
+        }
+    }
+
     void checkInvokeDynamicSupport(Tag tag) {
-        if (majorVersion < ClassfileParser.INVOKEDYNAMIC_MAJOR_VERSION) {
+        if (majorVersion < INVOKEDYNAMIC_MAJOR_VERSION) {
             stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
         }
     }
 
     void checkDynamicConstantSupport(Tag tag) {
-        if (majorVersion < ClassfileParser.DYNAMICCONSTANT_MAJOR_VERSION) {
+        if (majorVersion < DYNAMICCONSTANT_MAJOR_VERSION) {
             stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
         }
     }
@@ -256,25 +264,21 @@ public final class ClassfileParser {
      * @param flags the flags to test
      * @throws ClassFormatError if the flags are invalid
      */
-    public static void verifyClassFlags(int flags) {
-        boolean valid;
-        final int finalAndAbstract = ACC_FINAL | ACC_ABSTRACT;
-        if ((flags & ACC_INTERFACE) != 0) {
-            // If the ACC_INTERFACE flag is set, the ACC_ABSTRACT flag must also be set.
-            valid = (flags & ACC_ABSTRACT) != 0;
-            // And the ACC_FINAL, ACC_SUPER, and ACC_ENUM flags set must not be set.
-            valid &= (flags & (ACC_FINAL | ACC_SUPER | ACC_ENUM)) == 0;
-        } else {
-            // If the ACC_INTERFACE flag of this class file is not set, it may have any of the other
-            // flags in Table 4.1
-            // set. However, such a class file cannot have both its ACC_FINAL and ACC_ABSTRACT flags
-            // set (2.8.2).
-            valid = (flags & finalAndAbstract) != finalAndAbstract;
+    public static void verifyClassFlags(int flags, int majorVersion) {
+        final boolean isInterface = (flags & ACC_INTERFACE) != 0;
+        final boolean isAbstract = (flags & ACC_ABSTRACT) != 0;
+        final boolean isFinal = (flags & ACC_FINAL) != 0;
+        final boolean isSuper = (flags & ACC_SUPER) != 0;
+        final boolean isEnum = (flags & ACC_ENUM) != 0;
+        final boolean isAnnotation = (flags & ACC_ANNOTATION) != 0;
+        final boolean majorGte15 = majorVersion >= JAVA_1_5_VERSION;
+
+        if ((isAbstract && isFinal) ||
+                        (isInterface && !isAbstract) ||
+                        (isInterface && majorGte15 && (isSuper || isEnum)) ||
+                        (!isInterface && majorGte15 && isAnnotation)) {
+            throw classFormatError("Invalid class flags 0x" + Integer.toHexString(flags));
         }
-        if (valid) {
-            return;
-        }
-        throw classFormatError("Invalid class flags 0x" + Integer.toHexString(flags));
     }
 
     public ParserKlass parseClassImpl() {
@@ -314,14 +318,23 @@ public final class ClassfileParser {
             throw classfile.classFormatError("Unknown constant tag %s", badConstantSeen);
         }
 
-        verifyClassFlags(classFlags);
+        verifyClassFlags(classFlags, majorVersion);
 
         // this class
         thisKlassIndex = stream.readU2();
 
-        // Update className which could be null previously to reflect the name in the constant pool.
         Symbol<Name> thisKlassName = pool.classAt(thisKlassIndex).getName(pool);
+
+        final boolean isInterface = Modifier.isInterface(classFlags);
+
+        // TODO(peterssen): Verify class names.
+
         Symbol<Type> thisKlassType = context.getTypes().fromName(thisKlassName);
+        if (Types.isPrimitive(thisKlassType) || Types.isArray(thisKlassType)) {
+            throw classFormatError(".this_class cannot be array nor primitive " + classType);
+        }
+
+        // Update classType which could be null previously to reflect the name in the constant pool.
         classType = thisKlassType;
 
         // Checks if name in class file matches requested name
@@ -329,9 +342,16 @@ public final class ClassfileParser {
             throw new NoClassDefFoundError(classType + " (wrong name: " + requestedClassType + ")");
         }
 
-        final boolean isInterface = Modifier.isInterface(classFlags);
-
         Symbol<Type> superKlass = parseSuperKlass();
+
+        if (!Type.Object.equals(classType) && superKlass == null) {
+            throw classFormatError("Class " + classType + " must have a superclass");
+        }
+
+        if (isInterface && !Type.Object.equals(superKlass)) {
+            throw classFormatError("Interface " + classType + " must extend java.lang.Object");
+        }
+
         Symbol<Type>[] superInterfaces = parseInterfaces();
 
         final ParserField[] fields = parseFields(isInterface);
@@ -421,7 +441,7 @@ public final class ClassfileParser {
                     valid &= (flags & ACC_PRIVATE) == 0;
                 } else {
                     final int maskedFlags = flags & (ACC_PUBLIC | ACC_PRIVATE);
-                    valid &= (maskedFlags & ~(maskedFlags - 1)) == maskedFlags;
+                    valid &= (maskedFlags != 0) & (maskedFlags & ~(maskedFlags - 1)) == maskedFlags;
                 }
             }
 
@@ -572,6 +592,9 @@ public final class ClassfileParser {
     private Attribute[] parseClassAttributes() {
         int attributeCount = stream.readU2();
         if (attributeCount == 0) {
+            if (maxBootstrapMethodAttrIndex >= 0) {
+                throw classFormatError("BootstrapMethods attribute is missing");
+            }
             return Attribute.EMPTY_ARRAY;
         }
 
@@ -582,6 +605,7 @@ public final class ClassfileParser {
         Attribute runtimeInvisibleTypeAnnotations = null;
         EnclosingMethodAttribute enclosingMethod = null;
         BootstrapMethodsAttribute bootstrapMethods = null;
+        InnerClassesAttribute innerClasses = null;
 
         final Attribute[] classAttributes = new Attribute[attributeCount];
         for (int i = 0; i < attributeCount; i++) {
@@ -598,7 +622,10 @@ public final class ClassfileParser {
                 classFlags |= Constants.ACC_SYNTHETIC;
                 classAttributes[i] = new Attribute(attributeName, null);
             } else if (attributeName.equals(Name.InnerClasses)) {
-                classAttributes[i] = parseInnerClasses(attributeName);
+                if (innerClasses != null) {
+                    throw classFormatError("Duplicate InnerClasses attribute");
+                }
+                classAttributes[i] = innerClasses = parseInnerClasses(attributeName);
             } else if (majorVersion >= JAVA_1_5_VERSION) {
                 if (attributeName.equals(Name.Signature)) {
                     classAttributes[i] = genericSignature = parseSignatureAttribute(attributeName);
@@ -638,7 +665,7 @@ public final class ClassfileParser {
             }
         }
 
-        if (maxBootstrapMethodAttrIndex > 0 && bootstrapMethods == null) {
+        if (maxBootstrapMethodAttrIndex >= 0 && bootstrapMethods == null) {
             throw classFormatError("BootstrapMethods attribute is missing");
         }
 
@@ -916,21 +943,21 @@ public final class ClassfileParser {
         int attributeCount = stream.readU2();
         final Attribute[] codeAttributes = new Attribute[attributeCount];
 
+        Attribute runtimeVisibleTypeAnnotations = null;
+        Attribute runtimeInvisibleTypeAnnotations = null;
+        StackMapTableAttribute stackMapTable = null;
+
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.utf8At(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();
             final int startPosition = stream.getPosition();
 
-            Attribute runtimeVisibleTypeAnnotations = null;
-            Attribute runtimeInvisibleTypeAnnotations = null;
-            StackMapTableAttribute stackMapTable = null;
-
             if (attributeName.equals(Name.LineNumberTable)) {
                 codeAttributes[i] = parseLineNumberTable(attributeName);
             } else if (attributeName.equals(Name.StackMapTable)) {
                 if (stackMapTable != null) {
-                    throw classFormatError("Duplicate RuntimeVisibleTypeAnnotations attribute");
+                    throw classFormatError("Duplicate StackMapTable attribute");
                 }
                 codeAttributes[i] = stackMapTable = parseStackMapTableAttribute(attributeName);
             } else if (attributeName.equals(Name.RuntimeVisibleTypeAnnotations)) {
@@ -1021,7 +1048,8 @@ public final class ClassfileParser {
     }
 
     public static boolean isValidFieldName(Symbol<Name> name) {
-        return parseUnqualifiedName(name.toString(), 0, false) == name.toString().length();
+
+        return name.isValid() && parseUnqualifiedName(name.toString(), 0, false) == name.toString().length();
     }
 
     /**
@@ -1068,7 +1096,11 @@ public final class ClassfileParser {
 
         final boolean isStatic = Modifier.isStatic(fieldFlags);
 
-        final Symbol<Type> descriptor = Types.fromSymbol(pool.utf8At(typeIndex, "field descriptor"));
+        Symbol<Constant> rawDescriptor = pool.utf8At(typeIndex, "field descriptor");
+        final Symbol<Type> descriptor = Types.fromSymbol(rawDescriptor);
+        if (descriptor == null) {
+            throw classFormatError("Invalid descriptor: " + rawDescriptor);
+        }
 
         final int attributeCount = stream.readU2();
         final Attribute[] fieldAttributes = new Attribute[attributeCount];
@@ -1130,24 +1162,37 @@ public final class ClassfileParser {
         }
 
         if (constantValue != null) {
+
+            Tag tag = pool.tagAt(constantValue.getConstantValueIndex());
+            boolean valid = false;
+
             switch (kind) {
-                case Boolean:
-                case Byte:
-                case Short:
-                case Char:
-                case Int:
+                case Boolean: // fall through
+                case Byte: // fall through
+                case Short: // fall through
+                case Char: // fall through
+                case Int: // fall through
+                    valid = (tag == Tag.INTEGER);
+                    break;
                 case Float:
+                    valid = (tag == Tag.FLOAT);
+                    break;
                 case Long:
+                    valid = (tag == Tag.LONG);
+                    break;
                 case Double:
+                    valid = (tag == Tag.DOUBLE);
                     break;
                 case Object:
-                    if (!descriptor.equals(Type.String)) {
-                        throw classFormatError("Invalid ConstantValue attribute");
-                    }
+                    valid = (tag == Tag.STRING) && descriptor.equals(Type.String);
                     break;
                 default: {
                     throw classFormatError("Cannot have ConstantValue for fields of type " + kind);
                 }
+            }
+
+            if (!valid) {
+                throw classFormatError("ConstantValue attribute does not match field type");
             }
         }
 
@@ -1196,7 +1241,15 @@ public final class ClassfileParser {
         Symbol<Type>[] interfaces = new Symbol[interfaceCount];
         for (int i = 0; i < interfaceCount; i++) {
             int interfaceIndex = stream.readU2();
-            interfaces[i] = context.getTypes().fromName(pool.classAt(interfaceIndex).getName(pool));
+            Symbol<Name> interfaceName = pool.classAt(interfaceIndex).getName(pool);
+            Symbol<Type> interfaceType = context.getTypes().fromName(interfaceName);
+            if (interfaceType == null) {
+                throw classFormatError(classType + " contains invalid superinterface name: " + interfaceName);
+            }
+            if (Types.isPrimitive(interfaceType) || Types.isArray(interfaceType)) {
+                throw classFormatError(classType + " superinterfaces cannot contains arrays nor primitives");
+            }
+            interfaces[i] = interfaceType;
         }
         return interfaces;
     }

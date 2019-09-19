@@ -42,8 +42,10 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -355,13 +357,13 @@ public abstract class ConstantPool {
             final int tagByte = stream.readU1();
             final Tag tag = Tag.fromValue(tagByte);
             if (tag == null) {
-                throw new ClassFormatError("Invalid constant pool entry type at index " + i);
+                throw classFormatError("Invalid constant pool entry type at index " + i);
             }
             switch (tag) {
                 case CLASS: {
                     if (existsAt(patches, i)) {
                         StaticObject classSpecifier = patches[i];
-                        if (classSpecifier.getKlass().getType() == Symbol.Type.Class) {
+                        if (classSpecifier.getKlass().getType() == Type.Class) {
                             entries[i] = new ClassConstant.PreResolved(classSpecifier.getMirrorKlass());
                         } else {
                             entries[i] = new ClassConstant.WithString(context.getNames().lookup(Meta.toHostString(patches[i])));
@@ -374,11 +376,14 @@ public abstract class ConstantPool {
                     break;
                 }
                 case STRING: {
+                    int index = stream.readU2();
+                    if (index == 0 || index >= length) {
+                        throw classFormatError("Invalid String constant index " + (i - 1));
+                    }
                     if (existsAt(patches, i)) {
                         entries[i] = new StringConstant.PreResolved(patches[i]);
-                        stream.readU2();
                     } else {
-                        entries[i] = new StringConstant.Index(stream.readU2());
+                        entries[i] = new StringConstant.Index(index);
                     }
                     break;
                 }
@@ -435,7 +440,7 @@ public abstract class ConstantPool {
                     try {
                         entries[i] = InvalidConstant.VALUE;
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        throw new ClassFormatError("Invalid long constant index " + (i - 1));
+                        throw classFormatError("Invalid long constant index " + (i - 1));
                     }
                     break;
                 }
@@ -450,7 +455,7 @@ public abstract class ConstantPool {
                     try {
                         entries[i] = InvalidConstant.VALUE;
                     } catch (ArrayIndexOutOfBoundsException e) {
-                        throw new ClassFormatError("Invalid double constant index " + (i - 1));
+                        throw classFormatError("Invalid double constant index " + (i - 1));
                     }
                     break;
                 }
@@ -458,7 +463,11 @@ public abstract class ConstantPool {
                     // Copy-less UTF8 constant.
                     // A new symbol is spawned (copy) only if doesn't already exists.
                     utf8EntryCount.inc();
-                    entries[i] = language.getUtf8ConstantTable().getOrCreate(stream.readByteSequenceUTF());
+                    ByteSequence bytes = stream.readByteSequenceUTF();
+                    if (!bytes.isValid()) {
+                        throw classFormatError("Illegal UTF-8 constant " + (i - 1));
+                    }
+                    entries[i] = language.getUtf8ConstantTable().getOrCreate(bytes);
                     break;
                 }
                 case METHODHANDLE: {
@@ -498,7 +507,18 @@ public abstract class ConstantPool {
             i++;
         }
 
-        return new ConstantPoolImpl(entries);
+        final ConstantPool constantPool = new ConstantPoolImpl(entries);
+
+        // Validation
+        for (int j = 1; j < constantPool.length(); ++j) {
+            try {
+                entries[j].checkValidity(constantPool);
+            } catch (Throwable e) {
+                throw classFormatError(e.getMessage());
+            }
+        }
+
+        return constantPool;
     }
 
     private static boolean existsAt(Object[] patches, int index) {

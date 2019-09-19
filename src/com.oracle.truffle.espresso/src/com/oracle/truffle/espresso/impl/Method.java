@@ -542,7 +542,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public final boolean isClassInitializer() {
-        return Name.CLINIT.equals(getName());
+        return Name.CLINIT.equals(getName()) && isStatic();
     }
 
     @Override

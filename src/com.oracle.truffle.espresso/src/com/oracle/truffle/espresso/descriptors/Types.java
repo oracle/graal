@@ -48,7 +48,9 @@ public final class Types {
     public static Symbol<Type> fromDescriptor(Symbol<? extends Descriptor> descriptor) {
         Symbol<Type> type = (Symbol<Type>) descriptor;
         // TODO(peterssen): Turn check into assert, maybe?
-        EspressoError.guarantee(isValid(type), "descriptor is not a valid type");
+        if (!isValid(type)) {
+            return null;
+        }
         return type;
     }
 
@@ -283,7 +285,25 @@ public final class Types {
     }
 
     private static boolean isValid(Symbol<Type> type) {
-        int endIndex = Types.skipValidTypeDescriptor(type, 0, true);
+        if (type.length() == 0) {
+            return false;
+        }
+        if (type.length() == 1) {
+            return isPrimitive(type);
+        }
+        char first = (char) type.byteAt(0);
+        int beginIndex;
+        if (first == '[') {
+            beginIndex = 0;
+            while (beginIndex < type.length() && type.byteAt(beginIndex) == '[') {
+                ++beginIndex;
+            }
+        } else if (first == 'L') {
+            beginIndex = 0;
+        } else {
+            return false;
+        }
+        int endIndex = skipValidTypeDescriptor(type, beginIndex, true);
         return endIndex == type.length();
     }
 
@@ -340,9 +360,7 @@ public final class Types {
     @SuppressWarnings("unchecked")
     public static Symbol<Type> fromSymbol(Symbol<?> symbol) {
         Symbol<Type> type = (Symbol<Type>) symbol;
-        // TODO(peterssen): Turn check into assert, maybe?
-        EspressoError.guarantee(isValid(type), "descriptor is not a valid type");
-        return type;
+        return isValid(type) ? type : null;
     }
 
     public final Symbol<Type> fromName(Symbol<Name> name) {
