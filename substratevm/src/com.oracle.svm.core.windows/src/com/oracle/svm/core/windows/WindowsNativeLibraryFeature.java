@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
@@ -72,13 +73,28 @@ class WindowsNativeLibrarySupport extends PlatformNativeLibrarySupport {
         if (!JDKLibZipSubstitutions.initIDs()) {
             return false;
         }
-        try {
-            WinSock.init();
-            System.loadLibrary("net");
-        } catch (UnsatisfiedLinkError e) {
+        return true;
+    }
+
+    @Override
+    public boolean initializeSharedBuiltinLibrariesOnce() {
+        if (!super.initializeSharedBuiltinLibrariesOnce()) {
             return false;
         }
-
+        if (Platform.includedIn(InternalPlatform.LINUX_JNI.class) ||
+                        Platform.includedIn(InternalPlatform.DARWIN_JNI.class)) {
+            try {
+                WinSock.init();
+                System.loadLibrary("net");
+                /*
+                 * NOTE: because the native OnLoad code probes java.net.preferIPv4Stack and stores
+                 * its value in process-wide shared native state, the property's value in the first
+                 * launched isolate applies to all subsequently launched isolates.
+                 */
+            } catch (UnsatisfiedLinkError e) {
+                return false;
+            }
+        }
         return true;
     }
 

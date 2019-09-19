@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -142,5 +142,16 @@ public abstract class PlatformNativeLibrarySupport {
 
     public abstract PointerBase findBuiltinSymbol(String name);
 
+    /**
+     * Initializes built-in libraries that are explicitly or implicitly shared between the isolates
+     * of a process (for example, because they have a single native state that does not distinguish
+     * between isolate). This method is called exactly once per process, during the creation of the
+     * first isolate in the process, followed by a call to {@link #initializeBuiltinLibraries()}.
+     */
+    public boolean initializeSharedBuiltinLibrariesOnce() {
+        return true;
+    }
+
+    /** Initializes built-in libraries for the current isolate, during its creation. */
     public abstract boolean initializeBuiltinLibraries();
 }
