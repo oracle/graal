@@ -74,15 +74,34 @@
 				"path": "./syntaxes/sl.tmLanguage.json"
 			},
 			{
-				"path": "./syntaxes/polyglot-injection.json",
+				"path": "./syntaxes/js-polyglot-injection.json",
 				"injectTo": [
+					"source.js",
+					"source.r",
+					"source.ruby",
+					"source.pyhon",
+					"source.sl"
+				],
+				"scopeName": "js.inline.polyglot-langauges",
+				"embeddedLanguages": {
+					"meta.embedded.inline.python": "python",
+					"meta.embedded.inline.r": "r",
+					"meta.embedded.inline.ruby": "ruby",
+					"meta.embedded.inline.sl": "sl"
+				}
+			},
+			{
+				"path": "./syntaxes/sl-polyglot-injection.json",
+				"injectTo": [
+					"source.sl",
 					"source.js",
 					"source.r",
 					"source.ruby",
 					"source.pyhon"
 				],
-				"scopeName": "js.inline.polyglot-langauges",
+				"scopeName": "sl.inline.polyglot-langauges",
 				"embeddedLanguages": {
+					"meta.embedded.inline.js": "js",
 					"meta.embedded.inline.python": "python",
 					"meta.embedded.inline.r": "r",
 					"meta.embedded.inline.ruby": "ruby"
@@ -92,7 +111,11 @@
 		"snippets": [
 			{
 				"language": "javascript",
-				"path": "./snippets/polyglot-snippets.json"
+				"path": "./snippets/js-polyglot-snippets.json"
+			},
+			{
+				"language": "sl",
+				"path": "./snippets/sl-polyglot-snippets.json"
 			}
 		],
 		"debuggers": [
