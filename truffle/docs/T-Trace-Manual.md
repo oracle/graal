@@ -116,7 +116,7 @@ function dumpHistogram() {
         } else {
             number = Array(digits - number.length + 1).join(' ') + number;
         }
-        print(`${number} calls to ${entry[0]}`);
+        if (number > 10) print(`${number} calls to ${entry[0]}`);
     });
     print("=================");
 }
@@ -169,117 +169,6 @@ Object
  16 calls to validateString
  14 calls to uncurryThis
  12 calls to inherits
- 10 calls to getOptionValue
-  8 calls to protoGetter
-  7 calls to addListener
-  7 calls to _addListener
-  7 calls to checkListener
-  6 calls to emit
-  6 calls to isSignal
-  6 calls to copyProps
-  6 calls to normalizeString
-  5 calls to EventEmitter
-  5 calls to EventEmitter.init
-  5 calls to resolve
-  4 calls to emitHookFactory
-  4 calls to debuglog
-  4 calls to getHighWaterMark
-  4 calls to highWaterMarkFrom
-  4 calls to Stream
-  4 calls to getNewAsyncId
-  3 calls to makeSystemErrorWithCode
-  3 calls to makeSafe
-  3 calls to SafeSet
-  3 calls to isEmpty
-  2 calls to makeGetter
-  2 calls to makeSetter
-  2 calls to defineIDLClass
-  2 calls to ImmediateList
-  2 calls to createWritableStdioStream
-  2 calls to WriteStream
-  2 calls to Socket
-  2 calls to _extend
-  2 calls to Duplex
-  2 calls to Readable
-  2 calls to ReadableState
-  2 calls to BufferList
-  2 calls to Writable
-  2 calls to WritableState
-  2 calls to Readable.on
-  2 calls to initSocketHandle
-  2 calls to undestroy
-  2 calls to createWriteErrorHandler
-  2 calls to debug
-  2 calls to runInThisContext
-  2 calls to validateInteger
-  2 calls to shift
-  1 calls to bootstrapInternalLoaders
-  1 calls to bootstrapNodeJSCore
-  1 calls to startup
-  1 calls to setupProcessObject
-  1 calls to setupProcessFatal
-  1 calls to setupProcessICUVersions
-  1 calls to setupGlobalVariables
-  1 calls to makeTextDecoderJS
-  1 calls to patchBufferPrototype
-  1 calls to createPool
-  1 calls to createUnsafeArrayBuffer
-  1 calls to setupAssert
-  1 calls to setupConfig
-  1 calls to setupSignalHandlers
-  1 calls to eventNames
-  1 calls to setupUncaughtExceptionCapture
-  1 calls to setupProcessWarnings
-  1 calls to setupNextTick
-  1 calls to setupPromises
-  1 calls to FixedQueue
-  1 calls to FixedCircularBuffer
-  1 calls to setupStdio
-  1 calls to getMainThreadStdio
-  1 calls to setupProcessStdio
-  1 calls to setupProcessMethods
-  1 calls to setupPosixMethods
-  1 calls to setupRawDebug
-  1 calls to setupHrtime
-  1 calls to setupCpuUsage
-  1 calls to setupMemoryUsage
-  1 calls to setupKillAndExit
-  1 calls to setupChildProcessIpcChannel
-  1 calls to setupGlobalTimeouts
-  1 calls to setupGlobalConsole
-  1 calls to getStdout
-  1 calls to getStderr
-  1 calls to $getMaxListeners
-  1 calls to get
-  1 calls to Console
-  1 calls to setupInspector
-  1 calls to setupGlobalURL
-  1 calls to setupAllowedFlags
-  1 calls to preloadModules
-  1 calls to addBuiltinLibsToObject
-  1 calls to evalScript
-  1 calls to wrapForBreakOnFirstLine
-  1 calls to Module._initPaths
-  1 calls to tryGetCwd
-  1 calls to Module
-  1 calls to updateChildren
-  1 calls to join
-  1 calls to normalize
-  1 calls to Module._nodeModulePaths
-  1 calls to Module._compile
-  1 calls to stripShebang
-  1 calls to dirname
-  1 calls to makeRequireFunction
-  1 calls to require
-  1 calls to Module.require
-  1 calls to Module._load
-  1 calls to Module._resolveFilename
-  1 calls to createScript
-  1 calls to Script
-  1 calls to getRunInContextArgs
-  1 calls to _tickCallback
-  1 calls to emitPromiseRejectionWarnings
-  1 calls to dumpHistogram
 =================
 ```
 
