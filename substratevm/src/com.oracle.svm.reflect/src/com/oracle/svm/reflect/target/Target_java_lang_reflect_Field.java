@@ -27,12 +27,14 @@ package com.oracle.svm.reflect.target;
 // Checkstyle: allow reflection
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
 import java.util.Map;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -40,6 +42,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.reflect.generics.repository.FieldRepository;
 
 @TargetClass(value = Field.class)
@@ -67,6 +71,9 @@ public final class Target_java_lang_reflect_Field {
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
     int offset;
 
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedTypeComputer.class) //
+    AnnotatedType annotatedType;
+
     @Alias
     native Target_java_lang_reflect_Field copy();
 
@@ -83,4 +90,19 @@ public final class Target_java_lang_reflect_Field {
         Target_java_lang_reflect_Field holder = ReflectionHelper.getHolder(this);
         return ReflectionHelper.requireNonNull(holder.declaredAnnotations, "Declared annotations must be computed during native image generation.");
     }
+
+    @Substitute
+    public AnnotatedType getAnnotatedType() {
+        Target_java_lang_reflect_Field holder = ReflectionHelper.getHolder(this);
+        return ReflectionHelper.requireNonNull(holder.annotatedType, "Annotated type must be computed during native image generation.");
+    }
+
+    public static final class AnnotatedTypeComputer implements CustomFieldValueComputer {
+        @Override
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+            Field field = (Field) receiver;
+            return field.getAnnotatedType();
+        }
+    }
+
 }
