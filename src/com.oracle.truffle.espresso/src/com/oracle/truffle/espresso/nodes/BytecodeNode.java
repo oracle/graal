@@ -241,6 +241,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.CustomNodeCount;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -312,9 +313,6 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     public static final DebugCounter invokeNodes = DebugCounter.create("total invoke nodes");
 
-    @CompilationFinal //
-    private int monitorStackSize = MonitorStack.DEFAULT_CAPACITY;
-
     @Children private QuickNode[] nodes = QuickNode.EMPTY_ARRAY;
 
     @CompilationFinal(dimensions = 1) //
@@ -330,6 +328,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     private int[][] JSRbci = null;
 
     private final BytecodeStream bs;
+
+    private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
     @TruffleBoundary
     public BytecodeNode(Method method, FrameDescriptor frameDescriptor) {
@@ -1099,7 +1099,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
     }
 
     private void unregisterMonitor(VirtualFrame frame, Object monitor) {
-        getMonitorStack(frame).exit(monitor);
+        getMonitorStack(frame).exit(monitor, this);
     }
 
     private void monitorEnter(VirtualFrame frame, Object monitor) {
@@ -1135,12 +1135,13 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
             monitors[top++] = monitor;
         }
 
-        private void exit(Object monitor) {
+        private void exit(Object monitor, BytecodeNode node) {
             Object topMonitor = monitors[top - 1];
             if (monitor == topMonitor) {
                 // Balanced locking: simply pop.
                 monitors[--top] = null;
             } else {
+                node.unbalancedMonitorProfile.enter();
                 // Unbalanced locking: do the linear search.
                 int i = top - 1;
                 for (; i >= 0; i--) {
