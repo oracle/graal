@@ -721,14 +721,14 @@ def _get_graalvm_configuration(base_name, stage1=False):
                 vm_config_additional_components = config_additional_components
 
         if vm_dist_name:
-            base_dir = base_name + '_' + vm_dist_name + '_jdk{}'.format(_src_jdk_version)
+            base_dir = base_name + '_' + vm_dist_name + '_java{}'.format(_src_jdk_version)
             name = base_dir
             if vm_config_additional_components:
                 name += '_' + '_'.join(vm_config_additional_components)
         else:
             if mx.get_opts().verbose:
                 mx.logv("No dist name for {}".format(vm_config_additional_components))
-            base_dir = base_name + '_unknown' + '_jdk{}'.format(_src_jdk_version)
+            base_dir = base_name + '_unknown' + '_java{}'.format(_src_jdk_version)
             name = base_dir + ('_stage1' if stage1 else '')
         name = name.upper()
         base_dir = base_dir.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
