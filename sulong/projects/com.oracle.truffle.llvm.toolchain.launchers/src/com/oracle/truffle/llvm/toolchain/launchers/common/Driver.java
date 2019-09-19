@@ -76,20 +76,20 @@ public class Driver {
         }
     }
 
-    private static boolean isJdk8 = System.getProperty("java.specification.version").startsWith("1.");
+    private static boolean hasJreDir = System.getProperty("java.specification.version").startsWith("1.");
 
-    private static Path getJreDir() {
-        Path jreDir = Engine.findHome();
-        if (isJdk8) {
-            jreDir = jreDir.resolve("jre");
+    private static Path getRuntimeDir() {
+        Path runtimeDir = Engine.findHome();
+        if (hasJreDir) {
+            runtimeDir = runtimeDir.resolve("jre");
         }
-        return jreDir;
+        return runtimeDir;
     }
 
     public Path getLLVMBinDir() {
         String llvmDir = System.getProperty("llvm.bin.dir");
         if (llvmDir == null) {
-            return getJreDir().resolve("lib").resolve("llvm").resolve("bin");
+            return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
         }
         return Paths.get(llvmDir);
     }
@@ -97,7 +97,7 @@ public class Driver {
     public Path getSulongHome() {
         String llvmDir = System.getProperty("llvm.home");
         if (llvmDir == null) {
-            return getJreDir().resolve("languages").resolve("llvm");
+            return getRuntimeDir().resolve("languages").resolve("llvm");
         }
         return Paths.get(llvmDir);
     }
