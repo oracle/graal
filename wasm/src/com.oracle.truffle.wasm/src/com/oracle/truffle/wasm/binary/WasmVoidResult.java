@@ -38,6 +38,9 @@ public final class WasmVoidResult implements TruffleObject {
         instance = new WasmVoidResult();
     }
 
+    private WasmVoidResult() {
+    }
+
     public static WasmVoidResult getInstance() {
         return instance;
     }

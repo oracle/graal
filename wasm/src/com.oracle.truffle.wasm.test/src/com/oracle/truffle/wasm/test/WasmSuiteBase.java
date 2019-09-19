@@ -73,7 +73,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     function.execute();
                 }
             }
-            validateResult(testCase.data.resultValidator, function.execute());
+            final Value result = function.execute();
+            validateResult(testCase.data.resultValidator, result);
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
         } catch (PolyglotException e) {

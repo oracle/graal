@@ -168,8 +168,16 @@ public class WasmModule implements TruffleObject {
             finalGlobals[index] = Float.floatToRawIntBits(value);
         }
 
+        public void setFloatWithInt(int index, int value) {
+            finalGlobals[index] = value;
+        }
+
         public void setDouble(int index, double value) {
             finalGlobals[index] = Double.doubleToRawLongBits(value);
+        }
+
+        public void setDoubleWithLong(int index, long value) {
+            finalGlobals[index] = value;
         }
     }
 

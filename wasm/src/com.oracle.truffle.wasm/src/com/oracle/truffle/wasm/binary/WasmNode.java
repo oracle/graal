@@ -33,6 +33,7 @@ package com.oracle.truffle.wasm.binary;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.wasm.binary.exception.WasmExecutionException;
 
 public abstract class WasmNode extends Node implements WasmNodeInterface {
     @CompilationFinal private WasmModule wasmModule;
@@ -83,6 +84,10 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
     public abstract int execute(WasmContext context, VirtualFrame frame);
 
     public abstract byte returnTypeId();
+
+    protected void wasmError(String message) {
+        throw new WasmExecutionException(this, message);
+    }
 
     public int returnTypeLength() {
         switch (returnTypeId()) {
