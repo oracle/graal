@@ -76,7 +76,7 @@ import jdk.vm.ci.meta.TriState;
 
 /**
  * Base class for implementing some low level code providing the out-of-line slow path for a snippet
- * and/or a callee saved call to a HotSpot C/C++ runtime function or even a another compiled Java
+ * and/or a callee saved call to a HotSpot C/C++ runtime function or even another compiled Java
  * method.
  */
 public abstract class Stub {
