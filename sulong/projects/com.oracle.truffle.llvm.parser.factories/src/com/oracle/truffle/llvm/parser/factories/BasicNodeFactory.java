@@ -1168,6 +1168,10 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createUnsignedCast(LLVMExpressionNode fromNode, PrimitiveKind kind) {
         switch (kind) {
+            case I1:
+                // Since signed (fptosi) and unsigned (fptoui) casts to i1 behave the same, we
+                // return a SignedCastToI1 node here.
+                return LLVMSignedCastToI1NodeGen.create(fromNode);
             case I8:
                 return LLVMUnsignedCastToI8NodeGen.create(fromNode);
             case I16:
