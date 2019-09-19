@@ -106,7 +106,7 @@ public final class TruffleCompilerOptions {
     public static final OptionKey<Integer> TruffleInliningExpansionBudget = new OptionKey<>(50_000);
 
     @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert)
-    public static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(45_000);
+    public static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(50_000);
     // @formatter:on
 
     private TruffleCompilerOptions() {
