@@ -767,16 +767,18 @@ public final class ObjectKlass extends Klass {
 
     private void checkLoadingConstraints() {
         if (getSuperKlass() != null) {
-            Method[] thisVTable = getVTable();
-            if (thisVTable != null) {
-                Method[] superVTable = getSuperKlass().getVTable();
-                Klass k1;
-                Klass k2;
-                for (int i = 0; i < superVTable.length; i++) {
-                    k1 = thisVTable[i].getDeclaringKlass();
-                    k2 = superVTable[i].getDeclaringKlass();
-                    if (k1 == this) {
-                        thisVTable[i].checkLoadingConstraints(k1.getDefiningClassLoader(), k2.getDefiningClassLoader());
+            if (!isInterface()) {
+                Method[] thisVTable = getVTable();
+                if (thisVTable != null) {
+                    Method[] superVTable = getSuperKlass().getVTable();
+                    Klass k1;
+                    Klass k2;
+                    for (int i = 0; i < superVTable.length; i++) {
+                        k1 = thisVTable[i].getDeclaringKlass();
+                        k2 = superVTable[i].getDeclaringKlass();
+                        if (k1 == this) {
+                            thisVTable[i].checkLoadingConstraints(k1.getDefiningClassLoader(), k2.getDefiningClassLoader());
+                        }
                     }
                 }
             }
