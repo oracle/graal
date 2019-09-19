@@ -108,6 +108,7 @@ public final class Target_java_lang_Thread {
             Meta meta = context.getMeta();
             KillStatus killStatus = getKillStatus(self);
             if (killStatus != null || context.isClosing()) {
+                self.setIntField(meta.Thread_state, State.TERMINATED.value);
                 return;
             }
             setThreadStop(self, KillStatus.NORMAL);
@@ -308,17 +309,27 @@ public final class Target_java_lang_Thread {
     }
 
     public enum KillStatus {
-        // Normal state: no Thread.stop() called, or ThreadDeath has already been thrown.
+        /**
+         * Normal state: no Thread.stop() called, or ThreadDeath has already been thrown.
+         */
         NORMAL,
-        // Thread will be thrown an asynchronous ThreadDeath whenever possible.
+        /**
+         * Thread will throw an asynchronous ThreadDeath whenever possible.
+         */
         KILL,
-        // Was killed, but we are in context closing. If the thread is alive for a while in that
-        // state, it will be considered uncooperative.
+        /**
+         * Was killed, but we are in context closing. If the thread is alive for a while in that
+         * state, it will be considered uncooperative.
+         */
         KILLED,
-        // Was killed, and is calling Thread.exit(). Ignore further kill signals.
+        /**
+         * Was killed, and is calling Thread.exit(). Ignore further kill signals.
+         */
         EXITING,
-        // Thread is uncooperative: needs to be killed with a host exception. Very dangerous state
-        // to be in.
+        /**
+         * Thread is uncooperative: needs to be killed with a host exception. Very dangerous state
+         * to be in.
+         */
         DISSIDENT
     }
 
