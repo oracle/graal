@@ -9,7 +9,7 @@ in any (other) language.
 Create a simple `source-tracing.js` script with following content:
 
 ```js
-instrumenter.on('source', function(ev) {
+ttrace.on('source', function(ev) {
     print(`Loading ${ev.characters.length} characters from ${ev.name}`);
 }, {
     internal: true,
@@ -89,10 +89,202 @@ The result: 42
 ```
 
 What has just happened? The T-Tracing `source-tracing.js` script has used
-the provided `instrumenter` object to attach a *source* listener to the runtime.
+the provided `ttrace` object to attach a *source* listener to the runtime.
 As such, whenever the *node.js* framework loaded internal or user script,
 the listener got notified of it and could take an action - in this case
 printing the length and name of processed script.
+
+## Historam - Use Full Power of Your Language!
+
+Collecting the insight informations isn't limited to simple print statement.
+One can perform any Turing complete computation in your language. Imagine
+following `function-histogram-tracing.js` that counts all method invocations
+and dumps then when the execution of your problem is over:
+
+```js
+print(ttrace);
+
+var map = new Map();
+
+function dumpHistogram() {
+    print("=== Histogram ===");
+    var digits = 3;
+    Array.from(map.entries()).sort((one, two) => two[1] - one[1]).forEach(function (entry) {
+        var number = entry[1].toString();
+        if (number.length >= digits) {
+            digits = number.length;
+        } else {
+            number = Array(digits - number.length + 1).join(' ') + number;
+        }
+        print(`${number} calls to ${entry[0]}`);
+    });
+    print("=================");
+}
+
+ttrace.on('enter', function(ev) {
+    var cnt = map.get(ev.name);
+    if (cnt) {
+        cnt = cnt + 1;
+    } else {
+        cnt = 1;
+    }
+    map.set(ev.name, cnt);
+}, {
+    tags: ['ROOT']
+});
+
+ttrace.on('close', dumpHistogram);
+```
+
+The `map` is a global variable shared inside of the T-Trace script and it 
+shares data between the `ttrace.on('enter')` function and the `dumpHistogram`
+function which runs when the `node` process execution is over (registered via
+`ttrace.on('close', dumpHistogram)`. Invoke as:
+
+```bash
+$ node --ttrace=function-histogram-tracing.js -e "print(6 * 7)"
+Object
+42
+=== Histogram ===
+529 calls to isPosixPathSeparator
+249 calls to NativeModule.exists
+208 calls to NativeModule.require
+206 calls to NativeModule.getCached
+198 calls to E
+198 calls to makeNodeErrorWithCode
+192 calls to NativeModule.nonInternalExists
+192 calls to NativeModule.isInternal
+ 68 calls to process.config
+ 62 calls to :anonymous
+ 61 calls to :program
+ 56 calls to NativeModule
+ 56 calls to NativeModule.cache
+ 56 calls to NativeModule.compile
+ 56 calls to NativeModule.getSource
+ 56 calls to NativeModule.wrap
+ 44 calls to binding
+ 37 calls to :=>
+ 19 calls to internalBinding
+ 16 calls to deprecate
+ 16 calls to validateString
+ 14 calls to uncurryThis
+ 12 calls to inherits
+ 10 calls to getOptionValue
+  8 calls to protoGetter
+  7 calls to addListener
+  7 calls to _addListener
+  7 calls to checkListener
+  6 calls to emit
+  6 calls to isSignal
+  6 calls to copyProps
+  6 calls to normalizeString
+  5 calls to EventEmitter
+  5 calls to EventEmitter.init
+  5 calls to resolve
+  4 calls to emitHookFactory
+  4 calls to debuglog
+  4 calls to getHighWaterMark
+  4 calls to highWaterMarkFrom
+  4 calls to Stream
+  4 calls to getNewAsyncId
+  3 calls to makeSystemErrorWithCode
+  3 calls to makeSafe
+  3 calls to SafeSet
+  3 calls to isEmpty
+  2 calls to makeGetter
+  2 calls to makeSetter
+  2 calls to defineIDLClass
+  2 calls to ImmediateList
+  2 calls to createWritableStdioStream
+  2 calls to WriteStream
+  2 calls to Socket
+  2 calls to _extend
+  2 calls to Duplex
+  2 calls to Readable
+  2 calls to ReadableState
+  2 calls to BufferList
+  2 calls to Writable
+  2 calls to WritableState
+  2 calls to Readable.on
+  2 calls to initSocketHandle
+  2 calls to undestroy
+  2 calls to createWriteErrorHandler
+  2 calls to debug
+  2 calls to runInThisContext
+  2 calls to validateInteger
+  2 calls to shift
+  1 calls to bootstrapInternalLoaders
+  1 calls to bootstrapNodeJSCore
+  1 calls to startup
+  1 calls to setupProcessObject
+  1 calls to setupProcessFatal
+  1 calls to setupProcessICUVersions
+  1 calls to setupGlobalVariables
+  1 calls to makeTextDecoderJS
+  1 calls to patchBufferPrototype
+  1 calls to createPool
+  1 calls to createUnsafeArrayBuffer
+  1 calls to setupAssert
+  1 calls to setupConfig
+  1 calls to setupSignalHandlers
+  1 calls to eventNames
+  1 calls to setupUncaughtExceptionCapture
+  1 calls to setupProcessWarnings
+  1 calls to setupNextTick
+  1 calls to setupPromises
+  1 calls to FixedQueue
+  1 calls to FixedCircularBuffer
+  1 calls to setupStdio
+  1 calls to getMainThreadStdio
+  1 calls to setupProcessStdio
+  1 calls to setupProcessMethods
+  1 calls to setupPosixMethods
+  1 calls to setupRawDebug
+  1 calls to setupHrtime
+  1 calls to setupCpuUsage
+  1 calls to setupMemoryUsage
+  1 calls to setupKillAndExit
+  1 calls to setupChildProcessIpcChannel
+  1 calls to setupGlobalTimeouts
+  1 calls to setupGlobalConsole
+  1 calls to getStdout
+  1 calls to getStderr
+  1 calls to $getMaxListeners
+  1 calls to get
+  1 calls to Console
+  1 calls to setupInspector
+  1 calls to setupGlobalURL
+  1 calls to setupAllowedFlags
+  1 calls to preloadModules
+  1 calls to addBuiltinLibsToObject
+  1 calls to evalScript
+  1 calls to wrapForBreakOnFirstLine
+  1 calls to Module._initPaths
+  1 calls to tryGetCwd
+  1 calls to Module
+  1 calls to updateChildren
+  1 calls to join
+  1 calls to normalize
+  1 calls to Module._nodeModulePaths
+  1 calls to Module._compile
+  1 calls to stripShebang
+  1 calls to dirname
+  1 calls to makeRequireFunction
+  1 calls to require
+  1 calls to Module.require
+  1 calls to Module._load
+  1 calls to Module._resolveFilename
+  1 calls to createScript
+  1 calls to Script
+  1 calls to getRunInContextArgs
+  1 calls to _tickCallback
+  1 calls to emitPromiseRejectionWarnings
+  1 calls to dumpHistogram
+=================
+```
+
+Table with names and counts of function invocations is printed out when the
+`node` process exists (requires fix of GR-18337).
 
 ## TODO:
 
