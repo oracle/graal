@@ -103,6 +103,9 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal private volatile int initState = LOADED;
 
+    @CompilationFinal //
+    boolean needsRecursiveInit = false;
+
     private static final int LOADED = 0;
     private static final int LINKED = 1;
     private static final int PREPARED = 2;
@@ -228,6 +231,11 @@ public final class ObjectKlass extends Klass {
                     if (getSuperKlass() != null) {
                         getSuperKlass().initialize();
                     }
+                    for (ObjectKlass interf : getSuperInterfaces()) {
+                        if (interf.needsRecursiveInit) {
+                            interf.recursiveInitialize();
+                        }
+                    }
                     Method clinit = getClassInitializer();
                     if (clinit != null) {
                         clinit.getCallTarget().call();
@@ -321,6 +329,20 @@ public final class ObjectKlass extends Klass {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             verifyKlass();
             actualInit();
+        }
+    }
+
+    private void recursiveInitialize() {
+        if (!isInitialized()) { // Skip synchronization and locks if already init.
+            if (needsRecursiveInit) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                verifyKlass();
+                actualInit();
+            } else {
+                for (ObjectKlass interf : getSuperInterfaces()) {
+                    interf.recursiveInitialize();
+                }
+            }
         }
     }
 

@@ -126,7 +126,11 @@ class InterfaceTables {
     public static Klass[] getiKlassTable(ObjectKlass thisInterfKlass, Method[] declared) {
         ArrayList<Klass> tmpKlassTable = new ArrayList<>();
         for (int i = 0; i < declared.length; i++) {
-            declared[i].setITableIndex(i);
+            Method method = declared[i];
+            method.setITableIndex(i);
+            if (!method.isAbstract() && !method.isStatic()) {
+                thisInterfKlass.needsRecursiveInit = true;
+            }
         }
         tmpKlassTable.add(thisInterfKlass);
         for (ObjectKlass interf : thisInterfKlass.getSuperInterfaces()) {
