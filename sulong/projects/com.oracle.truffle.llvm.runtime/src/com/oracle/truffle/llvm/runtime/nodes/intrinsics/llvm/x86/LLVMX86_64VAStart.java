@@ -101,27 +101,27 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         this.memmove = memmove;
     }
 
-    private void setGPOffset(Object address, int value) {
+    private void setGPOffset(LLVMPointer address, int value) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.GP_OFFSET);
         gpOffsetStore.executeWithTarget(p, value);
     }
 
-    private void setFPOffset(Object address, int value) {
+    private void setFPOffset(LLVMPointer address, int value) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.FP_OFFSET);
         fpOffsetStore.executeWithTarget(p, value);
     }
 
-    private void setOverflowArgArea(Object address, Object value) {
+    private void setOverflowArgArea(LLVMPointer address, Object value) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.OVERFLOW_ARG_AREA);
         overflowArgAreaStore.executeWithTarget(p, value);
     }
 
-    private void setRegSaveArea(Object address, Object value) {
+    private void setRegSaveArea(LLVMPointer address, Object value) {
         Object p = pointerArithmeticStructInit.executeWithTarget(address, X86_64BitVarArgs.REG_SAVE_AREA);
         regSaveAreaStore.executeWithTarget(p, value);
     }
 
-    private void initializeVaList(Object valist, int gpOffset, int fpOffset, Object overflowArgArea, Object regSaveArea) {
+    private void initializeVaList(LLVMPointer valist, int gpOffset, int fpOffset, Object overflowArgArea, Object regSaveArea) {
         setGPOffset(valist, gpOffset);
         setFPOffset(valist, fpOffset);
         setOverflowArgArea(valist, overflowArgArea);
@@ -229,13 +229,13 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object vaStart(VirtualFrame frame, Object targetAddress) {
+    protected Object vaStart(VirtualFrame frame, LLVMPointer targetAddress) {
         final Object[] arguments = getArgumentsArray(frame);
         final int vaLength = arguments.length - numberOfExplicitArguments;
 
-        Object regSaveArea = stackAllocationNode.executeWithTarget(frame, X86_64BitVarArgs.FP_LIMIT);
+        LLVMPointer regSaveArea = stackAllocationNode.executeWithTarget(frame, X86_64BitVarArgs.FP_LIMIT);
         int overflowArgAreaSize = computeOverflowArgAreaSize(arguments);
-        Object overflowArgArea = stackAllocationNode.executeWithTarget(frame, overflowArgAreaSize);
+        LLVMPointer overflowArgArea = stackAllocationNode.executeWithTarget(frame, overflowArgAreaSize);
 
         int gpOffset = calculateUsedGpArea(arguments);
         int fpOffset = X86_64BitVarArgs.GP_LIMIT + calculateUsedFpArea(arguments);
@@ -269,7 +269,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         return null;
     }
 
-    private static int storeArgument(Object ptr, long offset, LLVMMemMoveNode memmove, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeI64Node,
+    private static int storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeI64Node,
                     LLVMStoreNode storeI32Node, LLVMStoreNode storeFP80Node, LLVMStoreNode storePointerNode, Object object) {
         if (object instanceof Number) {
             return doPrimitiveWrite(ptr, offset, pointerArithmetic, storeI64Node, object);
@@ -299,7 +299,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         }
     }
 
-    private static int doPrimitiveWrite(Object ptr, long offset, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeNode, Object arg) throws AssertionError {
+    private static int doPrimitiveWrite(LLVMPointer ptr, long offset, LLVMIncrementPointerNode pointerArithmetic, LLVMStoreNode storeNode, Object arg) throws AssertionError {
         Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset);
         long value;
         if (arg instanceof Boolean) {

@@ -135,8 +135,8 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         }
 
         @Specialization(replaces = "doCachedPointer")
-        String doReadString(Object address) {
-            Object ptr = address;
+        String doReadString(LLVMPointer address) {
+            LLVMPointer ptr = address;
             int length = 0;
             while ((byte) read.executeWithTarget(ptr) != 0) {
                 length++;
