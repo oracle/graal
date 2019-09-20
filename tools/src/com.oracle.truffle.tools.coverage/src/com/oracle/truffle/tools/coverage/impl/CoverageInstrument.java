@@ -98,12 +98,11 @@ public class CoverageInstrument extends TruffleInstrument {
 
                         }
                     });
-
     // @formatter:off
     @Option(name = "", help = "Enable Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-    @Option(name = "Count", help = "Keep count of each element's coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Boolean> COUNT = new OptionKey<>(false);
+    @Option(help = "Keep count of each element's coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    static final OptionKey<Boolean> Count = new OptionKey<>(false);
     @Option(name = "Output", help = "", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER, stability = OptionStability.STABLE)
@@ -253,7 +252,7 @@ public class CoverageInstrument extends TruffleInstrument {
         final OptionValues options = env.getOptions();
         enabled = ENABLED.getValue(options);
         if (enabled) {
-            tracker.start(new CoverageTracker.Config(getSourceSectionFilter(options), COUNT.getValue(options)));
+            tracker.start(new CoverageTracker.Config(getSourceSectionFilter(options), Count.getValue(options)));
         }
     }
 
@@ -285,9 +284,7 @@ public class CoverageInstrument extends TruffleInstrument {
     enum Output {
         HISTOGRAM,
         LINES,
-
         JSON,
-
     }
 
 }
