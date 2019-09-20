@@ -73,9 +73,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     function.execute();
                 }
             }
-            System.out.println("---------------- test output");
             final Value result = function.execute();
-            System.out.println("----------------");
             validateResult(testCase.data.resultValidator, result);
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
@@ -125,8 +123,12 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         for (WasmTestCase testCase : qualifyingTestCases) {
             String statusIcon = "\u003F";
             try {
+                // We print each test name behind the line of test status icons,
+                // so that we know which test failed in case the VM exits suddenly.
+                // If the test fails normally or succeeds, then we move the cursor to the left,
+                // and erase the test name.
                 System.out.print(" ");
-                System.out.println(testCase.name);
+                System.out.print(testCase.name);
                 System.out.flush();
                 runTestCase(testCase);
                 statusIcon = "\uD83D\uDE0D";
