@@ -177,6 +177,7 @@ public final class TRegexCompilationRequest {
         } else if (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry()) {
             executorNodeBackward = createDFAExecutor(nfa, false, false, false);
         }
+        logAutomatonSizes(rootNode);
         return new TRegexExecRootNode.LazyCaptureGroupRegexSearchNode(
                         tRegexCompiler.getLanguage(), source, ast.getFlags(), preCalculatedResults,
                         rootNode.createEntryNode(executorNodeForward),
@@ -334,7 +335,8 @@ public final class TRegexCompilationRequest {
                         Json.prop("flags", source.getFlags()),
                         Json.prop("props", ast == null ? new RegexProperties() : ast.getProperties()),
                         Json.prop("astNodes", ast == null ? 0 : ast.getNumberOfNodes()),
-                        Json.prop("nfaStates", nfa == null ? 0 : nfa.getStates().length),
+                        Json.prop("nfaStates", nfa == null ? 0 : nfa.getNumberOfStates()),
+                        Json.prop("nfaTransitions", nfa == null ? 0 : nfa.getNumberOfTransitions()),
                         Json.prop("dfaStatesFwd", executorNodeForward == null ? 0 : executorNodeForward.getNumberOfStates()),
                         Json.prop("dfaStatesBck", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfStates()),
                         Json.prop("dfaStatesCG", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfStates()),

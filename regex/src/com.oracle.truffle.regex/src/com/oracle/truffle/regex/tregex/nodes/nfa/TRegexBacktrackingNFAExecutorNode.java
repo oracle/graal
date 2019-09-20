@@ -57,6 +57,11 @@ public class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode {
                                 GroupBoundaries.getEmptyInstance()));
             }
         }
+        for (int i = 0; i < nfa.getNumberOfTransitions(); i++) {
+            if (nfa.getTransitions()[i] != null) {
+                nfa.getTransitions()[i].getGroupBoundaries().materializeArrays();
+            }
+        }
     }
 
     public int getNumberOfCaptureGroups() {

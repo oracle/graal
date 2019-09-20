@@ -46,7 +46,6 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public final class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
 
     private final ArrayList<Term> terms = new ArrayList<>();
-    private short groupIndex;
     private short visitorIterationIndex = 0;
 
     Sequence() {
@@ -75,15 +74,6 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
     public void setParent(RegexASTNode parent) {
         assert parent instanceof Group;
         super.setParent(parent);
-    }
-
-    public short getGroupIndex() {
-        assert getParent().getAlternatives().get(groupIndex) == this;
-        return groupIndex;
-    }
-
-    public void setGroupIndex(int groupIndex) {
-        this.groupIndex = (short) groupIndex;
     }
 
     /**
@@ -236,6 +226,26 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
             }
         }
         return super.getSourceSection();
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof Sequence)) {
+            return false;
+        }
+        Sequence o = (Sequence) obj;
+        if (size() != o.size()) {
+            return false;
+        }
+        for (int i = 0; i < size(); i++) {
+            if (!terms.get(i).equalsSemantic(o.terms.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @TruffleBoundary

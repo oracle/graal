@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token;
 
@@ -70,6 +72,17 @@ public abstract class Term extends RegexASTNode {
     public void setQuantifier(Token.Quantifier quantifier) {
         this.quantifier = quantifier;
     }
+
+    boolean quantifierEquals(Term o) {
+        return Objects.equals(quantifier, o.quantifier);
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj) {
+        return equalsSemantic(obj, false);
+    }
+
+    public abstract boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier);
 
     @TruffleBoundary
     protected String quantifierToString() {

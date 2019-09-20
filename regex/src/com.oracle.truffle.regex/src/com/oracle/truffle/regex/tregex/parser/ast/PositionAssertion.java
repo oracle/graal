@@ -63,7 +63,7 @@ public class PositionAssertion extends Term {
 
     /**
      * Creates a {@link PositionAssertion} node of the given kind.
-     * 
+     *
      * @param type the kind of position assertion to create
      * @see Type
      */
@@ -89,6 +89,13 @@ public class PositionAssertion extends Term {
         this.next = next;
     }
 
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        assert !hasQuantifier();
+        return obj instanceof PositionAssertion && ((PositionAssertion) obj).type == type;
+    }
+
+    @TruffleBoundary
     @Override
     public String toString() {
         switch (type) {

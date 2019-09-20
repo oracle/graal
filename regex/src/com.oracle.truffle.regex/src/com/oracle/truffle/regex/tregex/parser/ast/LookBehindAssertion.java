@@ -101,6 +101,12 @@ public class LookBehindAssertion extends LookAroundAssertion {
         return isNegated() ? "?<!" : "?<=";
     }
 
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        assert !hasQuantifier();
+        return this == obj || (obj instanceof LookBehindAssertion && groupEqualsSemantic((LookBehindAssertion) obj));
+    }
+
     @TruffleBoundary
     @Override
     public JsonValue toJson() {

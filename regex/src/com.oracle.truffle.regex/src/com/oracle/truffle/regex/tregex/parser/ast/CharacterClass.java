@@ -96,6 +96,18 @@ public class CharacterClass extends Term {
         this.charSet = charSet;
     }
 
+    public boolean wasSingleChar() {
+        return isFlagSet(FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR);
+    }
+
+    public void setWasSingleChar() {
+        setWasSingleChar(true);
+    }
+
+    public void setWasSingleChar(boolean value) {
+        setFlag(FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR, value);
+    }
+
     public void addLookBehindEntry(RegexAST ast, Group lookBehindEntry) {
         if (lookBehindEntries == null) {
             lookBehindEntries = new ASTNodeSet<>(ast);
@@ -145,6 +157,11 @@ public class CharacterClass extends Term {
             literal[i] = c1;
             mask[i] = (char) 0;
         }
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        return obj instanceof CharacterClass && ((CharacterClass) obj).getCharSet().equals(charSet) && (ignoreQuantifier || quantifierEquals((CharacterClass) obj));
     }
 
     @TruffleBoundary

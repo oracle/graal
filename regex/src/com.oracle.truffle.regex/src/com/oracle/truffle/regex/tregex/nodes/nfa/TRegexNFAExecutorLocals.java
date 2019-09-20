@@ -58,6 +58,10 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         curStatesLength += frameSize;
     }
 
+    public boolean curStatesEmpty() {
+        return curStatesLength == 0;
+    }
+
     public boolean successorsEmpty() {
         return nextStatesLength == 0;
     }

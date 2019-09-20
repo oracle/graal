@@ -111,7 +111,11 @@ public class Token implements JsonConvertible {
     }
 
     public static Token createCharClass(CodePointSet codePointSet) {
-        return new CharacterClass(codePointSet);
+        return new CharacterClass(codePointSet, false);
+    }
+
+    public static Token createCharClass(CodePointSet codePointSet, boolean wasSingleChar) {
+        return new CharacterClass(codePointSet, wasSingleChar);
     }
 
     public static Token createLookAheadAssertionBegin(boolean negated) {
@@ -223,10 +227,12 @@ public class Token implements JsonConvertible {
     public static final class CharacterClass extends Token {
 
         private final CodePointSet codePointSet;
+        private final boolean wasSingleChar;
 
-        public CharacterClass(CodePointSet codePointSet) {
+        public CharacterClass(CodePointSet codePointSet, boolean wasSingleChar) {
             super(Kind.charClass);
             this.codePointSet = codePointSet;
+            this.wasSingleChar = wasSingleChar;
         }
 
         @TruffleBoundary
@@ -237,6 +243,10 @@ public class Token implements JsonConvertible {
 
         public CodePointSet getCodePointSet() {
             return codePointSet;
+        }
+
+        public boolean wasSingleChar() {
+            return wasSingleChar;
         }
     }
 
