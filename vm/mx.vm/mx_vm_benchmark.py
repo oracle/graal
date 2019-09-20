@@ -353,12 +353,14 @@ mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={
 
 
 def register_graalvm_vms():
-    graalvm_hostvm_name = mx_vm.graalvm_dist_name().lower().replace('_', '-')
-    for config_name, java_args, launcher_args, priority in mx_sdk.graalvm_hostvm_configs:
-        mx_benchmark.java_vm_registry.add_vm(GraalVm(graalvm_hostvm_name, config_name, java_args, launcher_args), _suite, priority)
-    if mx_vm.has_component('svm'):
-        _native_image_vm_registry.add_vm(NativeImageBuildVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
-        _gu_vm_registry.add_vm(GuVm(graalvm_hostvm_name, 'default', [], []), _suite, 10)
+    default_host_vm_name = mx_vm.graalvm_dist_name().lower().replace('_', '-')
+    host_vm_names = [default_host_vm_name] + ([default_host_vm_name.replace('-java8', '')] if '-java8' in default_host_vm_name else [])
+    for host_vm_name in host_vm_names:
+        for config_name, java_args, launcher_args, priority in mx_sdk.graalvm_hostvm_configs:
+            mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
+        if mx_vm.has_component('svm'):
+            _native_image_vm_registry.add_vm(NativeImageBuildVm(host_vm_name, 'default', [], []), _suite, 10)
+            _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
     # We support only EE and CE configuration for native-image benchmarks
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
