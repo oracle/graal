@@ -129,9 +129,16 @@ public final class CoverageTracker implements AutoCloseable {
         if (tracking) {
             throw new IllegalStateException("Coverage Tracker is already tracking");
         }
+        clearData();
         tracking = true;
         final Instrumenter instrumenter = env.getInstrumenter();
         instrument(config, instrumenter);
+    }
+
+    private synchronized void clearData() {
+        this.loadedRoots.clear();
+        this.loadedStatements.clear();
+        this.coverageNodes.clear();
     }
 
     public synchronized void end() {

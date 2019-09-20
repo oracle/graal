@@ -29,8 +29,10 @@ import java.io.ByteArrayOutputStream;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tools.coverage.CoverageTracker;
 import com.oracle.truffle.tools.coverage.RootCoverage;
@@ -40,12 +42,15 @@ import com.oracle.truffle.tools.coverage.impl.CoverageInstrument;
 
 public final class CoverageTest {
 
-    private final String defaultSource = "ROOT(\n" +
+    private static final String defaultSourceString = "ROOT(\n" +
                     "DEFINE(foo,ROOT(SLEEP(1))),\n" +
                     "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo))))),\n" +
                     "DEFINE(neverCalled,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar))))),\n" +
                     "CALL(bar)\n" +
                     ")";
+    private static final Source defaultSource = makeSource(defaultSourceString);
+    private ByteArrayOutputStream out;
+    private ByteArrayOutputStream err;
 
     private static Source makeSource(String s) {
         return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").buildLiteral();
@@ -69,13 +74,21 @@ public final class CoverageTest {
         return count;
     }
 
+    private static SourceCoverage[] sleepAndGetCoverage(CoverageTracker tracker) throws InterruptedException {
+        Thread.sleep(100);
+        return tracker.getCoverage();
+    }
+
+    @Before
+    public void setUp() {
+        out = new ByteArrayOutputStream();
+        err = new ByteArrayOutputStream();
+    }
+
     @Test
     public void testBasic() {
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        final ByteArrayOutputStream err = new ByteArrayOutputStream();
         Context context = Context.newBuilder().in(System.in).out(out).err(err).option(CoverageInstrument.ID, "true").build();
-        Source source = makeSource(defaultSource);
-        context.eval(source);
+        context.eval(defaultSource);
         final CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine());
         final SourceCoverage[] coverage = tracker.getCoverage();
         Assert.assertEquals("Unexpected number of sources in coverage", 1, coverage.length);
@@ -96,5 +109,41 @@ public final class CoverageTest {
                     break;
             }
         }
+    }
+
+    @Test
+    public void testMultiThreaded() throws InterruptedException {
+        // Setup
+        final Context context = Context.newBuilder().in(System.in).out(out).err(err).build();
+        boolean[] done = new boolean[1];
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!done[0]) {
+                    context.eval(defaultSource);
+                }
+            }
+        });
+        thread.start();
+        final CoverageTracker tracker = CoverageInstrument.getTracker(context.getEngine());
+        // Is the coverage empty when not tracking?
+        Assert.assertEquals(0, sleepAndGetCoverage(tracker).length);
+        // Start tracking
+        tracker.start(new CoverageTracker.Config(SourceSectionFilter.ANY, true));
+        // Is the coverage non-empty when tracking?
+        final SourceCoverage[] initial = sleepAndGetCoverage(tracker);
+        Assert.assertEquals(1, initial.length);
+        // Is the coverage growing?
+        final SourceCoverage[] grown = sleepAndGetCoverage(tracker);
+        Assert.assertEquals(1, grown.length);
+        Assert.assertTrue(grown[0].getRoots()[0].getCount() > initial[0].getRoots()[0].getCount());
+        // Does the coverage stop growing when we end?
+        tracker.end();
+        final SourceCoverage[] afterEnd = sleepAndGetCoverage(tracker);
+        final SourceCoverage[] afterEnd2 = sleepAndGetCoverage(tracker);
+        Assert.assertEquals(afterEnd[0].getRoots()[0].getCount(), afterEnd2[0].getRoots()[0].getCount());
+        // Teardown
+        done[0] = true;
+        thread.join();
     }
 }
