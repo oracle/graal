@@ -33,13 +33,15 @@
 					"source.ruby",
 					"source.js",
 					"source.r",
-					"source.python"
+					"source.python",
+					"source.sl"
 				],
 				"scopeName": "ruby-inline.polyglot-langauges",
 				"embeddedLanguages": {
 					"meta.embedded.inline.js": "javascript",
 					"meta.embedded.inline.python": "python",
-					"meta.embedded.inline.r": "r"
+					"meta.embedded.inline.r": "r",
+					"meta.embedded.inline.sl": "sl"
 				}
 			}
 		],
