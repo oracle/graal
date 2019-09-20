@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Constant;
+import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -222,11 +222,11 @@ public abstract class ConstantPool {
         }
     }
 
-    public final Symbol<Constant> stringAt(int index) {
+    public final Symbol<ModifiedUTF8> stringAt(int index) {
         return stringAt(index, null);
     }
 
-    public final Symbol<Constant> stringAt(int index, String description) {
+    public final Symbol<ModifiedUTF8> stringAt(int index, String description) {
         try {
             final StringConstant constant = (StringConstant) at(index);
             return constant.getSymbol(this);

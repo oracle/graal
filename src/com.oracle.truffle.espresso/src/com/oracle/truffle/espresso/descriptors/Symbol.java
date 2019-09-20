@@ -52,7 +52,7 @@ import sun.misc.VM;
  * Symbols can be tagged, with no runtime cost, for additional type safety:
  * <ul>
  * <li>Symbol&lt;{@link Name}&gt; identifiers, field/class/method names.
- * <li>Symbol&lt;{@link Constant}&gt; strings from the constant pool.
+ * <li>Symbol&lt;{@link ModifiedUTF8}&gt; strings from the constant pool.
  * <li>Symbol&lt;? extends {@link Descriptor}&gt; valid types or signatures
  * <li>Symbol&lt;{@link Signature}&gt; valid signature descriptor in internal form
  * <li>Symbol&lt;{@link Type}&gt; valid type descriptor in internal form
@@ -78,11 +78,11 @@ public final class Symbol<T> extends ByteSequence {
         return EMPTY_ARRAY;
     }
 
-    public final ByteSequence substring(int from) {
+    final ByteSequence substring(int from) {
         return substring(from, length());
     }
 
-    public final ByteSequence substring(int from, int to) {
+    final ByteSequence substring(int from, int to) {
         assert 0 <= from && from <= to && to <= length();
         if (from == 0 && to == length()) {
             return this;
@@ -90,7 +90,7 @@ public final class Symbol<T> extends ByteSequence {
         return subSequence(from, to - from);
     }
 
-    public static void copyBytes(Symbol<?> src, int srcPos, byte[] dest, int destPos, int length) {
+    static void copyBytes(Symbol<?> src, int srcPos, byte[] dest, int destPos, int length) {
         System.arraycopy(src.value, srcPos, dest, destPos, length);
     }
 
@@ -118,10 +118,12 @@ public final class Symbol<T> extends ByteSequence {
         return 0;
     }
 
-    private static class ModifiedUTF8 {
-    }
+    public static class ModifiedUTF8 {
 
-    public static final class Constant extends ModifiedUTF8 {
+        @SuppressWarnings("unchecked")
+        public static Symbol<ModifiedUTF8> fromSymbol(Symbol<? extends ModifiedUTF8> symbol) {
+            return (Symbol<ModifiedUTF8>) symbol;
+        }
     }
 
     public static class Descriptor extends ModifiedUTF8 {
