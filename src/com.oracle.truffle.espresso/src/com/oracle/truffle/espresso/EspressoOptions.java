@@ -189,6 +189,16 @@ public final class EspressoOptions {
                                 String value = parts[1];
                                 switch (key) {
                                     case "address":
+                                        long realValue;
+                                        try {
+                                            realValue = Long.valueOf(value);
+                                            if (realValue < 0 || realValue > 65535) {
+                                                throw new IllegalArgumentException("Invalid option for -Xrunjdwp, address: " + value + ". Must be in the 0 - 65535 range.");
+                                            }
+                                        }
+                                        catch(NumberFormatException ex) {
+                                            throw new IllegalArgumentException("Invalid option for -Xrunjdwp, address is not a number. Must be a number in the 0 - 65535 range.");
+                                        }
                                         address = value;
                                         break;
                                     case "transport":
