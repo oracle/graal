@@ -94,7 +94,7 @@ As such, whenever the *node.js* framework loaded internal or user script,
 the listener got notified of it and could take an action - in this case
 printing the length and name of processed script.
 
-## Historam - Use Full Power of Your Language!
+## Histogram - Use Full Power of Your Language!
 
 Collecting the insight informations isn't limited to simple print statement.
 One can perform any Turing complete computation in your language. Imagine
@@ -175,6 +175,63 @@ Object
 Table with names and counts of function invocations is printed out when the
 `node` process exists (requires fix of GR-18337).
 
+## Minimal Overhead
+
+With all the power the **T-Trace** framework brings, it is fair to ask what's
+the overhead when the insights are applied? The overhead of course depends
+on what your scripts do. When they add and spread complex computations
+all around your code base, then the price for the computation will be payed.
+However, that would be overhead of your code, not of the instrumentation! Let's
+thus measure overhead of a simple `function-count.js` script:
+
+```js
+print(ttrace);
+
+var count = 0;
+function dumpCount() {
+    print(`${count} functions have been executed`);
+}
+
+ttrace.on('enter', function(ev) {
+    count++;
+}, {
+    tags: ['ROOT']
+});
+
+ttrace.on('close', dumpCount);
+```
+
+Let's use the script on fifty iteration of [sieve.js](https://github.com/jtulach/sieve/blob/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js)
+sample which uses a variant of the Sieve of Erathostenes to compute one hundred
+thousand of prime numbers. Repeating the computation fifty times gives the
+runtime a chance to warm up and properly optimize. Here is the optimal run:
+
+```bash
+$ graalvm/bin/js sieve.js | tail -n 5
+Computed 12416 primes in 4 ms. Last one is 133033
+Computed 24832 primes in 11 ms. Last one is 284831
+Computed 49664 primes in 27 ms. Last one is 607417
+Computed 99328 primes in 69 ms. Last one is 1289927
+Hundred thousand prime numbers in 69 ms
+```
+
+and now let's compare it to the time running with the T-Trace script:
+
+```bash
+$ graalvm/bin/js --ttrace=function-count.js sieve.js | tail -n 5
+Computed 24832 primes in 11 ms. Last one is 284831
+Computed 49664 primes in 28 ms. Last one is 607417
+Computed 99328 primes in 70 ms. Last one is 1289927
+Hundred thousand prime numbers in 71 ms
+142770421 functions have been executed
+```
+
+Two milliseconds!? Seriously? Yes, seriously. The T-Trace framework
+blends the difference between application code and insight gathering scripts
+making all the code work as one! The `count++` invocation becomes natural part of
+the application at all the places representing `ROOT` of application functions.
+**T-Trace** system gives you unlimited instrumentation power at no cost!
+
 ## TODO:
 
 Apply the **T-Trace** insights to scripts running in *node.js* or
@@ -195,9 +252,6 @@ in a completely language agnostic way.
 
 - C, C++, Rust, Fortran, etc. - Enrich your static code behavior 
 by attaching your insights written in dynamic languages.
-
-- Your applications are inherently ready for
-tracing without giving up any speed. 
 
 - powerful tools to help you write, debug, manage, and organize
 your **T-Trace** insights scripts. It is a matter of pressing a single button
