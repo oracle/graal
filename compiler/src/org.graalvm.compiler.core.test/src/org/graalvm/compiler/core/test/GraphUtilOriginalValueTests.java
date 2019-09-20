@@ -28,12 +28,20 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
+import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.junit.Assert;
 import org.junit.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Unit tests derived from https://github.com/oracle/graal/pull/1690.
  */
-public class ConstantFoldingDuringParsingTests extends GraalCompilerTest {
+public class GraphUtilOriginalValueTests extends CustomizedBytecodePatternTest {
 
     static class LinkedNode {
         LinkedNode next;
@@ -102,5 +110,67 @@ public class ConstantFoldingDuringParsingTests extends GraalCompilerTest {
         cs1.getTarget();
         cs2.getTarget();
         test("findTarget", cs3.getTarget());
+    }
+
+    @Override
+    protected byte[] generateClass(String internalClassName) {
+        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+        cw.visit(52, ACC_SUPER | ACC_PUBLIC, internalClassName, null, "java/lang/Object", null);
+
+        String getDescriptor = "(Ljava/lang/Object;)V";
+        MethodVisitor m = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "unbalancedMonitors", getDescriptor, null, null);
+        Label loopHead = new Label();
+        Label end = new Label();
+        m.visitCode();
+
+        // @formatter:off
+        /*
+         * void unbalancedMonitors(Object o) {
+         *     monitorenter(o);
+         *     while (o.toString() != o) {
+         *         monitorexit(o);
+         *         o = o.toString();
+         *     }
+         * }
+         */
+        // @formatter:on
+
+        m.visitVarInsn(ALOAD, 0);
+        m.visitInsn(MONITORENTER);
+        m.visitLabel(loopHead);
+        m.visitVarInsn(ALOAD, 0);
+        m.visitInsn(MONITOREXIT);
+        m.visitVarInsn(ALOAD, 0);
+        m.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Object", "toString", "()Ljava/lang/String;", false);
+        m.visitVarInsn(ALOAD, 0);
+        m.visitJumpInsn(IF_ACMPEQ, end);
+        m.visitVarInsn(ALOAD, 0);
+        m.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Object", "toString", "()Ljava/lang/String;", false);
+        m.visitVarInsn(ASTORE, 0);
+        m.visitJumpInsn(GOTO, loopHead);
+        m.visitLabel(end);
+        m.visitInsn(RETURN);
+        m.visitMaxs(2, 2);
+        m.visitEnd();
+
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /**
+     * Tests that the use of {@link GraphUtil#originalValue} in parsing MONITOREXIT correctly
+     * detects unbalanced monitors.
+     */
+    @Test
+    public void testUnbalancedMonitors() throws ClassNotFoundException {
+        Class<?> testClass = getClass("UnbalancedMonitors");
+        ResolvedJavaMethod t1 = getResolvedJavaMethod(testClass, "unbalancedMonitors");
+        try {
+            parseForCompile(t1);
+            Assert.fail("expected a " + BailoutException.class.getName());
+        } catch (BailoutException e) {
+            String msg = e.getMessage();
+            Assert.assertTrue(msg, msg.startsWith("unbalanced monitors: mismatch at monitorexit"));
+        }
     }
 }
