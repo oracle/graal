@@ -833,8 +833,8 @@ class StdoutUnstripping:
                     candidate = e + '.map'
                     if exists(candidate):
                         if self.mapFiles is None:
-                            self.mapFiles = set()
-                        self.mapFiles.add(candidate)
+                            self.mapFiles = []
+                        self.mapFiles.append(candidate)
             self.capture = mx.OutputCapture()
             self.out = mx.TeeOutputCapture(self.capture)
             self.err = self.out
@@ -849,7 +849,7 @@ class StdoutUnstripping:
                         inputFile.write(data)
                         inputFile.flush()
                         retraceOut = mx.OutputCapture()
-                        unstrip_args = [m for m in self.mapFiles] + [inputFile.name]
+                        unstrip_args = [m for m in set(self.mapFiles)] + [inputFile.name]
                         mx.unstrip(unstrip_args, out=retraceOut)
                         if data != retraceOut.data:
                             mx.log('>>>> BEGIN UNSTRIPPED OUTPUT')
@@ -872,7 +872,8 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
         args = ['@' + add_exports] + args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
-    with StdoutUnstripping(args, out, err) as u:
+    map_file = join(graaljdk.home, 'proguard.map')
+    with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
         return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
 
 _JVMCI_JDK_TAG = 'jvmci'
@@ -1058,7 +1059,7 @@ def makegraaljdk_cli(args):
     if args.license:
         shutil.copy(args.license, join(dst_jdk_dir, 'LICENSE'))
     if args.bootstrap:
-        map_file = dst_jdk_dir + '.map'
+        map_file = join(dst_jdk_dir, 'proguard.map')
         with StdoutUnstripping(args=[], out=None, err=None, mapFiles=[map_file]) as u:
             select_graal = [] if jdk_enables_jvmci_by_default(dst_jdk) else ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']
             mx.run([dst_jdk.java] + select_graal + ['-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
@@ -1231,7 +1232,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
         unstrip_map = mx.make_unstrip_map(_graal_config().dists)
         if unstrip_map:
-            with open(tmp_dst_jdk_dir + '.map', 'w') as fp:
+            with open(join(tmp_dst_jdk_dir, 'proguard.map'), 'w') as fp:
                 fp.write(unstrip_map)
 
     except:
