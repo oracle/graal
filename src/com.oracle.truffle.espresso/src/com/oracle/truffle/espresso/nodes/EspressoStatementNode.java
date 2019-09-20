@@ -48,10 +48,6 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
         return StaticObject.NULL;
     }
 
-    public int getLineNumberTableEntry() {
-        return lineNumber;
-    }
-
     @Override
     public SourceSection getSourceSection() {
         Source s = getBytecodesNode().getSource();
@@ -78,14 +74,6 @@ public final class EspressoStatementNode extends EspressoInstrumentableNode {
         }
         assert !(parent instanceof WrapperNode);
         return (BytecodesNode) parent;
-    }
-
-    public boolean isAfter(int bci) {
-        return bci == startBci;
-    }
-
-    public boolean isBefore(int bci) {
-        return bci == startBci;
     }
 
 }
