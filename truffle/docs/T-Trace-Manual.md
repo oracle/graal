@@ -179,7 +179,7 @@ Table with names and counts of function invocations is printed out when the
 
 So far the examples used `node.js`, but the **T-Trace** system isn't tight
 to Node at all - it is available in all the environments GraalVM provides.
-Let's try it on `bin/js` plain JavaScript implementation that comes with 
+Let's try it on `bin/js` - pure JavaScript implementation that comes with 
 GraalVM. Let's define `function-tracing.js` script as:
 
 ```js
@@ -198,8 +198,8 @@ ttrace.on('enter', function(ev) {
 });
 ```
 
-and run it on top of [sieve.js](https://github.com/jtulach/sieve/blob/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js)
-- a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred
+and run it on top of [sieve.js](https://github.com/jtulach/sieve/blob/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js) - 
+a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred
 thousand of prime numbers:
 
 ```bash
@@ -296,6 +296,8 @@ making all the code work as one! The `count++` invocation becomes natural part o
 the application at all the places representing `ROOT` of application functions.
 **T-Trace** system gives you unlimited instrumentation power at no cost!
 
+<!--
+
 ## TODO:
 
 Apply the **T-Trace** insights to scripts running in *node.js* or
@@ -330,3 +332,5 @@ virtual machines. Connect to them on demand. Apply selected insights. Let
 them gather their data. Obtain the data and analyze them with the integrated
 graphical tools. Disable the insights and disconnect. Let the application run
 at its original full speed.
+
+-->
