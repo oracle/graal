@@ -1170,7 +1170,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         else:
             module_dists = _graal_config().dists
             _check_using_latest_jars(module_dists)
-            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names)
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names)
             jre_dir = tmp_dst_jdk_dir
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
             if export_truffle:

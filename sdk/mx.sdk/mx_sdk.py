@@ -410,7 +410,7 @@ def jdk_enables_jvmci_by_default(jdk):
         setattr(jdk, '.enables_jvmci_by_default', any('EnableJVMCI' in line and 'true' in line for line in out.lines))
     return getattr(jdk, '.enables_jvmci_by_default')
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create'):
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -427,8 +427,10 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                        "create" - an empty module is created
                         "error" - raise an error
                            None - do nothing
-
+    :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
     """
+    assert callable(with_source)
+
     if jdk.javaCompliance < '9':
         mx.abort('Cannot derive a new JDK from ' + jdk.home + ' with jlink since it is not JDK 9 or later')
 
@@ -505,22 +507,26 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                 for name in zf.namelist():
                     if not name.endswith('/'):
                         dst_src_zip_contents[name] = zf.read(name)
+        else:
+            mx.warn("Missing source file '{}'".format(jdk_src_zip))
 
         for jmd in modules:
-            # Remove existing sources for module
+            # Remove existing sources for all the modules that we include
             dst_src_zip_contents = {key : dst_src_zip_contents[key] for key in dst_src_zip_contents if not key.startswith(jmd.name)}
 
-            # Extract module sources
-            jmd_src_zip = jmd.jarpath[0:-len('.jar')] + '.src.zip'
-            if isfile(jmd_src_zip):
-                mx.logv('[Extracting ' + jmd_src_zip + ']')
-                with ZipFile(jmd_src_zip, 'r') as zf:
-                    for name in zf.namelist():
-                        if not name.endswith('/'):
-                            dst_src_zip_contents[jmd.name + '/' + name] = zf.read(name)
+            if with_source(jmd.dist):
+                # Add the sources that we can share.
+                # Extract module sources
+                jmd_src_zip = jmd.jarpath[0:-len('.jar')] + '.src.zip'
+                if isfile(jmd_src_zip):
+                    mx.logv('[Extracting ' + jmd_src_zip + ']')
+                    with ZipFile(jmd_src_zip, 'r') as zf:
+                        for name in zf.namelist():
+                            if not name.endswith('/'):
+                                dst_src_zip_contents[jmd.name + '/' + name] = zf.read(name)
 
-            # As module-info.java to sources
-            dst_src_zip_contents[jmd.name + '/module-info.java'] = jmd.as_module_info(extras_as_comments=False)
+                # Add module-info.java to sources
+                dst_src_zip_contents[jmd.name + '/module-info.java'] = jmd.as_module_info(extras_as_comments=False)
 
         # Now build the new JDK image with jlink
         jlink = [jdk.javac.replace('javac', 'jlink')]

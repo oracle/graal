@@ -1273,14 +1273,19 @@ class GraalVmJImage(mx.Project):
                 for name in files:
                     yield join(root, name), join(relpath(root, logical_root), name)
 
+
 class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def __init__(self, subject, args):
         super(GraalVmJImageBuildTask, self).__init__(args, 1, subject)
 
     def build(self):
-        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps)
+        with_source = lambda dep: not isinstance(dep, mx.Dependency) or (_include_sources() and dep.isJARDistribution() and not dep.is_stripped())
+        mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source)
 
     def needsBuild(self, newestInput):
+        # It should rebuild also when:
+        # - sources are/are_not included.
+        # - when files are deleted from the base JDK
         sup = super(GraalVmJImageBuildTask, self).needsBuild(newestInput)
         if sup[0]:
             return sup
