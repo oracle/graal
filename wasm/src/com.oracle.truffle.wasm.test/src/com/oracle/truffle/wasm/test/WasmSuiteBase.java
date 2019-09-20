@@ -60,7 +60,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         try {
             byte[] binary = testCase.selfCompile();
             Context.Builder contextBuilder = Context.newBuilder("wasm");
-            if (WasmTestOptions.LOG_LEVEL != null) {
+            if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);
             }
             contextBuilder.option("wasm.PredefinedModules", includedExternalModules());
@@ -73,7 +73,9 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     function.execute();
                 }
             }
+            System.out.println("---------------- test output");
             final Value result = function.execute();
+            System.out.println("----------------");
             validateResult(testCase.data.resultValidator, result);
         } catch (InterruptedException | IOException e) {
             Assert.fail(String.format("Test %s failed: %s", testCase.name, e.getMessage()));
@@ -124,7 +126,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             String statusIcon = "\u003F";
             try {
                 System.out.print(" ");
-                System.out.print(testCase.name);
+                System.out.println(testCase.name);
                 System.out.flush();
                 runTestCase(testCase);
                 statusIcon = "\uD83D\uDE0D";
