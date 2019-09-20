@@ -1,8 +1,12 @@
-# T-Trace: User's Handle to the Ultimate Tracing and Insights Gathering
+# T-Trace: Hacker's Handle to the Ultimate Tracing Framework
 
-[T-Trace](T-Trace.md) is an end user friendly tool for tracing and
+[T-Trace](T-Trace.md) is a hacker friendly tool for tracing and
 instrumentation of scripts written in any language by scripts written
-in any (other) language.
+in any (other) language. It allows a moderately skilled hacker to 
+create so called **T-Trace** snippets and dynamically apply them to 
+the actual programs. That allows gathering of ultimate insights about 
+the execution and behavior without compromising the speed of the execution. 
+Let's get started with an obligatory Hello World example.
 
 ## Hello World!
 
@@ -17,7 +21,7 @@ ttrace.on('source', function(ev) {
 });
 ```
 launch your GraalVM's `bin/node` launcher with the `--ttrace` instrument and
-observer what scripts are being loaded and evaluated:
+observe what scripts are being loaded and evaluated:
 
 ```bash
 $ node --ttrace=source-tracing.js -e "print('The result: ' + 6 * 7)"
@@ -88,7 +92,7 @@ Loading 29 characters from [eval]
 The result: 42
 ```
 
-What has just happened? The T-Tracing `source-tracing.js` script has used
+What has just happened? The *T-Tracing* `source-tracing.js` script has used
 the provided `ttrace` object to attach a *source* listener to the runtime.
 As such, whenever the *node.js* framework loaded internal or user script,
 the listener got notified of it and could take an action - in this case
@@ -96,10 +100,10 @@ printing the length and name of processed script.
 
 ## Histogram - Use Full Power of Your Language!
 
-Collecting the insight informations isn't limited to simple print statement.
+Collecting the insights information isn't limited to simple print statement.
 One can perform any Turing complete computation in your language. Imagine
 following `function-histogram-tracing.js` that counts all method invocations
-and dumps then when the execution of your problem is over:
+and dumps the most frequent ones when the execution of your problem is over:
 
 ```js
 print(ttrace);
@@ -136,9 +140,9 @@ ttrace.on('enter', function(ev) {
 ttrace.on('close', dumpHistogram);
 ```
 
-The `map` is a global variable shared inside of the T-Trace script and it 
-shares data between the `ttrace.on('enter')` function and the `dumpHistogram`
-function which runs when the `node` process execution is over (registered via
+The `map` is a global variable shared inside of the **T-Trace** script that 
+allows the code to share data between the `ttrace.on('enter')` function and the `dumpHistogram`
+function. The latter is executed when the `node` process execution is over (registered via
 `ttrace.on('close', dumpHistogram)`. Invoke as:
 
 ```bash
@@ -235,11 +239,11 @@ Just called Natural.next as 16777217 function invocation
 Hundred thousand prime numbers in 111 ms
 ```
 
-T-Trace scripts are ready to be used in any environment - be it the
+**T-Trace** scripts are ready to be used in any environment - be it the
 default `node` implementation, the lightweight `js` command line tool - 
 or your own application that decides to embedd GraalVM scripting capabilities!
 
-## Trully Polyglot!
+## Trully Polyglot - T-Trace any Language
 
 The previous examples were written in JavaScript, but due to the polyglot
 nature of GraalVM, we can take the same instrument and use it for example
@@ -397,7 +401,7 @@ ttrace.on('enter', function(ev) {
 ttrace.on('close', dumpCount);
 ```
 
-Let's use the script on fifty iteration of [sieve.js](https://github.com/jtulach/sieve/blob/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js)
+Let's use the script on fifty iterations of [sieve.js](https://github.com/jtulach/sieve/blob/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js)
 sample which uses a variant of the Sieve of Erathostenes to compute one hundred
 thousand of prime numbers. Repeating the computation fifty times gives the
 runtime a chance to warm up and properly optimize. Here is the optimal run:
@@ -411,7 +415,7 @@ Computed 99328 primes in 69 ms. Last one is 1289927
 Hundred thousand prime numbers in 69 ms
 ```
 
-and now let's compare it to the time running with the T-Trace script:
+and now let's compare it to execution time when running with the **T-Trace** script enabled:
 
 ```bash
 $ graalvm/bin/js --ttrace=function-count.js sieve.js | tail -n 5
@@ -422,19 +426,221 @@ Hundred thousand prime numbers in 71 ms
 142770421 functions have been executed
 ```
 
-Two milliseconds!? Seriously? Yes, seriously. The T-Trace framework
+Two milliseconds!? Seriously? Yes, seriously. The **T-Trace** framework
 blends the difference between application code and insight gathering scripts
 making all the code work as one! The `count++` invocation becomes natural part of
 the application at all the places representing `ROOT` of application functions.
 **T-Trace** system gives you unlimited instrumentation power at no cost!
 
+## Trully Polyglot - T-Tracing with Ruby
+
+Not only one can instrument any GraalVM language, but also the **T-Trace**
+scripts can be written in any GraalVM supported language. Take for example
+Ruby and create `source-tracing.rb` file:
+
+```ruby
+puts "Initializing Ruby T-Trace script"
+
+ttrace.on('source', ->(ev) {
+    name = Truffle::Interop.read(ev, 'name')
+    puts "Loading #{name}" 
+})
+
+puts 'Hooks are ready!'
+```
+
+and then you can launch your `node` application and instrument it with such
+Ruby written script:
+
+```bash
+$ /graalvm/bin/node --polyglot --ttrace=source-tracing.rb -e "print(6 * 7)"
+Initializing Ruby T-Trace script
+Loading (core)
+Loading resource:/truffleruby/core/pre.rb
+Loading resource:/truffleruby/core/basic_object.rb
+Loading resource:/truffleruby/core/array.rb
+Loading resource:/truffleruby/core/channel.rb
+Loading resource:/truffleruby/core/configuration.rb
+Loading resource:/truffleruby/core/false.rb
+Loading resource:/truffleruby/core/gc.rb
+Loading resource:/truffleruby/core/nil.rb
+Loading resource:/truffleruby/core/truffle/platform.rb
+Loading resource:/truffleruby/core/support.rb
+Loading resource:/truffleruby/core/string.rb
+Loading resource:/truffleruby/core/random.rb
+Loading resource:/truffleruby/core/truffle/io_operations.rb
+Loading resource:/truffleruby/core/truffle/kernel_operations.rb
+Loading resource:/truffleruby/core/thread.rb
+Loading resource:/truffleruby/core/true.rb
+Loading resource:/truffleruby/core/type.rb
+Loading resource:/truffleruby/core/truffle/ffi/pointer.rb
+Loading resource:/truffleruby/core/truffle/ffi/pointer_access.rb
+Loading resource:/truffleruby/core/truffle/internal.rb
+Loading resource:/truffleruby/core/kernel.rb
+Loading resource:/truffleruby/core/truffle/boot.rb
+Loading resource:/truffleruby/core/truffle/debug.rb
+Loading resource:/truffleruby/core/truffle/encoding_operations.rb
+Loading resource:/truffleruby/core/truffle/exception_operations.rb
+Loading resource:/truffleruby/core/truffle/hash_operations.rb
+Loading resource:/truffleruby/core/truffle/numeric_operations.rb
+Loading resource:/truffleruby/core/truffle/proc_operations.rb
+Loading resource:/truffleruby/core/truffle/range_operations.rb
+Loading resource:/truffleruby/core/truffle/regexp_operations.rb
+Loading resource:/truffleruby/core/truffle/stat_operations.rb
+Loading resource:/truffleruby/core/truffle/string_operations.rb
+Loading resource:/truffleruby/core/truffle/backward.rb
+Loading resource:/truffleruby/core/truffle/truffleruby.rb
+Loading resource:/truffleruby/core/splitter.rb
+Loading resource:/truffleruby/core/stat.rb
+Loading resource:/truffleruby/core/io.rb
+Loading resource:/truffleruby/core/immediate.rb
+Loading resource:/truffleruby/core/module.rb
+Loading resource:/truffleruby/core/proc.rb
+Loading resource:/truffleruby/core/enumerable_helper.rb
+Loading resource:/truffleruby/core/enumerable.rb
+Loading resource:/truffleruby/core/enumerator.rb
+Loading resource:/truffleruby/core/argf.rb
+Loading resource:/truffleruby/core/exception.rb
+Loading resource:/truffleruby/core/hash.rb
+Loading resource:/truffleruby/core/comparable.rb
+Loading resource:/truffleruby/core/numeric.rb
+Loading resource:/truffleruby/core/truffle/ctype.rb
+Loading resource:/truffleruby/core/integer.rb
+Loading resource:/truffleruby/core/regexp.rb
+Loading resource:/truffleruby/core/transcoding.rb
+Loading resource:/truffleruby/core/encoding.rb
+Loading resource:/truffleruby/core/env.rb
+Loading resource:/truffleruby/core/errno.rb
+Loading resource:/truffleruby/core/file.rb
+Loading resource:/truffleruby/core/dir.rb
+Loading resource:/truffleruby/core/dir_glob.rb
+Loading resource:/truffleruby/core/file_test.rb
+Loading resource:/truffleruby/core/float.rb
+Loading resource:/truffleruby/core/marshal.rb
+Loading resource:/truffleruby/core/object_space.rb
+Loading resource:/truffleruby/core/range.rb
+Loading resource:/truffleruby/core/struct.rb
+Loading resource:/truffleruby/core/tms.rb
+Loading resource:/truffleruby/core/process.rb
+Loading resource:/truffleruby/core/truffle/process_operations.rb
+Loading resource:/truffleruby/core/signal.rb
+Loading resource:/truffleruby/core/symbol.rb
+Loading resource:/truffleruby/core/mutex.rb
+Loading resource:/truffleruby/core/throw_catch.rb
+Loading resource:/truffleruby/core/time.rb
+Loading resource:/truffleruby/core/rational.rb
+Loading resource:/truffleruby/core/rationalizer.rb
+Loading resource:/truffleruby/core/complex.rb
+Loading resource:/truffleruby/core/complexifier.rb
+Loading resource:/truffleruby/core/class.rb
+Loading resource:/truffleruby/core/binding.rb
+Loading resource:/truffleruby/core/math.rb
+Loading resource:/truffleruby/core/method.rb
+Loading resource:/truffleruby/core/unbound_method.rb
+Loading resource:/truffleruby/core/warning.rb
+Loading resource:/truffleruby/core/tracepoint.rb
+Loading resource:/truffleruby/core/truffle/interop.rb
+Loading resource:/truffleruby/core/truffle/polyglot.rb
+Loading resource:/truffleruby/core/posix.rb
+Loading resource:/truffleruby/core/main.rb
+Loading resource:/truffleruby/core/post.rb
+Loading resource:/truffleruby/post-boot/post-boot.rb
+Loading /graalvm/jre/languages/ruby/lib/truffle/enumerator.rb
+Loading /graalvm/jre/languages/ruby/lib/truffle/thread.rb
+Loading /graalvm/jre/languages/ruby/lib/truffle/rational.rb
+Loading /graalvm/jre/languages/ruby/lib/truffle/complex.rb
+Loading /graalvm/jre/languages/ruby/lib/truffle/truffle/lazy-rubygems.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/version.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/core_ext/name_error.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checker.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/levenshtein.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/jaro_winkler.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/name_error_checkers.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/name_error_checkers/class_name_checker.rb
+Loading /graalvm/jre/languages/ruby/lib/mri/delegate.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/name_error_checkers/variable_name_checker.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/method_name_checker.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/key_error_checker.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/null_checker.rb
+Loading /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/formatters/plain_formatter.rb
+Loading source-tracing.rb
+Hooks are ready!
+Loading polyglotEngineWrapper
+Loading <internal>
+Loading unknown source
+Loading <builtin>
+Loading internal/bootstrap/loaders.js
+Loading internal/bootstrap/node.js
+Loading events.js
+Loading internal/async_hooks.js
+Loading internal/errors.js
+Loading util.js
+Loading internal/util/inspect.js
+Loading internal/util.js
+Loading internal/util/types.js
+Loading bound function
+Loading internal/validators.js
+Loading internal/encoding.js
+Loading buffer.js
+Loading internal/graal/buffer.js
+Loading internal/buffer.js
+Loading internal/process/per_thread.js
+Loading internal/process/main_thread_only.js
+Loading internal/process/stdio.js
+Loading assert.js
+Loading internal/assert.js
+Loading fs.js
+Loading path.js
+Loading internal/constants.js
+Loading internal/fs/streams.js
+Loading internal/fs/utils.js
+Loading stream.js
+Loading internal/streams/pipeline.js
+Loading internal/streams/end-of-stream.js
+Loading internal/streams/legacy.js
+Loading _stream_readable.js
+Loading ^$
+Loading internal/streams/buffer_list.js
+Loading internal/streams/destroy.js
+Loading internal/streams/state.js
+Loading _stream_writable.js
+Loading _stream_duplex.js
+Loading _stream_transform.js
+Loading _stream_passthrough.js
+Loading internal/url.js
+Loading internal/querystring.js
+Loading internal/process/warning.js
+Loading internal/process/next_tick.js
+Loading internal/process/promises.js
+Loading internal/fixed_queue.js
+Loading internal/options.js
+Loading timers.js
+Loading internal/linkedlist.js
+Loading internal/timers.js
+Loading console.js
+Loading tty.js
+Loading net.js
+Loading internal/net.js
+Loading internal/stream_base_commons.js
+Loading internal/tty.js
+Loading internal/modules/cjs/helpers.js
+Loading url.js
+Loading punycode.js
+Loading internal/safe_globals.js
+Loading internal/modules/cjs/loader.js
+Loading vm.js
+Loading [eval]-wrapper
+Loading [eval]
+42
+```
+
+Write your **T-Trace** scripts in any language you wish! They'll be
+ultimatelly useful accross the whole GraalVM ecosystem.
+
 <!--
 
 ## TODO:
-
-Apply the **T-Trace** insights to scripts running in *node.js* or
-*Ruby on Rails* or your *Python* big data computation pipeline. 
-
 
 GraalVM comes with a unified set of prepackaged high performance **T-Trace** 
 insights at your convenience. 
