@@ -170,7 +170,7 @@ public class GraphUtilOriginalValueTests extends CustomizedBytecodePatternTest {
             Assert.fail("expected a " + BailoutException.class.getName());
         } catch (BailoutException e) {
             String msg = e.getMessage();
-            Assert.assertTrue(msg, msg.startsWith("unbalanced monitors: mismatch at monitorexit"));
+            Assert.assertTrue(msg, msg.contains("unbalanced monitors"));
         }
     }
 }

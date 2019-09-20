@@ -35,6 +35,7 @@ import static org.graalvm.compiler.bytecode.Bytecodes.POP2;
 import static org.graalvm.compiler.bytecode.Bytecodes.SWAP;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.nodes.FrameState.TWO_SLOT_MARKER;
+import static org.graalvm.compiler.nodes.util.GraphUtil.originalValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,7 +71,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
@@ -404,11 +404,14 @@ public final class FrameStateBuilder implements SideEffectsState {
             }
         }
         if (lockedObjects.length != other.lockedObjects.length) {
-            return false;
+            throw new PermanentBailoutException("unbalanced monitors - locked objects do not match: %s != %s", Arrays.toString(lockedObjects), Arrays.toString(other.lockedObjects));
         }
         for (int i = 0; i < lockedObjects.length; i++) {
-            if (GraphUtil.originalValue(lockedObjects[i], true) != GraphUtil.originalValue(other.lockedObjects[i], true) || monitorIds[i] != other.monitorIds[i]) {
-                throw new PermanentBailoutException("unbalanced monitors");
+            if (originalValue(lockedObjects[i], false) != originalValue(other.lockedObjects[i], false)) {
+                throw new PermanentBailoutException("unbalanced monitors - locked objects do not match: %s != %s", Arrays.toString(lockedObjects), Arrays.toString(other.lockedObjects));
+            }
+            if (monitorIds[i] != other.monitorIds[i]) {
+                throw new PermanentBailoutException("unbalanced monitors - monitors do not match: %s != %s", Arrays.toString(monitorIds), Arrays.toString(other.monitorIds));
             }
         }
         return true;
