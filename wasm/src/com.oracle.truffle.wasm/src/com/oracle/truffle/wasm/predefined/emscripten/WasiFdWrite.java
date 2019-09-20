@@ -29,18 +29,63 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
+import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
+import java.util.function.Consumer;
+
 public class WasiFdWrite extends WasmPredefinedRootNode {
+    private TruffleLogger logger = TruffleLogger.getLogger("wasm");
+
     public WasiFdWrite(WasmLanguage language, WasmCodeEntry codeEntry) {
         super(language, codeEntry);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
+        Object[] args = frame.getArguments();
+        assert args.length == 4;
+        for (Object arg : args) {
+            logger.finest(() -> "argument: " + arg);
+        }
+
+        WasmContext context = contextReference().get();
+
+        int stream = (int) args[0];
+        int iov = (int) args[1];
+        int iovcnt = (int) args[2];
+        int pnum = (int) args[3];
+
+        Consumer<Character> charPrinter = null;
+        switch (stream) {
+            case 1:
+                charPrinter = System.out::print;
+                break;
+            case 2:
+                charPrinter = System.err::print;
+                break;
+            default:
+                throw new WasmTrap("WasiFdWrite: invalid file stream", this);
+        }
+
+        logger.finest("WasiFdWrite EXECUTE");
+
+        int num = 0;
+        for (int i = 0; i < iovcnt; i++) {
+            int ptr = context.memory().load_i32(iov + i * 8);
+            int len = context.memory().load_i32(iov + (i * 8 + 4));
+            for (int j = 0; j < len; j++) {
+                charPrinter.accept((char) context.memory().load_i32_8u(ptr + j));
+            }
+            num += len;
+            context.memory().store_i32(pnum, num);
+        }
+
         return 0;
     }
 
