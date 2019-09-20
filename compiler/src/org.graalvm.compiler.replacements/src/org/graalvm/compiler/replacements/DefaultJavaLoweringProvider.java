@@ -141,7 +141,6 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.nodes.util.VirtualByteArrayHelper;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
@@ -1124,14 +1123,14 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                     CommitAllocationNode commit,
                     VirtualObjectNode virtual,
                     int valuePos) {
-        if (!VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, entryKind)) {
+        if (!virtual.isVirtualByteArrayAccess(entryKind)) {
             return implicitStoreConvert(graph, entryKind, value);
         }
         // A virtual entry in a byte array can span multiple bytes. This shortens the entry to fit
         // in its declared size.
         int entryIndex = valuePos + 1;
         int bytes = 1;
-        while (entryIndex < commit.getValues().size() && VirtualByteArrayHelper.isIllegalConstant(commit.getValues().get(entryIndex))) {
+        while (entryIndex < commit.getValues().size() && commit.getValues().get(entryIndex).isIllegalConstant()) {
             bytes++;
             entryIndex++;
         }

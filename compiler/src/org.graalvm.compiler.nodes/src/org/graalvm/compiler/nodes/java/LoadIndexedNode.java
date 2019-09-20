@@ -51,7 +51,6 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.nodes.util.VirtualByteArrayHelper;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
@@ -130,9 +129,9 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
             int idx = indexValue.isConstant() ? indexValue.asJavaConstant().asInt() : -1;
             if (idx >= 0 && idx < virtual.entryCount()) {
                 ValueNode entry = tool.getEntry(virtual, idx);
-                if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, elementKind())) {
-                    if (VirtualByteArrayHelper.canVirtualizeRead(virtual, entry, idx, elementKind(), tool)) {
-                        tool.replaceWith(VirtualByteArrayHelper.virtualizeRead(entry, elementKind(), stamp));
+                if (virtual.isVirtualByteArrayAccess(elementKind())) {
+                    if (virtual.canVirtualizeRead(entry, idx, elementKind(), tool)) {
+                        tool.replaceWith(VirtualArrayNode.virtualizeByteArrayRead(entry, elementKind(), stamp));
                     }
                 } else if (stamp.isCompatible(entry.stamp(NodeView.DEFAULT))) {
                     tool.replaceWith(entry);

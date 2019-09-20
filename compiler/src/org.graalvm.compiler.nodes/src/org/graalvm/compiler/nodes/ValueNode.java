@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes;
 
 import java.util.function.Predicate;
 
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -154,6 +155,10 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         }
     }
 
+    public boolean isIllegalConstant() {
+        return isConstant() && asConstant().equals(JavaConstant.forIllegal());
+    }
+
     public final boolean isJavaConstant() {
         return isConstant() && asConstant() instanceof JavaConstant;
     }
@@ -226,4 +231,5 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         }
         return true;
     }
+
 }

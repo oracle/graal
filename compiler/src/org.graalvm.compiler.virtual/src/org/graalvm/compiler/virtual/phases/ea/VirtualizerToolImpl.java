@@ -52,7 +52,6 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.nodes.util.VirtualByteArrayHelper;
 
 /**
  * Forwards calls from {@link VirtualizerTool} to the actual {@link PartialEscapeBlockState}.
@@ -133,7 +132,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         ValueNode newValue = closure.getAliasAndResolve(state, value);
         getDebug().log(DebugContext.DETAILED_LEVEL, "Setting entry %d in virtual object %s %s results in %s", index, virtual.getObjectId(), virtual, state.getObjectState(virtual.getObjectId()));
         ValueNode oldValue = getEntry(virtual, index);
-        boolean oldIsIllegal = VirtualByteArrayHelper.isIllegalConstant(oldValue);
+        boolean oldIsIllegal = oldValue.isIllegalConstant();
         boolean canVirtualize = entryKind == accessKind || (entryKind == accessKind.getStackKind() && virtual instanceof VirtualInstanceNode);
         if (!canVirtualize) {
             assert entryKind != JavaKind.Long || newValue != null;
@@ -157,7 +156,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     assert nextIndex == index + 1 : "expected to be sequential";
                     getDebug().log(DebugContext.DETAILED_LEVEL, "virtualizing %s for double word stored in two ints", current);
                 }
-            } else if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, accessKind)) {
+            } else if (virtual.isVirtualByteArrayAccess(accessKind)) {
                 /*
                  * Special case: Allow storing any primitive inside a byte array, as long as there
                  * is enough room left, and all accesses and subsequent writes are on the exact
@@ -188,7 +187,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
                     addNode(secondHalf);
                     state.setEntry(virtual.getObjectId(), index + 1, secondHalf);
                 }
-            } else if (VirtualByteArrayHelper.isVirtualByteArrayAccess(virtual, accessKind)) {
+            } else if (virtual.isVirtualByteArrayAccess(accessKind)) {
                 for (int i = index + 1; i < index + accessKind.getByteCount(); i++) {
                     state.setEntry(virtual.getObjectId(), i, getIllegalConstant());
                 }
@@ -217,7 +216,7 @@ class VirtualizerToolImpl implements VirtualizerTool, CanonicalizerTool {
         if (isEntryDefaults(virtual, accessKind, index)) {
             return true;
         }
-        return accessKind.getByteCount() == VirtualByteArrayHelper.entryByteCount(virtual, index, this);
+        return accessKind.getByteCount() == virtual.byteArrayEntryByteCount(index, this);
     }
 
     private boolean isEntryDefaults(VirtualArrayNode virtual, JavaKind accessKind, int index) {

@@ -31,7 +31,6 @@ import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.util.VirtualByteArrayHelper;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.LockState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -111,7 +110,7 @@ public class ObjectState {
 
     public static int checkIllegalValue(ValueNode[] values, int v) {
         int res = 1;
-        if (v > 0 && VirtualByteArrayHelper.isIllegalConstant(values[v])) {
+        if (v > 0 && values[v].isIllegalConstant()) {
             assert values[v - 1].getStackKind().needsTwoSlots() || (res = checkByteArrayIllegal(values, v)) != -1;
         }
         return res;
@@ -120,7 +119,7 @@ public class ObjectState {
     private static int checkByteArrayIllegal(ValueNode[] values, int valuePos) {
         int bytes = 1;
         int i = valuePos - bytes;
-        while (i > 0 && VirtualByteArrayHelper.isIllegalConstant(values[i])) {
+        while (i > 0 && values[i].isIllegalConstant()) {
             i = valuePos - ++bytes;
         }
         assert i >= 0 && values[i].getStackKind().isPrimitive();
@@ -128,7 +127,7 @@ public class ObjectState {
         ValueNode value = values[i];
         int totalBytes = value.getStackKind().getByteCount();
         // Stamps erase the actual kind of a value. totalBytes is therefore not reliable.
-        while (j < values.length && VirtualByteArrayHelper.isIllegalConstant(values[i])) {
+        while (j < values.length && values[i].isIllegalConstant()) {
             j++;
         }
         assert j - i <= totalBytes;

@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.nodes.util.VirtualByteArrayHelper;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -139,9 +138,23 @@ public class DebugInfoBuilder {
                         } else {
                             assert value.getStackKind() == JavaKind.Illegal;
                             ValueNode previousValue = currentField.values().get(i - 1);
-                            assert (previousValue != null && (previousValue.getStackKind().needsTwoSlots()) || VirtualByteArrayHelper.isVirtualByteArray(vobjNode)) : vobjNode + " " + i +
+                            assert (previousValue != null && (previousValue.getStackKind().needsTwoSlots()) || vobjNode.isVirtualByteArray()) : vobjNode + " " + i +
                                             " " + previousValue + " " + currentField.values().snapshot();
-                            if (previousValue == null || !previousValue.getStackKind().needsTwoSlots()) {
+                            if (vobjNode.isVirtualByteArray()) {
+                                /*
+                                 * Let Illegals pass through to help knowing the number of bytes to
+                                 * write. For example, writing a short to index 2 of a byte array of
+                                 * size 6 would look like, in debug info:
+                                 * 
+                                 * {b0, b1, INT(...), ILLEGAL, b4, b5}
+                                 * 
+                                 * Thus, from the VM, we can simply count the number of illegals to
+                                 * restore the byte count.
+                                 */
+                                values[pos] = Value.ILLEGAL;
+                                slotKinds[pos] = JavaKind.Illegal;
+                                pos++;
+                            } else if (previousValue == null || !previousValue.getStackKind().needsTwoSlots()) {
                                 // Don't allow the IllegalConstant to leak into the debug info
                                 JavaKind entryKind = vobjNode.entryKind(i);
                                 values[pos] = JavaConstant.defaultForKind(entryKind.getStackKind());
