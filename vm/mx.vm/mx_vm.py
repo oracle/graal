@@ -2199,9 +2199,10 @@ def has_svm_launchers(components, fatalIfMissing=False):
 def get_native_image_locations(name, image_name):
     libgraal_libs = [l for l in _get_library_configs(get_component(name)) if image_name in basename(l.destination)]
     if libgraal_libs:
-        assert len(libgraal_libs) == 1, "Ambiguous image name '{}' matches '{}'".format(image_name, libgraal_libs)
-        p = mx.project(GraalVmLibrary.project_name(libgraal_libs[0]))
-        return p.output_file()
+        library_config = libgraal_libs[0]
+        dist = get_final_graalvm_distribution()
+        source_type = 'skip' if _skip_libraries(library_config) else 'dependency'
+        return join(graalvm_output_root(), dist.find_single_source_location(source_type + ':' + GraalVmLibrary.project_name(library_config)))
     return None
 
 
@@ -2238,10 +2239,12 @@ def has_components(names, stage1=False):
     return all((has_component(name, stage1=stage1) for name in names))
 
 
+def graalvm_output_root():
+    return join(_suite.dir, get_final_graalvm_distribution().output)
+
+
 def graalvm_output():
-    _graalvm = get_final_graalvm_distribution()
-    _output_root = join(_suite.dir, _graalvm.output)
-    return join(_output_root, _graalvm.jdk_base)
+    return join(graalvm_output_root(), get_final_graalvm_distribution().jdk_base)
 
 
 def graalvm_dist_name():
