@@ -175,6 +175,70 @@ Object
 Table with names and counts of function invocations is printed out when the
 `node` process exists (requires fix of GR-18337).
 
+## Not Limited to Node
+
+So far the examples used `node.js`, but the **T-Trace** system isn't tight
+to Node at all - it is available in all the environments GraalVM provides.
+Let's try it on `bin/js` plain JavaScript implementation that comes with 
+GraalVM. Let's define `function-tracing.js` script as:
+
+```js
+print(ttrace);
+
+var count = 0;
+var next = 8;
+
+ttrace.on('enter', function(ev) {
+    if (count++ % next === 0) {
+        print(`Just called ${ev.name} as ${count} function invocation`);
+        next *= 2;
+    }
+}, {
+    tags: ['ROOT']
+});
+```
+
+and run it on top of [sieve.js](https://github.com/jtulach/sieve/blob/7e188504e6cbd2809037450c845138b45724e186/js/sieve.js)
+- a sample script which uses a variant of the Sieve of Erathostenes to compute one hundred
+thousand of prime numbers:
+
+```bash
+$ js --ttrace=function-tracing.js sieve.js | grep -v Computed 
+Object
+Just called :program as 1 function invocation
+Just called Natural.next as 17 function invocation
+Just called Natural.next as 33 function invocation
+Just called Natural.next as 65 function invocation
+Just called Natural.next as 129 function invocation
+Just called Filter as 257 function invocation
+Just called Natural.next as 513 function invocation
+Just called Natural.next as 1025 function invocation
+Just called Natural.next as 2049 function invocation
+Just called Natural.next as 4097 function invocation
+Just called Natural.next as 8193 function invocation
+Just called Natural.next as 16385 function invocation
+Just called Natural.next as 32769 function invocation
+Just called Natural.next as 65537 function invocation
+Just called Natural.next as 131073 function invocation
+Just called Natural.next as 262145 function invocation
+Just called Natural.next as 524289 function invocation
+Just called Filter as 1048577 function invocation
+Just called Natural.next as 2097153 function invocation
+Hundred thousand prime numbers in 1730 ms
+Just called Natural.next as 4194305 function invocation
+Hundred thousand prime numbers in 619 ms
+Just called Natural.next as 8388609 function invocation
+Hundred thousand prime numbers in 169 ms
+Hundred thousand prime numbers in 115 ms
+Hundred thousand prime numbers in 134 ms
+Just called Natural.next as 16777217 function invocation
+Hundred thousand prime numbers in 111 ms
+```
+
+T-Trace scripts are ready to be used in any environment - be it the
+default `node` implementation, the lightweight `js` command line tool - 
+or your own application that decides to embedd GraalVM scripting capabilities!
+
 ## Minimal Overhead
 
 With all the power the **T-Trace** framework brings, it is fair to ask what's
