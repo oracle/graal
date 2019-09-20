@@ -43,7 +43,7 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
     }
 
     @Override
-    public int bulkZeroingStride() {
-        return 0;
+    public boolean supportsBulkZeroing() {
+        return false;
     }
 }
