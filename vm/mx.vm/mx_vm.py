@@ -425,13 +425,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             # Add vm.properties
             # Add TRUFFLE_NFI_NATIVE (TODO: should be part of an other component?)
             vm_name = graalvm_vm_name(self, _src_jdk)
-            if mx.get_os() == 'darwin':
-                # on macOS the <arch> directory is not used
-                _add(layout, "<jre_base>/lib/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
-                _add(layout, "<jre_base>/lib/server/vm.properties", "string:name=" + vm_name)
-            elif mx.get_os() == 'windows':
+            if mx.get_os() == 'windows':
                 _add(layout, "<jre_base>/bin/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/bin/server/vm.properties", "string:name=" + vm_name)
+            elif mx.get_os() == 'darwin' or _src_jdk_version >= 9:
+                # on macOS and jdk >= 9, the <arch> directory is not used
+                _add(layout, "<jre_base>/lib/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
+                _add(layout, "<jre_base>/lib/server/vm.properties", "string:name=" + vm_name)
             else:
                 _add(layout, "<jre_base>/lib/<arch>/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
