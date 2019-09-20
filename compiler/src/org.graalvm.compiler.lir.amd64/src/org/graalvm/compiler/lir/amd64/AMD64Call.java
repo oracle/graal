@@ -152,6 +152,11 @@ public class AMD64Call {
         public boolean destroysCallerSavedRegisters() {
             return callTarget.destroysRegisters();
         }
+
+        @Override
+        public boolean needsClearUpperVectorRegisters() {
+            return callTarget.needsClearUpperVectorRegisters();
+        }
     }
 
     @Opcode("NEAR_FOREIGN_CALL")
