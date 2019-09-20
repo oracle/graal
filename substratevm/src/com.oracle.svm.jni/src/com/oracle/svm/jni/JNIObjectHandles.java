@@ -35,7 +35,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
-import com.oracle.svm.core.handles.ObjectHandlesTestingBackdoor;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -207,8 +206,8 @@ public final class JNIObjectHandles {
         return getLocals().getHandleCount();
     }
 
-    static long getGlobalHandleCount() {
-        return ObjectHandlesTestingBackdoor.getCurrentCount(globalHandles);
+    static long computeCurrentGlobalHandleCount() {
+        return globalHandles.computeCurrentCount();
     }
 }
 

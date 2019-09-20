@@ -36,7 +36,7 @@ public final class JNITestingBackdoor {
     }
 
     public static long getGlobalHandleCount() {
-        return JNIObjectHandles.getGlobalHandleCount();
+        return JNIObjectHandles.computeCurrentGlobalHandleCount();
     }
 
     public static int getThreadLocalPinnedObjectCount() {
