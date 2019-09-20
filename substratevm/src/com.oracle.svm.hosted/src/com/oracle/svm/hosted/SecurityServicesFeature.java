@@ -46,9 +46,12 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.security.jca.Providers;
@@ -56,7 +59,7 @@ import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
 @AutomaticFeature
-public class SecurityServicesFeature implements Feature {
+public class SecurityServicesFeature extends JNIRegistrationUtil implements Feature {
 
     static class Options {
         @Option(help = "Enable the feature that provides support for security services.")//
@@ -102,24 +105,24 @@ public class SecurityServicesFeature implements Feature {
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(NativePRNG.Blocking.class, "for substitutions");
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(NativePRNG.NonBlocking.class, "for substitutions");
 
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.SeedGenerator"), "for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.provider.FileInputStreamPool"), "for substitutions");
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
         }
 
         /* java.util.UUID$Holder has a static final SecureRandom field. */
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.UUID$Holder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "java.util.UUID$Holder"), "for substitutions");
 
         /*
          * The classes bellow have a static final SecureRandom field. Note that if the classes are
          * not found as reachable by the analysis registering them form class initialization rerun
          * doesn't have any effect.
          */
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
-        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("sun.security.krb5.Confounder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(javax.net.ssl.SSLContext.class, "for substitutions");
 
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
@@ -204,6 +207,42 @@ public class SecurityServicesFeature implements Feature {
                     throw VMError.shouldNotReachHere(e);
                 }
             }
+        }
+
+        access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
+                        method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
+                        method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+
+        if (isPosix()) {
+            access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));
+        }
+    }
+
+    private static void linkSunEC(DuringAnalysisAccess duringAnalysisAccess) {
+        FeatureImpl.DuringAnalysisAccessImpl a = (FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess;
+        NativeLibraries nativeLibraries = a.getNativeLibraries();
+        if (nativeLibraries.getStaticLibraryPath("sunec") != null) {
+            /* We statically link sunec thus we classify it as builtIn library */
+            PlatformNativeLibrarySupport.singleton().addBuiltInLibrary("sunec");
+            /* and ensure native calls to sun_security_ec* will be resolved as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
+
+            nativeLibraries.addLibrary("sunec", true);
+            /* Library sunec depends on stdc++ */
+            nativeLibraries.addLibrary("stdc++", false);
+        }
+    }
+
+    private static void linkJaas(DuringAnalysisAccess duringAnalysisAccess) {
+        JNIRuntimeAccess.register(fields(duringAnalysisAccess, "com.sun.security.auth.module.UnixSystem", "username", "uid", "gid", "groups"));
+
+        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) duringAnalysisAccess).getNativeLibraries();
+        if (nativeLibraries.getStaticLibraryPath("jaas") != null) {
+            /* We can statically link jaas, thus we classify it as builtIn library */
+            PlatformNativeLibrarySupport.singleton().addBuiltInLibrary("jaas_unix");
+            /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
+            nativeLibraries.addLibrary("jaas", true);
         }
     }
 
@@ -346,5 +385,4 @@ public class SecurityServicesFeature implements Feature {
             // Checkstyle: resume
         }
     }
-
 }

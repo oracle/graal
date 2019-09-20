@@ -29,8 +29,6 @@ import static org.graalvm.compiler.core.llvm.LLVMUtils.LLVMIntrinsicOperation.CO
 import static org.graalvm.compiler.core.llvm.LLVMUtils.LLVMIntrinsicOperation.CTLZ;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.LLVMIntrinsicOperation.CTTZ;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.LLVMIntrinsicOperation.FLOOR;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.LLVMIntrinsicOperation.MAX;
-import static org.graalvm.compiler.core.llvm.LLVMUtils.LLVMIntrinsicOperation.MIN;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
@@ -118,14 +116,6 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryLLVMIntrinsic(r, "floor", FLOOR, JavaKind.Double, double.class);
 
         for (JavaKind kind : Arrays.asList(JavaKind.Float, JavaKind.Double)) {
-            if (kind == JavaKind.Double) {
-                /*
-                 * An LLVM bug prevents constant folding for the float minimum and maximum
-                 * intrinsics
-                 */
-                registerBinaryLLVMIntrinsic(r, "min", MIN, kind, kind.toJavaClass(), kind.toJavaClass());
-                registerBinaryLLVMIntrinsic(r, "max", MAX, kind, kind.toJavaClass(), kind.toJavaClass());
-            }
             registerBinaryLLVMIntrinsic(r, "copySign", COPYSIGN, kind, kind.toJavaClass(), kind.toJavaClass());
         }
 

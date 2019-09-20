@@ -57,7 +57,6 @@ public final class CallNode extends Node {
     @Successor private NodeSuccessorList<CallNode> children;
     private int recursionDepth;
     private int depth;
-
     /*
      * The ir field and the childInvokes fields are initially null and empty collection, and
      * populated once the node is partially evaluated;
@@ -99,6 +98,10 @@ public final class CallNode extends Node {
 
     private static double calculateFrequency(CompilableTruffleAST target, TruffleCallNode callNode) {
         return (double) Math.max(1, callNode.getCallCount()) / (double) Math.max(1, target.getCallCount());
+    }
+
+    public CompilableTruffleAST getTruffleAST() {
+        return truffleAST;
     }
 
     void putProperties(Map<Object, Object> properties) {

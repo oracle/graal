@@ -712,19 +712,20 @@ public final class Deoptimizer {
         recentDeoptimizationEvents.append(log.getResult().toCharArray());
     }
 
+    private static final RingBuffer.Consumer<char[]> deoptEventsConsumer = (context, entry) -> {
+        Log l = (Log) context;
+        for (char c : entry) {
+            if (c == '\n') {
+                l.newline();
+            } else {
+                l.character(c);
+            }
+        }
+    };
+
     public static void logRecentDeoptimizationEvents(Log log) {
         log.string("== [Recent Deoptimizer Events: ").newline();
-        recentDeoptimizationEvents.foreach(log, (context, entry) -> {
-            Log l = (Log) context;
-            for (int i = 0; i < entry.length; i++) {
-                char c = entry[i];
-                if (c == '\n') {
-                    l.newline();
-                } else {
-                    l.character(c);
-                }
-            }
-        });
+        recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
         log.string("]").newline();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -106,7 +106,7 @@ public final class TruffleCompilerOptions {
     public static final OptionKey<Integer> TruffleInliningExpansionBudget = new OptionKey<>(50_000);
 
     @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert)
-    public static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(45_000);
+    public static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(50_000);
     // @formatter:on
 
     private TruffleCompilerOptions() {

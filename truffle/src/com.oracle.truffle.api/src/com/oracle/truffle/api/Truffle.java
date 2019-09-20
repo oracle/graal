@@ -118,7 +118,7 @@ public final class Truffle {
                     }
                 }
 
-                List<Iterable<TruffleRuntimeAccess>> loaders = TruffleJDKServices.getTruffleRuntimeLoaders();
+                List<Iterable<TruffleRuntimeAccess>> loaders = TruffleJDKServices.getTruffleRuntimeLoaders(TruffleRuntimeAccess.class);
                 TruffleRuntimeAccess access = selectTruffleRuntimeAccess(loaders);
 
                 if (access != null) {

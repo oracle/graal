@@ -58,6 +58,8 @@ public abstract class DebuggerDomain extends Domain {
 
     public abstract void stepOut(CommandPostProcessor postProcessor);
 
+    public abstract Params searchInContent(String scriptId, String query, boolean caseSensitive, boolean isRegex) throws CommandProcessException;
+
     public abstract void setBreakpointsActive(Optional<Boolean> breakpointsActive) throws CommandProcessException;
 
     public abstract void setSkipAllPauses(Optional<Boolean> skip) throws CommandProcessException;

@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -235,9 +235,11 @@ def ctw(args, extraVMarguments=None):
 
     args, vmargs = parser.parse_known_args(args)
 
+    vmargs.extend(_remove_empty_entries(extraVMarguments))
+
     if mx.get_os() == 'darwin':
         # suppress menubar and dock when running on Mac
-        vmargs = ['-Djava.awt.headless=true'] + vmargs
+        vmargs.append('-Djava.awt.headless=true')
 
     if args.cp:
         cp = os.path.abspath(args.cp)
@@ -252,9 +254,10 @@ def ctw(args, extraVMarguments=None):
     exclusions = ','.join([a[len(exclusionPrefix):] for a in vmargs if a.startswith(exclusionPrefix)] + ['sun.awt.X11.*.*'])
     vmargs.append(exclusionPrefix + exclusions)
 
-    if not _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCINativeLibrary', False):
-        if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
-            vmargs.append('-XX:+BootstrapJVMCI')
+    if not _get_XX_option_value(vmargs, 'UseJVMCINativeLibrary', False):
+        if _get_XX_option_value(vmargs, 'UseJVMCICompiler', False):
+            if _get_XX_option_value(vmargs, 'BootstrapJVMCI', False) == None:
+                vmargs.append('-XX:+BootstrapJVMCI')
 
     mainClassAndArgs = []
     if not _is_jvmci_enabled(vmargs):
@@ -277,7 +280,7 @@ def ctw(args, extraVMarguments=None):
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
         mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
 
-    run_vm(vmargs + _remove_empty_entries(extraVMarguments) + mainClassAndArgs)
+    run_vm(vmargs + mainClassAndArgs)
 
 def verify_jvmci_ci_versions(args):
     """

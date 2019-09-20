@@ -485,19 +485,24 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return fileTypeDetectors;
     }
 
+    private void exportTruffle() {
+        if (!TruffleOptions.AOT) {
+            /*
+             * In JDK 9+, the Truffle API packages must be dynamically exported to a Truffle
+             * language since the Truffle API module descriptor only exports the packages to modules
+             * known at build time (such as the Graal module).
+             */
+            TruffleJDKServices.exportTo(loader, null);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private void initializeLanguageClass() {
         if (languageClass == null) {
             synchronized (this) {
                 if (languageClass == null) {
                     try {
-                        if (!TruffleOptions.AOT) {
-                            // In JDK 9+, the Truffle API packages must be dynamically exported to
-                            // a Truffle language since the Truffle API module descriptor only
-                            // exports the packages to modules known at build time (such as the
-                            // Graal module).
-                            TruffleJDKServices.exportTo(loader, null);
-                        }
+                        exportTruffle();
 
                         Class<?> loadedClass = Class.forName(className, true, loader);
                         Registration reg = loadedClass.getAnnotation(Registration.class);
@@ -519,6 +524,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         if (fileTypeDetectors == null) {
             synchronized (this) {
                 if (fileTypeDetectors == null) {
+                    exportTruffle();
+
                     List<FileTypeDetector> instances = new ArrayList<>(fileTypeDetectorClassNames.size());
                     for (String fileTypeDetectorClassName : fileTypeDetectorClassNames) {
                         try {

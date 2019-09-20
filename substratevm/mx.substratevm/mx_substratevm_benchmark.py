@@ -327,12 +327,6 @@ def list_jars(path):
     return jars
 
 
-_RENAISSANCE_EXTRA_VM_ARGS = {
-    "db-shootout"     : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=net.openhft.chronicle.wire.ReadMarshallable,net.openhft.chronicle.wire.WriteMarshallable'],
-    "philosophers"    : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=scala.Symbol'],
-    "scala-stm-bench7": ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=scala.Symbol']
-}
-
 _RENAISSANCE_EXTRA_AGENT_ARGS = [
     '-Dnative-image.benchmark.extra-agent-run-arg=-r',
     '-Dnative-image.benchmark.extra-agent-run-arg=1'
@@ -417,7 +411,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
         else:
             bench_arg = benchmarks[0]
         run_args = self.postprocessRunArgs(bench_arg, self.runArgs(bmSuiteArgs))
-        vm_args = self.vmArgs(bmSuiteArgs) + (_RENAISSANCE_EXTRA_VM_ARGS[bench_arg] if bench_arg in _RENAISSANCE_EXTRA_VM_ARGS else [])
+        vm_args = self.vmArgs(bmSuiteArgs)
 
         agent_args = _RENAISSANCE_EXTRA_AGENT_ARGS + ['-Dnative-image.benchmark.extra-agent-run-arg=' + bench_arg]
         pgo_args = RENAISSANCE_EXTRA_PROFILE_ARGS + ['-Dnative-image.benchmark.extra-profile-run-arg=' + bench_arg]
@@ -428,6 +422,9 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
         harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject('harness', benchmark_scalaversion(benchArg), self)
         group_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject(benchmark_group(benchArg), benchmark_scalaversion(benchArg), self, harness_project)
         return ':'.join([mx.classpath(harness_project), mx.classpath(group_project)])
+
+    def extra_vm_args(self, benchmark):
+        return []
 
     class RenaissanceDependency(mx.ClasspathDependency):
         def __init__(self, name, path): # pylint: disable=super-init-not-called

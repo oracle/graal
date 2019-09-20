@@ -2,7 +2,7 @@
 	"name": "graalvm",
 	"displayName": "GraalVM",
 	"description": "Basic support for GraalVM",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "OracleLabs",
 	"icon": "images/graalvm-logo.png",
@@ -232,6 +232,17 @@
 							"request": "launch",
 							"name": "Launch JavaScript",
 							"runtimeExecutable": "js",
+							"program": "^\"${1:\\${file\\}}\""
+						}
+					},
+					{
+						"label": "GraalVM: Launch Polyglot Application",
+						"description": "Launch a Polyglot Application in debug mode",
+						"body": {
+							"type": "graalvm",
+							"request": "launch",
+							"name": "Launch Polyglot App",
+							"runtimeExecutable": "polyglot",
 							"program": "^\"${1:\\${file\\}}\""
 						}
 					},

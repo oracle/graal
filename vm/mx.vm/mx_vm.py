@@ -425,13 +425,13 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             # Add vm.properties
             # Add TRUFFLE_NFI_NATIVE (TODO: should be part of an other component?)
             vm_name = graalvm_vm_name(self, _src_jdk)
-            if mx.get_os() == 'darwin':
-                # on macOS the <arch> directory is not used
-                _add(layout, "<jre_base>/lib/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
-                _add(layout, "<jre_base>/lib/server/vm.properties", "string:name=" + vm_name)
-            elif mx.get_os() == 'windows':
+            if mx.get_os() == 'windows':
                 _add(layout, "<jre_base>/bin/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/bin/server/vm.properties", "string:name=" + vm_name)
+            elif mx.get_os() == 'darwin' or _src_jdk_version >= 9:
+                # on macOS and jdk >= 9, the <arch> directory is not used
+                _add(layout, "<jre_base>/lib/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
+                _add(layout, "<jre_base>/lib/server/vm.properties", "string:name=" + vm_name)
             else:
                 _add(layout, "<jre_base>/lib/<arch>/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jre_base>/lib/<arch>/server/vm.properties", "string:name=" + vm_name)
@@ -2199,9 +2199,10 @@ def has_svm_launchers(components, fatalIfMissing=False):
 def get_native_image_locations(name, image_name):
     libgraal_libs = [l for l in _get_library_configs(get_component(name)) if image_name in basename(l.destination)]
     if libgraal_libs:
-        assert len(libgraal_libs) == 1, "Ambiguous image name '{}' matches '{}'".format(image_name, libgraal_libs)
-        p = mx.project(GraalVmLibrary.project_name(libgraal_libs[0]))
-        return p.output_file()
+        library_config = libgraal_libs[0]
+        dist = get_final_graalvm_distribution()
+        source_type = 'skip' if _skip_libraries(library_config) else 'dependency'
+        return join(graalvm_output_root(), dist.find_single_source_location(source_type + ':' + GraalVmLibrary.project_name(library_config)))
     return None
 
 
@@ -2238,10 +2239,12 @@ def has_components(names, stage1=False):
     return all((has_component(name, stage1=stage1) for name in names))
 
 
+def graalvm_output_root():
+    return join(_suite.dir, get_final_graalvm_distribution().output)
+
+
 def graalvm_output():
-    _graalvm = get_final_graalvm_distribution()
-    _output_root = join(_suite.dir, _graalvm.output)
-    return join(_output_root, _graalvm.jdk_base)
+    return join(graalvm_output_root(), get_final_graalvm_distribution().jdk_base)
 
 
 def graalvm_dist_name():
@@ -2596,6 +2599,12 @@ def _release_catalog():
 
 def mx_post_parse_cmd_line(args):
     mx_vm_benchmark.register_graalvm_vms()
+
+    if _src_jdk_version >= 9:
+        for component in registered_graalvm_components():
+            for boot_jar in component.boot_jars:
+                if not mx.get_module_name(mx.distribution(boot_jar)):
+                    mx.abort("Component '{}' declares a boot jar distribution ('{}') that does not define a module.\nPlease set 'moduleInfo' or 'moduleName'.".format(component.name, boot_jar))
 
 
 mx.update_commands(_suite, {

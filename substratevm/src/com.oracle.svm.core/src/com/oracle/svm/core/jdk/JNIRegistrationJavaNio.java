@@ -51,6 +51,7 @@ class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Feature {
     public void duringSetup(DuringSetupAccess a) {
         rerunClassInit(a, "sun.nio.ch.IOUtil", "sun.nio.ch.ServerSocketChannelImpl", "sun.nio.ch.DatagramChannelImpl", "sun.nio.ch.FileChannelImpl", "sun.nio.ch.FileKey");
         rerunClassInit(a, "java.nio.file.FileSystems$DefaultFileSystemHolder");
+        rerunClassInit(a, "java.nio.file.Files$FileTypeDetectors");
         if (isPosix()) {
             rerunClassInit(a, "sun.nio.fs.UnixNativeDispatcher");
             if (isLinux()) {

@@ -63,10 +63,7 @@ public class ScalaFeature implements GraalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         initializeScalaEnumerations(access);
-        /* Workaround for the lambda initialization issue (GR-14698) */
-        for (int i = 0; i <= 22; i++) {
-            RuntimeClassInitialization.initializeAtBuildTime("scala.Function" + i);
-        }
+        RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol");
     }
 
     @Override
