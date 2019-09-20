@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.llvm.LLVMUtils.TargetSpecific;
@@ -90,6 +91,10 @@ public class LLVMFeature implements Feature, GraalFeature {
     private static HostedMethod personalityStub;
     public static HostedMethod retrieveExceptionMethod;
 
+    private static final int MIN_LLVM_VERSION = 8;
+    private static final int MIN_LLVM_OPTIMIZATIONS_VERSION = 9;
+    private static final int llvmVersion = checkLLVMVersion();
+
     public static final int SPECIAL_REGISTER_COUNT;
     public static final int THREAD_POINTER_INDEX;
     public static final int HEAP_BASE_INDEX;
@@ -110,12 +115,20 @@ public class LLVMFeature implements Feature, GraalFeature {
         return personalityStub;
     }
 
+    @Fold
+    public static boolean useExplicitSelects() {
+        if (!Platform.includedIn(Platform.AMD64.class)) {
+            return false;
+        }
+        if (llvmVersion == -1) {
+            return !LLVMOptions.BitcodeOptimizations.getValue();
+        } else {
+            return llvmVersion < MIN_LLVM_OPTIMIZATIONS_VERSION;
+        }
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (!LLVMOptions.CustomLLC.hasBeenSet()) {
-            checkLLVMVersion();
-        }
-
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override
             public SubstrateBackend newBackend(Providers newProviders) {
@@ -194,20 +207,23 @@ public class LLVMFeature implements Feature, GraalFeature {
         }
     }
 
-    private static final int MIN_LLVM_MAJOR_VERSION = 8;
-    private static final int MIN_LLVM_MINOR_VERSION = 0;
-
-    private static void checkLLVMVersion() {
-        String version = getLLVMVersion();
-
-        String[] splitVersion = version.split("\\.");
-        assert splitVersion.length == 3;
-        int majorVersion = Integer.parseInt(splitVersion[0]);
-        int minorVersion = Integer.parseInt(splitVersion[1]);
-
-        if (majorVersion < MIN_LLVM_MAJOR_VERSION || (majorVersion == MIN_LLVM_MAJOR_VERSION && minorVersion < MIN_LLVM_MINOR_VERSION)) {
-            throw UserError.abort("Unsupported LLVM version: " + version + ". Supported versions are LLVM " + MIN_LLVM_MAJOR_VERSION + "." + MIN_LLVM_MINOR_VERSION + ".0 and above");
+    private static int checkLLVMVersion() {
+        if (!CompilerBackend.getValue().equals("llvm") || LLVMOptions.CustomLLC.hasBeenSet()) {
+            return -1;
         }
+
+        String versionString = getLLVMVersion();
+        String[] splitVersion = versionString.split("\\.");
+        assert splitVersion.length == 3;
+        int version = Integer.parseInt(splitVersion[0]);
+
+        if (version < MIN_LLVM_VERSION) {
+            throw UserError.abort("Unsupported LLVM version: " + version + ". Supported versions are LLVM " + MIN_LLVM_VERSION + " and above");
+        } else if (LLVMOptions.BitcodeOptimizations.getValue() && version < MIN_LLVM_OPTIMIZATIONS_VERSION) {
+            throw UserError.abort("Unsupported LLVM version to enable bitcode optimizations: " + version + ". Supported versions are LLVM " + MIN_LLVM_OPTIMIZATIONS_VERSION + ".0.0 and above");
+        }
+
+        return version;
     }
 
     private static String getLLVMVersion() {

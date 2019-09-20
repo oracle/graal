@@ -133,6 +133,7 @@ public class LLVMIRBuilder {
         setLinkage(function, LLVM.LLVMExternalLinkage);
         setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "noinline");
         setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "noredzone");
+        setAttribute(function, LLVM.LLVMAttributeFunctionIndex, "no-realign-stack");
     }
 
     public LLVMValueRef getMainFunction() {

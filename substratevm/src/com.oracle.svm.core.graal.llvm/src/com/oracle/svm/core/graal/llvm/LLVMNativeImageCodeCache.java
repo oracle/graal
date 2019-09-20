@@ -463,20 +463,16 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             List<String> cmd = new ArrayList<>();
             cmd.add("opt");
 
-            /*
-             * The x86 backend of LLVM has a bug which prevents the use of bitcode-level
-             * optimizations. This bug will be fixed in the LLVM 9.0.0 release.
-             */
-            if (!Platform.includedIn(Platform.AMD64.class)) {
+            if (LLVMOptions.BitcodeOptimizations.getValue()) {
                 cmd.add("-disable-inlining");
                 cmd.add("-O2");
+            } else {
+                /*
+                 * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which
+                 * are not supported for statepoints.
+                 */
+                cmd.add("-mem2reg");
             }
-
-            /*
-             * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
-             * not supported for statepoints.
-             */
-            cmd.add("-mem2reg");
             cmd.add("-rewrite-statepoints-for-gc");
             cmd.add("-always-inline");
 
@@ -506,6 +502,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             List<String> cmd = new ArrayList<>();
             cmd.add((LLVMOptions.CustomLLC.hasBeenSet()) ? LLVMOptions.CustomLLC.getValue() : "llc");
             cmd.add("-relocation-model=pic");
+            cmd.add("--trap-unreachable");
             cmd.add("-march=" + TargetSpecific.get().getLLVMArchName());
             cmd.addAll(TargetSpecific.get().getLLCAdditionalOptions());
             cmd.add("-O2");

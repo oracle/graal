@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.core.llvm;
 
-import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isObject;
 import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.isVoidType;
 import static org.graalvm.compiler.core.llvm.LLVMIRBuilder.typeOf;
 import static org.graalvm.compiler.core.llvm.LLVMUtils.dumpTypes;
@@ -106,6 +105,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     private final Providers providers;
     private final LLVMGenerationResult generationResult;
     private final boolean returnsEnum;
+    private final boolean explicitSelects;
     private final int debugLevel;
     private LLVMValueRef indentCounter;
     private LLVMValueRef spacesVector;
@@ -114,10 +114,12 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
     private Map<AbstractBeginNode, LLVMBasicBlockRef> basicBlockMap = new HashMap<>();
     Map<Block, LLVMBasicBlockRef> splitBlockEndMap = new HashMap<>();
 
-    public LLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMIRBuilder builder, LIRKindTool lirKindTool, int debugLevel) {
+    public LLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMIRBuilder builder, LIRKindTool lirKindTool, int debugLevel,
+                    boolean explicitSelects) {
         this.providers = providers;
         this.generationResult = generationResult;
         this.returnsEnum = method.getSignature().getReturnType(null).resolve(null).isEnum();
+        this.explicitSelects = explicitSelects;
 
         /* this.explodeSelects = selectBlacklist.contains(builder.getFunctionName()); */
 
@@ -659,7 +661,7 @@ public abstract class LLVMGenerator implements LIRGeneratorTool {
         LLVMValueRef select;
         LLVMValueRef trueValue = getVal(trueVal);
         LLVMValueRef falseValue = getVal(falseVal);
-        if (isObject(typeOf(trueValue))) {
+        if (explicitSelects && LLVMIRBuilder.isObject(typeOf(trueValue))) {
             select = buildSelect(condition, trueValue, falseValue);
         } else {
             select = builder.buildSelect(condition, trueValue, falseValue);

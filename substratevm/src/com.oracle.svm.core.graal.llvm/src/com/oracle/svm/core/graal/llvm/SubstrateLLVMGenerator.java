@@ -84,7 +84,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     SubstrateLLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
         super(providers, generationResult, method, new LLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context),
-                        new LLVMKindTool(context), debugLevel);
+                        new LLVMKindTool(context), debugLevel, LLVMFeature.useExplicitSelects());
         this.isEntryPoint = isEntryPoint(method);
         this.canModifySpecialRegisters = canModifySpecialRegisters(method);
 
@@ -167,7 +167,6 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
 
     @Override
     public void emitDeadEnd() {
-        emitPrintf("Dead end");
         builder.buildUnreachable();
     }
 

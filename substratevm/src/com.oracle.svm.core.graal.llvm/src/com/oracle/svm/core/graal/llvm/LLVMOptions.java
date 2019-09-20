@@ -45,4 +45,7 @@ public class LLVMOptions {
 
     @Option(help = "Path to a custom ld binary for LLVM linking")//
     public static final HostedOptionKey<String> CustomLD = new HostedOptionKey<>("");
+
+    @Option(help = "Enable LLVM bitcode optimizations")//
+    public static final HostedOptionKey<Boolean> BitcodeOptimizations = new HostedOptionKey<>(false);
 }
