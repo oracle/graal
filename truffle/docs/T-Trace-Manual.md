@@ -239,6 +239,138 @@ T-Trace scripts are ready to be used in any environment - be it the
 default `node` implementation, the lightweight `js` command line tool - 
 or your own application that decides to embedd GraalVM scripting capabilities!
 
+## Trully Polyglot!
+
+The previous examples were written in JavaScript, but due to the polyglot
+nature of GraalVM, we can take the same instrument and use it for example
+for `ruby`. Here is an example:
+
+```bash
+$ /graalvm/bin/ruby --polyglot --ttrace=source-tracing.js -e "puts 'Hello from T-Trace...'"
+Object
+Loading 265 characters from <function>
+Loading 10 characters from <internal>
+Loading 203 characters from <eval>
+Loading 0 characters from <builtin>
+registration done
+Loading 0 characters from (core)
+Loading 2669 characters from resource:/truffleruby/core/pre.rb
+Loading 1878 characters from resource:/truffleruby/core/basic_object.rb
+Loading 39676 characters from resource:/truffleruby/core/array.rb
+Loading 2457 characters from resource:/truffleruby/core/channel.rb
+Loading 2195 characters from resource:/truffleruby/core/configuration.rb
+Loading 1796 characters from resource:/truffleruby/core/false.rb
+Loading 3538 characters from resource:/truffleruby/core/gc.rb
+Loading 1997 characters from resource:/truffleruby/core/nil.rb
+Loading 1113 characters from resource:/truffleruby/core/truffle/platform.rb
+Loading 457 characters from resource:/truffleruby/core/support.rb
+Loading 43525 characters from resource:/truffleruby/core/string.rb
+Loading 5593 characters from resource:/truffleruby/core/random.rb
+Loading 3944 characters from resource:/truffleruby/core/truffle/io_operations.rb
+Loading 4856 characters from resource:/truffleruby/core/truffle/kernel_operations.rb
+Loading 15300 characters from resource:/truffleruby/core/thread.rb
+Loading 1791 characters from resource:/truffleruby/core/true.rb
+Loading 19495 characters from resource:/truffleruby/core/type.rb
+Loading 9407 characters from resource:/truffleruby/core/truffle/ffi/pointer.rb
+Loading 17375 characters from resource:/truffleruby/core/truffle/ffi/pointer_access.rb
+Loading 3334 characters from resource:/truffleruby/core/truffle/internal.rb
+Loading 15359 characters from resource:/truffleruby/core/kernel.rb
+Loading 1833 characters from resource:/truffleruby/core/truffle/boot.rb
+Loading 667 characters from resource:/truffleruby/core/truffle/debug.rb
+Loading 642 characters from resource:/truffleruby/core/truffle/encoding_operations.rb
+Loading 2057 characters from resource:/truffleruby/core/truffle/exception_operations.rb
+Loading 579 characters from resource:/truffleruby/core/truffle/hash_operations.rb
+Loading 4367 characters from resource:/truffleruby/core/truffle/numeric_operations.rb
+Loading 2295 characters from resource:/truffleruby/core/truffle/proc_operations.rb
+Loading 3141 characters from resource:/truffleruby/core/truffle/range_operations.rb
+Loading 1522 characters from resource:/truffleruby/core/truffle/regexp_operations.rb
+Loading 3750 characters from resource:/truffleruby/core/truffle/stat_operations.rb
+Loading 5357 characters from resource:/truffleruby/core/truffle/string_operations.rb
+Loading 1117 characters from resource:/truffleruby/core/truffle/backward.rb
+Loading 1104 characters from resource:/truffleruby/core/truffle/truffleruby.rb
+Loading 5635 characters from resource:/truffleruby/core/splitter.rb
+Loading 8572 characters from resource:/truffleruby/core/stat.rb
+Loading 69571 characters from resource:/truffleruby/core/io.rb
+Loading 2432 characters from resource:/truffleruby/core/immediate.rb
+Loading 4279 characters from resource:/truffleruby/core/module.rb
+Loading 4225 characters from resource:/truffleruby/core/proc.rb
+Loading 1899 characters from resource:/truffleruby/core/enumerable_helper.rb
+Loading 22925 characters from resource:/truffleruby/core/enumerable.rb
+Loading 13599 characters from resource:/truffleruby/core/enumerator.rb
+Loading 15211 characters from resource:/truffleruby/core/argf.rb
+Loading 11776 characters from resource:/truffleruby/core/exception.rb
+Loading 12887 characters from resource:/truffleruby/core/hash.rb
+Loading 2929 characters from resource:/truffleruby/core/comparable.rb
+Loading 8344 characters from resource:/truffleruby/core/numeric.rb
+Loading 2115 characters from resource:/truffleruby/core/truffle/ctype.rb
+Loading 7697 characters from resource:/truffleruby/core/integer.rb
+Loading 13007 characters from resource:/truffleruby/core/regexp.rb
+Loading 11405 characters from resource:/truffleruby/core/transcoding.rb
+Loading 6015 characters from resource:/truffleruby/core/encoding.rb
+Loading 7403 characters from resource:/truffleruby/core/env.rb
+Loading 2534 characters from resource:/truffleruby/core/errno.rb
+Loading 38251 characters from resource:/truffleruby/core/file.rb
+Loading 8262 characters from resource:/truffleruby/core/dir.rb
+Loading 13628 characters from resource:/truffleruby/core/dir_glob.rb
+Loading 3516 characters from resource:/truffleruby/core/file_test.rb
+Loading 6275 characters from resource:/truffleruby/core/float.rb
+Loading 33797 characters from resource:/truffleruby/core/marshal.rb
+Loading 1644 characters from resource:/truffleruby/core/object_space.rb
+Loading 9535 characters from resource:/truffleruby/core/range.rb
+Loading 10473 characters from resource:/truffleruby/core/struct.rb
+Loading 2183 characters from resource:/truffleruby/core/tms.rb
+Loading 26460 characters from resource:/truffleruby/core/process.rb
+Loading 18458 characters from resource:/truffleruby/core/truffle/process_operations.rb
+Loading 4307 characters from resource:/truffleruby/core/signal.rb
+Loading 4719 characters from resource:/truffleruby/core/symbol.rb
+Loading 1664 characters from resource:/truffleruby/core/mutex.rb
+Loading 2203 characters from resource:/truffleruby/core/throw_catch.rb
+Loading 11674 characters from resource:/truffleruby/core/time.rb
+Loading 9852 characters from resource:/truffleruby/core/rational.rb
+Loading 3002 characters from resource:/truffleruby/core/rationalizer.rb
+Loading 9166 characters from resource:/truffleruby/core/complex.rb
+Loading 3003 characters from resource:/truffleruby/core/complexifier.rb
+Loading 1776 characters from resource:/truffleruby/core/class.rb
+Loading 746 characters from resource:/truffleruby/core/binding.rb
+Loading 1138 characters from resource:/truffleruby/core/math.rb
+Loading 828 characters from resource:/truffleruby/core/method.rb
+Loading 508 characters from resource:/truffleruby/core/unbound_method.rb
+Loading 735 characters from resource:/truffleruby/core/warning.rb
+Loading 1143 characters from resource:/truffleruby/core/tracepoint.rb
+Loading 13354 characters from resource:/truffleruby/core/truffle/interop.rb
+Loading 1919 characters from resource:/truffleruby/core/truffle/polyglot.rb
+Loading 16950 characters from resource:/truffleruby/core/posix.rb
+Loading 3065 characters from resource:/truffleruby/core/main.rb
+Loading 4454 characters from resource:/truffleruby/core/post.rb
+Loading 2618 characters from resource:/truffleruby/post-boot/post-boot.rb
+Loading 22 characters from /graalvm/jre/languages/ruby/lib/truffle/enumerator.rb
+Loading 760 characters from /graalvm/jre/languages/ruby/lib/truffle/thread.rb
+Loading 35 characters from /graalvm/jre/languages/ruby/lib/truffle/rational.rb
+Loading 34 characters from /graalvm/jre/languages/ruby/lib/truffle/complex.rb
+Loading 1426 characters from /graalvm/jre/languages/ruby/lib/truffle/truffle/lazy-rubygems.rb
+Loading 3531 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean.rb
+Loading 42 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/version.rb
+Loading 497 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/core_ext/name_error.rb
+Loading 1324 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checker.rb
+Loading 1377 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/levenshtein.rb
+Loading 1833 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/jaro_winkler.rb
+Loading 605 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/name_error_checkers.rb
+Loading 1242 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/name_error_checkers/class_name_checker.rb
+Loading 10695 characters from /graalvm/jre/languages/ruby/lib/mri/delegate.rb
+Loading 1988 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/name_error_checkers/variable_name_checker.rb
+Loading 1532 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/method_name_checker.rb
+Loading 310 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/key_error_checker.rb
+Loading 104 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/spell_checkers/null_checker.rb
+Loading 1002 characters from /graalvm/jre/languages/ruby/lib/gems/gems/did_you_mean-1.3.0/lib/did_you_mean/formatters/plain_formatter.rb
+Loading 60 characters from main_boot_source
+Loading 29 characters from -e
+Hello from T-Trace...
+```
+
+It is necessary to start GraalVM's Ruby launcher with `--polyglot` parameter
+as the `source-tracing.js` script remains written in JavaScript. That's all
+fine - mixing languages has never been a problem for GraalVM!
+
 ## Minimal Overhead
 
 With all the power the **T-Trace** framework brings, it is fair to ask what's
@@ -322,7 +454,7 @@ by attaching your insights written in dynamic languages.
 - powerful tools to help you write, debug, manage, and organize
 your **T-Trace** insights scripts. It is a matter of pressing a single button
 to enable selected **T-Trace** insight and a matter of another click to 
-disable it cleanly, returning the application to state prior to the use
+disable it cleanly, returning the application to state prior to the use 
 of the insight.
 
 - *VisualVM* has been enhanced to provide a unified view of locally as well as
