@@ -638,6 +638,71 @@ Loading [eval]
 Write your **T-Trace** scripts in any language you wish! They'll be
 ultimatelly useful accross the whole GraalVM ecosystem.
 
+## OpenTracing API on top of **T-Trace**
+
+It is possible to use the **T-Trace** system to implement smooth, declarative
+logging via standard OpenTracing API. Use the `npm` command to install
+one of the JavaScript libraries for tracing:
+
+```bash
+$ npm install opentracing
+```
+
+Now you can use its API in your instrument `function-tracing.js` via the
+`require` function (once it becomes available):
+
+```js
+print(ttrace);
+
+var tracer = null;
+var ignore = false;
+var countSpan = 0;
+
+ttrace.on('enter', function(ev) {
+    if (!ignore) {
+        let prev = ignore;
+        ignore = true;
+        try {
+            if (!tracer) {
+                if (typeof require === 'function') {
+                    let opentracing = require('opentracing');
+                    class MockTracer extends opentracing.Tracer {
+                        startSpan(n) {
+                            return {
+                                'finish' : function() {
+                                    countSpan++;
+                                }
+                            };
+                        }
+                    }
+                    
+                    tracer = new MockTracer();
+                }
+            }
+            if (tracer) {
+                let span = tracer.startSpan(ev.name);
+                span.finish();
+            }
+        } finally {
+            ignore = prev;
+        }
+    }
+}, {
+    tags: ['ROOT']
+});
+
+ttrace.on('close', function() {
+    print(`Used ${countSpan} spans!`);
+});
+```
+
+With such instrument, it is just a matter of selecting the right `ttrace`
+pointcuts - declaratively, selectively, precisely, accuratelly 
+(via specifying the right tags and filtering on function names, location in
+sources and other characteristics) and the OpenTracing will happen 
+automatically and only on demand, without modifying the application code
+at all.
+
 <!--
 
 ## TODO:
