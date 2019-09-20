@@ -347,7 +347,6 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
@@ -362,6 +361,7 @@ import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.FloatDivNode;
+import org.graalvm.compiler.nodes.calc.FloatNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
@@ -371,7 +371,6 @@ import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.NegateNode;
-import org.graalvm.compiler.nodes.calc.FloatNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
@@ -2707,25 +2706,11 @@ public class BytecodeParser implements GraphBuilderContext {
         }
         MonitorIdNode monitorId = frameState.peekMonitorId();
         ValueNode lockedObject = frameState.popLock();
-        if (safeOriginalValue(lockedObject) != safeOriginalValue(x)) {
-            throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", safeOriginalValue(x), safeOriginalValue(lockedObject)));
+        if (GraphUtil.originalValue(lockedObject, true) != GraphUtil.originalValue(x, true)) {
+            throw bailout(String.format("unbalanced monitors: mismatch at monitorexit, %s != %s", GraphUtil.originalValue(x, true), GraphUtil.originalValue(lockedObject, true)));
         }
         MonitorExitNode monitorExit = append(new MonitorExitNode(lockedObject, monitorId, escapedValue));
         monitorExit.setStateAfter(createFrameState(bci, monitorExit));
-    }
-
-    /**
-     * A phi node on a loop header is not necessarily complete during parsing so don't try to read
-     * through it.
-     */
-    static ValueNode safeOriginalValue(ValueNode value) {
-        if (value instanceof PhiNode) {
-            PhiNode phi = (PhiNode) value;
-            if (phi.isLoopPhi()) {
-                return value;
-            }
-        }
-        return GraphUtil.originalValue(value);
     }
 
     protected void genJsr(int dest) {

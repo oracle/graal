@@ -70,6 +70,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.SideEffectsState;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
@@ -406,7 +407,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             return false;
         }
         for (int i = 0; i < lockedObjects.length; i++) {
-            if (BytecodeParser.safeOriginalValue(lockedObjects[i]) != BytecodeParser.safeOriginalValue(other.lockedObjects[i]) || monitorIds[i] != other.monitorIds[i]) {
+            if (GraphUtil.originalValue(lockedObjects[i], true) != GraphUtil.originalValue(other.lockedObjects[i], true) || monitorIds[i] != other.monitorIds[i]) {
                 throw new PermanentBailoutException("unbalanced monitors");
             }
         }
