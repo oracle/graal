@@ -29,36 +29,12 @@
  */
 package com.oracle.truffle.wasm.binary;
 
-import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
+public class ImportSpecifier {
+        public final String moduleName;
+        public final String memberName;
 
-public class Linker {
-    private final WasmLanguage language;
-
-    public Linker(WasmLanguage language) {
-        this.language = language;
-    }
-
-    public void link(WasmModule module) {
-        linkFunctions(module);
-        linkGlobals(module);
-    }
-
-    private void linkFunctions(WasmModule module) {
-        final WasmContext context = language.getContextReference().get();
-        for (WasmFunction function : module.symbolTable().importedFunctions()) {
-            final WasmModule importedModule = context.modules().get(function.importedModuleName());
-            if (importedModule == null) {
-                throw new WasmLinkerException("The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + module.name() + "', does not exist.");
-            }
-            final WasmFunction importedFunction = (WasmFunction) importedModule.readMember(function.importedFunctionName());
-            if (importedFunction == null) {
-                throw new WasmLinkerException("The imported function '" + function.importedFunctionName() + "', referenced in the module '" + module.name() + "', does not exist in the imported module '" + function.importedModuleName() + "'.");
-            }
-            function.setCallTarget(importedFunction.resolveCallTarget());
+        public ImportSpecifier(String moduleName, String memberName) {
+            this.moduleName = moduleName;
+            this.memberName = memberName;
         }
     }
-
-    private void linkGlobals(WasmModule module) {
-        // TODO: Ensure that the globals are linked.
-    }
-}

@@ -30,7 +30,6 @@
 package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -38,15 +37,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 public class WasmFunction implements TruffleObject {
-    public static class ImportSpecifier {
-        public final String moduleName;
-        public final String functionName;
-
-        public ImportSpecifier(String moduleName, String functionName) {
-            this.moduleName = moduleName;
-            this.functionName = functionName;
-        }
-    }
 
     private final SymbolTable symbolTable;
     private int index;
@@ -136,7 +126,7 @@ public class WasmFunction implements TruffleObject {
     }
 
     public String importedFunctionName() {
-        return isImported() ? importSpecifier.functionName : null;
+        return isImported() ? importSpecifier.memberName : null;
     }
 
     public int typeIndex() {

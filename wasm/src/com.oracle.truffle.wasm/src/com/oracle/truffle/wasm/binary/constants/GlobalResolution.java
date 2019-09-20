@@ -27,38 +27,57 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary;
+package com.oracle.truffle.wasm.binary.constants;
 
-import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-public class Linker {
-    private final WasmLanguage language;
+/**
+ * Constants that denote the resolution state of the global variable.
+ *
+ * The resolution state tracks the state of the global variables that were either imported,
+ * or initialized with another imported global variable.
+ */
+public enum GlobalResolution {
+    /**
+     * The global variable was declared inside the module.
+     * It can be used in the running program.
+     */
+    DECLARED(true, false),
 
-    public Linker(WasmLanguage language) {
-        this.language = language;
+    /**
+     * The global variable was imported from another module, and resolved.
+     * It can be used in the running program.
+     */
+    IMPORTED(true, true),
+
+    /**
+     * The global variable was declared with an initializer
+     * that points to an imported global variable.
+     * It cannot be used until becoming resolved.
+     */
+    UNRESOLVED_GET(false, false),
+
+    /**
+     * The global variable was imported, but not yet resolved.
+     * It cannot be used until becoming resolved.
+     */
+    UNRESOLVED_IMPORT(false, true);
+
+    public static final GlobalResolution[] VALUES = GlobalResolution.values();
+
+    @CompilationFinal private final boolean isResolved;
+    @CompilationFinal private final boolean isImported;
+
+    GlobalResolution(boolean isResolved, boolean isImported) {
+        this.isResolved = isResolved;
+        this.isImported = isImported;
     }
 
-    public void link(WasmModule module) {
-        linkFunctions(module);
-        linkGlobals(module);
+    public boolean isResolved() {
+        return isResolved;
     }
 
-    private void linkFunctions(WasmModule module) {
-        final WasmContext context = language.getContextReference().get();
-        for (WasmFunction function : module.symbolTable().importedFunctions()) {
-            final WasmModule importedModule = context.modules().get(function.importedModuleName());
-            if (importedModule == null) {
-                throw new WasmLinkerException("The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + module.name() + "', does not exist.");
-            }
-            final WasmFunction importedFunction = (WasmFunction) importedModule.readMember(function.importedFunctionName());
-            if (importedFunction == null) {
-                throw new WasmLinkerException("The imported function '" + function.importedFunctionName() + "', referenced in the module '" + module.name() + "', does not exist in the imported module '" + function.importedModuleName() + "'.");
-            }
-            function.setCallTarget(importedFunction.resolveCallTarget());
-        }
-    }
-
-    private void linkGlobals(WasmModule module) {
-        // TODO: Ensure that the globals are linked.
+    public boolean isImported() {
+        return isImported;
     }
 }

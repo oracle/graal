@@ -215,6 +215,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmExecutionException;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
@@ -422,7 +423,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byteConstantOffset++;
                     offset += constantLength;
 
-                    WasmFunction function = wasmModule().symbolTable().function(functionIndex);
+                    WasmFunction function = module().symbolTable().function(functionIndex);
                     byte returnType = function.returnType();
                     int numArgs = function.numArguments();
 
@@ -478,11 +479,11 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer--;
                     int tableIndex = popInt(frame, stackPointer);
                     // TODO: Check if this validation should be performed at link time.
-                    if (!wasmModule().table().validateIndex(tableIndex)) {
+                    if (!module().table().validateIndex(tableIndex)) {
                         throw new WasmTrap("CALL_INDIRECT: Invalid table index", this);
                     }
-                    int functionIndex = wasmModule().table().functionIndex(tableIndex);
-                    WasmFunction function = wasmModule().symbolTable().function(functionIndex);
+                    int functionIndex = module().table().functionIndex(tableIndex);
+                    WasmFunction function = module().symbolTable().function(functionIndex);
 
                     // Extract the function type index.
                     int expectedFunctionTypeIndex = codeEntry().numericLiteralAsInt(numericLiteralOffset);
@@ -688,32 +689,45 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
-                    byte type = wasmModule().globals().type(index);
+
+                    final GlobalResolution resolution = module().symbolTable().globalResolution(index);
+                    if (!resolution.isResolved()) {
+                        // If the global is not yet resolved, then the execution must block
+                        // until the respective module is resolved.
+                        // TODO: Resolve the global.
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                    }
+
+                    byte type = module().symbolTable().globalValueType(index);
                     switch (type) {
                         case ValueTypes.I32_TYPE: {
-                            int value = wasmModule().globals().getAsInt(index);
+                            int address = module().symbolTable().globalAddress(index);
+                            int value = context.globals().loadAsInt(address);
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
                             logger.finest(() -> String.format("global.get %d, value = 0x%08X (%d) [i32]", index, value, value));
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
-                            long value = wasmModule().globals().getAsLong(index);
+                            int address = module().symbolTable().globalAddress(index);
+                            long value = context.globals().loadAsLong(address);
                             push(frame, stackPointer, value);
                             stackPointer++;
                             logger.finest(() -> String.format("global.get %d, value = 0x%016X (%d) [i64]", index, value, value));
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
-                            float value = wasmModule().globals().getAsFloat(index);
-                            pushFloat(frame, stackPointer, value);
+                            int address = module().symbolTable().globalAddress(index);
+                            int value = context.globals().loadAsInt(address);
+                            pushInt(frame, stackPointer, value);
                             stackPointer++;
                             logger.finest(() -> String.format("global.get %d, value = %f [f32]", index, value));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
-                            double value = wasmModule().globals().getAsDouble(index);
-                            pushDouble(frame, stackPointer, value);
+                            int address = module().symbolTable().globalAddress(index);
+                            long value = context.globals().loadAsLong(address);
+                            push(frame, stackPointer, value);
                             stackPointer++;
                             logger.finest(() -> String.format("global.get %d, value = %f [f64]", index, value));
                             break;
@@ -727,35 +741,50 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;
-                    byte type = wasmModule().globals().type(index);
+
+                    final GlobalResolution resolution = module().symbolTable().globalResolution(index);
+                    if (!resolution.isResolved()) {
+                        // If the global is not yet resolved, then the execution must block
+                        // until the respective module is resolved.
+                        // Note: we could avoid waiting if the global was initialized with another global,
+                        // but we do not do this optimization.
+                        // TODO: Resolve the global.
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                    }
+
+                    byte type = module().symbolTable().globalValueType(index);
                     // For global.set, we don't need to make sure that the referenced global is mutable.
                     // This is taken care of by validation during wat to wasm compilation.
                     switch (type) {
                         case ValueTypes.I32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
-                            wasmModule().globals().setInt(index, value);
+                            int address = module().symbolTable().globalAddress(index);
+                            context.globals().storeInt(address, value);
                             logger.finest(() -> String.format("global.set %d, value = 0x%08X (%d) [i32]", index, value, value));
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
-                            wasmModule().globals().setLong(index, value);
+                            int address = module().symbolTable().globalAddress(index);
+                            context.globals().storeLong(address, value);
                             logger.finest(() -> String.format("global.set %d, value = 0x%016X (%d) [i64]", index, value, value));
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
-                            wasmModule().globals().setFloatWithInt(index, value);
+                            int address = module().symbolTable().globalAddress(index);
+                            context.globals().storeFloatWithInt(address, value);
                             logger.finest(() -> String.format("global.set %d, value = %f [f32]", index, value));
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
-                            wasmModule().globals().setDoubleWithLong(index, value);
+                            int address = module().symbolTable().globalAddress(index);
+                            context.globals().storeDoubleWithLong(address, value);
                             logger.finest(() -> String.format("global.set %d, value = %f [f64]", index, value));
                             break;
                         }
@@ -2202,7 +2231,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
         Object[] args = new Object[numArgs];
         for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = wasmModule().symbolTable().getFunctionTypeArgumentTypeAt(function.typeIndex(), i);
+            byte type = module().symbolTable().getFunctionTypeArgumentTypeAt(function.typeIndex(), i);
             switch (type) {
                 case ValueTypes.I32_TYPE:
                     args[i] = popInt(frame, stackPointer);

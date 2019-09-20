@@ -32,17 +32,11 @@ package com.oracle.truffle.wasm.predefined;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmFunction;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.WasmRootNode;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
-import com.oracle.truffle.wasm.predefined.emscripten.AbortNode;
-import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenMemcpyBig;
 import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenModule;
-import com.oracle.truffle.wasm.predefined.emscripten.NoOp;
-import com.oracle.truffle.wasm.predefined.emscripten.WasiFdWrite;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -70,7 +64,7 @@ public abstract class PredefinedModule {
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
         final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
-        final WasmFunction function = module.symbolTable().allocateExportedFunction(typeIdx, name);
+        final WasmFunction function = module.symbolTable().declareExportedFunction(typeIdx, name);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         function.setCallTarget(callTarget);
         return function;

@@ -54,6 +54,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final WasmModule module = reader.readModule();
         Linker linker = new Linker(this);
         linker.link(module);
+        getContextReference().get().registerModule(module);
         // TODO: Should this return an initialization function? Or a start function?
         return Truffle.getRuntime().createCallTarget(new WasmUndefinedFunctionRootNode(this));
     }

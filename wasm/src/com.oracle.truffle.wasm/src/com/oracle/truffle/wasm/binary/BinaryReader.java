@@ -30,6 +30,10 @@
 package com.oracle.truffle.wasm.binary;
 
 
+import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.DECLARED;
+import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.IMPORTED;
+import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.UNRESOLVED_GET;
+import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.UNRESOLVED_IMPORT;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BLOCK;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BR;
 import static com.oracle.truffle.wasm.binary.constants.Instructions.BR_IF;
@@ -223,6 +227,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.wasm.binary.constants.ExportIdentifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
+import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.constants.ImportIdentifier;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
@@ -244,6 +249,8 @@ public class BinaryReader extends BinaryStreamReader {
      * This variable keeps track of the function indices, so that imported and parsed code
      * entries can be correctly associated to their respective functions and types.
      */
+    // TODO: We should remove this to reduce complexity - codeEntry state should be sufficient
+    //  to track the current largest function index.
     private int moduleFunctionIndex;
 
     BinaryReader(WasmLanguage language, String moduleName, byte[] data) {
@@ -259,7 +266,6 @@ public class BinaryReader extends BinaryStreamReader {
         Assert.assertIntEqual(read4(), MAGIC, "Invalid MAGIC number");
         Assert.assertIntEqual(read4(), VERSION, "Invalid VERSION number");
         readSections();
-        context.registerModule(module);
         return module;
     }
 
@@ -330,15 +336,18 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readImportSection() {
+        Assert.assertIntEqual(module.symbolTable().maxGlobalIndex(), -1,
+                        "The global index should be -1 when the import section is first read.");
+        final WasmContext context = language.getContextReference().get();
         int numImports = readVectorLength();
         for (int i = 0; i != numImports; ++i) {
             String moduleName = readName();
-            String importName = readName();
+            String memberName = readName();
             byte importType = readImportType();
             switch (importType) {
                 case ImportIdentifier.FUNCTION: {
                     int typeIndex = readTypeIndex();
-                    module.symbolTable().importFunction(moduleName, importName, typeIndex);
+                    module.symbolTable().importFunction(moduleName, memberName, typeIndex);
                     moduleFunctionIndex++;
                     break;
                 }
@@ -384,9 +393,20 @@ public class BinaryReader extends BinaryStreamReader {
                 }
                 case ImportIdentifier.GLOBAL: {
                     byte type = readValueType();
-                    byte mut = read1();  // 0x00 means const, 0x01 means var
-                    module.globals().registerImported(importName, type, mut != GlobalModifier.CONSTANT);
-                    // TODO: Store the imported global.
+                    // See GlobalModifier.
+                    byte mutability = read1();
+                    int index = module.symbolTable().maxGlobalIndex() + 1;
+                    GlobalResolution resolution = UNRESOLVED_IMPORT;
+                    // Check that the imported module is available.
+                    if (context.modules().containsKey(moduleName)) {
+                        // Check that the imported global is resolved in the imported module.
+                        final WasmModule importedModule = context.modules().get(moduleName);
+                        int exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(memberName);
+                        if (importedModule.symbolTable().globalResolution(exportedGlobalIndex).isResolved()) {
+                            resolution = IMPORTED;
+                        }
+                    }
+                    module.symbolTable().importGlobal(language, moduleName, memberName, index, type, mutability, resolution);
                     break;
                 }
                 default: {
@@ -400,7 +420,7 @@ public class BinaryReader extends BinaryStreamReader {
         int numFunctions = readVectorLength();
         for (int i = 0; i != numFunctions; ++i) {
             int functionTypeIndex = readUnsignedInt32();
-            module.symbolTable().allocateFunction(functionTypeIndex);
+            module.symbolTable().declareFunction(functionTypeIndex);
         }
     }
 
@@ -725,7 +745,8 @@ public class BinaryReader extends BinaryStreamReader {
                     int globalIndex = readLocalIndex(bytesConsumed);
                     state.saveNumericLiteral(globalIndex);
                     state.useByteConstant(bytesConsumed[0]);
-                    Assert.assertIntLessOrEqual(globalIndex, module.globals().size(), "Invalid global index for global.get");
+                    Assert.assertIntLessOrEqual(globalIndex, module.symbolTable().maxGlobalIndex(),
+                                    "Invalid global index for global.get.");
                     state.push();
                     break;
                 }
@@ -734,7 +755,8 @@ public class BinaryReader extends BinaryStreamReader {
                     state.saveNumericLiteral(globalIndex);
                     state.useByteConstant(bytesConsumed[0]);
                     // Assert localIndex exists.
-                    Assert.assertIntLessOrEqual(globalIndex, module.globals().size(), "Invalid global index for global.set");
+                    Assert.assertIntLessOrEqual(globalIndex, module.symbolTable().maxGlobalIndex(),
+                                    "Invalid global index for global.set.");
                     // Assert there is a value on the top of the stack.
                     Assert.assertIntGreater(state.stackSize(), 0, "global.set requires at least one element in the stack");
                     state.pop();
@@ -1085,26 +1107,24 @@ public class BinaryReader extends BinaryStreamReader {
             byte instruction;
 
             // Read the offset expression.
-            do {
-                instruction = read1();
-                // Table offset expression must be a constant expression with result type i32.
-                // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
-                // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-
-                switch (instruction) {
-                    case I32_CONST:
-                        offset = readSignedInt32();
-                        break;
-                    case GLOBAL_GET:
-                        int index = readGlobalIndex();
-                        offset = module.globals().getAsInt(index);
-                        break;
-                    case END:
-                        break;
-                    default:
-                        Assert.fail(String.format("Invalid instruction for table offset expression: 0x%02X", instruction));
-                }
-            } while (instruction != END);
+            instruction = read1();
+            // Table offset expression must be a constant expression with result type i32.
+            // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
+            // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+            switch (instruction) {
+                case I32_CONST:
+                    offset = readSignedInt32();
+                    break;
+                    // TODO: Implement the GLOBAL_GET case for the elements.
+                // case GLOBAL_GET:
+                //     int index = readGlobalIndex();
+                //     offset = module.globals().getAsInt(index);
+                //     break;
+                default:
+                    Assert.fail(String.format("Invalid instruction for table offset expression: 0x%02X", instruction));
+            }
+            instruction = read1();
+            Assert.assertByteEqual(instruction, (byte) END, "Initialization expression must end with an END.");
 
             // Read the contents.
             int contentLength = readUnsignedInt32();
@@ -1155,44 +1175,67 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readGlobalSection() {
+        final WasmGlobals globals = language.getContextReference().get().globals();
         int numGlobals = readVectorLength();
         for (int i = 0; i != numGlobals; i++) {
             byte type = readValueType();
             // 0x00 means const, 0x01 means var
             byte mut = read1();
             long value = 0;
+            GlobalResolution resolution;
             byte instruction;
-            do {
-                instruction = read1();
-                // Global initialization expressions must be constant expressions:
-                // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-                switch (instruction) {
-                    case I32_CONST:
-                        value = readSignedInt32();
-                        break;
-                    case I64_CONST:
-                        value = readSignedInt64();
-                        break;
-                    case F32_CONST:
-                        value = readFloatAsInt32();
-                        break;
-                    case F64_CONST:
-                        value = readFloatAsInt64();
-                        break;
-                    case GLOBAL_GET:
-                        int index = readGlobalIndex();
-                        value = module.globals().getAsInt(index);
-                        break;
-                    case END:
-                        break;
-                    default:
-                        Assert.fail(String.format("Invalid instruction for global initialization: 0x%02X", instruction));
-                        break;
-                }
-            } while (instruction != END);
-            module.globals().register(value, type, mut != GlobalModifier.CONSTANT);
+            int existingIndex = -1;
+            instruction = read1();
+            // Global initialization expressions must be constant expressions:
+            // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+            switch (instruction) {
+                case I32_CONST:
+                    value = readSignedInt32();
+                    resolution = DECLARED;
+                    break;
+                case I64_CONST:
+                    value = readSignedInt64();
+                    resolution = DECLARED;
+                    break;
+                case F32_CONST:
+                    value = readFloatAsInt32();
+                    resolution = DECLARED;
+                    break;
+                case F64_CONST:
+                    value = readFloatAsInt64();
+                    resolution = DECLARED;
+                    break;
+                case GLOBAL_GET:
+                    existingIndex = readGlobalIndex();
+                    final GlobalResolution existingResolution = module.symbolTable().globalResolution(existingIndex);
+                    Assert.assertTrue(existingResolution.isImported(),
+                                    String.format("Global %d is not initialized with an imported global.", i));
+                    if (existingResolution.isResolved()) {
+                        final byte existingType = module.symbolTable().globalValueType(existingIndex);
+                        Assert.assertByteEqual(type, existingType,
+                                        String.format("The types of the globals must be consistent: 0x%02X vs 0x%02X", type, existingType));
+                        final int existingAddress = module.symbolTable().globalAddress(existingIndex);
+                        value = globals.loadAsLong(existingAddress);
+                        resolution = DECLARED;
+                    } else {
+                        // The imported module with the referenced global was not yet parsed and resolved,
+                        // so it is not possible to initialize the current global.
+                        // The resolution state is set accordingly, until it gets resolved later.
+                        resolution = UNRESOLVED_GET;
+                    }
+                    break;
+                default:
+                    throw Assert.fail(String.format("Invalid instruction for global initialization: 0x%02X", instruction));
+            }
+            instruction = read1();
+            Assert.assertByteEqual(instruction, (byte) END, "Global initialization must end with END.");
+            final int address = module.symbolTable().declareGlobal(language, i, type, mut, resolution);
+            if (resolution.isResolved()) {
+                globals.storeLong(address, value);
+            } else {
+                module.symbolTable().trackUnresolvedGlobal(i, existingIndex);
+            }
         }
-        module.globals().makeFinal();
     }
 
     private void readDataSection() {
@@ -1201,11 +1244,12 @@ public class BinaryReader extends BinaryStreamReader {
         for (int i = 0; i != numDataSections; ++i) {
             int memIndex = readUnsignedInt32();
             // At the moment, WebAssembly only supports one memory instance, thus the only valid memory index is 0.
-            Assert.assertIntEqual(memIndex, 0, "Invalid memory index");
+            Assert.assertIntEqual(memIndex, 0, "Invalid memory index, only the memory index 0 is currently supported.");
             long offset = 0;
             byte instruction;
             do {
                 instruction = read1();
+
                 // Data offset expression must be a constant expression with result type i32.
                 // https://webassembly.github.io/spec/core/syntax/modules.html#data-segments
                 // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
@@ -1214,10 +1258,11 @@ public class BinaryReader extends BinaryStreamReader {
                     case I32_CONST:
                         offset = readSignedInt32();
                         break;
-                    case GLOBAL_GET:
-                        int index = readGlobalIndex();
-                        offset = module.globals().getAsInt(index);
-                        break;
+                        // TODO: Implement GLOBAL_GET case for data sections (and add tests).
+                    // case GLOBAL_GET:
+                    //     int index = readGlobalIndex();
+                    //     offset = module.globals().getAsInt(index);
+                    //     break;
                     case END:
                         break;
                     default:
