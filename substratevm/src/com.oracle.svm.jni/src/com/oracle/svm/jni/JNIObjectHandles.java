@@ -27,6 +27,8 @@ package com.oracle.svm.jni;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.Isolate;
+import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
@@ -53,20 +55,22 @@ import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
  * explicitly and are valid only in the current thread.</li>
  * <li>Global handles as defined in the JNI specification must be created explicitly and are valid
  * in the entire isolate until they are explicitly released. Individual global handles can be weak,
- * in which case they don't prevent garbage collection of their target object.</li>
+ * in which case they don't prevent garbage collection of their target object. See:
+ * {@link JNIGlobalHandles}.</li>
  * <li>Image heap handles refer to objects in the image heap. This handle type is specific to our
  * implementation. Handles can be either local, global or weak-global according to the JNI
  * specification, so they need some special treatment. See: {@link JNIImageHeapHandles}.</li>
  * </ul>
  */
 public final class JNIObjectHandles {
+    @Fold
+    static boolean haveAssertions() {
+        return SubstrateOptions.getRuntimeAssertionsForClass(JNIObjectHandles.class.getName());
+    }
+
     public static <T extends SignedWord> T nullHandle() {
         return ThreadLocalHandles.nullHandle();
     }
-
-    static final SignedWord GLOBAL_HANDLES_MIN = WordFactory.signed(Long.MIN_VALUE);
-    static final SignedWord GLOBAL_HANDLES_MAX = nullHandle().subtract(1);
-    private static final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl(GLOBAL_HANDLES_MIN, GLOBAL_HANDLES_MAX, nullHandle());
 
     /**
      * Minimum available local handles according to specification: "Before it enters a native
@@ -106,8 +110,8 @@ public final class JNIObjectHandles {
         if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(handle)) {
             return JNIImageHeapHandles.getObject(handle);
         }
-        if (globalHandles.isInRange(handle)) {
-            return globalHandles.get(handle);
+        if (JNIGlobalHandles.isInRange(handle)) {
+            return JNIGlobalHandles.getObject(handle);
         }
         throw new RuntimeException("Invalid object handle");
     }
@@ -119,11 +123,8 @@ public final class JNIObjectHandles {
         if (useImageHeapHandles() && JNIImageHeapHandles.isInRange(handle)) {
             return JNIImageHeapHandles.getHandleType(handle);
         }
-        if (globalHandles.isInRange(handle)) {
-            if (globalHandles.isWeak(handle)) {
-                return JNIObjectRefType.WeakGlobal;
-            }
-            return JNIObjectRefType.Global;
+        if (JNIGlobalHandles.isInRange(handle)) {
+            return JNIGlobalHandles.getHandleType(handle);
         }
         return JNIObjectRefType.Invalid; // intentionally includes the null handle
     }
@@ -171,7 +172,7 @@ public final class JNIObjectHandles {
         } else {
             Object obj = getObject(handle);
             if (obj != null) {
-                result = (JNIObjectHandle) globalHandles.create(obj);
+                result = JNIGlobalHandles.create(obj);
             }
         }
         return result;
@@ -179,7 +180,7 @@ public final class JNIObjectHandles {
 
     public static void deleteGlobalRef(JNIObjectHandle globalRef) {
         if (!useImageHeapHandles() || !JNIImageHeapHandles.isInRange(globalRef)) {
-            globalHandles.destroy(globalRef);
+            JNIGlobalHandles.destroy(globalRef);
         }
     }
 
@@ -190,7 +191,7 @@ public final class JNIObjectHandles {
         } else {
             Object obj = getObject(handle);
             if (obj != null) {
-                result = (JNIObjectHandle) globalHandles.createWeak(obj);
+                result = JNIGlobalHandles.createWeak(obj);
             }
         }
         return result;
@@ -198,7 +199,7 @@ public final class JNIObjectHandles {
 
     public static void deleteWeakGlobalRef(JNIObjectHandle weakRef) {
         if (!useImageHeapHandles() || !JNIImageHeapHandles.isInRange(weakRef)) {
-            globalHandles.destroyWeak(weakRef);
+            JNIGlobalHandles.destroyWeak(weakRef);
         }
     }
 
@@ -207,6 +208,90 @@ public final class JNIObjectHandles {
     }
 
     static long computeCurrentGlobalHandleCount() {
+        return JNIGlobalHandles.computeCurrentCount();
+    }
+}
+
+/**
+ * Manages JNI global handles, which must be explicitly created and can be accessed in all threads
+ * of an isolate until they are explicitly deleted. These handles have a most significant bit of 1,
+ * i.e. they are negative as signed integers. When assertions are enabled, we encode a hash of the
+ * current {@link Isolate} to detect when global handles are incorrectly passed between isolates,
+ * for example by native code that is unaware of isolates.
+ */
+final class JNIGlobalHandles {
+    static final SignedWord MIN_VALUE = WordFactory.signed(Long.MIN_VALUE);
+    static final SignedWord MAX_VALUE = JNIObjectHandles.nullHandle().subtract(1);
+    static {
+        assert JNIObjectHandles.nullHandle().equal(WordFactory.zero());
+    }
+
+    private static final int HANDLE_BITS_COUNT = 31;
+    private static final SignedWord HANDLE_BITS_MASK = WordFactory.signed((1L << HANDLE_BITS_COUNT) - 1);
+    private static final int VALIDATION_BITS_SHIFT = HANDLE_BITS_COUNT;
+    private static final int VALIDATION_BITS_COUNT = 32;
+    private static final SignedWord VALIDATION_BITS_MASK = WordFactory.signed((1L << VALIDATION_BITS_COUNT) - 1).shiftLeft(VALIDATION_BITS_SHIFT);
+    private static final SignedWord MSB = WordFactory.signed(1L << 63);
+    private static final ObjectHandlesImpl globalHandles = new ObjectHandlesImpl(JNIObjectHandles.nullHandle().add(1), HANDLE_BITS_MASK, JNIObjectHandles.nullHandle());
+
+    static boolean isInRange(JNIObjectHandle handle) {
+        return MIN_VALUE.lessOrEqual((SignedWord) handle) && MAX_VALUE.greaterThan((SignedWord) handle);
+    }
+
+    private static Word isolateHash() {
+        int isolateHash = Long.hashCode(CurrentIsolate.getIsolate().rawValue());
+        return WordFactory.unsigned(isolateHash);
+    }
+
+    private static JNIObjectHandle encode(ObjectHandle handle) {
+        SignedWord h = (Word) handle;
+        if (JNIObjectHandles.haveAssertions()) {
+            assert h.and(HANDLE_BITS_MASK).equal(h) : "unencoded handle must fit in range";
+            Word v = isolateHash().shiftLeft(VALIDATION_BITS_SHIFT);
+            assert v.and(VALIDATION_BITS_MASK).equal(v) : "validation value must fit in its range";
+            h = h.or(v);
+        }
+        h = h.or(MSB);
+        assert isInRange((JNIObjectHandle) h);
+        return (JNIObjectHandle) h;
+    }
+
+    private static ObjectHandle decode(JNIObjectHandle handle) {
+        assert isInRange(handle);
+        assert ((Word) handle).and(VALIDATION_BITS_MASK).unsignedShiftRight(VALIDATION_BITS_SHIFT)
+                        .equal(isolateHash()) : "mismatching validation value -- passed a handle from a different isolate?";
+        return (ObjectHandle) HANDLE_BITS_MASK.and((Word) handle);
+    }
+
+    static <T> T getObject(JNIObjectHandle handle) {
+        return globalHandles.get(decode(handle));
+    }
+
+    static JNIObjectRefType getHandleType(JNIObjectHandle handle) {
+        assert isInRange(handle);
+        if (globalHandles.isWeak(decode(handle))) {
+            return JNIObjectRefType.WeakGlobal;
+        }
+        return JNIObjectRefType.Global;
+    }
+
+    static JNIObjectHandle create(Object obj) {
+        return encode(globalHandles.create(obj));
+    }
+
+    static void destroy(JNIObjectHandle handle) {
+        globalHandles.destroy(decode(handle));
+    }
+
+    static JNIObjectHandle createWeak(Object obj) {
+        return encode(globalHandles.createWeak(obj));
+    }
+
+    static void destroyWeak(JNIObjectHandle weakRef) {
+        globalHandles.destroyWeak(decode(weakRef));
+    }
+
+    public static long computeCurrentCount() {
         return globalHandles.computeCurrentCount();
     }
 }
@@ -232,7 +317,7 @@ final class JNIImageHeapHandles {
 
     static { // no overlaps with the regular JNI handle ranges
         assert ENTIRE_RANGE_MAX.lessThan(ThreadLocalHandles.MIN_VALUE) || ENTIRE_RANGE_MIN.greaterThan(ThreadLocalHandles.MAX_VALUE);
-        assert ENTIRE_RANGE_MAX.lessThan(JNIObjectHandles.GLOBAL_HANDLES_MIN) || ENTIRE_RANGE_MIN.greaterThan(JNIObjectHandles.GLOBAL_HANDLES_MAX);
+        assert ENTIRE_RANGE_MAX.lessThan(JNIGlobalHandles.MIN_VALUE) || ENTIRE_RANGE_MIN.greaterThan(JNIGlobalHandles.MAX_VALUE);
     }
 
     static boolean isInImageHeap(Object target) {
