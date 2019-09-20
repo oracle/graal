@@ -1281,11 +1281,10 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def build(self):
         with_source = lambda dep: not isinstance(dep, mx.Dependency) or (_include_sources() and dep.isJARDistribution() and not dep.is_stripped())
         mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, with_source=with_source)
+        with open(self._config_file(), 'w') as f:
+            f.write('\n'.join(self._config()))
 
     def needsBuild(self, newestInput):
-        # It should rebuild also when:
-        # - sources are/are_not included.
-        # - when files are deleted from the base JDK
         sup = super(GraalVmJImageBuildTask, self).needsBuild(newestInput)
         if sup[0]:
             return sup
@@ -1294,6 +1293,10 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             return True, '{} does not exist'.format(out_file.path)
         if newestInput and out_file.isOlderThan(newestInput):
             return True, '{} is older than {}'.format(out_file, newestInput)
+        with open(self._config_file(), 'r') as f:
+            old_config = [l.strip() for l in f.readlines()]
+            if set(old_config) != set(self._config()):
+                return True, 'the configuration changed'
         return False, None
 
     def newestOutput(self):
@@ -1306,6 +1309,13 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
     def __str__(self):
         return 'Building {}'.format(self.subject.name)
+
+    def _config(self):
+        return ['include sources: {}'.format(_include_sources()), 'strip jars: {}'.format(mx.get_opts().strip_jars)]
+
+    def _config_file(self):
+        return self.subject.output_directory() + '.config'
+
 
 class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
     def __init__(self, component, name, deps, native_image_config, **kw_args): # pylint: disable=super-init-not-called

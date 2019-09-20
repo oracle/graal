@@ -508,7 +508,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missin
                     if not name.endswith('/'):
                         dst_src_zip_contents[name] = zf.read(name)
         else:
-            mx.warn("Missing source file '{}'".format(jdk_src_zip))
+            mx.warn("'{}' does not exist or is not a file".format(jdk_src_zip))
 
         for jmd in modules:
             # Remove existing sources for all the modules that we include
