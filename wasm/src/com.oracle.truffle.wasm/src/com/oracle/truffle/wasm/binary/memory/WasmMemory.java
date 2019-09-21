@@ -34,6 +34,10 @@ public interface WasmMemory {
 
     long startAddress();
 
+    void memcopy(long src, long dst, long n);
+
+    long size();
+
     int load_i32(long address);
 
     long load_i64(long address);

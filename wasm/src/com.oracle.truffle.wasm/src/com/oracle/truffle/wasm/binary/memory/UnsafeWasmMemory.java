@@ -67,6 +67,17 @@ public class UnsafeWasmMemory implements WasmMemory {
     }
 
     @Override
+    public void memcopy(long src, long dst, long n) {
+        logger.finest(() -> String.format("memcopy from = %d, to = %d, n = %d", src, dst, n));
+        unsafe.copyMemory(src, dst, n);
+    }
+
+    @Override
+    public long size() {
+        return memorySize;
+    }
+
+    @Override
     public int load_i32(long address) {
         int value = unsafe.getInt(start + address);
         logger.finest(() -> String.format("load.i32 address = %d, value = 0x%08X (%d)", address, value, value));
