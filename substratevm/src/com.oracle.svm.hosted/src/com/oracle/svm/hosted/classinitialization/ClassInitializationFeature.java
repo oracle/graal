@@ -32,9 +32,7 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 import java.lang.reflect.Modifier;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -223,14 +221,6 @@ public class ClassInitializationFeature implements Feature {
             Set<AnalysisType> provenSafe = initializeSafeDelayedClasses(initGraph);
 
             if (Options.PrintClassInitialization.getValue()) {
-                List<ClassOrPackageConfig> allConfigs = classInitializationSupport.getClassInitializationConfiguration();
-                allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
-                ReportUtils.report("initializer configuration", path, "initializer_configuration", "txt", writer -> {
-                    for (ClassOrPackageConfig config : allConfigs) {
-                        writer.append(config.getName()).append(" -> ").append(config.getKind().toString()).append(" reasons: ")
-                                        .append(String.join(" and ", config.getReasons())).append(System.lineSeparator());
-                    }
-                });
                 reportSafeTypeInitiazliation(universe, initGraph, path, provenSafe);
                 reportMethodInitializationInfo(path);
             }
