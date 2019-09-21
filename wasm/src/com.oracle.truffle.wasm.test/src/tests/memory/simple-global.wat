@@ -16,7 +16,7 @@
       local.set 1
       local.get 0
       local.get 1
-      i32.ne
+      i32.ge_s
       br_if 0
     end
     global.get 0)
