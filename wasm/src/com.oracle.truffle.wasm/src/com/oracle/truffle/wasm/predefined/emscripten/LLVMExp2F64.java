@@ -29,25 +29,39 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
-import static com.oracle.truffle.wasm.binary.ValueTypes.I32_TYPE;
-
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
-import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.predefined.PredefinedModule;
+import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public class EmscriptenModule extends PredefinedModule {
+public class LLVMExp2F64 extends WasmPredefinedRootNode {
+    public LLVMExp2F64(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
+    }
+
     @Override
-    protected WasmModule createModule(WasmLanguage language, String name) {
-        WasmModule module = new WasmModule(name);
-        defineFunction(module, "abort", types(I32_TYPE), types(), new AbortNode(language, null));
-        defineFunction(module, "_emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBig(language, null));
-        defineFunction(module, "_emscripten_get_heap_size", types(), types(I32_TYPE), new EmscriptenGetHeapSize(language, null));
-        defineFunction(module, "_emscripten_resize_heap", types(I32_TYPE), types(I32_TYPE), new EmscriptenResizeHeap(language, null));
-        defineFunction(module, "_gettimeofday", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new GetTimeOfDay(language, null));
-        defineFunction(module, "___wasi_fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, null));
-        defineFunction(module, "___lock", types(I32_TYPE), types(), new Lock(language, null));
-        defineFunction(module, "___unlock", types(I32_TYPE), types(), new Unlock(language, null));
-        defineFunction(module, "___setErrNo", types(I32_TYPE), types(), new SetErrNo(language, null));
-        return module;
+    public Object execute(VirtualFrame frame) {
+        Object[] args = frame.getArguments();
+        assert args.length == 1;
+        for (Object arg : args) {
+            logger.finest(() -> "argument: " + arg);
+        }
+
+        double x = (double) args[0];
+
+        logger.finest("LLVMExp2F64 EXECUTE");
+
+        return exp2(x);
+    }
+
+    @Override
+    public String name() {
+        return "_llvm_exp2_f32";
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    double exp2(double x) {
+        return Math.pow(2, x);
     }
 }

@@ -31,6 +31,7 @@ package com.oracle.truffle.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
+import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
@@ -41,6 +42,22 @@ public class EmscriptenMemcpyBig extends WasmPredefinedRootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
+        Object[] args = frame.getArguments();
+        assert args.length == 3;
+        for (Object arg : args) {
+            logger.finest(() -> "argument: " + arg);
+        }
+
+        WasmContext context = contextReference().get();
+
+        int dest = (int) args[0];
+        int src = (int) args[1];
+        int num = (int) args[2];
+
+        logger.finest("EmscriptenMemcpyBig EXECUTE");
+
+        context.memory().memcopy(src, dest, num);
+
         return 0;
     }
 

@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
+import java.util.function.Consumer;
+
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
@@ -36,8 +38,6 @@ import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.exception.WasmTrap;
 import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
-
-import java.util.function.Consumer;
 
 public class WasiFdWrite extends WasmPredefinedRootNode {
     private TruffleLogger logger = TruffleLogger.getLogger("wasm");
