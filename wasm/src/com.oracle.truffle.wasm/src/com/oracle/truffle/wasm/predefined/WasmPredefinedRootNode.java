@@ -29,12 +29,16 @@
  */
 package com.oracle.truffle.wasm.predefined;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmRootNode;
 
 public abstract class WasmPredefinedRootNode extends WasmRootNode {
+    protected final TruffleLogger logger = TruffleLogger.getLogger("wasm");
+
     public WasmPredefinedRootNode(WasmLanguage language, WasmCodeEntry codeEntry) {
         super(language, codeEntry);
     }
