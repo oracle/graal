@@ -57,6 +57,7 @@ public class UnsafeWasmMemory implements WasmMemory {
     @Override
     public void validateAddress(long address, int size) {
         if (address + size > memorySize) {
+            // TODO: This should be a WasmTrap (and also a Truffle exception, which this would ensure).
             throw new WasmMemoryException("Requested memory address out-of-bounds");
         }
     }

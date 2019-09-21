@@ -229,6 +229,7 @@ import com.oracle.truffle.wasm.binary.constants.ExportIdentifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.constants.ImportIdentifier;
+import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 
@@ -397,11 +398,18 @@ public class BinaryReader extends BinaryStreamReader {
                     byte mutability = read1();
                     int index = module.symbolTable().maxGlobalIndex() + 1;
                     GlobalResolution resolution = UNRESOLVED_IMPORT;
+                    final WasmModule importedModule = context.modules().get(moduleName);
+                    // TODO: Move this logic into the Linker.
                     // Check that the imported module is available.
-                    if (context.modules().containsKey(moduleName)) {
+                    if (importedModule != null) {
                         // Check that the imported global is resolved in the imported module.
-                        final WasmModule importedModule = context.modules().get(moduleName);
-                        int exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(memberName);
+                        assert importedModule != null;
+                        Integer exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(memberName);
+                        if (exportedGlobalIndex == null) {
+                            throw new WasmLinkerException("Global variable '" + memberName + "', imported into module '" + module.name() +
+                                            "', was not exported in the module '" + moduleName + "'.");
+                        }
+                        // TODO: Check that the type of the imported global matches.
                         if (importedModule.symbolTable().globalResolution(exportedGlobalIndex).isResolved()) {
                             resolution = IMPORTED;
                         }
@@ -742,21 +750,24 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 }
                 case GLOBAL_GET: {
-                    int globalIndex = readLocalIndex(bytesConsumed);
-                    state.saveNumericLiteral(globalIndex);
+                    int index = readLocalIndex(bytesConsumed);
+                    state.saveNumericLiteral(index);
                     state.useByteConstant(bytesConsumed[0]);
-                    Assert.assertIntLessOrEqual(globalIndex, module.symbolTable().maxGlobalIndex(),
+                    Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.get.");
                     state.push();
                     break;
                 }
                 case GLOBAL_SET: {
-                    int globalIndex = readLocalIndex(bytesConsumed);
-                    state.saveNumericLiteral(globalIndex);
+                    int index = readLocalIndex(bytesConsumed);
+                    state.saveNumericLiteral(index);
                     state.useByteConstant(bytesConsumed[0]);
                     // Assert localIndex exists.
-                    Assert.assertIntLessOrEqual(globalIndex, module.symbolTable().maxGlobalIndex(),
+                    Assert.assertIntLessOrEqual(index, module.symbolTable().maxGlobalIndex(),
                                     "Invalid global index for global.set.");
+                    // Assert that the global is mutable.
+                    Assert.assertTrue(module.symbolTable().globalMutability(index) == GlobalModifier.MUTABLE,
+                            "Immutable globals cannot be set: " + index);
                     // Assert there is a value on the top of the stack.
                     Assert.assertIntGreater(state.stackSize(), 0, "global.set requires at least one element in the stack");
                     state.pop();
@@ -1149,7 +1160,7 @@ public class BinaryReader extends BinaryStreamReader {
             switch (exportType) {
                 case ExportIdentifier.FUNCTION: {
                     int functionIndex = readFunctionIndex();
-                    module.symbolTable().markFunctionAsExported(exportName, functionIndex);
+                    module.symbolTable().exportFunction(exportName, functionIndex);
                     break;
                 }
                 case ExportIdentifier.TABLE: {
@@ -1163,8 +1174,8 @@ public class BinaryReader extends BinaryStreamReader {
                     break;
                 }
                 case ExportIdentifier.GLOBAL: {
-                    int globalIndex = readGlobalIndex();
-                    // TODO: Store the export information somewhere (e.g. in the symbol table).
+                    int index = readGlobalIndex();
+                    module.symbolTable().exportGlobal(exportName, index);
                     break;
                 }
                 default: {

@@ -32,9 +32,12 @@ package com.oracle.truffle.wasm.predefined;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmFunction;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
+import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenModule;
 
@@ -68,6 +71,14 @@ public abstract class PredefinedModule {
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         function.setCallTarget(callTarget);
         return function;
+    }
+
+    protected int defineGlobal(WasmLanguage language, WasmModule module, String name, int valueType, int mutability, long value) {
+        int index = module.symbolTable().maxGlobalIndex() + 1;
+        int address = module.symbolTable().declareExportedGlobal(language, name, index, valueType, mutability, GlobalResolution.DECLARED);
+        final WasmContext context = language.getContextReference().get();
+        context.globals().storeLong(address, value);
+        return index;
     }
 
     protected byte[] types(byte... args) {

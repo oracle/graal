@@ -33,10 +33,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
+import com.oracle.truffle.wasm.binary.memory.WasmMemoryException;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
 import com.oracle.truffle.wasm.collection.LongArrayList;
 
@@ -45,6 +47,7 @@ public class SymbolTable {
     private static final int INITIAL_OFFSET_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int INITIAL_GLOBALS_SIZE = 128;
+    private static final int GLOBAL_EXPORT_BIT = 24;
 
     @CompilationFinal private WasmModule module;
 
@@ -128,17 +131,17 @@ public class SymbolTable {
      * whose value this global should be initialized with
      * (assuming that this global was declared with a {@code GLOBAL_GET} expression).
      */
-    @CompilationFinal private LongArrayList unresolvedGlobals;
+    @CompilationFinal private final LongArrayList unresolvedGlobals;
 
     /**
      * A mapping between the indices of the imported globals and their import specifiers.
      */
-    @CompilationFinal private HashMap<Integer, ImportSpecifier> importedGlobals;
+    @CompilationFinal private final HashMap<Integer, ImportSpecifier> importedGlobals;
 
     /**
      * A mapping between the names and the indices of the exported globals.
      */
-    @CompilationFinal private LinkedHashMap<String, Integer> exportedGlobals;
+    @CompilationFinal private final Map<String, Integer> exportedGlobals;
 
     /**
      * The greatest index of a global in the module.
@@ -261,7 +264,7 @@ public class SymbolTable {
 
     public WasmFunction declareExportedFunction(int typeIndex, String exportedName) {
         final WasmFunction function = declareFunction(typeIndex);
-        markFunctionAsExported(exportedName, function.index());
+        exportFunction(exportedName, function.index());
         return function;
     }
 
@@ -332,11 +335,11 @@ public class SymbolTable {
         return types;
     }
 
-    public void markFunctionAsExported(String exportName, int functionIndex) {
+    public void exportFunction(String exportName, int functionIndex) {
         exportedFunctions.put(exportName, functions[functionIndex]);
     }
 
-    public LinkedHashMap<String, WasmFunction> exportedFunctions() {
+    public Map<String, WasmFunction> exportedFunctions() {
         return exportedFunctions;
     }
 
@@ -394,6 +397,11 @@ public class SymbolTable {
         return globalAddresses[index];
     }
 
+    public boolean globalExported(int index) {
+        final int exportStatus = globalTypes[index] & GLOBAL_EXPORT_BIT;
+        return exportStatus != 0;
+    }
+
     public GlobalResolution globalResolution(int index) {
         final int resolutionValue = (globalTypes[index] >>> 16) & 0xff;
         return GlobalResolution.VALUES[resolutionValue];
@@ -435,7 +443,31 @@ public class SymbolTable {
         }
     }
 
-    public LinkedHashMap<String, Integer> exportedGlobals() {
+    public Map<String, Integer> exportedGlobals() {
         return exportedGlobals;
+    }
+
+    private String nameOfExportedGlobal(int index) {
+        for (Map.Entry<String, Integer> entry : exportedGlobals.entrySet()) {
+            if (entry.getValue() == index) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    public void exportGlobal(String name, int index) {
+        if (globalExported(index)) {
+            throw new WasmMemoryException("Global " + index + " already exported under the name: " + nameOfExportedGlobal(index));
+        }
+        globalTypes[index] |= GLOBAL_EXPORT_BIT;
+        // TODO: Invoke Linker to link together any modules with pending unresolved globals.
+        exportedGlobals.put(name, index);
+    }
+
+    public int declareExportedGlobal(WasmLanguage language, String name, int index, int valueType, int mutability, GlobalResolution resolution) {
+        int address = declareGlobal(language, index, valueType, mutability, resolution);
+        exportGlobal(name, index);
+        return address;
     }
 }
