@@ -52,15 +52,15 @@ public abstract class PredefinedModule {
         pm.put("emscripten", new EmscriptenModule());
     }
 
-    public static WasmModule createPredefined(WasmLanguage language, String name, String predefinedModuleName) {
+    public static WasmModule createPredefined(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
         final PredefinedModule predefinedModule = predefinedModules.get(predefinedModuleName);
         if (predefinedModule == null) {
             throw new WasmException("Unknown predefined module: " + predefinedModuleName);
         }
-        return predefinedModule.createModule(language, name);
+        return predefinedModule.createModule(language, context, name);
     }
 
-    protected abstract WasmModule createModule(WasmLanguage language, String name);
+    protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
 
     protected WasmFunction defineFunction(WasmModule module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
         // We could check if the same function type had already been allocated,
@@ -73,10 +73,9 @@ public abstract class PredefinedModule {
         return function;
     }
 
-    protected int defineGlobal(WasmLanguage language, WasmModule module, String name, int valueType, int mutability, long value) {
+    protected int defineGlobal(WasmContext context, WasmModule module, String name, int valueType, int mutability, long value) {
         int index = module.symbolTable().maxGlobalIndex() + 1;
-        int address = module.symbolTable().declareExportedGlobal(language, name, index, valueType, mutability, GlobalResolution.DECLARED);
-        final WasmContext context = language.getContextReference().get();
+        int address = module.symbolTable().declareExportedGlobal(context, name, index, valueType, mutability, GlobalResolution.DECLARED);
         context.globals().storeLong(address, value);
         return index;
     }

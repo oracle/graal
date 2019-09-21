@@ -229,6 +229,8 @@ import com.oracle.truffle.wasm.binary.constants.ExportIdentifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.constants.ImportIdentifier;
+import com.oracle.truffle.wasm.binary.exception.WasmException;
+import com.oracle.truffle.wasm.binary.exception.WasmExecutionException;
 import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
@@ -414,7 +416,7 @@ public class BinaryReader extends BinaryStreamReader {
                             resolution = IMPORTED;
                         }
                     }
-                    module.symbolTable().importGlobal(language, moduleName, memberName, index, type, mutability, resolution);
+                    module.symbolTable().importGlobal(language.getContextReference().get(), moduleName, memberName, index, type, mutability, resolution);
                     break;
                 }
                 default: {
@@ -1126,11 +1128,12 @@ public class BinaryReader extends BinaryStreamReader {
                 case I32_CONST:
                     offset = readSignedInt32();
                     break;
+                case GLOBAL_GET:
                     // TODO: Implement the GLOBAL_GET case for the elements.
-                // case GLOBAL_GET:
-                //     int index = readGlobalIndex();
-                //     offset = module.globals().getAsInt(index);
-                //     break;
+                    int index = readGlobalIndex();
+                    throw new WasmException("GLOBAL_GET in element section not implemented.");
+                    // offset = module.globals().getAsInt(index);
+                    // break;
                 default:
                     Assert.fail(String.format("Invalid instruction for table offset expression: 0x%02X", instruction));
             }
@@ -1240,7 +1243,7 @@ public class BinaryReader extends BinaryStreamReader {
             }
             instruction = read1();
             Assert.assertByteEqual(instruction, (byte) END, "Global initialization must end with END.");
-            final int address = module.symbolTable().declareGlobal(language, i, type, mut, resolution);
+            final int address = module.symbolTable().declareGlobal(language.getContextReference().get(), i, type, mut, resolution);
             if (resolution.isResolved()) {
                 globals.storeLong(address, value);
             } else {
@@ -1269,11 +1272,12 @@ public class BinaryReader extends BinaryStreamReader {
                     case I32_CONST:
                         offset = readSignedInt32();
                         break;
+                    case GLOBAL_GET:
+                        int index = readGlobalIndex();
                         // TODO: Implement GLOBAL_GET case for data sections (and add tests).
-                    // case GLOBAL_GET:
-                    //     int index = readGlobalIndex();
-                    //     offset = module.globals().getAsInt(index);
-                    //     break;
+                        throw new WasmException("GLOBAL_GET in data section not implemented.");
+                        // offset = module.globals().getAsInt(index);
+                        // break;
                     case END:
                         break;
                     default:

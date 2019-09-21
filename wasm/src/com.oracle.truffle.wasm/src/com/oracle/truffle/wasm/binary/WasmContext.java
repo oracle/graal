@@ -108,7 +108,7 @@ public class WasmContext {
             final String[] parts = moduleSpec.split(":");
             final String name = parts[0];
             final String key = parts[1];
-            final WasmModule module = PredefinedModule.createPredefined(language, name, key);
+            final WasmModule module = PredefinedModule.createPredefined(language, this, name, key);
             modules.put(name, module);
         }
     }

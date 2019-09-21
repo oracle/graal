@@ -47,7 +47,7 @@ public class SymbolTable {
     private static final int INITIAL_OFFSET_SIZE = 128;
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int INITIAL_GLOBALS_SIZE = 128;
-    private static final int GLOBAL_EXPORT_BIT = 24;
+    private static final int GLOBAL_EXPORT_BIT = 1 << 24;
 
     @CompilationFinal private WasmModule module;
 
@@ -364,12 +364,12 @@ public class SymbolTable {
         }
     }
 
-    private int allocateGlobal(WasmLanguage language, int index, int valueType, int mutability, GlobalResolution resolution) {
+    private int allocateGlobal(WasmContext context, int index, int valueType, int mutability, GlobalResolution resolution) {
         assert (valueType & 0xff) == valueType;
         assert (mutability & 0xff) == mutability;
         ensureGlobalsCapacity(index);
         maxGlobalIndex = Math.max(maxGlobalIndex, index);
-        final WasmGlobals globals = language.getContextReference().get().globals();
+        final WasmGlobals globals = context.globals();
         final int address = globals.allocateGlobal();
         globalAddresses[index] = address;
         int globalType = (resolution.ordinal() << 16) | ((mutability << 8) | valueType);
@@ -377,14 +377,14 @@ public class SymbolTable {
         return address;
     }
 
-    public int declareGlobal(WasmLanguage language, int index, int valueType, int mutability, GlobalResolution resolution) {
+    public int declareGlobal(WasmContext context, int index, int valueType, int mutability, GlobalResolution resolution) {
         assert !resolution.isImported();
-        return allocateGlobal(language, index, valueType, mutability, resolution);
+        return allocateGlobal(context, index, valueType, mutability, resolution);
     }
 
-    public int importGlobal(WasmLanguage language, String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution) {
+    public int importGlobal(WasmContext context, String moduleName, String globalName, int index, int valueType, int mutability, GlobalResolution resolution) {
         assert resolution.isImported();
-        final int address = allocateGlobal(language, index, valueType, mutability, resolution);
+        final int address = allocateGlobal(context, index, valueType, mutability, resolution);
         importedGlobals.put(index, new ImportSpecifier(moduleName, globalName));
         return address;
     }
@@ -465,8 +465,8 @@ public class SymbolTable {
         exportedGlobals.put(name, index);
     }
 
-    public int declareExportedGlobal(WasmLanguage language, String name, int index, int valueType, int mutability, GlobalResolution resolution) {
-        int address = declareGlobal(language, index, valueType, mutability, resolution);
+    public int declareExportedGlobal(WasmContext context, String name, int index, int valueType, int mutability, GlobalResolution resolution) {
+        int address = declareGlobal(context, index, valueType, mutability, resolution);
         exportGlobal(name, index);
         return address;
     }
