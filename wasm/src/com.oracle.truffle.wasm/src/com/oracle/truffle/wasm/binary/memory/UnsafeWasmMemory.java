@@ -69,7 +69,7 @@ public class UnsafeWasmMemory implements WasmMemory {
     @Override
     public void memcopy(long src, long dst, long n) {
         logger.finest(() -> String.format("memcopy from = %d, to = %d, n = %d", src, dst, n));
-        unsafe.copyMemory(src, dst, n);
+        unsafe.copyMemory(start + src, start + dst, n);
     }
 
     @Override
