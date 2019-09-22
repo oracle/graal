@@ -48,7 +48,8 @@ public class WasmContext {
     private Env env;
     private WasmLanguage language;
     private WasmMemory memory;
-    private WasmGlobals globals;
+    private Globals globals;
+    private Linker linker;
     private Map<String, WasmModule> modules;
 
     public static WasmContext getCurrent() {
@@ -59,8 +60,9 @@ public class WasmContext {
         this.env = env;
         this.language = language;
         this.memory = new UnsafeWasmMemory(DEFAULT_MEMORY_SIZE);
-        this.globals = new WasmGlobals();
+        this.globals = new Globals();
         this.modules = new HashMap<>();
+        this.linker = new Linker(language);
         initializePredefinedModules(env);
     }
 
@@ -74,6 +76,10 @@ public class WasmContext {
 
     public WasmMemory memory() {
         return memory;
+    }
+
+    public Linker linker() {
+        return linker;
     }
 
     public Iterable<Scope> getTopScopes() {
@@ -113,7 +119,7 @@ public class WasmContext {
         }
     }
 
-    public WasmGlobals globals() {
+    public Globals globals() {
         return globals;
     }
 }

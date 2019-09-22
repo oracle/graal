@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.wasm.binary;
 
+import com.oracle.truffle.wasm.binary.exception.WasmException;
+
 public class ValueTypes {
     public static final byte VOID_TYPE = 0x40;
 
@@ -36,4 +38,19 @@ public class ValueTypes {
     public static final byte I64_TYPE = 0x7E;
     public static final byte F32_TYPE = 0x7D;
     public static final byte F64_TYPE = 0x7C;
+
+    public static String asString(int valueType) {
+        switch(valueType) {
+            case I32_TYPE:
+                return "i32";
+            case I64_TYPE:
+                return "i64";
+            case F32_TYPE:
+                return "f32";
+            case F64_TYPE:
+                return "f64";
+            default:
+                throw new WasmException("Unknown value type: 0x" + Integer.toHexString(valueType));
+        }
+    }
 }

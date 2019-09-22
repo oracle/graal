@@ -29,7 +29,12 @@
  */
 package com.oracle.truffle.wasm.binary;
 
+import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
+import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
+
+import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.IMPORTED;
+import static com.oracle.truffle.wasm.binary.constants.GlobalResolution.UNRESOLVED_IMPORT;
 
 public class Linker {
     private final WasmLanguage language;
@@ -60,5 +65,41 @@ public class Linker {
 
     private void linkGlobals(WasmModule module) {
         // TODO: Ensure that the globals are linked.
+    }
+
+    public GlobalResolution tryResolveGlobal(WasmModule module, String importedModuleName, String globalName, int valueType, int mutability) {
+        GlobalResolution resolution = UNRESOLVED_IMPORT;
+        final WasmContext context = language.getContextReference().get();
+        final WasmModule importedModule = context.modules().get(importedModuleName);
+
+        // Check that the imported module is available.
+        if (importedModule != null) {
+            // Check that the imported global is resolved in the imported module.
+            assert importedModule != null;
+            Integer exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(globalName);
+            if (exportedGlobalIndex == null) {
+                throw new WasmLinkerException("Global variable '" + globalName + "', imported into module '" + module.name() +
+                                "', was not exported in the module '" + importedModuleName + "'.");
+            }
+            int exportedValueType = importedModule.symbolTable().globalValueType(exportedGlobalIndex);
+            if (exportedValueType != valueType) {
+                throw new WasmLinkerException("Global variable '" + globalName + "' is imported into module '" + module.name() +
+                                "' with the type " + ValueTypes.asString(valueType) + ", " +
+                                "'but it was exported in the module '" + importedModuleName + "' with the type " + ValueTypes.asString(exportedValueType) + ".");
+            }
+            int exportedMutability = importedModule.symbolTable().globalMutability(exportedGlobalIndex);
+            if (exportedMutability != mutability) {
+                throw new WasmLinkerException("Global variable '" + globalName + "' is imported into module '" + module.name() +
+                                "' with the modifier " + GlobalModifier.asString(mutability) + ", " +
+                                "'but it was exported in the module '" + importedModuleName + "' with the modifier " + ValueTypes.asString(exportedMutability) + ".");
+            }
+            if (importedModule.symbolTable().globalResolution(exportedGlobalIndex).isResolved()) {
+                resolution = IMPORTED;
+            }
+        }
+
+        // TODO: Once we support asynchronous parsing, we will need to record the dependency on the global.
+
+        return resolution;
     }
 }

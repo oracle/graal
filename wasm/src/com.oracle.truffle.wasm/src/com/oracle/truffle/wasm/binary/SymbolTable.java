@@ -104,7 +104,7 @@ public class SymbolTable {
      * An index i denotes the i-th global in this module.
      * The value at the index i denotes the address of the global
      * in the memory space for all the globals from all the modules
-     * (see {@link WasmGlobals}).
+     * (see {@link Globals}).
      *
      * This separation of global indices is done because the index spaces
      * of the globals are module-specific, and the globals can be imported
@@ -369,7 +369,7 @@ public class SymbolTable {
         assert (mutability & 0xff) == mutability;
         ensureGlobalsCapacity(index);
         maxGlobalIndex = Math.max(maxGlobalIndex, index);
-        final WasmGlobals globals = context.globals();
+        final Globals globals = context.globals();
         final int address = globals.allocateGlobal();
         globalAddresses[index] = address;
         int globalType = (resolution.ordinal() << 16) | ((mutability << 8) | valueType);

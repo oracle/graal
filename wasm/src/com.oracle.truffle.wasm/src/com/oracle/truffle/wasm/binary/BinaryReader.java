@@ -230,7 +230,6 @@ import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.constants.ImportIdentifier;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
-import com.oracle.truffle.wasm.binary.exception.WasmExecutionException;
 import com.oracle.truffle.wasm.binary.exception.WasmLinkerException;
 import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.collection.ByteArrayList;
@@ -399,23 +398,7 @@ public class BinaryReader extends BinaryStreamReader {
                     // See GlobalModifier.
                     byte mutability = read1();
                     int index = module.symbolTable().maxGlobalIndex() + 1;
-                    GlobalResolution resolution = UNRESOLVED_IMPORT;
-                    final WasmModule importedModule = context.modules().get(moduleName);
-                    // TODO: Move this logic into the Linker.
-                    // Check that the imported module is available.
-                    if (importedModule != null) {
-                        // Check that the imported global is resolved in the imported module.
-                        assert importedModule != null;
-                        Integer exportedGlobalIndex = importedModule.symbolTable().exportedGlobals().get(memberName);
-                        if (exportedGlobalIndex == null) {
-                            throw new WasmLinkerException("Global variable '" + memberName + "', imported into module '" + module.name() +
-                                            "', was not exported in the module '" + moduleName + "'.");
-                        }
-                        // TODO: Check that the type of the imported global matches.
-                        if (importedModule.symbolTable().globalResolution(exportedGlobalIndex).isResolved()) {
-                            resolution = IMPORTED;
-                        }
-                    }
+                    final GlobalResolution resolution = context.linker().tryResolveGlobal(module, moduleName, memberName, type, mutability);
                     module.symbolTable().importGlobal(language.getContextReference().get(), moduleName, memberName, index, type, mutability, resolution);
                     break;
                 }
@@ -1189,7 +1172,7 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readGlobalSection() {
-        final WasmGlobals globals = language.getContextReference().get().globals();
+        final Globals globals = language.getContextReference().get().globals();
         int numGlobals = readVectorLength();
         for (int i = 0; i != numGlobals; i++) {
             byte type = readValueType();

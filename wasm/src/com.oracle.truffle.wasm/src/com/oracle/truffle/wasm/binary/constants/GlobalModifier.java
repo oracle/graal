@@ -29,7 +29,20 @@
  */
 package com.oracle.truffle.wasm.binary.constants;
 
+import com.oracle.truffle.wasm.binary.exception.WasmException;
+
 public class GlobalModifier {
     public static final int CONSTANT = 0x00;
     public static final int MUTABLE = 0x01;
+
+    public static String asString(int modifier) {
+        switch (modifier) {
+            case CONSTANT:
+                return "const";
+            case MUTABLE:
+                return "var";
+            default:
+                throw new WasmException("Unknown modifier: 0x" + Integer.toHexString(modifier));
+        }
+    }
 }

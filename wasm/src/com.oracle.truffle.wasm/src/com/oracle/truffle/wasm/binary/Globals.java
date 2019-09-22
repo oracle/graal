@@ -31,7 +31,7 @@ package com.oracle.truffle.wasm.binary;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-public class WasmGlobals {
+public class Globals {
     private static final int INITIAL_GLOBALS_SIZE = 2048;
 
     // If we support late linking, we need to ensure that methods accessing the global array
@@ -41,7 +41,7 @@ public class WasmGlobals {
     @CompilationFinal(dimensions = 1) private long[] globals;
     private int numGlobals;
 
-    public WasmGlobals() {
+    public Globals() {
         this.globals = new long[INITIAL_GLOBALS_SIZE];
         this.numGlobals = 0;
     }
