@@ -56,7 +56,8 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public void validateAddress(long address, int size) {
-        if (address + size > memorySize) {
+        logger.finest(() -> String.format("validating memory address: 0x%016X (%d)", address, address));
+        if (address + size > memorySize || address < 0) {
             throw new WasmMemoryException("Requested memory address out-of-bounds");
         }
     }
