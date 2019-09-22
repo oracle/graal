@@ -1094,43 +1094,54 @@ public class BinaryReader extends BinaryStreamReader {
     }
 
     private void readElementSection() {
+        final WasmContext context = language.getContextReference().get();
         int numElements = readVectorLength();
         for (int i = 0; i != numElements; ++i) {
             int tableIndex = readUnsignedInt32();
             // At the moment, WebAssembly only supports one table instance, thus the only valid table index is 0.
             Assert.assertIntEqual(tableIndex, 0, "Invalid table index");
-            int offset = 0;
-            byte instruction;
 
             // Read the offset expression.
-            instruction = read1();
+            byte instruction = read1();
             // Table offset expression must be a constant expression with result type i32.
             // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
             switch (instruction) {
-                case I32_CONST:
-                    offset = readSignedInt32();
+                case I32_CONST: {
+                    int offset = readSignedInt32();
+                    readEnd();
+                    // Read the contents.
+                    int[] contents = readElemContents();
+                    module.table().initializeContents(offset, contents);
                     break;
-                case GLOBAL_GET:
-                    // TODO: Implement the GLOBAL_GET case for the elements.
+                }
+                case GLOBAL_GET: {
                     int index = readGlobalIndex();
-                    throw new WasmException("GLOBAL_GET in element section not implemented.");
-                    // offset = module.globals().getAsInt(index);
-                    // break;
-                default:
+                    readEnd();
+                    int[] contents = readElemContents();
+                    final Linker linker = context.linker();
+                    linker.tryInitializeElements(context, module, index, contents);
+                    break;
+                }
+                default: {
                     Assert.fail(String.format("Invalid instruction for table offset expression: 0x%02X", instruction));
+                }
             }
-            instruction = read1();
-            Assert.assertByteEqual(instruction, (byte) END, "Initialization expression must end with an END.");
-
-            // Read the contents.
-            int contentLength = readUnsignedInt32();
-            int[] contents = new int[contentLength];
-            for (int funcIdx = 0; funcIdx != contentLength; ++funcIdx) {
-                contents[funcIdx] = readFunctionIndex();
-            }
-            module.table().initializeContents(offset, contents);
         }
+    }
+
+    private void readEnd() {
+        byte instruction = read1();
+        Assert.assertByteEqual(instruction, (byte) END, "Initialization expression must end with an END.");
+    }
+
+    private int[] readElemContents() {
+        int contentLength = readUnsignedInt32();
+        int[] contents = new int[contentLength];
+        for (int funcIdx = 0; funcIdx != contentLength; ++funcIdx) {
+            contents[funcIdx] = readFunctionIndex();
+        }
+        return contents;
     }
 
     private void readStartSection() {
@@ -1174,7 +1185,8 @@ public class BinaryReader extends BinaryStreamReader {
     private void readGlobalSection() {
         final Globals globals = language.getContextReference().get().globals();
         int numGlobals = readVectorLength();
-        for (int i = 0; i != numGlobals; i++) {
+        int startingGlobalIndex = module.symbolTable().maxGlobalIndex() + 1;
+        for (int i = startingGlobalIndex; i != startingGlobalIndex + numGlobals; i++) {
             byte type = readValueType();
             // 0x00 means const, 0x01 means var
             byte mut = read1();

@@ -44,8 +44,8 @@ public class EmscriptenModule extends PredefinedModule {
         defineFunction(module, "abort", types(I32_TYPE), types(), new AbortNode(language, null));
         defineFunction(module, "_emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBig(language, null));
         defineFunction(module, "___wasi_fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, null));
-        defineGlobal(context, module, "__table_base", I32_TYPE, GlobalModifier.MUTABLE, 0);
-        defineGlobal(context, module, "DYNAMICTOP_PTR", I32_TYPE, GlobalModifier.MUTABLE, 0);
+        defineGlobal(context, module, "__table_base", I32_TYPE, GlobalModifier.CONSTANT, 0);
+        defineGlobal(context, module, "DYNAMICTOP_PTR", I32_TYPE, GlobalModifier.CONSTANT, 0);
         return module;
     }
 }

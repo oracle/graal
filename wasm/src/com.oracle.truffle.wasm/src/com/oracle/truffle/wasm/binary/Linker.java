@@ -81,6 +81,10 @@ public class Linker {
                 throw new WasmLinkerException("Global variable '" + globalName + "', imported into module '" + module.name() +
                                 "', was not exported in the module '" + importedModuleName + "'.");
             }
+            GlobalResolution exportedResolution = importedModule.symbolTable().globalResolution(exportedGlobalIndex);
+            if (!exportedResolution.isResolved()) {
+                // TODO: Wait until the exported global is resolved.
+            }
             int exportedValueType = importedModule.symbolTable().globalValueType(exportedGlobalIndex);
             if (exportedValueType != valueType) {
                 throw new WasmLinkerException("Global variable '" + globalName + "' is imported into module '" + module.name() +
@@ -91,7 +95,7 @@ public class Linker {
             if (exportedMutability != mutability) {
                 throw new WasmLinkerException("Global variable '" + globalName + "' is imported into module '" + module.name() +
                                 "' with the modifier " + GlobalModifier.asString(mutability) + ", " +
-                                "'but it was exported in the module '" + importedModuleName + "' with the modifier " + ValueTypes.asString(exportedMutability) + ".");
+                                "'but it was exported in the module '" + importedModuleName + "' with the modifier " + GlobalModifier.asString(exportedMutability) + ".");
             }
             if (importedModule.symbolTable().globalResolution(exportedGlobalIndex).isResolved()) {
                 resolution = IMPORTED;
@@ -101,5 +105,19 @@ public class Linker {
         // TODO: Once we support asynchronous parsing, we will need to record the dependency on the global.
 
         return resolution;
+    }
+
+    public void tryInitializeElements(WasmContext context, WasmModule module, int globalIndex, int[] contents) {
+        final GlobalResolution resolution = module.symbolTable().globalResolution(globalIndex);
+        if (resolution.isResolved()) {
+            int address = module.symbolTable().globalAddress(globalIndex);
+            int offset = context.globals().loadAsInt(address);
+            // Read the contents.
+            module.table().initializeContents(offset, contents);
+        } else {
+            // TODO: Record the contents array for later initialization - with a single module,
+            //  the predefined modules will be already initialized, so we don't yet run into this case.
+            throw new WasmLinkerException("Postponed table initialization not implemented.");
+        }
     }
 }
