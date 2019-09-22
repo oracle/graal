@@ -79,20 +79,23 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public int load_i32(long address) {
+        logger.finest(() -> String.format("load.i32 address = %d", address));
         int value = unsafe.getInt(start + address);
-        logger.finest(() -> String.format("load.i32 address = %d, value = 0x%08X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i32 value = 0x%08X (%d)", value, value));
         return value;
     }
 
     @Override
     public long load_i64(long address) {
+        logger.finest(() -> String.format("load.i64 address = %d", address));
         long value = unsafe.getLong(start + address);
-        logger.finest(() -> String.format("load.i64 address = %d, value = 0x%016X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i64 value = 0x%016X (%d)", value, value));
         return value;
     }
 
     @Override
     public float load_f32(long address) {
+        logger.finest(() -> String.format("load.f32 address = %d", address));
         float value = unsafe.getFloat(start + address);
         logger.finest(() -> String.format("load.f32 address = %d, value = 0x%08X (%f)", address, Float.floatToRawIntBits(value), value));
         return value;
@@ -100,6 +103,7 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public double load_f64(long address) {
+        logger.finest(() -> String.format("load.f64 address = %d", address));
         double value = unsafe.getDouble(start + address);
         logger.finest(() -> String.format("load.f64 address = %d, value = 0x%016X (%f)", address, Double.doubleToRawLongBits(value), value));
         return value;
@@ -107,71 +111,81 @@ public class UnsafeWasmMemory implements WasmMemory {
 
     @Override
     public int load_i32_8s(long address) {
+        logger.finest(() -> String.format("load.i32_8s address = %d", address));
         int value = unsafe.getByte(start + address);
-        logger.finest(() -> String.format("load.i32_8s address = %d, value = 0x%02X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i32_8s value = 0x%02X (%d)", value, value));
         return value;
     }
 
     @Override
     public int load_i32_8u(long address) {
+        logger.finest(() -> String.format("load.i32_8u address = %d", address));
         int value = 0x0000_00ff & unsafe.getByte(start + address);
-        logger.finest(() -> String.format("load.i32_8u address = %d, value = 0x%02X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i32_8u value = 0x%02X (%d)", value, value));
         return value;
     }
 
     @Override
     public int load_i32_16s(long address) {
+        logger.finest(() -> String.format("load.i32_16s address = %d", address));
         int value = unsafe.getShort(start + address);
-        logger.finest(() -> String.format("load.i32_16s address = %d, value = 0x%04X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i32_16s value = 0x%04X (%d)", value, value));
         return value;
     }
 
     @Override
     public int load_i32_16u(long address) {
+        logger.finest(() -> String.format("load.i32_16u address = %d", address));
         int value = 0x0000_ffff & unsafe.getShort(start + address);
-        logger.finest(() -> String.format("load.i32_16u address = %d, value = 0x%04X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i32_16u value = 0x%04X (%d)", value, value));
         return value;
     }
 
     @Override
     public long load_i64_8s(long address) {
+        logger.finest(() -> String.format("load.i64_8s address = %d", address));
         long value = unsafe.getByte(start + address);
-        logger.finest(() -> String.format("load.i64_8s address = %d, value = 0x%02X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i64_8s value = 0x%02X (%d)", value, value));
         return value;
     }
 
     @Override
     public long load_i64_8u(long address) {
+        logger.finest(() -> String.format("load.i64_8u address = %d", address));
         long value = 0x0000_0000_0000_00ffL & unsafe.getByte(start + address);
-        logger.finest(() -> String.format("load.i64_8u address = %d, value = 0x%02X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i64_8u value = 0x%02X (%d)", value, value));
         return value;
     }
 
     @Override
     public long load_i64_16s(long address) {
+        logger.finest(() -> String.format("load.i64_16s address = %d", address));
         long value = unsafe.getShort(start + address);
-        logger.finest(() -> String.format("load.i64_16s address = %d, value = 0x%04X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i64_16s value = 0x%04X (%d)", value, value));
         return value;
     }
 
     @Override
     public long load_i64_16u(long address) {
+        logger.finest(() -> String.format("load.i64_16u address = %d", address));
         long value = 0x0000_0000_0000_ffffL & unsafe.getShort(start + address);
-        logger.finest(() -> String.format("load.i64_16u address = %d, value = 0x%04X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i64_16u value = 0x%04X (%d)", value, value));
         return value;
     }
 
     @Override
     public long load_i64_32s(long address) {
+        logger.finest(() -> String.format("load.i64_32s address = %d", address));
         long value = unsafe.getInt(start + address);
-        logger.finest(() -> String.format("load.i64_32s address = %d, value = 0x%08X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i64_32s value = 0x%08X (%d)", value, value));
         return value;
     }
 
     @Override
     public long load_i64_32u(long address) {
+        logger.finest(() -> String.format("load.i64_32u address = %d", address));
         long value = 0x0000_0000_ffff_ffffL & unsafe.getInt(start + address);
-        logger.finest(() -> String.format("load.i64_32u address = %d, value = 0x%08X (%d)", address, value, value));
+        logger.finest(() -> String.format("load.i64_32u value = 0x%08X (%d)", value, value));
         return value;
     }
 
