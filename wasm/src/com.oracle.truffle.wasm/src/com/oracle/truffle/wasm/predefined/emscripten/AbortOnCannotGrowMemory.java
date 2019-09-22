@@ -29,39 +29,23 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
-import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public class LLVMExp2F64 extends WasmPredefinedRootNode {
-    public LLVMExp2F64(WasmLanguage language, WasmCodeEntry codeEntry) {
+public class AbortOnCannotGrowMemory extends AbortNode {
+    public AbortOnCannotGrowMemory(WasmLanguage language, WasmCodeEntry codeEntry) {
         super(language, codeEntry);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object[] args = frame.getArguments();
-        assert args.length == 1;
-        for (Object arg : args) {
-            logger.finest(() -> "argument: " + arg);
-        }
-
-        double x = (double) args[0];
-
-        logger.finest("LLVMExp2F64 EXECUTE");
-
-        return exp2(x);
+        logger.finest("AbortOnCannotGrowMemory EXECUTE");
+        return super.execute(frame);
     }
 
     @Override
     public String name() {
-        return "_llvm_exp2_f64";
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    double exp2(double x) {
-        return Math.pow(2, x);
+        return "abortOnCannotGrowMemory";
     }
 }
