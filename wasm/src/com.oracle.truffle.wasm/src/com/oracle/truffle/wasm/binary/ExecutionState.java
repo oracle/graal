@@ -85,8 +85,8 @@ public class ExecutionState {
         intConstants.add(constant);
     }
 
-    public void pushStackState() {
-        stackStates.add(stackSize);
+    public void pushStackState(int stackPosition) {
+        stackStates.add(stackPosition);
     }
 
     public void popStackState() {
@@ -94,7 +94,7 @@ public class ExecutionState {
     }
 
     public int getStackState(int level) {
-        return stackStates.get(stackStates.size() - level - 1);
+        return stackStates.get(stackStates.size() - 1 - level);
     }
 
     public void pushBlockReturnLength(int n) {
@@ -106,7 +106,7 @@ public class ExecutionState {
     }
 
     public int getBlockReturnLength(int offset) {
-        return blockReturnLengthStack.get(blockReturnLengthStack.size() - offset);
+        return blockReturnLengthStack.get(blockReturnLengthStack.size() - 1 - offset);
     }
 
     public int getRootBlockReturnLength() {
