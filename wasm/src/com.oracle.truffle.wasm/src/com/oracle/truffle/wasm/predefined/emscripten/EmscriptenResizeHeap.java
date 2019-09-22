@@ -27,60 +27,28 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary.memory;
+package com.oracle.truffle.wasm.predefined.emscripten;
 
-public interface WasmMemory {
-    void validateAddress(long address, int size);
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.wasm.binary.WasmCodeEntry;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
 
-    long startAddress();
+public class EmscriptenResizeHeap extends AbortNode {
+    public EmscriptenResizeHeap(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
+    }
 
-    void memcopy(long src, long dst, long n);
+    @Override
+    public Object execute(VirtualFrame frame) {
+        logger.finest("EmscriptenResizeHeap EXECUTE");
 
-    long size();
+        // Heap resizing is not supported by default by emscripten
+        // (need to specify `-s ALLOW_MEMORY_GROWTH=1` on compilation).
+        return super.execute(frame);
+    }
 
-    int load_i32(long address);
-
-    long load_i64(long address);
-
-    float load_f32(long address);
-
-    double load_f64(long address);
-
-    int load_i32_8s(long address);
-
-    int load_i32_8u(long address);
-
-    int load_i32_16s(long address);
-
-    int load_i32_16u(long address);
-
-    long load_i64_8s(long address);
-
-    long load_i64_8u(long address);
-
-    long load_i64_16s(long address);
-
-    long load_i64_16u(long address);
-
-    long load_i64_32s(long address);
-
-    long load_i64_32u(long address);
-
-    void store_i32(long address, int value);
-
-    void store_i64(long address, long value);
-
-    void store_f32(long address, float value);
-
-    void store_f64(long address, double value);
-
-    void store_i32_8(long address, byte value);
-
-    void store_i32_16(long address, short value);
-
-    void store_i64_8(long address, byte value);
-
-    void store_i64_16(long address, short value);
-
-    void store_i64_32(long address, int value);
+    @Override
+    public String name() {
+        return "_emscripten_resize_heap";
+    }
 }

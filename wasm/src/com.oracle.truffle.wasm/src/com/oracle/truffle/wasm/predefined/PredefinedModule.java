@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.wasm.predefined;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -36,13 +39,9 @@ import com.oracle.truffle.wasm.binary.WasmContext;
 import com.oracle.truffle.wasm.binary.WasmFunction;
 import com.oracle.truffle.wasm.binary.WasmLanguage;
 import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.constants.GlobalModifier;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenModule;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public abstract class PredefinedModule {
     private static final Map<String, PredefinedModule> predefinedModules = new HashMap<>();

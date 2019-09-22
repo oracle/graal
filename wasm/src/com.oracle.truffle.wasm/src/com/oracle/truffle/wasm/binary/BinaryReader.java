@@ -567,6 +567,11 @@ public class BinaryReader extends BinaryStreamReader {
         int startNumericLiteralOffset = state.numericLiteralOffset();
         int startBranchTableOffset = state.branchTableOffset();
         WasmBlockNode currentBlock = new WasmBlockNode(module, codeEntry, startOffset, returnTypeId, startStackSize, startByteConstantOffset, startIntConstantOffset, startNumericLiteralOffset, startBranchTableOffset);
+
+        // Push the current block return length in the return lengths stack.
+        // Used when branching out of nested blocks (br and br_if instructions).
+        state.pushBlockReturnLength(currentBlock.returnTypeLength());
+
         int opcode;
         do {
             opcode = read1() & 0xFF;
@@ -576,29 +581,31 @@ public class BinaryReader extends BinaryStreamReader {
                 case NOP:
                     break;
                 case BLOCK: {
-                    state.pushStackState();
-                    state.pushBlockReturnLength(currentBlock.returnTypeLength());
+                    // Save the current block's stack pointer, in case we branch out of
+                    // the nested block (continuation stack pointer).
+                    state.pushStackState(state.stackSize());
                     WasmBlockNode nestedBlock = readBlock(codeEntry, state);
                     nestedControlTable.add(nestedBlock);
-                    state.popBlockReturnLength();
                     state.popStackState();
                     break;
                 }
                 case LOOP: {
-                    state.pushStackState();
-                    state.pushBlockReturnLength(currentBlock.returnTypeLength());
+                    // Save the current block's stack pointer, in case we branch out of
+                    // the nested block (continuation stack pointer).
+                    state.pushStackState(state.stackSize());
                     WasmLoopNode loopBlock = readLoop(codeEntry, state);
                     nestedControlTable.add(loopBlock);
-                    state.popBlockReturnLength();
                     state.popStackState();
                     break;
                 }
                 case IF: {
-                    state.pushStackState();
-                    state.pushBlockReturnLength(currentBlock.returnTypeLength());
+                    // Save the current block's stack pointer, in case we branch out of
+                    // the nested block (continuation stack pointer).
+                    // For the if block, we save the stack size reduced by 1, because of the
+                    // condition value that will be popped before executing the if statement.
+                    state.pushStackState(state.stackSize() - 1);
                     WasmIfNode ifNode = readIf(codeEntry, state);
                     nestedControlTable.add(ifNode);
-                    state.popBlockReturnLength();
                     state.popStackState();
                     break;
                 }
@@ -1029,6 +1036,11 @@ public class BinaryReader extends BinaryStreamReader {
         currentBlock.setBranchTableLength(state.branchTableOffset() - startBranchTableOffset);
         // TODO: Restore this check, when we fix the case where the block contains a return instruction.
         // checkValidStateOnBlockExit(returnTypeId, state, startStackSize);
+
+        // Pop the current block return length in the return lengths stack.
+        // Used when branching out of nested blocks (br and br_if instructions).
+        state.popBlockReturnLength();
+
         return currentBlock;
     }
 

@@ -27,60 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.binary.memory;
+package com.oracle.truffle.wasm.predefined.emscripten;
 
-public interface WasmMemory {
-    void validateAddress(long address, int size);
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.wasm.binary.WasmCodeEntry;
+import com.oracle.truffle.wasm.binary.WasmContext;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-    long startAddress();
+public class SetErrNo extends WasmPredefinedRootNode {
+    public SetErrNo(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
+    }
 
-    void memcopy(long src, long dst, long n);
+    @Override
+    public Object execute(VirtualFrame frame) {
+        Object[] args = frame.getArguments();
+        assert args.length == 1;
+        for (Object arg : args) {
+            logger.finest(() -> "argument: " + arg);
+        }
 
-    long size();
+        WasmContext context = contextReference().get();
 
-    int load_i32(long address);
+        int value = (int) args[0];
 
-    long load_i64(long address);
+        logger.finest("SetErrNo EXECUTE");
 
-    float load_f32(long address);
+        // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
+        context.memory().store_i32(3120, value);
 
-    double load_f64(long address);
+        return value;
+    }
 
-    int load_i32_8s(long address);
-
-    int load_i32_8u(long address);
-
-    int load_i32_16s(long address);
-
-    int load_i32_16u(long address);
-
-    long load_i64_8s(long address);
-
-    long load_i64_8u(long address);
-
-    long load_i64_16s(long address);
-
-    long load_i64_16u(long address);
-
-    long load_i64_32s(long address);
-
-    long load_i64_32u(long address);
-
-    void store_i32(long address, int value);
-
-    void store_i64(long address, long value);
-
-    void store_f32(long address, float value);
-
-    void store_f64(long address, double value);
-
-    void store_i32_8(long address, byte value);
-
-    void store_i32_16(long address, short value);
-
-    void store_i64_8(long address, byte value);
-
-    void store_i64_16(long address, short value);
-
-    void store_i64_32(long address, int value);
+    @Override
+    public String name() {
+        return "___setErrNo";
+    }
 }

@@ -29,30 +29,39 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.binary.ValueTypes;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public class Syscall146 extends ImportedFunctionNode {
-
-    public Syscall146(WasmModule wasmModule, WasmCodeEntry codeEntry) {
-        super(wasmModule, codeEntry);
+public class LLVMExp2F64 extends WasmPredefinedRootNode {
+    public LLVMExp2F64(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
     }
 
     @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
-        return 0;
-    }
+    public Object execute(VirtualFrame frame) {
+        Object[] args = frame.getArguments();
+        assert args.length == 1;
+        for (Object arg : args) {
+            logger.finest(() -> "argument: " + arg);
+        }
 
-    @Override
-    public byte returnTypeId() {
-        return ValueTypes.I32_TYPE;
+        double x = (double) args[0];
+
+        logger.finest("LLVMExp2F64 EXECUTE");
+
+        return exp2(x);
     }
 
     @Override
     public String name() {
-        return "__syscall146";
+        return "_llvm_exp2_f64";
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    double exp2(double x) {
+        return Math.pow(2, x);
     }
 }

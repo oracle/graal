@@ -29,15 +29,28 @@
  */
 package com.oracle.truffle.wasm.predefined.emscripten;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmModule;
-import com.oracle.truffle.wasm.binary.WasmNode;
+import com.oracle.truffle.wasm.binary.WasmContext;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-public abstract class ImportedFunctionNode extends WasmNode {
-    public ImportedFunctionNode(WasmModule wasmModule, WasmCodeEntry codeEntry) {
-        super(wasmModule, codeEntry, 0, 0, 0);
+public class EmscriptenGetHeapSize extends WasmPredefinedRootNode {
+    public EmscriptenGetHeapSize(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
     }
 
-    // TODO: This is not being called -- should we remove it?
-    public abstract String name();
+    @Override
+    public Object execute(VirtualFrame frame) {
+        WasmContext context = contextReference().get();
+
+        logger.finest("EmscriptenGetHeapSize EXECUTE");
+
+        return (int) context.memory().size();
+    }
+
+    @Override
+    public String name() {
+        return "_emscripten_get_heap_size";
+    }
 }

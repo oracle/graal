@@ -385,6 +385,7 @@ public class WasmBlockNode extends WasmNode implements RepeatingNode {
                         return unwindCounter;
                     }
                     numericLiteralOffset++;
+                    intConstantOffset += 2;
                     byte constantLength = codeEntry().byteConstant(byteConstantOffset);
                     byteConstantOffset++;
                     offset += constantLength;

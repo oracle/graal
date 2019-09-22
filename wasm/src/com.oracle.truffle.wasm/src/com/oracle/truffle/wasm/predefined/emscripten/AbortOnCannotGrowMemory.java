@@ -30,28 +30,22 @@
 package com.oracle.truffle.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.wasm.binary.ValueTypes;
 import com.oracle.truffle.wasm.binary.WasmCodeEntry;
-import com.oracle.truffle.wasm.binary.WasmContext;
-import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
 
-public class NoOp extends ImportedFunctionNode {
-    public NoOp(WasmModule wasmModule, WasmCodeEntry codeEntry) {
-        super(wasmModule, codeEntry);
+public class AbortOnCannotGrowMemory extends AbortNode {
+    public AbortOnCannotGrowMemory(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
     }
 
     @Override
-    public int execute(WasmContext context, VirtualFrame frame) {
-        push(frame, 0, 0);  // emulate a return 0 instruction;
-        return -1;
+    public Object execute(VirtualFrame frame) {
+        logger.finest("AbortOnCannotGrowMemory EXECUTE");
+        return super.execute(frame);
     }
 
     @Override
-    public byte returnTypeId() {
-        return ValueTypes.I32_TYPE;
-    }
-
     public String name() {
-        return "noop";
+        return "abortOnCannotGrowMemory";
     }
 }

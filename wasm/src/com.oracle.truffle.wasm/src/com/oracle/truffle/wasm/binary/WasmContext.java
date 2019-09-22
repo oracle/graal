@@ -43,7 +43,7 @@ import com.oracle.truffle.wasm.binary.memory.WasmMemory;
 import com.oracle.truffle.wasm.predefined.PredefinedModule;
 
 public class WasmContext {
-    private static final long DEFAULT_MEMORY_SIZE = 1 << 25;
+    private static final long DEFAULT_MEMORY_SIZE = 1 << 28;
 
     private Env env;
     private WasmLanguage language;
