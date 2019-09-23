@@ -43,13 +43,13 @@ public abstract class BinaryStreamReader {
         this.bytesConsumed = new byte[1];
     }
 
-    public int readSignedInt32() {
+    protected int readSignedInt32() {
         int value = peekSignedInt32(data, offset, bytesConsumed);
         offset += bytesConsumed[0];
         return value;
     }
 
-    public int readSignedInt32(byte[] bytesConsumedOut) {
+    protected int readSignedInt32(byte[] bytesConsumedOut) {
         byte[] out = bytesConsumedOut != null ? bytesConsumedOut : bytesConsumed;
         int value = peekSignedInt32(data, offset, out);
         offset += out[0];
@@ -57,7 +57,7 @@ public abstract class BinaryStreamReader {
     }
 
     @ExplodeLoop
-    public static int peekSignedInt32(byte[] data, int initialOffset, byte[] bytesConsumed) {
+    protected static int peekSignedInt32(byte[] data, int initialOffset, byte[] bytesConsumed) {
         int result = 0;
         int shift = 0;
         int offset = initialOffset;
@@ -79,13 +79,13 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public int readUnsignedInt32() {
+    protected int readUnsignedInt32() {
         int value = peekUnsignedInt32(data, offset, bytesConsumed);
         offset += bytesConsumed[0];
         return value;
     }
 
-    public int readUnsignedInt32(byte[] bytesConsumedOut) {
+    protected int readUnsignedInt32(byte[] bytesConsumedOut) {
         byte[] out = bytesConsumedOut != null ? bytesConsumedOut : bytesConsumed;
         int value = peekUnsignedInt32(data, offset, out);
         offset += out[0];
@@ -93,7 +93,7 @@ public abstract class BinaryStreamReader {
     }
 
     @ExplodeLoop
-    public static int peekUnsignedInt32(byte[] data, int initialOffset, byte[] bytesConsumed) {
+    protected static int peekUnsignedInt32(byte[] data, int initialOffset, byte[] bytesConsumed) {
         int result = 0;
         int shift = 0;
         int offset = initialOffset;
@@ -118,7 +118,7 @@ public abstract class BinaryStreamReader {
     }
 
     @ExplodeLoop
-    public int peekUnsignedInt32(int ahead) {
+    protected int peekUnsignedInt32(int ahead) {
         int result = 0;
         int shift = 0;
         int i = 0;
@@ -137,13 +137,13 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public long readSignedInt64() {
+    protected long readSignedInt64() {
         long value = peekSignedInt64(data, offset, bytesConsumed);
         offset += bytesConsumed[0];
         return value;
     }
 
-    public long readSignedInt64(byte[] bytesConsumedOut) {
+    protected long readSignedInt64(byte[] bytesConsumedOut) {
         byte[] out = bytesConsumedOut != null ? bytesConsumedOut : bytesConsumed;
         long value = peekSignedInt64(data, offset, out);
         offset += out[0];
@@ -151,7 +151,7 @@ public abstract class BinaryStreamReader {
     }
 
     @ExplodeLoop
-    public static long peekSignedInt64(byte[] data, int initialOffset, byte[] bytesConsumed) {
+    protected static long peekSignedInt64(byte[] data, int initialOffset, byte[] bytesConsumed) {
         long result = 0;
         int shift = 0;
         int offset = initialOffset;
@@ -173,33 +173,33 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public static int peekFloatAsInt32(byte[] data, int offset) {
+    protected static int peekFloatAsInt32(byte[] data, int offset) {
         return peek4(data, offset);
     }
 
-    public int readFloatAsInt32() {
+    protected int readFloatAsInt32() {
         return read4();
     }
 
-    public static long peekFloatAsInt64(byte[] data, int offset) {
+    protected static long peekFloatAsInt64(byte[] data, int offset) {
         return peek8(data, offset);
     }
 
-    public long readFloatAsInt64() {
+    protected long readFloatAsInt64() {
         return read8();
     }
 
-    public byte read1() {
+    protected byte read1() {
         byte value = peek1(data, offset);
         offset++;
         return value;
     }
 
-    public static byte peek1(byte[] data, int offset) {
+    protected static byte peek1(byte[] data, int offset) {
         return data[offset];
     }
 
-    public static int peek4(byte[] data, int offset) {
+    protected static int peek4(byte[] data, int offset) {
         int result = 0;
         for (int i = 0; i != 4; ++i) {
             int x = peek1(data, offset + i) & 0xFF;
@@ -208,7 +208,7 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public static long peek8(byte[] data, int offset) {
+    protected static long peek8(byte[] data, int offset) {
         long result = 0;
         for (int i = 0; i != 8; ++i) {
             long x = peek1(data, offset + i) & 0xFF;
@@ -217,7 +217,7 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public int read4() {
+    protected int read4() {
         int result = 0;
         for (int i = 0; i != 4; ++i) {
             int x = Byte.toUnsignedInt(read1());
@@ -226,7 +226,7 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public long read8() {
+    protected long read8() {
         long result = 0;
         for (int i = 0; i != 8; ++i) {
             long x = Byte.toUnsignedLong(read1());
@@ -235,19 +235,19 @@ public abstract class BinaryStreamReader {
         return result;
     }
 
-    public byte peek1() {
+    protected byte peek1() {
         return data[offset];
     }
 
-    public byte peek1(int ahead) {
+    protected byte peek1(int ahead) {
         return data[offset + ahead];
     }
 
-    public int offset() {
+    protected int offset() {
         return offset;
     }
 
-    public static byte peekBlockType(byte[] data, int offset) {
+    protected static byte peekBlockType(byte[] data, int offset) {
         byte type = peek1(data, offset);
         switch (type) {
             case 0x00:
@@ -258,13 +258,13 @@ public abstract class BinaryStreamReader {
         }
     }
 
-    public byte readBlockType() {
+    protected byte readBlockType() {
         byte type = peekBlockType(data, offset);
         offset++;
         return type;
     }
 
-    public static byte peekValueType(byte[] data, int offset) {
+    protected static byte peekValueType(byte[] data, int offset) {
         byte b = peek1(data, offset);
         switch (b) {
             case ValueTypes.I32_TYPE:
@@ -278,10 +278,9 @@ public abstract class BinaryStreamReader {
         return b;
     }
 
-    public byte readValueType() {
+    protected byte readValueType() {
         byte b = peekValueType(data, offset);
         offset++;
         return b;
     }
-
 }

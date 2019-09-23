@@ -43,7 +43,9 @@ public class Linker {
         this.language = language;
     }
 
-    public void link(WasmModule module) {
+    // TODO: Many of the following methods should work on all the modules in the context, instead of a single one.
+    //  See which ones and update.
+    void link(WasmModule module) {
         linkFunctions(module);
         linkGlobals(module);
     }
@@ -67,7 +69,17 @@ public class Linker {
         // TODO: Ensure that the globals are linked.
     }
 
-    public GlobalResolution tryResolveGlobal(WasmModule module, String importedModuleName, String globalName, int valueType, int mutability) {
+    /**
+     * This method reinitializes the state of all global variables in the module.
+     *
+     * The intent is to use this functionality only in the test suite and the benchmark suite.
+     */
+    void resetGlobalState(WasmModule module, byte[] data) {
+        final BinaryReader reader = new BinaryReader(language, module, data);
+        reader.resetGlobalState();
+    }
+
+    GlobalResolution tryResolveGlobal(WasmModule module, String importedModuleName, String globalName, int valueType, int mutability) {
         GlobalResolution resolution = UNRESOLVED_IMPORT;
         final WasmContext context = language.getContextReference().get();
         final WasmModule importedModule = context.modules().get(importedModuleName);
@@ -107,7 +119,7 @@ public class Linker {
         return resolution;
     }
 
-    public void tryInitializeElements(WasmContext context, WasmModule module, int globalIndex, int[] contents) {
+    void tryInitializeElements(WasmContext context, WasmModule module, int globalIndex, int[] contents) {
         final GlobalResolution resolution = module.symbolTable().globalResolution(globalIndex);
         if (resolution.isResolved()) {
             int address = module.symbolTable().globalAddress(globalIndex);

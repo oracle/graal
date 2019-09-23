@@ -87,6 +87,7 @@ public class WasmContext {
         ArrayList<Scope> scopes = new ArrayList<>();
         for (Map.Entry<String, WasmModule> entry : modules.entrySet()) {
             Scope scope = Scope.newBuilder(entry.getKey(), entry.getValue()).build();
+            System.out.println(entry.getKey());
             scopes.add(scope);
         }
         return scopes;

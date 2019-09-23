@@ -66,9 +66,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);
             Value function = context.getBindings("wasm").getMember("_main");
+            Value resetGlobals = context.getBindings("wasm").getMember("_wasm_suite_reset_globals");
             if (WasmTestOptions.TRIGGER_GRAAL) {
                 for (int i = 0; i !=  10_000_000; ++i) {
-                    function.execute();
+                    System.out.println(function.execute());
+                    resetGlobals.execute();
                 }
             }
             final Value result = function.execute();
