@@ -108,10 +108,17 @@ public final class Target_java_lang_Thread {
             Meta meta = context.getMeta();
             KillStatus killStatus = getKillStatus(self);
             if (killStatus != null || context.isClosing()) {
-                self.setIntField(meta.Thread_state, State.TERMINATED.value);
+                self.setIntField(meta.Thread_threadStatus, State.TERMINATED.value);
+                synchronized (self) {
+                    // Notify waiting threads you are were terminated
+                    self.notifyAll();
+                }
                 return;
             }
             setThreadStop(self, KillStatus.NORMAL);
+            if (getSuspendLock(self) == null) {
+                initSuspendLock(self);
+            }
             Thread hostThread = context.getEnv().createThread(new Runnable() {
                 @Override
                 public void run() {
@@ -143,6 +150,7 @@ public final class Target_java_lang_Thread {
             context.registerThread(self);
             hostThread.setDaemon(self.getBooleanField(meta.Thread_daemon));
             self.setIntField(meta.Thread_threadStatus, State.RUNNABLE.value);
+            hostThread.setPriority(self.getIntField(meta.Thread_priority));
             hostThread.start();
         } else {
             System.err.println(
@@ -158,6 +166,7 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("unused")
     @Substitution(hasReceiver = true)
     public static void setPriority0(@Host(Thread.class) StaticObject self, int newPriority) {
+        // Priority is set in the guest field in Thread.setPriority().
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
@@ -216,20 +225,16 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static void interrupt0(@Host(Object.class) StaticObject self) {
+        setInterrupt(self, true);
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
         }
-        setInterrupt(self, true);
         hostThread.interrupt();
     }
 
     @Substitution(hasReceiver = true)
     public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean clear) {
-        Thread hostThread = getHostFromGuestThread(self);
-        if (hostThread == null) {
-            return false;
-        }
         boolean result = checkInterrupt(self);
         if (clear) {
             setInterrupt(self, false);
@@ -238,46 +243,42 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @SuppressWarnings({"unused", "deprecation"})
+    @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
     public static void resume0(@Host(Object.class) StaticObject self) {
-        if (EspressoOptions.RUNNING_ON_SVM) {
-            /* nop */
-        } else {
-            Thread hostThread = getHostFromGuestThread(self);
-            if (hostThread == null) {
-                return;
-            }
-            hostThread.resume();
+        SuspendLock lock = getSuspendLock(self);
+        if (lock == null) {
+            return;
+        }
+        lock.suspended = false;
+        synchronized (lock) {
+            lock.notifyAll();
         }
     }
 
     @TruffleBoundary
-    @SuppressWarnings({"unused", "deprecation"})
+    @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
     public static void suspend0(@Host(Object.class) StaticObject self) {
-        if (EspressoOptions.RUNNING_ON_SVM) {
-            /* nop */
-        } else {
-            Thread hostThread = getHostFromGuestThread(self);
-            if (hostThread == null) {
-                return;
-            }
-            hostThread.suspend();
+        self.getKlass().getContext().invalidateNoSuspend("Calling Thread.suspend()");
+        SuspendLock lock = getSuspendLock(self);
+        if (lock == null) {
+            lock = initSuspendLock(self);
         }
+        lock.suspended = true;
     }
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
     @SuppressWarnings("unused")
     public static void stop0(@Host(Object.class) StaticObject self, Object unused) {
+        self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
+        killThread(self);
+        setInterrupt(self, true);
         Thread hostThread = getHostFromGuestThread(self);
         if (hostThread == null) {
             return;
         }
-        self.getKlass().getContext().invalidateNoThreadStop("Calling thread.stop()");
-        killThread(self);
-        setInterrupt(self, true);
         hostThread.interrupt();
     }
 
@@ -333,4 +334,47 @@ public final class Target_java_lang_Thread {
         DISSIDENT
     }
 
+    public static class SuspendLock {
+        private boolean suspended;
+
+        public boolean isSuspended() {
+            return suspended;
+        }
+    }
+
+    private static SuspendLock getSuspendLock(@Host(Object.class) StaticObject self) {
+        return (SuspendLock) self.getHiddenField(self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK);
+    }
+
+    /**
+     * Synchronizes on Target_ class to avoid deadlock when locking on thread object.
+     */
+    private synchronized static SuspendLock initSuspendLock(@Host(Object.class) StaticObject self) {
+        SuspendLock lock = getSuspendLock(self);
+        if (lock == null) {
+            lock = new SuspendLock();
+            self.setHiddenField(self.getKlass().getMeta().HIDDEN_SUSPEND_LOCK, lock);
+        }
+        return lock;
+    }
+
+    public static boolean isSuspended(StaticObject self) {
+        assert getSuspendLock(self) != null;
+        return getSuspendLock(self).isSuspended();
+    }
+
+    public static void trySuspend(StaticObject self) {
+        SuspendLock lock = getSuspendLock(self);
+        if (lock == null) {
+            return;
+        }
+        while (lock.isSuspended()) {
+            try {
+                synchronized (lock) {
+                    lock.wait();
+                }
+            } catch (InterruptedException e) {
+            }
+        }
+    }
 }

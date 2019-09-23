@@ -773,6 +773,7 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
                                 curBCI = targetBCI;
                                 continue loop;
                             }
+                            checkStopping(curBCI);
                             break;
 
                         case JSR: // fall through
@@ -1199,8 +1200,8 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
 
     private int checkBackEdge(int curBCI, int targetBCI, int top, int opCode) {
         int newTop = top + Bytecodes.stackEffectOf(opCode);
-        if (targetBCI < curBCI) {
-            checkStopping();
+        if (targetBCI <= curBCI) {
+            checkStopping(curBCI);
             if (CompilerDirectives.inInterpreter()) {
                 LoopNode.reportLoopCount(this, 1);
             }
@@ -1208,27 +1209,37 @@ public final class BytecodeNode extends EspressoBaseNode implements CustomNodeCo
         return newTop;
     }
 
-    private void checkStopping() {
+    private void checkStopping(int curBCI) {
         if (!getContext().noThreadStop()) {
-            StaticObject thread = getContext().getHost2Guest(Thread.currentThread());
-            Target_java_lang_Thread.KillStatus status = Target_java_lang_Thread.getKillStatus(thread);
-            switch (status) {
-                case NORMAL:
-                case EXITING:
-                case KILLED:
-                    break;
-                case KILL:
-                    if (getContext().isClosing()) {
-                        // Give some leeway during closing.
-                        Target_java_lang_Thread.setThreadStop(thread, Target_java_lang_Thread.KillStatus.KILLED);
-                    } else {
-                        Target_java_lang_Thread.setThreadStop(thread, Target_java_lang_Thread.KillStatus.NORMAL);
-                    }
-                    throw getMeta().throwEx(ThreadDeath.class);
-                case DISSIDENT:
-                    // This thread refuses to stop. Send a host exception.
-                    // throw getMeta().throwEx(ThreadDeath.class);
-                    throw new EspressoExitException(0);
+            int targetBCI = bs.readBranchDest(curBCI);
+            if (targetBCI <= curBCI) {
+                StaticObject thread = getContext().getHost2Guest(Thread.currentThread());
+                Target_java_lang_Thread.KillStatus status = Target_java_lang_Thread.getKillStatus(thread);
+                switch (status) {
+                    case NORMAL:
+                    case EXITING:
+                    case KILLED:
+                        break;
+                    case KILL:
+                        if (getContext().isClosing()) {
+                            // Give some leeway during closing.
+                            Target_java_lang_Thread.setThreadStop(thread, Target_java_lang_Thread.KillStatus.KILLED);
+                        } else {
+                            Target_java_lang_Thread.setThreadStop(thread, Target_java_lang_Thread.KillStatus.NORMAL);
+                        }
+                        throw getMeta().throwEx(ThreadDeath.class);
+                    case DISSIDENT:
+                        // This thread refuses to stop. Send a host exception.
+                        // throw getMeta().throwEx(ThreadDeath.class);
+                        throw new EspressoExitException(0);
+                }
+            }
+        }
+        if (!getContext().noSuspend()) {
+            int targetBCI = bs.readBranchDest(curBCI);
+            if (targetBCI <= curBCI) {
+                StaticObject thread = getContext().getHost2Guest(Thread.currentThread());
+                Target_java_lang_Thread.trySuspend(thread);
             }
         }
     }

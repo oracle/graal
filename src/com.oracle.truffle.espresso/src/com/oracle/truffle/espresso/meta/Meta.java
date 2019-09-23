@@ -230,6 +230,7 @@ public final class Meta implements ContextAccess {
         HIDDEN_IS_ALIVE = Thread.lookupHiddenField(Name.HIDDEN_IS_ALIVE);
         HIDDEN_INTERRUPTED = Thread.lookupHiddenField(Name.HIDDEN_INTERRUPTED);
         HIDDEN_DEATH = Thread.lookupHiddenField(Name.HIDDEN_DEATH);
+        HIDDEN_SUSPEND_LOCK = Thread.lookupHiddenField(Name.HIDDEN_SUSPEND_LOCK);
         ThreadGroup = knownKlass(Type.ThreadGroup);
         ThreadGroup_remove = ThreadGroup.lookupDeclaredMethod(Name.remove, Signature.ThreadGroup_remove);
         Thread_dispatchUncaughtException = Thread.lookupDeclaredMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
@@ -495,6 +496,7 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_IS_ALIVE;
     public final Field HIDDEN_INTERRUPTED;
     public final Field HIDDEN_DEATH;
+    public final Field HIDDEN_SUSPEND_LOCK;
     public final Field Thread_group;
     public final Field Thread_name;
     public final Field Thread_priority;
