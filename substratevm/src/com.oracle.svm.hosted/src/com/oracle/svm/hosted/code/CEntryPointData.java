@@ -77,6 +77,11 @@ public final class CEntryPointData {
         return create(name, () -> NativeBootImage.globalSymbolNameForMethod(method), nameTransformation, documentation, Builtin.NO_BUILTIN, prologue, epilogue, exceptionHandler, publishAs);
     }
 
+    public static CEntryPointData createCustomUnpublished() {
+        return create(null, null, DEFAULT_NAME_TRANSFORMATION, "", Builtin.NO_BUILTIN,
+                        CEntryPointOptions.NoPrologue.class, CEntryPointOptions.NoEpilogue.class, DEFAULT_EXCEPTION_HANDLER, Publish.NotPublished);
+    }
+
     @SuppressWarnings("deprecation")
     private static CEntryPointData create(CEntryPoint annotation, CEntryPointOptions options, Supplier<String> alternativeNameSupplier) {
         String annotatedName = annotation.name();
