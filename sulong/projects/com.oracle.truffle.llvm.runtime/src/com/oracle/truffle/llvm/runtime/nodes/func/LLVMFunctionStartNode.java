@@ -43,7 +43,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
-import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
 public class LLVMFunctionStartNode extends RootNode implements LLVMHasDatalayoutNode {
 
