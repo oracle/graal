@@ -40,27 +40,26 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.api.nodes.Node;
+import java.util.Arrays;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-import java.util.Arrays;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-public final class DFACaptureGroupLazyTransitionNode extends Node implements JsonConvertible {
+public final class DFACaptureGroupLazyTransition implements JsonConvertible {
 
     private final short id;
-    @Children private final DFACaptureGroupPartialTransitionNode[] partialTransitions;
-    private final DFACaptureGroupPartialTransitionNode transitionToFinalState;
-    private final DFACaptureGroupPartialTransitionNode transitionToAnchoredFinalState;
+    @CompilationFinal(dimensions = 1) private final DFACaptureGroupPartialTransition[] partialTransitions;
+    private final DFACaptureGroupPartialTransition transitionToFinalState;
+    private final DFACaptureGroupPartialTransition transitionToAnchoredFinalState;
 
-    public DFACaptureGroupLazyTransitionNode(short id,
-                    DFACaptureGroupPartialTransitionNode[] partialTransitions,
-                    DFACaptureGroupPartialTransitionNode transitionToFinalState,
-                    DFACaptureGroupPartialTransitionNode transitionToAnchoredFinalState) {
+    public DFACaptureGroupLazyTransition(short id,
+                    DFACaptureGroupPartialTransition[] partialTransitions,
+                    DFACaptureGroupPartialTransition transitionToFinalState,
+                    DFACaptureGroupPartialTransition transitionToAnchoredFinalState) {
         this.id = id;
         this.partialTransitions = partialTransitions;
         this.transitionToFinalState = transitionToFinalState;
@@ -71,15 +70,15 @@ public final class DFACaptureGroupLazyTransitionNode extends Node implements Jso
         return id;
     }
 
-    public DFACaptureGroupPartialTransitionNode[] getPartialTransitions() {
+    public DFACaptureGroupPartialTransition[] getPartialTransitions() {
         return partialTransitions;
     }
 
-    public DFACaptureGroupPartialTransitionNode getTransitionToFinalState() {
+    public DFACaptureGroupPartialTransition getTransitionToFinalState() {
         return transitionToFinalState;
     }
 
-    public DFACaptureGroupPartialTransitionNode getTransitionToAnchoredFinalState() {
+    public DFACaptureGroupPartialTransition getTransitionToAnchoredFinalState() {
         return transitionToAnchoredFinalState;
     }
 

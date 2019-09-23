@@ -45,7 +45,7 @@ import com.oracle.truffle.regex.tregex.nfa.ASTStep;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransitionNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
@@ -152,7 +152,7 @@ public class TRegexOptions {
     /**
      * Bailout threshold for number of capture groups. This number must not be higher than 127,
      * because we compress capture group boundary indices to {@code byte} in
-     * {@link DFACaptureGroupPartialTransitionNode}!
+     * {@link DFACaptureGroupPartialTransition}!
      */
     public static final int TRegexMaxNumberOfCaptureGroups = 127;
 
@@ -160,7 +160,7 @@ public class TRegexOptions {
      * Maximum number of NFA states involved in one DFA transition. This number must not be higher
      * than 255, because the maximum number of NFA states in one DFA transition determines the
      * number of simultaneously tracked result sets (arrays) in capture group tracking mode, which
-     * are accessed over byte indices in {@link DFACaptureGroupPartialTransitionNode}.
+     * are accessed over byte indices in {@link DFACaptureGroupPartialTransition}.
      */
     public static final int TRegexMaxNumberOfNFAStatesInOneDFATransition = 255;
 

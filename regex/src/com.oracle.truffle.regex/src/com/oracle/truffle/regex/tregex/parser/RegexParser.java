@@ -656,8 +656,7 @@ public final class RegexParser {
                         curGroup.removeLastSequence();
                         ast.getNodeCount().dec();
                     }
-                    sortAlternatives();
-                    tryMergeCommonPrefixes(curGroup);
+                    optimizeGroup();
                     popGroup(token);
                     break;
                 case charClass:
@@ -668,8 +667,14 @@ public final class RegexParser {
         if (curGroup != root) {
             throw syntaxError(ErrorMessages.UNTERMINATED_GROUP);
         }
+        optimizeGroup();
         root.setEnclosedCaptureGroupsHigh(groupCount.getCount());
         return root;
+    }
+
+    private void optimizeGroup() {
+        sortAlternatives(curGroup);
+        tryMergeCommonPrefixes(curGroup);
     }
 
     private void parseQuantifier(Token.Quantifier quantifier) throws RegexSyntaxException {
@@ -773,15 +778,15 @@ public final class RegexParser {
      * mode, since we track character classes that were generated from single characters via
      * {@link CharacterClass#wasSingleChar()}.
      */
-    private void sortAlternatives() {
-        if (curGroup.size() < 2) {
+    private static void sortAlternatives(Group group) {
+        if (group.size() < 2) {
             return;
         }
         int begin = 0;
-        while (begin + 1 < curGroup.size()) {
-            int end = findSingleCharAlternatives(curGroup, begin);
+        while (begin + 1 < group.size()) {
+            int end = findSingleCharAlternatives(group, begin);
             if (end > begin + 1) {
-                curGroup.getAlternatives().subList(begin, end).sort((Sequence a, Sequence b) -> {
+                group.getAlternatives().subList(begin, end).sort((Sequence a, Sequence b) -> {
                     return ((CharacterClass) a.getFirstTerm()).getCharSet().getLo(0) - ((CharacterClass) b.getFirstTerm()).getCharSet().getLo(0);
                 });
                 begin = end;

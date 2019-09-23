@@ -79,13 +79,21 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
                 locals.setSuccessorIndex(FS_RESULT_NO_SUCCESSOR);
                 return;
             }
-            if ((prefixMatcher == null || (int) prefixMatcher.execute(locals.toBackwardLocals(executor.getPrefixLength()), compactString) != TRegexDFAExecutorNode.NO_MATCH)) {
+            if (prefixMatcher == null || prefixMatcherMatches(locals, executor, compactString)) {
+                if (prefixMatcher == null && executor.isSimpleCG()) {
+                    locals.getCGData().results[0] = locals.getIndex();
+                }
                 locals.setIndex(locals.getIndex() + literal.length());
                 locals.setSuccessorIndex(0);
                 return;
             }
             executor.advance(locals);
         }
+    }
+
+    private boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean compactString) {
+        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(executor.getPrefixLength()), compactString);
+        return prefixMatcher.isSimpleCG() ? result != null : (int) result != TRegexDFAExecutorNode.NO_MATCH;
     }
 
     @TruffleBoundary

@@ -82,7 +82,7 @@ public final class TRegexCompiler implements RegexCompiler {
     }
 
     @TruffleBoundary
-    public LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(NFA nfa, TRegexExecRootNode rootNode) {
-        return new TRegexCompilationRequest(this, nfa).compileLazyDFAExecutor(rootNode);
+    public LazyCaptureGroupRegexSearchNode compileLazyDFAExecutor(NFA nfa, TRegexExecRootNode rootNode, boolean allowSimpleCG) {
+        return new TRegexCompilationRequest(this, nfa).compileLazyDFAExecutor(rootNode, allowSimpleCG);
     }
 }

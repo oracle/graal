@@ -50,12 +50,12 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     private int curMaxIndex;
     private int successorIndex;
     private int result;
-    private int[] captureGroupResult;
     private short lastTransition;
     private final DFACaptureGroupTrackingData cgData;
 
     public TRegexDFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, DFACaptureGroupTrackingData cgData) {
         super(input, fromIndex, maxIndex, index);
+        result = TRegexDFAExecutorNode.NO_MATCH;
         this.cgData = cgData;
     }
 
@@ -102,14 +102,6 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
         this.result = result;
     }
 
-    public int[] getResultCaptureGroups() {
-        return captureGroupResult;
-    }
-
-    public void setResultObject(int[] captureGroupsResult) {
-        this.captureGroupResult = captureGroupsResult;
-    }
-
     public DFACaptureGroupTrackingData getCGData() {
         return cgData;
     }
@@ -118,7 +110,7 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
         return Math.max(-1, fromIndex - 1 - prefixLength);
     }
 
-    public TRegexDFAExecutorLocals toBackwardLocals(int prefixLength) {
-        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex() - 1, backwardMaxIndex(getFromIndex(), prefixLength), null);
+    public TRegexDFAExecutorLocals toInnerLiteralBackwardLocals(int prefixLength) {
+        return new TRegexDFAExecutorLocals(getInput(), getFromIndex(), getIndex() - 1, backwardMaxIndex(getFromIndex(), prefixLength), cgData);
     }
 }

@@ -40,11 +40,16 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 public final class TRegexDFAExecutorProperties {
 
     private final boolean forward;
     private final boolean searching;
     private final boolean trackCaptureGroups;
+    private final boolean allowSimpleCG;
+    @CompilationFinal private boolean simpleCG;
+    @CompilationFinal private boolean simpleCGMustCopy;
     private final boolean regressionTestMode;
     private final int numberOfCaptureGroups;
     private final int minResultLength;
@@ -53,12 +58,14 @@ public final class TRegexDFAExecutorProperties {
                     boolean forward,
                     boolean searching,
                     boolean trackCaptureGroups,
+                    boolean allowSimpleCG,
                     boolean regressionTestMode,
                     int numberOfCaptureGroups,
                     int minResultLength) {
         this.forward = forward;
         this.searching = searching;
         this.trackCaptureGroups = trackCaptureGroups;
+        this.allowSimpleCG = allowSimpleCG;
         this.regressionTestMode = regressionTestMode;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.minResultLength = minResultLength;
@@ -78,6 +85,26 @@ public final class TRegexDFAExecutorProperties {
 
     public boolean isTrackCaptureGroups() {
         return trackCaptureGroups;
+    }
+
+    public boolean isAllowSimpleCG() {
+        return allowSimpleCG;
+    }
+
+    public boolean isSimpleCG() {
+        return simpleCG;
+    }
+
+    public void setSimpleCG(boolean simpleCG) {
+        this.simpleCG = simpleCG;
+    }
+
+    public boolean isSimpleCGMustCopy() {
+        return simpleCGMustCopy;
+    }
+
+    public void setSimpleCGMustCopy(boolean simpleCGMustCopy) {
+        this.simpleCGMustCopy = simpleCGMustCopy;
     }
 
     public boolean isRegressionTestMode() {
