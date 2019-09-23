@@ -43,7 +43,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
-import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.WeakIdentityHashMap;
@@ -52,7 +52,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -145,7 +145,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public boolean shouldInitializeAtRuntime(ResolvedJavaType type) {
-        return computeInitKindAndMaybeInitializeClass(toAnalysisType(type).getJavaClass()) != InitKind.BUILD_TIME;
+        return computeInitKindAndMaybeInitializeClass(getJavaClass(type)) != InitKind.BUILD_TIME;
     }
 
     @Override
@@ -155,7 +155,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public void maybeInitializeHosted(ResolvedJavaType type) {
-        computeInitKindAndMaybeInitializeClass(toAnalysisType(type).getJavaClass());
+        computeInitKindAndMaybeInitializeClass(getJavaClass(type));
     }
 
     /**
@@ -209,8 +209,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                         " to explicitly request delayed initialization of this class.";
     }
 
-    private static AnalysisType toAnalysisType(ResolvedJavaType type) {
-        return type instanceof HostedType ? ((HostedType) type).getWrapped() : (AnalysisType) type;
+    private static Class<?> getJavaClass(ResolvedJavaType type) {
+        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), type);
     }
 
     @Override
