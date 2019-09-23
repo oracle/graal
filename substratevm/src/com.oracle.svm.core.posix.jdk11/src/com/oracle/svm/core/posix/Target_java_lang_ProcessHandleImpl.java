@@ -36,10 +36,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.util.VMError;
 
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @TargetClass(className = "java.lang.ProcessHandleImpl", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_ProcessHandleImpl {
 
-    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})//
     @Delete static Executor processReaperExecutor;
 
     @Substitute
