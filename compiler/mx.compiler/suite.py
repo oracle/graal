@@ -759,10 +759,9 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.hotspot",
-        "org.graalvm.compiler.hotspot.management",
-        "org.graalvm.libgraal",
         "org.graalvm.libgraal.jni",
+        "org.graalvm.libgraal",
+        "org.graalvm.compiler.hotspot.management",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
