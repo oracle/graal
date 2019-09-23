@@ -2038,7 +2038,7 @@ def register_vm_config(config_name, components, dist_name=None, env_file=None, s
     if env_file is not False:
         # register a gate test to check that the env file produces a GraalVM with the expected distribution name
         _env_file = env_file or _dist_name
-        graalvm_dist_name = (_graalvm_base_name + '_' + _dist_name).upper().replace('-', '_')
+        graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=_graalvm_base_name, dist_name=_dist_name, jdk_version=_src_jdk_version).upper().replace('-', '_')
         mx_vm_gate.env_tests.append((suite, _env_file, graalvm_dist_name))
 
 
