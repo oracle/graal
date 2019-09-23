@@ -42,6 +42,7 @@ import com.oracle.truffle.wasm.binary.WasmModule;
 import com.oracle.truffle.wasm.binary.constants.GlobalResolution;
 import com.oracle.truffle.wasm.binary.exception.WasmException;
 import com.oracle.truffle.wasm.predefined.emscripten.EmscriptenModule;
+import com.oracle.truffle.wasm.predefined.testutil.TestutilModule;
 
 public abstract class PredefinedModule {
     private static final Map<String, PredefinedModule> predefinedModules = new HashMap<>();
@@ -49,6 +50,7 @@ public abstract class PredefinedModule {
     static {
         final Map<String, PredefinedModule> pm = predefinedModules;
         pm.put("emscripten", new EmscriptenModule());
+        pm.put("testutil", new TestutilModule());
     }
 
     public static WasmModule createPredefined(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {

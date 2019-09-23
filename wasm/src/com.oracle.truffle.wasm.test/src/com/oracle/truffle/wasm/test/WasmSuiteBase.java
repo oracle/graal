@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -66,10 +67,10 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             Source source = Source.newBuilder("wasm", ByteSequence.create(binary), "test").build();
             context.eval(source);
             Value function = context.getBindings("wasm").getMember("_main");
-            Value resetGlobals = context.getBindings("wasm").getMember("_wasm_suite_reset_globals");
+            Value resetGlobals = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_GLOBALS);
             if (WasmTestOptions.TRIGGER_GRAAL) {
                 for (int i = 0; i !=  10_000_000; ++i) {
-                    System.out.println(function.execute());
+                    function.execute();
                     resetGlobals.execute();
                 }
             }
@@ -84,7 +85,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     protected String includedExternalModules() {
-        return "";
+        return "testutil:testutil";
     }
 
     private static void validateResult(Consumer<Value> validator, Value result) {

@@ -74,7 +74,7 @@ public class Linker {
      *
      * The intent is to use this functionality only in the test suite and the benchmark suite.
      */
-    void resetGlobalState(WasmModule module, byte[] data) {
+    public void resetGlobalState(WasmModule module, byte[] data) {
         final BinaryReader reader = new BinaryReader(language, module, data);
         reader.resetGlobalState();
     }

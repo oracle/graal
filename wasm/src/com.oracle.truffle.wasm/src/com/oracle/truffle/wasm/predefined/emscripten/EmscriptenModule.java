@@ -41,7 +41,7 @@ import com.oracle.truffle.wasm.predefined.PredefinedModule;
 public class EmscriptenModule extends PredefinedModule {
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
-        WasmModule module = new WasmModule(name);
+        WasmModule module = new WasmModule(name, null);
         defineFunction(module, "abort", types(I32_TYPE), types(), new AbortNode(language, null));
         defineFunction(module, "abortOnCannotGrowMemory", types(I32_TYPE), types(I32_TYPE), new AbortOnCannotGrowMemory(language, null));
         defineFunction(module, "_emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBig(language, null));

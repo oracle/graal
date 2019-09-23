@@ -50,11 +50,13 @@ public class WasmModule implements TruffleObject {
     @CompilationFinal private final String name;
     @CompilationFinal private final SymbolTable symbolTable;
     @CompilationFinal private final Table table;
+    @CompilationFinal(dimensions = 1) private final byte[] data;
 
-    public WasmModule(String name) {
+    public WasmModule(String name, byte[] data) {
         this.name = name;
         this.symbolTable = new SymbolTable(this);
         this.table = new Table();
+        this.data = data;
     }
 
     // static final class Globals {
@@ -190,6 +192,10 @@ public class WasmModule implements TruffleObject {
 
     public Table table() {
         return table;
+    }
+
+    public byte[] data() {
+        return data;
     }
 
     @ExportMessage

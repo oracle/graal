@@ -27,31 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.suites.webassembly;
+package com.oracle.truffle.wasm.predefined.testutil;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import com.oracle.truffle.wasm.binary.WasmContext;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.predefined.PredefinedModule;
 
-import org.junit.Test;
-
-import com.oracle.truffle.wasm.test.WasmSuiteBase;
-import com.oracle.truffle.wasm.test.options.WasmTestOptions;
-
-public class EmscriptenSuite extends WasmSuiteBase {
-    @Override
-    protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "emcc");
+public class TestutilModule extends PredefinedModule {
+    public static class Names {
+        public static final String RESET_GLOBALS = "__testutil_reset_globals";
     }
 
     @Override
-    protected String includedExternalModules() {
-        return super.includedExternalModules() + ",env:emscripten";
-    }
-
-    @Test
-    public void test() throws IOException {
-        // This is here just to make mx aware of the test suite class.
-        super.test();
+    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+        WasmModule module = new WasmModule(name, null);
+        defineFunction(module, Names.RESET_GLOBALS, types(), types(), new ResetGlobalsNode(language, null));
+        return module;
     }
 }

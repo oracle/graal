@@ -27,31 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.wasm.test.suites.webassembly;
+package com.oracle.truffle.wasm.predefined.testutil;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.wasm.binary.WasmCodeEntry;
+import com.oracle.truffle.wasm.binary.WasmLanguage;
+import com.oracle.truffle.wasm.binary.WasmModule;
+import com.oracle.truffle.wasm.binary.WasmVoidResult;
+import com.oracle.truffle.wasm.predefined.WasmPredefinedRootNode;
 
-import org.junit.Test;
-
-import com.oracle.truffle.wasm.test.WasmSuiteBase;
-import com.oracle.truffle.wasm.test.options.WasmTestOptions;
-
-public class EmscriptenSuite extends WasmSuiteBase {
-    @Override
-    protected Path testDirectory() {
-        return Paths.get(WasmTestOptions.TEST_SOURCE_PATH, "emcc");
+public class ResetGlobalsNode extends WasmPredefinedRootNode {
+    public ResetGlobalsNode(WasmLanguage language, WasmCodeEntry codeEntry) {
+        super(language, codeEntry);
     }
 
     @Override
-    protected String includedExternalModules() {
-        return super.includedExternalModules() + ",env:emscripten";
+    public Object execute(VirtualFrame frame) {
+        resetGlobals();
+        return WasmVoidResult.getInstance();
     }
 
-    @Test
-    public void test() throws IOException {
-        // This is here just to make mx aware of the test suite class.
-        super.test();
+    @Override
+    public String name() {
+        return TestutilModule.Names.RESET_GLOBALS;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private void resetGlobals() {
+        // TODO: Reset globals in all modules of the context.
+        WasmModule module = contextReference().get().modules().get("test");
+        contextReference().get().linker().resetGlobalState(module, module.data());
     }
 }
