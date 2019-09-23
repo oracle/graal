@@ -71,9 +71,6 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.heap.CodeReferenceMapDecoder.CompressionModifier;
-import com.oracle.svm.core.heap.CodeReferenceMapDecoder.IntrospectiveCompressionModifier;
-import com.oracle.svm.core.heap.CodeReferenceMapDecoder.TrustingCompressionModifier;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
@@ -164,7 +161,6 @@ public class LLVMFeature implements Feature, GraalFeature {
 
         ImageSingletons.add(TargetGraphBuilderPlugins.class, new LLVMGraphBuilderPlugins());
         ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateSuitesCreatorProvider());
-        ImageSingletons.add(CompressionModifier.class, (SubstrateOptions.SpawnIsolates.getValue()) ? new IntrospectiveCompressionModifier() : new TrustingCompressionModifier());
     }
 
     @Override

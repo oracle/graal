@@ -56,6 +56,7 @@ import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -89,7 +90,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
     private final boolean returnsCEnum;
 
     SubstrateLLVMGenerator(Providers providers, LLVMGenerationResult generationResult, ResolvedJavaMethod method, LLVMContextRef context, int debugLevel) {
-        super(providers, generationResult, method, new LLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context),
+        super(providers, generationResult, method, new LLVMIRBuilder(SubstrateUtil.uniqueShortName(method), context, SubstrateOptions.SpawnIsolates.getValue()),
                         new LLVMKindTool(context), debugLevel, LLVMFeature.useExplicitSelects());
         this.isEntryPoint = isEntryPoint(method);
         this.canModifySpecialRegisters = canModifySpecialRegisters(method);
@@ -214,7 +215,7 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
             compressed = builder.buildShr(compressed, builder.constantInt(encoding.getShift()));
         }
 
-        return new LLVMVariable(builder.buildRegisterObject(builder.buildIntToPtr(compressed, builder.rawPointerType())));
+        return new LLVMVariable(builder.buildRegisterObject(builder.buildIntToPtr(compressed, builder.rawPointerType()), true));
     }
 
     @Override
@@ -232,7 +233,12 @@ public class SubstrateLLVMGenerator extends LLVMGenerator implements SubstrateLI
             uncompressed = builder.buildSelect(isNull, compressed, uncompressed);
         }
 
-        return new LLVMVariable(builder.buildRegisterObject(builder.buildIntToPtr(uncompressed, builder.rawPointerType())));
+        return new LLVMVariable(builder.buildRegisterObject(builder.buildIntToPtr(uncompressed, builder.rawPointerType()), false));
+    }
+
+    @Override
+    protected boolean isConstantCompressed(Constant constant) {
+        return constant instanceof SubstrateObjectConstant && ((SubstrateObjectConstant) constant).isCompressed();
     }
 
     @Override

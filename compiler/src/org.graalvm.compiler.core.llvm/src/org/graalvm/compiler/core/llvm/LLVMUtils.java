@@ -60,9 +60,11 @@ public class LLVMUtils {
     public static final Pointer NULL = null;
     static final int UNTRACKED_POINTER_ADDRESS_SPACE = 0;
     static final int TRACKED_POINTER_ADDRESS_SPACE = 1;
+    static final int COMPRESSED_POINTER_ADDRESS_SPACE = 2;
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
     public static final String ALWAYS_INLINE = "alwaysinline";
     public static final String GC_REGISTER_FUNCTION_NAME = "__llvm_gc_register";
+    public static final String GC_REGISTER_COMPRESSED_FUNCTION_NAME = "__llvm_gc_register_compressed";
     public static final String ATOMIC_OBJECT_XCHG_FUNCTION_NAME = "__llvm_atomic_object_xchg";
     public static final String LOAD_OBJECT_FROM_UNTRACKED_POINTER_FUNCTION_NAME = "__llvm_load_object_from_untracked_pointer";
     public static final String GC_LEAF_FUNCTION_NAME = "gc-leaf-function";
@@ -379,7 +381,7 @@ public class LLVMUtils {
 
         @Override
         public LIRKind getNarrowOopKind() {
-            return LIRKind.compressedReference(new LLVMKind(LLVM.LLVMPointerType(LLVM.LLVMInt8TypeInContext(context), TRACKED_POINTER_ADDRESS_SPACE)));
+            return LIRKind.compressedReference(new LLVMKind(LLVM.LLVMPointerType(LLVM.LLVMInt8TypeInContext(context), COMPRESSED_POINTER_ADDRESS_SPACE)));
         }
 
         @Override
@@ -396,11 +398,14 @@ public class LLVMUtils {
         }
 
         static LIRKind toLIRKind(LLVMTypeRef type) {
-            if (LLVM.LLVMGetTypeKind(type) == LLVM.LLVMPointerTypeKind && LLVM.LLVMGetPointerAddressSpace(type) == TRACKED_POINTER_ADDRESS_SPACE) {
-                return LIRKind.reference(new LLVMKind(type));
-            } else {
-                return LIRKind.value(new LLVMKind(type));
+            if (LLVM.LLVMGetTypeKind(type) == LLVM.LLVMPointerTypeKind) {
+                if (LLVM.LLVMGetPointerAddressSpace(type) == TRACKED_POINTER_ADDRESS_SPACE) {
+                    return LIRKind.reference(new LLVMKind(type));
+                } else if (LLVM.LLVMGetPointerAddressSpace(type) == COMPRESSED_POINTER_ADDRESS_SPACE) {
+                    return LIRKind.compressedReference(new LLVMKind(type));
+                }
             }
+            return LIRKind.value(new LLVMKind(type));
         }
 
         @Override

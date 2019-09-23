@@ -62,7 +62,6 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.SectionName;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -278,7 +277,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     /* Optimizations might have duplicated some calls. */
                     for (int actualPcOffset : info.getPatchpointOffsets(call.pcOffset)) {
                         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
-                        info.forEachStatepointOffset(call.pcOffset, actualPcOffset, (o, b) -> referenceMap.markReferenceAtOffset(o, b, SubstrateOptions.SpawnIsolates.getValue()));
+                        info.forEachStatepointOffset(call.pcOffset, actualPcOffset, referenceMap::markReferenceAtOffset);
                         call.debugInfo.setReferenceMap(referenceMap);
 
                         if (LLVMOptions.DumpLLVMStackMap.hasBeenSet()) {
