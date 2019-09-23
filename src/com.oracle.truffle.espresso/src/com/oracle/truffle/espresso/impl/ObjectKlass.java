@@ -340,7 +340,7 @@ public final class ObjectKlass extends Klass {
         if (!isInitialized()) { // Skip synchronization and locks if already init.
             if (needsRecursiveInit) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                verifyKlass();
+                verify();
                 actualInit();
             } else {
                 for (ObjectKlass interf : getSuperInterfaces()) {

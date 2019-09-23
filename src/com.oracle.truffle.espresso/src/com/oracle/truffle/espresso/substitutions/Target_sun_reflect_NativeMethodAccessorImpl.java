@@ -253,7 +253,10 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
     public static @Host(Object.class) StaticObject callMethodReflectively(Meta meta, @Host(Object.class) StaticObject receiver, @Host(Object[].class) StaticObject args, Method reflectedMethod,
                     Klass klass, @Host(Class[].class) StaticObject parameterTypes) {
-        // klass will be initialized upon method invocation.
+        // Klass should be initialized if method is static, and could be delayed until method
+        // invocation, according to specs. However, JCK tests that it is indeed always initialized
+        // before doing anything, even if the method to be invoked is from another class.
+        klass.safeInitialize();
 
         Method method;      // actual method to invoke
         Klass targetKlass;  // target klass, receiver's klass for non-static

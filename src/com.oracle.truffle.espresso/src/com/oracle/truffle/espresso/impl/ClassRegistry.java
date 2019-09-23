@@ -177,7 +177,6 @@ public abstract class ClassRegistry implements ContextAccess {
     }
 
     private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
-
         TypeStack chain = stack.get();
 
         ObjectKlass superKlass = null;
